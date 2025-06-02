@@ -1,6 +1,9 @@
 # ComfyUI_ChatterBox Integration
 An unofficial ComfyUI custom node integration for [Resemble AI's ChatterBox](https://github.com/resemble-ai/chatterbox) - a state-of-the-art open-source Text-to-Speech (TTS) model with voice cloning capabilities.
 
+![image](https://github.com/user-attachments/assets/c369f723-8f8b-43bf-bfff-532b58fa90d4)
+
+
 ## 🎯 Features
 
 - **High-Quality TTS**: Production-grade speech synthesis consistently preferred over ElevenLabs in blind evaluations
