@@ -1,0 +1,7 @@
+torch
+torchaudio
+librosa
+safetensors
+huggingface_hub>=0.16.0
+conformer
+perth
