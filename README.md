@@ -1,7 +1,7 @@
 # ComfyUI_ChatterBox
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS.
 
-![image](https://github.com/user-attachments/assets/c369f723-8f8b-43bf-bfff-532b58fa90d4)
+![image](https://github.com/user-attachments/assets/35639c75-8c00-4b81-a16c-be9567955db7)
 
 ## Features
 
