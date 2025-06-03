@@ -1,269 +1,177 @@
-# ComfyUI_ChatterBox Integration
-An unofficial ComfyUI custom node integration for [Resemble AI's ChatterBox](https://github.com/resemble-ai/chatterbox) - a state-of-the-art open-source Text-to-Speech (TTS) model with voice cloning capabilities.
+# ComfyUI_ChatterBox
+An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS.
 
 ![image](https://github.com/user-attachments/assets/c369f723-8f8b-43bf-bfff-532b58fa90d4)
 
+## Features
 
-## 🎯 Features
+🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning  
+🔄 **ChatterBox VC** - Convert voice from one speaker to another  
+⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs  
+🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech  
 
-- **High-Quality TTS**: Production-grade speech synthesis consistently preferred over ElevenLabs in blind evaluations
-- **Voice Cloning**: Clone any voice from a short audio sample (7-20 seconds)
-- **Emotion Control**: First open-source TTS with emotion exaggeration control
-- **MIT Licensed**: Completely open-source and free for commercial use
-- **GPU Accelerated**: Optimized for CUDA with automatic device handling
-- **ComfyUI Integration**: Seamless workflow integration with preview and save capabilities
+> **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity and ComfyUI standards.  
 
-## 🚀 Installation
+## Installation
 
-### 1. Clone the Repository
+### 1. Install the Extension
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
-cd ComfyUI_ChatterBox
+git clone https://github.com/your-username/ComfyUI_ChatterBox.git
 ```
 
-### 2. Install Dependencies
+### 2. Install ChatterboxTTS Package
+
+**Copy the included package folders to your Python site-packages:**
+
+**Windows Portable ComfyUI:**
+```bash
+cd D:\ComfyUI_windows\ComfyUI\custom_nodes\ComfyUI_ChatterBox
+xcopy "put_contain_in_site_packages_folder\*" "..\..\..\python_embeded\Lib\site-packages\" /E /S
+```
+
+**WSL/Linux ComfyUI:**
+```bash
+cd ComfyUI/custom_nodes/ComfyUI_ChatterBox
+cp -r put_contain_in_site_packages_folder/* ../../venv/lib/python3.11/site-packages/
+```
+
+**Other Python setups:**
+```bash
+# Find your site-packages location first:
+python -c "import site; print(site.getsitepackages())"
+
+# Then copy both folders:
+cp -r put_contain_in_site_packages_folder/* /path/to/your/site-packages/
+```
+
+**This copies both required folders:**
+- `chatterbox/` - The actual TTS package code
+- `chatterbox_tts-0.1.1.dist-info/` - Package metadata for Python
+
+### 3. Install Additional Dependencies (Optional)
+
+**Most dependencies should already be included in ComfyUI, but if needed:**
 
 ```bash
-pip install -r requirements.txt
+# Windows Portable
+python_embeded\python.exe -m pip install librosa omegaconf
+
+# WSL/Linux  
+venv/bin/pip install librosa omegaconf
+
+# Other setups
+pip install librosa omegaconf
 ```
 
-**Required packages:**
-- `torch`
-- `torchaudio`
-- `librosa`
-- `safetensor`
-- `huggingface_hub`
-- `conformer`
-- `perth`
+**Note:** `torch`, `torchaudio`, `numpy` should already be available in ComfyUI.
 
+### 4. Download Models
 
-### 3. Model Setup
-
-ChatterBox requires several model files that need to be downloaded and placed in the correct directory.
-
-#### ⚠️ Manual Download Required
-
-**Note**: Automatic download is currently not working. You must download the models manually from Hugging Face.
-
-1. **Create model directory:**
-   ```bash
-   mkdir -p ComfyUI/models/TTS/chatterbox
-   ```
-
-2. **Download model files from Hugging Face:**
-   
-   Visit: **https://huggingface.co/ResembleAI/chatterbox/tree/main**
-   
-   Download the following files and place them in `ComfyUI/models/TTS/chatterbox/`:
-   
-   - **ve.safetensors** (Voice encoder model)
-   - **t3_cfg.safetensors** (T3 text-to-speech model) 
-   - **s3gen.safetensors** (S3Gen speech generation model)
-   - **tokenizer.json** (English text tokenizer)
-   - **conds.pt** (Built-in voice conditionals)
-
-   **Alternative download methods:**
-   
-   Using `wget`:
-   ```bash
-   cd ComfyUI/models/TTS/chatterbox
-   
-   wget https://huggingface.co/ResembleAI/chatterbox/resolve/main/ve.safetensors
-   wget https://huggingface.co/ResembleAI/chatterbox/resolve/main/t3_cfg.safetensors
-   wget https://huggingface.co/ResembleAI/chatterbox/resolve/main/s3gen.safetensors
-   wget https://huggingface.co/ResembleAI/chatterbox/resolve/main/tokenizer.json
-   wget https://huggingface.co/ResembleAI/chatterbox/resolve/main/conds.pt
-   ```
-   
-   Using `curl`:
-   ```bash
-   cd ComfyUI/models/TTS/chatterbox
-   
-   curl -L -o ve.safetensors https://huggingface.co/ResembleAI/chatterbox/resolve/main/ve.safetensors
-   curl -L -o t3_cfg.safetensors https://huggingface.co/ResembleAI/chatterbox/resolve/main/t3_cfg.safetensors
-   curl -L -o s3gen.safetensors https://huggingface.co/ResembleAI/chatterbox/resolve/main/s3gen.safetensors
-   curl -L -o tokenizer.json https://huggingface.co/ResembleAI/chatterbox/resolve/main/tokenizer.json
-   curl -L -o conds.pt https://huggingface.co/ResembleAI/chatterbox/resolve/main/conds.pt
-   ```
-
-3. **Verify files:**
-   ```
-   ComfyUI/models/TTS/chatterbox/
-   ├── ve.safetensors          # Voice encoder model (~94MB)
-   ├── t3_cfg.safetensors      # T3 text-to-speech model (~674MB)
-   ├── s3gen.safetensors       # S3Gen speech generation model (~1.06GB)
-   ├── tokenizer.json          # English text tokenizer (~2MB)
-   └── conds.pt               # Built-in voice conditionals (~107KB)
-   ```
-   
-   **Total download size**: ~3GB
-
-### 4. Restart ComfyUI
-
-After installation and model download, restart ComfyUI to load the new custom nodes.
-
-
-## 📖 Usage
-
-### Basic Workflow
-
-1. **Add ChatterBox Generate Node**
-   - Find `ChatterBox Generate` in the node menu under `ChatterBox` category
-   - This node generates speech from text
-
-2. **Configure Inputs**
-   - **text**: The text you want to convert to speech
-   - **model_path**: Path to your ChatterBox models directory
-   - **reference_audio** (optional): Audio file for voice cloning
-   - **exaggeration**: Emotion intensity (0.0-1.0, default: 0.5)
-   - **cfg_weight**: Classifier-free guidance weight (0.0-1.0, default: 0.5)
-   - **temperature**: Sampling temperature (0.1-1.0, default: 0.8)
-
-3. **Connect Output**
-   - Connect the `AUDIO` output to `PreviewAudio` node to hear the result
-   - The generated audio is automatically saved to `ComfyUI/output/audio/`
-
-### Voice Cloning
-
-To clone a specific voice:
-
-1. **Prepare Reference Audio**
-   - Use a clean audio file (7-20 seconds recommended)
-   - Supported formats: WAV, MP3, FLAC
-   - Good quality recording with minimal background noise
-
-2. **Connect Reference Audio**
-   - Use `LoadAudio` node to load your reference audio
-   - Connect it to the `reference_audio` input of ChatterBox Generate
-
-3. **Generate Speech**
-   - The model will clone the voice characteristics from your reference audio
-   - Adjust `exaggeration` parameter to control emotion intensity
-
-### Example Workflow
-
+**Download the ChatterboxTTS models** and place them in:
 ```
-[LoadAudio] → [ChatterBox Generate] → [PreviewAudio]
-                      ↑
-              [Text Input: "Hello world!"]
+ComfyUI/models/TTS/chatterbox/
 ```
 
-## ⚙️ Parameters
+**Required files:**
+- `conds.pt` (105 KB)
+- `s3gen.pt` (~1 GB)
+- `t3_cfg.pt` (~1 GB)  
+- `tokenizer.json` (25 KB)
+- `ve.pt` (5.5 MB)
 
-| Parameter | Type | Range | Default | Description |
-|-----------|------|-------|---------|-------------|
-| `text` | string | - | - | Text to synthesize |
-| `model_path` | string | - | auto | Path to ChatterBox models |
-| `reference_audio` | AUDIO | - | None | Reference audio for voice cloning |
-| `exaggeration` | float | 0.0-1.0 | 0.5 | Emotion exaggeration intensity |
-| `cfg_weight` | float | 0.0-1.0 | 0.5 | Classifier-free guidance weight |
-| `temperature` | float | 0.1-1.0 | 0.8 | Sampling randomness |
+**Download from:** https://huggingface.co/ResembleAI/chatterbox/tree/main
 
-## 🔧 Advanced Configuration
+**Manual download steps:**
+1. Visit https://huggingface.co/ResembleAI/chatterbox/tree/main
+2. Click each required file and download
+3. Save all files to `ComfyUI/models/TTS/chatterbox/`
+4. Folder should contain exactly 5 files as listed above
 
+### 5. Restart ComfyUI
 
-### Device Selection
+The ChatterBox nodes will appear in the **"ChatterBox"** category.
 
-The node automatically detects and uses the best available device:
-- **CUDA**: If NVIDIA GPU with CUDA is available
-- **MPS**: If Apple Silicon Mac
-- **CPU**: Fallback option (slower)
+## Usage
 
-### Output Location
+### Text-to-Speech
+1. Add **"ChatterBox Text-to-Speech"** node
+2. Enter your text
+3. Optionally connect reference audio for voice cloning
+4. Adjust settings:
+   - **Exaggeration**: Emotion intensity (0.25-2.0)
+   - **Temperature**: Randomness (0.05-5.0)
+   - **CFG Weight**: Guidance strength (0.0-1.0)
 
-Generated audio files are saved to:
+### Voice Conversion  
+1. Add **"ChatterBox Voice Conversion"** node
+2. Connect source audio (voice to convert)
+3. Connect target audio (voice style to copy)
+
+## Settings Guide
+
+**General Use:**
+- `exaggeration=0.5`, `cfg_weight=0.5` (default settings work well)
+
+**Expressive Speech:**
+- Lower `cfg_weight` (~0.3) + higher `exaggeration` (~0.7)
+- Higher exaggeration speeds up speech; lower CFG slows it down
+
+## Installation Summary
+
+1. **Clone extension** → `git clone https://github.com/your-username/ComfyUI_ChatterBox.git`
+2. **Copy package** → Copy folders from `put_contain_in_site_packages_folder/` to site-packages
+3. **Download models** → Get 5 files from HuggingFace to `ComfyUI/models/TTS/chatterbox/`
+4. **Restart ComfyUI** → Nodes appear in "ChatterBox" category
+
+**Why This Approach?**
+- **No pip conflicts** - Avoids dependency issues with ComfyUI
+- **Universal** - Works on Windows portable, WSL, Linux, conda, etc.
+- **Offline** - No downloads during installation
+- **Simple** - Just copy folders, no complex scripts
+
+## Why Two Folders?
+
+**`chatterbox/`** - Contains the actual Python code for the TTS engine  
+**`chatterbox_tts-0.1.1.dist-info/`** - Contains package metadata (version, dependencies, etc.)  
+
+Python's import system needs both folders to properly recognize and load the package. Missing either folder can cause import errors or version conflicts.
+
+## Troubleshooting
+
+**"ChatterboxTTS not available"** → Copy the package folders:
+```bash
+# Check if both folders exist in your site-packages:
+# chatterbox/
+# chatterbox_tts-0.1.1.dist-info/
 ```
-ComfyUI/output/audio/chatterbox_output_{timestamp}.wav
+
+**"No module named 'chatterbox'"** → Verify both folders copied correctly:
+```bash
+# Windows Portable
+dir "python_embeded\Lib\site-packages\chatterbox"
+dir "python_embeded\Lib\site-packages\chatterbox_tts-0.1.1.dist-info"
+
+# WSL/Linux
+ls venv/lib/python3.11/site-packages/chatterbox
+ls venv/lib/python3.11/site-packages/chatterbox_tts-0.1.1.dist-info
 ```
 
-## 🛠️ Troubleshooting
+**Models not found** → Download manually to `ComfyUI/models/TTS/chatterbox/`
 
-### Common Issues
+**Wrong Python version** → Make sure you're copying to the same Python environment that ComfyUI uses
 
-1. **"Model files not found"**
-   - Ensure models are manually downloaded to `ComfyUI/models/TTS/chatterbox/`
-   - Download from: https://huggingface.co/ResembleAI/chatterbox/tree/main
-   - Verify all 5 required files are present and complete
-   - Check file sizes match expected values (see installation section)
+**Permission errors** → Run terminal as administrator (Windows) or use `sudo` (Linux)
 
-2. **"CUDA out of memory"**
-   - Reduce batch size or use shorter text
-   - Switch to CPU mode: Set device to "cpu" in code
-   - Close other GPU-intensive applications
+## License
 
-3. **"Device mismatch errors"**
-   - Restart ComfyUI to reload models
-   - Ensure PyTorch CUDA version matches your GPU drivers
+MIT License - Same as ChatterboxTTS
 
-4. **"Audio format not supported"**
-   - Use WAV, MP3, or FLAC for reference audio
-   - Ensure audio file is not corrupted
+## Credits
 
-5. **"Download errors"**
-   - Automatic download is not supported - download manually
-   - Use stable internet connection for large model files
-   - Verify downloaded files are not corrupted (check file sizes)
-
-### Performance Tips
-
-- **GPU Recommended**: CUDA significantly faster than CPU
-- **Short Reference Audio**: 7-20 seconds optimal for voice cloning
-- **Clean Audio**: Better reference audio = better voice cloning
-- **Text Length**: Longer texts may require more memory
-
-## 🏗️ Technical Details
-
-### Model Architecture
-
-ChatterBox uses a multi-stage architecture:
-
-1. **Voice Encoder (VE)**: Extracts speaker embeddings from reference audio
-2. **T3 Model**: Text-to-speech conversion with conditioning
-3. **S3Gen**: High-quality speech generation and vocoding
-4. **Tokenizers**: Text and speech token processing
-
-### Audio Processing
-
-- **Input Sample Rate**: Automatically resampled to 16kHz and 24kHz for different components
-- **Output Sample Rate**: 24kHz high-quality audio
-- **Format**: 32-bit float WAV files
-- **Channels**: Mono output
-
-### Memory Requirements
-
-- **GPU**: 4GB+ VRAM recommended for optimal performance
-- **RAM**: 8GB+ system RAM
-- **Storage**: ~3GB for model files
-
-## 📊 Benchmarks
-
-According to Resemble AI's evaluations:
-- **63.75%** of evaluators preferred ChatterBox over ElevenLabs
-- Trained on **500K hours** of high-quality data
-- Supports **emotion exaggeration control** (first open-source TTS)
-- **MIT licensed** for commercial use
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-
-## 📄 License
-
-This integration is licensed under MIT License. 
-
-The underlying ChatterBox model is also MIT licensed by Resemble AI.
-
-## 🙏 Credits
-
-- **Resemble AI**: For creating the excellent ChatterBox TTS model
-- **Original ChatterBox**: https://github.com/resemble-ai/chatterbox
-- **Model Downloads**: https://huggingface.co/ResembleAI/chatterbox/tree/main
-- **ComfyUI**: For the amazing workflow platform
-
-**Disclaimer**: This is an unofficial integration. All credit for the ChatterBox model goes to Resemble AI. This project simply provides ComfyUI compatibility.
+- **ResembleAI** for ChatterboxTTS
+- **ComfyUI** team for the amazing framework
 
 
 ## 🔗 Links
