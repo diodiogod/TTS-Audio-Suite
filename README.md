@@ -52,8 +52,6 @@ cp -r put_contain_in_site_packages_folder/* /path/to/your/site-packages/
 
 ### 3. Install Additional Dependencies
 
-**Most dependencies should already be included in ComfyUI, but if needed:**
-
 ```bash
 pip install -r requirements.txt
 ```
