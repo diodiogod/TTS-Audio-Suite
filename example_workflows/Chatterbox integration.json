@@ -1,19 +1,19 @@
 {
   "id": "4a7cdb14-f535-4923-861b-59ba2c7ee043",
   "revision": 0,
-  "last_node_id": 4,
-  "last_link_id": 3,
+  "last_node_id": 36,
+  "last_link_id": 69,
   "nodes": [
     {
-      "id": 2,
-      "type": "ChatterboxModelLoader",
+      "id": 26,
+      "type": "LoadAudio",
       "pos": [
-        -963.2238159179688,
-        2476.6962890625
+        -1472.862060546875,
+        2331.7490234375
       ],
       "size": [
         270,
-        58
+        136
       ],
       "flags": {},
       "order": 0,
@@ -21,42 +21,10 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "model",
-          "type": "CHATTERBOX_MODEL",
-          "links": [
-            1
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ChatterboxModelLoader",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "auto"
-      ]
-    },
-    {
-      "id": 3,
-      "type": "LoadAudio",
-      "pos": [
-        -963.2238159179688,
-        2636.142578125
-      ],
-      "size": [
-        270,
-        136
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            2
+            65
           ]
         }
       ],
@@ -73,24 +41,96 @@
       ]
     },
     {
-      "id": 4,
+      "id": 34,
+      "type": "LoadAudio",
+      "pos": [
+        -1333.963134765625,
+        3007.423095703125
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            68
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "Node name for S&R": "LoadAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "male_harvey_keitel.mp3",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 35,
+      "type": "LoadAudio",
+      "pos": [
+        -1328.9635009765625,
+        2782.253173828125
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            67
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "Node name for S&R": "LoadAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "male_stewie.mp3",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 36,
       "type": "PreviewAudio",
       "pos": [
-        -81.65412902832031,
-        2511.91796875
+        -542.3068237304688,
+        2895.125244140625
       ],
       "size": [
         270,
         88
       ],
       "flags": {},
-      "order": 3,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 3
+          "link": 69
         }
       ],
       "outputs": [],
@@ -103,30 +143,55 @@
       "widgets_values": []
     },
     {
-      "id": 1,
-      "type": "ChatterboxGenerate",
+      "id": 15,
+      "type": "PreviewAudio",
       "pos": [
-        -561.8939819335938,
-        2513.0498046875
+        -517.1994018554688,
+        2329.54736328125
       ],
       "size": [
-        443.0075988769531,
-        342.5619812011719
+        270,
+        88
       ],
       "flags": {},
-      "order": 2,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
-          "name": "model",
-          "type": "CHATTERBOX_MODEL",
-          "link": 1
-        },
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 66
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "Node name for S&R": "PreviewAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 33,
+      "type": "ChatterboxTTS",
+      "pos": [
+        -1068.8953857421875,
+        2262.755126953125
+      ],
+      "size": [
+        400,
+        256
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
         {
           "name": "reference_audio",
           "shape": 7,
           "type": "AUDIO",
-          "link": 2
+          "link": 65
         }
       ],
       "outputs": [
@@ -134,57 +199,147 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            3
+            66
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "ChatterboxGenerate",
+        "Node name for S&R": "ChatterboxTTS",
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "We're excited to introduce Chatterbox, Resemble AI's first production-grade open source TTS model. Licensed under MIT, Chatterbox has been benchmarked against leading closed-source systems like ElevenLabs, and is consistently preferred in side-by-side evaluations.",
-        0.5000000000000001,
-        0.5000000000000001,
-        0.4000000000000001
+        "Hello world! This is ChatterboxTTS in ComfyUI.",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        3298238449,
+        "randomize",
+        ""
+      ]
+    },
+    {
+      "id": 32,
+      "type": "ChatterboxVC",
+      "pos": [
+        -897.5169677734375,
+        2895.12451171875
+      ],
+      "size": [
+        282.7749938964844,
+        78
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source_audio",
+          "type": "AUDIO",
+          "link": 67
+        },
+        {
+          "name": "target_audio",
+          "type": "AUDIO",
+          "link": 68
+        }
+      ],
+      "outputs": [
+        {
+          "name": "converted_audio",
+          "type": "AUDIO",
+          "links": [
+            69
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ChatterboxVC",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "auto"
       ]
     }
   ],
   "links": [
     [
-      1,
-      2,
+      65,
+      26,
       0,
-      1,
+      33,
       0,
-      "CHATTERBOX_MODEL"
+      "AUDIO"
     ],
     [
-      2,
-      3,
+      66,
+      33,
       0,
-      1,
+      15,
+      0,
+      "AUDIO"
+    ],
+    [
+      67,
+      35,
+      0,
+      32,
+      0,
+      "AUDIO"
+    ],
+    [
+      68,
+      34,
+      0,
+      32,
       1,
       "AUDIO"
     ],
     [
-      3,
-      1,
+      69,
+      32,
       0,
-      4,
+      36,
       0,
       "AUDIO"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 2,
+      "title": "ChatterBox Text-to-Speech",
+      "bounding": [
+        -1513.438720703125,
+        2120.572021484375,
+        1376.1483154296875,
+        501.39434814453125
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "ChatterBox Voice Conversion",
+      "bounding": [
+        -1510.47412109375,
+        2652.15234375,
+        1371.289794921875,
+        575.38330078125
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
   "config": {},
   "extra": {
     "ue_links": [],
     "ds": {
-      "scale": 1.0610764609500007,
+      "scale": 0.9646149645000006,
       "offset": [
-        1352.2323485226436,
-        -2229.4752654838985
+        1979.2684697096672,
+        -2096.12660280401
       ]
     },
     "links_added_by_ue": [],
