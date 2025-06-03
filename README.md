@@ -18,7 +18,7 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/your-username/ComfyUI_ChatterBox.git
+git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
 ```
 
 ### 2. Install ChatterboxTTS Package
