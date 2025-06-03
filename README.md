@@ -7,6 +7,7 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
 
 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning  
 🔄 **ChatterBox VC** - Convert voice from one speaker to another  
+🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection  
 ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs  
 🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech  
 
@@ -58,6 +59,11 @@ pip install -r requirements.txt
 
 **Note:** `torch`, `torchaudio`, `numpy` should already be available in ComfyUI.
 
+**Additional dependencies for voice recording:**
+```bash
+pip install sounddevice
+```
+
 ### 4. Download Models
 
 **Download the ChatterboxTTS models** and place them in:
@@ -86,6 +92,22 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
 
 ## Usage
 
+### Voice Recording (New!)
+1. Add **"🎤 ChatterBox Voice Capture"** node
+2. Select your microphone from the dropdown
+3. Adjust recording settings:
+   - **Silence Threshold**: How quiet to consider "silence" (0.001-0.1)
+   - **Silence Duration**: How long to wait before stopping (0.5-5.0 seconds)
+   - **Sample Rate**: Audio quality (8000-96000 Hz, default 44100)
+4. Change the **Trigger** value to start a new recording
+5. Connect output to TTS (for voice cloning) or VC nodes
+
+**Smart Recording Features:**
+- 🔇 **Auto-stop**: Automatically stops when you finish speaking
+- 🎯 **Noise filtering**: Configurable silence detection
+- 🔄 **Trigger-based**: Change trigger number to record again
+- 📁 **Temp files**: Automatically manages temporary audio files
+
 ### Text-to-Speech
 1. Add **"ChatterBox Text-to-Speech"** node
 2. Enter your text
@@ -94,18 +116,46 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
    - **Exaggeration**: Emotion intensity (0.25-2.0)
    - **Temperature**: Randomness (0.05-5.0)
    - **CFG Weight**: Guidance strength (0.0-1.0)
-   
-### ChatterBox TTS Text Limits
-📝 No Official Hard Limit: Unlike some TTS systems (like OpenAI's TTS which has a 4096 character limit TTS model has a "hidden" 4096 characters limit - API - OpenAI Developer Community), ChatterBox TTS doesn't appear to have a documented hard character or word limit.
-
-🔧 Practical Implementation: However, for optimal performance, the underlying model likely works best with shorter text segments.
 
 ### Voice Conversion  
 1. Add **"ChatterBox Voice Conversion"** node
 2. Connect source audio (voice to convert)
 3. Connect target audio (voice style to copy)
 
+### Workflow Examples
+
+**Voice Cloning Workflow:**
+```
+🎤 Voice Capture → ChatterBox TTS (reference_audio)
+```
+
+**Voice Conversion Workflow:**
+```
+🎤 Voice Capture (source) → ChatterBox VC ← 🎤 Voice Capture (target)
+```
+
+**Complete Pipeline:**
+```
+🎤 Voice Capture → ChatterBox TTS → PreviewAudio
+                ↘ ChatterBox VC ← 🎤 Target Voice
+```
+
 ## Settings Guide
+
+### Voice Recording Settings
+
+**General Recording:**
+- `silence_threshold=0.01`, `silence_duration=2.0` (default settings)
+
+**Noisy Environment:**
+- Higher `silence_threshold` (~0.05) to ignore background noise
+- Longer `silence_duration` (~3.0) to avoid cutting off speech
+
+**Quiet Environment:**
+- Lower `silence_threshold` (~0.005) for sensitive detection
+- Shorter `silence_duration` (~1.0) for quick stopping
+
+### TTS Settings
 
 **General Use:**
 - `exaggeration=0.5`, `cfg_weight=0.5` (default settings work well)
@@ -114,12 +164,18 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
 - Lower `cfg_weight` (~0.3) + higher `exaggeration` (~0.7)
 - Higher exaggeration speeds up speech; lower CFG slows it down
 
+## ChatterBox TTS Text Limits
+📝 No Official Hard Limit: Unlike some TTS systems (like OpenAI's TTS which has a 4096 character limit TTS model has a "hidden" 4096 characters limit - API - OpenAI Developer Community), ChatterBox TTS doesn't appear to have a documented hard character or word limit.
+
+🔧 Practical Implementation: However, for optimal performance, the underlying model likely works best with shorter text segments.
+
 ## Installation Summary
 
 1. **Clone extension** → `git clone https://github.com/your-username/ComfyUI_ChatterBox.git`
 2. **Copy package** → Copy folders from `put_contain_in_site_packages_folder/` to site-packages
-3. **Download models** → Get 5 files from HuggingFace to `ComfyUI/models/TTS/chatterbox/`
-4. **Restart ComfyUI** → Nodes appear in "ChatterBox" category
+3. **Install audio deps** → `pip install sounddevice` (for voice recording)
+4. **Download models** → Get 5 files from HuggingFace to `ComfyUI/models/TTS/chatterbox/`
+5. **Restart ComfyUI** → Nodes appear in "ChatterBox" category
 
 **Why This Approach?**
 - **No pip conflicts** - Avoids dependency issues with ComfyUI
@@ -135,6 +191,8 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
 Python's import system needs both folders to properly recognize and load the package. Missing either folder can cause import errors or version conflicts.
 
 ## Troubleshooting
+
+### General Issues
 
 **"ChatterboxTTS not available"** → Copy the package folders:
 ```bash
@@ -154,6 +212,32 @@ ls venv/lib/python3.11/site-packages/chatterbox
 ls venv/lib/python3.11/site-packages/chatterbox_tts-0.1.1.dist-info
 ```
 
+### Voice Recording Issues
+
+**"No input devices found"** → Install audio drivers and restart ComfyUI:
+```bash
+# Check if sounddevice can detect your microphone:
+python -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+**"Permission denied" (Linux/Mac)** → Give microphone access:
+```bash
+# Linux: Install ALSA/PulseAudio dev packages
+sudo apt-get install libasound2-dev portaudio19-dev
+
+# Mac: Grant microphone permission in System Preferences
+```
+
+**Recording not working** → Check microphone settings:
+- Try different microphones in the dropdown
+- Adjust silence threshold if auto-stop isn't working
+- Check system microphone permissions
+- Restart ComfyUI after changing audio drivers
+
+**Duplicate microphones in list** → This is normal - Windows shows the same device through multiple audio drivers
+
+### Model Issues
+
 **Models not found** → Download manually to `ComfyUI/models/TTS/chatterbox/`
 
 **Wrong Python version** → Make sure you're copying to the same Python environment that ComfyUI uses
@@ -168,7 +252,7 @@ MIT License - Same as ChatterboxTTS
 
 - **ResembleAI** for ChatterboxTTS
 - **ComfyUI** team for the amazing framework
-
+- **sounddevice** library for audio recording functionality
 
 ## 🔗 Links
 
