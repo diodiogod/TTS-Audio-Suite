@@ -50,19 +50,12 @@ cp -r put_contain_in_site_packages_folder/* /path/to/your/site-packages/
 - `chatterbox/` - The actual TTS package code
 - `chatterbox_tts-0.1.1.dist-info/` - Package metadata for Python
 
-### 3. Install Additional Dependencies (Optional)
+### 3. Install Additional Dependencies
 
 **Most dependencies should already be included in ComfyUI, but if needed:**
 
 ```bash
-# Windows Portable
-python_embeded\python.exe -m pip install librosa omegaconf
-
-# WSL/Linux  
-venv/bin/pip install librosa omegaconf
-
-# Other setups
-pip install librosa omegaconf
+pip install -r requirements.txt
 ```
 
 **Note:** `torch`, `torchaudio`, `numpy` should already be available in ComfyUI.
