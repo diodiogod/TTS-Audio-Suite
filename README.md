@@ -103,6 +103,11 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
    - **Exaggeration**: Emotion intensity (0.25-2.0)
    - **Temperature**: Randomness (0.05-5.0)
    - **CFG Weight**: Guidance strength (0.0-1.0)
+   
+### ChatterBox TTS Text Limits
+📝 No Official Hard Limit: Unlike some TTS systems (like OpenAI's TTS which has a 4096 character limit TTS model has a "hidden" 4096 characters limit - API - OpenAI Developer Community), ChatterBox TTS doesn't appear to have a documented hard character or word limit.
+
+🔧 Practical Implementation: However, for optimal performance, the underlying model likely works best with shorter text segments.
 
 ### Voice Conversion  
 1. Add **"ChatterBox Voice Conversion"** node
