@@ -3,6 +3,10 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
 
 ![image](https://github.com/user-attachments/assets/35639c75-8c00-4b81-a16c-be9567955db7)
 
+NEW: Audio capure node
+![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
+
+
 ## Features
 
 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning  
