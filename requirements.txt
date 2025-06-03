@@ -1,0 +1,9 @@
+# ChatterboxTTS Dependencies for ComfyUI
+# Install with: pip install -r requirements.txt
+
+s3tokenizer>=0.1.7
+resemble-perth
+librosa
+omegaconf
+accelerate
+
