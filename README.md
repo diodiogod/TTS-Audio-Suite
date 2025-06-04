@@ -1,11 +1,10 @@
 # ComfyUI_ChatterBox_Voice
-An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS.
+An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length!!!.
 
 ![image](https://github.com/user-attachments/assets/35639c75-8c00-4b81-a16c-be9567955db7)
 
-NEW: Audio capure node
+NEW: Audio capture node
 ![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
-
 
 ## Features
 
@@ -14,61 +13,48 @@ NEW: Audio capure node
 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection  
 ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs  
 🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech  
+📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods  
+📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience  
 
-> **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity and ComfyUI standards.  
+> **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity, ComfyUI standards, and enhanced text processing capabilities.
 
 ## Installation
-
-### 1. Install the Extension
 
 ```bash
 cd ComfyUI/custom_nodes
 git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
 ```
 
-### 2. Install ChatterboxTTS Package
+**That's it!** .
 
-**Copy the included package folders to your Python site-packages:**
-
-**Windows Portable ComfyUI:**
-```bash
-cd D:\ComfyUI_windows\ComfyUI\custom_nodes\ComfyUI_ChatterBox
-xcopy "put_contain_in_site_packages_folder\*" "..\..\..\python_embeded\Lib\site-packages\" /E /S
+**Expected folder structure for bundled approach:**
+```
+ComfyUI_ChatterBox_Voice/
+├── __init__.py
+├── nodes.py
+├── chatterbox/              # ← ChatterBox code bundled here
+│   ├── __init__.py
+│   ├── tts.py
+│   ├── vc.py
+│   └── ...
+├── models/                  # ← Models bundled here (optional)
+│   └── chatterbox/
+│       ├── conds.pt
+│       ├── s3gen.pt
+│       ├── t3_cfg.pt
+│       ├── tokenizer.json
+│       └── ve.pt
+└── README.md
 ```
 
-**WSL/Linux ComfyUI:**
-```bash
-cd ComfyUI/custom_nodes/ComfyUI_ChatterBox
-cp -r put_contain_in_site_packages_folder/* ../../venv/lib/python3.11/site-packages/
-```
 
-**Other Python setups:**
-```bash
-# Find your site-packages location first:
-python -c "import site; print(site.getsitepackages())"
-
-# Then copy both folders:
-cp -r put_contain_in_site_packages_folder/* /path/to/your/site-packages/
-```
-
-**This copies both required folders:**
-- `chatterbox/` - The actual TTS package code
-- `chatterbox_tts-0.1.1.dist-info/` - Package metadata for Python
-
-### 3. Install Additional Dependencies
+#### 2.3. Install Additional Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Note:** `torch`, `torchaudio`, `numpy` should already be available in ComfyUI.
-
-**Additional dependencies for voice recording:**
-```bash
-pip install sounddevice
-```
-
-### 4. Download Models
+#### 2.4. Download Models
 
 **Download the ChatterboxTTS models** and place them in:
 ```
@@ -84,19 +70,59 @@ ComfyUI/models/TTS/chatterbox/
 
 **Download from:** https://huggingface.co/ResembleAI/chatterbox/tree/main
 
-**Manual download steps:**
-1. Visit https://huggingface.co/ResembleAI/chatterbox/tree/main
-2. Click each required file and download
-3. Save all files to `ComfyUI/models/TTS/chatterbox/`
-4. Folder should contain exactly 5 files as listed above
+### 3. Install Voice Recording Dependencies (Optional)
 
-### 5. Restart ComfyUI
+```bash
+pip install sounddevice
+```
 
-The ChatterBox nodes will appear in the **"ChatterBox"** category.
+### 4. Restart ComfyUI
+
+
+## Enhanced Features
+
+### 📝 Intelligent Text Chunking (NEW!)
+
+**Long text support with smart processing:**
+
+- **Character-based limits** (100-1000 chars per chunk)
+- **Sentence boundary preservation** - won't cut mid-sentence
+- **Multiple combination methods**:
+  - `auto` - Smart selection based on text length
+  - `concatenate` - Simple joining
+  - `silence_padding` - Add configurable silence between chunks
+  - `crossfade` - Smooth audio blending
+- **Comma-based splitting** for very long sentences
+- **Backward compatible** - works with existing workflows
+
+**Chunking Controls (all optional):**
+- `enable_chunking` - Enable/disable smart chunking (default: True)
+- `max_chars_per_chunk` - Chunk size limit (default: 400)
+- `chunk_combination_method` - How to join audio (default: auto)
+- `silence_between_chunks_ms` - Silence duration (default: 100ms)
+
+**Auto-selection logic:**
+- **Text > 1000 chars** → silence_padding (natural pauses)
+- **Text > 500 chars** → crossfade (smooth blending)  
+- **Text < 500 chars** → concatenate (simple joining)
+
+### 📦 Smart Model Loading
+
+**Priority-based model detection:**
+1. **Bundled models** in node folder (self-contained)
+2. **ComfyUI models** in standard location  
+3. **HuggingFace download** with authentication
+
+**Console output shows source:**
+```
+📦 Using BUNDLED ChatterBox (self-contained)
+📦 Loading from bundled models: ./models/chatterbox
+✅ ChatterboxTTS model loaded from bundled!
+```
 
 ## Usage
 
-### Voice Recording (New!)
+### Voice Recording
 1. Add **"🎤 ChatterBox Voice Capture"** node
 2. Select your microphone from the dropdown
 3. Adjust recording settings:
@@ -106,45 +132,63 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
 4. Change the **Trigger** value to start a new recording
 5. Connect output to TTS (for voice cloning) or VC nodes
 
-**Smart Recording Features:**
-- 🔇 **Auto-stop**: Automatically stops when you finish speaking
-- 🎯 **Noise filtering**: Configurable silence detection
-- 🔄 **Trigger-based**: Change trigger number to record again
-- 📁 **Temp files**: Automatically manages temporary audio files
-
-### Text-to-Speech
-1. Add **"ChatterBox Text-to-Speech"** node
-2. Enter your text
+### Enhanced Text-to-Speech
+1. Add **"🎤 ChatterBox Voice TTS"** node
+2. Enter your text (any length - automatic chunking)
 3. Optionally connect reference audio for voice cloning
-4. Adjust settings:
+4. Adjust TTS settings:
    - **Exaggeration**: Emotion intensity (0.25-2.0)
    - **Temperature**: Randomness (0.05-5.0)
    - **CFG Weight**: Guidance strength (0.0-1.0)
+5. Configure chunking (optional):
+   - **Enable Chunking**: For long texts
+   - **Max Chars Per Chunk**: Chunk size (100-1000)
+   - **Combination Method**: How to join chunks
+   - **Silence Between Chunks**: Pause duration
 
 ### Voice Conversion  
-1. Add **"ChatterBox Voice Conversion"** node
+1. Add **"🔄 ChatterBox Voice Conversion"** node
 2. Connect source audio (voice to convert)
 3. Connect target audio (voice style to copy)
 
 ### Workflow Examples
 
-**Voice Cloning Workflow:**
+**Long Text with Smart Chunking:**
 ```
-🎤 Voice Capture → ChatterBox TTS (reference_audio)
+Text Input (2000+ chars) → ChatterBox TTS (chunking enabled) → PreviewAudio
 ```
 
-**Voice Conversion Workflow:**
+**Voice Cloning with Recording:**
+```
+🎤 Voice Capture → ChatterBox TTS (reference_audio) → PreviewAudio
+```
+
+**Voice Conversion Pipeline:**
 ```
 🎤 Voice Capture (source) → ChatterBox VC ← 🎤 Voice Capture (target)
 ```
 
-**Complete Pipeline:**
+**Complete Advanced Pipeline:**
 ```
-🎤 Voice Capture → ChatterBox TTS → PreviewAudio
-                ↘ ChatterBox VC ← 🎤 Target Voice
+Long Text Input → ChatterBox TTS (with voice reference) → PreviewAudio
+                ↘ ChatterBox VC ← 🎤 Target Voice Recording
 ```
 
 ## Settings Guide
+
+### Enhanced Chunking Settings
+
+**For Long Articles/Books:**
+- `max_chars_per_chunk=600`, `combination_method=silence_padding`, `silence_between_chunks_ms=200`
+
+**For Natural Speech:**
+- `max_chars_per_chunk=400`, `combination_method=auto` (default - works well)
+
+**For Fast Processing:**
+- `max_chars_per_chunk=800`, `combination_method=concatenate`
+
+**For Smooth Audio:**
+- `max_chars_per_chunk=300`, `combination_method=crossfade`
 
 ### Voice Recording Settings
 
@@ -168,85 +212,33 @@ The ChatterBox nodes will appear in the **"ChatterBox"** category.
 - Lower `cfg_weight` (~0.3) + higher `exaggeration` (~0.7)
 - Higher exaggeration speeds up speech; lower CFG slows it down
 
-## ChatterBox TTS Text Limits
-📝 No Official Hard Limit: Unlike some TTS systems (like OpenAI's TTS which has a 4096 character limit TTS model has a "hidden" 4096 characters limit - API - OpenAI Developer Community), ChatterBox TTS doesn't appear to have a documented hard character or word limit.
+## Text Processing Capabilities
 
-🔧 Practical Implementation: However, for optimal performance, the underlying model likely works best with shorter text segments.
+### 📚 No Hard Text Limits!
 
-## Installation Summary
+Unlike many TTS systems:
+- **OpenAI TTS**: 4096 character limit
+- **ElevenLabs**: 2500 character limit  
+- **ChatterBox**: No documented limits + intelligent chunking
 
-1. **Clone extension** → `git clone https://github.com/your-username/ComfyUI_ChatterBox.git`
-2. **Copy package** → Copy folders from `put_contain_in_site_packages_folder/` to site-packages
-3. **Install audio deps** → `pip install sounddevice` (for voice recording)
-4. **Download models** → Get 5 files from HuggingFace to `ComfyUI/models/TTS/chatterbox/`
-5. **Restart ComfyUI** → Nodes appear in "ChatterBox" category
+### 🧠 Smart Text Splitting
 
-**Why This Approach?**
-- **No pip conflicts** - Avoids dependency issues with ComfyUI
-- **Universal** - Works on Windows portable, WSL, Linux, conda, etc.
-- **Offline** - No downloads during installation
-- **Simple** - Just copy folders, no complex scripts
+**Sentence Boundary Detection:**
+- Splits on `.!?` with proper spacing
+- Preserves sentence integrity
+- Handles abbreviations and edge cases
 
-## Why Two Folders?
+**Long Sentence Handling:**
+- Splits on commas when sentences are too long
+- Maintains natural speech patterns
+- Falls back to character limits only when necessary
 
-**`chatterbox/`** - Contains the actual Python code for the TTS engine  
-**`chatterbox_tts-0.1.1.dist-info/`** - Contains package metadata (version, dependencies, etc.)  
-
-Python's import system needs both folders to properly recognize and load the package. Missing either folder can cause import errors or version conflicts.
-
-## Troubleshooting
-
-### General Issues
-
-**"ChatterboxTTS not available"** → Copy the package folders:
-```bash
-# Check if both folders exist in your site-packages:
-# chatterbox/
-# chatterbox_tts-0.1.1.dist-info/
+**Examples:**
 ```
+Input: "This is a very long article about artificial intelligence and machine learning. It contains multiple sentences and complex punctuation, including lists, quotes, and technical terms. The enhanced chunking system will split this intelligently."
 
-**"No module named 'chatterbox'"** → Verify both folders copied correctly:
-```bash
-# Windows Portable
-dir "python_embeded\Lib\site-packages\chatterbox"
-dir "python_embeded\Lib\site-packages\chatterbox_tts-0.1.1.dist-info"
-
-# WSL/Linux
-ls venv/lib/python3.11/site-packages/chatterbox
-ls venv/lib/python3.11/site-packages/chatterbox_tts-0.1.1.dist-info
+Output: 3 well-formed chunks with natural boundaries
 ```
-
-### Voice Recording Issues
-
-**"No input devices found"** → Install audio drivers and restart ComfyUI:
-```bash
-# Check if sounddevice can detect your microphone:
-python -c "import sounddevice as sd; print(sd.query_devices())"
-```
-
-**"Permission denied" (Linux/Mac)** → Give microphone access:
-```bash
-# Linux: Install ALSA/PulseAudio dev packages
-sudo apt-get install libasound2-dev portaudio19-dev
-
-# Mac: Grant microphone permission in System Preferences
-```
-
-**Recording not working** → Check microphone settings:
-- Try different microphones in the dropdown
-- Adjust silence threshold if auto-stop isn't working
-- Check system microphone permissions
-- Restart ComfyUI after changing audio drivers
-
-**Duplicate microphones in list** → This is normal - Windows shows the same device through multiple audio drivers
-
-### Model Issues
-
-**Models not found** → Download manually to `ComfyUI/models/TTS/chatterbox/`
-
-**Wrong Python version** → Make sure you're copying to the same Python environment that ComfyUI uses
-
-**Permission errors** → Run terminal as administrator (Windows) or use `sudo` (Linux)
 
 ## License
 
