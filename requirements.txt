@@ -6,4 +6,4 @@ resemble-perth
 librosa
 omegaconf
 accelerate
-
+transformers==4.46.3
