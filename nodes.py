@@ -1,5 +1,6 @@
 """
-ComfyUI Custom Nodes for ChatterboxTTS
+ComfyUI Custom Nodes for ChatterboxTTS - Voice Edition
+Enhanced with unique naming to avoid conflicts
 """
 
 import torch
@@ -31,7 +32,7 @@ except ImportError as e:
 
 class ChatterboxTTSNode:
     """
-    Text-to-Speech node using ChatterboxTTS
+    Text-to-Speech node using ChatterboxTTS - Voice Edition
     """
     
     @classmethod
@@ -40,7 +41,7 @@ class ChatterboxTTSNode:
             "required": {
                 "text": ("STRING", {
                     "multiline": True,
-                    "default": "Hello world! This is ChatterboxTTS in ComfyUI."
+                    "default": "Hello world! This is ChatterboxTTS Voice Edition in ComfyUI."
                 }),
                 "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
                 "exaggeration": ("FLOAT", {
@@ -72,7 +73,7 @@ class ChatterboxTTSNode:
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate_speech"
-    CATEGORY = "ChatterBox"
+    CATEGORY = "ChatterBox Voice"  # UPDATED: Unique category
 
     def __init__(self):
         self.model = None
@@ -145,7 +146,7 @@ class ChatterboxTTSNode:
 
 class ChatterboxVCNode:
     """
-    Voice Conversion node using ChatterboxVC
+    Voice Conversion node using ChatterboxVC - Voice Edition
     """
     
     @classmethod
@@ -161,7 +162,7 @@ class ChatterboxVCNode:
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("converted_audio",)
     FUNCTION = "convert_voice"
-    CATEGORY = "ChatterBox"
+    CATEGORY = "ChatterBox Voice"  # UPDATED: Unique category
 
     def __init__(self):
         self.model = None
@@ -231,13 +232,13 @@ class ChatterboxVCNode:
             raise e
 
 
-# Node mappings for ComfyUI
+# Node mappings for ComfyUI - UPDATED: Unique names to avoid conflicts
 NODE_CLASS_MAPPINGS = {
-    "ChatterboxTTS": ChatterboxTTSNode,
-    "ChatterboxVC": ChatterboxVCNode,
+    "ChatterBoxVoiceTTS": ChatterboxTTSNode,
+    "ChatterBoxVoiceVC": ChatterboxVCNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ChatterboxTTS": "ChatterBox Text-to-Speech",
-    "ChatterboxVC": "ChatterBox Voice Conversion", 
+    "ChatterBoxVoiceTTS": "🎤 ChatterBox Voice TTS",
+    "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion", 
 }
