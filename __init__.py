@@ -1,7 +1,7 @@
 """
-ComfyUI ChatterBox Extension
+ComfyUI ChatterBox Voice Extension
 High-quality Text-to-Speech and Voice Conversion nodes using ResembleAI's ChatterboxTTS
-Now with integrated audio recording and volume control!
+Enhanced with integrated audio recording and smart voice capture!
 """
 
 # Import ChatterBox TTS and VC nodes
@@ -17,30 +17,30 @@ except ImportError as e:
     print("📋 Install sounddevice: pip install sounddevice")
     AUDIO_RECORDER_AVAILABLE = False
 
-# Node class mappings for ComfyUI
+# Node class mappings for ComfyUI - UNIQUE NAMES TO AVOID CONFLICTS
 NODE_CLASS_MAPPINGS = {
-    "ChatterboxTTS": ChatterboxTTSNode,
-    "ChatterboxVC": ChatterboxVCNode,
+    "ChatterBoxVoiceTTS": ChatterboxTTSNode,
+    "ChatterBoxVoiceVC": ChatterboxVCNode,
 }
 
-# Display names for the UI
+# Display names for the UI - CLEAR BRANDING
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ChatterboxTTS": "ChatterBox Text-to-Speech",
-    "ChatterboxVC": "ChatterBox Voice Conversion",
+    "ChatterBoxVoiceTTS": "🎤 ChatterBox Voice TTS",
+    "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion",
 }
 
-# Add Audio Recorder if available
+# Add Audio Recorder if available - UNIQUE NAME
 if AUDIO_RECORDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxVoiceCapture"] = ChatterBoxVoiceCapture
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCapture"] = "🎙️ ChatterBox Voice Capture"
 
-# Extension info
+# Extension info - UPDATED BRANDING
 __version__ = "1.1.0"
-__author__ = "ComfyUI ChatterBox Extension"
-__description__ = "High-quality TTS and VC nodes using ResembleAI's ChatterboxTTS with integrated audio recording"
+__author__ = "ComfyUI ChatterBox Voice Extension"
+__description__ = "Enhanced ChatterBox TTS/VC with integrated voice recording and smart audio capture"
 
 # Check for required packages
-print("🎯 Loading ChatterBox Extension...")
+print("🎯 Loading ChatterBox Voice Extension...")
 
 try:
     import chatterbox
@@ -59,7 +59,7 @@ except ImportError:
 
 # Summary
 total_nodes = len(NODE_CLASS_MAPPINGS)
-print(f"🚀 ChatterBox Extension v{__version__} loaded with {total_nodes} nodes:")
+print(f"🚀 ChatterBox Voice Extension v{__version__} loaded with {total_nodes} nodes:")
 for node_class, display_name in NODE_DISPLAY_NAME_MAPPINGS.items():
     print(f"   • {display_name}")
 
