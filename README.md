@@ -31,10 +31,10 @@ ComfyUI_ChatterBox_Voice/
 ├── __init__.py
 ├── nodes.py
 ├── chatterbox/              # ← ChatterBox code bundled here
-│   ├── __init__.py
-│   ├── tts.py
-│   ├── vc.py
-│   └── ...
+├── __init__.py
+├── tts.py
+├── vc.py
+├── ...
 ├── models/                  # ← Models bundled here (optional)
 │   └── chatterbox/
 │       ├── conds.pt
