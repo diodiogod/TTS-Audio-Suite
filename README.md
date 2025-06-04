@@ -25,8 +25,6 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
 ```
 
-**That's it!** .
-
 **Expected folder structure for bundled approach:**
 ```
 ComfyUI_ChatterBox_Voice/
