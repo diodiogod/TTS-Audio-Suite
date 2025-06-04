@@ -30,9 +30,8 @@ git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
 ComfyUI_ChatterBox_Voice/
 ├── __init__.py
 ├── nodes.py
-├── chatterbox/              # ← ChatterBox code bundled here
-├── __init__.py
 ├── nodes_audio_recorder.py
+├── chatterbox/       
 
 ├── models/                  # ← Models bundled here (optional)
 │   └── chatterbox/
