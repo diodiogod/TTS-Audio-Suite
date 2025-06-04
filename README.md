@@ -31,7 +31,8 @@ ComfyUI_ChatterBox_Voice/
 ├── __init__.py
 ├── nodes.py
 ├── nodes_audio_recorder.py
-├── chatterbox/       
+├── chatterbox/
+├── web/        
 
 ├── models/                  # ← Models bundled here (optional)
 │   └── chatterbox/
