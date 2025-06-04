@@ -1,7 +1,7 @@
 # ComfyUI_ChatterBox_Voice
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length!!!.
 
-![image](https://github.com/user-attachments/assets/35639c75-8c00-4b81-a16c-be9567955db7)
+![image](https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c)
 
 NEW: Audio capture node
 ![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
