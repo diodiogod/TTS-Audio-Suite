@@ -11,6 +11,8 @@ NEW: SRT Timing and TTS Node
 
 The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
 
+<details>
+  
 Key Features:
 *   **SRT style Processing**: uses SRT style to generate TTS, aligning audio with subtitle timings.
 *   **`smart_natural` Timing Mode**: Features flexible shifting logic that intelligently considers "room" in subsequent segments, preventing overlaps and ensuring natural speech flow.
@@ -18,6 +20,8 @@ Key Features:
 *   **Segment-Level Caching**: Only regenerates modified segments, significantly speeding up workflows. Timing-only changes do not trigger regeneration, optimizing resource usage.
 
 For more detailed technical information, refer to the [SRT_IMPLEMENTATION.md](SRT_IMPLEMENTATION.md) file.
+
+</details>
 
 ## Features
 
