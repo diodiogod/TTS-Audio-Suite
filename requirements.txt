@@ -1,9 +1,29 @@
 # ChatterboxTTS Dependencies for ComfyUI
 # Install with: pip install -r requirements.txt
 
+# Core ChatterboxTTS dependencies
 s3tokenizer>=0.1.7
 resemble-perth
 librosa
+scipy
 omegaconf
 accelerate
 transformers==4.46.3
+
+# Additional dependencies for SRT support and audio processing
+conformer>=0.3.2
+torch
+torchaudio
+numpy
+einops
+phonemizer
+g2p-en
+unidecode
+
+# Audio processing and timing dependencies
+soundfile
+resampy
+webrtcvad
+
+# Optional but recommended for better performance
+numba
