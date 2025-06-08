@@ -3,9 +3,14 @@ from pathlib import Path
 
 import librosa
 import torch
-import perth
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
+import warnings
+
+# Import perth with warnings disabled
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import perth
 
 from .models.t3 import T3
 from .models.s3tokenizer import S3_SR, drop_invalid_tokens
@@ -120,40 +125,49 @@ class ChatterboxTTS:
         self.tokenizer = tokenizer
         self.device = device
         self.conds = conds
-        self.watermarker = perth.PerthImplicitWatermarker()
+        # Initialize watermarker silently
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.watermarker = perth.PerthImplicitWatermarker()
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
+        print(f"📦 Loading local ChatterBox models from: {ckpt_dir}")
         ckpt_dir = Path(ckpt_dir)
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            
+            ve = VoiceEncoder()
+            ve.load_state_dict(
+                torch.load(ckpt_dir / "ve.pt")
+            )
+            ve.to(device).eval()
 
-        ve = VoiceEncoder()
-        ve.load_state_dict(
-            torch.load(ckpt_dir / "ve.pt")
-        )
-        ve.to(device).eval()
+            t3 = T3()
+            t3_state = torch.load(ckpt_dir / "t3_cfg.pt")
+            if "model" in t3_state.keys():
+                t3_state = t3_state["model"][0]
+            t3.load_state_dict(t3_state)
+            t3.to(device).eval()
 
-        t3 = T3()
-        t3_state = torch.load(ckpt_dir / "t3_cfg.pt")
-        if "model" in t3_state.keys():
-            t3_state = t3_state["model"][0]
-        t3.load_state_dict(t3_state)
-        t3.to(device).eval()
+            s3gen = S3Gen()
+            s3gen.load_state_dict(
+                torch.load(ckpt_dir / "s3gen.pt")
+            )
+            s3gen.to(device).eval()
 
-        s3gen = S3Gen()
-        s3gen.load_state_dict(
-            torch.load(ckpt_dir / "s3gen.pt")
-        )
-        s3gen.to(device).eval()
+            tokenizer = EnTokenizer(
+                str(ckpt_dir / "tokenizer.json")
+            )
 
-        tokenizer = EnTokenizer(
-            str(ckpt_dir / "tokenizer.json")
-        )
+            conds = None
+            if (builtin_voice := ckpt_dir / "conds.pt").exists():
+                conds = Conditionals.load(builtin_voice).to(device)
 
-        conds = None
-        if (builtin_voice := ckpt_dir / "conds.pt").exists():
-            conds = Conditionals.load(builtin_voice).to(device)
-
-        return cls(t3, s3gen, ve, tokenizer, device, conds=conds)
+            instance = cls(t3, s3gen, ve, tokenizer, device, conds=conds)
+            print("✅ Successfully loaded all local ChatterBox models")
+            return instance
 
     @classmethod
     def from_pretrained(cls, device) -> 'ChatterboxTTS':

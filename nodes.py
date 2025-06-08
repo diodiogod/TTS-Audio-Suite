@@ -1,8 +1,19 @@
+# Version and constants
+VERSION = "1.1.0"
+IS_DEV = True  # Set to False for release builds
+VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
+SEPARATOR = "=" * 70
+
 """
 ComfyUI Custom Nodes for ChatterboxTTS - Voice Edition
 Enhanced with bundled ChatterBox support and improved chunking
 SUPPORTS: Bundled ChatterBox (recommended) + System ChatterBox (fallback)
 """
+
+import warnings
+warnings.filterwarnings('ignore', message='.*PerthNet.*')
+warnings.filterwarnings('ignore', message='.*LoRACompatibleLinear.*')
+warnings.filterwarnings('ignore', message='.*requires authentication.*')
 
 import torch
 import torchaudio
@@ -21,12 +32,6 @@ NODE_DIR = os.path.dirname(__file__)
 BUNDLED_CHATTERBOX_DIR = os.path.join(NODE_DIR, "chatterbox")
 BUNDLED_MODELS_DIR = os.path.join(NODE_DIR, "models", "chatterbox")
 
-# Debug: Print what we're trying to import
-print("🔍 Attempting to import ChatterBox modules...")
-print(f"📁 Node directory: {NODE_DIR}")
-print(f"📁 Looking for bundled ChatterBox at: {BUNDLED_CHATTERBOX_DIR}")
-print(f"📁 Looking for bundled models at: {BUNDLED_MODELS_DIR}")
-
 # Smart import logic: Try bundled first, then system
 CHATTERBOX_TTS_AVAILABLE = False
 CHATTERBOX_VC_AVAILABLE = False
@@ -41,49 +46,40 @@ try:
     
     from chatterbox.tts import ChatterboxTTS
     from chatterbox.vc import ChatterboxVC
-    print("✅ Using BUNDLED ChatterBox from node folder")
     CHATTERBOX_TTS_AVAILABLE = True
     CHATTERBOX_VC_AVAILABLE = True
     USING_BUNDLED_CHATTERBOX = True
+    if IS_DEV:
+        print("✅ ChatterBox TTS package found!")
     
 except ImportError as bundled_error:
-    print(f"📦 Bundled ChatterBox not found: {bundled_error}")
-    
     # Try system-installed ChatterBox as fallback
     try:
         from chatterbox.tts import ChatterboxTTS
-        print("✅ ChatterboxTTS imported from system installation")
         CHATTERBOX_TTS_AVAILABLE = True
     except ImportError as e:
-        print(f"❌ System ChatterboxTTS import failed: {e}")
         CHATTERBOX_TTS_AVAILABLE = False
 
     try:
         from chatterbox.vc import ChatterboxVC
-        print("✅ ChatterboxVC imported from system installation")
         CHATTERBOX_VC_AVAILABLE = True
     except ImportError as e:
-        print(f"❌ System ChatterboxVC import failed: {e}")
         CHATTERBOX_VC_AVAILABLE = False
     
     if CHATTERBOX_TTS_AVAILABLE and CHATTERBOX_VC_AVAILABLE:
-        print("✅ Using SYSTEM ChatterBox installation")
         USING_BUNDLED_CHATTERBOX = False
-
+        if IS_DEV:
+            print("✅ ChatterBox TTS package found (system)!")
+            
 CHATTERBOX_AVAILABLE = CHATTERBOX_TTS_AVAILABLE and CHATTERBOX_VC_AVAILABLE
 
 if not CHATTERBOX_AVAILABLE:
-    print("💡 Creating dummy classes for missing ChatterBox components")
-    print("🎯 To fix this:")
-    print("   1. Install ChatterBox: pip install chatterbox-tts")
-    print("   2. OR place ChatterBox code in the node folder for bundled approach")
-    
     # Create dummy classes so ComfyUI doesn't crash
     if not CHATTERBOX_TTS_AVAILABLE:
         class ChatterboxTTS:
             @classmethod
             def from_pretrained(cls, device):
-                raise ImportError("ChatterboxTTS not available - install missing dependencies or add bundled version")
+                raise ImportError("ChatterboxTTS not available")
             
             @classmethod
             def from_local(cls, path, device):
@@ -93,7 +89,7 @@ if not CHATTERBOX_AVAILABLE:
         class ChatterboxVC:
             @classmethod 
             def from_pretrained(cls, device):
-                raise ImportError("ChatterboxVC not available - install missing dependencies or add bundled version")
+                raise ImportError("ChatterboxVC not available")
                 
             @classmethod
             def from_local(cls, path, device):
@@ -194,32 +190,32 @@ class ImprovedChatterBoxChunker:
 
 
 def find_chatterbox_models():
-    """
-    Smart model path detection with priority order:
-    1. Bundled models in node folder (best for portability)
-    2. ComfyUI models folder (standard location)
-    3. Let ChatterBox download from HuggingFace (requires auth)
-    """
+    """Find ChatterBox model files in order of priority"""
     model_paths = []
     
     # 1. Check for bundled models in node folder
-    if os.path.exists(BUNDLED_MODELS_DIR) and os.listdir(BUNDLED_MODELS_DIR):
+    bundled_model_path = os.path.join(BUNDLED_MODELS_DIR, "s3gen.pt")
+    if os.path.exists(bundled_model_path):
         model_paths.append(("bundled", BUNDLED_MODELS_DIR))
-        print(f"📦 Found bundled models at: {BUNDLED_MODELS_DIR}")
+        return model_paths  # Return immediately if bundled models found
     
-    # 2. Check ComfyUI models folder
-    comfyui_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox")
-    if os.path.exists(comfyui_model_path) and os.listdir(comfyui_model_path):
-        model_paths.append(("comfyui", comfyui_model_path))
-        print(f"📁 Found ComfyUI models at: {comfyui_model_path}")
+    # 2. Check ComfyUI models folder - first check the standard location
+    comfyui_model_path_standard = os.path.join(folder_paths.models_dir, "chatterbox", "s3gen.pt")
+    if os.path.exists(comfyui_model_path_standard):
+        model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_standard)))
+        return model_paths
     
-    # 3. HuggingFace download as fallback
+    # 3. Check legacy location (TTS/chatterbox) for backward compatibility
+    comfyui_model_path_legacy = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", "s3gen.pt")
+    if os.path.exists(comfyui_model_path_legacy):
+        model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_legacy)))
+        return model_paths
+    
+    # 3. HuggingFace download as fallback (only if no local models found)
     model_paths.append(("huggingface", None))
     
     return model_paths
 
-
-print("🔍 Defining ChatterboxTTSNode class with enhanced chunking...")
 
 class ChatterboxTTSNode:
     """
@@ -280,47 +276,43 @@ class ChatterboxTTSNode:
 
     def load_model(self, device):
         if not CHATTERBOX_TTS_AVAILABLE:
-            raise ImportError("ChatterboxTTS not available - check installation or add bundled version")
+            raise ImportError("ChatterboxTTS not available")
             
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
         if self.model is None or self.device != device:
-            print(f"Loading ChatterboxTTS model on {device}...")
-            
             # Get available model paths in priority order
             model_paths = find_chatterbox_models()
             
             model_loaded = False
             for source, path in model_paths:
                 try:
-                    if source == "bundled":
-                        print(f"📦 Loading from bundled models: {path}")
+                    if source == "bundled" or source == "comfyui":
+                        # Load from local files silently
                         self.model = ChatterboxTTS.from_local(path, device)
-                        self.model_source = "bundled"
-                        model_loaded = True
-                        break
-                    elif source == "comfyui":
-                        print(f"📁 Loading from ComfyUI models: {path}")
-                        self.model = ChatterboxTTS.from_local(path, device)
-                        self.model_source = "comfyui"
+                        self.model_source = source
                         model_loaded = True
                         break
                     elif source == "huggingface":
-                        print("🌐 Loading from Hugging Face (requires authentication)...")
+                        # Only show download message when needed
+                        if IS_DEV:
+                            print("🌐 Downloading models from Hugging Face...")
                         self.model = ChatterboxTTS.from_pretrained(device)
                         self.model_source = "huggingface"
                         model_loaded = True
                         break
                 except Exception as e:
-                    print(f"❌ Failed to load from {source}: {e}")
+                    if IS_DEV:
+                        print(f"❌ Failed to load from {source}: {e}")
                     continue
             
             if not model_loaded:
                 raise ImportError("Failed to load ChatterboxTTS from any source")
             
             self.device = device
-            print(f"✅ ChatterboxTTS model loaded from {self.model_source}!")
+            if IS_DEV:
+                print(f"✅ ChatterboxTTS model loaded from {self.model_source}")
 
     def process_audio_chunk(self, chunk_text: str, audio_prompt: str, exaggeration: float, 
                            temperature: float, cfg_weight: float) -> torch.Tensor:
@@ -368,14 +360,14 @@ class ChatterboxTTSNode:
                 method = "crossfade"
             else:  # Short text
                 method = "concatenate"
-            print(f"🤖 Auto-selected combination method: {method}")
+            # Auto-selected method
         
         if method == "concatenate":
-            print("🔗 Using simple concatenation")
+            # Simple concatenation
             return torch.cat(audio_segments, dim=-1)
         
         elif method == "silence_padding":
-            print(f"🔗 Adding {silence_ms}ms silence between chunks")
+            # Add silence between chunks
             combined = audio_segments[0]
             for i in range(1, len(audio_segments)):
                 combined = self.chunker.add_silence_padding(
@@ -385,7 +377,7 @@ class ChatterboxTTSNode:
             return combined
         
         elif method == "crossfade":
-            print("🔗 Using crossfade blending")
+            # Use crossfade blending
             combined = audio_segments[0]
             for i in range(1, len(audio_segments)):
                 combined = self.add_crossfade(combined, audio_segments[i])
@@ -434,22 +426,19 @@ class ChatterboxTTSNode:
         text_length = len(text)
         
         if not enable_chunking or text_length <= max_chars_per_chunk:
-            print(f"📝 Processing single chunk: {text_length} characters")
+            # Process single chunk
             wav = self.process_audio_chunk(text, audio_prompt, exaggeration, temperature, cfg_weight)
             info = f"Generated {wav.size(-1) / self.model.sr:.1f}s audio from {text_length} characters (single chunk, {self.model_source} models)"
         else:
             # Split into chunks using improved chunker
             chunks = self.chunker.split_into_chunks(text, max_chars_per_chunk)
-            print(f"📝 Processing {len(chunks)} chunks from {text_length} characters")
-            print(f"   Max chars per chunk: {max_chars_per_chunk}")
-            print(f"   Combination method: {chunk_combination_method}")
+            # Process multiple chunks
             
             # Process each chunk
             audio_segments = []
             for i, chunk in enumerate(chunks):
                 chunk_length = len(chunk)
-                print(f"🎤 Chunk {i+1}/{len(chunks)}: {chunk_length} chars")
-                print(f"   Preview: {chunk[:60]}{'...' if len(chunk) > 60 else ''}")
+                # Process chunk
                 
                 chunk_audio = self.process_audio_chunk(
                     chunk, audio_prompt, exaggeration, temperature, cfg_weight
@@ -457,7 +446,7 @@ class ChatterboxTTSNode:
                 audio_segments.append(chunk_audio)
             
             # Combine audio segments
-            print(f"🔗 Combining {len(audio_segments)} audio segments")
+            # Combine audio segments
             wav = self.combine_audio_chunks(
                 audio_segments, chunk_combination_method, silence_between_chunks_ms, text_length
             )
@@ -482,9 +471,6 @@ class ChatterboxTTSNode:
             },
             info
         )
-
-print("✅ ChatterboxTTSNode class defined")
-print("🔍 Defining ChatterboxVCNode class...")
 
 class ChatterboxVCNode:
     """
@@ -514,47 +500,43 @@ class ChatterboxVCNode:
 
     def load_model(self, device):
         if not CHATTERBOX_VC_AVAILABLE:
-            raise ImportError("ChatterboxVC not available - check installation or add bundled version")
+            raise ImportError("ChatterboxVC not available")
             
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
         if self.model is None or self.device != device:
-            print(f"Loading ChatterboxVC model on {device}...")
-            
             # Get available model paths in priority order (same logic as TTS)
             model_paths = find_chatterbox_models()
             
             model_loaded = False
             for source, path in model_paths:
                 try:
-                    if source == "bundled":
-                        print(f"📦 Loading VC from bundled models: {path}")
+                    if source == "bundled" or source == "comfyui":
+                        # Load from local files silently
                         self.model = ChatterboxVC.from_local(path, device)
-                        self.model_source = "bundled"
-                        model_loaded = True
-                        break
-                    elif source == "comfyui":
-                        print(f"📁 Loading VC from ComfyUI models: {path}")
-                        self.model = ChatterboxVC.from_local(path, device)
-                        self.model_source = "comfyui"
+                        self.model_source = source
                         model_loaded = True
                         break
                     elif source == "huggingface":
-                        print("🌐 Loading VC from Hugging Face (requires authentication)...")
+                        # Only show download message when needed
+                        if IS_DEV:
+                            print("🌐 Downloading voice conversion models from Hugging Face...")
                         self.model = ChatterboxVC.from_pretrained(device)
                         self.model_source = "huggingface"
                         model_loaded = True
                         break
                 except Exception as e:
-                    print(f"❌ Failed to load VC from {source}: {e}")
+                    if IS_DEV:
+                        print(f"❌ Failed to load VC from {source}: {e}")
                     continue
             
             if not model_loaded:
                 raise ImportError("Failed to load ChatterboxVC from any source")
             
             self.device = device
-            print(f"✅ ChatterboxVC model loaded from {self.model_source}!")
+            if IS_DEV:
+                print(f"✅ ChatterboxVC model loaded from {self.model_source}")
 
     def convert_voice(self, source_audio, target_audio, device):
         self.load_model(device)
@@ -600,26 +582,8 @@ class ChatterboxVCNode:
                 pass
             raise e
 
-print("✅ ChatterboxVCNode class defined")
 
-# Print setup summary
-print("\n" + "="*60)
-print("🎉 CHATTERBOX VOICE NODES LOADED SUCCESSFULLY!")
-print("="*60)
-if USING_BUNDLED_CHATTERBOX:
-    print("📦 Using BUNDLED ChatterBox (self-contained)")
-elif CHATTERBOX_AVAILABLE:
-    print("🔧 Using SYSTEM ChatterBox installation")
-else:
-    print("❌ ChatterBox not available - install or bundle required")
-
-print(f"📁 Node directory: {NODE_DIR}")
-print(f"📁 Bundled ChatterBox: {os.path.exists(BUNDLED_CHATTERBOX_DIR)}")
-print(f"📁 Bundled models: {os.path.exists(BUNDLED_MODELS_DIR)}")
-print("="*60)
-print()
-
-# Import SRT support modules with enhanced error handling using direct file imports
+# Initialize SRT support variables silently
 SRT_SUPPORT_AVAILABLE = False
 SRTParser = None
 SRTSubtitle = None
@@ -631,10 +595,7 @@ TimedAudioAssembler = None
 calculate_timing_adjustments = None
 AudioTimingError = None
 
-print("🔍 Attempting to import SRT support modules using direct file imports...")
-print(f"📁 Current sys.path includes node directory: {NODE_DIR in sys.path}")
-
-# Import using direct file loading to bypass package import issues
+# Import SRT support modules silently
 import importlib.util
 
 try:
@@ -644,14 +605,9 @@ try:
     srt_parser_path = os.path.join(BUNDLED_CHATTERBOX_DIR, 'srt_parser.py')
     audio_timing_path = os.path.join(BUNDLED_CHATTERBOX_DIR, 'audio_timing.py')
     
-    print(f"📁 SRT parser file exists: {os.path.exists(srt_parser_path)}")
-    print(f"📁 Audio timing file exists: {os.path.exists(audio_timing_path)}")
-    
     if os.path.exists(srt_parser_path) and os.path.exists(audio_timing_path):
         try:
-            print("📦 Loading SRT modules directly from files...")
-            
-            # Load srt_parser module directly from file (minimal dependencies)
+            # Load SRT modules directly from files silently
             srt_parser_spec = importlib.util.spec_from_file_location("srt_parser", srt_parser_path)
             srt_parser_module = importlib.util.module_from_spec(srt_parser_spec)
             srt_parser_spec.loader.exec_module(srt_parser_module)
@@ -662,9 +618,7 @@ try:
             SRTParseError = srt_parser_module.SRTParseError
             validate_srt_timing_compatibility = srt_parser_module.validate_srt_timing_compatibility
             
-            print("✅ SRT parser module loaded successfully")
-            
-            # Try to load audio_timing module (has more dependencies)
+            # Try to load audio_timing module
             try:
                 audio_timing_spec = importlib.util.spec_from_file_location("audio_timing", audio_timing_path)
                 audio_timing_module = importlib.util.module_from_spec(audio_timing_spec)
@@ -677,13 +631,12 @@ try:
                 calculate_timing_adjustments = audio_timing_module.calculate_timing_adjustments
                 AudioTimingError = audio_timing_module.AudioTimingError
                 
-                print("✅ Audio timing module loaded successfully")
                 srt_imported = True
-                
-            except Exception as audio_timing_error:
-                print(f"⚠️ Audio timing module failed to load: {audio_timing_error}")
-                print("   This might be due to missing dependencies (librosa, scipy)")
-                print("   SRT parsing will work but advanced timing features may be limited")
+                if IS_DEV:
+                    print("✅ SRT TTS node available!")
+            except Exception:
+                if IS_DEV:
+                    print("⚠️ Advanced audio timing not available - using fallback")
                 
                 # Create minimal fallback implementations for audio timing
                 class AudioTimingUtils:
@@ -699,23 +652,16 @@ try:
                     @staticmethod
                     def create_silence(duration_seconds, sample_rate, channels=1, device=None):
                         num_samples = int(duration_seconds * sample_rate)
-                        print(f"🔍 DEBUG: create_silence called with duration={duration_seconds:.3f}s, channels={channels}, samples={num_samples}")
                         if channels == 1:
-                            silence = torch.zeros(num_samples, device=device)
-                            print(f"🔍 DEBUG: Created 1D silence: {silence.shape}")
-                            return silence
+                            return torch.zeros(num_samples, device=device)
                         else:
-                            silence = torch.zeros(channels, num_samples, device=device)
-                            print(f"🔍 DEBUG: Created 2D silence: {silence.shape}")
-                            return silence
+                            return torch.zeros(channels, num_samples, device=device)
                 
                 class TimedAudioAssembler:
                     def __init__(self, sample_rate):
                         self.sample_rate = sample_rate
                     
                     def assemble_timed_audio(self, audio_segments, target_timings, fade_duration=0.01):
-                        # Simple concatenation fallback
-                        print("⚠️ Using simple concatenation (advanced timing unavailable)")
                         return torch.cat(audio_segments, dim=-1)
                 
                 class AudioTimingError(Exception):
@@ -742,14 +688,14 @@ try:
                 PhaseVocoderTimeStretcher = None  # Not available without librosa
                 
                 srt_imported = True  # SRT parsing still works
-                print("✅ SRT support loaded with basic timing features")
             
-        except Exception as direct_import_error:
-            print(f"📦 Direct file import failed: {direct_import_error}")
+        except Exception:
+            if IS_DEV:
+                print("❌ Failed to load SRT from files")
+            pass
     
-    # Fallback: Try package imports if direct file import failed
+    # Try package imports if direct file import failed
     if not srt_imported:
-        print("🔧 Falling back to package imports...")
         try:
             # Try bundled package import
             if os.path.exists(BUNDLED_CHATTERBOX_DIR):
@@ -759,10 +705,9 @@ try:
                     calculate_timing_adjustments, AudioTimingError
                 )
                 srt_imported = True
-                print("✅ SRT modules imported from bundled chatterbox package")
-        except ImportError as bundled_error:
-            print(f"📦 Bundled package import failed: {bundled_error}")
-            
+                if IS_DEV:
+                    print("✅ SRT loaded from bundled package")
+        except ImportError:
             # Try system package import
             try:
                 from chatterbox.srt_parser import SRTParser, SRTSubtitle, SRTParseError, validate_srt_timing_compatibility
@@ -771,35 +716,34 @@ try:
                     calculate_timing_adjustments, AudioTimingError
                 )
                 srt_imported = True
-                print("✅ SRT modules imported from system chatterbox package")
-            except ImportError as system_error:
-                print(f"🔧 System package import failed: {system_error}")
+                if IS_DEV:
+                    print("✅ SRT loaded from system package")
+            except ImportError:
+                if IS_DEV:
+                    print("❌ Failed to load SRT from packages")
+                pass
     
     if srt_imported:
         SRT_SUPPORT_AVAILABLE = True
-        print("✅ SRT subtitle support loaded successfully")
     else:
-        raise ImportError("All SRT import methods failed")
+        raise ImportError("SRT import failed")
     
-except Exception as e:
-    print(f"❌ SRT support not available: {e}")
-    print(f"📁 Bundled chatterbox directory exists: {os.path.exists(BUNDLED_CHATTERBOX_DIR)}")
-    print(f"📁 SRT parser file exists: {os.path.exists(os.path.join(BUNDLED_CHATTERBOX_DIR, 'srt_parser.py'))}")
-    print(f"📁 Audio timing file exists: {os.path.exists(os.path.join(BUNDLED_CHATTERBOX_DIR, 'audio_timing.py'))}")
+except Exception:
+    SRT_SUPPORT_AVAILABLE = False
+    if IS_DEV:
+        print("❌ SRT support not available")
     
     # Create dummy classes for missing SRT components
     class SRTParser:
         @staticmethod
         def parse_srt_content(content):
-            raise ImportError("SRT support not available - missing required modules")
+            raise ImportError("SRT support not available")
     
     class SRTSubtitle:
-        """Dummy SRTSubtitle class for type hints when SRT support is unavailable"""
         def __init__(self, sequence=0, start_time=0.0, end_time=0.0, text=""):
             raise ImportError("SRT support not available - missing required modules")
     
     class SRTParseError(Exception):
-        """Dummy SRTParseError for when SRT support is unavailable"""
         pass
     
     class AudioTimingUtils:
@@ -816,7 +760,6 @@ except Exception as e:
             raise ImportError("SRT support not available - missing required modules")
     
     class AudioTimingError(Exception):
-        """Dummy AudioTimingError for when SRT support is unavailable"""
         pass
     
     def validate_srt_timing_compatibility(*args, **kwargs):
@@ -824,7 +767,6 @@ except Exception as e:
     
     def calculate_timing_adjustments(*args, **kwargs):
         raise ImportError("SRT support not available - missing required modules")
-
 
 class ChatterboxSRTTTSNode:
     """
@@ -917,8 +859,8 @@ The audio will match these exact timings.""",
             }
         }
 
-    RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING")
-    RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
+    RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT", "warnings")
     FUNCTION = "generate_srt_speech"
     CATEGORY = "ChatterBox Voice"
 
@@ -940,41 +882,34 @@ The audio will match these exact timings.""",
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
         if self.model is None or self.device != device:
-            print(f"Loading ChatterboxTTS model on {device}...")
-            
             # Get available model paths in priority order
             model_paths = find_chatterbox_models()
             
             model_loaded = False
             for source, path in model_paths:
                 try:
-                    if source == "bundled":
-                        print(f"📦 Loading from bundled models: {path}")
-                        self.model = ChatterboxTTS.from_local(path, device)
-                        self.model_source = "bundled"
-                        model_loaded = True
-                        break
-                    elif source == "comfyui":
-                        print(f"📁 Loading from ComfyUI models: {path}")
-                        self.model = ChatterboxTTS.from_local(path, device)
-                        self.model_source = "comfyui"
-                        model_loaded = True
-                        break
+                    if source == "bundled" or source == "comfyui":
+                        # Load from local files silently
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            self.model = ChatterboxTTS.from_local(path, device)
+                            self.model_source = source
+                            model_loaded = True
+                            break
                     elif source == "huggingface":
-                        print("🌐 Loading from Hugging Face (requires authentication)...")
-                        self.model = ChatterboxTTS.from_pretrained(device)
-                        self.model_source = "huggingface"
-                        model_loaded = True
-                        break
-                except Exception as e:
-                    print(f"❌ Failed to load from {source}: {e}")
+                        # Only attempt HuggingFace download if it's in our paths
+                        if source == "huggingface":
+                            self.model = ChatterboxTTS.from_pretrained(device)
+                            self.model_source = "huggingface"
+                            model_loaded = True
+                            break
+                except Exception:
                     continue
             
             if not model_loaded:
-                raise ImportError("Failed to load ChatterboxTTS from any source")
+                raise ImportError("ChatterboxTTS not available")
             
             self.device = device
-            print(f"✅ ChatterboxTTS model loaded from {self.model_source}!")
 
     def _generate_segment_cache_key(self, subtitle_text, exaggeration, temperature, cfg_weight, seed,
                                    audio_prompt_component, model_source, device):
@@ -1003,7 +938,7 @@ The audio will match these exact timings.""",
             return None
         
         cached_audio, natural_duration = GLOBAL_AUDIO_CACHE[segment_cache_key]
-        print(f"🚀 CACHE HIT: Reusing cached audio for segment (key: {segment_cache_key[:8]}...)")
+        # Cache hit - reuse silently
         return cached_audio, natural_duration
 
     def _cache_segment_audio(self, segment_cache_key, audio_tensor, natural_duration):
@@ -1012,11 +947,14 @@ The audio will match these exact timings.""",
             return
         
         GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration) # Clone to avoid reference issues
-        print(f"💾 CACHED: Stored audio for segment (key: {segment_cache_key[:8]}...) to in-memory cache")
+        # Store in cache silently
 
     def generate_srt_speech(self, srt_content, device, exaggeration, temperature, cfg_weight, seed,
-                           timing_mode, reference_audio=None, audio_prompt_path="",
-                           max_stretch_ratio=2.0, min_stretch_ratio=0.5, fade_for_StretchToFit=0.01, enable_audio_cache=True, timing_tolerance=2.0):
+                            timing_mode, reference_audio=None, audio_prompt_path="",
+                            max_stretch_ratio=2.0, min_stretch_ratio=0.5, fade_for_StretchToFit=0.01, enable_audio_cache=True, timing_tolerance=2.0):
+        
+        # Clear any previous warnings
+        self._timing_warnings = []
         
         if not SRT_SUPPORT_AVAILABLE:
             raise ImportError("SRT support not available - missing required modules")
@@ -1025,8 +963,7 @@ The audio will match these exact timings.""",
         
         # Update cache setting
         self.cache_enabled = enable_audio_cache
-        if not enable_audio_cache:
-            print("🚫 Audio caching disabled - will regenerate all segments")
+        # Initialize cache status tracking
         any_segment_cached = False
         
         # Set seed for reproducibility
@@ -1048,17 +985,16 @@ The audio will match these exact timings.""",
             audio_prompt = audio_prompt_path
 
         try:
-            # Parse SRT content
-            print("📝 Parsing SRT content...")
+            # Parse SRT content silently
             subtitles = self.srt_parser.parse_srt_content(srt_content)
-            print(f"✅ Parsed {len(subtitles)} subtitles")
             
             # Validate timing compatibility
             warnings = validate_srt_timing_compatibility(subtitles, max_stretch_ratio, min_stretch_ratio)
             if warnings:
-                print("⚠️ Timing compatibility warnings:")
-                for warning in warnings:
-                    print(f"   {warning}")
+                # Add warnings to report
+                if not hasattr(self, '_timing_warnings'):
+                    self._timing_warnings = []
+                self._timing_warnings.extend(warnings)
             
             # Determine the audio prompt component for cache key generation
             audio_prompt_component = ""
@@ -1069,12 +1005,11 @@ The audio will match these exact timings.""",
             elif audio_prompt_path:
                 audio_prompt_component = audio_prompt_path
 
-            print("🎤 Generating/Retrieving TTS audio for each subtitle...")
+            # Generate audio segments
             audio_segments = []
             natural_durations = []
             
             for i, subtitle in enumerate(subtitles):
-                print(f"   Processing subtitle {i+1}/{len(subtitles)}: '{subtitle.text[:50]}...'")
                 
                 # Generate segment-specific cache key
                 segment_cache_key = self._generate_segment_cache_key(
@@ -1087,7 +1022,7 @@ The audio will match these exact timings.""",
                 
                 if cached_segment_data:
                     wav, natural_duration = cached_segment_data
-                    print(f"     ✅ CACHE HIT for segment {i+1} (key: {segment_cache_key[:8]}...)")
+                    # Cache hit - use silently
                     any_segment_cached = True
                 else:
                     # Generate audio for this subtitle
@@ -1100,7 +1035,7 @@ The audio will match these exact timings.""",
                     )
                     natural_duration = AudioTimingUtils.get_audio_duration(wav, self.model.sr)
                     self._cache_segment_audio(segment_cache_key, wav, natural_duration)
-                    print(f"     Generated {natural_duration:.3f}s audio (target: {subtitle.duration:.3f}s) for segment {i+1}")
+                    # Generated new audio - cache silently
                 
                 audio_segments.append(wav)
                 natural_durations.append(natural_duration)
@@ -1115,7 +1050,7 @@ The audio will match these exact timings.""",
             # If timing_mode is smart_natural, adjustments will be overridden below.
             
             # Assemble final audio based on timing mode
-            print(f"🔗 Assembling audio using '{timing_mode}' mode...")
+            # Assemble audio using selected mode
             
             # Normalize all audio segments first to ensure consistent dimensions
             normalized_segments = []
@@ -1127,14 +1062,14 @@ The audio will match these exact timings.""",
                 elif audio.dim() == 3 and audio.shape[0] == 1:
                     # Remove batch dimension if present
                     normalized = audio.squeeze(0)
-                    print(f"🔍 DEBUG: Normalized audio segment {i}: {audio.shape} -> {normalized.shape}")
+                    # Track normalization adjustments
                     normalized_segments.append(normalized)
                 else:
                     raise RuntimeError(f"Unsupported audio tensor shape for segment {i}: {audio.shape}")
             
             if timing_mode == "smart_natural":
                 # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
-                print(f"🔍 DEBUG: Using smart_natural mode with {timing_tolerance}s tolerance")
+                # Process with smart natural mode
                 final_audio, smart_adjustments = self._assemble_with_smart_timing(
                     normalized_segments, subtitles, self.model.sr, timing_tolerance,
                     max_stretch_ratio, min_stretch_ratio
@@ -1145,7 +1080,7 @@ The audio will match these exact timings.""",
                 
             elif timing_mode == "pad_with_silence":
                 # Add silence to match timing without stretching
-                print(f"🔍 DEBUG: Using pad_with_silence mode (audible overlaps enabled)")
+                # Process with silence padding mode
                 final_audio = self._assemble_audio_with_overlaps(
                     normalized_segments, subtitles, self.model.sr
                 )
@@ -1153,7 +1088,7 @@ The audio will match these exact timings.""",
                 
             else:  # stretch_to_fit
                 # Use time stretching to match exact timing
-                print(f"🔍 DEBUG: Using stretch_to_fit mode")
+                # Process with stretch to fit mode
                 assembler = TimedAudioAssembler(self.model.sr)
                 final_audio = assembler.assemble_timed_audio(
                     normalized_segments, target_timings, fade_duration=fade_for_StretchToFit
@@ -1168,7 +1103,7 @@ The audio will match these exact timings.""",
             info = (f"Generated {total_duration:.1f}s SRT-timed audio from {len(subtitles)} subtitles "
                    f"using {timing_mode} mode ({cache_status} segments, {self.model_source} models)")
             
-            print(f"✅ {info}")
+            # Generation complete
             
             # Ensure final_audio is [channels, samples] for torchaudio.save
             if final_audio.dim() == 1:
@@ -1186,15 +1121,16 @@ The audio will match these exact timings.""",
                 },
                 info,
                 timing_report,
-                adjusted_srt_string
+                adjusted_srt_string,
+                "\n".join(self._timing_warnings) if hasattr(self, '_timing_warnings') and self._timing_warnings else ""
             )
             
-        except SRTParseError as e:
-            raise ValueError(f"SRT parsing error: {e}")
-        except AudioTimingError as e:
-            raise ValueError(f"Audio timing error: {e}")
-        except Exception as e:
-            raise RuntimeError(f"SRT TTS generation failed: {e}")
+        except SRTParseError:
+            raise ValueError("SRT parsing error")
+        except AudioTimingError:
+            raise ValueError("Audio timing error")
+        except Exception:
+            raise RuntimeError("SRT TTS generation failed")
         finally:
             # Clean up temporary file
             if reference_audio is not None and audio_prompt:
@@ -1208,10 +1144,8 @@ The audio will match these exact timings.""",
         """Assemble audio with silence padding to match SRT timing"""
         result_segments = []
         
-        print(f"🔍 DEBUG: Starting silence padding assembly with {len(audio_segments)} segments")
-        
+        # Process audio segments with silence padding
         for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
-            print(f"🔍 DEBUG: Audio segment {i} shape: {audio.shape}, dim: {audio.dim()}, device: {audio.device}")
             
             # Normalize audio tensor to ensure consistent shape
             if audio.dim() == 1:
@@ -1223,7 +1157,7 @@ The audio will match these exact timings.""",
             elif audio.dim() == 3 and audio.shape[0] == 1:
                 # Remove batch dimension if present
                 normalized_audio = audio.squeeze(0)
-                print(f"🔍 DEBUG: Removed batch dimension from segment {i}: {audio.shape} -> {normalized_audio.shape}")
+                # Normalize audio dimensions
             else:
                 raise RuntimeError(f"Unsupported audio tensor shape for segment {i}: {audio.shape}")
             
@@ -1236,8 +1170,7 @@ The audio will match these exact timings.""",
                 gap_duration = next_subtitle.start_time - subtitle.end_time
                 
                 if gap_duration > 0:
-                    print(f"🔍 DEBUG: Creating {gap_duration:.3f}s silence gap between segments {i} and {i+1}")
-                    print(f"🔍 DEBUG: Target audio shape: {normalized_audio.shape}, dim: {normalized_audio.dim()}")
+                    # Create silence gap
                     
                     # Calculate silence duration in samples
                     silence_samples = int(gap_duration * sample_rate)
@@ -1246,16 +1179,16 @@ The audio will match these exact timings.""",
                     if normalized_audio.dim() == 1:
                         # 1D audio: create 1D silence [samples]
                         silence = torch.zeros(silence_samples, device=normalized_audio.device, dtype=normalized_audio.dtype)
-                        print(f"🔍 DEBUG: Created 1D silence directly: {silence.shape}")
+                        # Create 1D silence
                     elif normalized_audio.dim() == 2:
                         # 2D audio: create 2D silence [channels, samples]
                         num_channels = normalized_audio.shape[0]
                         silence = torch.zeros(num_channels, silence_samples, device=normalized_audio.device, dtype=normalized_audio.dtype)
-                        print(f"🔍 DEBUG: Created 2D silence directly: {silence.shape} with {num_channels} channels")
+                        # Create 2D silence
                     else:
                         raise RuntimeError(f"Unsupported normalized audio tensor dimensions: {normalized_audio.dim()}")
                     
-                    print(f"🔍 DEBUG: Final silence shape: {silence.shape}, dim: {silence.dim()}")
+                    # Validate silence tensor
                     
                     # Final validation that silence matches audio dimensions
                     if silence.dim() != normalized_audio.dim():
@@ -1266,9 +1199,7 @@ The audio will match these exact timings.""",
                     
                     result_segments.append(silence)
         
-        print(f"🔍 DEBUG: About to concatenate {len(result_segments)} segments")
-        for i, segment in enumerate(result_segments):
-            print(f"🔍 DEBUG: Segment {i}: shape={segment.shape}, dim={segment.dim()}")
+        # Prepare segments for concatenation
         
         # Final validation: ensure all segments have the same number of dimensions
         if len(result_segments) > 1:
@@ -1286,14 +1217,11 @@ The audio will match these exact timings.""",
         
         try:
             final_audio = torch.cat(result_segments, dim=-1)
-            print(f"✅ DEBUG: Successfully concatenated to final shape: {final_audio.shape}")
+            # Concatenate segments
             return final_audio
         except RuntimeError as e:
-            print(f"❌ DEBUG: Concatenation failed with error: {e}")
-            print("🔍 DEBUG: Segment details:")
-            for i, segment in enumerate(result_segments):
-                print(f"  Segment {i}: shape={segment.shape}, dtype={segment.dtype}, device={segment.device}")
-            raise RuntimeError(f"Failed to concatenate audio segments: {e}")
+            # Concatenation failed
+            raise RuntimeError("Failed to concatenate audio segments")
 
     def _generate_timing_report(self, subtitles: List,
                                adjustments: List[dict], timing_mode: str) -> str:
@@ -1511,7 +1439,7 @@ The audio will match these exact timings.""",
         # Initialize time stretcher
         time_stretcher = PhaseVocoderTimeStretcher()
         
-        print(f"🔍 DEBUG: Smart natural timing with tolerance={tolerance}s, max_stretch={max_stretch_ratio}, min_stretch={min_stretch_ratio}")
+        # Process audio with smart natural timing
         
         for i, audio in enumerate(audio_segments):
             current_subtitle = mutable_subtitles[i]
@@ -1542,9 +1470,7 @@ The audio will match these exact timings.""",
                 'actions': []
             }
             
-            print(f"🔍 DEBUG: Segment {i} (Seq {current_subtitle.sequence}):")
-            print(f"   Original SRT: {original_srt_start:.3f}s - {original_srt_end:.3f}s (Duration: {initial_target_duration:.3f}s)")
-            print(f"   Natural Audio Duration: {natural_duration:.3f}s")
+            # Process segment timing
             
             # Calculate how much extra time is needed for the natural audio
             time_needed_beyond_srt = natural_duration - initial_target_duration
@@ -1553,7 +1479,7 @@ The audio will match these exact timings.""",
             
             # Step 2 & 3: Adjust Next Segment Start (if needed)
             if time_needed_beyond_srt > 0: # Natural audio is longer than original SRT slot
-                print(f"   Natural audio is {time_needed_beyond_srt:.3f}s longer than original SRT slot.")
+                # Audio is longer than slot
                 segment_report['actions'].append(f"Natural audio ({natural_duration:.3f}s) is longer than original SRT slot ({initial_target_duration:.3f}s) by {time_needed_beyond_srt:.3f}s.")
                 
                 if i + 1 < len(mutable_subtitles):
@@ -1567,14 +1493,14 @@ The audio will match these exact timings.""",
                         time_needed_beyond_srt -= time_to_consume_from_gap
                         adjusted_current_segment_end += time_to_consume_from_gap
                         segment_report['actions'].append(f"Consumed {time_to_consume_from_gap:.3f}s from existing gap. Remaining excess: {time_needed_beyond_srt:.3f}s.")
-                        print(f"   Consumed {time_to_consume_from_gap:.3f}s from existing gap. Remaining excess: {time_needed_beyond_srt:.3f}s.")
+                        # Gap consumed
                     
                     if time_needed_beyond_srt > 0: # Still need more time after consuming gap
                         next_natural_audio_duration = AudioTimingUtils.get_audio_duration(audio_segments[i+1], sample_rate)
                         
                         # Calculate "room" in the next segment: how much shorter its natural audio is than its SRT slot
                         next_segment_room = max(0.0, next_subtitle.duration - next_natural_audio_duration)
-                        print(f"   Next segment (Seq {next_subtitle.sequence}) has {next_segment_room:.3f}s room (SRT: {next_subtitle.duration:.3f}s, Natural: {next_natural_audio_duration:.3f}s).")
+                        # Calculate available room
                         segment_report['actions'].append(f"Next segment (Seq {next_subtitle.sequence}) has {next_segment_room:.3f}s room.")
 
                         # How much can we shift the next subtitle without exceeding tolerance?
@@ -1593,11 +1519,10 @@ The audio will match these exact timings.""",
                             adjusted_current_segment_end += actual_shift # Add to the already adjusted end
                             segment_report['next_segment_shifted_by'] = actual_shift
                             segment_report['actions'].append(f"Shifted next subtitle (Seq {next_subtitle.sequence}) by {actual_shift:.3f}s. New next SRT start: {next_subtitle.start_time:.3f}s.")
-                            print(f"   Shifted next subtitle (Seq {next_subtitle.sequence}) by {actual_shift:.3f}s.")
-                            print(f"   New next SRT start: {next_subtitle.start_time:.3f}s")
+                            # Subtitle shifted
                         else:
                             segment_report['actions'].append("Cannot shift next subtitle within tolerance/available room.")
-                            print("   Cannot shift next subtitle within tolerance/available room.")
+                            # Cannot shift subtitle
                     else: # No next subtitle or no excess after consuming gap
                         segment_report['actions'].append("No next subtitle to shift or excess consumed by gap.")
                         print("   No next subtitle to shift or excess consumed by gap.")
@@ -1617,20 +1542,20 @@ The audio will match these exact timings.""",
             
             # Check if stretching is actually needed and if it's within acceptable limits
             if abs(clamped_stretch_factor - 1.0) > 0.01: # Apply stretch if deviation is more than 1%
-                print(f"   ⏱️ Applying stretch/shrink: natural {natural_duration:.3f}s -> target {new_target_duration:.3f}s (factor: {clamped_stretch_factor:.3f}x)")
+                # Apply audio stretching
                 segment_report['actions'].append(f"⏱️ Applying stretch/shrink: natural {natural_duration:.3f}s -> target {new_target_duration:.3f}s (factor: {clamped_stretch_factor:.3f}x).")
                 segment_report['stretch_factor_applied'] = clamped_stretch_factor
                 try:
                     stretched_audio = time_stretcher.time_stretch(audio, clamped_stretch_factor, sample_rate)
                     processed_audio = stretched_audio
                 except Exception as e:
-                    segment_report['actions'].append(f"⚠️ Time stretching failed: {e}. Falling back to padding/truncation.")
-                    print(f"   ⚠️ Time stretching failed for segment {i}: {e}. Falling back to padding/truncation.")
+                    segment_report['actions'].append("Time stretching failed, using padding/truncation")
+                    # Time stretching failed, use fallback
                     processed_audio = audio # Use original audio if stretching fails
             else:
                 processed_audio = audio
                 segment_report['actions'].append("No significant stretch/shrink needed.")
-                print("   No significant stretch/shrink needed.")
+                # No stretching needed
             
             # Step 5: Pad with Silence (last resort) or Truncate
             final_processed_duration = AudioTimingUtils.get_audio_duration(processed_audio, sample_rate)
@@ -1640,14 +1565,14 @@ The audio will match these exact timings.""",
                 if padding_needed > 0:
                     segment_report['padding_added'] = padding_needed
                     segment_report['actions'].append(f"Padding with {padding_needed:.3f}s silence to reach target duration.")
-                    print(f"   Padding with {padding_needed:.3f}s silence to reach target duration.")
+                    # Add silence padding
                     processed_audio = AudioTimingUtils.pad_audio_to_duration(processed_audio, new_target_duration, sample_rate, "end")
             elif final_processed_duration > new_target_duration:
                 # Truncate if still too long
                 truncated_by = final_processed_duration - new_target_duration
                 segment_report['truncated_by'] = truncated_by
                 segment_report['actions'].append(f"🚧 Truncating audio by {truncated_by:.3f}s.")
-                print(f"   🚧 Truncating audio by {truncated_by:.3f}s.")
+                # Truncate audio
                 target_samples = AudioTimingUtils.seconds_to_samples(new_target_duration, sample_rate)
                 processed_audio = processed_audio[..., :target_samples]
             
@@ -1663,8 +1588,7 @@ The audio will match these exact timings.""",
             
             smart_adjustments_report.append(segment_report)
             
-            print(f"   Final Processed Duration: {AudioTimingUtils.get_audio_duration(processed_audio, sample_rate):.3f}s")
-            print(f"   Current Subtitle (Seq {current_subtitle.sequence}) new end time: {current_subtitle.end_time:.3f}s")
+            # Add processed segment to report
             
         # Final assembly: concatenate all processed segments with silence in between
         # The mutable_subtitles now contain the potentially adjusted start/end times
@@ -1677,7 +1601,7 @@ The audio will match these exact timings.""",
             # Add silence if there's a gap between current_output_time and current_subtitle's start_time
             if current_output_time < current_subtitle.start_time:
                 gap_duration = current_subtitle.start_time - current_output_time
-                print(f"🔍 DEBUG: Final assembly: Adding {gap_duration:.3f}s silence before segment {i} (Seq {current_subtitle.sequence})")
+                # Add silence gap
                 silence = AudioTimingUtils.create_silence(gap_duration, sample_rate,
                                                            channels=segment_audio.shape[0] if segment_audio.dim() == 2 else 1,
                                                            device=segment_audio.device)
@@ -1687,7 +1611,7 @@ The audio will match these exact timings.""",
             final_audio_parts.append(segment_audio)
             current_output_time += AudioTimingUtils.get_audio_duration(segment_audio, sample_rate)
             
-            print(f"🔍 DEBUG: Final assembly: Appended segment {i} (Seq {current_subtitle.sequence}). Current output time: {current_output_time:.3f}s")
+            # Segment appended
             
         if not final_audio_parts:
             return torch.empty(0, device=audio_segments[0].device, dtype=audio_segments[0].dtype), smart_adjustments_report
@@ -1749,7 +1673,6 @@ The audio will match these exact timings.""",
 
         total_samples = int(max_end_time * sample_rate)
         
-        print(f"🔍 DEBUG: Assembling for total duration: {max_end_time:.2f}s ({total_samples} samples)")
 
         # Initialize output buffer with zeros
         if num_channels == 1:
@@ -1758,7 +1681,7 @@ The audio will match these exact timings.""",
             output_audio = torch.zeros(num_channels, total_samples, device=device, dtype=dtype)
 
         for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
-            print(f"🔍 DEBUG: Processing segment {i}: audio shape={audio.shape}, dim={audio.dim()}, SRT start={subtitle.start_time:.2f}s")
+            # Process segment
 
             # Ensure normalized_audio matches the channel dimension of output_audio
             # The `audio` input to this method (`normalized_segments`) should already be 1D or 2D.
@@ -1780,7 +1703,7 @@ The audio will match these exact timings.""",
                     # If segment is 2D but has wrong channel count, raise error
                     raise RuntimeError(f"Channel mismatch: output buffer has {num_channels} channels, but segment {i} has {normalized_audio.shape[0]} channels.")
             
-            print(f"🔍 DEBUG: Segment {i} after normalization: shape={normalized_audio.shape}, dim={normalized_audio.dim()}")
+            # Segment normalized
 
 
             start_sample = int(subtitle.start_time * sample_rate)
@@ -1801,7 +1724,7 @@ The audio will match these exact timings.""",
                 else:
                     new_output_audio[:, :current_len] = output_audio
                 output_audio = new_output_audio
-                print(f"🔍 DEBUG: Resized output buffer to {output_audio.size(-1)} samples")
+                # Buffer resized
 
             # Add (mix) the current audio segment into the output buffer
             # Ensure dimensions match for addition
@@ -1810,15 +1733,14 @@ The audio will match these exact timings.""",
             else:
                 output_audio[:, start_sample:end_sample_segment] += normalized_audio
             
-            print(f"🔍 DEBUG: Placed segment {i} from sample {start_sample} to {end_sample_segment}")
+            # Segment placed
 
-        print(f"✅ DEBUG: Final assembled audio shape: {output_audio.shape}")
+        # Assembly complete
         return output_audio
 
 
-print("✅ ChatterboxSRTTTSNode class defined")
 
-# Node mappings for ComfyUI - UPDATED: Unique names to avoid conflicts
+# Register nodes
 NODE_CLASS_MAPPINGS = {
     "ChatterBoxVoiceTTS": ChatterboxTTSNode,
     "ChatterBoxVoiceVC": ChatterboxVCNode,
@@ -1829,10 +1751,36 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion",
 }
 
-# Add SRT node if support is available
+# Add SRT node if available
 if SRT_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxSRTVoiceTTS"] = ChatterboxSRTTTSNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
-    print("✅ SRT TTS node registered successfully")
+
+# Print startup banner
+print(SEPARATOR)
+print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY}")
+
+# Check for local models
+model_paths = find_chatterbox_models()
+first_source = model_paths[0][0] if model_paths else None
+print(f"Using model source: {first_source}")
+
+if first_source == "bundled":
+    print("✓ Using bundled models")
+elif first_source == "comfyui":
+    print("✓ Using ComfyUI models")
+elif first_source == "huggingface":
+    print("⚠️ No local models found - will download from Hugging Face")
+    print("💡 Tip: First generation will download models (~1GB)")
+    print("   Models will be saved locally for future use")
 else:
-    print("❌ SRT TTS node not registered - missing dependencies")
+    print("⚠️ No local models found - will download from Hugging Face")
+    print("💡 Tip: First generation will download models (~1GB)")
+    print("   Models will be saved locally for future use")
+print(SEPARATOR)
+
+# Print final initialization with nodes list
+print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
+for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
+    print(f"   • {node}")
+print(SEPARATOR)
