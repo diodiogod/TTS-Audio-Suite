@@ -6,10 +6,14 @@ Provides time-stretching, silence padding, and sample-accurate timing conversion
 import torch
 import torchaudio
 import numpy as np
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Union
 import librosa
 from scipy.signal import stft, istft
 import warnings
+import subprocess
+import tempfile
+import os
+import shutil
 
 
 class AudioTimingError(Exception):
@@ -236,21 +240,157 @@ class PhaseVocoderTimeStretcher:
         return stretched
 
 
+class FFmpegTimeStretcher:
+    """
+    FFmpeg-based time stretching implementation using the atempo filter
+    """
+    
+    def __init__(self):
+        """
+        Initialize FFmpeg time stretcher
+        Verifies FFmpeg is available on the system
+        """
+        # Check if ffmpeg is available
+        try:
+            subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        except (subprocess.SubprocessError, FileNotFoundError):
+            raise AudioTimingError("FFmpeg is required but not found. Please install FFmpeg and ensure it's in your PATH.")
+    
+    def time_stretch(self, audio: torch.Tensor, stretch_factor: float,
+                    sample_rate: int) -> torch.Tensor:
+        """
+        Time-stretch audio using FFmpeg's atempo filter
+        
+        Args:
+            audio: Input audio tensor (1D or 2D)
+            stretch_factor: Time stretching factor (>1 = slower, <1 = faster)
+            sample_rate: Audio sample rate
+            
+        Returns:
+            Time-stretched audio tensor
+        """
+        if stretch_factor <= 0:
+            raise AudioTimingError(f"Stretch factor must be positive: {stretch_factor}")
+        
+        if abs(stretch_factor - 1.0) < 1e-6:
+            return audio  # No stretching needed
+        
+        # Handle different tensor dimensions
+        original_shape = audio.shape
+        if audio.dim() == 1:
+            audio = audio.unsqueeze(0)  # Add channel dimension
+        elif audio.dim() > 2:
+            raise AudioTimingError(f"Unsupported audio tensor dimensions: {audio.dim()}")
+        
+        # Create temporary directory for audio files
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stretched_channels = []
+            
+            for channel in range(audio.size(0)):
+                # Save channel audio to WAV file
+                channel_audio = audio[channel].cpu().numpy()
+                input_path = os.path.join(temp_dir, f'input_{channel}.wav')
+                output_path = os.path.join(temp_dir, f'output_{channel}.wav')
+                
+                # Save as 32-bit float WAV
+                import soundfile as sf
+                sf.write(input_path, channel_audio, sample_rate, subtype='FLOAT')
+                
+                try:
+                    # Construct FFmpeg command
+                    # Use multiple atempo filters for large stretch factors
+                    atempo_chain = self._build_atempo_chain(stretch_factor)
+                    
+                    cmd = [
+                        'ffmpeg',
+                        '-y',  # Overwrite output
+                        '-i', input_path,
+                        '-filter:a', atempo_chain,
+                        '-acodec', 'pcm_f32le',  # 32-bit float output
+                        output_path
+                    ]
+                    
+                    # Run FFmpeg
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode != 0:
+                        raise AudioTimingError(f"FFmpeg error: {result.stderr}")
+                    
+                    # Load processed audio
+                    stretched_audio, _ = sf.read(output_path)
+                    stretched_channels.append(torch.from_numpy(stretched_audio))
+                    
+                except Exception as e:
+                    raise AudioTimingError(f"FFmpeg processing failed: {str(e)}")
+            
+            # Combine channels
+            result = torch.stack(stretched_channels, dim=0).to(audio.device)
+            
+            # Restore original shape if input was 1D
+            if len(original_shape) == 1:
+                result = result.squeeze(0)
+            
+            return result
+    
+    def _build_atempo_chain(self, stretch_factor: float) -> str:
+        """
+        Build FFmpeg filter chain for time stretching
+        Handles stretch factors outside the normal atempo range (0.5 to 2.0)
+        by chaining multiple atempo filters
+        """
+        if 0.5 <= stretch_factor <= 2.0:
+            return f'atempo={1/stretch_factor}'  # Inverse because FFmpeg uses speed factor
+        
+        # For factors outside 0.5-2.0 range, chain multiple atempo filters
+        factors = []
+        remaining = stretch_factor
+        
+        while remaining < 0.5:
+            factors.append(2.0)  # Speed up by 2x
+            remaining *= 2
+        while remaining > 2.0:
+            factors.append(0.5)  # Slow down by 2x
+            remaining *= 0.5
+        
+        # Add remaining factor
+        if abs(remaining - 1.0) > 1e-6:
+            factors.append(1/remaining)
+        
+        # Build filter chain
+        return ','.join(f'atempo={f}' for f in factors)
+
+
 class TimedAudioAssembler:
     """
     Assembles audio segments with precise timing control
     """
     
-    def __init__(self, sample_rate: int, time_stretcher: Optional[PhaseVocoderTimeStretcher] = None):
+    def __init__(self, sample_rate: int, stretcher_type: str = "ffmpeg",
+                 time_stretcher: Optional[Union[PhaseVocoderTimeStretcher, FFmpegTimeStretcher]] = None):
         """
         Initialize audio assembler
         
         Args:
             sample_rate: Target sample rate for output
-            time_stretcher: Time stretching utility (creates default if None)
+            stretcher_type: Type of time stretcher to use ("ffmpeg" or "phase_vocoder")
+            time_stretcher: Custom time stretching utility (creates default if None)
         """
         self.sample_rate = sample_rate
-        self.time_stretcher = time_stretcher or PhaseVocoderTimeStretcher()
+        
+        if time_stretcher is not None:
+            if not isinstance(time_stretcher, (PhaseVocoderTimeStretcher, FFmpegTimeStretcher)):
+                raise AudioTimingError("time_stretcher must be PhaseVocoderTimeStretcher or FFmpegTimeStretcher")
+            self.time_stretcher = time_stretcher
+        else:
+            if stretcher_type == "ffmpeg":
+                try:
+                    self.time_stretcher = FFmpegTimeStretcher()
+                except AudioTimingError as e:
+                    print(f"Warning: FFmpeg stretcher initialization failed ({str(e)}). Falling back to phase vocoder.")
+                    self.time_stretcher = PhaseVocoderTimeStretcher()
+            elif stretcher_type == "phase_vocoder":
+                self.time_stretcher = PhaseVocoderTimeStretcher()
+            else:
+                raise AudioTimingError(f"Invalid stretcher_type: {stretcher_type}. Use 'ffmpeg' or 'phase_vocoder'")
     
     def assemble_timed_audio(self, audio_segments: List[torch.Tensor], 
                            target_timings: List[Tuple[float, float]],

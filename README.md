@@ -11,8 +11,6 @@ NEW: SRT Timing and TTS Node
 
 The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
 
-<details>
-  
 Key Features:
 *   **SRT style Processing**: uses SRT style to generate TTS, aligning audio with subtitle timings.
 *   **`smart_natural` Timing Mode**: Features flexible shifting logic that intelligently considers "room" in subsequent segments, preventing overlaps and ensuring natural speech flow.
@@ -21,17 +19,16 @@ Key Features:
 
 For more detailed technical information, refer to the [SRT_IMPLEMENTATION.md](SRT_IMPLEMENTATION.md) file.
 
-</details>
-
 ## Features
 
-🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning  
-🔄 **ChatterBox VC** - Convert voice from one speaker to another  
-🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection  
-⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs  
-🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech  
-📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods  
-📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience  
+🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
+🔄 **ChatterBox VC** - Convert voice from one speaker to another
+🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
+⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
+🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech
+📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
+📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
+🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 
 > **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity, ComfyUI standards, and enhanced text processing capabilities.
 
@@ -67,6 +64,33 @@ ComfyUI_ChatterBox_Voice/
 ```bash
 pip install -r requirements.txt
 ```
+
+#### 2.4. Optional: Install FFmpeg for Enhanced Audio Processing
+
+ChatterBox Voice now supports FFmpeg for high-quality audio stretching. While not required, it's recommended for the best audio quality:
+
+**Windows:**
+```bash
+winget install FFmpeg
+# or with Chocolatey
+choco install ffmpeg
+```
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Linux:**
+```bash
+# Ubuntu/Debian
+sudo apt-get install ffmpeg
+
+# Fedora
+sudo dnf install ffmpeg
+```
+
+If FFmpeg is not available, ChatterBox will automatically fall back to using the built-in phase vocoder method for audio stretching - your workflows will continue to work without interruption.
 
 #### 2.4. Download Models
 
@@ -263,7 +287,7 @@ MIT License - Same as ChatterboxTTS
 - **ResembleAI** for ChatterboxTTS
 - **ComfyUI** team for the amazing framework
 - **sounddevice** library for audio recording functionality
-- **[Diogod](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice)** for the SRT Timing TTS Node implementation
+- **Diogod** for the SRT Timing and TTS Node implementation
 
 ## 🔗 Links
 
