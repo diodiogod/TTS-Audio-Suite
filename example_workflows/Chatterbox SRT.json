@@ -2,7 +2,7 @@
   "id": "076be553-821b-4849-8d05-12c66730733b",
   "revision": 0,
   "last_node_id": 86,
-  "last_link_id": 146,
+  "last_link_id": 151,
   "nodes": [
     {
       "id": 18,
@@ -99,7 +99,7 @@
         88
       ],
       "flags": {},
-      "order": 11,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -123,41 +123,7 @@
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "Generated 73.6s SRT-timed audio from 10 subtitles using smart_natural mode (cached segments, huggingface models)"
-      ]
-    },
-    {
-      "id": 61,
-      "type": "Text Multiline",
-      "pos": [
-        460,
-        -640
-      ],
-      "size": [
-        560,
-        450
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            133
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "was-node-suite-comfyui",
-        "ver": "ea935d1044ae5a26efa54ebeb18fe9020af49a45",
-        "Node name for S&R": "Text Multiline",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "1\n00:00:00,000 --> 00:00:04,300\nPad with silence... places natural audio\n\n2\n00:00:04,300 --> 00:00:09,500\nwith no stretching at all at the SRT start times,\n\n3\n00:00:09,500 --> 00:00:14,200\npadding any gaps with silence.\n\n4\n00:00:14,200 --> 00:00:20,000\nThe problem is, if the generated audio is too long, it may result in overlaps.\n"
+        "Generated 48.0s SRT-timed audio from 9 subtitles using smart_natural mode (cached segments, huggingface models)"
       ]
     },
     {
@@ -195,242 +161,9 @@
         "Node name for S&R": "ShowText|pysssss",
         "widget_ue_connectable": {}
       },
-      "widgets_values": []
-    },
-    {
-      "id": 70,
-      "type": "ChatterBoxSRTVoiceTTS",
-      "pos": [
-        1090,
-        -2410
-      ],
-      "size": [
-        410,
-        540
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "reference_audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 126
-        },
-        {
-          "name": "srt_content",
-          "type": "STRING",
-          "widget": {
-            "name": "srt_content"
-          },
-          "link": 134
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            110
-          ]
-        },
-        {
-          "name": "generation_info",
-          "type": "STRING",
-          "links": [
-            111
-          ]
-        },
-        {
-          "name": "timing_report",
-          "type": "STRING",
-          "links": [
-            112
-          ]
-        },
-        {
-          "name": "Adjusted_SRT",
-          "type": "STRING",
-          "links": [
-            113
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
-        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
-        "Node name for S&R": "ChatterBoxSRTVoiceTTS",
-        "widget_ue_connectable": {}
-      },
       "widgets_values": [
-        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle. I'll make it long on purpose.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings.",
-        "auto",
-        0.5,
-        0.8,
-        0.5,
-        1960690609,
-        "fixed",
-        "smart_natural",
-        "",
-        true,
-        0.01,
-        1.2000000000000002,
-        0.7000000000000001,
-        2
+        "Generated 28.0s SRT-timed audio from 5 subtitles using stretch_to_fit mode (generated segments, huggingface models)"
       ]
-    },
-    {
-      "id": 71,
-      "type": "ChatterBoxSRTVoiceTTS",
-      "pos": [
-        1110,
-        -1600
-      ],
-      "size": [
-        410,
-        540
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "reference_audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 135
-        },
-        {
-          "name": "srt_content",
-          "type": "STRING",
-          "widget": {
-            "name": "srt_content"
-          },
-          "link": 132
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            137
-          ]
-        },
-        {
-          "name": "generation_info",
-          "type": "STRING",
-          "links": [
-            138
-          ]
-        },
-        {
-          "name": "timing_report",
-          "type": "STRING",
-          "links": [
-            139
-          ]
-        },
-        {
-          "name": "Adjusted_SRT",
-          "type": "STRING",
-          "links": [
-            140
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
-        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
-        "Node name for S&R": "ChatterBoxSRTVoiceTTS",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle. I'll make it long on purpose.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings.",
-        "auto",
-        0.5,
-        0.8,
-        0.5,
-        1960690609,
-        "fixed",
-        "stretch_to_fit",
-        "",
-        true,
-        0.01,
-        1,
-        1,
-        2
-      ]
-    },
-    {
-      "id": 79,
-      "type": "PreviewAudio",
-      "pos": [
-        1630,
-        -1770
-      ],
-      "size": [
-        550,
-        88
-      ],
-      "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 137
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.40",
-        "Node name for S&R": "PreviewAudio",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 78,
-      "type": "ShowText|pysssss",
-      "pos": [
-        1620,
-        -1480
-      ],
-      "size": [
-        720,
-        390
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "link": 139
-        }
-      ],
-      "outputs": [
-        {
-          "name": "STRING",
-          "shape": 6,
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-custom-scripts",
-        "ver": "aac13aa7ce35b07d43633c3bbe654a38c00d74f5",
-        "Node name for S&R": "ShowText|pysssss",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": []
     },
     {
       "id": 81,
@@ -444,7 +177,7 @@
         88
       ],
       "flags": {},
-      "order": 19,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
@@ -467,7 +200,9 @@
         "Node name for S&R": "ShowText|pysssss",
         "widget_ue_connectable": {}
       },
-      "widgets_values": []
+      "widgets_values": [
+        "Generated 20.0s SRT-timed audio from 4 subtitles using pad_with_silence mode (generated segments, huggingface models)"
+      ]
     },
     {
       "id": 82,
@@ -481,7 +216,7 @@
         390
       ],
       "flags": {},
-      "order": 20,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
@@ -504,121 +239,8 @@
         "Node name for S&R": "ShowText|pysssss",
         "widget_ue_connectable": {}
       },
-      "widgets_values": []
-    },
-    {
-      "id": 83,
-      "type": "PreviewAudio",
-      "pos": [
-        1680,
-        -900
-      ],
-      "size": [
-        550,
-        88
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 141
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.40",
-        "Node name for S&R": "PreviewAudio",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 72,
-      "type": "ChatterBoxSRTVoiceTTS",
-      "pos": [
-        1140,
-        -730
-      ],
-      "size": [
-        410,
-        540
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "reference_audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 136
-        },
-        {
-          "name": "srt_content",
-          "type": "STRING",
-          "widget": {
-            "name": "srt_content"
-          },
-          "link": 133
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            141
-          ]
-        },
-        {
-          "name": "generation_info",
-          "type": "STRING",
-          "links": [
-            142
-          ]
-        },
-        {
-          "name": "timing_report",
-          "type": "STRING",
-          "links": [
-            143
-          ]
-        },
-        {
-          "name": "Adjusted_SRT",
-          "type": "STRING",
-          "links": [
-            144
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
-        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
-        "Node name for S&R": "ChatterBoxSRTVoiceTTS",
-        "widget_ue_connectable": {}
-      },
       "widgets_values": [
-        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle. I'll make it long on purpose.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings.",
-        "auto",
-        0.5,
-        0.8,
-        0.5,
-        1960690609,
-        "fixed",
-        "pad_with_silence",
-        "",
-        true,
-        0.01,
-        1,
-        0.5,
-        2
+        "SRT Timing Report (pad_with_silence mode)\n==================================================\nTotal subtitles: 4\nTotal duration: 20.000s\n\nPer-subtitle analysis:\n   1.   0.00-  4.30s (4.30s target, 3.36s natural)\n      Text: Pad with silence... places natural audio\n   2.   4.30-  9.50s (5.20s target, 3.20s natural)\n      Text: with no stretching at all at the SRT start times,\n   3.   9.50- 14.20s (4.70s target, 1.88s natural)\n      Text: padding any gaps with silence.\n   4.  14.20- 20.00s (5.80s target, 4.76s natural)\n      Text: The problem is, if the generated audio is too long, it may r...\n\nSummary:\n  Audio preserved at natural timing (no stretching)\n  Perfect timing match - no gaps or overlaps"
       ]
     },
     {
@@ -656,7 +278,9 @@
         "Node name for S&R": "ShowText|pysssss",
         "widget_ue_connectable": {}
       },
-      "widgets_values": []
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:04,500\nStretch to fit... stretches or compresses audio\n\n2\n00:00:04,500 --> 00:00:10,000\nto exactly match the SRT segment durations.\n\n3\n00:00:10,000 --> 00:00:15,000\nIt will always stretch to reach the start and end.\n\n4\n00:00:15,000 --> 00:00:22,000\nIf audio quality weren’t so bad when stretching, this could be a very natural-sounding option.\n\n5\n00:00:23,000 --> 00:00:28,000\nOh! But it's not a problem anymore now that we are using FFmpeg!!\n"
+      ]
     },
     {
       "id": 84,
@@ -670,7 +294,7 @@
         440
       ],
       "flags": {},
-      "order": 21,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -693,7 +317,9 @@
         "Node name for S&R": "ShowText|pysssss",
         "widget_ue_connectable": {}
       },
-      "widgets_values": []
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:03,359\nPad with silence... places natural audio\n\n2\n00:00:04,299 --> 00:00:07,500\nwith no stretching at all at the SRT start times,\n\n3\n00:00:09,500 --> 00:00:11,379\npadding any gaps with silence.\n\n4\n00:00:14,199 --> 00:00:18,960\nThe problem is, if the generated audio is too long, it may result in overlaps.\n"
+      ]
     },
     {
       "id": 67,
@@ -707,7 +333,7 @@
         440
       ],
       "flags": {},
-      "order": 13,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
@@ -731,75 +357,7 @@
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "1\n00:00:00,000 --> 00:00:08,460\nSo now let's go back to the main control. Let's explain a little bit further some of the options.\n\n2\n00:00:08,460 --> 00:00:18,300\nSo cache speedup, what is this? Cache speedup, it's gonna use the apply first block custom node\n\n3\n00:00:18,300 --> 00:00:27,559\nto speed up things. It's good for almost all generation but it will of course have an impact\n\n4\n00:00:27,559 --> 00:00:34,560\non the quality of your image. but it's gonna be really fast. I like this the settings\n\n5\n00:00:34,560 --> 00:00:40,819\nyou can change it if you want. you can of course click here if you have this option to bypass it\n\n6\n00:00:40,820 --> 00:00:50,219\nor you can just bypass it in the control room. It's just for speed up. it's gonna have a hit\n\n7\n00:00:50,219 --> 00:00:56,079\non the quality but sometimes it's not that big of a hit.\n\n8\n00:00:56,079 --> 00:00:57,399\nit's a good option to use.\n\n9\n00:00:57,560 --> 00:01:05,959\nSo about negative... when you want to use negative, you use\n\n10\n00:01:05,959 --> 00:01:13,619\nthresholding. it will use thresholding if you click here. Use negative.\n"
-      ]
-    },
-    {
-      "id": 76,
-      "type": "Text Multiline",
-      "pos": [
-        410,
-        -2330
-      ],
-      "size": [
-        560,
-        450
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            134
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "was-node-suite-comfyui",
-        "ver": "ea935d1044ae5a26efa54ebeb18fe9020af49a45",
-        "Node name for S&R": "Text Multiline",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "1\n00:00:00,000 --> 00:00:06,000\nSmart natural... intelligently adjusts timings\n\n2\n00:00:06,000 --> 00:00:11,200\nwithin the timing tolerance setting,\n\n3\n00:00:11,200 --> 00:00:15,800\nprioritizing natural audio and shifting later segments.\n\n4\n00:00:15,800 --> 00:00:21,500\nIt applies stretch or shrink within the limits\n\n5\n00:00:21,500 --> 00:00:26,000\nset by the minimum and maximum stretch ratio.\n\n6\n00:00:26,000 --> 00:00:31,000\nThis would be the perfect, most natural option...\n\n7\n00:00:31,000 --> 00:00:35,000\nif stretching didn’t hurt the audio quality so much.\n"
-      ]
-    },
-    {
-      "id": 21,
-      "type": "Text Multiline",
-      "pos": [
-        420,
-        -1530
-      ],
-      "size": [
-        560,
-        450
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            132
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "was-node-suite-comfyui",
-        "ver": "ea935d1044ae5a26efa54ebeb18fe9020af49a45",
-        "Node name for S&R": "Text Multiline",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "1\n00:00:00,000 --> 00:00:04,500\nStretch to fit... stretches or compresses audio\n\n2\n00:00:04,500 --> 00:00:10,000\nto exactly match the SRT segment durations.\n\n3\n00:00:10,000 --> 00:00:15,000\nIt will always stretch to reach the start and end.\n\n4\n00:00:15,000 --> 00:00:22,000\nIf audio quality weren’t so bad when stretching, this could be a very natural-sounding option."
+        "1\n00:00:00,000 --> 00:00:06,000\nSmart natural... intelligently adjusts timings\n\n2\n00:00:06,000 --> 00:00:11,199\nwithin the timing tolerance setting,\n\n3\n00:00:11,199 --> 00:00:15,799\nprioritizing natural audio and shifting later segments.\n\n4\n00:00:15,800 --> 00:00:21,499\nIt applies stretch or shrink within the limits\n\n5\n00:00:21,500 --> 00:00:26,000\nset by the minimum and maximum stretch ratio.\n\n6\n00:00:26,000 --> 00:00:31,000\nThis would be the perfect, most natural option...\n\n7\n00:00:31,000 --> 00:00:34,999\nif stretching didn’t hurt the audio quality so much...\n\n8\n00:00:35,000 --> 00:00:40,000\nOh! But it's not a problem anymore now that we are using FFmpeg!!\n\n9\n00:00:40,000 --> 00:00:47,999\nTry changing limiting the max stretch ratio oprion to 1.0 to make it more natural!\n"
       ]
     },
     {
@@ -897,7 +455,7 @@
         0.5,
         0.8,
         0.5,
-        0,
+        496888168,
         "randomize",
         "",
         true,
@@ -937,46 +495,6 @@
       "widgets_values": []
     },
     {
-      "id": 14,
-      "type": "LoadAudio",
-      "pos": [
-        -80,
-        -2420
-      ],
-      "size": [
-        270,
-        136
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            126,
-            135,
-            136
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.40",
-        "Node name for S&R": "LoadAudio",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "Deniro4.wav",
-        null,
-        null
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
       "id": 62,
       "type": "ShowText|pysssss",
       "pos": [
@@ -988,7 +506,7 @@
         390
       ],
       "flags": {},
-      "order": 12,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
@@ -1012,7 +530,418 @@
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "SRT Timing Report (smart_natural mode)\n==================================================\nTotal subtitles: 10\nTotal duration: 73.620s\n\nPer-subtitle analysis:\n   1. Original SRT:   0.00-  8.46s (Target: 8.46s)\n      Natural Audio: 4.240s\n      - ⏱️ Applying stretch/shrink: natural 4.240s -> target 8.460s (factor: 1.200x).\n      - Padding with 3.372s silence to reach target duration.\n      Final Audio Duration: 8.460s (Final SRT:   0.00-  8.46s)\n      Text: So now let's go back to the main control. Let's explain a li...\n   2. Original SRT:   8.46- 18.30s (Target: 9.84s)\n      Natural Audio: 5.760s\n      - ⏱️ Applying stretch/shrink: natural 5.760s -> target 9.840s (factor: 1.200x).\n      - Padding with 2.928s silence to reach target duration.\n      Final Audio Duration: 9.840s (Final SRT:   8.46- 18.30s)\n      Text: So cache speedup, what is this? Cache speedup, it's gonna us...\n   3. Original SRT:  18.30- 27.56s (Target: 9.26s)\n      Natural Audio: 5.600s\n      - ⏱️ Applying stretch/shrink: natural 5.600s -> target 9.260s (factor: 1.200x).\n      - Padding with 2.540s silence to reach target duration.\n      Final Audio Duration: 9.260s (Final SRT:  18.30- 27.56s)\n      Text: to speed up things. It's good for almost all generation but ...\n   4. Original SRT:  27.56- 34.56s (Target: 7.00s)\n      Natural Audio: 4.640s\n      - ⏱️ Applying stretch/shrink: natural 4.640s -> target 7.000s (factor: 1.200x).\n      - Padding with 1.432s silence to reach target duration.\n      Final Audio Duration: 7.000s (Final SRT:  27.56- 34.56s)\n      Text: on the quality of your image. but it's gonna be really fast....\n   5. Original SRT:  34.56- 40.82s (Target: 6.26s)\n      Natural Audio: 5.040s\n      - ⏱️ Applying stretch/shrink: natural 5.040s -> target 6.260s (factor: 1.200x).\n      - Padding with 0.212s silence to reach target duration.\n      Final Audio Duration: 6.260s (Final SRT:  34.56- 40.82s)\n      Text: you can change it if you want. you can of course click here ...\n   6. Original SRT:  40.82- 50.22s (Target: 9.40s)\n      Natural Audio: 4.440s\n      - ⏱️ Applying stretch/shrink: natural 4.440s -> target 9.400s (factor: 1.200x).\n      - Padding with 4.072s silence to reach target duration.\n      Final Audio Duration: 9.400s (Final SRT:  40.82- 50.22s)\n      Text: or you can just bypass it in the control room. It's just for...\n   7. Original SRT:  50.22- 56.08s (Target: 5.86s)\n      Natural Audio: 2.560s\n      - ⏱️ Applying stretch/shrink: natural 2.560s -> target 5.860s (factor: 1.200x).\n      - Padding with 2.788s silence to reach target duration.\n      Final Audio Duration: 5.860s (Final SRT:  50.22- 56.08s)\n      Text: on the quality but sometimes it's not that big of a hit.\n   8. Original SRT:  56.08- 57.20s (Target: 1.12s)\n      Natural Audio: 1.320s\n      - Natural audio (1.320s) is longer than original SRT slot (1.120s) by 0.200s.\n      - Consumed 0.200s from existing gap. Remaining excess: 0.000s.\n      - No next subtitle to shift or excess consumed by gap.\n      - No significant stretch/shrink needed.\n      - Padding with 0.000s silence to reach target duration.\n      Final Audio Duration: 1.320s (Final SRT:  56.08- 57.40s)\n      Text: it's a good option to use.\n   9. Original SRT:  57.56- 65.96s (Target: 8.40s)\n      Natural Audio: 3.640s\n      - ⏱️ Applying stretch/shrink: natural 3.640s -> target 8.400s (factor: 1.200x).\n      - Padding with 4.032s silence to reach target duration.\n      Final Audio Duration: 8.400s (Final SRT:  57.56- 65.96s)\n      Text: So about negative... when you want to use negative, you use\n  10. Original SRT:  65.96- 73.62s (Target: 7.66s)\n      Natural Audio: 3.960s\n      - ⏱️ Applying stretch/shrink: natural 3.960s -> target 7.660s (factor: 1.200x).\n      - Padding with 2.908s silence to reach target duration.\n      Final Audio Duration: 7.660s (Final SRT:  65.96- 73.62s)\n      Text: thresholding. it will use thresholding if you click here. Us...\n\nSummary (Smart Natural Mode):\n  Segments with next segment shifted: 0/10\n  Segments with audio stretched/shrunk: 9/10\n  Segments with silence padded: 10/10\n  Segments truncated: 0/10"
+        "SRT Timing Report (smart_natural mode)\n==================================================\nTotal subtitles: 9\nTotal duration: 48.000s\n\nPer-subtitle analysis:\n   1. Original SRT:   0.00-  6.00s (Target: 6.00s)\n      Natural Audio: 3.320s\n      - ⏱️ Applying stretch/shrink: natural 3.320s -> target 6.000s (factor: 1.200x).\n      - Padding with 2.016s silence to reach target duration.\n      Final Audio Duration: 6.000s (Final SRT:   0.00-  6.00s)\n      Text: Smart natural... intelligently adjusts timings\n   2. Original SRT:   6.00- 11.20s (Target: 5.20s)\n      Natural Audio: 2.560s\n      - ⏱️ Applying stretch/shrink: natural 2.560s -> target 5.200s (factor: 1.200x).\n      - Padding with 2.128s silence to reach target duration.\n      Final Audio Duration: 5.200s (Final SRT:   6.00- 11.20s)\n      Text: within the timing tolerance setting,\n   3. Original SRT:  11.20- 15.80s (Target: 4.60s)\n      Natural Audio: 3.760s\n      - ⏱️ Applying stretch/shrink: natural 3.760s -> target 4.600s (factor: 1.200x).\n      - Padding with 0.088s silence to reach target duration.\n      Final Audio Duration: 4.600s (Final SRT:  11.20- 15.80s)\n      Text: prioritizing natural audio and shifting later segments.\n   4. Original SRT:  15.80- 21.50s (Target: 5.70s)\n      Natural Audio: 2.880s\n      - ⏱️ Applying stretch/shrink: natural 2.880s -> target 5.700s (factor: 1.200x).\n      - Padding with 2.244s silence to reach target duration.\n      Final Audio Duration: 5.700s (Final SRT:  15.80- 21.50s)\n      Text: It applies stretch or shrink within the limits\n   5. Original SRT:  21.50- 26.00s (Target: 4.50s)\n      Natural Audio: 2.520s\n      - ⏱️ Applying stretch/shrink: natural 2.520s -> target 4.500s (factor: 1.200x).\n      - Padding with 1.476s silence to reach target duration.\n      Final Audio Duration: 4.500s (Final SRT:  21.50- 26.00s)\n      Text: set by the minimum and maximum stretch ratio.\n   6. Original SRT:  26.00- 31.00s (Target: 5.00s)\n      Natural Audio: 2.640s\n      - ⏱️ Applying stretch/shrink: natural 2.640s -> target 5.000s (factor: 1.200x).\n      - Padding with 1.832s silence to reach target duration.\n      Final Audio Duration: 5.000s (Final SRT:  26.00- 31.00s)\n      Text: This would be the perfect, most natural option...\n   7. Original SRT:  31.00- 35.00s (Target: 4.00s)\n      Natural Audio: 3.040s\n      - ⏱️ Applying stretch/shrink: natural 3.040s -> target 4.000s (factor: 1.200x).\n      - Padding with 0.352s silence to reach target duration.\n      Final Audio Duration: 4.000s (Final SRT:  31.00- 35.00s)\n      Text: if stretching didn’t hurt the audio quality so much...\n   8. Original SRT:  35.00- 40.00s (Target: 5.00s)\n      Natural Audio: 4.200s\n      - ⏱️ Applying stretch/shrink: natural 4.200s -> target 5.000s (factor: 1.190x).\n      Final Audio Duration: 5.000s (Final SRT:  35.00- 40.00s)\n      Text: Oh! But it's not a problem anymore now that we are using FFm...\n   9. Original SRT:  40.00- 48.00s (Target: 8.00s)\n      Natural Audio: 5.160s\n      - ⏱️ Applying stretch/shrink: natural 5.160s -> target 8.000s (factor: 1.200x).\n      - Padding with 1.808s silence to reach target duration.\n      Final Audio Duration: 8.000s (Final SRT:  40.00- 48.00s)\n      Text: Try changing limiting the max stretch ratio oprion to 1.0 to...\n\nSummary (Smart Natural Mode):\n  Segments with next segment shifted: 0/9\n  Segments with audio stretched/shrunk: 9/9\n  Segments with silence padded: 8/9\n  Segments truncated: 0/9"
+      ]
+    },
+    {
+      "id": 83,
+      "type": "PreviewAudio",
+      "pos": [
+        1680,
+        -900
+      ],
+      "size": [
+        550,
+        88
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 141
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "PreviewAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 14,
+      "type": "LoadAudio",
+      "pos": [
+        -70,
+        -2400
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            126,
+            147,
+            148
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "LoadAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "Deniro4.wav",
+        null,
+        null
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 72,
+      "type": "ChatterBoxSRTVoiceTTS",
+      "pos": [
+        1140,
+        -730
+      ],
+      "size": [
+        410,
+        540
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 147
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 150
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            141
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            142
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            143
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": [
+            144
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
+        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
+        "Node name for S&R": "ChatterBoxSRTVoiceTTS",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle. I'll make it long on purpose.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings.",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        1960690609,
+        "fixed",
+        "pad_with_silence",
+        "",
+        true,
+        0.01,
+        1,
+        0.5,
+        2
+      ]
+    },
+    {
+      "id": 78,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1620,
+        -1480
+      ],
+      "size": [
+        720,
+        390
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 139
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "aac13aa7ce35b07d43633c3bbe654a38c00d74f5",
+        "Node name for S&R": "ShowText|pysssss",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "SRT Timing Report (stretch_to_fit mode)\n==================================================\nTotal subtitles: 5\nTotal duration: 28.000s\n\nPer-subtitle analysis:\n   1.   0.00-  4.50s (4.50s target, 2.60s natural) [expand 1.73x]\n      Text: Stretch to fit... stretches or compresses audio\n   2.   4.50- 10.00s (5.50s target, 3.28s natural) [expand 1.68x]\n      Text: to exactly match the SRT segment durations.\n   3.  10.00- 15.00s (5.00s target, 3.16s natural) [expand 1.58x]\n      Text: It will always stretch to reach the start and end.\n   4.  15.00- 22.00s (7.00s target, 4.56s natural) [expand 1.54x]\n      Text: If audio quality weren’t so bad when stretching, this could ...\n   5.  23.00- 28.00s (5.00s target, 4.20s natural) [expand 1.19x]\n      Text: Oh! But it's not a problem anymore now that we are using FFm...\n\nSummary:\n  Segments needing time adjustment: 5/5\n  Average stretch factor: 1.54x"
+      ]
+    },
+    {
+      "id": 71,
+      "type": "ChatterBoxSRTVoiceTTS",
+      "pos": [
+        1110,
+        -1600
+      ],
+      "size": [
+        410,
+        540
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 148
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 149
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            137
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            138
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            139
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": [
+            140
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
+        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
+        "Node name for S&R": "ChatterBoxSRTVoiceTTS",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle. I'll make it long on purpose.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings.",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        1960690609,
+        "fixed",
+        "stretch_to_fit",
+        "",
+        true,
+        0.01,
+        1,
+        1,
+        2
+      ]
+    },
+    {
+      "id": 61,
+      "type": "Text Multiline",
+      "pos": [
+        460,
+        -640
+      ],
+      "size": [
+        560,
+        450
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            150
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "was-node-suite-comfyui",
+        "ver": "ea935d1044ae5a26efa54ebeb18fe9020af49a45",
+        "Node name for S&R": "Text Multiline",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:04,300\nPad with silence... places natural audio\n\n2\n00:00:04,300 --> 00:00:09,500\nwith no stretching at all at the SRT start times,\n\n3\n00:00:09,500 --> 00:00:14,200\npadding any gaps with silence.\n\n4\n00:00:14,200 --> 00:00:20,000\nThe problem is, if the generated audio is too long, it may result in overlaps.\n"
+      ]
+    },
+    {
+      "id": 21,
+      "type": "Text Multiline",
+      "pos": [
+        420,
+        -1530
+      ],
+      "size": [
+        560,
+        450
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            149
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "was-node-suite-comfyui",
+        "ver": "ea935d1044ae5a26efa54ebeb18fe9020af49a45",
+        "Node name for S&R": "Text Multiline",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:04,500\nStretch to fit... stretches or compresses audio\n\n2\n00:00:04,500 --> 00:00:10,000\nto exactly match the SRT segment durations.\n\n3\n00:00:10,000 --> 00:00:15,000\nIt will always stretch to reach the start and end.\n\n4\n00:00:15,000 --> 00:00:22,000\nIf audio quality weren’t so bad when stretching, this could be a very natural-sounding option.\n\n5\n00:00:23,000 --> 00:00:28,000\nOh! But it's not a problem anymore now that we are using FFmpeg!!"
+      ]
+    },
+    {
+      "id": 79,
+      "type": "PreviewAudio",
+      "pos": [
+        1630,
+        -1770
+      ],
+      "size": [
+        550,
+        88
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 137
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "PreviewAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 76,
+      "type": "Text Multiline",
+      "pos": [
+        410,
+        -2330
+      ],
+      "size": [
+        560,
+        450
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            151
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "was-node-suite-comfyui",
+        "ver": "ea935d1044ae5a26efa54ebeb18fe9020af49a45",
+        "Node name for S&R": "Text Multiline",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:06,000\nSmart natural... intelligently adjusts timings\n\n2\n00:00:06,000 --> 00:00:11,200\nwithin the timing tolerance setting,\n\n3\n00:00:11,200 --> 00:00:15,800\nprioritizing natural audio and shifting later segments.\n\n4\n00:00:15,800 --> 00:00:21,500\nIt applies stretch or shrink within the limits\n\n5\n00:00:21,500 --> 00:00:26,000\nset by the minimum and maximum stretch ratio.\n\n6\n00:00:26,000 --> 00:00:31,000\nThis would be the perfect, most natural option...\n\n7\n00:00:31,000 --> 00:00:35,000\nif stretching didn’t hurt the audio quality so much...\n\n8\n00:00:35,000 --> 00:00:40,000\nOh! But it's not a problem anymore now that we are using FFmpeg!!\n\n9\n00:00:40,000 --> 00:00:48,000\nTry changing limiting the max stretch ratio oprion to 1.0 to make it more natural!"
       ]
     },
     {
@@ -1027,7 +956,7 @@
         88
       ],
       "flags": {},
-      "order": 10,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
@@ -1046,6 +975,89 @@
       "widgets_values": [],
       "color": "#233",
       "bgcolor": "#355"
+    },
+    {
+      "id": 70,
+      "type": "ChatterBoxSRTVoiceTTS",
+      "pos": [
+        1110,
+        -2420
+      ],
+      "size": [
+        410,
+        540
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 126
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 151
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            110
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            111
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            112
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": [
+            113
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
+        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
+        "Node name for S&R": "ChatterBoxSRTVoiceTTS",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle. I'll make it long on purpose.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings.",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        1960690609,
+        "fixed",
+        "smart_natural",
+        "",
+        true,
+        0.01,
+        1.2000000000000002,
+        0.7000000000000001,
+        2
+      ]
     }
   ],
   "links": [
@@ -1102,46 +1114,6 @@
       14,
       0,
       70,
-      0,
-      "AUDIO"
-    ],
-    [
-      132,
-      21,
-      0,
-      71,
-      1,
-      "STRING"
-    ],
-    [
-      133,
-      61,
-      0,
-      72,
-      1,
-      "STRING"
-    ],
-    [
-      134,
-      76,
-      0,
-      70,
-      1,
-      "STRING"
-    ],
-    [
-      135,
-      14,
-      0,
-      71,
-      0,
-      "AUDIO"
-    ],
-    [
-      136,
-      14,
-      0,
-      72,
       0,
       "AUDIO"
     ],
@@ -1224,6 +1196,46 @@
       86,
       0,
       "AUDIO"
+    ],
+    [
+      147,
+      14,
+      0,
+      72,
+      0,
+      "AUDIO"
+    ],
+    [
+      148,
+      14,
+      0,
+      71,
+      0,
+      "AUDIO"
+    ],
+    [
+      149,
+      21,
+      0,
+      71,
+      1,
+      "STRING"
+    ],
+    [
+      150,
+      61,
+      0,
+      72,
+      1,
+      "STRING"
+    ],
+    [
+      151,
+      76,
+      0,
+      70,
+      1,
+      "STRING"
     ]
   ],
   "groups": [
@@ -1244,10 +1256,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.2357947691000052,
+      "scale": 1.191817653772758,
       "offset": [
-        1705.132045200774,
-        3075.3407607101494
+        -641.1017065540107,
+        2410.9203972192363
       ]
     },
     "ue_links": [],
@@ -1261,8 +1273,8 @@
         ],
         "linkIds": [
           126,
-          135,
-          136
+          147,
+          148
         ]
       },
       {
@@ -1273,8 +1285,8 @@
           -1610
         ],
         "linkIds": [
-          135,
-          136
+          147,
+          148
         ]
       },
       {
@@ -1285,7 +1297,7 @@
           -730
         ],
         "linkIds": [
-          136
+          147
         ]
       }
     ],
@@ -1295,12 +1307,12 @@
         "parentId": 1
       },
       {
-        "id": 135,
-        "parentId": 2
+        "id": 147,
+        "parentId": 3
       },
       {
-        "id": 136,
-        "parentId": 3
+        "id": 148,
+        "parentId": 2
       }
     ],
     "frontendVersion": "1.21.7",
