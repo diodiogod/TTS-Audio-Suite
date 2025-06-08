@@ -6,6 +6,19 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
 NEW: Audio capture node
 ![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
 
+NEW: SRT Timing and TTS Node
+![SRT Node Screenshot Placeholder](images/srt.png)
+
+The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
+
+Key Features:
+*   **SRT style Processing**: uses SRT style to generate TTS, aligning audio with subtitle timings.
+*   **`smart_natural` Timing Mode**: Features flexible shifting logic that intelligently considers "room" in subsequent segments, preventing overlaps and ensuring natural speech flow.
+*   **`Adjusted_SRT` Output**: Provides actual timings for generated audio, allowing for accurate post-processing and integration.
+*   **Segment-Level Caching**: Only regenerates modified segments, significantly speeding up workflows. Timing-only changes do not trigger regeneration, optimizing resource usage.
+
+For more detailed technical information, refer to the [SRT_IMPLEMENTATION.md](SRT_IMPLEMENTATION.md) file.
+
 ## Features
 
 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning  
@@ -246,6 +259,7 @@ MIT License - Same as ChatterboxTTS
 - **ResembleAI** for ChatterboxTTS
 - **ComfyUI** team for the amazing framework
 - **sounddevice** library for audio recording functionality
+- **Diogod** for the SRT Timing and TTS Node implementation
 
 ## 🔗 Links
 
