@@ -11,7 +11,10 @@ import folder_paths
 import os
 import tempfile
 import re
-from typing import List
+from typing import List, Tuple, Optional
+
+# Define a global in-memory cache
+GLOBAL_AUDIO_CACHE = {}
 
 # Get the current node directory for bundled resources
 NODE_DIR = os.path.dirname(__file__)
@@ -616,6 +619,1205 @@ print(f"📁 Bundled models: {os.path.exists(BUNDLED_MODELS_DIR)}")
 print("="*60)
 print()
 
+# Import SRT support modules with enhanced error handling using direct file imports
+SRT_SUPPORT_AVAILABLE = False
+SRTParser = None
+SRTSubtitle = None
+SRTParseError = None
+validate_srt_timing_compatibility = None
+AudioTimingUtils = None
+PhaseVocoderTimeStretcher = None
+TimedAudioAssembler = None
+calculate_timing_adjustments = None
+AudioTimingError = None
+
+print("🔍 Attempting to import SRT support modules using direct file imports...")
+print(f"📁 Current sys.path includes node directory: {NODE_DIR in sys.path}")
+
+# Import using direct file loading to bypass package import issues
+import importlib.util
+
+try:
+    srt_imported = False
+    
+    # Check if SRT files exist in bundled chatterbox directory
+    srt_parser_path = os.path.join(BUNDLED_CHATTERBOX_DIR, 'srt_parser.py')
+    audio_timing_path = os.path.join(BUNDLED_CHATTERBOX_DIR, 'audio_timing.py')
+    
+    print(f"📁 SRT parser file exists: {os.path.exists(srt_parser_path)}")
+    print(f"📁 Audio timing file exists: {os.path.exists(audio_timing_path)}")
+    
+    if os.path.exists(srt_parser_path) and os.path.exists(audio_timing_path):
+        try:
+            print("📦 Loading SRT modules directly from files...")
+            
+            # Load srt_parser module directly from file (minimal dependencies)
+            srt_parser_spec = importlib.util.spec_from_file_location("srt_parser", srt_parser_path)
+            srt_parser_module = importlib.util.module_from_spec(srt_parser_spec)
+            srt_parser_spec.loader.exec_module(srt_parser_module)
+            
+            # Extract SRT parser classes and functions
+            SRTParser = srt_parser_module.SRTParser
+            SRTSubtitle = srt_parser_module.SRTSubtitle
+            SRTParseError = srt_parser_module.SRTParseError
+            validate_srt_timing_compatibility = srt_parser_module.validate_srt_timing_compatibility
+            
+            print("✅ SRT parser module loaded successfully")
+            
+            # Try to load audio_timing module (has more dependencies)
+            try:
+                audio_timing_spec = importlib.util.spec_from_file_location("audio_timing", audio_timing_path)
+                audio_timing_module = importlib.util.module_from_spec(audio_timing_spec)
+                audio_timing_spec.loader.exec_module(audio_timing_module)
+                
+                # Extract audio timing classes and functions
+                AudioTimingUtils = audio_timing_module.AudioTimingUtils
+                PhaseVocoderTimeStretcher = audio_timing_module.PhaseVocoderTimeStretcher
+                TimedAudioAssembler = audio_timing_module.TimedAudioAssembler
+                calculate_timing_adjustments = audio_timing_module.calculate_timing_adjustments
+                AudioTimingError = audio_timing_module.AudioTimingError
+                
+                print("✅ Audio timing module loaded successfully")
+                srt_imported = True
+                
+            except Exception as audio_timing_error:
+                print(f"⚠️ Audio timing module failed to load: {audio_timing_error}")
+                print("   This might be due to missing dependencies (librosa, scipy)")
+                print("   SRT parsing will work but advanced timing features may be limited")
+                
+                # Create minimal fallback implementations for audio timing
+                class AudioTimingUtils:
+                    @staticmethod
+                    def get_audio_duration(audio, sample_rate):
+                        if audio.dim() == 1:
+                            return audio.size(0) / sample_rate
+                        elif audio.dim() == 2:
+                            return audio.size(-1) / sample_rate
+                        else:
+                            raise ValueError(f"Unsupported audio tensor dimensions: {audio.dim()}")
+                    
+                    @staticmethod
+                    def create_silence(duration_seconds, sample_rate, channels=1, device=None):
+                        num_samples = int(duration_seconds * sample_rate)
+                        print(f"🔍 DEBUG: create_silence called with duration={duration_seconds:.3f}s, channels={channels}, samples={num_samples}")
+                        if channels == 1:
+                            silence = torch.zeros(num_samples, device=device)
+                            print(f"🔍 DEBUG: Created 1D silence: {silence.shape}")
+                            return silence
+                        else:
+                            silence = torch.zeros(channels, num_samples, device=device)
+                            print(f"🔍 DEBUG: Created 2D silence: {silence.shape}")
+                            return silence
+                
+                class TimedAudioAssembler:
+                    def __init__(self, sample_rate):
+                        self.sample_rate = sample_rate
+                    
+                    def assemble_timed_audio(self, audio_segments, target_timings, fade_duration=0.01):
+                        # Simple concatenation fallback
+                        print("⚠️ Using simple concatenation (advanced timing unavailable)")
+                        return torch.cat(audio_segments, dim=-1)
+                
+                class AudioTimingError(Exception):
+                    pass
+                
+                def calculate_timing_adjustments(natural_durations, target_timings):
+                    adjustments = []
+                    for i, (natural_duration, (start_time, end_time)) in enumerate(zip(natural_durations, target_timings)):
+                        target_duration = end_time - start_time
+                        stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
+                        adjustments.append({
+                            'segment_index': i,
+                            'natural_duration': natural_duration,
+                            'target_duration': target_duration,
+                            'start_time': start_time,
+                            'end_time': end_time,
+                            'stretch_factor': stretch_factor,
+                            'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
+                            'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none'
+                        })
+                    return adjustments
+                
+                # Set fallback implementations
+                PhaseVocoderTimeStretcher = None  # Not available without librosa
+                
+                srt_imported = True  # SRT parsing still works
+                print("✅ SRT support loaded with basic timing features")
+            
+        except Exception as direct_import_error:
+            print(f"📦 Direct file import failed: {direct_import_error}")
+    
+    # Fallback: Try package imports if direct file import failed
+    if not srt_imported:
+        print("🔧 Falling back to package imports...")
+        try:
+            # Try bundled package import
+            if os.path.exists(BUNDLED_CHATTERBOX_DIR):
+                from chatterbox.srt_parser import SRTParser, SRTSubtitle, SRTParseError, validate_srt_timing_compatibility
+                from chatterbox.audio_timing import (
+                    AudioTimingUtils, PhaseVocoderTimeStretcher, TimedAudioAssembler,
+                    calculate_timing_adjustments, AudioTimingError
+                )
+                srt_imported = True
+                print("✅ SRT modules imported from bundled chatterbox package")
+        except ImportError as bundled_error:
+            print(f"📦 Bundled package import failed: {bundled_error}")
+            
+            # Try system package import
+            try:
+                from chatterbox.srt_parser import SRTParser, SRTSubtitle, SRTParseError, validate_srt_timing_compatibility
+                from chatterbox.audio_timing import (
+                    AudioTimingUtils, PhaseVocoderTimeStretcher, TimedAudioAssembler,
+                    calculate_timing_adjustments, AudioTimingError
+                )
+                srt_imported = True
+                print("✅ SRT modules imported from system chatterbox package")
+            except ImportError as system_error:
+                print(f"🔧 System package import failed: {system_error}")
+    
+    if srt_imported:
+        SRT_SUPPORT_AVAILABLE = True
+        print("✅ SRT subtitle support loaded successfully")
+    else:
+        raise ImportError("All SRT import methods failed")
+    
+except Exception as e:
+    print(f"❌ SRT support not available: {e}")
+    print(f"📁 Bundled chatterbox directory exists: {os.path.exists(BUNDLED_CHATTERBOX_DIR)}")
+    print(f"📁 SRT parser file exists: {os.path.exists(os.path.join(BUNDLED_CHATTERBOX_DIR, 'srt_parser.py'))}")
+    print(f"📁 Audio timing file exists: {os.path.exists(os.path.join(BUNDLED_CHATTERBOX_DIR, 'audio_timing.py'))}")
+    
+    # Create dummy classes for missing SRT components
+    class SRTParser:
+        @staticmethod
+        def parse_srt_content(content):
+            raise ImportError("SRT support not available - missing required modules")
+    
+    class SRTSubtitle:
+        """Dummy SRTSubtitle class for type hints when SRT support is unavailable"""
+        def __init__(self, sequence=0, start_time=0.0, end_time=0.0, text=""):
+            raise ImportError("SRT support not available - missing required modules")
+    
+    class SRTParseError(Exception):
+        """Dummy SRTParseError for when SRT support is unavailable"""
+        pass
+    
+    class AudioTimingUtils:
+        @staticmethod
+        def get_audio_duration(*args, **kwargs):
+            raise ImportError("SRT support not available - missing required modules")
+        
+        @staticmethod
+        def create_silence(*args, **kwargs):
+            raise ImportError("SRT support not available - missing required modules")
+    
+    class TimedAudioAssembler:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("SRT support not available - missing required modules")
+    
+    class AudioTimingError(Exception):
+        """Dummy AudioTimingError for when SRT support is unavailable"""
+        pass
+    
+    def validate_srt_timing_compatibility(*args, **kwargs):
+        raise ImportError("SRT support not available - missing required modules")
+    
+    def calculate_timing_adjustments(*args, **kwargs):
+        raise ImportError("SRT support not available - missing required modules")
+
+
+class ChatterboxSRTTTSNode:
+    """
+    SRT Subtitle-aware Text-to-Speech node using ChatterboxTTS
+    Generates timed audio that matches SRT subtitle timing
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "srt_content": ("STRING", {
+                    "multiline": True,
+                    "default": """1
+00:00:01,000 --> 00:00:04,000
+Hello! This is the first subtitle. I'll make it long on purpose.
+
+2
+00:00:04,50 --> 00:00:09,500
+This is the second subtitle with precise timing.
+
+3
+00:00:10,000 --> 00:00:14,000
+The audio will match these exact timings.""",
+                    "tooltip": "The SRT subtitle content. Each entry defines a text segment and its precise start and end times."
+                }),
+                "device": (["auto", "cuda", "cpu"], {"default": "auto", "tooltip": "The device to run the TTS model on (auto, cuda, or cpu)."}),
+                "exaggeration": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.25,
+                    "max": 2.0,
+                    "step": 0.05,
+                    "tooltip": "Controls the expressiveness and emphasis of the generated speech. Higher values increase exaggeration."
+                }),
+                "temperature": ("FLOAT", {
+                    "default": 0.8,
+                    "min": 0.05,
+                    "max": 5.0,
+                    "step": 0.05,
+                    "tooltip": "Controls the randomness and creativity of the generated speech. Higher values lead to more varied outputs."
+                }),
+                "cfg_weight": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05,
+                    "tooltip": "Classifier-Free Guidance weight. Influences how strongly the model adheres to the input text."
+                }),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 2**32 - 1, "tooltip": "Seed for reproducible speech generation. Set to 0 for random."}),
+                "timing_mode": (["stretch_to_fit", "pad_with_silence", "smart_natural"], {
+                    "default": "smart_natural",
+                    "tooltip": "Determines how audio segments are aligned with SRT timings:\n🔹 stretch_to_fit: Stretches/compresses audio to exactly match SRT segment durations.\n🔹 pad_with_silence: Places natural audio at SRT start times, padding gaps with silence. May result in overlaps.\n🔹 smart_natural: Intelligently adjusts timings within 'timing_tolerance', prioritizing natural audio and shifting subsequent segments. Applies stretch/shrink within limits if needed."
+                }),
+            },
+            "optional": {
+                "reference_audio": ("AUDIO", {"tooltip": "Optional reference audio input from another ComfyUI node for voice cloning or style transfer. This is an alternative to 'audio_prompt_path'."}),
+                "audio_prompt_path": ("STRING", {"default": "", "tooltip": "Path to an audio file on disk to use as a prompt for voice cloning or style transfer. This is an alternative to 'reference_audio'."}),
+                "enable_audio_cache": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
+                }),
+                "fade_for_StretchToFit": ("FLOAT", {
+                    "default": 0.01,
+                    "min": 0.0,
+                    "max": 0.1,
+                    "step": 0.001,
+                    "tooltip": "Duration (in seconds) for crossfading between audio segments in 'stretch_to_fit' mode."
+                }),
+                "max_stretch_ratio": ("FLOAT", {
+                    "default": 1.0,
+                    "min": 0.5,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "tooltip": "Maximum factor to slow down audio in 'smart_natural' mode. (e.g., 2.0x means audio can be twice as long). Recommend leaving at 1.0 for natural speech preservation and silence addition."
+                }),
+                "min_stretch_ratio": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.1,
+                    "max": 2.0,
+                    "step": 0.1,
+                    "tooltip": "Minimum factor to speed up audio in 'smart_natural' mode. (e.g., 0.5x means audio can be half as long). min=faster speech"
+                }),
+                "timing_tolerance": ("FLOAT", {
+                    "default": 2.0,
+                    "min": 0.5,
+                    "max": 10.0,
+                    "step": 0.5,
+                    "tooltip": "Maximum allowed deviation (in seconds) for timing adjustments in 'smart_natural' mode. Higher values allow more flexibility."
+                }),
+            }
+        }
+
+    RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
+    FUNCTION = "generate_srt_speech"
+    CATEGORY = "ChatterBox Voice"
+
+    def __init__(self):
+        self.model = None
+        self.device = None
+        self.model_source = None
+        self.srt_parser = SRTParser() if SRT_SUPPORT_AVAILABLE else None
+        # Audio segment cache for performance optimization
+        self.cache_enabled = True
+
+
+    def load_model(self, device):
+        """Load ChatterboxTTS model (same as original node)"""
+        if not CHATTERBOX_TTS_AVAILABLE:
+            raise ImportError("ChatterboxTTS not available - check installation or add bundled version")
+            
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        if self.model is None or self.device != device:
+            print(f"Loading ChatterboxTTS model on {device}...")
+            
+            # Get available model paths in priority order
+            model_paths = find_chatterbox_models()
+            
+            model_loaded = False
+            for source, path in model_paths:
+                try:
+                    if source == "bundled":
+                        print(f"📦 Loading from bundled models: {path}")
+                        self.model = ChatterboxTTS.from_local(path, device)
+                        self.model_source = "bundled"
+                        model_loaded = True
+                        break
+                    elif source == "comfyui":
+                        print(f"📁 Loading from ComfyUI models: {path}")
+                        self.model = ChatterboxTTS.from_local(path, device)
+                        self.model_source = "comfyui"
+                        model_loaded = True
+                        break
+                    elif source == "huggingface":
+                        print("🌐 Loading from Hugging Face (requires authentication)...")
+                        self.model = ChatterboxTTS.from_pretrained(device)
+                        self.model_source = "huggingface"
+                        model_loaded = True
+                        break
+                except Exception as e:
+                    print(f"❌ Failed to load from {source}: {e}")
+                    continue
+            
+            if not model_loaded:
+                raise ImportError("Failed to load ChatterboxTTS from any source")
+            
+            self.device = device
+            print(f"✅ ChatterboxTTS model loaded from {self.model_source}!")
+
+    def _generate_segment_cache_key(self, subtitle_text, exaggeration, temperature, cfg_weight, seed,
+                                   audio_prompt_component, model_source, device):
+        """Generate cache key for a single audio segment based on generation parameters."""
+        import hashlib
+        
+        # Create a hash of all parameters that affect TTS generation for this segment
+        cache_data = {
+            'text': subtitle_text,
+            'exaggeration': exaggeration,
+            'temperature': temperature,
+            'cfg_weight': cfg_weight,
+            'seed': seed,
+            'audio_prompt_component': audio_prompt_component, # Use the consistent component
+            'model_source': model_source,
+            'device': device
+        }
+        # Convert to string and hash
+        cache_string = str(sorted(cache_data.items()))
+        cache_key = hashlib.md5(cache_string.encode()).hexdigest()
+        return cache_key
+
+    def _get_cached_segment_audio(self, segment_cache_key):
+        """Retrieve cached audio for a single segment if available from in-memory cache."""
+        if not self.cache_enabled or segment_cache_key not in GLOBAL_AUDIO_CACHE:
+            return None
+        
+        cached_audio, natural_duration = GLOBAL_AUDIO_CACHE[segment_cache_key]
+        print(f"🚀 CACHE HIT: Reusing cached audio for segment (key: {segment_cache_key[:8]}...)")
+        return cached_audio, natural_duration
+
+    def _cache_segment_audio(self, segment_cache_key, audio_tensor, natural_duration):
+        """Cache generated audio for a single segment for future use in-memory."""
+        if not self.cache_enabled:
+            return
+        
+        GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration) # Clone to avoid reference issues
+        print(f"💾 CACHED: Stored audio for segment (key: {segment_cache_key[:8]}...) to in-memory cache")
+
+    def generate_srt_speech(self, srt_content, device, exaggeration, temperature, cfg_weight, seed,
+                           timing_mode, reference_audio=None, audio_prompt_path="",
+                           max_stretch_ratio=2.0, min_stretch_ratio=0.5, fade_for_StretchToFit=0.01, enable_audio_cache=True, timing_tolerance=2.0):
+        
+        if not SRT_SUPPORT_AVAILABLE:
+            raise ImportError("SRT support not available - missing required modules")
+        
+        self.load_model(device)
+        
+        # Update cache setting
+        self.cache_enabled = enable_audio_cache
+        if not enable_audio_cache:
+            print("🚫 Audio caching disabled - will regenerate all segments")
+        any_segment_cached = False
+        
+        # Set seed for reproducibility
+        if seed != 0:
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            np.random.seed(seed)
+
+        # Handle reference audio input
+        audio_prompt = None
+        if reference_audio is not None:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
+                waveform = reference_audio["waveform"]
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)
+                torchaudio.save(tmp_file.name, waveform, reference_audio["sample_rate"])
+                audio_prompt = tmp_file.name
+        elif audio_prompt_path and os.path.exists(audio_prompt_path):
+            audio_prompt = audio_prompt_path
+
+        try:
+            # Parse SRT content
+            print("📝 Parsing SRT content...")
+            subtitles = self.srt_parser.parse_srt_content(srt_content)
+            print(f"✅ Parsed {len(subtitles)} subtitles")
+            
+            # Validate timing compatibility
+            warnings = validate_srt_timing_compatibility(subtitles, max_stretch_ratio, min_stretch_ratio)
+            if warnings:
+                print("⚠️ Timing compatibility warnings:")
+                for warning in warnings:
+                    print(f"   {warning}")
+            
+            # Determine the audio prompt component for cache key generation
+            audio_prompt_component = ""
+            if reference_audio is not None:
+                import hashlib
+                waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
+                audio_prompt_component = f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
+            elif audio_prompt_path:
+                audio_prompt_component = audio_prompt_path
+
+            print("🎤 Generating/Retrieving TTS audio for each subtitle...")
+            audio_segments = []
+            natural_durations = []
+            
+            for i, subtitle in enumerate(subtitles):
+                print(f"   Processing subtitle {i+1}/{len(subtitles)}: '{subtitle.text[:50]}...'")
+                
+                # Generate segment-specific cache key
+                segment_cache_key = self._generate_segment_cache_key(
+                    subtitle.text, exaggeration, temperature, cfg_weight, seed,
+                    audio_prompt_component, self.model_source, device
+                )
+                
+                # Try to get cached audio for this segment
+                cached_segment_data = self._get_cached_segment_audio(segment_cache_key)
+                
+                if cached_segment_data:
+                    wav, natural_duration = cached_segment_data
+                    print(f"     ✅ CACHE HIT for segment {i+1} (key: {segment_cache_key[:8]}...)")
+                    any_segment_cached = True
+                else:
+                    # Generate audio for this subtitle
+                    wav = self.model.generate(
+                        subtitle.text,
+                        audio_prompt_path=audio_prompt,
+                        exaggeration=exaggeration,
+                        temperature=temperature,
+                        cfg_weight=cfg_weight
+                    )
+                    natural_duration = AudioTimingUtils.get_audio_duration(wav, self.model.sr)
+                    self._cache_segment_audio(segment_cache_key, wav, natural_duration)
+                    print(f"     Generated {natural_duration:.3f}s audio (target: {subtitle.duration:.3f}s) for segment {i+1}")
+                
+                audio_segments.append(wav)
+                natural_durations.append(natural_duration)
+            
+            # Calculate basic adjustments for caching (this part remains the same)
+            target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
+            adjustments = calculate_timing_adjustments(natural_durations, target_timings)
+            
+            # Generate timing report (adjustments might be updated below for smart_natural)
+            # This line needs to be after the smart_natural processing if adjustments are overridden
+            # For now, we'll keep it here and ensure adjustments is correctly set before this call.
+            # If timing_mode is smart_natural, adjustments will be overridden below.
+            
+            # Assemble final audio based on timing mode
+            print(f"🔗 Assembling audio using '{timing_mode}' mode...")
+            
+            # Normalize all audio segments first to ensure consistent dimensions
+            normalized_segments = []
+            for i, audio in enumerate(audio_segments):
+                if audio.dim() == 1:
+                    normalized_segments.append(audio)
+                elif audio.dim() == 2:
+                    normalized_segments.append(audio)
+                elif audio.dim() == 3 and audio.shape[0] == 1:
+                    # Remove batch dimension if present
+                    normalized = audio.squeeze(0)
+                    print(f"🔍 DEBUG: Normalized audio segment {i}: {audio.shape} -> {normalized.shape}")
+                    normalized_segments.append(normalized)
+                else:
+                    raise RuntimeError(f"Unsupported audio tensor shape for segment {i}: {audio.shape}")
+            
+            if timing_mode == "smart_natural":
+                # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
+                print(f"🔍 DEBUG: Using smart_natural mode with {timing_tolerance}s tolerance")
+                final_audio, smart_adjustments = self._assemble_with_smart_timing(
+                    normalized_segments, subtitles, self.model.sr, timing_tolerance,
+                    max_stretch_ratio, min_stretch_ratio
+                )
+                total_duration = AudioTimingUtils.get_audio_duration(final_audio, self.model.sr)
+                # Override adjustments for smart_natural mode
+                adjustments = smart_adjustments
+                
+            elif timing_mode == "pad_with_silence":
+                # Add silence to match timing without stretching
+                print(f"🔍 DEBUG: Using pad_with_silence mode (audible overlaps enabled)")
+                final_audio = self._assemble_audio_with_overlaps(
+                    normalized_segments, subtitles, self.model.sr
+                )
+                total_duration = AudioTimingUtils.get_audio_duration(final_audio, self.model.sr)
+                
+            else:  # stretch_to_fit
+                # Use time stretching to match exact timing
+                print(f"🔍 DEBUG: Using stretch_to_fit mode")
+                assembler = TimedAudioAssembler(self.model.sr)
+                final_audio = assembler.assemble_timed_audio(
+                    normalized_segments, target_timings, fade_duration=fade_for_StretchToFit
+                )
+                total_duration = AudioTimingUtils.get_audio_duration(final_audio, self.model.sr)
+            
+            # Generate timing report AFTER all adjustments are finalized
+            timing_report = self._generate_timing_report(subtitles, adjustments, timing_mode)
+            
+            # Generate info with cache status
+            cache_status = "cached" if any_segment_cached else "generated"
+            info = (f"Generated {total_duration:.1f}s SRT-timed audio from {len(subtitles)} subtitles "
+                   f"using {timing_mode} mode ({cache_status} segments, {self.model_source} models)")
+            
+            print(f"✅ {info}")
+            
+            # Ensure final_audio is [channels, samples] for torchaudio.save
+            if final_audio.dim() == 1:
+                final_audio = final_audio.unsqueeze(0) # Convert [samples] to [1, samples]
+            elif final_audio.dim() > 2:
+                raise RuntimeError(f"Unexpected final_audio dimensions: {final_audio.dim()}D. Expected 1D or 2D.")
+
+            # Generate the Adjusted_SRT string
+            adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
+
+            return (
+                {
+                    "waveform": final_audio.unsqueeze(0),  # Add batch dimension for ComfyUI's format
+                    "sample_rate": self.model.sr
+                },
+                info,
+                timing_report,
+                adjusted_srt_string
+            )
+            
+        except SRTParseError as e:
+            raise ValueError(f"SRT parsing error: {e}")
+        except AudioTimingError as e:
+            raise ValueError(f"Audio timing error: {e}")
+        except Exception as e:
+            raise RuntimeError(f"SRT TTS generation failed: {e}")
+        finally:
+            # Clean up temporary file
+            if reference_audio is not None and audio_prompt:
+                try:
+                    os.unlink(audio_prompt)
+                except:
+                    pass
+
+    def _assemble_with_silence_padding(self, audio_segments: List[torch.Tensor],
+                                     subtitles: List, sample_rate: int) -> torch.Tensor:
+        """Assemble audio with silence padding to match SRT timing"""
+        result_segments = []
+        
+        print(f"🔍 DEBUG: Starting silence padding assembly with {len(audio_segments)} segments")
+        
+        for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
+            print(f"🔍 DEBUG: Audio segment {i} shape: {audio.shape}, dim: {audio.dim()}, device: {audio.device}")
+            
+            # Normalize audio tensor to ensure consistent shape
+            if audio.dim() == 1:
+                # Keep 1D audio as-is
+                normalized_audio = audio
+            elif audio.dim() == 2:
+                # Keep 2D audio as-is
+                normalized_audio = audio
+            elif audio.dim() == 3 and audio.shape[0] == 1:
+                # Remove batch dimension if present
+                normalized_audio = audio.squeeze(0)
+                print(f"🔍 DEBUG: Removed batch dimension from segment {i}: {audio.shape} -> {normalized_audio.shape}")
+            else:
+                raise RuntimeError(f"Unsupported audio tensor shape for segment {i}: {audio.shape}")
+            
+            # Add normalized audio segment
+            result_segments.append(normalized_audio)
+            
+            # Add silence gap to next subtitle (if not last)
+            if i < len(subtitles) - 1:
+                next_subtitle = subtitles[i + 1]
+                gap_duration = next_subtitle.start_time - subtitle.end_time
+                
+                if gap_duration > 0:
+                    print(f"🔍 DEBUG: Creating {gap_duration:.3f}s silence gap between segments {i} and {i+1}")
+                    print(f"🔍 DEBUG: Target audio shape: {normalized_audio.shape}, dim: {normalized_audio.dim()}")
+                    
+                    # Calculate silence duration in samples
+                    silence_samples = int(gap_duration * sample_rate)
+                    
+                    # Create silence tensor that exactly matches the normalized audio tensor shape
+                    if normalized_audio.dim() == 1:
+                        # 1D audio: create 1D silence [samples]
+                        silence = torch.zeros(silence_samples, device=normalized_audio.device, dtype=normalized_audio.dtype)
+                        print(f"🔍 DEBUG: Created 1D silence directly: {silence.shape}")
+                    elif normalized_audio.dim() == 2:
+                        # 2D audio: create 2D silence [channels, samples]
+                        num_channels = normalized_audio.shape[0]
+                        silence = torch.zeros(num_channels, silence_samples, device=normalized_audio.device, dtype=normalized_audio.dtype)
+                        print(f"🔍 DEBUG: Created 2D silence directly: {silence.shape} with {num_channels} channels")
+                    else:
+                        raise RuntimeError(f"Unsupported normalized audio tensor dimensions: {normalized_audio.dim()}")
+                    
+                    print(f"🔍 DEBUG: Final silence shape: {silence.shape}, dim: {silence.dim()}")
+                    
+                    # Final validation that silence matches audio dimensions
+                    if silence.dim() != normalized_audio.dim():
+                        raise RuntimeError(
+                            f"Silence tensor dimension mismatch: audio is {normalized_audio.dim()}D {normalized_audio.shape}, "
+                            f"but silence is {silence.dim()}D {silence.shape}"
+                        )
+                    
+                    result_segments.append(silence)
+        
+        print(f"🔍 DEBUG: About to concatenate {len(result_segments)} segments")
+        for i, segment in enumerate(result_segments):
+            print(f"🔍 DEBUG: Segment {i}: shape={segment.shape}, dim={segment.dim()}")
+        
+        # Final validation: ensure all segments have the same number of dimensions
+        if len(result_segments) > 1:
+            reference_dim = result_segments[0].dim()
+            reference_shape = result_segments[0].shape
+            
+            for i, segment in enumerate(result_segments):
+                if segment.dim() != reference_dim:
+                    raise RuntimeError(
+                        f"TENSOR DIMENSION MISMATCH at segment {i}: "
+                        f"Expected {reference_dim}D tensor like {reference_shape}, "
+                        f"but got {segment.dim()}D tensor with shape {segment.shape}. "
+                        f"This indicates a bug in tensor shape normalization."
+                    )
+        
+        try:
+            final_audio = torch.cat(result_segments, dim=-1)
+            print(f"✅ DEBUG: Successfully concatenated to final shape: {final_audio.shape}")
+            return final_audio
+        except RuntimeError as e:
+            print(f"❌ DEBUG: Concatenation failed with error: {e}")
+            print("🔍 DEBUG: Segment details:")
+            for i, segment in enumerate(result_segments):
+                print(f"  Segment {i}: shape={segment.shape}, dtype={segment.dtype}, device={segment.device}")
+            raise RuntimeError(f"Failed to concatenate audio segments: {e}")
+
+    def _generate_timing_report(self, subtitles: List,
+                               adjustments: List[dict], timing_mode: str) -> str:
+        """Generate detailed timing report"""
+        report_lines = [
+            f"SRT Timing Report ({timing_mode} mode)",
+            "=" * 50,
+            f"Total subtitles: {len(subtitles)}",
+            f"Total duration: {subtitles[-1].end_time:.3f}s",
+            "",
+            "Per-subtitle analysis:"
+        ]
+        
+        if timing_mode == "smart_natural":
+            # For smart_natural mode, iterate directly over the detailed adjustments report
+            for adj in adjustments:
+                report_lines.append(
+                    f"  {adj['sequence']:2d}. Original SRT: {adj['original_srt_start']:6.2f}-{adj['original_srt_end']:6.2f}s "
+                    f"(Target: {adj['original_srt_duration']:.2f}s)"
+                )
+                report_lines.append(f"      Natural Audio: {adj['natural_audio_duration']:.3f}s")
+                
+                for action in adj['actions']:
+                    report_lines.append(f"      - {action}")
+                
+                report_lines.append(
+                    f"      Final Audio Duration: {adj['final_segment_duration']:.3f}s "
+                    f"(Final SRT: {adj['final_srt_start']:6.2f}-{adj['final_srt_end']:6.2f}s)"
+                )
+                # Find the corresponding subtitle to get its text
+                # This assumes subtitles are sorted by sequence or index
+                original_subtitle_text = next((s.text for s in subtitles if s.sequence == adj['sequence']), "N/A")
+                report_lines.append(f"      Text: {original_subtitle_text[:60]}{'...' if len(original_subtitle_text) > 60 else ''}")
+        else:
+            # For other modes, iterate using zip with original subtitles
+            for i, (subtitle, adj) in enumerate(zip(subtitles, adjustments)):
+                if timing_mode == "pad_with_silence":
+                    # For pad_with_silence mode, show overlap/gap information
+                    timing_info = ""
+                    if adj['natural_duration'] > subtitle.duration:
+                        # Audio is longer than SRT slot - will overlap
+                        overlap = adj['natural_duration'] - subtitle.duration
+                        timing_info = f" 🔁 [OVERLAP: +{overlap:.2f}s]"
+                    elif i < len(subtitles) - 1:
+                        # Check for silence gap to next subtitle
+                        next_subtitle = subtitles[i + 1]
+                        gap_duration = next_subtitle.start_time - subtitle.end_time
+                        if gap_duration > 0:
+                            timing_info = f" [+{gap_duration:.2f}s silence]"
+                    
+                    report_lines.append(
+                        f"  {i+1:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
+                        f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){timing_info}"
+                    )
+                else:
+                    # For other modes (e.g., stretch_to_fit), show stretch information
+                    stretch_info = ""
+                    if adj['needs_stretching']:
+                        stretch_info = f" [{adj['stretch_type']} {adj['stretch_factor']:.2f}x]"
+                    
+                    report_lines.append(
+                        f"  {i+1:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
+                        f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){stretch_info}"
+                    )
+                
+                report_lines.append(f"      Text: {subtitle.text[:60]}{'...' if len(subtitle.text) > 60 else ''}")
+        
+        # Summary statistics
+        if timing_mode == "pad_with_silence":
+            total_gaps = 0
+            total_gap_duration = 0
+            total_overlaps = 0
+            total_overlap_duration = 0
+            
+            for i, (subtitle, adj) in enumerate(zip(subtitles, adjustments)):
+                if adj['natural_duration'] > subtitle.duration:
+                    total_overlaps += 1
+                    total_overlap_duration += adj['natural_duration'] - subtitle.duration
+                elif i < len(subtitles) - 1:
+                    gap_duration = subtitles[i + 1].start_time - subtitles[i].end_time
+                    if gap_duration > 0:
+                        total_gaps += 1
+                        total_gap_duration += gap_duration
+            
+            summary_lines = [
+                "",
+                "Summary:",
+                f"  Audio preserved at natural timing (no stretching)"
+            ]
+            
+            if total_overlaps > 0:
+                summary_lines.append(f"  Timing overlaps: {total_overlaps} segments, +{total_overlap_duration:.2f}s total overlap")
+            
+            if total_gaps > 0:
+                summary_lines.append(f"  Silence gaps added: {total_gaps} gaps, {total_gap_duration:.2f}s total silence")
+            
+            if total_overlaps == 0 and total_gaps == 0:
+                summary_lines.append(f"  Perfect timing match - no gaps or overlaps")
+            
+            report_lines.extend(summary_lines)
+        elif timing_mode == "smart_natural":
+            total_shifted = sum(1 for adj in adjustments if adj['next_segment_shifted_by'] > 0)
+            total_stretched = sum(1 for adj in adjustments if abs(adj['stretch_factor_applied'] - 1.0) > 0.01)
+            total_padded = sum(1 for adj in adjustments if adj['padding_added'] > 0)
+            total_truncated = sum(1 for adj in adjustments if adj['truncated_by'] > 0)
+            
+            summary_lines = [
+                "",
+                "Summary (Smart Natural Mode):",
+                f"  Segments with next segment shifted: {total_shifted}/{len(adjustments)}",
+                f"  Segments with audio stretched/shrunk: {total_stretched}/{len(adjustments)}",
+                f"  Segments with silence padded: {total_padded}/{len(adjustments)}",
+                f"  Segments truncated: {total_truncated}/{len(adjustments)}",
+            ]
+            report_lines.extend(summary_lines)
+        else:
+            total_stretch_needed = sum(1 for adj in adjustments if adj['needs_stretching'])
+            avg_stretch = np.mean([adj['stretch_factor'] for adj in adjustments])
+            
+            report_lines.extend([
+                "",
+                "Summary:",
+                f"  Segments needing time adjustment: {total_stretch_needed}/{len(adjustments)}",
+                f"  Average stretch factor: {avg_stretch:.2f}x",
+            ])
+        
+        return "\n".join(report_lines)
+
+    def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[dict], timing_mode: str) -> str:
+        """
+        Generates a multiline SRT string from the final adjusted timings.
+        """
+        srt_lines = []
+        for i, adj in enumerate(adjustments):
+            # Convert seconds to SRT time format: HH:MM:SS,ms
+            def format_time(seconds):
+                hours = int(seconds // 3600)
+                minutes = int((seconds % 3600) // 60)
+                seconds_int = int(seconds % 60)
+                milliseconds = int((seconds - int(seconds)) * 1000)
+                return f"{hours:02}:{minutes:02}:{seconds_int:02},{milliseconds:03}"
+
+            # Determine start and end times based on timing_mode and available keys
+            if timing_mode == "smart_natural":
+                start_time_val = adj['final_srt_start']
+                end_time_val = adj['final_srt_start'] + adj['final_segment_duration']
+            elif timing_mode == "pad_with_silence":
+                start_time_val = adj['start_time']
+                end_time_val = adj['start_time'] + adj['natural_duration']
+            else: # Default to stretch_to_fit or any other mode
+                # Fallback to original SRT times if final adjusted times are not available
+                start_time_val = adj.get('final_srt_start', adj.get('start_time'))
+                end_time_val = adj.get('final_srt_end', adj.get('end_time'))
+                
+                # Ensure we have valid times, if not, use original subtitle times as a last resort
+                if start_time_val is None or end_time_val is None:
+                    # This should ideally not happen if adjustments are correctly populated
+                    # but as a safeguard, use the original subtitle's times
+                    original_subtitle = subtitles[i] # Assuming adjustments are in order
+                    start_time_val = original_subtitle.start_time
+                    end_time_val = original_subtitle.end_time
+            # For stretch_to_fit, the original start_time and end_time are already the target times
+            # and the audio is stretched to fit, so adj['end_time'] is correct.
+
+            start_time_str = format_time(start_time_val)
+            end_time_str = format_time(end_time_val)
+            
+            # Retrieve the original subtitle text using the segment_index or sequence
+            # The 'subtitles' list is the original parsed list.
+            # 'adj' contains 'segment_index' and 'sequence'.
+            # For smart_natural, 'original_text' is already in adj.
+            # For other modes, we need to look it up from the original 'subtitles' list.
+            
+            srt_text = adj.get('original_text')
+            if srt_text is None: # If not smart_natural, get text from original subtitles list
+                # Find the corresponding subtitle by index (assuming adjustments are in order)
+                if i < len(subtitles):
+                    srt_text = subtitles[i].text
+                else:
+                    srt_text = f"Subtitle {adj.get('sequence', i+1)}" # Fallback text
+
+            srt_lines.append(str(adj.get('sequence', i+1))) # Use sequence if available, else index + 1
+            srt_lines.append(f"{start_time_str} --> {end_time_str}")
+            srt_lines.append(srt_text)
+            srt_lines.append("") # Empty line separates entries
+        
+        return "\n".join(srt_lines)
+
+    def _assemble_with_smart_timing(self, audio_segments: List[torch.Tensor],
+                                   subtitles: List, sample_rate: int, tolerance: float,
+                                   max_stretch_ratio: float, min_stretch_ratio: float) -> Tuple[torch.Tensor, List[dict]]:
+        """
+        Smart balanced timing: Adjusts SRT segment timings based on actual spoken duration
+        and a user-defined timing_tolerance.
+        
+        Logic:
+        1. Calculate actual spoken duration for each segment.
+        2. Check Fit: Determine if spoken duration fits within allocated SRT timeframe.
+        3. Adjust Next Segment Start (if needed): If spoken duration exceeds allocated time,
+           attempt to shift the start time of the *next* SRT segment forward, within `timing_tolerance`.
+        4. Stretch/Shrink (if still needed): If segment still doesn't fit after next segment adjustment,
+           apply stretch/shrink factor to make it fit within the new interval, respecting `timing_tolerance`.
+        5. Pad with Silence (last resort): If segment cannot be made to fit, pad remaining time with silence.
+        
+        Returns:
+            Tuple[torch.Tensor, List[dict]]: The assembled audio and a list of dictionaries
+            detailing the adjustments made for each segment.
+        """
+        processed_segments = []
+        smart_adjustments_report = []
+        
+        # Create a mutable copy of subtitles to adjust start/end times
+        mutable_subtitles = [SRTSubtitle(s.sequence, s.start_time, s.end_time, s.text) for s in subtitles]
+        
+        # Initialize time stretcher
+        time_stretcher = PhaseVocoderTimeStretcher()
+        
+        print(f"🔍 DEBUG: Smart natural timing with tolerance={tolerance}s, max_stretch={max_stretch_ratio}, min_stretch={min_stretch_ratio}")
+        
+        for i, audio in enumerate(audio_segments):
+            current_subtitle = mutable_subtitles[i]
+            natural_duration = AudioTimingUtils.get_audio_duration(audio, sample_rate)
+            
+            original_srt_start = subtitles[i].start_time # Use original for reference
+            original_srt_end = subtitles[i].end_time
+            
+            # Step 1: Check if natural duration fits within current SRT slot
+            # This is the duration the SRT *originally* allocated for this segment
+            initial_target_duration = original_srt_end - original_srt_start
+            
+            segment_report = {
+                'segment_index': i,
+                'sequence': current_subtitle.sequence,
+                'original_srt_start': original_srt_start,
+                'original_srt_end': original_srt_end,
+                'original_srt_duration': initial_target_duration,
+                'natural_audio_duration': natural_duration,
+                'next_segment_shifted_by': 0.0,
+                'stretch_factor_applied': 1.0,
+                'padding_added': 0.0,
+                'truncated_by': 0.0,
+                'final_segment_duration': natural_duration, # Will be updated
+                'final_srt_start': original_srt_start, # Will be updated
+                'final_srt_end': original_srt_end, # Will be updated
+                'original_text': subtitles[i].text, # Add original subtitle text
+                'actions': []
+            }
+            
+            print(f"🔍 DEBUG: Segment {i} (Seq {current_subtitle.sequence}):")
+            print(f"   Original SRT: {original_srt_start:.3f}s - {original_srt_end:.3f}s (Duration: {initial_target_duration:.3f}s)")
+            print(f"   Natural Audio Duration: {natural_duration:.3f}s")
+            
+            # Calculate how much extra time is needed for the natural audio
+            time_needed_beyond_srt = natural_duration - initial_target_duration
+            
+            adjusted_current_segment_end = original_srt_end # This will be updated
+            
+            # Step 2 & 3: Adjust Next Segment Start (if needed)
+            if time_needed_beyond_srt > 0: # Natural audio is longer than original SRT slot
+                print(f"   Natural audio is {time_needed_beyond_srt:.3f}s longer than original SRT slot.")
+                segment_report['actions'].append(f"Natural audio ({natural_duration:.3f}s) is longer than original SRT slot ({initial_target_duration:.3f}s) by {time_needed_beyond_srt:.3f}s.")
+                
+                if i + 1 < len(mutable_subtitles):
+                    next_subtitle = mutable_subtitles[i+1]
+                    original_next_srt_start = subtitles[i+1].start_time # Use original for reference
+                    
+                    # First, try to consume any existing gap to the next subtitle
+                    existing_gap = original_next_srt_start - original_srt_end
+                    if existing_gap > 0:
+                        time_to_consume_from_gap = min(time_needed_beyond_srt, existing_gap)
+                        time_needed_beyond_srt -= time_to_consume_from_gap
+                        adjusted_current_segment_end += time_to_consume_from_gap
+                        segment_report['actions'].append(f"Consumed {time_to_consume_from_gap:.3f}s from existing gap. Remaining excess: {time_needed_beyond_srt:.3f}s.")
+                        print(f"   Consumed {time_to_consume_from_gap:.3f}s from existing gap. Remaining excess: {time_needed_beyond_srt:.3f}s.")
+                    
+                    if time_needed_beyond_srt > 0: # Still need more time after consuming gap
+                        next_natural_audio_duration = AudioTimingUtils.get_audio_duration(audio_segments[i+1], sample_rate)
+                        
+                        # Calculate "room" in the next segment: how much shorter its natural audio is than its SRT slot
+                        next_segment_room = max(0.0, next_subtitle.duration - next_natural_audio_duration)
+                        print(f"   Next segment (Seq {next_subtitle.sequence}) has {next_segment_room:.3f}s room (SRT: {next_subtitle.duration:.3f}s, Natural: {next_natural_audio_duration:.3f}s).")
+                        segment_report['actions'].append(f"Next segment (Seq {next_subtitle.sequence}) has {next_segment_room:.3f}s room.")
+
+                        # How much can we shift the next subtitle without exceeding tolerance?
+                        # This is the amount of time we can "borrow" from the next segment's start.
+                        max_shift_allowed = min(tolerance, next_segment_room) # Only shift into its room, within tolerance
+                        
+                        # How much do we *want* to shift the next subtitle?
+                        desired_shift = time_needed_beyond_srt
+                        
+                        actual_shift = min(desired_shift, max_shift_allowed)
+                        
+                        if actual_shift > 0:
+                            # Shift the next subtitle's start and end times
+                            next_subtitle.start_time += actual_shift
+                            next_subtitle.end_time += actual_shift
+                            adjusted_current_segment_end += actual_shift # Add to the already adjusted end
+                            segment_report['next_segment_shifted_by'] = actual_shift
+                            segment_report['actions'].append(f"Shifted next subtitle (Seq {next_subtitle.sequence}) by {actual_shift:.3f}s. New next SRT start: {next_subtitle.start_time:.3f}s.")
+                            print(f"   Shifted next subtitle (Seq {next_subtitle.sequence}) by {actual_shift:.3f}s.")
+                            print(f"   New next SRT start: {next_subtitle.start_time:.3f}s")
+                        else:
+                            segment_report['actions'].append("Cannot shift next subtitle within tolerance/available room.")
+                            print("   Cannot shift next subtitle within tolerance/available room.")
+                    else: # No next subtitle or no excess after consuming gap
+                        segment_report['actions'].append("No next subtitle to shift or excess consumed by gap.")
+                        print("   No next subtitle to shift or excess consumed by gap.")
+                else:
+                    segment_report['actions'].append("No next subtitle to shift.")
+                    print("   No next subtitle to shift.")
+            
+            # Step 4: Stretch/Shrink (if still needed)
+            # The new target duration for the current segment is from its original start to its (potentially) adjusted end
+            new_target_duration = adjusted_current_segment_end - original_srt_start
+            
+            # Calculate stretch factor needed to fit natural audio into the new target duration
+            stretch_factor = new_target_duration / natural_duration if natural_duration > 0 else 1.0
+            
+            # Apply stretch factor limits based on max_stretch_ratio and min_stretch_ratio
+            clamped_stretch_factor = max(min_stretch_ratio, min(max_stretch_ratio, stretch_factor))
+            
+            # Check if stretching is actually needed and if it's within acceptable limits
+            if abs(clamped_stretch_factor - 1.0) > 0.01: # Apply stretch if deviation is more than 1%
+                print(f"   ⏱️ Applying stretch/shrink: natural {natural_duration:.3f}s -> target {new_target_duration:.3f}s (factor: {clamped_stretch_factor:.3f}x)")
+                segment_report['actions'].append(f"⏱️ Applying stretch/shrink: natural {natural_duration:.3f}s -> target {new_target_duration:.3f}s (factor: {clamped_stretch_factor:.3f}x).")
+                segment_report['stretch_factor_applied'] = clamped_stretch_factor
+                try:
+                    stretched_audio = time_stretcher.time_stretch(audio, clamped_stretch_factor, sample_rate)
+                    processed_audio = stretched_audio
+                except Exception as e:
+                    segment_report['actions'].append(f"⚠️ Time stretching failed: {e}. Falling back to padding/truncation.")
+                    print(f"   ⚠️ Time stretching failed for segment {i}: {e}. Falling back to padding/truncation.")
+                    processed_audio = audio # Use original audio if stretching fails
+            else:
+                processed_audio = audio
+                segment_report['actions'].append("No significant stretch/shrink needed.")
+                print("   No significant stretch/shrink needed.")
+            
+            # Step 5: Pad with Silence (last resort) or Truncate
+            final_processed_duration = AudioTimingUtils.get_audio_duration(processed_audio, sample_rate)
+            
+            if final_processed_duration < new_target_duration:
+                padding_needed = new_target_duration - final_processed_duration
+                if padding_needed > 0:
+                    segment_report['padding_added'] = padding_needed
+                    segment_report['actions'].append(f"Padding with {padding_needed:.3f}s silence to reach target duration.")
+                    print(f"   Padding with {padding_needed:.3f}s silence to reach target duration.")
+                    processed_audio = AudioTimingUtils.pad_audio_to_duration(processed_audio, new_target_duration, sample_rate, "end")
+            elif final_processed_duration > new_target_duration:
+                # Truncate if still too long
+                truncated_by = final_processed_duration - new_target_duration
+                segment_report['truncated_by'] = truncated_by
+                segment_report['actions'].append(f"🚧 Truncating audio by {truncated_by:.3f}s.")
+                print(f"   🚧 Truncating audio by {truncated_by:.3f}s.")
+                target_samples = AudioTimingUtils.seconds_to_samples(new_target_duration, sample_rate)
+                processed_audio = processed_audio[..., :target_samples]
+            
+            processed_segments.append(processed_audio)
+            
+            # Update the current subtitle's end time to reflect the final processed duration
+            # This is important for calculating the gap to the *next* segment in the final assembly
+            current_subtitle.end_time = original_srt_start + AudioTimingUtils.get_audio_duration(processed_audio, sample_rate)
+            
+            segment_report['final_segment_duration'] = AudioTimingUtils.get_audio_duration(processed_audio, sample_rate)
+            segment_report['final_srt_start'] = current_subtitle.start_time
+            segment_report['final_srt_end'] = current_subtitle.end_time
+            
+            smart_adjustments_report.append(segment_report)
+            
+            print(f"   Final Processed Duration: {AudioTimingUtils.get_audio_duration(processed_audio, sample_rate):.3f}s")
+            print(f"   Current Subtitle (Seq {current_subtitle.sequence}) new end time: {current_subtitle.end_time:.3f}s")
+            
+        # Final assembly: concatenate all processed segments with silence in between
+        # The mutable_subtitles now contain the potentially adjusted start/end times
+        final_audio_parts = []
+        current_output_time = 0.0
+        
+        for i, segment_audio in enumerate(processed_segments):
+            current_subtitle = mutable_subtitles[i]
+            
+            # Add silence if there's a gap between current_output_time and current_subtitle's start_time
+            if current_output_time < current_subtitle.start_time:
+                gap_duration = current_subtitle.start_time - current_output_time
+                print(f"🔍 DEBUG: Final assembly: Adding {gap_duration:.3f}s silence before segment {i} (Seq {current_subtitle.sequence})")
+                silence = AudioTimingUtils.create_silence(gap_duration, sample_rate,
+                                                           channels=segment_audio.shape[0] if segment_audio.dim() == 2 else 1,
+                                                           device=segment_audio.device)
+                final_audio_parts.append(silence)
+                current_output_time += gap_duration
+            
+            final_audio_parts.append(segment_audio)
+            current_output_time += AudioTimingUtils.get_audio_duration(segment_audio, sample_rate)
+            
+            print(f"🔍 DEBUG: Final assembly: Appended segment {i} (Seq {current_subtitle.sequence}). Current output time: {current_output_time:.3f}s")
+            
+        if not final_audio_parts:
+            return torch.empty(0, device=audio_segments[0].device, dtype=audio_segments[0].dtype), smart_adjustments_report
+            
+        # Ensure all parts have the same number of dimensions before concatenating
+        # This handles cases where some segments might be 1D and others 2D (e.g., mono vs stereo)
+        # Assuming all audio segments are either 1D (mono) or 2D (multi-channel)
+        target_dim = processed_segments[0].dim() if processed_segments else 1
+        target_channels = processed_segments[0].shape[0] if target_dim == 2 else 1
+        
+        normalized_final_audio_parts = []
+        for part in final_audio_parts:
+            if part.dim() == target_dim:
+                if target_dim == 2 and part.shape[0] != target_channels:
+                    # Handle channel mismatch for 2D tensors (e.g., mono audio in stereo context)
+                    if part.shape[0] == 1: # Mono audio, expand to target_channels
+                        normalized_final_audio_parts.append(part.repeat(target_channels, 1))
+                    else:
+                        raise RuntimeError(f"Channel mismatch in final assembly: Expected {target_channels} channels, got {part.shape[0]}")
+                else:
+                    normalized_final_audio_parts.append(part)
+            elif part.dim() == 1 and target_dim == 2: # Mono part, target is stereo
+                normalized_final_audio_parts.append(part.unsqueeze(0).repeat(target_channels, 1))
+            elif part.dim() == 2 and target_dim == 1: # Stereo part, target is mono (shouldn't happen if first segment is 1D)
+                # This case implies a mix of mono and stereo, which is problematic.
+                # For simplicity, if target is 1D, sum multi-channel to mono.
+                normalized_final_audio_parts.append(torch.sum(part, dim=0))
+            else:
+                raise RuntimeError(f"Dimension mismatch in final assembly: Expected {target_dim}D, got {part.dim()}D")
+        
+        return torch.cat(normalized_final_audio_parts, dim=-1), smart_adjustments_report
+
+    def _assemble_audio_with_overlaps(self, audio_segments: List[torch.Tensor],
+                                     subtitles: List, sample_rate: int) -> torch.Tensor:
+        """
+        Assemble audio by placing segments at their SRT start times, allowing audible overlaps.
+        Silence is implicitly added in gaps.
+        """
+        if not audio_segments:
+            return torch.empty(0) # Return empty tensor if no segments
+
+        # Determine output buffer properties from the first segment
+        first_segment = audio_segments[0]
+        num_channels = first_segment.shape[0] if first_segment.dim() == 2 else 1
+        device = first_segment.device
+        dtype = first_segment.dtype
+
+        # Calculate total duration needed for the output buffer
+        # This should be at least the end time of the last subtitle,
+        # or the end time of the last audio segment if it extends beyond its subtitle.
+        max_end_time = 0.0
+        for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
+            segment_end_time = subtitle.start_time + (audio.size(-1) / sample_rate)
+            max_end_time = max(max_end_time, segment_end_time)
+        
+        # Ensure the buffer is at least as long as the last subtitle's end time
+        if subtitles:
+            max_end_time = max(max_end_time, subtitles[-1].end_time)
+
+        total_samples = int(max_end_time * sample_rate)
+        
+        print(f"🔍 DEBUG: Assembling for total duration: {max_end_time:.2f}s ({total_samples} samples)")
+
+        # Initialize output buffer with zeros
+        if num_channels == 1:
+            output_audio = torch.zeros(total_samples, device=device, dtype=dtype)
+        else:
+            output_audio = torch.zeros(num_channels, total_samples, device=device, dtype=dtype)
+
+        for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
+            print(f"🔍 DEBUG: Processing segment {i}: audio shape={audio.shape}, dim={audio.dim()}, SRT start={subtitle.start_time:.2f}s")
+
+            # Ensure normalized_audio matches the channel dimension of output_audio
+            # The `audio` input to this method (`normalized_segments`) should already be 1D or 2D.
+            normalized_audio = audio # Start with the input audio segment
+
+            if num_channels == 1: # Output is mono (1D)
+                if normalized_audio.dim() == 2:
+                    # If segment is 2D (e.g., [1, samples] or [channels, samples]), squeeze to 1D
+                    if normalized_audio.shape[0] == 1: # If it's [1, samples], just squeeze
+                        normalized_audio = normalized_audio.squeeze(0)
+                    else: # If it's multi-channel, sum to mono
+                        normalized_audio = torch.sum(normalized_audio, dim=0)
+                # If it's already 1D, no change needed
+            else: # Output is stereo/multi-channel (2D)
+                if normalized_audio.dim() == 1:
+                    # If segment is mono (1D), expand to 2D and repeat channels
+                    normalized_audio = normalized_audio.unsqueeze(0).repeat(num_channels, 1)
+                elif normalized_audio.dim() == 2 and normalized_audio.shape[0] != num_channels:
+                    # If segment is 2D but has wrong channel count, raise error
+                    raise RuntimeError(f"Channel mismatch: output buffer has {num_channels} channels, but segment {i} has {normalized_audio.shape[0]} channels.")
+            
+            print(f"🔍 DEBUG: Segment {i} after normalization: shape={normalized_audio.shape}, dim={normalized_audio.dim()}")
+
+
+            start_sample = int(subtitle.start_time * sample_rate)
+            end_sample_segment = start_sample + normalized_audio.size(-1)
+
+            # Resize output_audio if current segment extends beyond current buffer size
+            if end_sample_segment > output_audio.size(-1):
+                new_total_samples = end_sample_segment
+                if num_channels == 1:
+                    new_output_audio = torch.zeros(new_total_samples, device=device, dtype=dtype)
+                else:
+                    new_output_audio = torch.zeros(num_channels, new_total_samples, device=device, dtype=dtype)
+                
+                # Copy existing audio to the new larger buffer
+                current_len = output_audio.size(-1)
+                if num_channels == 1:
+                    new_output_audio[:current_len] = output_audio
+                else:
+                    new_output_audio[:, :current_len] = output_audio
+                output_audio = new_output_audio
+                print(f"🔍 DEBUG: Resized output buffer to {output_audio.size(-1)} samples")
+
+            # Add (mix) the current audio segment into the output buffer
+            # Ensure dimensions match for addition
+            if output_audio.dim() == 1:
+                output_audio[start_sample:end_sample_segment] += normalized_audio
+            else:
+                output_audio[:, start_sample:end_sample_segment] += normalized_audio
+            
+            print(f"🔍 DEBUG: Placed segment {i} from sample {start_sample} to {end_sample_segment}")
+
+        print(f"✅ DEBUG: Final assembled audio shape: {output_audio.shape}")
+        return output_audio
+
+
+print("✅ ChatterboxSRTTTSNode class defined")
+
 # Node mappings for ComfyUI - UPDATED: Unique names to avoid conflicts
 NODE_CLASS_MAPPINGS = {
     "ChatterBoxVoiceTTS": ChatterboxTTSNode,
@@ -624,5 +1826,13 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ChatterBoxVoiceTTS": "🎤 ChatterBox Voice TTS",
-    "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion", 
+    "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion",
 }
+
+# Add SRT node if support is available
+if SRT_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxSRTVoiceTTS"] = ChatterboxSRTTTSNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
+    print("✅ SRT TTS node registered successfully")
+else:
+    print("❌ SRT TTS node not registered - missing dependencies")

@@ -7,6 +7,17 @@ Enhanced with integrated audio recording and smart voice capture!
 # Import ChatterBox TTS and VC nodes
 from .nodes import ChatterboxTTSNode, ChatterboxVCNode
 
+# Import SRT node if available
+try:
+    from .nodes import ChatterboxSRTTTSNode, SRT_SUPPORT_AVAILABLE
+    if SRT_SUPPORT_AVAILABLE:
+        print("✅ SRT TTS node available!")
+    else:
+        print("⚠️  SRT TTS node not available - missing dependencies")
+except ImportError as e:
+    print(f"⚠️  SRT TTS node import failed: {e}")
+    SRT_SUPPORT_AVAILABLE = False
+
 # Import Audio Recorder node (with error handling)
 try:
     from .nodes_audio_recorder import ChatterBoxVoiceCapture
@@ -28,6 +39,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ChatterBoxVoiceTTS": "🎤 ChatterBox Voice TTS",
     "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion",
 }
+
+# Add SRT node if available
+if SRT_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxSRTVoiceTTS"] = ChatterboxSRTTTSNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
 
 # Add Audio Recorder if available - UNIQUE NAME
 if AUDIO_RECORDER_AVAILABLE:
