@@ -263,7 +263,7 @@ MIT License - Same as ChatterboxTTS
 - **ResembleAI** for ChatterboxTTS
 - **ComfyUI** team for the amazing framework
 - **sounddevice** library for audio recording functionality
-- **Diogod** for the SRT Timing and TTS Node implementation
+- **[Diogod](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice)** for the SRT Timing TTS Node implementation
 
 ## 🔗 Links
 
