@@ -2,8 +2,13 @@ from pathlib import Path
 
 import librosa
 import torch
-import perth
+import warnings
 from huggingface_hub import hf_hub_download
+
+# Import perth with warnings disabled
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import perth
 
 from .models.s3tokenizer import S3_SR
 from .models.s3gen import S3GEN_SR, S3Gen
@@ -25,7 +30,10 @@ class ChatterboxVC:
         self.sr = S3GEN_SR
         self.s3gen = s3gen
         self.device = device
-        self.watermarker = perth.PerthImplicitWatermarker()
+        # Initialize watermarker silently
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.watermarker = perth.PerthImplicitWatermarker()
         if ref_dict is None:
             self.ref_dict = None
         else:
@@ -36,19 +44,26 @@ class ChatterboxVC:
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxVC':
+        print(f"📦 Loading local ChatterBox VC models from: {ckpt_dir}")
         ckpt_dir = Path(ckpt_dir)
-        ref_dict = None
-        if (builtin_voice := ckpt_dir / "conds.pt").exists():
-            states = torch.load(builtin_voice)
-            ref_dict = states['gen']
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            
+            ref_dict = None
+            if (builtin_voice := ckpt_dir / "conds.pt").exists():
+                states = torch.load(builtin_voice)
+                ref_dict = states['gen']
 
-        s3gen = S3Gen()
-        s3gen.load_state_dict(
-            torch.load(ckpt_dir / "s3gen.pt")
-        )
-        s3gen.to(device).eval()
+            s3gen = S3Gen()
+            s3gen.load_state_dict(
+                torch.load(ckpt_dir / "s3gen.pt")
+            )
+            s3gen.to(device).eval()
 
-        return cls(s3gen, device, ref_dict=ref_dict)
+            instance = cls(s3gen, device, ref_dict=ref_dict)
+            print("✅ Successfully loaded all local ChatterBox VC models")
+            return instance
 
     @classmethod
     def from_pretrained(cls, device) -> 'ChatterboxVC':

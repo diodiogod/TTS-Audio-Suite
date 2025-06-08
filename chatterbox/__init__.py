@@ -1,6 +1,16 @@
+# Set up global warning filters
+import warnings
+
+# Filter out specific warning messages
+warnings.filterwarnings("ignore", message=".*LoRACompatibleLinear.*")
+warnings.filterwarnings("ignore", message=".*PerthNet.*")
+warnings.filterwarnings("ignore", message=".*requires authentication.*")
+
 # Import main TTS/VC modules with error handling
 try:
-    from .tts import ChatterboxTTS
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        from .tts import ChatterboxTTS
     TTS_AVAILABLE = True
 except ImportError:
     TTS_AVAILABLE = False
@@ -14,7 +24,9 @@ except ImportError:
             raise ImportError("ChatterboxTTS not available - missing dependencies")
 
 try:
-    from .vc import ChatterboxVC
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        from .vc import ChatterboxVC
     VC_AVAILABLE = True
 except ImportError:
     VC_AVAILABLE = False
