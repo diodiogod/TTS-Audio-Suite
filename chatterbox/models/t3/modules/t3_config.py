@@ -1,27 +1,41 @@
+from dataclasses import dataclass, field
+from typing import Dict, Any
 from ..llama_configs import LLAMA_CONFIGS
 
 
+@dataclass
 class T3Config:
-    start_text_token = 255
-    stop_text_token = 0
-    text_tokens_dict_size = 704
-    max_text_tokens = 2048
+    # Text tokens
+    start_text_token: int = 255
+    stop_text_token: int = 0
+    text_tokens_dict_size: int = 704
+    max_text_tokens: int = 2048
 
-    start_speech_token = 6561
-    stop_speech_token = 6562
-    speech_tokens_dict_size = 8194
-    max_speech_tokens = 4096
+    # Speech tokens
+    start_speech_token: int = 6561
+    stop_speech_token: int = 6562
+    speech_tokens_dict_size: int = 8194
+    max_speech_tokens: int = 4096
 
-    llama_config_name = "Llama_520M"
-    input_pos_emb = "learned"
-    speech_cond_prompt_len = 150
+    # Model settings
+    llama_config_name: str = "Llama_520M"
+    input_pos_emb: str = "learned"
+    speech_cond_prompt_len: int = 150
 
-    # For T3CondEnc
-    encoder_type = "voice_encoder"
-    speaker_embed_size = 256
-    use_perceiver_resampler = True
-    emotion_adv = True
+    # T3CondEnc settings
+    encoder_type: str = "voice_encoder"
+    speaker_embed_size: int = 256
+    use_perceiver_resampler: bool = True
+    emotion_adv: bool = True
+
+    # Model configuration with defaults
+    model_cfg: Dict[str, Any] = field(default_factory=lambda: {
+        "attn_implementation": "eager",
+        "output_attentions": False,
+        "use_cache": True,
+        "return_dict": True
+    })
 
     @property
-    def n_channels(self):
+    def n_channels(self) -> int:
         return LLAMA_CONFIGS[self.llama_config_name]["hidden_size"]

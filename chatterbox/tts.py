@@ -144,11 +144,28 @@ class ChatterboxTTS:
             )
             ve.to(device).eval()
 
-            t3 = T3()
+            # Load model state
             t3_state = torch.load(ckpt_dir / "t3_cfg.pt")
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
+            
+            # Create config with eager attention
+            from .models.t3.t3 import T3Config
+            config = T3Config()
+            config.model_cfg = {
+                "attn_implementation": "eager",
+                "output_attentions": False,
+                "use_cache": True
+            }
+            
+            # Initialize model with config
+            t3 = T3(config)
+            
+            # Load state and ensure settings
             t3.load_state_dict(t3_state)
+            t3.tfmr.config.attn_implementation = "eager"
+            t3.tfmr.output_attentions = False
+            
             t3.to(device).eval()
 
             s3gen = S3Gen()

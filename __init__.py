@@ -1,12 +1,16 @@
 """
 ComfyUI ChatterBox Voice Extension
-High-quality Text-to-Speech and Voice Conversion nodes using ResembleAI's ChatterboxTTS
-Enhanced with integrated audio recording and smart voice capture!
+High-quality Text-to-Speech and Voice Conversion nodes using ResembleAI's ChatterboxTTS:
+• 🎤 ChatterBox Voice TTS
+• 📺 ChatterBox SRT Voice TTS
+• 🔄 ChatterBox Voice Conversion
+• 🎙️ ChatterBox Voice Capture
 """
 
 # Import from nodes.py
 from .nodes import (
-    ChatterboxTTSNode, ChatterboxVCNode, IS_DEV, VERSION
+    ChatterboxTTSNode, ChatterboxVCNode, IS_DEV, VERSION,
+    SEPARATOR, VERSION_DISPLAY, find_chatterbox_models
 )
 
 # Import SRT node if available
@@ -53,3 +57,9 @@ __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 
 # Define web directory for JavaScript files
 WEB_DIRECTORY = "./web"
+
+# Print final initialization with ALL nodes list
+print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
+for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
+    print(f"   • {node}")
+print(SEPARATOR)
