@@ -23,6 +23,15 @@ import os
 import tempfile
 import re
 from typing import List, Tuple, Optional
+try:
+    from chatterbox.audio_timing import FFmpegTimeStretcher, PhaseVocoderTimeStretcher
+except ImportError:
+    try:
+        from .chatterbox.audio_timing import FFmpegTimeStretcher, PhaseVocoderTimeStretcher
+    except ImportError:
+        # Create dummy classes if import fails
+        FFmpegTimeStretcher = type('FFmpegTimeStretcher', (object,), {})
+        PhaseVocoderTimeStretcher = type('PhaseVocoderTimeStretcher', (object,), {})
 
 # Define a global in-memory cache
 GLOBAL_AUDIO_CACHE = {}
@@ -1098,10 +1107,34 @@ The audio will match these exact timings.""",
             # Generate timing report AFTER all adjustments are finalized
             timing_report = self._generate_timing_report(subtitles, adjustments, timing_mode)
             
-            # Generate info with cache status
+            # Generate info with cache status and stretching method
             cache_status = "cached" if any_segment_cached else "generated"
+            stretch_info = ""
+            
+            # Get stretching method info
+            if timing_mode == "stretch_to_fit":
+                current_stretcher = assembler.time_stretcher
+            elif timing_mode == "smart_natural":
+                # Use the stored stretcher type for smart_natural mode
+                if hasattr(self, '_smart_natural_stretcher'):
+                    if self._smart_natural_stretcher == "ffmpeg":
+                        stretch_info = ", Stretching method: FFmpeg"
+                    else:
+                        stretch_info = ", Stretching method: Phase Vocoder"
+                else:
+                    stretch_info = ", Stretching method: Unknown"
+            
+            # For stretch_to_fit mode, examine the actual stretcher
+            if timing_mode == "stretch_to_fit" and 'current_stretcher' in locals():
+                if isinstance(current_stretcher, FFmpegTimeStretcher):
+                    stretch_info = ", Stretching method: FFmpeg"
+                elif isinstance(current_stretcher, PhaseVocoderTimeStretcher):
+                    stretch_info = ", Stretching method: Phase Vocoder"
+                else:
+                    stretch_info = f", Stretching method: {current_stretcher.__class__.__name__}"
+            
             info = (f"Generated {total_duration:.1f}s SRT-timed audio from {len(subtitles)} subtitles "
-                   f"using {timing_mode} mode ({cache_status} segments, {self.model_source} models)")
+                   f"using {timing_mode} mode ({cache_status} segments, {self.model_source} models{stretch_info})")
             
             # Generation complete
             
@@ -1436,8 +1469,19 @@ The audio will match these exact timings.""",
         # Create a mutable copy of subtitles to adjust start/end times
         mutable_subtitles = [SRTSubtitle(s.sequence, s.start_time, s.end_time, s.text) for s in subtitles]
         
-        # Initialize time stretcher
-        time_stretcher = PhaseVocoderTimeStretcher()
+        # Initialize stretcher for smart_natural mode
+        try:
+            # Try FFmpeg first
+            print("Smart natural mode: Trying FFmpeg stretcher...")
+            time_stretcher = FFmpegTimeStretcher()
+            self._smart_natural_stretcher = "ffmpeg"
+            print("Smart natural mode: Using FFmpeg stretcher")
+        except AudioTimingError as e:
+            # Fall back to Phase Vocoder
+            print(f"Smart natural mode: FFmpeg initialization failed ({str(e)}), falling back to Phase Vocoder")
+            time_stretcher = PhaseVocoderTimeStretcher()
+            self._smart_natural_stretcher = "phase_vocoder"
+            print("Smart natural mode: Using Phase Vocoder stretcher")
         
         # Process audio with smart natural timing
         
