@@ -47,8 +47,22 @@ class T3(nn.Module):
     def __init__(self, hp=T3Config()):
         super().__init__()
         self.hp = hp
-        self.cfg = LlamaConfig(**LLAMA_CONFIGS[hp.llama_config_name])
-        self.tfmr = LlamaModel(self.cfg)
+        # Get base LLaMA config
+        config_dict = dict(LLAMA_CONFIGS[hp.llama_config_name])
+        
+        # Update with T3Config model settings
+        config_dict.update(hp.model_cfg)
+        
+        # Create and initialize model with proper config
+        self.cfg = LlamaConfig(**config_dict)
+        self.tfmr = LlamaModel(
+            config=self.cfg,
+            attn_implementation="eager"
+        )
+        
+        # Ensure settings are properly applied to model instance
+        for key, value in hp.model_cfg.items():
+            setattr(self.tfmr, key, value)
         self.dim = self.cfg.hidden_size
         self.deepspeed_patch_applied = False
 
@@ -130,15 +144,16 @@ class T3(nn.Module):
             speech_tokens=speech_tokens,
         )
 
-        # backbone tranformer forward
-        tfmr_out = self.tfmr.forward(
-            input_ids=None,
-            # position_ids=position_ids, # TODO? ROPE should be fine?
-            inputs_embeds=embeds,
-            output_hidden_states=True,
-            return_dict=True,
-            use_cache=(not training),
-        )
+        # Forward with settings from config
+        forward_kwargs = {
+            'input_ids': None,
+            'inputs_embeds': embeds,
+            'output_hidden_states': True,
+            'use_cache': (not training),
+            **{k: v for k, v in self.hp.model_cfg.items() if k != 'attn_implementation'}
+        }
+        
+        tfmr_out = self.tfmr.forward(**forward_kwargs)
         hidden_states = tfmr_out.hidden_states[-1]  # final tfmr layer output, (B, seq, dim)
 
         # post-processing: splice out text and speech parts of hidden states
@@ -254,13 +269,20 @@ class T3(nn.Module):
         # TODO? synchronize the expensive compile function
         # with self.compile_lock:
         if not self.compiled:
+            # Override transformer settings for alignment
+            self.tfmr.output_attentions = False
+            self.tfmr.use_cache = True
+            self.tfmr.return_dict = True
+            
             alignment_stream_analyzer = AlignmentStreamAnalyzer(
                 self.tfmr,
                 None,
                 text_tokens_slice=(len_cond, len_cond + text_tokens.size(-1)),
-                alignment_layer_idx=9, # TODO: hparam or something?
+                alignment_layer_idx=9,
                 eos_idx=self.hp.stop_speech_token,
             )
+            
+            # Create backend with updated settings
             patched_model = T3HuggingfaceBackend(
                 config=self.cfg,
                 llama=self.tfmr,
@@ -268,6 +290,11 @@ class T3(nn.Module):
                 speech_head=self.speech_head,
                 alignment_stream_analyzer=alignment_stream_analyzer,
             )
+            
+            # Ensure backend has correct attention settings
+            patched_model.output_attentions = False
+            patched_model.use_cache = True
+            patched_model.return_dict = True
             self.patched_model = patched_model
             self.compiled = True
 
@@ -308,17 +335,21 @@ class T3(nn.Module):
         top_p_warper = TopPLogitsWarper(top_p=top_p)
         repetition_penalty_processor = RepetitionPenaltyLogitsProcessor(penalty=repetition_penalty)
 
-        # ---- Initial Forward Pass (no kv_cache yet) ----
+        # ---- Initial Forward Pass ----
+        from transformers.cache_utils import DynamicCache
+        cache = DynamicCache()
+        
         output = self.patched_model(
             inputs_embeds=inputs_embeds,
-            past_key_values=None,
             use_cache=True,
-            output_attentions=True,
+            output_attentions=False,  # Ensure no attention output
             output_hidden_states=True,
             return_dict=True,
+            past_key_values=None  # Start with fresh cache
         )
-        # Initialize kv_cache with the full context.
-        past = output.past_key_values
+        
+        # Initialize cache with output
+        cache.update(output.past_key_values)
 
         # ---- Generation Loop using kv_cache ----
         for i in tqdm(range(max_new_tokens), desc="Sampling", dynamic_ncols=True):
@@ -357,15 +388,18 @@ class T3(nn.Module):
             next_token_embed = torch.cat([next_token_embed, next_token_embed])
 
             # Forward pass with only the new token and the cached past.
+            # Forward pass with cache
             output = self.patched_model(
                 inputs_embeds=next_token_embed,
-                past_key_values=past,
-                output_attentions=True,
+                past_key_values=cache.to_legacy_tuple(),
+                use_cache=True,
+                output_attentions=False,
                 output_hidden_states=True,
-                return_dict=True,
+                return_dict=True
             )
-            # Update the kv_cache.
-            past = output.past_key_values
+            
+            # Update cache
+            cache.update(output.past_key_values)
 
         # Concatenate all predicted tokens along the sequence dimension.
         predicted_tokens = torch.cat(predicted, dim=1)  # shape: (B, num_tokens)

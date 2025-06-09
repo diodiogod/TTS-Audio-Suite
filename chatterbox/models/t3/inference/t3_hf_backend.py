@@ -25,8 +25,23 @@ class T3HuggingfaceBackend(LlamaPreTrainedModel, GenerationMixin):
         logits_queue=None,
         alignment_stream_analyzer: 'AlignmentStreamAnalyzer'=None,
     ):
+        # Initialize with consistent settings
+        config.output_attentions = False
+        config.use_cache = True
+        config.return_dict = True
+        config.attn_implementation = "eager"
+        
         super().__init__(config)
         self.model = llama
+        
+        # Ensure model has same settings
+        self.model.config.update(
+            output_attentions=False,
+            use_cache=True,
+            return_dict=True,
+            attn_implementation="eager"
+        )
+        
         self.speech_enc = speech_enc
         self.speech_head = speech_head
         self._added_cond = False
@@ -92,12 +107,22 @@ class T3HuggingfaceBackend(LlamaPreTrainedModel, GenerationMixin):
         assert return_dict
         assert output_hidden_states
 
+        from transformers.cache_utils import DynamicCache
+        
+        # Convert past_key_values to DynamicCache if needed
+        if past_key_values is not None:
+            if not isinstance(past_key_values, DynamicCache):
+                cache = DynamicCache()
+                cache.update(past_key_values)
+                past_key_values = cache
+        
+        # Forward with consistent settings
         tfmr_out = self.model(
             inputs_embeds=inputs_embeds,
-            past_key_values=past_key_values,
+            past_key_values=past_key_values.to_legacy_tuple() if past_key_values else None,
             use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
+            output_attentions=False,  # Always disable attention outputs
+            output_hidden_states=True,
             return_dict=True,
         )
         hidden_states = tfmr_out.hidden_states[-1]  # (B, seq, dim)

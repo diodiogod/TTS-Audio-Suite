@@ -1824,7 +1824,7 @@ else:
 print(SEPARATOR)
 
 # Print final initialization with nodes list
-print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
-for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
-    print(f"   • {node}")
-print(SEPARATOR)
+# print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
+# for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
+#     print(f"   • {node}")
+# print(SEPARATOR)
