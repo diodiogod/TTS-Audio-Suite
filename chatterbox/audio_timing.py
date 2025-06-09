@@ -375,6 +375,7 @@ class TimedAudioAssembler:
             time_stretcher: Custom time stretching utility (creates default if None)
         """
         self.sample_rate = sample_rate
+        self.stretch_method_used = None  # Track which stretching method was used
         
         if time_stretcher is not None:
             if not isinstance(time_stretcher, (PhaseVocoderTimeStretcher, FFmpegTimeStretcher)):
@@ -384,11 +385,14 @@ class TimedAudioAssembler:
             if stretcher_type == "ffmpeg":
                 try:
                     self.time_stretcher = FFmpegTimeStretcher()
+                    print("Using FFmpeg for time stretching")
                 except AudioTimingError as e:
                     print(f"Warning: FFmpeg stretcher initialization failed ({str(e)}). Falling back to phase vocoder.")
                     self.time_stretcher = PhaseVocoderTimeStretcher()
+                    print("Using Phase Vocoder for time stretching")
             elif stretcher_type == "phase_vocoder":
                 self.time_stretcher = PhaseVocoderTimeStretcher()
+                print("Using Phase Vocoder for time stretching")
             else:
                 raise AudioTimingError(f"Invalid stretcher_type: {stretcher_type}. Use 'ffmpeg' or 'phase_vocoder'")
     
@@ -443,12 +447,21 @@ class TimedAudioAssembler:
             # Time-stretch if needed
             if abs(current_duration - target_duration) > 0.01:  # 10ms tolerance
                 stretch_factor = target_duration / current_duration
-                print(f"Time-stretching segment {i}: {stretch_factor:.3f}x "
+                # Determine and track stretching method
+                if isinstance(self.time_stretcher, FFmpegTimeStretcher):
+                    self.stretch_method_used = "ffmpeg"
+                elif isinstance(self.time_stretcher, PhaseVocoderTimeStretcher):
+                    self.stretch_method_used = "phase_vocoder"
+                
+                print(f"Time-stretching segment {i} using {self.stretch_method_used}: {stretch_factor:.3f}x "
                       f"({current_duration:.3f}s -> {target_duration:.3f}s)")
                 
                 audio_segment = self.time_stretcher.time_stretch(
                     audio_segment, stretch_factor, self.sample_rate
                 )
+            else:
+                # No stretching needed
+                self.stretch_method_used = "none"
             
             # Calculate sample positions
             start_sample = AudioTimingUtils.seconds_to_samples(start_time, self.sample_rate)
