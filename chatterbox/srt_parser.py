@@ -156,10 +156,10 @@ class SRTParser:
                 
             lines = [line.strip() for line in block.split('\n') if line.strip()]
             
-            if len(lines) < 3:
+            if len(lines) < 2: # Sequence and Timing are mandatory
                 raise SRTParseError(
                     f"Block {block_idx + 1}: Invalid SRT block format. "
-                    f"Expected at least 3 lines (sequence, timing, text), got {len(lines)}"
+                    f"Expected at least 2 lines (sequence, timing), got {len(lines)}"
                 )
             
             try:
@@ -188,18 +188,18 @@ class SRTParser:
                 cls.validate_timing(start_time, end_time, sequence)
                 
                 # Extract text (everything after timing line)
-                text_lines = lines[2:]
-                text = ' '.join(text_lines).strip()
-                
-                if not text:
-                    raise SRTParseError(f"Block {block_idx + 1}: Subtitle text cannot be empty")
+                # Extract text (everything after timing line)
+                if len(lines) >= 3:
+                    text_lines = lines[2:]
+                    # Initial strip during join, further normalization below
+                    text = ' '.join(text_lines).strip()
+                else: # len(lines) == 2, implies no text or only whitespace lines that were filtered out
+                    text = ""
                 
                 # Clean up text (remove HTML tags, normalize whitespace)
+                # This will also handle the case where text is already ""
                 text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
                 text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
-                
-                if not text:
-                    raise SRTParseError(f"Block {block_idx + 1}: Subtitle text is empty after cleanup")
                 
                 subtitle = SRTSubtitle(
                     sequence=sequence,

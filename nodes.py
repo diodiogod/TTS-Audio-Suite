@@ -1020,31 +1020,47 @@ The audio will match these exact timings.""",
             
             for i, subtitle in enumerate(subtitles):
                 
-                # Generate segment-specific cache key
-                segment_cache_key = self._generate_segment_cache_key(
-                    subtitle.text, exaggeration, temperature, cfg_weight, seed,
-                    audio_prompt_component, self.model_source, device
-                )
-                
-                # Try to get cached audio for this segment
-                cached_segment_data = self._get_cached_segment_audio(segment_cache_key)
-                
-                if cached_segment_data:
-                    wav, natural_duration = cached_segment_data
-                    # Cache hit - use silently
-                    any_segment_cached = True
-                else:
-                    # Generate audio for this subtitle
-                    wav = self.model.generate(
-                        subtitle.text,
-                        audio_prompt_path=audio_prompt,
-                        exaggeration=exaggeration,
-                        temperature=temperature,
-                        cfg_weight=cfg_weight
+                if not subtitle.text.strip():
+                    # Handle empty text by creating silence directly
+                    natural_duration = subtitle.duration
+                    # Use the device the model is loaded on (self.device)
+                    # and assume mono output for silence, matching TTS.
+                    # The dtype will be float32 by default from create_silence,
+                    # which is standard for audio tensors.
+                    wav = AudioTimingUtils.create_silence(
+                        duration_seconds=natural_duration,
+                        sample_rate=self.model.sr,
+                        channels=1,  # TTS typically outputs mono
+                        device=self.device # Use the node's device, which the model uses
                     )
-                    natural_duration = AudioTimingUtils.get_audio_duration(wav, self.model.sr)
-                    self._cache_segment_audio(segment_cache_key, wav, natural_duration)
-                    # Generated new audio - cache silently
+                    if IS_DEV:
+                        print(f"🤫 Segment {i+1} (Seq {subtitle.sequence}): Empty text, generating {natural_duration:.2f}s silence on {self.device}.")
+                else:
+                    # Generate segment-specific cache key
+                    segment_cache_key = self._generate_segment_cache_key(
+                        subtitle.text, exaggeration, temperature, cfg_weight, seed,
+                        audio_prompt_component, self.model_source, device
+                    )
+                    
+                    # Try to get cached audio for this segment
+                    cached_segment_data = self._get_cached_segment_audio(segment_cache_key)
+                    
+                    if cached_segment_data:
+                        wav, natural_duration = cached_segment_data
+                        # Cache hit - use silently
+                        any_segment_cached = True
+                    else:
+                        # Generate audio for this subtitle
+                        wav = self.model.generate(
+                            subtitle.text,
+                            audio_prompt_path=audio_prompt,
+                            exaggeration=exaggeration,
+                            temperature=temperature,
+                            cfg_weight=cfg_weight
+                        )
+                        natural_duration = AudioTimingUtils.get_audio_duration(wav, self.model.sr)
+                        self._cache_segment_audio(segment_cache_key, wav, natural_duration)
+                        # Generated new audio - cache silently
                 
                 audio_segments.append(wav)
                 natural_durations.append(natural_duration)
@@ -1667,25 +1683,40 @@ The audio will match these exact timings.""",
         target_channels = processed_segments[0].shape[0] if target_dim == 2 else 1
         
         normalized_final_audio_parts = []
+        target_device_for_concat = self.device # Explicitly define for clarity
+
         for part in final_audio_parts:
-            if part.dim() == target_dim:
-                if target_dim == 2 and part.shape[0] != target_channels:
-                    # Handle channel mismatch for 2D tensors (e.g., mono audio in stereo context)
-                    if part.shape[0] == 1: # Mono audio, expand to target_channels
-                        normalized_final_audio_parts.append(part.repeat(target_channels, 1))
+            # Ensure each part is on the target_device before normalization
+            part_on_device = part.to(target_device_for_concat)
+
+            processed_part_for_append = None
+            current_part_dim = part_on_device.dim()
+
+            if current_part_dim == target_dim:
+                if target_dim == 2 and part_on_device.shape[0] != target_channels:
+                    if part_on_device.shape[0] == 1:
+                        processed_part_for_append = part_on_device.repeat(target_channels, 1)
                     else:
-                        raise RuntimeError(f"Channel mismatch in final assembly: Expected {target_channels} channels, got {part.shape[0]}")
+                        # This branch raises an error, so no tensor is assigned here
+                        raise RuntimeError(f"Channel mismatch in final assembly: Expected {target_channels} channels, got {part_on_device.shape[0]}")
                 else:
-                    normalized_final_audio_parts.append(part)
-            elif part.dim() == 1 and target_dim == 2: # Mono part, target is stereo
-                normalized_final_audio_parts.append(part.unsqueeze(0).repeat(target_channels, 1))
-            elif part.dim() == 2 and target_dim == 1: # Stereo part, target is mono (shouldn't happen if first segment is 1D)
-                # This case implies a mix of mono and stereo, which is problematic.
-                # For simplicity, if target is 1D, sum multi-channel to mono.
-                normalized_final_audio_parts.append(torch.sum(part, dim=0))
+                    # Part is already on target_device_for_concat and correctly shaped
+                    processed_part_for_append = part_on_device
+            elif current_part_dim == 1 and target_dim == 2: # Mono part, target is multi-channel
+                processed_part_for_append = part_on_device.unsqueeze(0).repeat(target_channels, 1)
+            elif current_part_dim == 2 and target_dim == 1: # Multi-channel part, target is mono
+                processed_part_for_append = torch.sum(part_on_device, dim=0)
             else:
-                raise RuntimeError(f"Dimension mismatch in final assembly: Expected {target_dim}D, got {part.dim()}D")
+                # This branch raises an error
+                raise RuntimeError(f"Dimension mismatch in final assembly: Expected {target_dim}D, got {current_part_dim}D for part with shape {part_on_device.shape}")
+            
+            # Crucially, ensure the final tensor to be appended is on the target_device_for_concat.
+            if processed_part_for_append is not None:
+                 normalized_final_audio_parts.append(processed_part_for_append.to(target_device_for_concat))
+            # If an error was raised in a branch, processed_part_for_append might be None,
+            # but the error would have already stopped execution.
         
+        # All parts in normalized_final_audio_parts are on self.device
         return torch.cat(normalized_final_audio_parts, dim=-1), smart_adjustments_report
 
     def _assemble_audio_with_overlaps(self, audio_segments: List[torch.Tensor],
