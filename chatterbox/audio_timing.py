@@ -541,9 +541,26 @@ class TimedAudioAssembler:
             target_duration = end_time - start_time
             current_duration = AudioTimingUtils.get_audio_duration(audio_segment, self.sample_rate)
             
+            # If input audio is empty but target duration is positive, create silence.
+            if current_duration == 0.0 and target_duration > 0.0:
+                num_output_channels = first_segment.size(0) if first_segment.dim() > 1 else 1
+                audio_segment = AudioTimingUtils.create_silence(
+                    target_duration,
+                    self.sample_rate,
+                    channels=num_output_channels,
+                    device=first_segment.device, # Use device/dtype consistent with output buffer
+                    dtype=first_segment.dtype
+                )
+                current_duration = target_duration # Update duration, no stretching needed for this segment
+                self.stretch_method_used = "silence_created"
+            
             # Time-stretch if needed
             if abs(current_duration - target_duration) > 0.01:  # 10ms tolerance
-                stretch_factor = target_duration / current_duration
+                if current_duration == 0.0: # Should only be true if target_duration is also ~0.0
+                    stretch_factor = 1.0 # Avoid division by zero
+                else:
+                    stretch_factor = target_duration / current_duration
+                
                 # Determine and track stretching method
                 if isinstance(self.time_stretcher, FFmpegTimeStretcher):
                     self.stretch_method_used = "ffmpeg"
