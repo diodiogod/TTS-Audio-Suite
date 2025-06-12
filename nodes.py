@@ -1078,19 +1078,25 @@ The audio will match these exact timings.""",
             # Assemble audio using selected mode
             
             # Normalize all audio segments first to ensure consistent dimensions
+            # and ensure all segments are on the correct device (self.device).
             normalized_segments = []
-            for i, audio in enumerate(audio_segments):
-                if audio.dim() == 1:
-                    normalized_segments.append(audio)
-                elif audio.dim() == 2:
-                    normalized_segments.append(audio)
-                elif audio.dim() == 3 and audio.shape[0] == 1:
+            # self.device is the target device established in load_model()
+            target_device_for_segments = self.device
+            for i, segment_audio_from_list in enumerate(audio_segments):
+                # Ensure the segment is on the target_device_for_segments before normalization
+                current_segment_on_target_device = segment_audio_from_list.to(target_device_for_segments)
+
+                if current_segment_on_target_device.dim() == 1:
+                    normalized_segments.append(current_segment_on_target_device)
+                elif current_segment_on_target_device.dim() == 2:
+                    normalized_segments.append(current_segment_on_target_device)
+                elif current_segment_on_target_device.dim() == 3 and current_segment_on_target_device.shape[0] == 1:
                     # Remove batch dimension if present
-                    normalized = audio.squeeze(0)
+                    normalized = current_segment_on_target_device.squeeze(0)
                     # Track normalization adjustments
                     normalized_segments.append(normalized)
                 else:
-                    raise RuntimeError(f"Unsupported audio tensor shape for segment {i}: {audio.shape}")
+                    raise RuntimeError(f"Unsupported audio tensor shape for segment {i}: {current_segment_on_target_device.shape}")
             
             if timing_mode == "smart_natural":
                 # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
@@ -1174,12 +1180,14 @@ The audio will match these exact timings.""",
                 "\n".join(self._timing_warnings) if hasattr(self, '_timing_warnings') and self._timing_warnings else ""
             )
             
-        except SRTParseError:
-            raise ValueError("SRT parsing error")
-        except AudioTimingError:
-            raise ValueError("Audio timing error")
-        except Exception:
-            raise RuntimeError("SRT TTS generation failed")
+        except SRTParseError as e:
+            raise ValueError(f"SRT parsing error: {e}") from e
+        except AudioTimingError as e:
+            raise ValueError(f"Audio timing error: {e}") from e
+        except Exception as e:
+            import traceback
+            detailed_error_message = f"SRT TTS generation failed due to an unexpected error: {type(e).__name__} - {e}\n{traceback.format_exc()}"
+            raise RuntimeError(detailed_error_message) from e
         finally:
             # Clean up temporary file
             if reference_audio is not None and audio_prompt:
@@ -1728,18 +1736,24 @@ The audio will match these exact timings.""",
         if not audio_segments:
             return torch.empty(0) # Return empty tensor if no segments
 
-        # Determine output buffer properties from the first segment
-        first_segment = audio_segments[0]
-        num_channels = first_segment.shape[0] if first_segment.dim() == 2 else 1
-        device = first_segment.device
-        dtype = first_segment.dtype
+        # Use self.device directly for all operations within this function.
+        # self.device is the consistent target device (e.g., 'cuda' or 'cpu')
+        # established during model loading.
+        target_device = self.device
+
+        # Determine output buffer properties (num_channels, dtype) from the first segment,
+        # ensuring it's on the target_device first.
+        # audio_segments (which is normalized_segments) should already be on self.device.
+        _first_segment_for_props = audio_segments[0].to(target_device)
+        num_channels = _first_segment_for_props.shape[0] if _first_segment_for_props.dim() == 2 else 1
+        dtype = _first_segment_for_props.dtype
 
         # Calculate total duration needed for the output buffer
-        # This should be at least the end time of the last subtitle,
-        # or the end time of the last audio segment if it extends beyond its subtitle.
         max_end_time = 0.0
-        for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
-            segment_end_time = subtitle.start_time + (audio.size(-1) / sample_rate)
+        for i, (segment_from_list, subtitle) in enumerate(zip(audio_segments, subtitles)):
+            # Ensure segment is on target_device for size calculation
+            segment_on_target = segment_from_list.to(target_device)
+            segment_end_time = subtitle.start_time + (segment_on_target.size(-1) / sample_rate)
             max_end_time = max(max_end_time, segment_end_time)
         
         # Ensure the buffer is at least as long as the last subtitle's end time
@@ -1747,50 +1761,52 @@ The audio will match these exact timings.""",
             max_end_time = max(max_end_time, subtitles[-1].end_time)
 
         total_samples = int(max_end_time * sample_rate)
-        
 
         # Initialize output buffer with zeros
         if num_channels == 1:
-            output_audio = torch.zeros(total_samples, device=device, dtype=dtype)
+            output_audio = torch.zeros(total_samples, device=target_device, dtype=dtype)
         else:
-            output_audio = torch.zeros(num_channels, total_samples, device=device, dtype=dtype)
+            output_audio = torch.zeros(num_channels, total_samples, device=target_device, dtype=dtype)
 
-        for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
+        for i, (original_segment_from_list, subtitle) in enumerate(zip(audio_segments, subtitles)):
             # Process segment
 
+            # Explicitly move the current segment to target_device before any processing
+            current_processing_segment = original_segment_from_list.to(target_device)
+
             # Ensure normalized_audio matches the channel dimension of output_audio
-            # The `audio` input to this method (`normalized_segments`) should already be 1D or 2D.
-            normalized_audio = audio # Start with the input audio segment
+            # current_processing_segment is now guaranteed to be on target_device.
+            normalized_audio_for_add = current_processing_segment
 
             if num_channels == 1: # Output is mono (1D)
-                if normalized_audio.dim() == 2:
+                if normalized_audio_for_add.dim() == 2:
                     # If segment is 2D (e.g., [1, samples] or [channels, samples]), squeeze to 1D
-                    if normalized_audio.shape[0] == 1: # If it's [1, samples], just squeeze
-                        normalized_audio = normalized_audio.squeeze(0)
+                    if normalized_audio_for_add.shape[0] == 1: # If it's [1, samples], just squeeze
+                        normalized_audio_for_add = normalized_audio_for_add.squeeze(0)
                     else: # If it's multi-channel, sum to mono
-                        normalized_audio = torch.sum(normalized_audio, dim=0)
+                        normalized_audio_for_add = torch.sum(normalized_audio_for_add, dim=0)
                 # If it's already 1D, no change needed
             else: # Output is stereo/multi-channel (2D)
-                if normalized_audio.dim() == 1:
+                if normalized_audio_for_add.dim() == 1:
                     # If segment is mono (1D), expand to 2D and repeat channels
-                    normalized_audio = normalized_audio.unsqueeze(0).repeat(num_channels, 1)
-                elif normalized_audio.dim() == 2 and normalized_audio.shape[0] != num_channels:
+                    normalized_audio_for_add = normalized_audio_for_add.unsqueeze(0).repeat(num_channels, 1)
+                elif normalized_audio_for_add.dim() == 2 and normalized_audio_for_add.shape[0] != num_channels:
                     # If segment is 2D but has wrong channel count, raise error
-                    raise RuntimeError(f"Channel mismatch: output buffer has {num_channels} channels, but segment {i} has {normalized_audio.shape[0]} channels.")
+                    raise RuntimeError(f"Channel mismatch: output buffer has {num_channels} channels, but segment {i} has {normalized_audio_for_add.shape[0]} channels.")
             
             # Segment normalized
-
+            # At this point, normalized_audio_for_add is on target_device and has the correct dimensions for addition.
 
             start_sample = int(subtitle.start_time * sample_rate)
-            end_sample_segment = start_sample + normalized_audio.size(-1)
+            end_sample_segment = start_sample + normalized_audio_for_add.size(-1)
 
             # Resize output_audio if current segment extends beyond current buffer size
             if end_sample_segment > output_audio.size(-1):
                 new_total_samples = end_sample_segment
                 if num_channels == 1:
-                    new_output_audio = torch.zeros(new_total_samples, device=device, dtype=dtype)
+                    new_output_audio = torch.zeros(new_total_samples, device=target_device, dtype=dtype)
                 else:
-                    new_output_audio = torch.zeros(num_channels, new_total_samples, device=device, dtype=dtype)
+                    new_output_audio = torch.zeros(num_channels, new_total_samples, device=target_device, dtype=dtype)
                 
                 # Copy existing audio to the new larger buffer
                 current_len = output_audio.size(-1)
@@ -1801,12 +1817,11 @@ The audio will match these exact timings.""",
                 output_audio = new_output_audio
                 # Buffer resized
 
-            # Add (mix) the current audio segment into the output buffer
-            # Ensure dimensions match for addition
+            # Both output_audio and normalized_audio_for_add are on target_device.
             if output_audio.dim() == 1:
-                output_audio[start_sample:end_sample_segment] += normalized_audio
+                output_audio[start_sample:end_sample_segment] += normalized_audio_for_add
             else:
-                output_audio[:, start_sample:end_sample_segment] += normalized_audio
+                output_audio[:, start_sample:end_sample_segment] += normalized_audio_for_add
             
             # Segment placed
 
