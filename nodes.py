@@ -1,5 +1,5 @@
 # Version and constants
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 IS_DEV = True  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -22,6 +22,8 @@ import folder_paths
 import os
 import tempfile
 import re
+import execution # Import ComfyUI's execution module for interruption handling
+import comfy.model_management as model_management # For better interruption handling
 from typing import List, Tuple, Optional
 try:
     from chatterbox.audio_timing import FFmpegTimeStretcher, PhaseVocoderTimeStretcher
@@ -446,8 +448,13 @@ class ChatterboxTTSNode:
             # Process each chunk
             audio_segments = []
             for i, chunk in enumerate(chunks):
-                chunk_length = len(chunk)
-                # Process chunk
+                # Check for interruption using ComfyUI's model management system
+                if model_management.interrupt_processing:
+                    print(f"⚠️ Generation interrupted at chunk {i+1}/{len(chunks)}")
+                    raise InterruptedError(f"TTS generation interrupted at chunk {i+1}/{len(chunks)}")
+                
+                # Show progress for multi-chunk generation
+                print(f"🎤 Generating TTS chunk {i+1}/{len(chunks)}...")
                 
                 chunk_audio = self.process_audio_chunk(
                     chunk, audio_prompt, exaggeration, temperature, cfg_weight
@@ -868,8 +875,8 @@ The audio will match these exact timings.""",
             }
         }
 
-    RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING", "STRING")
-    RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT", "warnings")
+    RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
     FUNCTION = "generate_srt_speech"
     CATEGORY = "ChatterBox Voice"
 
@@ -963,8 +970,6 @@ The audio will match these exact timings.""",
                             max_stretch_ratio=2.0, min_stretch_ratio=0.5, fade_for_StretchToFit=0.01, enable_audio_cache=True, timing_tolerance=2.0):
         
         # Clear any previous warnings
-        self._timing_warnings = []
-        
         if not SRT_SUPPORT_AVAILABLE:
             raise ImportError("SRT support not available - missing required modules")
         
@@ -997,14 +1002,6 @@ The audio will match these exact timings.""",
             # Parse SRT content silently
             subtitles = self.srt_parser.parse_srt_content(srt_content)
             
-            # Validate timing compatibility
-            warnings = validate_srt_timing_compatibility(subtitles, max_stretch_ratio, min_stretch_ratio)
-            if warnings:
-                # Add warnings to report
-                if not hasattr(self, '_timing_warnings'):
-                    self._timing_warnings = []
-                self._timing_warnings.extend(warnings)
-            
             # Determine the audio prompt component for cache key generation
             audio_prompt_component = ""
             if reference_audio is not None:
@@ -1019,6 +1016,11 @@ The audio will match these exact timings.""",
             natural_durations = []
             
             for i, subtitle in enumerate(subtitles):
+                # Check for interruption using ComfyUI's model management system
+                if model_management.interrupt_processing:
+                    print(f"⚠️ SRT generation interrupted at segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})")
+                    # Raise an exception to properly signal interruption to ComfyUI
+                    raise InterruptedError(f"SRT generation interrupted at segment {i+1}/{len(subtitles)}")
                 
                 if not subtitle.text.strip():
                     # Handle empty text by creating silence directly
@@ -1050,6 +1052,9 @@ The audio will match these exact timings.""",
                         # Cache hit - use silently
                         any_segment_cached = True
                     else:
+                        # Show progress only when actually generating (not from cache)
+                        print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
+                        
                         # Generate audio for this subtitle
                         wav = self.model.generate(
                             subtitle.text,
@@ -1068,6 +1073,10 @@ The audio will match these exact timings.""",
             # Calculate basic adjustments for caching (this part remains the same)
             target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
             adjustments = calculate_timing_adjustments(natural_durations, target_timings)
+            
+            # Add sequence numbers to adjustments for consistency across all modes
+            for i, (adj, subtitle) in enumerate(zip(adjustments, subtitles)):
+                adj['sequence'] = subtitle.sequence
             
             # Generate timing report (adjustments might be updated below for smart_natural)
             # This line needs to be after the smart_natural processing if adjustments are overridden
@@ -1174,10 +1183,9 @@ The audio will match these exact timings.""",
                     "waveform": final_audio.unsqueeze(0),  # Add batch dimension for ComfyUI's format
                     "sample_rate": self.model.sr
                 },
-                info,
-                timing_report,
-                adjusted_srt_string,
-                "\n".join(self._timing_warnings) if hasattr(self, '_timing_warnings') and self._timing_warnings else ""
+                info, # generation_info
+                timing_report, # timing_report
+                adjusted_srt_string # Adjusted_SRT
             )
             
         except SRTParseError as e:
@@ -1283,6 +1291,17 @@ The audio will match these exact timings.""",
     def _generate_timing_report(self, subtitles: List,
                                adjustments: List[dict], timing_mode: str) -> str:
         """Generate detailed timing report"""
+        
+        # Handle edge case where no subtitles were processed (immediate interruption)
+        if not subtitles:
+            return f"""SRT Timing Report ({timing_mode} mode)
+{'=' * 50}
+Total subtitles: 0 (interrupted immediately)
+Total duration: 0.000s
+
+No segments were processed due to immediate interruption.
+"""
+        
         report_lines = [
             f"SRT Timing Report ({timing_mode} mode)",
             "=" * 50,
@@ -1330,7 +1349,7 @@ The audio will match these exact timings.""",
                             timing_info = f" [+{gap_duration:.2f}s silence]"
                     
                     report_lines.append(
-                        f"  {i+1:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
+                        f"  {subtitle.sequence:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
                         f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){timing_info}"
                     )
                 else:
@@ -1340,7 +1359,7 @@ The audio will match these exact timings.""",
                         stretch_info = f" [{adj['stretch_type']} {adj['stretch_factor']:.2f}x]"
                     
                     report_lines.append(
-                        f"  {i+1:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
+                        f"  {subtitle.sequence:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
                         f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){stretch_info}"
                     )
                 
@@ -1380,10 +1399,14 @@ The audio will match these exact timings.""",
             
             report_lines.extend(summary_lines)
         elif timing_mode == "smart_natural":
+            # Define the same threshold used in smart timing processing
+            INSIGNIFICANT_TRUNCATION_THRESHOLD = 0.05
+            
             total_shifted = sum(1 for adj in adjustments if adj['next_segment_shifted_by'] > 0)
             total_stretched = sum(1 for adj in adjustments if abs(adj['stretch_factor_applied'] - 1.0) > 0.01)
             total_padded = sum(1 for adj in adjustments if adj['padding_added'] > 0)
-            total_truncated = sum(1 for adj in adjustments if adj['truncated_by'] > 0)
+            # Only count significant truncations in the summary
+            total_truncated = sum(1 for adj in adjustments if adj['truncated_by'] > INSIGNIFICANT_TRUNCATION_THRESHOLD)
             
             summary_lines = [
                 "",
@@ -1411,6 +1434,10 @@ The audio will match these exact timings.""",
         """
         Generates a multiline SRT string from the final adjusted timings.
         """
+        # Handle edge case where no adjustments were made (immediate interruption)
+        if not adjustments:
+            return "# No subtitles processed due to interruption\n"
+        
         srt_lines = []
         for i, adj in enumerate(adjustments):
             # Convert seconds to SRT time format: HH:MM:SS,ms
@@ -1510,6 +1537,11 @@ The audio will match these exact timings.""",
         # Process audio with smart natural timing
         
         for i, audio in enumerate(audio_segments):
+            # Check for interruption during smart natural processing
+            if model_management.interrupt_processing:
+                print(f"⚠️ Smart natural processing interrupted at segment {i+1}/{len(audio_segments)}")
+                raise InterruptedError(f"Smart natural processing interrupted at segment {i+1}/{len(audio_segments)}")
+                
             current_subtitle = mutable_subtitles[i]
             natural_duration = AudioTimingUtils.get_audio_duration(audio, sample_rate)
             
@@ -1639,7 +1671,17 @@ The audio will match these exact timings.""",
                 # Truncate if still too long
                 truncated_by = final_processed_duration - new_target_duration
                 segment_report['truncated_by'] = truncated_by
-                segment_report['actions'].append(f"🚧 Truncating audio by {truncated_by:.3f}s.")
+                
+                # Define threshold for insignificant truncations (50ms)
+                INSIGNIFICANT_TRUNCATION_THRESHOLD = 0.05
+                
+                if truncated_by > INSIGNIFICANT_TRUNCATION_THRESHOLD:
+                    # Significant truncation - show warning emoji
+                    segment_report['actions'].append(f"🚧 Truncating audio by {truncated_by:.3f}s.")
+                else:
+                    # Insignificant truncation - show without alarming emoji
+                    segment_report['actions'].append(f"Fine-tuning audio duration (-{truncated_by:.3f}s for precision).")
+                
                 # Truncate audio
                 target_samples = AudioTimingUtils.seconds_to_samples(new_target_duration, sample_rate)
                 processed_audio = processed_audio[..., :target_samples]
@@ -1682,7 +1724,11 @@ The audio will match these exact timings.""",
             # Segment appended
             
         if not final_audio_parts:
-            return torch.empty(0, device=audio_segments[0].device, dtype=audio_segments[0].dtype), smart_adjustments_report
+            # Handle case where no segments were processed (e.g., immediate interruption)
+            if audio_segments:
+                return torch.empty(0, device=audio_segments[0].device, dtype=audio_segments[0].dtype), smart_adjustments_report
+            else:
+                return torch.empty(0), smart_adjustments_report
             
         # Ensure all parts have the same number of dimensions before concatenating
         # This handles cases where some segments might be 1D and others 2D (e.g., mono vs stereo)

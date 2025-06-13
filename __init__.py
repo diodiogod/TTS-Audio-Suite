@@ -49,7 +49,7 @@ if AUDIO_RECORDER_AVAILABLE:
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCapture"] = "🎙️ ChatterBox Voice Capture"
 
 # Extension info
-__version__ = VERSION
+__version__ = VERSION_DISPLAY
 __author__ = "ComfyUI ChatterBox Voice Extension"
 __description__ = "Enhanced ChatterBox TTS/VC with integrated voice recording and smart audio capture"
 
