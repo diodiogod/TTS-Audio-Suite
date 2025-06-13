@@ -258,39 +258,32 @@ class FFmpegTimeStretcher:
             raise AudioTimingError("Invalid stretch factor")
             
         speed = 1/stretch_factor
-        print(f"\nConverting {stretch_factor:0.3f}x stretch to {speed:0.3f}x speed")
         
         # Direct speed if within safe range
         if 0.5 <= speed <= 2.0:
-            print("Using single filter")
             return f"aresample=async=0,atempo={speed:0.6f}"
             
         # Chain filters for extreme speeds
         filters = []
         remaining = speed
-        print("Building filter chain...")
         
         while remaining < 0.5:
             filters.append('atempo=0.5')  # Max slowdown
             remaining *= 2
-            print(f"Added 0.5x -> {remaining:.3f}x remaining")
             if len(filters) > 4:  # Safety limit
                 raise AudioTimingError("Too extreme slowdown")
                 
         while remaining > 2.0:
             filters.append('atempo=2.0')  # Max speedup
             remaining /= 2
-            print(f"Added 2.0x -> {remaining:.3f}x remaining")
             if len(filters) > 4:
                 raise AudioTimingError("Too extreme speedup")
                 
         # Final adjustment
         if abs(remaining - 1.0) > 1e-6:
             filters.append(f'atempo={remaining:0.6f}')
-            print(f"Added final {remaining:.3f}x")
             
         filter_str = f"aresample=async=0,{','.join(filters)}"
-        print(f"Final chain: {filter_str}")
         return filter_str
         
     def time_stretch(self, audio: torch.Tensor, stretch_factor: float, sample_rate: int) -> torch.Tensor:
@@ -319,7 +312,6 @@ class FFmpegTimeStretcher:
             # Process channels
             stretched = []
             with tempfile.TemporaryDirectory() as temp_dir:
-                print(f"\nProcessing {audio.shape[0]} channel(s)...")
                 
                 for i in range(audio.shape[0]):
                     # Setup paths
@@ -331,7 +323,6 @@ class FFmpegTimeStretcher:
                         data = audio[i].cpu().numpy()
                         sf.write(in_path, data, sample_rate,
                                 format='WAV', subtype='FLOAT')
-                        print(f"\nChannel {i}: {len(data)} samples")
                         
                         # Process with FFmpeg
                         cmd = [
@@ -344,15 +335,14 @@ class FFmpegTimeStretcher:
                             '-c:a', 'pcm_f32le',  # Output format
                             '-ar', str(sample_rate),
                             '-ac', '1',      # Force mono
-                            '-v', 'warning', # Only warnings
+                            '-v', 'error',   # Only errors (less verbose)
                             out_path
                         ]
                         
                         result = subprocess.run(cmd, capture_output=True, text=True)
                         
                         if result.returncode != 0:
-                            print(f"FFmpeg error: {result.stderr}")
-                            raise AudioTimingError("FFmpeg processing failed")
+                            raise AudioTimingError(f"FFmpeg processing failed: {result.stderr}")
                             
                         if not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
                             raise AudioTimingError("No output produced")
@@ -365,11 +355,9 @@ class FFmpegTimeStretcher:
                         if len(audio_data) == 0:
                             raise AudioTimingError("Empty output")
                             
-                        print(f"Processed {len(audio_data)} samples")
                         stretched.append(torch.from_numpy(audio_data))
                         
                     except Exception as e:
-                        print(f"Channel {i} processing failed:", str(e))
                         raise AudioTimingError(f"Channel {i} failed: {str(e)}")
             
             # Combine results
@@ -401,11 +389,9 @@ class FFmpegTimeStretcher:
         ]
         
         try:
-            print(f"Running FFmpeg: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             
             if result.returncode != 0:
-                print("FFmpeg stderr:", result.stderr)
                 raise AudioTimingError(f"FFmpeg failed: {result.stderr}")
                 
             # Verify output
@@ -482,14 +468,11 @@ class TimedAudioAssembler:
             if stretcher_type == "ffmpeg":
                 try:
                     self.time_stretcher = FFmpegTimeStretcher()
-                    print("Using FFmpeg for time stretching")
                 except AudioTimingError as e:
-                    print(f"Warning: FFmpeg stretcher initialization failed ({str(e)}). Falling back to phase vocoder.")
+                    # Fall back to phase vocoder silently
                     self.time_stretcher = PhaseVocoderTimeStretcher()
-                    print("Using Phase Vocoder for time stretching")
             elif stretcher_type == "phase_vocoder":
                 self.time_stretcher = PhaseVocoderTimeStretcher()
-                print("Using Phase Vocoder for time stretching")
             else:
                 raise AudioTimingError(f"Invalid stretcher_type: {stretcher_type}. Use 'ffmpeg' or 'phase_vocoder'")
     
@@ -566,9 +549,6 @@ class TimedAudioAssembler:
                     self.stretch_method_used = "ffmpeg"
                 elif isinstance(self.time_stretcher, PhaseVocoderTimeStretcher):
                     self.stretch_method_used = "phase_vocoder"
-                
-                print(f"Time-stretching segment {i} using {self.stretch_method_used}: {stretch_factor:.3f}x "
-                      f"({current_duration:.3f}s -> {target_duration:.3f}s)")
                 
                 audio_segment = self.time_stretcher.time_stretch(
                     audio_segment, stretch_factor, self.sample_rate
