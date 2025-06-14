@@ -1,4 +1,5 @@
-# ComfyUI_ChatterBox_Voice v1.2.0
+# ComfyUI_ChatterBox_Voice v2.0.0
+
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length!!!.
 
 ![image](https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c)
@@ -12,17 +13,17 @@ NEW: SRT Timing and TTS Node
 The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
 
 <details>
-  
+
 Key Features:
-*   **SRT style Processing**: uses SRT style to generate TTS, aligning audio with subtitle timings.
-*   **`smart_natural` Timing Mode**: Features flexible shifting logic that intelligently considers "room" in subsequent segments, preventing overlaps and ensuring natural speech flow.
-*   **`Adjusted_SRT` Output**: Provides actual timings for generated audio, allowing for accurate post-processing and integration.
-*   **Segment-Level Caching**: Only regenerates modified segments, significantly speeding up workflows. Timing-only changes do not trigger regeneration, optimizing resource usage.
+
+* **SRT style Processing**: uses SRT style to generate TTS, aligning audio with subtitle timings.
+* **`smart_natural` Timing Mode**: Features flexible shifting logic that intelligently considers "room" in subsequent segments, preventing overlaps and ensuring natural speech flow.
+* **`Adjusted_SRT` Output**: Provides actual timings for generated audio, allowing for accurate post-processing and integration.
+* **Segment-Level Caching**: Only regenerates modified segments, significantly speeding up workflows. Timing-only changes do not trigger regeneration, optimizing resource usage.
 
 For more detailed technical information, refer to the [SRT_IMPLEMENTATION.md](SRT_IMPLEMENTATION.md) file.
 
 </details>
-
 
 ## Features
 
@@ -45,6 +46,7 @@ git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
 ```
 
 **Expected folder structure for bundled approach:**
+
 ```
 ComfyUI_ChatterBox_Voice/
 ├── __init__.py
@@ -63,8 +65,19 @@ ComfyUI_ChatterBox_Voice/
 └── README.md
 ```
 
-
 #### 2.3. Install Additional Dependencies
+
+Some dependencies, particularly `s3tokenizer`, can occasionally cause installation issues on certain Python setups (e.g., Python 3.10, sometimes used by tools like Stability Matrix).
+Add comment
+More actions
+
+To minimize potential problems, it's highly recommended to first ensure your core packaging tools are up-to-date in your ComfyUI's virtual environment:
+
+```bash
+python -m pip install --upgrade pip setuptools wheel
+```
+
+After running the command above, install the node's specific requirements:
 
 ```bash
 pip install -r requirements.txt
@@ -75,6 +88,7 @@ pip install -r requirements.txt
 ChatterBox Voice now supports FFmpeg for high-quality audio stretching. While not required, it's recommended for the best audio quality:
 
 **Windows:**
+
 ```bash
 winget install FFmpeg
 # or with Chocolatey
@@ -82,11 +96,13 @@ choco install ffmpeg
 ```
 
 **macOS:**
+
 ```bash
 brew install ffmpeg
 ```
 
 **Linux:**
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install ffmpeg
@@ -100,11 +116,13 @@ If FFmpeg is not available, ChatterBox will automatically fall back to using the
 #### 2.4. Download Models
 
 **Download the ChatterboxTTS models** and place them in:
+
 ```
 ComfyUI/models/TTS/chatterbox/
 ```
 
 **Required files:**
+
 - `conds.pt` (105 KB)
 - `s3gen.pt` (~1 GB)
 - `t3_cfg.pt` (~1 GB)  
@@ -120,7 +138,6 @@ pip install sounddevice
 ```
 
 ### 4. Restart ComfyUI
-
 
 ## Enhanced Features
 
@@ -139,12 +156,14 @@ pip install sounddevice
 - **Backward compatible** - works with existing workflows
 
 **Chunking Controls (all optional):**
+
 - `enable_chunking` - Enable/disable smart chunking (default: True)
 - `max_chars_per_chunk` - Chunk size limit (default: 400)
 - `chunk_combination_method` - How to join audio (default: auto)
 - `silence_between_chunks_ms` - Silence duration (default: 100ms)
 
 **Auto-selection logic:**
+
 - **Text > 1000 chars** → silence_padding (natural pauses)
 - **Text > 500 chars** → crossfade (smooth blending)  
 - **Text < 500 chars** → concatenate (simple joining)
@@ -152,11 +171,13 @@ pip install sounddevice
 ### 📦 Smart Model Loading
 
 **Priority-based model detection:**
+
 1. **Bundled models** in node folder (self-contained)
 2. **ComfyUI models** in standard location  
 3. **HuggingFace download** with authentication
 
 **Console output shows source:**
+
 ```
 📦 Using BUNDLED ChatterBox (self-contained)
 📦 Loading from bundled models: ./models/chatterbox
@@ -166,6 +187,7 @@ pip install sounddevice
 ## Usage
 
 ### Voice Recording
+
 1. Add **"🎤 ChatterBox Voice Capture"** node
 2. Select your microphone from the dropdown
 3. Adjust recording settings:
@@ -176,6 +198,7 @@ pip install sounddevice
 5. Connect output to TTS (for voice cloning) or VC nodes
 
 ### Enhanced Text-to-Speech
+
 1. Add **"🎤 ChatterBox Voice TTS"** node
 2. Enter your text (any length - automatic chunking)
 3. Optionally connect reference audio for voice cloning
@@ -189,7 +212,8 @@ pip install sounddevice
    - **Combination Method**: How to join chunks
    - **Silence Between Chunks**: Pause duration
 
-### Voice Conversion  
+### Voice Conversion
+
 1. Add **"🔄 ChatterBox Voice Conversion"** node
 2. Connect source audio (voice to convert)
 3. Connect target audio (voice style to copy)
@@ -197,21 +221,25 @@ pip install sounddevice
 ### Workflow Examples
 
 **Long Text with Smart Chunking:**
+
 ```
 Text Input (2000+ chars) → ChatterBox TTS (chunking enabled) → PreviewAudio
 ```
 
 **Voice Cloning with Recording:**
+
 ```
 🎤 Voice Capture → ChatterBox TTS (reference_audio) → PreviewAudio
 ```
 
 **Voice Conversion Pipeline:**
+
 ```
 🎤 Voice Capture (source) → ChatterBox VC ← 🎤 Voice Capture (target)
 ```
 
 **Complete Advanced Pipeline:**
+
 ```
 Long Text Input → ChatterBox TTS (with voice reference) → PreviewAudio
                 ↘ ChatterBox VC ← 🎤 Target Voice Recording
@@ -222,36 +250,45 @@ Long Text Input → ChatterBox TTS (with voice reference) → PreviewAudio
 ### Enhanced Chunking Settings
 
 **For Long Articles/Books:**
+
 - `max_chars_per_chunk=600`, `combination_method=silence_padding`, `silence_between_chunks_ms=200`
 
 **For Natural Speech:**
+
 - `max_chars_per_chunk=400`, `combination_method=auto` (default - works well)
 
 **For Fast Processing:**
+
 - `max_chars_per_chunk=800`, `combination_method=concatenate`
 
 **For Smooth Audio:**
+
 - `max_chars_per_chunk=300`, `combination_method=crossfade`
 
 ### Voice Recording Settings
 
 **General Recording:**
+
 - `silence_threshold=0.01`, `silence_duration=2.0` (default settings)
 
 **Noisy Environment:**
+
 - Higher `silence_threshold` (~0.05) to ignore background noise
 - Longer `silence_duration` (~3.0) to avoid cutting off speech
 
 **Quiet Environment:**
+
 - Lower `silence_threshold` (~0.005) for sensitive detection
 - Shorter `silence_duration` (~1.0) for quick stopping
 
 ### TTS Settings
 
 **General Use:**
+
 - `exaggeration=0.5`, `cfg_weight=0.5` (default settings work well)
 
 **Expressive Speech:**
+
 - Lower `cfg_weight` (~0.3) + higher `exaggeration` (~0.7)
 - Higher exaggeration speeds up speech; lower CFG slows it down
 
@@ -260,6 +297,7 @@ Long Text Input → ChatterBox TTS (with voice reference) → PreviewAudio
 ### 📚 No Hard Text Limits!
 
 Unlike many TTS systems:
+
 - **OpenAI TTS**: 4096 character limit
 - **ElevenLabs**: 2500 character limit  
 - **ChatterBox**: No documented limits + intelligent chunking
@@ -267,16 +305,19 @@ Unlike many TTS systems:
 ### 🧠 Smart Text Splitting
 
 **Sentence Boundary Detection:**
+
 - Splits on `.!?` with proper spacing
 - Preserves sentence integrity
 - Handles abbreviations and edge cases
 
 **Long Sentence Handling:**
+
 - Splits on commas when sentences are too long
 - Maintains natural speech patterns
 - Falls back to character limits only when necessary
 
 **Examples:**
+
 ```
 Input: "This is a very long article about artificial intelligence and machine learning. It contains multiple sentences and complex punctuation, including lists, quotes, and technical terms. The enhanced chunking system will split this intelligently."
 

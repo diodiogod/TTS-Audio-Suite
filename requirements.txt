@@ -1,5 +1,23 @@
 # ChatterboxTTS Dependencies for ComfyUI
-# Install with: pip install -r requirements.txt
+
+# --- IMPORTANT: TROUBLESHOOTING INSTALLATION ---
+# Some dependencies, particularly 's3tokenizer', can occasionally cause installation
+# issues on certain Python setups (e.g., Python 3.10, sometimes used by tools like Stability Matrix).
+# These issues often manifest as errors related to 'distutils', 'setuptools', or 'egg_info'
+# during the build process of a package.
+#
+# To minimize potential problems, it's HIGHLY RECOMMENDED to first ensure your
+# core packaging tools are up-to-date in your activated ComfyUI virtual environment:
+#      python -m pip install --upgrade pip setuptools wheel
+#
+# After running the command above, proceed to install these requirements:
+#   pip install -r requirements.txt
+#
+# If you still encounter issues after these steps:
+#   - Restart ComfyUI and let the ComfyUI Manager retry the installation.
+#   - As a last resort, consider recreating your virtual environment, then running the
+#     `pip install --upgrade pip setuptools wheel` command again before installing any custom node requirements.
+
 
 # Core ChatterboxTTS dependencies
 s3tokenizer>=0.1.7
