@@ -7,24 +7,45 @@ High-quality Text-to-Speech and Voice Conversion nodes using ResembleAI's Chatte
 • 🎙️ ChatterBox Voice Capture
 """
 
-# Import from nodes.py
-from .nodes import (
-    ChatterboxTTSNode, ChatterboxVCNode, IS_DEV, VERSION,
-    SEPARATOR, VERSION_DISPLAY, find_chatterbox_models
-)
+# Import from the main nodes.py file (not the nodes package)
+# Use importlib to avoid naming conflicts
+import importlib.util
+import os
+
+# Get the path to the nodes.py file
+nodes_py_path = os.path.join(os.path.dirname(__file__), "nodes.py")
+
+# Load nodes.py as a module
+spec = importlib.util.spec_from_file_location("nodes_main", nodes_py_path)
+nodes_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(nodes_module)
+
+# Import node classes
+ChatterboxTTSNode = nodes_module.ChatterboxTTSNode
+ChatterboxVCNode = nodes_module.ChatterboxVCNode
+
+# Import constants and utilities
+IS_DEV = nodes_module.IS_DEV
+VERSION = nodes_module.VERSION
+SEPARATOR = nodes_module.SEPARATOR
+VERSION_DISPLAY = nodes_module.VERSION_DISPLAY
+find_chatterbox_models = nodes_module.find_chatterbox_models
 
 # Import SRT node if available
 try:
-    from .nodes import ChatterboxSRTTTSNode, SRT_SUPPORT_AVAILABLE
-except ImportError:
+    ChatterboxSRTTTSNode = nodes_module.ChatterboxSRTTTSNode
+    SRT_SUPPORT_AVAILABLE = nodes_module.SRT_SUPPORT_AVAILABLE
+except AttributeError:
     SRT_SUPPORT_AVAILABLE = False
+    ChatterboxSRTTTSNode = None
 
-# Import Audio Recorder node (with error handling)
+# Import Audio Recorder node (now loaded from nodes.py)
 try:
-    from .nodes_audio_recorder import ChatterBoxVoiceCapture
+    ChatterBoxVoiceCapture = nodes_module.ChatterBoxVoiceCapture
     AUDIO_RECORDER_AVAILABLE = True
-except ImportError:
+except AttributeError:
     AUDIO_RECORDER_AVAILABLE = False
+    ChatterBoxVoiceCapture = None
 
 # Node class mappings for ComfyUI
 NODE_CLASS_MAPPINGS = {
@@ -44,7 +65,7 @@ if SRT_SUPPORT_AVAILABLE:
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
 
 # Add Audio Recorder if available
-if AUDIO_RECORDER_AVAILABLE:
+if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
     NODE_CLASS_MAPPINGS["ChatterBoxVoiceCapture"] = ChatterBoxVoiceCapture
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCapture"] = "🎙️ ChatterBox Voice Capture"
 
