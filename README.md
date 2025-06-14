@@ -66,6 +66,14 @@ ComfyUI_ChatterBox_Voice/
 
 #### 2.3. Install Additional Dependencies
 
+Some dependencies, particularly `s3tokenizer`, can occasionally cause installation issues on certain Python setups (e.g., Python 3.10, sometimes used by tools like Stability Matrix).
+
+To minimize potential problems, it's highly recommended to first ensure your core packaging tools are up-to-date in your ComfyUI's virtual environment:
+```bash
+python -m pip install --upgrade pip setuptools wheel
+```
+
+After running the command above, install the node's specific requirements:
 ```bash
 pip install -r requirements.txt
 ```
