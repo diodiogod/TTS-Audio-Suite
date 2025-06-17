@@ -1,16 +1,51 @@
-# ComfyUI_ChatterBox_Voice v2.0.1
 
-An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length!!!.
+<a id="readme-top"></a>
 
-![image](https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c)
+<!--
+*** Thanks for checking out the Best-README-Template. If you have a suggestion
+*** that would make this better, please fork the repo and create a pull request
+*** or simply open an issue with the tag "enhancement".
+*** Don't forget to give the project a star!
+*** Thanks again! Now go create something AMAZING! :D
+-->
 
-NEW: Audio capture node
-![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
+<!-- PROJECT SHIELDS -->
 
-NEW: SRT Timing and TTS Node
+<!--
+*** I'm using markdown "reference style" links for readability.
+*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
+*** See the bottom of this document for the declaration of the reference variables
+*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
+*** https://www.markdownguide.org/basic-syntax/#reference-style-links
+[![Contributors][contributors-shield]][contributors-url]
+
+-->
+
+[![](https://dcbadge.limes.pink/api/server/EwKE8KBDqD)](https://discord.gg/EwKE8KBDqD)
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![Forks][forks-shield]][forks-url]
+[![Dynamic TOML Badge][version-shield]][version-url]
+
+# ComfyUI ChatterBox SRT Voice (diogod) v2.0.1
+
+*This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
+
+An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length and with a node specially made for dealing with SRT timings.
+
+
+NEW!: SRT Timing and TTS Node
 ![SRT Node Screenshot Placeholder](images/srt.png)
 
 The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
+
+
+### [YouTube Video](https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s)
+
+<a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3">
+  <img src="https://img.youtube.com/vi/VyOawMrCB1g/maxresdefault.jpg" width="400">
+</a>
+
 
 <details>
 
@@ -24,6 +59,13 @@ Key Features:
 For more detailed technical information, refer to the [SRT_IMPLEMENTATION.md](SRT_IMPLEMENTATION.md) file.
 
 </details>
+
+ChatterBox Text to Speech: 
+![image](https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c)
+
+NEW: Audio capture node
+![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
+
 
 ## Features
 
@@ -346,3 +388,35 @@ MIT License - Same as ChatterboxTTS
 ---
 
 **Note**: The original ChatterBox model includes Resemble AI's Perth watermarking system for responsible AI usage. This ComfyUI integration includes the Perth dependency but has watermarking disabled by default to ensure maximum compatibility. Users can re-enable watermarking by modifying the code if needed, while maintaining the full quality and capabilities of the underlying TTS model.
+
+<!-- MARKDOWN LINKS & IMAGES -->
+
+<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+
+[contributors-shield]: https://img.shields.io/github/contributors/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
+[contributors-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
+[forks-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/network/members
+[stars-shield]: https://img.shields.io/github/stars/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
+[stars-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/stargazers
+[issues-shield]: https://img.shields.io/github/issues/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
+[issues-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/issues
+[license-shield]: https://img.shields.io/github/license/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
+[license-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/blob/master/LICENSE.txt
+[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
+[linkedin-url]: https://linkedin.com/in/othneildrew
+[product-screenshot]: images/screenshot.png
+[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
+[Next-url]: https://nextjs.org/
+[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+[React-url]: https://reactjs.org/
+[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
+[Svelte-url]: https://svelte.dev/
+[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
+[Laravel-url]: https://laravel.com
+[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
+[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
+[JQuery-url]: https://jquery.com 
+
+[version-shield]: https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdiodiogod%2FComfyUI_ChatterBox_SRT_Voice%2Fmain%2Fpyproject.toml&query=%24.project.version&label=Version&color=red&style=for-the-badge
+[version-url]: pyproject.toml
