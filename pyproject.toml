@@ -1,0 +1,16 @@
+[project]
+name = "chatterbox_srt_voice"
+description = "ChatterBox SRT Voice TTS Node is a fork of 'ChatteBox Voice' with additional devolpments. I introduced a SRT node designed to help you synchronize your generated TTS audio with `.srt` subtitle files."
+version = "2.0.1-1"
+license = {file = "LICENSE"}
+dependencies = ["s3tokenizer>=0.1.7", "resemble-perth", "librosa", "scipy", "omegaconf", "accelerate", "transformers==4.46.3", "# Additional dependencies for SRT support and audio processing", "conformer>=0.3.2", "torch", "torchaudio", "numpy", "einops", "phonemizer", "g2p-en", "unidecode", "# Audio processing and timing dependencies", "soundfile", "resampy", "webrtcvad", "# Optional but recommended for better performance", "numba"]
+
+[project.urls]
+Repository = "https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice"
+#  Used by Comfy Registry https://registry.comfy.org
+
+[tool.comfy]
+PublisherId = "diogod"
+DisplayName = "ComfyUI_ChatterBox_SRT_Voice"
+Icon = "https://raw.githubusercontent.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/main/example_workflows/Chatterbox SRT.jpg"
+includes = []
