@@ -41,6 +41,10 @@ class ChatterboxTTSNode(BaseTTSNode):
     """
     
     @classmethod
+    def NAME(cls):
+        return "🎤 ChatterBox Voice TTS (diogod)"
+    
+    @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {

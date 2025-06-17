@@ -1,5 +1,5 @@
 # Version and constants
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -144,15 +144,15 @@ except Exception:
 
 # Register nodes
 NODE_CLASS_MAPPINGS = {
-    "ChatterBoxVoiceTTS": ChatterboxTTSNode,
-    "ChatterBoxVoiceVC": ChatterboxVCNode,
-    "ChatterBoxVoiceCapture": ChatterBoxVoiceCapture,
+    "ChatterBoxVoiceTTSDiogod": ChatterboxTTSNode,
+    "ChatterBoxVoiceVCDiogod": ChatterboxVCNode,
+    "ChatterBoxVoiceCaptureDiogod": ChatterBoxVoiceCapture,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ChatterBoxVoiceTTS": "🎤 ChatterBox Voice TTS",
-    "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion",
-    "ChatterBoxVoiceCapture": "🎙️ ChatterBox Voice Capture",
+    "ChatterBoxVoiceTTSDiogod": "🎤 ChatterBox Voice TTS (diogod)",
+    "ChatterBoxVoiceVCDiogod": "🔄 ChatterBox Voice Conversion (diogod)",
+    "ChatterBoxVoiceCaptureDiogod": "🎙️ ChatterBox Voice Capture (diogod)",
 }
 
 # Add SRT node if available

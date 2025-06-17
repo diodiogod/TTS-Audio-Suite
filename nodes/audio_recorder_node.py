@@ -10,6 +10,10 @@ import queue
 
 class ChatterBoxVoiceCapture:
     @classmethod
+    def NAME(cls):
+        return "🎙️ ChatterBox Voice Capture (diogod)"
+    
+    @classmethod
     def INPUT_TYPES(cls):
         # Get available audio devices
         devices = sd.query_devices()
@@ -74,7 +78,7 @@ class ChatterBoxVoiceCapture:
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("voice_audio",)
     FUNCTION = "capture_voice_audio"
-    CATEGORY = "🎙️ ChatterBox Voice"
+    CATEGORY = "ChatterBox Voice"
 
     def capture_voice_audio(self, voice_device, voice_sample_rate, voice_max_recording_time, 
                            voice_volume_gain, voice_silence_threshold, voice_silence_duration, 

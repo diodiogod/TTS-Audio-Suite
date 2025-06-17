@@ -1,4 +1,4 @@
-# ComfyUI_ChatterBox_Voice v2.0.0
+# ComfyUI_ChatterBox_Voice v2.0.1
 
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length!!!.
 

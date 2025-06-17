@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-06-17
+
+### Changed
+
+- **Node Renaming for Conflict Resolution**: Renamed nodes to avoid conflicts with the original ChatterBox Voice repository
+- Added "(diogod)" suffix to distinguish from original implementation:
+  - `ChatterBoxVoiceTTS` → `ChatterBoxVoiceTTSDiogod` (displayed as "🎤 ChatterBox Voice TTS (diogod)")
+  - `ChatterBoxVoiceVC` → `ChatterBoxVoiceVCDiogod` (displayed as "🔄 ChatterBox Voice Conversion (diogod)")
+  - `ChatterBoxVoiceCapture` → `ChatterBoxVoiceCaptureDiogod` (displayed as "🎙️ ChatterBox Voice Capture (diogod)")
+- **Note**: "📺 ChatterBox SRT Voice TTS" remains unchanged as it was unique to this implementation
+
 ## [2.0.0] - 2025-06-14
 
 ### Changed

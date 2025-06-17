@@ -39,6 +39,10 @@ class ChatterboxVCNode(BaseVCNode):
     """
     
     @classmethod
+    def NAME(cls):
+        return "🔄 ChatterBox Voice Conversion (diogod)"
+    
+    @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
