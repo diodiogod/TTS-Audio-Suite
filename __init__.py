@@ -49,14 +49,14 @@ except AttributeError:
 
 # Node class mappings for ComfyUI
 NODE_CLASS_MAPPINGS = {
-    "ChatterBoxVoiceTTS": ChatterboxTTSNode,
-    "ChatterBoxVoiceVC": ChatterboxVCNode,
+    "ChatterBoxVoiceTTSDiogod": ChatterboxTTSNode,
+    "ChatterBoxVoiceVCDiogod": ChatterboxVCNode,
 }
 
 # Display names for the UI
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ChatterBoxVoiceTTS": "🎤 ChatterBox Voice TTS",
-    "ChatterBoxVoiceVC": "🔄 ChatterBox Voice Conversion",
+    "ChatterBoxVoiceTTSDiogod": "🎤 ChatterBox Voice TTS (diogod)",
+    "ChatterBoxVoiceVCDiogod": "🔄 ChatterBox Voice Conversion (diogod)",
 }
 
 # Add SRT node if available
@@ -66,8 +66,8 @@ if SRT_SUPPORT_AVAILABLE:
 
 # Add Audio Recorder if available
 if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
-    NODE_CLASS_MAPPINGS["ChatterBoxVoiceCapture"] = ChatterBoxVoiceCapture
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCapture"] = "🎙️ ChatterBox Voice Capture"
+    NODE_CLASS_MAPPINGS["ChatterBoxVoiceCaptureDiogod"] = ChatterBoxVoiceCapture
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCaptureDiogod"] = "🎙️ ChatterBox Voice Capture (diogod)"
 
 # Extension info
 __version__ = VERSION_DISPLAY

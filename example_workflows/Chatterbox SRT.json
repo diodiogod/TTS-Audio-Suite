@@ -1,8 +1,8 @@
 {
   "id": "076be553-821b-4849-8d05-12c66730733b",
   "revision": 0,
-  "last_node_id": 86,
-  "last_link_id": 151,
+  "last_node_id": 87,
+  "last_link_id": 153,
   "nodes": [
     {
       "id": 18,
@@ -361,110 +361,6 @@
       ]
     },
     {
-      "id": 20,
-      "type": "ShowText|pysssss",
-      "pos": [
-        1550,
-        290
-      ],
-      "size": [
-        550,
-        320
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "link": 16
-        }
-      ],
-      "outputs": [
-        {
-          "name": "STRING",
-          "shape": 6,
-          "type": "STRING",
-          "links": [
-            145
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-custom-scripts",
-        "ver": "aac13aa7ce35b07d43633c3bbe654a38c00d74f5",
-        "Node name for S&R": "ShowText|pysssss",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 85,
-      "type": "ChatterBoxVoiceTTS",
-      "pos": [
-        2170,
-        240
-      ],
-      "size": [
-        400,
-        372
-      ],
-      "flags": {},
-      "order": 22,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "reference_audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": null
-        },
-        {
-          "name": "text",
-          "type": "STRING",
-          "widget": {
-            "name": "text"
-          },
-          "link": 145
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            146
-          ]
-        },
-        {
-          "name": "generation_info",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "aux_id": "ShmuelRonen/ComfyUI_ChatterBox_Voice",
-        "ver": "6e5fc4e268656235c50e1e791f6b5d7afe615677",
-        "Node name for S&R": "ChatterBoxVoiceTTS",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "Hello! This is the enhanced ChatterboxTTS with bundled support and improved chunking. It can handle very long texts by intelligently splitting them into smaller segments.",
-        "auto",
-        0.5,
-        0.8,
-        0.5,
-        496888168,
-        "randomize",
-        "",
-        true,
-        400,
-        "auto",
-        100
-      ]
-    },
-    {
       "id": 86,
       "type": "PreviewAudio",
       "pos": [
@@ -482,7 +378,7 @@
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 146
+          "link": 153
         }
       ],
       "outputs": [],
@@ -1058,6 +954,110 @@
         0.7000000000000001,
         2
       ]
+    },
+    {
+      "id": 20,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1550,
+        290
+      ],
+      "size": [
+        550,
+        320
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": [
+            152
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "aac13aa7ce35b07d43633c3bbe654a38c00d74f5",
+        "Node name for S&R": "ShowText|pysssss",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 87,
+      "type": "ChatterBoxVoiceTTSDiogod",
+      "pos": [
+        2140,
+        240
+      ],
+      "size": [
+        400,
+        372
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 152
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            153
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "diodiogod/ComfyUI_ChatterBox_SRT_Voice",
+        "ver": "4cdbf3dbd61faf4a28d5259779d7c2e26541f251",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "ChatterBoxVoiceTTSDiogod"
+      },
+      "widgets_values": [
+        "Hello! This is the enhanced ChatterboxTTS with bundled support and improved chunking. It can handle very long texts by intelligently splitting them into smaller segments.",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        0,
+        "randomize",
+        "",
+        true,
+        400,
+        "auto",
+        100
+      ]
     }
   ],
   "links": [
@@ -1182,22 +1182,6 @@
       "STRING"
     ],
     [
-      145,
-      20,
-      0,
-      85,
-      1,
-      "STRING"
-    ],
-    [
-      146,
-      85,
-      0,
-      86,
-      0,
-      "AUDIO"
-    ],
-    [
       147,
       14,
       0,
@@ -1236,6 +1220,22 @@
       70,
       1,
       "STRING"
+    ],
+    [
+      152,
+      20,
+      0,
+      87,
+      1,
+      "STRING"
+    ],
+    [
+      153,
+      87,
+      0,
+      86,
+      0,
+      "AUDIO"
     ]
   ],
   "groups": [
@@ -1256,10 +1256,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 1.191817653772758,
+      "scale": 0.31384283767211,
       "offset": [
-        -641.1017065540107,
-        2410.9203972192363
+        2219.773601292551,
+        1463.9643188769694
       ]
     },
     "ue_links": [],
@@ -1301,6 +1301,11 @@
         ]
       }
     ],
+    "frontendVersion": "1.21.7",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true,
     "linkExtensions": [
       {
         "id": 126,
@@ -1314,12 +1319,7 @@
         "id": 148,
         "parentId": 2
       }
-    ],
-    "frontendVersion": "1.21.7",
-    "VHS_latentpreview": false,
-    "VHS_latentpreviewrate": 0,
-    "VHS_MetadataImage": true,
-    "VHS_KeepIntermediate": true
+    ]
   },
   "version": 0.4
 }

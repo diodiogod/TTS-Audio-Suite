@@ -1,8 +1,8 @@
 {
   "id": "4a7cdb14-f535-4923-861b-59ba2c7ee043",
   "revision": 0,
-  "last_node_id": 42,
-  "last_link_id": 83,
+  "last_node_id": 45,
+  "last_link_id": 90,
   "nodes": [
     {
       "id": 35,
@@ -24,7 +24,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            72
+            88
           ]
         }
       ],
@@ -60,7 +60,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            73
+            89
           ]
         }
       ],
@@ -74,112 +74,6 @@
         "male_harvey_keitel.mp3",
         null,
         null
-      ]
-    },
-    {
-      "id": 37,
-      "type": "ChatterBoxVoiceVC",
-      "pos": [
-        -939.0897216796875,
-        2909.46435546875
-      ],
-      "size": [
-        305.8872985839844,
-        78
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "source_audio",
-          "type": "AUDIO",
-          "link": 72
-        },
-        {
-          "name": "target_audio",
-          "type": "AUDIO",
-          "link": 73
-        }
-      ],
-      "outputs": [
-        {
-          "name": "converted_audio",
-          "type": "AUDIO",
-          "links": [
-            74
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ChatterBoxVoiceVC",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "auto"
-      ]
-    },
-    {
-      "id": 42,
-      "type": "ChatterBoxVoiceTTS",
-      "pos": [
-        -1100.9342041015625,
-        2206.41259765625
-      ],
-      "size": [
-        400,
-        372
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "reference_audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 82
-        },
-        {
-          "name": "text",
-          "type": "STRING",
-          "widget": {
-            "name": "text"
-          },
-          "link": 81
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            83
-          ]
-        },
-        {
-          "name": "generation_info",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ChatterBoxVoiceTTS",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "Hello! This is the enhanced ChatterboxTTS with improved chunking. It can handle very long texts by intelligently splitting them into smaller segments.",
-        "auto",
-        0.5,
-        0.8,
-        0.5,
-        2354936645,
-        "randomize",
-        "",
-        true,
-        400,
-        "auto",
-        100
       ]
     },
     {
@@ -200,7 +94,7 @@
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 83
+          "link": 87
         }
       ],
       "outputs": [],
@@ -230,7 +124,7 @@
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 74
+          "link": 90
         }
       ],
       "outputs": [],
@@ -262,7 +156,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            82
+            85
           ]
         }
       ],
@@ -279,15 +173,15 @@
       ]
     },
     {
-      "id": 39,
-      "type": "String Literal",
+      "id": 43,
+      "type": "PrimitiveStringMultiline",
       "pos": [
-        -2198.8310546875,
-        2162.29931640625
+        -2150,
+        2120
       ],
       "size": [
-        671.1473999023438,
-        1065.6341552734375
+        610,
+        1100
       ],
       "flags": {},
       "order": 3,
@@ -298,67 +192,177 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            81
+            86
           ]
         }
       ],
       "properties": {
-        "cnr_id": "image-saver",
-        "ver": "65e6903eff274a50f8b5cd768f0f96baf37baea1",
-        "Node name for S&R": "String Literal",
-        "widget_ue_connectable": {}
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PrimitiveStringMultiline"
       },
       "widgets_values": [
         "We're excited to introduce Chatterbox, Resemble AI's first production-grade open source TTS model. Licensed under MIT, Chatterbox has been benchmarked against leading closed-source systems like ElevenLabs, and is consistently preferred in side-by-side evaluations.\n\nWhether you're working on memes, videos, games, or AI agents, Chatterbox brings your content to life. It's also the first open source TTS model to support emotion exaggeration control, a powerful feature that makes your voices stand out. Try it now on our Hugging Face Gradio app.\n\nIf you like the model but need to scale or tune it for higher accuracy, check out our competitively priced TTS service (link). It delivers reliable performance with ultra-low latency of sub 200ms—ideal for production use in agents, applications, or interactive media.\n\nKey Details\nSoTA zeroshot TTS\n0.5B Llama backbone\nUnique exaggeration/intensity control\nUltra-stable with alignment-informed inference\nTrained on 0.5M hours of cleaned data\nWatermarked outputs\nEasy voice conversion script\nOutperforms ElevenLabs\nTips\nGeneral Use (TTS and Voice Agents):\n\nThe default settings (exaggeration=0.5, cfg_weight=0.5) work well for most prompts.\nIf the reference speaker has a fast speaking style, lowering cfg_weight to around 0.3 can improve pacing.\nExpressive or Dramatic Speech:\n\nTry lower cfg_weight values (e.g. ~0.3) and increase exaggeration to around 0.7 or higher.\nHigher exaggeration tends to speed up speech; reducing cfg_weight helps compensate with slower, more deliberate pacing."
+      ]
+    },
+    {
+      "id": 44,
+      "type": "ChatterBoxVoiceTTSDiogod",
+      "pos": [
+        -1040,
+        2220
+      ],
+      "size": [
+        400,
+        372
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 85
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 86
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            87
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "diodiogod/ComfyUI_ChatterBox_SRT_Voice",
+        "ver": "4cdbf3dbd61faf4a28d5259779d7c2e26541f251",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "ChatterBoxVoiceTTSDiogod"
+      },
+      "widgets_values": [
+        "Hello! This is the enhanced ChatterboxTTS with bundled support and improved chunking. It can handle very long texts by intelligently splitting them into smaller segments.",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        0,
+        "randomize",
+        "",
+        true,
+        400,
+        "auto",
+        100
+      ]
+    },
+    {
+      "id": 45,
+      "type": "ChatterBoxVoiceVCDiogod",
+      "pos": [
+        -950,
+        2910
+      ],
+      "size": [
+        361.3999938964844,
+        78
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source_audio",
+          "type": "AUDIO",
+          "link": 88
+        },
+        {
+          "name": "target_audio",
+          "type": "AUDIO",
+          "link": 89
+        }
+      ],
+      "outputs": [
+        {
+          "name": "converted_audio",
+          "type": "AUDIO",
+          "links": [
+            90
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "diodiogod/ComfyUI_ChatterBox_SRT_Voice",
+        "ver": "4cdbf3dbd61faf4a28d5259779d7c2e26541f251",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "ChatterBoxVoiceVCDiogod"
+      },
+      "widgets_values": [
+        "auto"
       ]
     }
   ],
   "links": [
     [
-      72,
-      35,
+      85,
+      26,
       0,
-      37,
-      0,
-      "AUDIO"
-    ],
-    [
-      73,
-      34,
-      0,
-      37,
-      1,
-      "AUDIO"
-    ],
-    [
-      74,
-      37,
-      0,
-      36,
+      44,
       0,
       "AUDIO"
     ],
     [
-      81,
-      39,
+      86,
+      43,
       0,
-      42,
+      44,
       1,
       "STRING"
     ],
     [
-      82,
-      26,
+      87,
+      44,
       0,
-      42,
+      15,
       0,
       "AUDIO"
     ],
     [
-      83,
-      42,
+      88,
+      35,
       0,
-      15,
+      45,
+      0,
+      "AUDIO"
+    ],
+    [
+      89,
+      34,
+      0,
+      45,
+      1,
+      "AUDIO"
+    ],
+    [
+      90,
+      45,
+      0,
+      36,
       0,
       "AUDIO"
     ]
@@ -368,8 +372,8 @@
       "id": 2,
       "title": "ChatterBox Text-to-Speech",
       "bounding": [
-        -1513.438720703125,
-        2120.572021484375,
+        -1510,
+        2120,
         1376.1483154296875,
         501.39434814453125
       ],
@@ -381,8 +385,8 @@
       "id": 3,
       "title": "ChatterBox Voice Conversion",
       "bounding": [
-        -1510.47412109375,
-        2652.15234375,
+        -1510,
+        2650,
         1371.289794921875,
         575.38330078125
       ],
@@ -395,14 +399,14 @@
   "extra": {
     "ue_links": [],
     "ds": {
-      "scale": 0.7247295000000005,
+      "scale": 0.4950000000000013,
       "offset": [
-        2653.7854970832586,
-        -1965.6967349619167
+        3062.6189762793633,
+        -1702.4590238120331
       ]
     },
     "links_added_by_ue": [],
-    "frontendVersion": "1.21.6",
+    "frontendVersion": "1.21.7",
     "VHS_latentpreview": false,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": true,
