@@ -1,4 +1,3 @@
-
 <a id="readme-top"></a>
 
 <!--
@@ -33,19 +32,16 @@
 
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length and with a node specially made for dealing with SRT timings.
 
-
 NEW!: SRT Timing and TTS Node
 ![SRT Node Screenshot Placeholder](images/srt.png)
 
 The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
-
 
 ### [YouTube Video](https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s)
 
 <a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3">
   <img src="https://img.youtube.com/vi/VyOawMrCB1g/maxresdefault.jpg" width="400">
 </a>
-
 
 <details>
 
@@ -66,7 +62,6 @@ ChatterBox Text to Speech:
 NEW: Audio capture node
 ![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
 
-
 ## Features
 
 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
@@ -84,27 +79,7 @@ NEW: Audio capture node
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/ShmuelRonen/ComfyUI_ChatterBox.git
-```
-
-**Expected folder structure for bundled approach:**
-
-```
-ComfyUI_ChatterBox_Voice/
-├── __init__.py
-├── nodes.py
-├── nodes_audio_recorder.py
-├── chatterbox/
-├── web/        
-
-├── models/                  # ← Models bundled here (optional)
-│   └── chatterbox/
-│       ├── conds.pt
-│       ├── s3gen.pt
-│       ├── t3_cfg.pt
-│       ├── tokenizer.json
-│       └── ve.pt
-└── README.md
+git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
 ```
 
 #### 2.3. Install Additional Dependencies
@@ -375,6 +350,7 @@ MIT License - Same as ChatterboxTTS
 - **ResembleAI** for ChatterboxTTS
 - **ComfyUI** team for the amazing framework
 - **sounddevice** library for audio recording functionality
+- **[ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice)** for the Original ChatteBox Voice TTS node
 - **[Diogod](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice)** for the SRT Timing and TTS Node implementation
 
 ## 🔗 Links
