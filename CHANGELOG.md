@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2025-06-27
+
+### Fixed
+
+- **Transformers Compatibility**: Fixed compatibility issues with newer versions of the transformers library after ComfyUI updates
+  - Resolved `LlamaModel.__init__() got an unexpected keyword argument 'attn_implementation'` error by removing direct parameter passing to LlamaModel constructor
+  - Fixed `PretrainedConfig.update() got an unexpected keyword argument 'output_attentions'` error by using direct attribute setting instead of config.update()
+  - Fixed `DynamicCache.update() missing 2 required positional arguments` error by simplifying cache handling to work with different transformers versions
+- **Cache Management**: Updated cache handling in the T3 inference backend to be compatible with both older and newer transformers API versions
+- **Configuration Safety**: Added safer configuration handling to prevent compatibility issues across different transformers versions
+
+### Improved
+
+- **Error Reporting**: Enhanced error messages in model loading to provide better debugging information
+- **Version Compatibility**: Made the codebase more resilient to transformers library version changes
+
 ## [2.0.1] - 2025-06-17
 
 ### Changed

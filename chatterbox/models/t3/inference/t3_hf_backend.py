@@ -29,18 +29,15 @@ class T3HuggingfaceBackend(LlamaPreTrainedModel, GenerationMixin):
         config.output_attentions = False
         config.use_cache = True
         config.return_dict = True
-        config.attn_implementation = "eager"
+        # Let the config handle attn_implementation from T3Config defaults
         
         super().__init__(config)
         self.model = llama
         
-        # Ensure model has same settings
-        self.model.config.update(
-            output_attentions=False,
-            use_cache=True,
-            return_dict=True,
-            attn_implementation="eager"
-        )
+        # Ensure model has same settings (set attributes directly)
+        self.model.config.output_attentions = False
+        self.model.config.use_cache = True
+        self.model.config.return_dict = True
         
         self.speech_enc = speech_enc
         self.speech_head = speech_head
@@ -109,17 +106,17 @@ class T3HuggingfaceBackend(LlamaPreTrainedModel, GenerationMixin):
 
         from transformers.cache_utils import DynamicCache
         
-        # Convert past_key_values to DynamicCache if needed
+        # Handle past_key_values properly for different transformers versions
         if past_key_values is not None:
-            if not isinstance(past_key_values, DynamicCache):
-                cache = DynamicCache()
-                cache.update(past_key_values)
-                past_key_values = cache
+            # Use past_key_values directly - transformers will handle the format
+            pkv = past_key_values
+        else:
+            pkv = None
         
         # Forward with consistent settings
         tfmr_out = self.model(
             inputs_embeds=inputs_embeds,
-            past_key_values=past_key_values.to_legacy_tuple() if past_key_values else None,
+            past_key_values=pkv,
             use_cache=use_cache,
             output_attentions=False,  # Always disable attention outputs
             output_hidden_states=True,

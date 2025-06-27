@@ -149,21 +149,17 @@ class ChatterboxTTS:
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
             
-            # Create config with eager attention
+            # Create config with proper settings
             from .models.t3.t3 import T3Config
             config = T3Config()
-            config.model_cfg = {
-                "attn_implementation": "eager",
-                "output_attentions": False,
-                "use_cache": True
-            }
+            # Use default model_cfg from T3Config which includes proper attention settings
             
             # Initialize model with config
             t3 = T3(config)
             
             # Load state and ensure settings
             t3.load_state_dict(t3_state)
-            t3.tfmr.config.attn_implementation = "eager"
+            # Settings are already handled by the config
             t3.tfmr.output_attentions = False
             
             t3.to(device).eval()

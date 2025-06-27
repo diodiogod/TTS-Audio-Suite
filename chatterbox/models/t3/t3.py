@@ -50,19 +50,19 @@ class T3(nn.Module):
         # Get base LLaMA config
         config_dict = dict(LLAMA_CONFIGS[hp.llama_config_name])
         
-        # Update with T3Config model settings
-        config_dict.update(hp.model_cfg)
+        # Update with T3Config model settings (using safe compatibility method)
+        safe_model_cfg = hp.get_safe_model_cfg() if hasattr(hp, 'get_safe_model_cfg') else hp.model_cfg
+        config_dict.update(safe_model_cfg)
         
         # Create and initialize model with proper config
         self.cfg = LlamaConfig(**config_dict)
-        self.tfmr = LlamaModel(
-            config=self.cfg,
-            attn_implementation="eager"
-        )
+        self.tfmr = LlamaModel(config=self.cfg)
         
-        # Ensure settings are properly applied to model instance
-        for key, value in hp.model_cfg.items():
-            setattr(self.tfmr, key, value)
+        # Ensure settings are properly applied to model instance (skip attn_implementation)
+        safe_model_cfg = hp.get_safe_model_cfg() if hasattr(hp, 'get_safe_model_cfg') else hp.model_cfg
+        for key, value in safe_model_cfg.items():
+            if key != 'attn_implementation':  # Skip setting this directly on model instance
+                setattr(self.tfmr, key, value)
         self.dim = self.cfg.hidden_size
         self.deepspeed_patch_applied = False
 
@@ -336,9 +336,6 @@ class T3(nn.Module):
         repetition_penalty_processor = RepetitionPenaltyLogitsProcessor(penalty=repetition_penalty)
 
         # ---- Initial Forward Pass ----
-        from transformers.cache_utils import DynamicCache
-        cache = DynamicCache()
-        
         output = self.patched_model(
             inputs_embeds=inputs_embeds,
             use_cache=True,
@@ -348,8 +345,8 @@ class T3(nn.Module):
             past_key_values=None  # Start with fresh cache
         )
         
-        # Initialize cache with output
-        cache.update(output.past_key_values)
+        # Store the cache from output
+        cache = output.past_key_values
 
         # ---- Generation Loop using kv_cache ----
         for i in tqdm(range(max_new_tokens), desc="Sampling", dynamic_ncols=True):
@@ -391,15 +388,16 @@ class T3(nn.Module):
             # Forward pass with cache
             output = self.patched_model(
                 inputs_embeds=next_token_embed,
-                past_key_values=cache.to_legacy_tuple(),
+                past_key_values=cache,
                 use_cache=True,
                 output_attentions=False,
                 output_hidden_states=True,
                 return_dict=True
             )
             
-            # Update cache
-            cache.update(output.past_key_values)
+            # Update cache - handle different transformers versions
+            if output.past_key_values:
+                cache = output.past_key_values
 
         # Concatenate all predicted tokens along the sequence dimension.
         predicted_tokens = torch.cat(predicted, dim=1)  # shape: (B, num_tokens)

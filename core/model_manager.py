@@ -169,6 +169,7 @@ class ModelManager:
                 break
                 
             except Exception as e:
+                print(f"⚠️ Failed to load TTS model from {source}: {str(e)}")
                 last_error = e
                 continue
         
