@@ -32,6 +32,6 @@ When updating the version, you need to update these **4 files**:
 4. **Test the changes** to ensure everything works
 5. **Commit and tag** the release
 
-## Current Version: 2.0.0
+## Current Version: 2.0.2
 
-Last updated: 2025-06-14
+Last updated: 2025-06-27

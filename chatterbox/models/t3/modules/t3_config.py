@@ -30,12 +30,33 @@ class T3Config:
 
     # Model configuration with defaults
     model_cfg: Dict[str, Any] = field(default_factory=lambda: {
-        "attn_implementation": "eager",
         "output_attentions": False,
         "use_cache": True,
         "return_dict": True
+        # Note: attn_implementation removed to avoid compatibility issues
+        # Different transformers versions handle this differently
     })
 
     @property
     def n_channels(self) -> int:
         return LLAMA_CONFIGS[self.llama_config_name]["hidden_size"]
+    
+    def get_safe_model_cfg(self) -> Dict[str, Any]:
+        """
+        Get model configuration with compatibility checks for different transformers versions.
+        """
+        try:
+            import transformers
+            from packaging import version
+            
+            cfg = self.model_cfg.copy()
+            
+            # Only add attn_implementation for compatible transformers versions
+            transformers_version = version.parse(transformers.__version__)
+            if transformers_version >= version.parse("4.36.0"):
+                cfg["attn_implementation"] = "eager"
+                
+            return cfg
+        except ImportError:
+            # If packaging is not available, use safe defaults
+            return self.model_cfg.copy()
