@@ -39,6 +39,30 @@ except AttributeError:
     SRT_SUPPORT_AVAILABLE = False
     ChatterboxSRTTTSNode = None
 
+# Import F5-TTS node if available
+try:
+    F5TTSNode = nodes_module.F5TTSNode
+    F5TTS_SUPPORT_AVAILABLE = nodes_module.F5TTS_SUPPORT_AVAILABLE
+except AttributeError:
+    F5TTS_SUPPORT_AVAILABLE = False
+    F5TTSNode = None
+
+# Import F5-TTS SRT node if available
+try:
+    F5TTSSRTNode = nodes_module.F5TTSSRTNode
+    F5TTS_SRT_SUPPORT_AVAILABLE = nodes_module.F5TTS_SRT_SUPPORT_AVAILABLE
+except AttributeError:
+    F5TTS_SRT_SUPPORT_AVAILABLE = False
+    F5TTSSRTNode = None
+
+# Import F5-TTS Edit node if available
+try:
+    F5TTSEditNode = nodes_module.F5TTSEditNode
+    F5TTS_EDIT_SUPPORT_AVAILABLE = nodes_module.F5TTS_EDIT_SUPPORT_AVAILABLE
+except AttributeError:
+    F5TTS_EDIT_SUPPORT_AVAILABLE = False
+    F5TTSEditNode = None
+
 # Import Audio Recorder node (now loaded from nodes.py)
 try:
     ChatterBoxVoiceCapture = nodes_module.ChatterBoxVoiceCapture
@@ -63,6 +87,21 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 if SRT_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxSRTVoiceTTS"] = ChatterboxSRTTTSNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
+
+# Add F5-TTS node if available
+if F5TTS_SUPPORT_AVAILABLE and F5TTSNode is not None:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSVoice"] = F5TTSNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSVoice"] = "🎤 F5-TTS Voice Generation"
+
+# Add F5-TTS SRT node if available
+if F5TTS_SRT_SUPPORT_AVAILABLE and F5TTSSRTNode is not None:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSSRTVoice"] = F5TTSSRTNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSSRTVoice"] = "📺 F5-TTS SRT Voice Generation"
+
+# Add F5-TTS Edit node if available
+if F5TTS_EDIT_SUPPORT_AVAILABLE and F5TTSEditNode is not None:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "🎛️ F5-TTS Speech Editor"
 
 # Add Audio Recorder if available
 if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:

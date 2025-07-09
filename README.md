@@ -65,10 +65,12 @@ NEW: Audio capture node
 ## Features
 
 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
+🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
 🔄 **ChatterBox VC** - Convert voice from one speaker to another
 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
 ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
 🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech
+🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
@@ -147,6 +149,80 @@ ComfyUI/models/TTS/chatterbox/
 - `ve.pt` (5.5 MB)
 
 **Download from:** https://huggingface.co/ResembleAI/chatterbox/tree/main
+
+#### 2.5. F5-TTS Models (Optional)
+
+**For F5-TTS voice synthesis capabilities**, download F5-TTS models and place them in:
+
+```
+ComfyUI/models/F5-TTS/
+```
+
+**Available F5-TTS Models:**
+
+| Model | Language | Download | Size |
+|-------|----------|----------|------|
+| **F5TTS_Base** | English | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base) | ~1.2GB |
+| **F5TTS_v1_Base** | English (v1) | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base) | ~1.2GB |
+| **E2TTS_Base** | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base) | ~1.2GB |
+| **F5-DE** | German | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German) | ~1.2GB |
+| **F5-ES** | Spanish | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish) | ~1.2GB |
+| **F5-FR** | French | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
+| **F5-JP** | Japanese | [HuggingFace](https://huggingface.co/Jmica/F5TTS) | ~1.2GB |
+
+**Vocoder (Optional but Recommended):**
+```
+ComfyUI/models/F5-TTS/vocos/
+├── config.yaml
+├── pytorch_model.bin
+└── vocab.txt
+```
+Download from: [Vocos Mel-24kHz](https://huggingface.co/charactr/vocos-mel-24khz)
+
+**Complete Folder Structure:**
+```
+ComfyUI/models/F5-TTS/
+├── F5TTS_Base/
+│   ├── model_1200000.safetensors    ← Main model file
+│   └── vocab.txt                    ← Vocabulary file
+├── vocos/                           ← For offline vocoder
+│   ├── config.yaml
+│   └── pytorch_model.bin
+└── F5TTS_v1_Base/
+    ├── model_1250000.safetensors
+    └── vocab.txt
+```
+
+**Required Files for Each Model:**
+- `model_XXXXXX.safetensors` - The main model weights
+- `vocab.txt` - Vocabulary/tokenizer file (download from same HuggingFace repo)
+
+**Note:** F5-TTS uses internal config files, no config.yaml needed. Vocos vocoder doesn't need vocab.txt.
+
+**Note:** F5-TTS models and vocoder will auto-download from HuggingFace if not found locally. The first generation may take longer while downloading (~1.2GB per model).
+
+#### 2.6. F5-TTS Voice References Setup
+
+**For easy voice reference management**, create a dedicated voices folder:
+
+```
+ComfyUI/models/voices/
+├── character1.wav
+├── character1.txt          ← Contains: "Hello, I am character one speaking clearly."
+├── narrator.wav
+├── narrator.txt            ← Contains: "This is the narrator voice for storytelling."
+├── my_voice.wav
+└── my_voice.txt            ← Contains: "This is my personal voice sample."
+```
+
+**Voice Reference Requirements:**
+- **Audio files**: WAV format, 5-30 seconds, clean speech, 24kHz recommended
+- **Text files**: Exact transcription of what's spoken in the audio file
+- **Naming**: `filename.wav` + `filename.txt` (same base name)
+
+**Usage:**
+1. **Easy Method**: Select voice from `reference_audio_file` dropdown → text auto-detected
+2. **Manual Method**: Set `reference_audio_file` to "none" → connect `opt_reference_audio` + `opt_reference_text` inputs
 
 ### 3. Install Voice Recording Dependencies (Optional)
 
@@ -229,6 +305,26 @@ pip install sounddevice
    - **Combination Method**: How to join chunks
    - **Silence Between Chunks**: Pause duration
 
+### F5-TTS Voice Synthesis
+
+1. Add **"🎤 F5-TTS Voice Generation"** node
+2. Enter your target text (any length - automatic chunking)
+3. **Required**: Connect reference audio for voice cloning
+4. **Required**: Enter reference text that matches the reference audio exactly
+5. Select F5-TTS model:
+   - **F5TTS_Base**: English base model (recommended)
+   - **F5TTS_v1_Base**: English v1 model
+   - **E2TTS_Base**: E2-TTS model
+   - **F5-DE**: German model
+   - **F5-ES**: Spanish model
+   - **F5-FR**: French model
+   - **F5-JP**: Japanese model
+6. Adjust F5-TTS settings:
+   - **Temperature**: Voice variation (0.1-2.0, default: 0.8)
+   - **Speed**: Speech speed (0.5-2.0, default: 1.0)
+   - **CFG Strength**: Guidance strength (0.0-10.0, default: 2.0)
+   - **NFE Step**: Quality vs speed (1-100, default: 32)
+
 ### Voice Conversion
 
 1. Add **"🔄 ChatterBox Voice Conversion"** node
@@ -249,6 +345,20 @@ Text Input (2000+ chars) → ChatterBox TTS (chunking enabled) → PreviewAudio
 🎤 Voice Capture → ChatterBox TTS (reference_audio) → PreviewAudio
 ```
 
+**F5-TTS Voice Cloning:**
+
+```
+Load Audio (reference) → F5-TTS Voice Generation ← Text Input (target)
+Text Input (ref_text) → ↗                        ↘ PreviewAudio
+```
+
+**Multi-language F5-TTS:**
+
+```
+German Text → F5-TTS (F5-DE model) → PreviewAudio
+Spanish Text → F5-TTS (F5-ES model) → PreviewAudio
+```
+
 **Voice Conversion Pipeline:**
 
 ```
@@ -260,6 +370,12 @@ Text Input (2000+ chars) → ChatterBox TTS (chunking enabled) → PreviewAudio
 ```
 Long Text Input → ChatterBox TTS (with voice reference) → PreviewAudio
                 ↘ ChatterBox VC ← 🎤 Target Voice Recording
+```
+
+**F5-TTS + Voice Conversion:**
+
+```
+F5-TTS Voice Generation → ChatterBox VC ← 🎤 Target Voice Recording
 ```
 
 ## Settings Guide
