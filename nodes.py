@@ -49,6 +49,69 @@ ChatterboxTTSNode = tts_module.ChatterboxTTSNode
 ChatterboxVCNode = vc_module.ChatterboxVCNode
 ChatterBoxVoiceCapture = audio_recorder_module.ChatterBoxVoiceCapture
 
+# Load F5-TTS nodes conditionally
+try:
+    f5tts_module = load_node_module("chatterbox_f5tts_node", "f5tts_node.py")
+    F5TTSNode = f5tts_module.F5TTSNode
+    F5TTS_SUPPORT_AVAILABLE = True
+except (ImportError, FileNotFoundError, AttributeError):
+    F5TTS_SUPPORT_AVAILABLE = False
+    
+    # Create dummy F5-TTS node for compatibility
+    class F5TTSNode:
+        @classmethod
+        def INPUT_TYPES(cls):
+            return {"required": {"error": ("STRING", {"default": "F5-TTS support not available"})}}
+        
+        RETURN_TYPES = ("STRING",)
+        FUNCTION = "error"
+        CATEGORY = "F5-TTS Voice"
+        
+        def error(self, error):
+            raise ImportError("F5-TTS support not available - missing required modules")
+
+# Load F5-TTS SRT node conditionally
+try:
+    f5tts_srt_module = load_node_module("chatterbox_f5tts_srt_node", "f5tts_srt_node.py")
+    F5TTSSRTNode = f5tts_srt_module.F5TTSSRTNode
+    F5TTS_SRT_SUPPORT_AVAILABLE = True
+except (ImportError, FileNotFoundError, AttributeError):
+    F5TTS_SRT_SUPPORT_AVAILABLE = False
+    
+    # Create dummy F5-TTS SRT node for compatibility
+    class F5TTSSRTNode:
+        @classmethod
+        def INPUT_TYPES(cls):
+            return {"required": {"error": ("STRING", {"default": "F5-TTS SRT support not available"})}}
+        
+        RETURN_TYPES = ("STRING",)
+        FUNCTION = "error"
+        CATEGORY = "F5-TTS Voice"
+        
+        def error(self, error):
+            raise ImportError("F5-TTS SRT support not available - missing required modules")
+
+# Load F5-TTS Edit node conditionally
+try:
+    f5tts_edit_module = load_node_module("chatterbox_f5tts_edit_node", "f5tts_edit_node.py")
+    F5TTSEditNode = f5tts_edit_module.F5TTSEditNode
+    F5TTS_EDIT_SUPPORT_AVAILABLE = True
+except (ImportError, FileNotFoundError, AttributeError):
+    F5TTS_EDIT_SUPPORT_AVAILABLE = False
+    
+    # Create dummy F5-TTS Edit node for compatibility
+    class F5TTSEditNode:
+        @classmethod
+        def INPUT_TYPES(cls):
+            return {"required": {"error": ("STRING", {"default": "F5-TTS Edit support not available"})}}
+        
+        RETURN_TYPES = ("STRING",)
+        FUNCTION = "error"
+        CATEGORY = "F5-TTS Voice"
+        
+        def error(self, error):
+            raise ImportError("F5-TTS Edit support not available - missing required modules")
+
 # Import foundation components for compatibility
 from core.import_manager import import_manager
 
@@ -159,6 +222,21 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 if SRT_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxSRTVoiceTTS"] = ChatterboxSRTTTSNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
+
+# Add F5-TTS node if available
+if F5TTS_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSVoice"] = F5TTSNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSVoice"] = "🎤 F5-TTS Voice Generation"
+
+# Add F5-TTS SRT node if available
+if F5TTS_SRT_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSSRTVoice"] = F5TTSSRTNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSSRTVoice"] = "📺 F5-TTS SRT Voice Generation"
+
+# Add F5-TTS Edit node if available
+if F5TTS_EDIT_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "🎛️ F5-TTS Speech Editor"
 
 # Print startup banner
 print(SEPARATOR)

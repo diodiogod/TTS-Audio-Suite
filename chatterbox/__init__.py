@@ -39,6 +39,21 @@ except ImportError:
         def from_local(cls, path, device):
             raise ImportError("ChatterboxVC not available - missing dependencies")
 
+# F5-TTS support modules - import independently
+try:
+    from .f5tts import ChatterBoxF5TTS, F5TTS_AVAILABLE
+    F5TTS_SUPPORT_AVAILABLE = F5TTS_AVAILABLE
+except ImportError:
+    F5TTS_SUPPORT_AVAILABLE = False
+    # Create dummy class
+    class ChatterBoxF5TTS:
+        @classmethod
+        def from_pretrained(cls, device, model_name):
+            raise ImportError("F5-TTS not available - missing dependencies")
+        @classmethod
+        def from_local(cls, path, device, model_name):
+            raise ImportError("F5-TTS not available - missing dependencies")
+
 # SRT subtitle support modules - import independently
 try:
     from .srt_parser import SRTParser, SRTSubtitle, SRTParseError, validate_srt_timing_compatibility
@@ -49,7 +64,7 @@ try:
     SRT_AVAILABLE = True
     
     __all__ = [
-        'ChatterboxTTS', 'ChatterboxVC',
+        'ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS',
         'SRTParser', 'SRTSubtitle', 'SRTParseError', 'validate_srt_timing_compatibility',
         'AudioTimingUtils', 'PhaseVocoderTimeStretcher', 'TimedAudioAssembler',
         'calculate_timing_adjustments', 'AudioTimingError'
@@ -57,4 +72,4 @@ try:
 except ImportError:
     SRT_AVAILABLE = False
     # SRT support not available - only export main modules
-    __all__ = ['ChatterboxTTS', 'ChatterboxVC']
+    __all__ = ['ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS']
