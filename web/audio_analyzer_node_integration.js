@@ -11,13 +11,24 @@ export class AudioAnalyzerNodeIntegration {
     
     // Handle visualization data updates from node execution
     updateVisualization(data) {
-        console.log('Received visualization data:', data);
+        console.log('🎵 Audio Analyzer: Received visualization data from node execution');
         
         if (data.error) {
+            console.error('❌ Audio Analyzer: Analysis error:', data.error);
             this.core.showMessage(`Analysis error: ${data.error}`);
             this.core.ui.updateStatus('Analysis failed');
             return;
         }
+        
+        // Check if we have waveform data
+        if (!data.waveform || !data.waveform.samples || data.waveform.samples.length === 0) {
+            console.warn('⚠️ Audio Analyzer: No waveform data received');
+            this.core.showMessage('No audio data received - check if audio file loaded correctly');
+            this.core.ui.updateStatus('No audio data');
+            return;
+        }
+        
+        console.log(`✅ Audio Analyzer: Loaded ${data.waveform.samples.length} audio samples, duration: ${data.duration}s`);
         
         // Update waveform data - handle the correct data structure from Python
         this.core.waveformData = {

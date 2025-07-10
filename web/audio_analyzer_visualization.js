@@ -181,7 +181,25 @@ export class AudioAnalyzerVisualization {
     drawRMS(ctx, width, height) {
         if (!this.core.waveformData || !this.core.waveformData.rms) return;
         
-        const rms = this.core.waveformData.rms;
+        const rmsData = this.core.waveformData.rms;
+        
+        // Handle both old and new RMS data structures
+        let rmsValues, rmsTime;
+        if (rmsData.values && rmsData.time) {
+            // New structure with separate values and time arrays
+            rmsValues = rmsData.values;
+            rmsTime = rmsData.time;
+        } else if (Array.isArray(rmsData)) {
+            // Old structure - array of values only
+            rmsValues = rmsData;
+            rmsTime = null;
+        } else {
+            return; // Invalid structure
+        }
+        
+        // Safety check
+        if (!rmsValues || rmsValues.length === 0) return;
+        
         const duration = this.core.waveformData.duration;
         const visibleDuration = duration / this.core.zoomLevel;
         const startTime = this.core.scrollOffset;
@@ -195,10 +213,40 @@ export class AudioAnalyzerVisualization {
         
         for (let x = 0; x < width; x++) {
             const time = startTime + (x / width) * visibleDuration;
-            const rmsIndex = Math.floor((time / duration) * rms.length);
+            let rmsValue;
             
-            if (rmsIndex >= 0 && rmsIndex < rms.length) {
-                const rmsValue = rms[rmsIndex];
+            if (rmsTime && rmsTime.length > 0) {
+                // Use time-based indexing (new structure)
+                let closestIndex = 0;
+                let minDistance = Math.abs(rmsTime[0] - time);
+                
+                for (let i = 1; i < rmsTime.length; i++) {
+                    const distance = Math.abs(rmsTime[i] - time);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestIndex = i;
+                    } else {
+                        break; // Since times are sorted, we can stop
+                    }
+                }
+                
+                if (closestIndex < rmsValues.length) {
+                    rmsValue = rmsValues[closestIndex];
+                } else {
+                    continue;
+                }
+            } else {
+                // Use uniform distribution (old structure)
+                const rmsIndex = Math.floor((time / duration) * rmsValues.length);
+                if (rmsIndex >= 0 && rmsIndex < rmsValues.length) {
+                    rmsValue = rmsValues[rmsIndex];
+                } else {
+                    continue;
+                }
+            }
+            
+            // Only draw if the time is within visible range
+            if (time >= startTime && time <= endTime) {
                 const y = height/2 - (rmsValue * height * 0.4);
                 
                 if (!hasStarted) {
@@ -303,77 +351,53 @@ export class AudioAnalyzerVisualization {
     }
     
     drawAnalysisResults(ctx, width, height) {
-        if (!this.core.waveformData || !this.core.waveformData.analysisResults) return;
+        if (!this.core.waveformData || !this.core.waveformData.regions) return;
         
-        const results = this.core.waveformData.analysisResults;
+        const regions = this.core.waveformData.regions;
         
-        // Draw silence regions
-        if (results.silence_regions) {
-            results.silence_regions.forEach(region => {
+        // Draw detected regions with different colors
+        regions.forEach(region => {
                 const startX = this.core.timeToPixel(region.start);
                 const endX = this.core.timeToPixel(region.end);
                 
                 if (endX >= 0 && startX <= width) {
-                    ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
-                    ctx.fillRect(Math.max(0, startX), 0, Math.min(width, endX) - Math.max(0, startX), height);
-                }
-            });
-        }
-        
-        // Draw speech regions
-        if (results.speech_regions) {
-            results.speech_regions.forEach(region => {
-                const startX = this.core.timeToPixel(region.start);
-                const endX = this.core.timeToPixel(region.end);
-                
-                if (endX >= 0 && startX <= width) {
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(Math.max(0, startX), height - 10);
-                    ctx.lineTo(Math.min(width, endX), height - 10);
-                    ctx.stroke();
-                }
-            });
-        }
-        
-        // Draw energy peaks
-        if (results.energy_peaks) {
-            results.energy_peaks.forEach(peak => {
-                const peakX = this.core.timeToPixel(peak.time);
-                
-                if (peakX >= 0 && peakX <= width) {
-                    ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
-                    ctx.beginPath();
-                    ctx.arc(peakX, height/2, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            });
-        }
-        
-        // Draw timing markers
-        if (results.timing_markers) {
-            results.timing_markers.forEach(marker => {
-                const markerX = this.core.timeToPixel(marker.time);
-                
-                if (markerX >= 0 && markerX <= width) {
-                    ctx.strokeStyle = 'rgba(255, 0, 255, 0.9)';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([3, 3]);
-                    ctx.beginPath();
-                    ctx.moveTo(markerX, 0);
-                    ctx.lineTo(markerX, height);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
+                    // Color based on region label/type
+                    let color = 'rgba(0, 255, 0, 0.2)'; // Default green
                     
-                    // Draw marker label
-                    ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
-                    ctx.font = '10px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(marker.label || 'Marker', markerX, height - 5);
+                    if (region.label === 'silence') {
+                        color = 'rgba(128, 128, 128, 0.3)'; // Gray for silence
+                    } else if (region.label.includes('word_boundary')) {
+                        color = 'rgba(255, 255, 0, 0.2)'; // Yellow for word boundaries
+                    } else if (region.label.includes('speech')) {
+                        color = 'rgba(0, 255, 0, 0.2)'; // Green for speech
+                    }
+                    
+                    // Draw region background
+                    ctx.fillStyle = color;
+                    ctx.fillRect(Math.max(0, startX), 0, Math.min(width, endX) - Math.max(0, startX), height);
+                    
+                    // Draw region border
+                    ctx.strokeStyle = color.replace('0.2', '0.8'); // More opaque border
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, 0);
+                    ctx.lineTo(startX, height);
+                    ctx.moveTo(endX, 0);
+                    ctx.lineTo(endX, height);
+                    ctx.stroke();
+                    
+                    // Draw region label
+                    if (startX >= 0 && startX + 50 <= width) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`${region.label} (${region.confidence.toFixed(2)})`, startX + 2, 15);
+                    }
                 }
             });
-        }
+        
+        // Energy peaks would be drawn here if available
+        // Region analysis complete
     }
     
     // Animation helpers
