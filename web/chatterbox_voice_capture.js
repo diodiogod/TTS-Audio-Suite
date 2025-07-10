@@ -1,18 +1,14 @@
-console.log("🎙️ ChatterBox: JavaScript file loading...");
+// ChatterBox Voice Capture Extension
 
 import { app } from "../../scripts/app.js";
 
 app.registerExtension({
     name: "ChatterBoxVoiceCapture.UI",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        console.log("🔍 ChatterBox: Checking node type:", nodeData.name);
-        
         if (nodeData.name === "ChatterBoxVoiceCapture") {
-            console.log("✅ ChatterBox: Registering UI for ChatterBoxVoiceCapture");
             
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function() {
-                console.log("🎤 ChatterBox: Creating node instance");
                 const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
                 // Set larger size

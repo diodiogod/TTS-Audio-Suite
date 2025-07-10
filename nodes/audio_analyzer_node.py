@@ -8,6 +8,7 @@ import numpy as np
 import os
 import tempfile
 import json
+import time
 from typing import Dict, Any, List, Tuple, Optional, Union
 
 # Add parent directory to path for imports
@@ -99,6 +100,10 @@ class AudioAnalyzerNode:
                 "export_format": (["f5tts", "json", "csv"], {
                     "default": "f5tts",
                     "tooltip": "Output format for timing data"
+                }),
+                "node_id": ("STRING", {
+                    "default": "",
+                    "tooltip": "Internal node ID for cache management"
                 }),
             }
         }
@@ -217,7 +222,7 @@ class AudioAnalyzerNode:
     def analyze_audio(self, audio_file, analysis_method="silence", precision_level="milliseconds",
                      visualization_points=2000, audio=None, silence_threshold=0.01, silence_min_duration=0.1,
                      energy_sensitivity=0.5, manual_regions="", region_labels="",
-                     export_format="f5tts"):
+                     export_format="f5tts", node_id=""):
         """
         Analyze audio for timing extraction and visualization.
         
@@ -236,6 +241,7 @@ class AudioAnalyzerNode:
         Returns:
             Tuple of (timing_data, visualization_data, analysis_info, processed_audio)
         """
+        
         try:
             # Handle audio input - either from file or from input
             if audio is not None:
@@ -244,8 +250,8 @@ class AudioAnalyzerNode:
             elif audio_file and audio_file.strip():
                 # Load audio from file path
                 file_path = audio_file.strip()
-                print(f"📁 Loading audio from: {file_path}")
                 if not os.path.exists(file_path):
+                    print(f"❌ Audio file not found: {file_path}")
                     raise FileNotFoundError(f"Audio file not found: {file_path}")
                 audio_tensor, sample_rate = self.analyzer.load_audio(file_path)
             else:
@@ -317,7 +323,20 @@ class AudioAnalyzerNode:
             # Return processed audio in ComfyUI format
             processed_audio = AudioProcessingUtils.format_for_comfyui(audio_tensor, sample_rate)
             
-            print(f"✅ Audio analysis complete: {len(regions)} regions found using {analysis_method} method")
+            
+            # Save visualization data to web directory for direct JavaScript access
+            try:
+                # Write to web directory as static file
+                web_file = os.path.join(os.path.dirname(__file__), "..", "web", f"audio_data_{node_id}.json")
+                
+                
+                with open(web_file, 'w') as f:
+                    json.dump(viz_data, f, indent=2)
+                
+                
+            except Exception as save_error:
+                import traceback
+                print(f"⚠️ Audio Analyzer web data save failed: {save_error}")
             
             return (timing_data, visualization_json, analysis_info, processed_audio)
             

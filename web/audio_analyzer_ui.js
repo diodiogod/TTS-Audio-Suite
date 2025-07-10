@@ -21,7 +21,7 @@ export class AudioAnalyzerUI {
     }
     
     createInterface() {
-        console.log('Creating Audio Analyzer UI interface');
+        // Create Audio Analyzer UI interface
         
         // Remove existing interface
         const existingInterface = this.core.node.widgets?.find(w => w.name === 'audio_analyzer_interface');
@@ -37,7 +37,7 @@ export class AudioAnalyzerUI {
         this.container.className = 'audio-analyzer-container';
         this.container.style.cssText = `
             width: 100%;
-            height: 400px;
+            height: 420px;
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 4px;
@@ -67,26 +67,20 @@ export class AudioAnalyzerUI {
         this.controls = document.createElement('div');
         this.controls.className = 'audio-analyzer-controls';
         this.controls.style.cssText = `
-            height: 100px;
+            height: 80px;
             background: #2a2a2a;
             border-top: 1px solid #333;
             padding: 8px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         `;
         
         // Create playback controls
         this.createPlaybackControls();
         
-        // Create analysis controls
-        this.createAnalysisControls();
-        
-        // Create region controls
-        this.createRegionControls();
-        
-        // Create export controls
-        this.createExportControls();
+        // Create main action controls (consolidated)
+        this.createMainControls();
         
         // Create zoom controls
         this.createZoomControls();
@@ -99,19 +93,14 @@ export class AudioAnalyzerUI {
         this.container.appendChild(this.controls);
         
         // Add container to node using ComfyUI's DOM widget system
-        console.log('Adding DOM widget to node, available methods:', Object.keys(this.core.node));
-        
         try {
-            // Try ComfyUI's addDOMWidget method
             if (typeof this.core.node.addDOMWidget === 'function') {
                 const widget = this.core.node.addDOMWidget('audio_analyzer_interface', 'div', this.container, {
                     serialize: false,
                     hideOnZoom: false
                 });
-                console.log('DOM widget added successfully:', widget);
                 this.widget = widget;
             } else {
-                console.warn('addDOMWidget not available, trying alternative method');
                 // Alternative method: create custom widget
                 const widget = {
                     type: 'div',
@@ -128,7 +117,6 @@ export class AudioAnalyzerUI {
                 this.core.node.widgets = this.core.node.widgets || [];
                 this.core.node.widgets.push(widget);
                 this.widget = widget;
-                console.log('Custom widget created');
             }
         } catch (error) {
             console.error('Failed to add DOM widget:', error);
@@ -206,118 +194,64 @@ export class AudioAnalyzerUI {
         this.controls.appendChild(playbackContainer);
     }
     
-    createAnalysisControls() {
-        this.analysisControls = document.createElement('div');
-        this.analysisControls.style.cssText = `
+    createMainControls() {
+        // Single row with all main action buttons
+        const mainControls = document.createElement('div');
+        mainControls.style.cssText = `
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
             padding: 2px 0;
+            flex-wrap: wrap;
+        `;
+        
+        // Button style template
+        const buttonStyle = `
+            padding: 3px 6px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            color: white;
         `;
         
         // Analyze button
         const analyzeButton = document.createElement('button');
         analyzeButton.textContent = '🔍 Analyze';
-        analyzeButton.style.cssText = `
-            padding: 4px 8px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        `;
+        analyzeButton.style.cssText = buttonStyle + 'background: #28a745;';
         analyzeButton.onclick = () => this.core.onParametersChanged();
         
-        // Clear button
+        // Clear selection button
         const clearButton = document.createElement('button');
         clearButton.textContent = '🗑️ Clear';
-        clearButton.style.cssText = `
-            padding: 4px 8px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        `;
+        clearButton.style.cssText = buttonStyle + 'background: #dc3545;';
         clearButton.onclick = () => this.core.clearSelection();
-        
-        this.analysisControls.appendChild(analyzeButton);
-        this.analysisControls.appendChild(clearButton);
-        
-        this.controls.appendChild(this.analysisControls);
-    }
-    
-    createRegionControls() {
-        this.regionControls = document.createElement('div');
-        this.regionControls.style.cssText = `
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            padding: 2px 0;
-        `;
         
         // Add region button
         const addRegionButton = document.createElement('button');
         addRegionButton.textContent = '➕ Add Region';
-        addRegionButton.style.cssText = `
-            padding: 4px 8px;
-            background: #17a2b8;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        `;
+        addRegionButton.style.cssText = buttonStyle + 'background: #17a2b8;';
         addRegionButton.onclick = () => this.core.addSelectedRegion();
         
         // Clear all regions button
-        const clearRegionsButton = document.createElement('button');
-        clearRegionsButton.textContent = '🗑️ Clear All';
-        clearRegionsButton.style.cssText = `
-            padding: 4px 8px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        `;
-        clearRegionsButton.onclick = () => this.core.clearAllRegions();
-        
-        this.regionControls.appendChild(addRegionButton);
-        this.regionControls.appendChild(clearRegionsButton);
-        
-        this.controls.appendChild(this.regionControls);
-    }
-    
-    createExportControls() {
-        this.exportControls = document.createElement('div');
-        this.exportControls.style.cssText = `
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            padding: 2px 0;
-        `;
+        const clearAllButton = document.createElement('button');
+        clearAllButton.textContent = '🗑️ Clear All';
+        clearAllButton.style.cssText = buttonStyle + 'background: #6c757d;';
+        clearAllButton.onclick = () => this.core.clearAllRegions();
         
         // Export timing button
         const exportButton = document.createElement('button');
-        exportButton.textContent = '📋 Export Timing';
-        exportButton.style.cssText = `
-            padding: 4px 8px;
-            background: #fd7e14;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        `;
+        exportButton.textContent = '📋 Export Timings';
+        exportButton.style.cssText = buttonStyle + 'background: #fd7e14;';
         exportButton.onclick = () => this.core.exportTiming();
         
-        this.exportControls.appendChild(exportButton);
+        mainControls.appendChild(analyzeButton);
+        mainControls.appendChild(clearButton);
+        mainControls.appendChild(addRegionButton);
+        mainControls.appendChild(clearAllButton);
+        mainControls.appendChild(exportButton);
         
-        this.controls.appendChild(this.exportControls);
+        this.controls.appendChild(mainControls);
     }
     
     createZoomControls() {
@@ -442,16 +376,20 @@ export class AudioAnalyzerUI {
             if (files.length > 0) {
                 const file = files[0];
                 if (file.type.startsWith('audio/')) {
-                    // Create a temporary URL for the file
-                    const url = URL.createObjectURL(file);
                     
-                    // Update the audio_file widget
+                    // Update the audio_file widget with the file name
                     const audioFileWidget = this.core.node.widgets.find(w => w.name === 'audio_file');
                     if (audioFileWidget) {
+                        // For now, just set the name - user will need to provide the actual path
                         audioFileWidget.value = file.name;
                         
-                        // Trigger analysis with the file
-                        this.core.onAudioFileSelected(url);
+                        // Show message that user needs to provide the actual file path
+                        this.showMessage(`File dropped: ${file.name}. Please enter the full file path in the audio_file widget.`);
+                        
+                        // Update the widget display
+                        if (audioFileWidget.callback) {
+                            audioFileWidget.callback(file.name);
+                        }
                     }
                 } else {
                     this.showMessage('Please drop an audio file');
@@ -503,36 +441,21 @@ export class AudioAnalyzerUI {
     }
     
     ensureUIVisible() {
-        console.log('Ensuring UI is visible');
+        // Ensure UI is visible
         
-        // Try multiple methods to make the UI visible
+        // Simple approach: let ComfyUI's DOM widget system handle positioning
+        // Don't manually append to DOM - let the widget system do it
+        if (this.widget && this.widget.element) {
+            // The widget system should handle this automatically
+            return;
+        }
+        
+        // Only use fallback if widget system failed completely
         setTimeout(() => {
-            // Method 1: Find the node element and append directly
-            const nodeElement = document.querySelector(`[data-id="${this.core.node.id}"]`);
-            if (nodeElement && !nodeElement.contains(this.container)) {
-                console.log('Appending container to node element');
-                nodeElement.appendChild(this.container);
-            }
-            
-            // Method 2: Try to find ComfyUI's widget container
-            const widgetContainer = nodeElement?.querySelector('.comfy-widget-container');
-            if (widgetContainer && !widgetContainer.contains(this.container)) {
-                console.log('Appending container to widget container');
-                widgetContainer.appendChild(this.container);
-            }
-            
-            // Method 3: Add to node's DOM element if it exists
-            if (this.core.node.element && !this.core.node.element.contains(this.container)) {
-                console.log('Appending container to node DOM element');
-                this.core.node.element.appendChild(this.container);
-            }
-            
-            // Method 4: Force visibility with absolute positioning as fallback
             if (!document.body.contains(this.container)) {
-                console.log('Using fallback: appending to body');
-                this.container.style.position = 'absolute';
-                this.container.style.top = '100px';
-                this.container.style.left = '100px';
+                this.container.style.position = 'relative';
+                this.container.style.width = '100%';
+                this.container.style.maxWidth = '780px';
                 this.container.style.zIndex = '9999';
                 document.body.appendChild(this.container);
             }
