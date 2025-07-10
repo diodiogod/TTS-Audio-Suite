@@ -71,6 +71,14 @@ except AttributeError:
     AUDIO_RECORDER_AVAILABLE = False
     ChatterBoxVoiceCapture = None
 
+# Import Audio Analyzer node if available
+try:
+    AudioAnalyzerNode = nodes_module.AudioAnalyzerNode
+    AUDIO_ANALYZER_SUPPORT_AVAILABLE = nodes_module.AUDIO_ANALYZER_SUPPORT_AVAILABLE
+except AttributeError:
+    AUDIO_ANALYZER_SUPPORT_AVAILABLE = False
+    AudioAnalyzerNode = None
+
 # Node class mappings for ComfyUI
 NODE_CLASS_MAPPINGS = {
     "ChatterBoxVoiceTTSDiogod": ChatterboxTTSNode,
@@ -107,6 +115,11 @@ if F5TTS_EDIT_SUPPORT_AVAILABLE and F5TTSEditNode is not None:
 if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
     NODE_CLASS_MAPPINGS["ChatterBoxVoiceCaptureDiogod"] = ChatterBoxVoiceCapture
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCaptureDiogod"] = "🎙️ ChatterBox Voice Capture (diogod)"
+
+# Add Audio Analyzer if available
+if AUDIO_ANALYZER_SUPPORT_AVAILABLE and AudioAnalyzerNode is not None:
+    NODE_CLASS_MAPPINGS["AudioAnalyzerNode"] = AudioAnalyzerNode
+    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerNode"] = "🎵 Audio Analyzer"
 
 # Extension info
 __version__ = VERSION_DISPLAY
