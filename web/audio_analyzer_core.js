@@ -1,0 +1,288 @@
+import { app } from "../../scripts/app.js";
+import { AudioAnalyzerUI } from "./audio_analyzer_ui.js";
+import { AudioAnalyzerEvents } from "./audio_analyzer_events.js";
+import { AudioAnalyzerVisualization } from "./audio_analyzer_visualization.js";
+import { AudioAnalyzerNodeIntegration } from "./audio_analyzer_node_integration.js";
+
+/**
+ * Core Audio Analyzer Interface
+ * Main class that coordinates all audio analyzer functionality
+ */
+export class AudioAnalyzerInterface {
+    constructor(node) {
+        this.node = node;
+        this.canvas = null;
+        this.ctx = null;
+        this.waveformData = null;
+        this.selectedRegions = [];
+        this.zoomLevel = 1;
+        this.scrollOffset = 0;
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.audioElement = null;
+        this.isDragging = false;
+        this.dragStart = null;
+        this.dragEnd = null;
+        this.selectedStart = null;
+        this.selectedEnd = null;
+        
+        // Color scheme for the interface
+        this.colors = {
+            background: '#1a1a1a',
+            waveform: '#4a9eff',
+            rms: '#ff6b6b',
+            grid: '#333333',
+            selection: 'rgba(255, 255, 0, 0.3)',
+            playhead: '#ff0000',
+            region: 'rgba(0, 255, 0, 0.2)',
+            text: '#ffffff'
+        };
+        
+        // Initialize modules
+        this.ui = new AudioAnalyzerUI(this);
+        this.events = new AudioAnalyzerEvents(this);
+        this.visualization = new AudioAnalyzerVisualization(this);
+        this.nodeIntegration = new AudioAnalyzerNodeIntegration(this);
+        
+        this.setupInterface();
+    }
+    
+    setupInterface() {
+        // Create the main interface using UI module
+        this.ui.createInterface();
+        
+        // Setup event listeners
+        this.events.setupEventListeners();
+        
+        // Setup canvas resize observer
+        this.ui.setupCanvasResize();
+        
+        // Show initial message
+        this.visualization.showInitialMessage();
+    }
+    
+    // Utility functions
+    pixelToTime(pixel) {
+        if (!this.waveformData) return 0;
+        
+        const canvasWidth = this.canvas.width / devicePixelRatio;
+        const visibleDuration = this.waveformData.duration / this.zoomLevel;
+        const startTime = this.scrollOffset;
+        
+        return startTime + (pixel / canvasWidth) * visibleDuration;
+    }
+    
+    timeToPixel(time) {
+        if (!this.waveformData) return 0;
+        
+        const canvasWidth = this.canvas.width / devicePixelRatio;
+        const visibleDuration = this.waveformData.duration / this.zoomLevel;
+        const startTime = this.scrollOffset;
+        
+        return ((time - startTime) / visibleDuration) * canvasWidth;
+    }
+    
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 1000);
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    }
+    
+    // Canvas management
+    resizeCanvas() {
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width * devicePixelRatio;
+        this.canvas.height = rect.height * devicePixelRatio;
+        this.ctx.scale(devicePixelRatio, devicePixelRatio);
+        this.visualization.redraw();
+    }
+    
+    // Selection management
+    setSelection(startTime, endTime) {
+        this.selectedStart = startTime;
+        this.selectedEnd = endTime;
+        this.ui.updateSelectionDisplay();
+        this.visualization.redraw();
+    }
+    
+    clearSelection() {
+        this.selectedStart = null;
+        this.selectedEnd = null;
+        this.dragStart = null;
+        this.dragEnd = null;
+        this.ui.updateSelectionDisplay();
+        this.visualization.redraw();
+    }
+    
+    // Region management
+    addSelectedRegion() {
+        if (this.selectedStart !== null && this.selectedEnd !== null) {
+            const region = {
+                start: this.selectedStart,
+                end: this.selectedEnd,
+                label: `Region ${this.selectedRegions.length + 1}`,
+                id: Date.now()
+            };
+            
+            this.selectedRegions.push(region);
+            this.clearSelection();
+            this.visualization.redraw();
+            
+            // Update manual regions in the node
+            this.updateManualRegions();
+        }
+    }
+    
+    clearAllRegions() {
+        this.selectedRegions = [];
+        this.visualization.redraw();
+        this.updateManualRegions();
+    }
+    
+    updateManualRegions() {
+        // Update the manual_regions widget with current selections
+        const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
+        if (manualRegionsWidget) {
+            const regionsText = this.selectedRegions
+                .map(r => `${r.start.toFixed(3)},${r.end.toFixed(3)}`)
+                .join('\n');
+            manualRegionsWidget.value = regionsText;
+        }
+        
+        // Update labels widget
+        const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
+        if (labelsWidget) {
+            const labelsText = this.selectedRegions
+                .map(r => r.label)
+                .join('\n');
+            labelsWidget.value = labelsText;
+        }
+    }
+    
+    // Audio playback controls
+    togglePlayback() {
+        if (this.isPlaying) {
+            this.pausePlayback();
+        } else {
+            this.startPlayback();
+        }
+    }
+    
+    startPlayback() {
+        if (!this.audioElement) return;
+        
+        this.audioElement.currentTime = this.currentTime;
+        this.audioElement.play();
+        this.isPlaying = true;
+        this.ui.playButton.textContent = '⏸️ Pause';
+        
+        // Update playhead position
+        this.updatePlayhead();
+    }
+    
+    pausePlayback() {
+        if (this.audioElement) {
+            this.audioElement.pause();
+        }
+        this.isPlaying = false;
+        this.ui.playButton.textContent = '▶️ Play';
+    }
+    
+    stopPlayback() {
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement.currentTime = 0;
+        }
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.ui.playButton.textContent = '▶️ Play';
+        this.ui.updateTimeDisplay();
+        this.visualization.redraw();
+    }
+    
+    updatePlayhead() {
+        if (!this.isPlaying) return;
+        
+        if (this.audioElement) {
+            this.currentTime = this.audioElement.currentTime;
+            this.ui.updateTimeDisplay();
+            this.visualization.redraw();
+        }
+        
+        if (this.isPlaying) {
+            requestAnimationFrame(() => this.updatePlayhead());
+        }
+    }
+    
+    // Zoom controls
+    zoomIn() {
+        this.zoomLevel = Math.min(this.zoomLevel * 2, 100);
+        this.visualization.redraw();
+    }
+    
+    zoomOut() {
+        this.zoomLevel = Math.max(this.zoomLevel / 2, 0.1);
+        this.visualization.redraw();
+    }
+    
+    resetZoom() {
+        this.zoomLevel = 1;
+        this.scrollOffset = 0;
+        this.visualization.redraw();
+    }
+    
+    // Export functionality
+    exportTiming() {
+        if (this.selectedRegions.length === 0) {
+            alert('No regions selected. Please select timing regions first.');
+            return;
+        }
+        
+        const timingData = this.selectedRegions
+            .map(r => `${r.start.toFixed(3)},${r.end.toFixed(3)}`)
+            .join('\n');
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(timingData).then(() => {
+            alert('Timing data copied to clipboard!');
+        }).catch(() => {
+            // Fallback: show in alert
+            alert(`Timing data:\n${timingData}`);
+        });
+    }
+    
+    // Show message
+    showMessage(message) {
+        this.ui.showMessage(message);
+    }
+    
+    // Update visualization with new data
+    updateVisualization(data) {
+        this.nodeIntegration.updateVisualization(data);
+    }
+    
+    // Handle audio file selection
+    onAudioFileSelected(filePath) {
+        this.nodeIntegration.onAudioFileSelected(filePath);
+    }
+    
+    // Handle parameter changes
+    onParametersChanged() {
+        this.nodeIntegration.onParametersChanged();
+    }
+    
+    // Handle audio connection
+    onAudioConnected() {
+        this.nodeIntegration.onAudioConnected();
+    }
+    
+    // Clear current selection
+    clearSelection() {
+        this.selectedStart = null;
+        this.selectedEnd = null;
+        this.dragStart = null;
+        this.dragEnd = null;
+        this.visualization.redraw();
+    }
+}
