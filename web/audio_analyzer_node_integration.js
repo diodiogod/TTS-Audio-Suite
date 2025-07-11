@@ -43,9 +43,12 @@ export class AudioAnalyzerNodeIntegration {
             analysisResults: data.analysis_results || {}
         };
         
-        // Create audio element for playback if we have file path
+        // Create audio element for playback if we have file path or web audio filename
         if (data.file_path) {
             this.setupAudioPlayback(data.file_path);
+        } else if (data.web_audio_filename) {
+            console.log('🎵 Setting up connected audio playback via web_audio_filename');
+            this.setupAudioPlayback(data.web_audio_filename);
         }
         
         // Update UI status
