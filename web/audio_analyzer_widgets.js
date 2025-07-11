@@ -196,17 +196,8 @@ export class AudioAnalyzerWidgets {
         
         const widgets = this.core.node.widgets;
         
-        // Insert after energy_sensitivity widget
-        for (let i = 0; i < widgets.length; i++) {
-            const widget = widgets[i];
-            if (widget.name === 'energy_sensitivity') {
-                console.log(`🎵 Found energy_sensitivity widget at position ${i}, inserting spacer after it`);
-                return i + 1;
-            }
-        }
-        
-        // Final fallback: insert at end
-        console.log(`🎵 No energy_sensitivity found, inserting spacer at end`);
+        // Always insert at the very end
+        console.log(`🎵 Inserting spacer at end position ${widgets.length}`);
         return widgets.length;
     }
     
