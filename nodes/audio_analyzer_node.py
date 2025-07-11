@@ -419,21 +419,8 @@ class AudioAnalyzerNode:
                 # Add audio file path to visualization data for JavaScript
                 web_audio_filename = None
                 
-                # Handle audio file copying or saving
-                if audio_file and audio_file.strip() and os.path.exists(audio_file.strip()):
-                    # File-based audio: copy to ComfyUI input directory for web access
-                    input_dir = folder_paths.get_input_directory()
-                    audio_filename = os.path.basename(audio_file.strip())
-                    web_audio_path = os.path.join(input_dir, audio_filename)
-                    
-                    # Copy if not already there or if source is newer
-                    if not os.path.exists(web_audio_path) or os.path.getmtime(audio_file.strip()) > os.path.getmtime(web_audio_path):
-                        shutil.copy2(audio_file.strip(), web_audio_path)
-                        print(f"🎵 Audio file copied for web access: {web_audio_path}")
-                    
-                    web_audio_filename = audio_filename
-                    
-                elif audio is not None:
+                # Handle audio file copying or saving - respect priority: connected audio first
+                if audio is not None:
                     # Connected audio: save tensor to temporary file for web access
                     try:
                         input_dir = folder_paths.get_input_directory()
@@ -461,9 +448,28 @@ class AudioAnalyzerNode:
                         print(f"⚠️ Failed to save connected audio: {audio_save_error}")
                         # Continue without audio playback for connected audio
                 
-                # Add audio filename to visualization data if available
+                elif audio_file and audio_file.strip() and os.path.exists(audio_file.strip()):
+                    # File-based audio: copy to ComfyUI input directory for web access
+                    input_dir = folder_paths.get_input_directory()
+                    audio_filename = os.path.basename(audio_file.strip())
+                    web_audio_path = os.path.join(input_dir, audio_filename)
+                    
+                    # Copy if not already there or if source is newer
+                    if not os.path.exists(web_audio_path) or os.path.getmtime(audio_file.strip()) > os.path.getmtime(web_audio_path):
+                        shutil.copy2(audio_file.strip(), web_audio_path)
+                        print(f"🎵 Audio file copied for web access: {web_audio_path}")
+                    
+                    # For file-based audio, provide just the filename for web access
+                    # JavaScript will use this with ComfyUI's input URL format
+                    file_path_for_js = audio_filename
+                
+                # Add audio information to visualization data for JavaScript
                 if web_audio_filename:
+                    # Connected audio - provide web_audio_filename
                     viz_data["web_audio_filename"] = web_audio_filename
+                elif 'file_path_for_js' in locals():
+                    # File-based audio - provide file_path
+                    viz_data["file_path"] = file_path_for_js
                 
                 with open(temp_file, 'w') as f:
                     json.dump(viz_data, f, indent=2)
