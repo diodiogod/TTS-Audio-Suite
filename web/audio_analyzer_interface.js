@@ -83,7 +83,7 @@ app.registerExtension({
     },
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name === "ChatterBoxAudioAnalyzer" || nodeData.name === "AudioAnalyzerNode") {
+        if (nodeData.name === "AudioAnalyzerNode") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function() {
                 const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
@@ -99,6 +99,70 @@ app.registerExtension({
                     
                 } catch (error) {
                     console.error('❌ Audio Analyzer: Failed to create interface:', error);
+                }
+                
+                return result;
+            };
+
+            // Add widget value persistence fix for ComfyUI reloads
+            const onConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = function(info) {
+                const result = onConfigure ? onConfigure.apply(this, arguments) : undefined;
+                
+                // Ensure widget values are properly restored from saved data
+                if (info && info.widgets_values && this.widgets) {
+                    setTimeout(() => {
+                        try {
+                            // Find export_format widget and ensure it has correct value
+                            const exportFormatWidget = this.widgets.find(w => w.name === 'export_format');
+                            if (exportFormatWidget && info.widgets_values) {
+                                // Find the export_format value index in widgets_values
+                                const exportFormatIndex = this.widgets.findIndex(w => w.name === 'export_format');
+                                if (exportFormatIndex >= 0 && exportFormatIndex < info.widgets_values.length) {
+                                    const savedValue = info.widgets_values[exportFormatIndex];
+                                    if (savedValue && ['f5tts', 'json', 'csv'].includes(savedValue)) {
+                                        exportFormatWidget.value = savedValue;
+                                        console.log(`🎵 Audio Analyzer: Restored export_format to: ${savedValue}`);
+                                    }
+                                }
+                            }
+                            
+                            // Also ensure all other dropdowns are properly restored
+                            const dropdownWidgets = ['analysis_method', 'precision_level'];
+                            dropdownWidgets.forEach(widgetName => {
+                                const widget = this.widgets.find(w => w.name === widgetName);
+                                if (widget) {
+                                    const widgetIndex = this.widgets.findIndex(w => w.name === widgetName);
+                                    if (widgetIndex >= 0 && widgetIndex < info.widgets_values.length) {
+                                        const savedValue = info.widgets_values[widgetIndex];
+                                        if (savedValue !== undefined) {
+                                            widget.value = savedValue;
+                                        }
+                                    }
+                                }
+                            });
+                        } catch (error) {
+                            console.warn('🎵 Audio Analyzer: Widget restoration warning:', error);
+                        }
+                    }, 100); // Small delay to ensure widgets are fully initialized
+                }
+                
+                return result;
+            };
+
+            // Additional widget persistence backup - ensure values persist on workflow load
+            const onSerialize = nodeType.prototype.onSerialize;
+            nodeType.prototype.onSerialize = function(info) {
+                const result = onSerialize ? onSerialize.apply(this, arguments) : undefined;
+                
+                // Ensure widget values are properly serialized
+                if (!result) {
+                    return result;
+                }
+                
+                // Force widget values to be saved correctly
+                if (this.widgets && this.widgets.length > 0) {
+                    result.widgets_values = this.widgets.map(w => w.value);
                 }
                 
                 return result;
