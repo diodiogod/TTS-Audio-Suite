@@ -52,6 +52,9 @@ function handleNodeExecution(message) {
         const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
         if (audioFileWidget && audioFileWidget.value) {
             this.setupAudioPlayback(audioFileWidget.value);
+        } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
+            // Connected audio input - playback not available
+            console.log('🎵 Connected audio detected - playback not available');
         }
     }
 }
@@ -171,6 +174,8 @@ app.registerExtension({
             // Override onExecuted to capture data immediately
             const onExecuted = nodeType.prototype.onExecuted;
             nodeType.prototype.onExecuted = function(message) {
+                console.log(`🎵 onExecuted called for node ${this.id} with message:`, message);
+                
                 // Store the execution result for later access
                 this.lastExecutionResult = message;
                 this.lastExecutionTime = Date.now();
@@ -189,6 +194,9 @@ app.registerExtension({
                                     const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
                                     if (audioFileWidget && audioFileWidget.value) {
                                         this.setupAudioPlayback(audioFileWidget.value);
+                                    } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
+                                        // Connected audio input - playback not available
+                                        console.log('🎵 Connected audio detected in onExecuted - playback not available');
                                     }
                                 }
                                 return onExecuted ? onExecuted.apply(this, arguments) : undefined;
@@ -311,6 +319,7 @@ app.registerExtension({
             nodeType.prototype.tryWebFileData = function() {
                 // Try ComfyUI temp directory first
                 const tempFileUrl = `/temp/audio_data_${this.id}.json?t=${Date.now()}`;
+                console.log(`🎵 Attempting to fetch temp file: ${tempFileUrl}`);
                 
                 fetch(tempFileUrl)
                     .then(response => {
@@ -320,6 +329,7 @@ app.registerExtension({
                         return response.json();
                     })
                     .then(vizData => {
+                        console.log(`🎉 Successfully fetched temp file data! Duration: ${vizData.duration}`);
                         if (this.audioAnalyzerInterface) {
                             this.audioAnalyzerInterface.updateVisualization(vizData);
                             
@@ -327,6 +337,9 @@ app.registerExtension({
                             const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
                             if (audioFileWidget && audioFileWidget.value) {
                                 this.setupAudioPlayback(audioFileWidget.value);
+                            } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
+                                // Connected audio input - playback not available
+                                console.log('🎵 Connected audio detected in tryWebFileData - playback not available');
                             }
                         }
                     })
@@ -350,6 +363,9 @@ app.registerExtension({
                                     const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
                                     if (audioFileWidget && audioFileWidget.value) {
                                         this.setupAudioPlayback(audioFileWidget.value);
+                                    } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
+                                        // Connected audio input - playback not available
+                                        console.log('🎵 Connected audio detected in system temp fallback - playback not available');
                                     }
                                 }
                             })
@@ -425,6 +441,7 @@ app.registerExtension({
             
             // Generate test data
             nodeType.prototype.generateTestData = function() {
+                console.log('⚠️ GENERATING FAKE TEST DATA - Real data fetch failed');
                 const testData = {
                     waveform: { samples: [], time: [] },
                     rms: { values: [], time: [] },
