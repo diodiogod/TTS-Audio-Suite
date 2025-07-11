@@ -88,14 +88,14 @@ class AudioAnalyzerNode:
                     "tooltip": "Sensitivity for energy-based detection"
                 }),
                 "manual_regions": ("STRING", {
-                    "multiline": False,
+                    "multiline": True,
                     "default": "",
-                    "tooltip": "Manual timing regions (start,end format, comma separated)"
+                    "tooltip": "Manual timing regions (start,end format, one per line)"
                 }),
                 "region_labels": ("STRING", {
-                    "multiline": False,
+                    "multiline": True,
                     "default": "",
-                    "tooltip": "Labels for timing regions (comma separated, optional)"
+                    "tooltip": "Labels for timing regions (one per line, optional)"
                 }),
                 "export_format": (["f5tts", "json", "csv"], {
                     "default": "f5tts",
@@ -157,7 +157,7 @@ class AudioAnalyzerNode:
         return audio_tensor, sample_rate
     
     def _parse_manual_regions(self, manual_regions: str, labels: str = "") -> List[TimingRegion]:
-        """Parse manual timing regions from string input."""
+        """Parse manual timing regions from multiline string input."""
         if not manual_regions.strip():
             return []
         
@@ -166,7 +166,27 @@ class AudioAnalyzerNode:
         label_lines = [line.strip() for line in labels.strip().split('\n') if line.strip()] if labels.strip() else []
         
         for i, line in enumerate(region_lines):
-            if ',' in line:
+            # Handle both comma-separated format (start,end) and semicolon-separated multiple regions
+            if ';' in line:
+                # Multiple regions in one line (semicolon-separated)
+                sub_regions = [r.strip() for r in line.split(';') if r.strip()]
+                for j, sub_region in enumerate(sub_regions):
+                    if ',' in sub_region:
+                        try:
+                            start, end = map(float, sub_region.split(','))
+                            label = label_lines[i] if i < len(label_lines) else f"region_{len(regions)+1}"
+                            
+                            regions.append(TimingRegion(
+                                start_time=start,
+                                end_time=end,
+                                label=label,
+                                confidence=1.0,
+                                metadata={"type": "manual", "source": "user_input"}
+                            ))
+                        except ValueError:
+                            print(f"Warning: Invalid manual region format: '{sub_region}'. Expected 'start,end' format.")
+            elif ',' in line:
+                # Single region per line
                 try:
                     start, end = map(float, line.split(','))
                     label = label_lines[i] if i < len(label_lines) else f"region_{i+1}"

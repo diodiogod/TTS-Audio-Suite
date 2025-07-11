@@ -173,21 +173,22 @@ export class AudioAnalyzerVisualization {
             this.dataStructureLogged = true;
         }
         
-        // Simplified drawing approach - one pass through pixels
+        // Use the same approach as RMS - iterate through all pixels and check time bounds
+        let hasStarted = false;
+        
         for (let x = 0; x < width; x++) {
-            // Calculate time for this pixel
-            const timeRatio = x / width;
-            const currentTime = startTime + (timeRatio * (endTime - startTime));
+            const time = startTime + (x / width) * visibleDuration;
+            
+            // Only draw if the time is within audio duration (same check as RMS)
+            if (time < 0 || time >= duration) {
+                continue;
+            }
             
             // Find corresponding sample index - use proper mapping
-            const sampleIndex = Math.floor((currentTime / duration) * samples.length);
+            const sampleIndex = Math.floor((time / duration) * samples.length);
             
             // Ensure we're within sample bounds
             if (sampleIndex < 0 || sampleIndex >= samples.length) {
-                // Debug why samples are being skipped
-                if (x < 10 || x > width - 10) {
-                    console.log(`🎵 Skipping pixel ${x}: sampleIndex=${sampleIndex}, bounds: 0-${samples.length}`);
-                }
                 continue;
             }
             
@@ -203,9 +204,10 @@ export class AudioAnalyzerVisualization {
             // Convert to screen coordinates (center line is height/2)
             const y = height/2 - (sample * height * 0.4);
             
-            // Draw line
-            if (pointsDrawn === 0) {
+            // Draw line (same pattern as RMS)
+            if (!hasStarted) {
                 ctx.moveTo(x, y);
+                hasStarted = true;
             } else {
                 ctx.lineTo(x, y);
             }
