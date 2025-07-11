@@ -236,21 +236,21 @@ export class AudioAnalyzerInterface {
     }
     
     updateManualRegions() {
-        // Update the manual_regions widget with current selections (now comma-separated for testing)
+        // Update the manual_regions widget with current selections (multiline format)
         const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
         if (manualRegionsWidget) {
             const regionsText = this.selectedRegions
                 .map(r => `${r.start.toFixed(3)},${r.end.toFixed(3)}`)
-                .join('; '); // Use semicolon separator for multiple regions
+                .join('\n'); // Use newline separator for multiline widget
             manualRegionsWidget.value = regionsText;
         }
         
-        // Update labels widget (now comma-separated for testing)
+        // Update labels widget (multiline format)
         const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
         if (labelsWidget) {
             const labelsText = this.selectedRegions
                 .map(r => r.label)
-                .join(', '); // Use comma separator for labels
+                .join('\n'); // Use newline separator for multiline widget
             labelsWidget.value = labelsText;
         }
     }
