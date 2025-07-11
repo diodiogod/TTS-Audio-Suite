@@ -48,58 +48,58 @@ class AudioAnalyzerNode:
                 }),
                 "analysis_method": (["silence", "energy", "peaks", "manual"], {
                     "default": "silence",
-                    "tooltip": "Method for automatic timing detection"
+                    "tooltip": "How to automatically detect speech segments:\n• silence: Finds pauses between words/sentences (best for clear speech)\n• energy: Detects volume changes (good for music or noisy audio)\n• peaks: Finds sharp audio spikes (useful for percussion or effects)\n• manual: Use only manual regions you define below"
                 }),
                 "precision_level": (["seconds", "milliseconds", "samples"], {
                     "default": "milliseconds",
-                    "tooltip": "Precision level for timing output"
+                    "tooltip": "How precise timing numbers should be in outputs:\n• seconds: Rounded to seconds (1.23s) - for rough timing\n• milliseconds: Precise to milliseconds (1.234s) - for most uses\n• samples: Raw sample numbers (27225 smp) - for exact audio editing"
                 }),
                 "visualization_points": ("INT", {
                     "default": 2000,
                     "min": 500,
                     "max": 10000,
                     "step": 100,
-                    "tooltip": "Number of points for waveform visualization"
+                    "tooltip": "Waveform detail level - how many points to draw:\n• 500-1000: Smooth waveform, fast rendering\n• 2000-3000: Balanced detail and performance (recommended)\n• 5000-10000: Very detailed, slower but precise for fine editing"
                 }),
             },
             "optional": {
                 "audio": ("AUDIO", {
-                    "tooltip": "Optional: Audio input from another node"
+                    "tooltip": "Connect audio from another node instead of using audio_file path.\nThis input takes priority over the file path if connected."
                 }),
                 "silence_threshold": ("FLOAT", {
                     "default": 0.01,
                     "min": 0.001,
                     "max": 0.1,
                     "step": 0.001,
-                    "tooltip": "Amplitude threshold for silence detection"
+                    "tooltip": "How quiet audio must be to count as silence (0.001-0.1):\n• 0.001-0.005: Very sensitive, catches whispers as speech\n• 0.01: Default, good for most recordings\n• 0.05-0.1: Less sensitive, ignores background noise\nOnly used when analysis_method is 'silence'"
                 }),
                 "silence_min_duration": ("FLOAT", {
                     "default": 0.1,
                     "min": 0.01,
                     "max": 2.0,
                     "step": 0.01,
-                    "tooltip": "Minimum duration for silence regions (seconds)"
+                    "tooltip": "Shortest pause to count as a break between words (0.01-2.0 seconds):\n• 0.01-0.05: Catches tiny pauses between syllables\n• 0.1: Default, good for word breaks\n• 0.5-2.0: Only long pauses between sentences\nOnly used when analysis_method is 'silence'"
                 }),
                 "energy_sensitivity": ("FLOAT", {
                     "default": 0.5,
                     "min": 0.0,
                     "max": 1.0,
                     "step": 0.1,
-                    "tooltip": "Sensitivity for energy-based detection"
+                    "tooltip": "How sensitive to detect volume changes (0.0-1.0):\n• 0.0-0.3: Very sensitive, detects small volume changes\n• 0.5: Default, balanced detection\n• 0.7-1.0: Less sensitive, only major volume changes\nOnly used when analysis_method is 'energy'"
                 }),
                 "manual_regions": ("STRING", {
                     "multiline": True,
                     "default": "",
-                    "tooltip": "Manual timing regions (start,end format, one per line)"
+                    "tooltip": "Define your own timing regions manually.\nFormat: start,end (one per line)\nExample:\n1.5,3.2\n4.0,6.8\n8.1,10.5\n\nUse when analysis_method is 'manual' or to add extra regions.\nClick 'Add Region' after selecting on waveform to auto-fill."
                 }),
                 "region_labels": ("STRING", {
                     "multiline": True,
                     "default": "",
-                    "tooltip": "Labels for timing regions (one per line, optional)"
+                    "tooltip": "Optional labels for each region (one per line).\nExample:\nIntro\nVerse 1\nChorus\n\nMust match the number of manual_regions.\nIf empty, regions get automatic names like 'region_1', 'region_2'."
                 }),
                 "export_format": (["f5tts", "json", "csv"], {
                     "default": "f5tts",
-                    "tooltip": "Output format for timing data"
+                    "tooltip": "How to format the timing_data output:\n• f5tts: Simple format for F5-TTS (start,end per line)\n• json: Full data with confidence, labels, metadata\n• csv: Spreadsheet-compatible format for analysis\n\nAll formats respect the precision_level setting."
                 }),
             },
             "hidden": {
