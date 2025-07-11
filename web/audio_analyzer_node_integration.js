@@ -54,6 +54,9 @@ export class AudioAnalyzerNodeIntegration {
         // Show analysis results summary
         this.showAnalysisResults(data.analysis_results);
         
+        // Make hasConnectedAudio available to core for playback checks
+        this.core.hasConnectedAudio = () => this.hasConnectedAudio();
+        
         // Redraw visualization
         this.core.visualization.redraw();
         
@@ -176,12 +179,26 @@ export class AudioAnalyzerNodeIntegration {
             return true;
         }
         
-        // Check for audio input connection
-        if (this.core.node.inputs && this.core.node.inputs.length > 1) {
-            const audioInput = this.core.node.inputs[1]; // Assuming slot 1 is audio input
+        // Check for audio input connection by name (not hardcoded slot index)
+        if (this.core.node.inputs) {
+            const audioInput = this.core.node.inputs.find(input => input.name === 'audio');
             if (audioInput && audioInput.link) {
                 return true;
             }
+        }
+        
+        return false;
+    }
+    
+    // Check if we have connected audio input (no file path)
+    hasConnectedAudio() {
+        const audioFileWidget = this.core.node.widgets?.find(w => w.name === 'audio_file');
+        const hasFile = audioFileWidget && audioFileWidget.value && audioFileWidget.value.trim();
+        
+        if (this.core.node.inputs) {
+            const audioInput = this.core.node.inputs.find(input => input.name === 'audio');
+            const hasConnection = audioInput && audioInput.link;
+            return hasConnection && !hasFile;
         }
         
         return false;
