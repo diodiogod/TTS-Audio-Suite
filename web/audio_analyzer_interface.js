@@ -50,11 +50,17 @@ function handleNodeExecution(message) {
         
         // Setup audio playback
         const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
+        console.log(`🎵 Playback setup: audioFileWidget=${audioFileWidget?.value || 'empty'}, web_audio_filename=${vizData.web_audio_filename || 'not provided'}`);
+        
         if (audioFileWidget && audioFileWidget.value) {
+            console.log('🎵 Setting up file-based audio playback');
             this.setupAudioPlayback(audioFileWidget.value);
-        } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
-            // Connected audio input - playback not available
-            console.log('🎵 Connected audio detected - playback not available');
+        } else if (vizData.web_audio_filename) {
+            // Connected audio with saved temporary file
+            console.log('🎵 Setting up connected audio playback from temp file');
+            this.setupAudioPlayback(vizData.web_audio_filename);
+        } else {
+            console.log('🎵 No audio source for playback setup');
         }
     }
 }
@@ -194,9 +200,12 @@ app.registerExtension({
                                     const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
                                     if (audioFileWidget && audioFileWidget.value) {
                                         this.setupAudioPlayback(audioFileWidget.value);
-                                    } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
-                                        // Connected audio input - playback not available
-                                        console.log('🎵 Connected audio detected in onExecuted - playback not available');
+                                    } else if (parsedData.web_audio_filename) {
+                                        // Connected audio with saved temporary file
+                                        console.log('🎵 Setting up connected audio playback from temp file in onExecuted');
+                                        this.setupAudioPlayback(parsedData.web_audio_filename);
+                                    } else {
+                                        console.log('🎵 No audio source for playback in onExecuted');
                                     }
                                 }
                                 return onExecuted ? onExecuted.apply(this, arguments) : undefined;
@@ -317,64 +326,56 @@ app.registerExtension({
             
             // Simple temp file data fetch with fallback (restore original working approach)
             nodeType.prototype.tryWebFileData = function() {
-                // Try ComfyUI temp directory first
-                const tempFileUrl = `/temp/audio_data_${this.id}.json?t=${Date.now()}`;
-                console.log(`🎵 Attempting to fetch temp file: ${tempFileUrl}`);
+                // Try multiple ComfyUI temp directory paths
+                const possibleTempUrls = [
+                    `/view?filename=audio_data_${this.id}.json&type=temp&t=${Date.now()}`,
+                    `/temp/audio_data_${this.id}.json?t=${Date.now()}`,
+                    `/api/view?filename=audio_data_${this.id}.json&type=temp&t=${Date.now()}`
+                ];
                 
-                fetch(tempFileUrl)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(vizData => {
-                        console.log(`🎉 Successfully fetched temp file data! Duration: ${vizData.duration}`);
-                        if (this.audioAnalyzerInterface) {
-                            this.audioAnalyzerInterface.updateVisualization(vizData);
-                            
-                            // Setup audio playback
-                            const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
-                            if (audioFileWidget && audioFileWidget.value) {
-                                this.setupAudioPlayback(audioFileWidget.value);
-                            } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
-                                // Connected audio input - playback not available
-                                console.log('🎵 Connected audio detected in tryWebFileData - playback not available');
+                let urlIndex = 0;
+                const tryNextTempUrl = () => {
+                    if (urlIndex >= possibleTempUrls.length) {
+                        console.log('⚠️ All temp file URLs failed, falling back to test data');
+                        this.generateTestData();
+                        return;
+                    }
+                    
+                    const tempFileUrl = possibleTempUrls[urlIndex++];
+                    console.log(`🎵 Attempting to fetch temp file (${urlIndex}/${possibleTempUrls.length}): ${tempFileUrl}`);
+                    
+                    fetch(tempFileUrl)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
                             }
-                        }
-                    })
-                    .catch(error => {
-                        // Try system temp directory as fallback
-                        console.log('⚠️ ComfyUI temp failed, trying system temp:', error.message);
-                        const systemTempUrl = `/view?filename=audio_data_${this.id}.json&type=temp&t=${Date.now()}`;
-                        
-                        fetch(systemTempUrl)
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`HTTP ${response.status}`);
+                            return response.json();
+                        })
+                        .then(vizData => {
+                            console.log(`🎉 Successfully fetched temp file data! Duration: ${vizData.duration}`);
+                            if (this.audioAnalyzerInterface) {
+                                this.audioAnalyzerInterface.updateVisualization(vizData);
+                                
+                                // Setup audio playback
+                                const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
+                                if (audioFileWidget && audioFileWidget.value) {
+                                    this.setupAudioPlayback(audioFileWidget.value);
+                                } else if (vizData.web_audio_filename) {
+                                    // Connected audio with saved temporary file
+                                    console.log('🎵 Setting up connected audio playback from temp file fetch');
+                                    this.setupAudioPlayback(vizData.web_audio_filename);
+                                } else {
+                                    console.log('🎵 No audio source for playback in temp file fetch');
                                 }
-                                return response.json();
-                            })
-                            .then(vizData => {
-                                if (this.audioAnalyzerInterface) {
-                                    this.audioAnalyzerInterface.updateVisualization(vizData);
-                                    
-                                    // Setup audio playback
-                                    const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
-                                    if (audioFileWidget && audioFileWidget.value) {
-                                        this.setupAudioPlayback(audioFileWidget.value);
-                                    } else if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.core.hasConnectedAudio && this.audioAnalyzerInterface.core.hasConnectedAudio()) {
-                                        // Connected audio input - playback not available
-                                        console.log('🎵 Connected audio detected in system temp fallback - playback not available');
-                                    }
-                                }
-                            })
-                            .catch(fallbackError => {
-                                // Final fallback to test data
-                                console.log('⚠️ All temp files failed, using test data:', fallbackError.message);
-                                this.generateTestData();
-                            });
-                    });
+                            }
+                        })
+                        .catch(error => {
+                            console.log(`⚠️ Temp file URL failed: ${tempFileUrl} - ${error.message}`);
+                            tryNextTempUrl(); // Try next URL
+                        });
+                };
+                
+                tryNextTempUrl();
             };
             
             // Try to fetch cached visualization data

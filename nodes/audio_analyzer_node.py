@@ -406,22 +406,22 @@ class AudioAnalyzerNode:
             processed_audio = AudioProcessingUtils.format_for_comfyui(audio_tensor, sample_rate)
             
             
-            # Save visualization data to ComfyUI temp directory and copy audio for web access
+            # Save visualization data to ComfyUI temp directory and save audio for web access
             try:
                 import folder_paths
                 import shutil
+                import soundfile as sf
                 
                 # Save visualization data
                 temp_dir = folder_paths.get_temp_directory()
                 temp_file = os.path.join(temp_dir, f"audio_data_{node_id}.json")
                 
-                with open(temp_file, 'w') as f:
-                    json.dump(viz_data, f, indent=2)
+                # Add audio file path to visualization data for JavaScript
+                web_audio_filename = None
                 
-                print(f"🎵 Audio data saved to temp: {temp_file}")
-                
-                # Copy audio file to ComfyUI input directory for web access
+                # Handle audio file copying or saving
                 if audio_file and audio_file.strip() and os.path.exists(audio_file.strip()):
+                    # File-based audio: copy to ComfyUI input directory for web access
                     input_dir = folder_paths.get_input_directory()
                     audio_filename = os.path.basename(audio_file.strip())
                     web_audio_path = os.path.join(input_dir, audio_filename)
@@ -430,6 +430,45 @@ class AudioAnalyzerNode:
                     if not os.path.exists(web_audio_path) or os.path.getmtime(audio_file.strip()) > os.path.getmtime(web_audio_path):
                         shutil.copy2(audio_file.strip(), web_audio_path)
                         print(f"🎵 Audio file copied for web access: {web_audio_path}")
+                    
+                    web_audio_filename = audio_filename
+                    
+                elif audio is not None:
+                    # Connected audio: save tensor to temporary file for web access
+                    try:
+                        input_dir = folder_paths.get_input_directory()
+                        temp_audio_filename = f"connected_audio_{node_id}.wav"
+                        temp_audio_path = os.path.join(input_dir, temp_audio_filename)
+                        
+                        # Convert tensor to numpy array for soundfile
+                        audio_numpy = audio_tensor.cpu().numpy()
+                        if audio_numpy.ndim == 1:
+                            # Mono audio
+                            sf.write(temp_audio_path, audio_numpy, sample_rate)
+                        else:
+                            # Multi-channel audio - use first channel or average
+                            if audio_numpy.shape[0] == 1:
+                                sf.write(temp_audio_path, audio_numpy[0], sample_rate)
+                            else:
+                                # Average multiple channels to mono
+                                mono_audio = np.mean(audio_numpy, axis=0)
+                                sf.write(temp_audio_path, mono_audio, sample_rate)
+                        
+                        web_audio_filename = temp_audio_filename
+                        print(f"🎵 Connected audio saved for web access: {temp_audio_path}")
+                        
+                    except Exception as audio_save_error:
+                        print(f"⚠️ Failed to save connected audio: {audio_save_error}")
+                        # Continue without audio playback for connected audio
+                
+                # Add audio filename to visualization data if available
+                if web_audio_filename:
+                    viz_data["web_audio_filename"] = web_audio_filename
+                
+                with open(temp_file, 'w') as f:
+                    json.dump(viz_data, f, indent=2)
+                
+                print(f"🎵 Audio data saved to temp: {temp_file}")
                 
             except Exception as save_error:
                 print(f"⚠️ Audio Analyzer data save failed: {save_error}")
