@@ -77,7 +77,7 @@ export class AudioAnalyzerLayout {
         const otherWidgetsHeight = this.core.widgets.calculateWidgetHeights(widgets);
         
         const nodeExtraHeight = 100; // Space for node title, margins, etc.
-        const fixedHeight = interfaceHeight + otherWidgetsHeight + nodeExtraHeight;
+        const fixedHeight = 950; // Fixed test height
         
         // Set node properties to control resizing
         this.core.node.resizable = true; // Allow resizing
@@ -113,6 +113,7 @@ export class AudioAnalyzerLayout {
             // Ensure our canvas resizes with the interface
             if (this.core.canvas) {
                 this.core.resizeCanvas();
+
             }
             
             setTimeout(() => { this.resizing = false; }, 10);
@@ -297,7 +298,7 @@ export class AudioAnalyzerLayout {
         }
         
         // Position the interface container - move it WAY up
-        const adjustedPosition = yPosition - 807; // Move up 500px
+        const adjustedPosition = yPosition - 250; // Move up offset px
         this.core.widget.element.style.top = `${adjustedPosition}px`;
         
         console.log(`🎵 Audio Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);
