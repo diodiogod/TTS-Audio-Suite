@@ -214,14 +214,58 @@ class AudioAnalyzerNode:
         else:
             return f"{value:.3f}"
     
+    def _get_precision_unit(self, precision_level: str) -> str:
+        """Get the unit string for the precision level."""
+        if precision_level == "seconds":
+            return "s"
+        elif precision_level == "milliseconds":
+            return "s"
+        elif precision_level == "samples":
+            return " smp"
+        else:
+            return "s"
+    
+    def _apply_precision_to_timing_data(self, timing_data: Any, precision_level: str) -> Any:
+        """Apply precision formatting to timing data recursively."""
+        if isinstance(timing_data, dict):
+            result = {}
+            for key, value in timing_data.items():
+                if key in ['start', 'end', 'start_time', 'end_time', 'duration'] and isinstance(value, (int, float)):
+                    # Format timing values according to precision
+                    if precision_level == "samples":
+                        result[key] = int(value * self.analyzer.sample_rate)
+                    else:
+                        result[key] = float(self._format_timing_precision(value, precision_level))
+                else:
+                    result[key] = self._apply_precision_to_timing_data(value, precision_level)
+            return result
+        elif isinstance(timing_data, list):
+            return [self._apply_precision_to_timing_data(item, precision_level) for item in timing_data]
+        else:
+            return timing_data
+    
+    def _format_f5tts_with_precision(self, regions: List[TimingRegion], precision_level: str) -> str:
+        """Format timing regions for F5-TTS with precision formatting."""
+        if not regions:
+            return ""
+        
+        # Format regions with precision
+        formatted_regions = []
+        for region in regions:
+            start_formatted = self._format_timing_precision(region.start_time, precision_level)
+            end_formatted = self._format_timing_precision(region.end_time, precision_level)
+            formatted_regions.append(f"{start_formatted},{end_formatted}")
+        
+        return "\n".join(formatted_regions)
+    
     def _create_analysis_info(self, audio_tensor: torch.Tensor, sample_rate: int, 
-                             regions: List[TimingRegion], method: str) -> str:
-        """Create analysis information string."""
+                             regions: List[TimingRegion], method: str, precision_level: str = "milliseconds") -> str:
+        """Create analysis information string with precision formatting."""
         duration = AudioProcessingUtils.get_audio_duration(audio_tensor, sample_rate)
         
         info_lines = [
             f"Audio Analysis Results",
-            f"Duration: {duration:.2f} seconds",
+            f"Duration: {self._format_timing_precision(duration, precision_level)} {self._get_precision_unit(precision_level)}",
             f"Sample Rate: {sample_rate} Hz",
             f"Analysis Method: {method}",
             f"Regions Found: {len(regions)}",
@@ -231,9 +275,14 @@ class AudioAnalyzerNode:
         
         for i, region in enumerate(regions):
             region_duration = region.end_time - region.start_time
+            start_formatted = self._format_timing_precision(region.start_time, precision_level)
+            end_formatted = self._format_timing_precision(region.end_time, precision_level)
+            duration_formatted = self._format_timing_precision(region_duration, precision_level)
+            unit = self._get_precision_unit(precision_level)
+            
             info_lines.append(
-                f"  {i+1}. {region.label}: {region.start_time:.3f}s - {region.end_time:.3f}s "
-                f"(duration: {region_duration:.3f}s, confidence: {region.confidence:.2f})"
+                f"  {i+1}. {region.label}: {start_formatted}{unit} - {end_formatted}{unit} "
+                f"(duration: {duration_formatted}{unit}, confidence: {region.confidence:.2f})"
             )
         
         return "\n".join(info_lines)
@@ -337,17 +386,18 @@ class AudioAnalyzerNode:
                 for region in regions
             ]
             
-            # Format timing data according to export format
+            # Format timing data according to export format and precision level
             if export_format == "f5tts":
-                timing_data = self.analyzer.format_timing_for_f5tts(regions)
+                # F5TTS format with precision formatting
+                timing_data = self._format_f5tts_with_precision(regions, precision_level)
             else:
-                timing_data = json.dumps(
-                    self.analyzer.export_timing_data(regions, export_format),
-                    indent=2
-                )
+                # Apply precision formatting to exported timing data
+                raw_timing_data = self.analyzer.export_timing_data(regions, export_format)
+                formatted_timing_data = self._apply_precision_to_timing_data(raw_timing_data, precision_level)
+                timing_data = json.dumps(formatted_timing_data, indent=2)
             
-            # Create analysis info
-            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method)
+            # Create analysis info with precision formatting
+            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level)
             
             # Format visualization data as JSON
             visualization_json = json.dumps(viz_data, indent=2)
