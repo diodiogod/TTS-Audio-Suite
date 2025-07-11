@@ -48,17 +48,17 @@ function handleNodeExecution(message) {
     if (this.audioAnalyzerInterface) {
         this.audioAnalyzerInterface.updateVisualization(vizData);
         
-        // Setup audio playback
+        // Setup audio playback - Connected audio has priority over file path
         const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
         console.log(`🎵 Playback setup: audioFileWidget=${audioFileWidget?.value || 'empty'}, web_audio_filename=${vizData.web_audio_filename || 'not provided'}`);
         
-        if (audioFileWidget && audioFileWidget.value) {
+        if (vizData.web_audio_filename) {
+            // Connected audio with saved temporary file (has priority)
+            console.log('🎵 Setting up connected audio playback from temp file (priority)');
+            this.setupAudioPlayback(vizData.web_audio_filename);
+        } else if (audioFileWidget && audioFileWidget.value) {
             console.log('🎵 Setting up file-based audio playback');
             this.setupAudioPlayback(audioFileWidget.value);
-        } else if (vizData.web_audio_filename) {
-            // Connected audio with saved temporary file
-            console.log('🎵 Setting up connected audio playback from temp file');
-            this.setupAudioPlayback(vizData.web_audio_filename);
         } else {
             console.log('🎵 No audio source for playback setup');
         }
@@ -196,14 +196,14 @@ app.registerExtension({
                                 if (this.audioAnalyzerInterface) {
                                     this.audioAnalyzerInterface.updateVisualization(parsedData);
                                     
-                                    // Setup audio playback
+                                    // Setup audio playback - Connected audio has priority
                                     const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
-                                    if (audioFileWidget && audioFileWidget.value) {
-                                        this.setupAudioPlayback(audioFileWidget.value);
-                                    } else if (parsedData.web_audio_filename) {
-                                        // Connected audio with saved temporary file
-                                        console.log('🎵 Setting up connected audio playback from temp file in onExecuted');
+                                    if (parsedData.web_audio_filename) {
+                                        // Connected audio with saved temporary file (has priority)
+                                        console.log('🎵 Setting up connected audio playback from temp file in onExecuted (priority)');
                                         this.setupAudioPlayback(parsedData.web_audio_filename);
+                                    } else if (audioFileWidget && audioFileWidget.value) {
+                                        this.setupAudioPlayback(audioFileWidget.value);
                                     } else {
                                         console.log('🎵 No audio source for playback in onExecuted');
                                     }
@@ -258,6 +258,9 @@ app.registerExtension({
                 if (this.audioAnalyzerInterface.ui.showMessage) {
                     this.audioAnalyzerInterface.ui.showMessage('Analyzing audio file...');
                 }
+                
+                // Clear current audio setup to allow new setup
+                this.currentAudioFile = null;
                 
                 // Mark execution time for tracking
                 this.lastExecutionTime = Date.now();
@@ -356,14 +359,14 @@ app.registerExtension({
                             if (this.audioAnalyzerInterface) {
                                 this.audioAnalyzerInterface.updateVisualization(vizData);
                                 
-                                // Setup audio playback
+                                // Setup audio playback - Connected audio has priority
                                 const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
-                                if (audioFileWidget && audioFileWidget.value) {
-                                    this.setupAudioPlayback(audioFileWidget.value);
-                                } else if (vizData.web_audio_filename) {
-                                    // Connected audio with saved temporary file
-                                    console.log('🎵 Setting up connected audio playback from temp file fetch');
+                                if (vizData.web_audio_filename) {
+                                    // Connected audio with saved temporary file (has priority)
+                                    console.log('🎵 Setting up connected audio playback from temp file fetch (priority)');
                                     this.setupAudioPlayback(vizData.web_audio_filename);
+                                } else if (audioFileWidget && audioFileWidget.value) {
+                                    this.setupAudioPlayback(audioFileWidget.value);
                                 } else {
                                     console.log('🎵 No audio source for playback in temp file fetch');
                                 }
@@ -480,10 +483,19 @@ app.registerExtension({
             nodeType.prototype.setupAudioPlayback = function(filePath) {
                 if (!this.audioAnalyzerInterface) return;
                 
+                // Prevent duplicate audio setup for the same file
+                if (this.currentAudioFile === filePath) {
+                    console.log(`🎵 Audio already set up for: ${filePath}`);
+                    return;
+                }
+                
                 try {
                     if (this.audioAnalyzerInterface.audioElement) {
                         this.audioAnalyzerInterface.audioElement.pause();
                     }
+                    
+                    // Mark this file as the current audio
+                    this.currentAudioFile = filePath;
                     
                     // Extract filename and try multiple URL formats
                     let fileName = filePath.split('\\').pop().split('/').pop();

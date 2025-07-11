@@ -45,10 +45,9 @@ export class AudioAnalyzerNodeIntegration {
         
         // Create audio element for playback if we have file path or web audio filename
         if (data.file_path) {
-            this.setupAudioPlayback(data.file_path);
+            this.core.node.setupAudioPlayback(data.file_path);
         } else if (data.web_audio_filename) {
-            console.log('🎵 Setting up connected audio playback via web_audio_filename');
-            this.setupAudioPlayback(data.web_audio_filename);
+            this.core.node.setupAudioPlayback(data.web_audio_filename);
         }
         
         // Update UI status
@@ -104,6 +103,11 @@ export class AudioAnalyzerNodeIntegration {
         
         // Always perform analysis when user clicks Analyze button
         // No need to check if parameters changed - user explicitly requested analysis
+        
+        // Clear current audio setup to allow new setup
+        if (this.core.node) {
+            this.core.node.currentAudioFile = null;
+        }
         
         // Update current params for future comparisons
         this.lastAnalysisParams = this.getCurrentAnalysisParams();
