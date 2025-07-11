@@ -73,18 +73,20 @@ app.registerExtension({
                     this.audioAnalyzerInterface = analyzerInterface;
                     audioAnalyzerNodes.set(String(this.id), this);
                     
-                    // Add widget to pass node ID to Python
+                    // Add hidden widget to pass node ID to Python (for cache management)
                     setTimeout(() => {
                         let nodeIdWidget = this.widgets?.find(w => w.name === 'node_id');
                         if (!nodeIdWidget) {
                             nodeIdWidget = this.addWidget("text", "node_id", String(this.id), () => {});
+                            // Hide the widget from UI
+                            nodeIdWidget.type = "hidden";
+                            nodeIdWidget.computeSize = () => [0, -4]; // Make it invisible
                         } else {
                             nodeIdWidget.value = String(this.id);
                         }
                     }, 10);
                     
-                    // Add manual refresh button
-                    this.addManualRefreshButton();
+                    // Manual refresh functionality is now handled by the Analyze button
                 } catch (error) {
                     console.error('❌ Audio Analyzer: Failed to create interface:', error);
                 }
@@ -148,30 +150,7 @@ app.registerExtension({
                 return result;
             };
             
-            // Manual refresh button
-            nodeType.prototype.addManualRefreshButton = function() {
-                if (this.audioAnalyzerInterface && this.audioAnalyzerInterface.ui) {
-                    const container = this.audioAnalyzerInterface.ui.container;
-                    if (container) {
-                        const refreshDiv = document.createElement('div');
-                        refreshDiv.style.cssText = `
-                            position: absolute;
-                            top: 10px;
-                            right: 10px;
-                            background: #4a9eff;
-                            color: white;
-                            padding: 8px 12px;
-                            border-radius: 4px;
-                            font-size: 11px;
-                            cursor: pointer;
-                            z-index: 1000;
-                        `;
-                        refreshDiv.textContent = '🔄 Refresh Data';
-                        refreshDiv.onclick = () => this.manualDataRefresh();
-                        container.appendChild(refreshDiv);
-                    }
-                }
-            };
+            // Refresh functionality is now integrated into the Analyze button
             
             // Manual data refresh
             nodeType.prototype.manualDataRefresh = function() {

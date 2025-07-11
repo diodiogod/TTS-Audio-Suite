@@ -6,12 +6,19 @@ export class AudioAnalyzerEvents {
     constructor(core) {
         this.core = core;
         this.mouseDown = false;
+        this.middleMouseDown = false;
+        this.isPanning = false;
+        this.isCtrlPanning = false;
         this.lastMousePos = { x: 0, y: 0 };
     }
     
     setupEventListeners() {
         // Mouse events for canvas interaction
-        this.core.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        this.core.canvas.addEventListener('mousedown', (e) => {
+            // Focus canvas when clicked to enable keyboard shortcuts
+            this.core.canvas.focus();
+            this.handleMouseDown(e);
+        });
         this.core.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         this.core.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         this.core.canvas.addEventListener('mouseleave', (e) => this.handleMouseLeave(e));
@@ -22,8 +29,24 @@ export class AudioAnalyzerEvents {
         // Double-click for time seeking
         this.core.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
         
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        // Make canvas focusable and capture keyboard events
+        this.core.canvas.tabIndex = 0; // Make canvas focusable
+        this.core.canvas.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        
+        // Focus canvas on mouse enter to ensure keyboard events work
+        this.core.canvas.addEventListener('mouseenter', () => {
+            this.core.canvas.focus();
+        });
+        
+        // Visual focus indicator
+        this.core.canvas.addEventListener('focus', () => {
+            this.core.canvas.style.outline = '2px solid #4a9eff';
+            this.core.showMessage('Audio analyzer focused - keyboard shortcuts active');
+        });
+        
+        this.core.canvas.addEventListener('blur', () => {
+            this.core.canvas.style.outline = 'none';
+        });
         
         // Prevent context menu on canvas
         this.core.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -51,7 +74,12 @@ export class AudioAnalyzerEvents {
         this.mouseDown = true;
         this.lastMousePos = coords;
         
-        if (e.button === 0) { // Left mouse button
+        if ((e.button === 0 || e.button === 2) && e.ctrlKey) { // Left or Right + CTRL
+            // CTRL + click = panning mode
+            this.isCtrlPanning = true;
+            this.core.canvas.style.cursor = 'grabbing';
+            e.preventDefault(); // Prevent context menu for right click
+        } else if (e.button === 0) { // Left mouse button (without CTRL)
             if (e.shiftKey) {
                 // Extend selection
                 if (this.core.selectedStart !== null) {
@@ -64,6 +92,14 @@ export class AudioAnalyzerEvents {
                     this.core.ui.updateSelectionDisplay();
                     this.core.visualization.redraw();
                 }
+            } else if (e.altKey) {
+                // Alt + left click: Select region for deletion
+                const regionIndex = this.core.selectRegionAtTime(time);
+                if (regionIndex >= 0) {
+                    this.core.showMessage(`Region ${regionIndex + 1} selected. Press Delete key to remove.`);
+                } else {
+                    this.core.showMessage('No region found at this position.');
+                }
             } else {
                 // Start new selection
                 this.core.isDragging = true;
@@ -74,7 +110,13 @@ export class AudioAnalyzerEvents {
                 this.core.ui.updateSelectionDisplay();
                 this.core.visualization.redraw();
             }
-        } else if (e.button === 2) { // Right mouse button
+        } else if (e.button === 1) { // Middle mouse button
+            // Start panning
+            this.middleMouseDown = true;
+            this.isPanning = true;
+            this.core.canvas.style.cursor = 'grabbing';
+            e.preventDefault(); // Prevent browser's middle-click behavior
+        } else if (e.button === 2) { // Right mouse button (without CTRL)
             // Clear selection
             this.core.clearSelection();
         }
@@ -88,14 +130,14 @@ export class AudioAnalyzerEvents {
         const time = this.core.pixelToTime(coords.x);
         
         if (this.mouseDown && this.core.isDragging) {
-            // Update drag selection
+            // Update drag selection (only when not in CTRL panning mode)
             this.core.dragEnd = time;
             this.core.selectedStart = Math.min(this.core.dragStart, this.core.dragEnd);
             this.core.selectedEnd = Math.max(this.core.dragStart, this.core.dragEnd);
             this.core.ui.updateSelectionDisplay();
             this.core.visualization.redraw();
-        } else if (this.mouseDown && e.ctrlKey) {
-            // Pan the view
+        } else if (this.isPanning && this.middleMouseDown) {
+            // Middle mouse button panning
             const deltaX = coords.x - this.lastMousePos.x;
             const canvasWidth = this.core.canvas.width / devicePixelRatio;
             const visibleDuration = this.core.waveformData.duration / this.core.zoomLevel;
@@ -105,7 +147,35 @@ export class AudioAnalyzerEvents {
                 Math.min(this.core.waveformData.duration - visibleDuration, 
                     this.core.scrollOffset + timeDelta));
             
+            this.core.canvas.style.cursor = 'grabbing';
             this.core.visualization.redraw();
+        } else if (this.mouseDown && this.isCtrlPanning) {
+            // CTRL + left/right drag panning
+            const deltaX = coords.x - this.lastMousePos.x;
+            const canvasWidth = this.core.canvas.width / devicePixelRatio;
+            const visibleDuration = this.core.waveformData.duration / this.core.zoomLevel;
+            const timeDelta = -(deltaX / canvasWidth) * visibleDuration;
+            
+            this.core.scrollOffset = Math.max(0, 
+                Math.min(this.core.waveformData.duration - visibleDuration, 
+                    this.core.scrollOffset + timeDelta));
+            
+            this.core.canvas.style.cursor = 'grabbing';
+            this.core.visualization.redraw();
+        } else if (!this.mouseDown && e.ctrlKey) {
+            // Show pan cursor when CTRL is held (regardless of zoom level)
+            this.core.canvas.style.cursor = 'grab';
+        } else if (!this.mouseDown) {
+            // Update hovered region for visual feedback
+            const time = this.core.pixelToTime(coords.x);
+            this.core.hoveredRegionIndex = this.core.getRegionAtTime(time);
+            
+            // Default crosshair cursor for precise selection
+            if (e.altKey && this.core.hoveredRegionIndex >= 0) {
+                this.core.canvas.style.cursor = 'pointer'; // Show pointer when over region with Alt
+            } else {
+                this.core.canvas.style.cursor = 'crosshair';
+            }
         }
         
         this.lastMousePos = coords;
@@ -115,6 +185,22 @@ export class AudioAnalyzerEvents {
         if (!this.core.waveformData) return;
         
         this.mouseDown = false;
+        
+        if (e.button === 1) { // Middle mouse button
+            this.middleMouseDown = false;
+            this.isPanning = false;
+            this.core.canvas.style.cursor = 'crosshair';
+        }
+        
+        if (this.isCtrlPanning) {
+            this.isCtrlPanning = false;
+            // Update cursor based on current state
+            if (e.ctrlKey) {
+                this.core.canvas.style.cursor = 'grab';
+            } else {
+                this.core.canvas.style.cursor = 'crosshair';
+            }
+        }
         
         if (this.core.isDragging) {
             this.core.isDragging = false;
@@ -133,6 +219,11 @@ export class AudioAnalyzerEvents {
     
     handleMouseLeave(e) {
         this.mouseDown = false;
+        this.middleMouseDown = false;
+        this.isPanning = false;
+        this.isCtrlPanning = false;
+        this.core.canvas.style.cursor = 'default';
+        
         if (this.core.isDragging) {
             this.core.isDragging = false;
             this.core.ui.updateSelectionDisplay();
@@ -190,12 +281,16 @@ export class AudioAnalyzerEvents {
     }
     
     handleKeyDown(e) {
-        // Only handle keys when the audio analyzer is focused
+        // Only handle keys when the audio analyzer canvas is focused
         if (!this.core.canvas || document.activeElement !== this.core.canvas) {
             return;
         }
         
         if (!this.core.waveformData) return;
+        
+        // Prevent ComfyUI from capturing these events
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         
         switch (e.key) {
             case ' ':
@@ -218,9 +313,15 @@ export class AudioAnalyzerEvents {
                 
             case 'Delete':
             case 'Backspace':
-                // Delete - clear all regions
+                // Delete - delete selected region or clear all if shift held
                 e.preventDefault();
-                this.core.clearAllRegions();
+                if (e.shiftKey) {
+                    this.core.clearAllRegions();
+                } else if (this.core.selectedRegionIndex >= 0) {
+                    this.core.deleteSelectedRegion();
+                } else {
+                    this.core.showMessage('No region selected. Alt+click a region to select it for deletion.');
+                }
                 break;
                 
             case 'ArrowLeft':
@@ -285,6 +386,26 @@ export class AudioAnalyzerEvents {
                 // Reset zoom
                 e.preventDefault();
                 this.core.resetZoom();
+                break;
+                
+            case 'l':
+            case 'L':
+                // L - set loop from selection or toggle looping
+                e.preventDefault();
+                if (e.shiftKey) {
+                    this.core.toggleLooping();
+                } else {
+                    this.core.setLoopFromSelection();
+                }
+                break;
+                
+            case 'c':
+            case 'C':
+                // C - clear loop markers (when shift held)
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    this.core.clearLoopMarkers();
+                }
                 break;
         }
     }
