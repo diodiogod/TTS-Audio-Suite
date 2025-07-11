@@ -25,6 +25,13 @@ export class AudioAnalyzerInterface {
         this.dragEnd = null;
         this.selectedStart = null;
         this.selectedEnd = null;
+        this.selectedRegionIndex = -1; // For tracking which region is selected for deletion
+        this.hoveredRegionIndex = -1; // For visual feedback
+        
+        // Loop markers
+        this.loopStart = null;
+        this.loopEnd = null;
+        this.isLooping = false;
         
         // Color scheme for the interface
         this.colors = {
@@ -35,6 +42,9 @@ export class AudioAnalyzerInterface {
             selection: 'rgba(255, 255, 0, 0.3)',
             playhead: '#ff0000',
             region: 'rgba(0, 255, 0, 0.2)',
+            regionSelected: 'rgba(255, 165, 0, 0.4)',
+            regionHovered: 'rgba(0, 255, 0, 0.4)',
+            loopMarker: '#ff00ff',
             text: '#ffffff'
         };
         
@@ -201,14 +211,6 @@ export class AudioAnalyzerInterface {
         this.visualization.redraw();
     }
     
-    clearSelection() {
-        this.selectedStart = null;
-        this.selectedEnd = null;
-        this.dragStart = null;
-        this.dragEnd = null;
-        this.ui.updateSelectionDisplay();
-        this.visualization.redraw();
-    }
     
     // Region management
     addSelectedRegion() {
@@ -231,8 +233,49 @@ export class AudioAnalyzerInterface {
     
     clearAllRegions() {
         this.selectedRegions = [];
+        this.selectedRegionIndex = -1;
+        this.hoveredRegionIndex = -1;
         this.visualization.redraw();
         this.updateManualRegions();
+    }
+    
+    deleteSelectedRegion() {
+        if (this.selectedRegionIndex >= 0 && this.selectedRegionIndex < this.selectedRegions.length) {
+            this.selectedRegions.splice(this.selectedRegionIndex, 1);
+            this.selectedRegionIndex = -1;
+            this.hoveredRegionIndex = -1;
+            // Renumber remaining regions
+            this.selectedRegions.forEach((region, index) => {
+                region.label = `Region ${index + 1}`;
+            });
+            this.visualization.redraw();
+            this.updateManualRegions();
+        }
+    }
+    
+    selectRegionAtTime(time) {
+        // Find which region contains this time
+        for (let i = 0; i < this.selectedRegions.length; i++) {
+            const region = this.selectedRegions[i];
+            if (time >= region.start && time <= region.end) {
+                this.selectedRegionIndex = i;
+                this.visualization.redraw();
+                return i;
+            }
+        }
+        this.selectedRegionIndex = -1;
+        this.visualization.redraw();
+        return -1;
+    }
+    
+    getRegionAtTime(time) {
+        for (let i = 0; i < this.selectedRegions.length; i++) {
+            const region = this.selectedRegions[i];
+            if (time >= region.start && time <= region.end) {
+                return i;
+            }
+        }
+        return -1;
     }
     
     updateManualRegions() {
@@ -255,6 +298,41 @@ export class AudioAnalyzerInterface {
         }
     }
     
+    // Loop marker management
+    setLoopFromSelection() {
+        if (this.selectedStart !== null && this.selectedEnd !== null) {
+            this.loopStart = this.selectedStart;
+            this.loopEnd = this.selectedEnd;
+            this.visualization.redraw();
+            this.showMessage(`Loop set: ${this.formatTime(this.loopStart)} - ${this.formatTime(this.loopEnd)}`);
+        } else {
+            this.showMessage('Please select a region first to set loop markers');
+        }
+    }
+    
+    setLoopFromRegion(regionIndex) {
+        if (regionIndex >= 0 && regionIndex < this.selectedRegions.length) {
+            const region = this.selectedRegions[regionIndex];
+            this.loopStart = region.start;
+            this.loopEnd = region.end;
+            this.visualization.redraw();
+            this.showMessage(`Loop set from ${region.label}: ${this.formatTime(this.loopStart)} - ${this.formatTime(this.loopEnd)}`);
+        }
+    }
+    
+    clearLoopMarkers() {
+        this.loopStart = null;
+        this.loopEnd = null;
+        this.isLooping = false;
+        this.visualization.redraw();
+        this.showMessage('Loop markers cleared');
+    }
+    
+    toggleLooping() {
+        this.isLooping = !this.isLooping;
+        this.showMessage(this.isLooping ? 'Looping enabled' : 'Looping disabled');
+    }
+    
     // Audio playback controls
     togglePlayback() {
         if (this.isPlaying) {
@@ -266,6 +344,11 @@ export class AudioAnalyzerInterface {
     
     startPlayback() {
         if (!this.audioElement) return;
+        
+        // If looping is enabled and we have loop markers, start from loop start
+        if (this.isLooping && this.loopStart !== null) {
+            this.currentTime = this.loopStart;
+        }
         
         this.audioElement.currentTime = this.currentTime;
         this.audioElement.play();
@@ -307,6 +390,13 @@ export class AudioAnalyzerInterface {
         
         if (this.audioElement) {
             this.currentTime = this.audioElement.currentTime;
+            
+            // Check for loop end
+            if (this.isLooping && this.loopEnd !== null && this.currentTime >= this.loopEnd) {
+                this.currentTime = this.loopStart || 0;
+                this.audioElement.currentTime = this.currentTime;
+            }
+            
             this.ui.updateTimeDisplay();
             this.visualization.redraw();
         }
@@ -386,12 +476,14 @@ export class AudioAnalyzerInterface {
         this.nodeIntegration.onAudioConnected();
     }
     
-    // Clear current selection
+    // Clear current selection (but don't clear region selection)
     clearSelection() {
         this.selectedStart = null;
         this.selectedEnd = null;
         this.dragStart = null;
         this.dragEnd = null;
+        this.isDragging = false;
+        this.ui.updateSelectionDisplay();
         this.visualization.redraw();
     }
 }

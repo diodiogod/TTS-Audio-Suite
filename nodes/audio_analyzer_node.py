@@ -43,7 +43,7 @@ class AudioAnalyzerNode:
                 "audio_file": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "Path to audio file or drag audio file here",
+                    "tooltip": "Path to audio file or drag audio file here.\n\nMouse Controls:\n• Left click + drag: Select audio region\n• Shift + left click: Extend selection\n• Alt + left click: Select region for deletion\n• CTRL + left/right click + drag: Pan waveform\n• Middle mouse + drag: Pan waveform\n• Right click: Clear selection\n• Double click: Seek to position\n• Mouse wheel: Zoom in/out\n• CTRL key: Shows grab cursor for panning\n\nKeyboard Shortcuts:\n• Space: Play/pause\n• Escape: Clear selection\n• Enter: Add selected region\n• Delete: Delete selected region (Shift+Del: clear all)\n• L: Set loop from selection (Shift+L: toggle looping)\n• Shift+C: Clear loop markers\n• Arrow keys: Move playhead (+ Shift for 10s jumps)\n• +/-: Zoom in/out\n• 0: Reset zoom\n• Home/End: Go to start/end\n\nRegion Management:\n• Regions are numbered 1, 2, 3, etc.\n• Alt+click a region to select it for deletion\n• Selected regions appear in orange\n• Press Delete to remove selected region\n\nLoop Functionality:\n• Select a region, then press L or click 'Set Loop'\n• Use Shift+L or 'Loop ON/OFF' to enable/disable looping\n• When looping is on, playback repeats between loop markers\n• Loop markers appear as purple triangles at the bottom\n\nUI Buttons:\n• Upload Audio: Browse and upload audio files\n• Analyze: Process audio with current settings\n• Delete Region: Remove selected region (orange highlighted)\n• Add Region: Add current selection as new region\n• Clear All: Remove all regions\n• Set Loop: Set loop markers from selection\n• Loop ON/OFF: Toggle loop playback mode\n• Clear Loop: Remove loop markers\n\nNote: Click on the waveform to focus it for keyboard shortcuts",
                     "dynamicPrompts": False
                 }),
                 "analysis_method": (["silence", "energy", "peaks", "manual"], {
@@ -270,6 +270,19 @@ class AudioAnalyzerNode:
             elif audio_file and audio_file.strip():
                 # Load audio from file path
                 file_path = audio_file.strip()
+                
+                # If path is not absolute, try to resolve it relative to ComfyUI input directory
+                if not os.path.isabs(file_path):
+                    try:
+                        import folder_paths
+                        input_dir = folder_paths.get_input_directory()
+                        full_path = os.path.join(input_dir, file_path)
+                        if os.path.exists(full_path):
+                            file_path = full_path
+                            print(f"🎵 Resolved relative path to: {file_path}")
+                    except ImportError:
+                        print("⚠️ Could not import folder_paths, using path as-is")
+                
                 if not os.path.exists(file_path):
                     print(f"❌ Audio file not found: {file_path}")
                     raise FileNotFoundError(f"Audio file not found: {file_path}")

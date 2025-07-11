@@ -93,17 +93,29 @@ export class AudioAnalyzerControls {
             color: white;
         `;
         
+        // Upload button
+        const uploadButton = document.createElement('button');
+        uploadButton.textContent = '📁 Upload Audio';
+        uploadButton.style.cssText = buttonStyle + 'background: #007bff; font-weight: bold;';
+        uploadButton.onclick = () => this.handleUploadClick();
+        
         // Analyze button
         const analyzeButton = document.createElement('button');
         analyzeButton.textContent = '🔍 Analyze';
         analyzeButton.style.cssText = buttonStyle + 'background: #28a745;';
         analyzeButton.onclick = () => this.core.onParametersChanged();
         
-        // Clear selection button
-        const clearButton = document.createElement('button');
-        clearButton.textContent = '🗑️ Clear';
-        clearButton.style.cssText = buttonStyle + 'background: #dc3545;';
-        clearButton.onclick = () => this.core.clearSelection();
+        // Delete region button
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = '🗑️ Delete Region';
+        deleteButton.style.cssText = buttonStyle + 'background: #dc3545;';
+        deleteButton.onclick = () => {
+            if (this.core.selectedRegionIndex >= 0) {
+                this.core.deleteSelectedRegion();
+            } else {
+                this.core.showMessage('No region selected. Alt+click a region to select it for deletion.');
+            }
+        };
         
         // Add region button
         const addRegionButton = document.createElement('button');
@@ -117,16 +129,38 @@ export class AudioAnalyzerControls {
         clearAllButton.style.cssText = buttonStyle + 'background: #6c757d;';
         clearAllButton.onclick = () => this.core.clearAllRegions();
         
+        // Set loop button
+        const setLoopButton = document.createElement('button');
+        setLoopButton.textContent = '🔄 Set Loop';
+        setLoopButton.style.cssText = buttonStyle + 'background: #6f42c1;';
+        setLoopButton.onclick = () => this.core.setLoopFromSelection();
+        
+        // Toggle looping button
+        const toggleLoopButton = document.createElement('button');
+        toggleLoopButton.textContent = '⏯️ Loop ON/OFF';
+        toggleLoopButton.style.cssText = buttonStyle + 'background: #e83e8c;';
+        toggleLoopButton.onclick = () => this.core.toggleLooping();
+        
+        // Clear loop button
+        const clearLoopButton = document.createElement('button');
+        clearLoopButton.textContent = '🚫 Clear Loop';
+        clearLoopButton.style.cssText = buttonStyle + 'background: #495057;';
+        clearLoopButton.onclick = () => this.core.clearLoopMarkers();
+        
         // Export timing button
         const exportButton = document.createElement('button');
         exportButton.textContent = '📋 Export Timings';
         exportButton.style.cssText = buttonStyle + 'background: #fd7e14;';
         exportButton.onclick = () => this.core.exportTiming();
         
+        mainControls.appendChild(uploadButton);
         mainControls.appendChild(analyzeButton);
-        mainControls.appendChild(clearButton);
+        mainControls.appendChild(deleteButton);
         mainControls.appendChild(addRegionButton);
         mainControls.appendChild(clearAllButton);
+        mainControls.appendChild(setLoopButton);
+        mainControls.appendChild(toggleLoopButton);
+        mainControls.appendChild(clearLoopButton);
         mainControls.appendChild(exportButton);
         
         return mainControls;
@@ -248,7 +282,7 @@ export class AudioAnalyzerControls {
             this.core.canvas.style.opacity = '1';
         });
         
-        this.core.canvas.addEventListener('drop', (e) => {
+        this.core.canvas.addEventListener('drop', async (e) => {
             e.preventDefault();
             e.stopPropagation();
             this.core.canvas.style.opacity = '1';
@@ -257,26 +291,136 @@ export class AudioAnalyzerControls {
             if (files.length > 0) {
                 const file = files[0];
                 if (file.type.startsWith('audio/')) {
-                    
-                    // Update the audio_file widget with the file name
-                    const audioFileWidget = this.core.node.widgets.find(w => w.name === 'audio_file');
-                    if (audioFileWidget) {
-                        // For now, just set the name - user will need to provide the actual path
-                        audioFileWidget.value = file.name;
+                    try {
+                        this.showMessage('Uploading audio file...');
+                        this.updateStatus('Uploading...');
                         
-                        // Show message that user needs to provide the actual file path
-                        this.showMessage(`File dropped: ${file.name}. Please enter the full file path in the audio_file widget.`);
+                        // Upload file to ComfyUI
+                        const uploadResult = await this.uploadFileToComfyUI(file);
                         
-                        // Update the widget display
-                        if (audioFileWidget.callback) {
-                            audioFileWidget.callback(file.name);
+                        if (uploadResult.success) {
+                            // Update the audio_file widget with the full path to the uploaded file
+                            const audioFileWidget = this.core.node.widgets.find(w => w.name === 'audio_file');
+                            if (audioFileWidget) {
+                                // Construct the full path to the uploaded file in ComfyUI's input directory
+                                const fullPath = uploadResult.subfolder ? 
+                                    `${uploadResult.subfolder}/${uploadResult.filename}` : 
+                                    uploadResult.filename;
+                                
+                                audioFileWidget.value = fullPath;
+                                
+                                // Trigger widget callback to update the display
+                                if (audioFileWidget.callback) {
+                                    audioFileWidget.callback(fullPath);
+                                }
+                            }
+                            
+                            this.showMessage(`File uploaded: ${uploadResult.filename}. Click Analyze to process.`);
+                            this.updateStatus('File uploaded - ready to analyze');
+                        } else {
+                            this.showMessage(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
+                            this.updateStatus('Upload failed');
                         }
+                    } catch (error) {
+                        console.error('Drag & drop upload error:', error);
+                        this.showMessage(`Upload failed: ${error.message}`);
+                        this.updateStatus('Upload failed');
                     }
                 } else {
                     this.showMessage('Please drop an audio file');
                 }
             }
         });
+    }
+    
+    // Handle upload button click
+    handleUploadClick() {
+        // Create file input
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'audio/*';
+        fileInput.style.display = 'none';
+        
+        fileInput.onchange = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                this.showMessage('Uploading audio file...');
+                this.updateStatus('Uploading...');
+                
+                // Upload file to ComfyUI
+                const uploadResult = await this.uploadFileToComfyUI(file);
+                
+                if (uploadResult.success) {
+                    // Update the audio_file widget with the full path to the uploaded file
+                    const audioFileWidget = this.core.node.widgets.find(w => w.name === 'audio_file');
+                    if (audioFileWidget) {
+                        // Construct the full path to the uploaded file in ComfyUI's input directory
+                        const fullPath = uploadResult.subfolder ? 
+                            `${uploadResult.subfolder}/${uploadResult.filename}` : 
+                            uploadResult.filename;
+                        
+                        audioFileWidget.value = fullPath;
+                        
+                        // Trigger widget callback to update the display
+                        if (audioFileWidget.callback) {
+                            audioFileWidget.callback(fullPath);
+                        }
+                    }
+                    
+                    this.showMessage(`File uploaded: ${uploadResult.filename}. Click Analyze to process.`);
+                    this.updateStatus('File uploaded - ready to analyze');
+                } else {
+                    this.showMessage(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
+                    this.updateStatus('Upload failed');
+                }
+            } catch (error) {
+                console.error('Upload button error:', error);
+                this.showMessage(`Upload failed: ${error.message}`);
+                this.updateStatus('Upload failed');
+            }
+            
+            // Clean up
+            document.body.removeChild(fileInput);
+        };
+        
+        // Trigger file picker
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    }
+    
+    // Upload file to ComfyUI input directory
+    async uploadFileToComfyUI(file) {
+        try {
+            const formData = new FormData();
+            formData.append('image', file); // ComfyUI expects 'image' parameter even for audio
+            formData.append('type', 'input');
+            formData.append('subfolder', '');
+            
+            const response = await fetch('/upload/image', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            return {
+                success: true,
+                filename: result.name,
+                subfolder: result.subfolder || ''
+            };
+        } catch (error) {
+            console.error('File upload failed:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
     }
     
     // Update time display

@@ -42,6 +42,9 @@ export class AudioAnalyzerVisualization {
         // Draw current selection
         this.drawCurrentSelection(ctx, width, height);
         
+        // Draw loop markers
+        this.drawLoopMarkers(ctx, width, height);
+        
         // Draw playhead
         this.drawPlayhead(ctx, width, height);
         
@@ -316,13 +319,30 @@ export class AudioAnalyzerVisualization {
             const endX = this.core.timeToPixel(region.end);
             
             if (endX >= 0 && startX <= width) {
+                // Choose color based on state
+                let fillColor = this.core.colors.region;
+                let strokeColor = '#00ff00';
+                let lineWidth = 2;
+                
+                if (index === this.core.selectedRegionIndex) {
+                    // Selected for deletion
+                    fillColor = this.core.colors.regionSelected;
+                    strokeColor = '#ff8c00';
+                    lineWidth = 3;
+                } else if (index === this.core.hoveredRegionIndex) {
+                    // Hovered
+                    fillColor = this.core.colors.regionHovered;
+                    strokeColor = '#00ff00';
+                    lineWidth = 2;
+                }
+                
                 // Draw region background
-                ctx.fillStyle = this.core.colors.region;
+                ctx.fillStyle = fillColor;
                 ctx.fillRect(Math.max(0, startX), 0, Math.min(width, endX) - Math.max(0, startX), height);
                 
                 // Draw region borders
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = lineWidth;
                 ctx.beginPath();
                 if (startX >= 0 && startX <= width) {
                     ctx.moveTo(startX, 0);
@@ -334,14 +354,79 @@ export class AudioAnalyzerVisualization {
                 }
                 ctx.stroke();
                 
-                // Draw region label
-                const labelX = Math.max(5, Math.min(width - 50, startX + 5));
-                ctx.fillStyle = '#00ff00';
-                ctx.font = '11px Arial';
+                // Draw region label with number
+                const labelX = Math.max(5, Math.min(width - 80, startX + 5));
+                ctx.fillStyle = strokeColor;
+                ctx.font = index === this.core.selectedRegionIndex ? 'bold 12px Arial' : '11px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText(region.label, labelX, 20 + (index * 15));
+                const labelText = `${index + 1}. ${region.label}`;
+                ctx.fillText(labelText, labelX, 20 + (index * 15));
+                
+                // Show deletion hint for selected region
+                if (index === this.core.selectedRegionIndex) {
+                    ctx.fillStyle = '#ff8c00';
+                    ctx.font = '10px Arial';
+                    ctx.fillText('(Press Delete to remove)', labelX, 35 + (index * 15));
+                }
             }
         });
+    }
+    
+    drawLoopMarkers(ctx, width, height) {
+        if (this.core.loopStart === null || this.core.loopEnd === null) return;
+        
+        const startX = this.core.timeToPixel(this.core.loopStart);
+        const endX = this.core.timeToPixel(this.core.loopEnd);
+        const markerHeight = 20;
+        const markerY = height - markerHeight;
+        
+        // Draw subtle loop region background
+        if (endX >= 0 && startX <= width) {
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
+            ctx.fillRect(Math.max(0, startX), 0, Math.min(width, endX) - Math.max(0, startX), height);
+        }
+        
+        // Draw loop start marker (triangle pointing right)
+        if (startX >= 0 && startX <= width) {
+            ctx.fillStyle = this.core.colors.loopMarker;
+            ctx.beginPath();
+            ctx.moveTo(startX, height);
+            ctx.lineTo(startX - 8, markerY);
+            ctx.lineTo(startX + 8, markerY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw start label
+            ctx.fillStyle = this.core.colors.loopMarker;
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('START', startX, markerY - 5);
+        }
+        
+        // Draw loop end marker (triangle pointing left)
+        if (endX >= 0 && endX <= width) {
+            ctx.fillStyle = this.core.colors.loopMarker;
+            ctx.beginPath();
+            ctx.moveTo(endX, height);
+            ctx.lineTo(endX - 8, markerY);
+            ctx.lineTo(endX + 8, markerY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw end label
+            ctx.fillStyle = this.core.colors.loopMarker;
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('END', endX, markerY - 5);
+        }
+        
+        // Draw loop indicator in corner
+        if (this.core.isLooping) {
+            ctx.fillStyle = this.core.colors.loopMarker;
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText('🔄 LOOPING', width - 10, height - 10);
+        }
     }
     
     drawCurrentSelection(ctx, width, height) {

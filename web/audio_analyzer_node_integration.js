@@ -87,23 +87,20 @@ export class AudioAnalyzerNodeIntegration {
         this.core.showMessage(`Loading: ${filePath}`);
     }
     
-    // Handle parameter changes
+    // Handle parameter changes (now works like manual refresh)
     onParametersChanged() {
-        console.log('Analysis parameters changed');
+        console.log('Analysis requested');
         
         if (!this.hasAudioSource()) {
             this.core.showMessage('No audio source available for analysis');
             return;
         }
         
-        // Check if parameters actually changed
-        const currentParams = this.getCurrentAnalysisParams();
-        if (this.paramsEqual(currentParams, this.lastAnalysisParams)) {
-            console.log('Parameters unchanged, skipping re-analysis');
-            return;
-        }
+        // Always perform analysis when user clicks Analyze button
+        // No need to check if parameters changed - user explicitly requested analysis
         
-        this.lastAnalysisParams = currentParams;
+        // Update current params for future comparisons
+        this.lastAnalysisParams = this.getCurrentAnalysisParams();
         
         // Clear previous analysis results
         if (this.core.waveformData) {
@@ -111,13 +108,20 @@ export class AudioAnalyzerNodeIntegration {
         }
         
         // Update UI
-        this.core.ui.updateStatus('Re-analyzing with new parameters...');
+        this.core.ui.updateStatus('Analyzing audio...');
         this.core.visualization.redraw();
         
-        // Trigger node execution
-        this.triggerNodeExecution();
+        // Trigger node execution (same as manual refresh)
+        this.core.node.lastExecutionTime = Date.now();
         
-        this.core.showMessage('Re-analyzing audio...');
+        // Queue execution and check for results
+        window.app.queuePrompt();
+        
+        // Check for results after execution
+        setTimeout(() => this.core.node.checkForResults(), 3000);
+        setTimeout(() => this.core.node.checkForResults(), 6000);
+        
+        this.core.showMessage('Analyzing audio...');
     }
     
     // Handle audio connection
