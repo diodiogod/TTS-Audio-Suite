@@ -123,59 +123,104 @@ export class AudioAnalyzerVisualization {
     }
     
     drawWaveform(ctx, width, height) {
-        if (!this.core.waveformData || !this.core.waveformData.samples) return;
+        if (!this.core.waveformData || !this.core.waveformData.samples) {
+            console.warn('🎵 No waveform data available');
+            return;
+        }
         
         const samples = this.core.waveformData.samples;
         const duration = this.core.waveformData.duration;
         const sampleRate = this.core.waveformData.sampleRate;
-        const visibleDuration = duration / this.core.zoomLevel;
-        const startTime = this.core.scrollOffset;
-        const endTime = startTime + visibleDuration;
         
-        // Calculate sample range
-        const startSample = Math.max(0, Math.floor(startTime * sampleRate));
-        const endSample = Math.min(samples.length, Math.ceil(endTime * sampleRate));
-        
-        if (startSample >= endSample) return;
-        
-        // Calculate samples per pixel
-        const samplesPerPixel = Math.max(1, Math.floor((endSample - startSample) / width));
-        
-        ctx.strokeStyle = this.core.colors.waveform;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        
-        let hasStarted = false;
-        
-        for (let x = 0; x < width; x++) {
-            const sampleIndex = startSample + Math.floor((x / width) * (endSample - startSample));
-            
-            if (sampleIndex >= samples.length) break;
-            
-            let min = 0, max = 0;
-            
-            // Get min/max for this pixel
-            for (let i = 0; i < samplesPerPixel && sampleIndex + i < samples.length; i++) {
-                const sample = samples[sampleIndex + i];
-                min = Math.min(min, sample);
-                max = Math.max(max, sample);
-            }
-            
-            // Convert to canvas coordinates
-            const y1 = height/2 - (min * height * 0.4);
-            const y2 = height/2 - (max * height * 0.4);
-            
-            if (!hasStarted) {
-                ctx.moveTo(x, y1);
-                hasStarted = true;
-            }
-            
-            // Draw vertical line for this pixel
-            ctx.moveTo(x, y1);
-            ctx.lineTo(x, y2);
+        // Ensure we have valid data
+        if (!samples.length || duration <= 0 || sampleRate <= 0) {
+            console.warn('🎵 Invalid waveform data:', { samplesLength: samples.length, duration, sampleRate });
+            return;
         }
         
+        // Calculate visible time range
+        const visibleDuration = duration / this.core.zoomLevel;
+        const startTime = Math.max(0, this.core.scrollOffset);
+        const endTime = Math.min(duration, startTime + visibleDuration);
+        
+        if (startTime >= endTime) {
+            console.warn('🎵 Invalid time range:', { startTime, endTime });
+            return;
+        }
+        
+        // Set drawing style
+        ctx.save(); // Save current state
+        ctx.strokeStyle = this.core.colors.waveform; // Blue
+        ctx.lineWidth = 2; // Make it visible
+        ctx.globalAlpha = 1.0; // Ensure it's opaque
+        
+        // Draw the waveform
+        ctx.beginPath();
+        
+        let pointsDrawn = 0;
+        
+        // Debug sample data structure first
+        if (!this.dataStructureLogged) {
+            console.log('🎵 Sample data debug:', {
+                samplesType: typeof samples,
+                samplesLength: samples.length,
+                isArray: Array.isArray(samples),
+                firstSamples: samples.slice(0, 5),
+                duration,
+                sampleRate,
+                calculatedSampleRate: samples.length / duration
+            });
+            this.dataStructureLogged = true;
+        }
+        
+        // Simplified drawing approach - one pass through pixels
+        for (let x = 0; x < width; x++) {
+            // Calculate time for this pixel
+            const timeRatio = x / width;
+            const currentTime = startTime + (timeRatio * (endTime - startTime));
+            
+            // Find corresponding sample index - use proper mapping
+            const sampleIndex = Math.floor((currentTime / duration) * samples.length);
+            
+            // Ensure we're within sample bounds
+            if (sampleIndex < 0 || sampleIndex >= samples.length) {
+                // Debug why samples are being skipped
+                if (x < 10 || x > width - 10) {
+                    console.log(`🎵 Skipping pixel ${x}: sampleIndex=${sampleIndex}, bounds: 0-${samples.length}`);
+                }
+                continue;
+            }
+            
+            // Get sample value
+            const sample = samples[sampleIndex];
+            
+            // Ensure we have a valid number
+            if (typeof sample !== 'number' || isNaN(sample)) {
+                console.warn(`🎵 Invalid sample at index ${sampleIndex}:`, sample);
+                continue;
+            }
+            
+            // Convert to screen coordinates (center line is height/2)
+            const y = height/2 - (sample * height * 0.4);
+            
+            // Draw line
+            if (pointsDrawn === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+            pointsDrawn++;
+        }
+        
+        // Actually draw the path
         ctx.stroke();
+        ctx.restore(); // Restore previous state
+        
+        // Minimal debug logging (only once every 3 seconds)
+        if (!this.lastLogTime || Date.now() - this.lastLogTime > 3000) {
+            console.log(`🎵 Waveform drawn: ${samples.length} samples, ${duration.toFixed(2)}s, zoom=${this.core.zoomLevel.toFixed(2)}, points=${pointsDrawn}`);
+            this.lastLogTime = Date.now();
+        }
     }
     
     drawRMS(ctx, width, height) {

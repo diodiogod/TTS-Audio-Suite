@@ -82,6 +82,101 @@ export class AudioAnalyzerInterface {
         return ((time - startTime) / visibleDuration) * canvasWidth;
     }
     
+    // Coordinate transformation utilities for ComfyUI zoom handling
+    getCanvasCoordinates(clientX, clientY) {
+        if (!this.canvas) return { x: 0, y: 0 };
+        
+        // Get the canvas bounding rect (this is already in viewport coordinates)
+        const rect = this.canvas.getBoundingClientRect();
+        
+        // Calculate coordinates relative to canvas
+        // getBoundingClientRect already accounts for all CSS transforms including ComfyUI zoom
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        
+        // Don't apply additional transformation - getBoundingClientRect handles it
+        return { x, y };
+    }
+    
+    getComfyUIZoomLevel() {
+        // Try to get ComfyUI's zoom level from various possible sources
+        try {
+            // Method 1: Check for app canvas zoom
+            if (window.app && window.app.canvas && typeof window.app.canvas.ds !== 'undefined') {
+                return window.app.canvas.ds.scale || 1;
+            }
+            
+            // Method 2: Check for LiteGraph canvas zoom  
+            if (window.LiteGraph && window.LiteGraph.LGraphCanvas && window.LiteGraph.LGraphCanvas.active_canvas) {
+                const canvas = window.LiteGraph.LGraphCanvas.active_canvas;
+                return canvas.ds?.scale || 1;
+            }
+            
+            // Method 3: Check node graph zoom
+            if (this.node && this.node.graph && this.node.graph.canvas) {
+                return this.node.graph.canvas.ds?.scale || 1;
+            }
+            
+            // Method 4: Check for ComfyUI main canvas element and its transform
+            const comfyCanvas = document.querySelector('.litegraph canvas');
+            if (comfyCanvas) {
+                const style = window.getComputedStyle(comfyCanvas);
+                const transform = style.transform;
+                if (transform && transform !== 'none') {
+                    const match = transform.match(/scale\(([^)]+)\)/);
+                    if (match) {
+                        return parseFloat(match[1]) || 1;
+                    }
+                }
+            }
+            
+            return 1; // Default to no zoom if we can't detect it
+        } catch (error) {
+            console.warn('Failed to get ComfyUI zoom level:', error);
+            return 1;
+        }
+    }
+    
+    getComfyUITransform() {
+        // Get the full transformation matrix including zoom and pan offset
+        try {
+            // Method 1: Check for app canvas transform
+            if (window.app && window.app.canvas && window.app.canvas.ds) {
+                const ds = window.app.canvas.ds;
+                return {
+                    scale: ds.scale || 1,
+                    offset: { x: ds.offset?.[0] || 0, y: ds.offset?.[1] || 0 }
+                };
+            }
+            
+            // Method 2: Check for LiteGraph canvas transform
+            if (window.LiteGraph && window.LiteGraph.LGraphCanvas && window.LiteGraph.LGraphCanvas.active_canvas) {
+                const canvas = window.LiteGraph.LGraphCanvas.active_canvas;
+                const ds = canvas.ds;
+                if (ds) {
+                    return {
+                        scale: ds.scale || 1,
+                        offset: { x: ds.offset?.[0] || 0, y: ds.offset?.[1] || 0 }
+                    };
+                }
+            }
+            
+            // Method 3: Check node graph transform
+            if (this.node && this.node.graph && this.node.graph.canvas && this.node.graph.canvas.ds) {
+                const ds = this.node.graph.canvas.ds;
+                return {
+                    scale: ds.scale || 1,
+                    offset: { x: ds.offset?.[0] || 0, y: ds.offset?.[1] || 0 }
+                };
+            }
+            
+            return null; // No transform available
+        } catch (error) {
+            console.warn('Failed to get ComfyUI transform:', error);
+            return null;
+        }
+    }
+    
     formatTime(seconds) {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
@@ -141,21 +236,21 @@ export class AudioAnalyzerInterface {
     }
     
     updateManualRegions() {
-        // Update the manual_regions widget with current selections
+        // Update the manual_regions widget with current selections (now comma-separated for testing)
         const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
         if (manualRegionsWidget) {
             const regionsText = this.selectedRegions
                 .map(r => `${r.start.toFixed(3)},${r.end.toFixed(3)}`)
-                .join('\n');
+                .join('; '); // Use semicolon separator for multiple regions
             manualRegionsWidget.value = regionsText;
         }
         
-        // Update labels widget
+        // Update labels widget (now comma-separated for testing)
         const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
         if (labelsWidget) {
             const labelsText = this.selectedRegions
                 .map(r => r.label)
-                .join('\n');
+                .join(', '); // Use comma separator for labels
             labelsWidget.value = labelsText;
         }
     }
