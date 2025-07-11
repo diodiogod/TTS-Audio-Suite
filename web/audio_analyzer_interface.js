@@ -254,11 +254,12 @@ app.registerExtension({
                 }
             };
             
-            // Simple web file data fetch
+            // Simple temp file data fetch with fallback (restore original working approach)
             nodeType.prototype.tryWebFileData = function() {
-                const webFileUrl = `/extensions/ComfyUI_ChatterBox_Voice/audio_data_${this.id}.json?t=${Date.now()}`;
+                // Try ComfyUI temp directory first
+                const tempFileUrl = `/temp/audio_data_${this.id}.json?t=${Date.now()}`;
                 
-                fetch(webFileUrl)
+                fetch(tempFileUrl)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}`);
@@ -277,9 +278,33 @@ app.registerExtension({
                         }
                     })
                     .catch(error => {
-                        // Fall back to test data if web file not available
-                        console.log('⚠️ Web file failed, using test data:', error.message);
-                        this.generateTestData();
+                        // Try system temp directory as fallback
+                        console.log('⚠️ ComfyUI temp failed, trying system temp:', error.message);
+                        const systemTempUrl = `/view?filename=audio_data_${this.id}.json&type=temp&t=${Date.now()}`;
+                        
+                        fetch(systemTempUrl)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(vizData => {
+                                if (this.audioAnalyzerInterface) {
+                                    this.audioAnalyzerInterface.updateVisualization(vizData);
+                                    
+                                    // Setup audio playback
+                                    const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
+                                    if (audioFileWidget && audioFileWidget.value) {
+                                        this.setupAudioPlayback(audioFileWidget.value);
+                                    }
+                                }
+                            })
+                            .catch(fallbackError => {
+                                // Final fallback to test data
+                                console.log('⚠️ All temp files failed, using test data:', fallbackError.message);
+                                this.generateTestData();
+                            });
                     });
             };
             
@@ -417,6 +442,27 @@ app.registerExtension({
                         
                         this.audioAnalyzerInterface.audioElement.addEventListener('loadedmetadata', () => {
                             console.log('✅ Audio playback ready with URL:', webUrl);
+                        });
+                        
+                        this.audioAnalyzerInterface.audioElement.addEventListener('ended', () => {
+                            console.log('🔊 Audio ended - stopping all animations (from interface)');
+                            if (this.audioAnalyzerInterface.core) {
+                                // Set isPlaying to false IMMEDIATELY to stop any pending animation frames
+                                this.audioAnalyzerInterface.core.isPlaying = false;
+                                
+                                // Stop animations explicitly
+                                this.audioAnalyzerInterface.core.stopPlayheadAnimation();
+                                this.audioAnalyzerInterface.core.visualization.stopAnimation();
+                                
+                                // Update UI after a small delay to ensure no race conditions
+                                setTimeout(() => {
+                                    this.audioAnalyzerInterface.core.ui.playButton.textContent = '▶️ Play';
+                                    this.audioAnalyzerInterface.core.currentTime = 0;
+                                    this.audioAnalyzerInterface.core.ui.updateTimeDisplay();
+                                    this.audioAnalyzerInterface.core.visualization.redraw();
+                                    console.log('🔊 All animations stopped from interface, isPlaying:', this.audioAnalyzerInterface.core.isPlaying);
+                                }, 10);
+                            }
                         });
                         
                         this.audioAnalyzerInterface.audioElement.addEventListener('error', () => {
