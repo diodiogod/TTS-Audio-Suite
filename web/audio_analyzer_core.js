@@ -67,8 +67,25 @@ export class AudioAnalyzerInterface {
         // Setup canvas resize observer
         this.ui.setupCanvasResize();
         
-        // Show initial message
-        this.visualization.showInitialMessage();
+        // Attempt to load cached data, otherwise show initial message
+        this.loadCachedData();
+    }
+    
+    async loadCachedData() {
+        // Attempts to load persisted analysis data from the last execution.
+        const cacheUrl = `/output/audio_analyzer_cache_${this.node.id}.json?t=${Date.now()}`;
+        try {
+            const response = await fetch(cacheUrl);
+            if (!response.ok) {
+                throw new Error(`Cache file not found or server error: ${response.status}`);
+            }
+            const data = await response.json();
+            this.nodeIntegration.updateVisualization(data);
+            console.log(`🎵 Audio Analyzer: Successfully loaded cached data for node ${this.node.id}`);
+        } catch (error) {
+            console.log(`🎵 Audio Analyzer: No cache found for node ${this.node.id}. Showing initial message. Details: ${error.message}`);
+            this.visualization.showInitialMessage();
+        }
     }
     
     // Utility functions
@@ -96,15 +113,22 @@ export class AudioAnalyzerInterface {
     getCanvasCoordinates(clientX, clientY) {
         if (!this.canvas) return { x: 0, y: 0 };
         
-        // Get the canvas bounding rect (this is already in viewport coordinates)
+        // Get the canvas bounding rect (this gives display size affected by ComfyUI zoom)
         const rect = this.canvas.getBoundingClientRect();
         
-        // Calculate coordinates relative to canvas
-        // getBoundingClientRect already accounts for all CSS transforms including ComfyUI zoom
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
+        // Calculate coordinates relative to canvas in display pixels
+        const displayX = clientX - rect.left;
+        const displayY = clientY - rect.top;
         
-        // Don't apply additional transformation - getBoundingClientRect handles it
+        // Convert from display pixels to logical canvas pixels
+        // Canvas logical size is canvas.width / devicePixelRatio
+        const logicalCanvasWidth = this.canvas.width / devicePixelRatio;
+        const logicalCanvasHeight = this.canvas.height / devicePixelRatio;
+        
+        // Scale coordinates from display size to logical size
+        const x = (displayX / rect.width) * logicalCanvasWidth;
+        const y = (displayY / rect.height) * logicalCanvasHeight;
+        
         return { x, y };
     }
     
@@ -187,11 +211,48 @@ export class AudioAnalyzerInterface {
         }
     }
     
+    getPrecisionMode() {
+        const precisionWidget = this.node.widgets?.find(w => w.name === 'precision_level');
+        return precisionWidget ? precisionWidget.value : 'miliseconds'; // Default to 'miliseconds'
+    }
+
     formatTime(seconds) {
+        const mode = this.getPrecisionMode();
+
+        if (mode === 'Samples') {
+            if (!this.waveformData || !this.waveformData.sampleRate) {
+                return 'N/A Samples';
+            }
+            const sampleIndex = Math.floor(seconds * this.waveformData.sampleRate);
+            return `${sampleIndex.toLocaleString()} smp`;
+        }
+
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
+
+        if (mode === 'seconds') {
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Default to 'miliseconds'
         const ms = Math.floor((seconds % 1) * 1000);
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        const msString = ms.toString().padStart(3, '0');
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${msString}`;
+    }
+    
+    formatRegionValue(timeInSeconds) {
+        const mode = this.getPrecisionMode();
+
+        switch (mode) {
+            case 'Samples':
+                if (!this.waveformData || !this.waveformData.sampleRate) return '0';
+                return Math.floor(timeInSeconds * this.waveformData.sampleRate).toString();
+            case 'seconds':
+                return Math.round(timeInSeconds).toString(); // Use Math.round for whole seconds
+            case 'miliseconds':
+            default:
+                return timeInSeconds.toFixed(3);
+        }
     }
     
     // Canvas management
@@ -283,7 +344,7 @@ export class AudioAnalyzerInterface {
         const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
         if (manualRegionsWidget) {
             const regionsText = this.selectedRegions
-                .map(r => `${r.start.toFixed(3)},${r.end.toFixed(3)}`)
+                .map(r => `${this.formatRegionValue(r.start)},${this.formatRegionValue(r.end)}`)
                 .join('\n'); // Use newline separator for multiline widget
             manualRegionsWidget.value = regionsText;
         }
@@ -292,7 +353,7 @@ export class AudioAnalyzerInterface {
         const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
         if (labelsWidget) {
             const labelsText = this.selectedRegions
-                .map(r => r.label)
+                .map(r => r.label) // Labels don't need precision, but we keep the structure
                 .join('\n'); // Use newline separator for multiline widget
             labelsWidget.value = labelsText;
         }
@@ -439,7 +500,7 @@ export class AudioAnalyzerInterface {
         }
         
         const timingData = this.selectedRegions
-            .map(r => `${r.start.toFixed(3)},${r.end.toFixed(3)}`)
+            .map(r => `${this.formatRegionValue(r.start)},${this.formatRegionValue(r.end)}`)
             .join('\n');
         
         // Copy to clipboard
