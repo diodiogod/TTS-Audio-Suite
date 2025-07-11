@@ -344,19 +344,34 @@ class AudioAnalyzerNode:
             processed_audio = AudioProcessingUtils.format_for_comfyui(audio_tensor, sample_rate)
             
             
-            # Save visualization data to web directory for direct JavaScript access
+            # Save visualization data to ComfyUI temp directory and copy audio for web access
             try:
-                # Write to web directory as static file
-                web_file = os.path.join(os.path.dirname(__file__), "..", "web", f"audio_data_{node_id}.json")
+                import folder_paths
+                import shutil
                 
+                # Save visualization data
+                temp_dir = folder_paths.get_temp_directory()
+                temp_file = os.path.join(temp_dir, f"audio_data_{node_id}.json")
                 
-                with open(web_file, 'w') as f:
+                with open(temp_file, 'w') as f:
                     json.dump(viz_data, f, indent=2)
                 
+                print(f"🎵 Audio data saved to temp: {temp_file}")
+                
+                # Copy audio file to ComfyUI input directory for web access
+                if audio_file and audio_file.strip() and os.path.exists(audio_file.strip()):
+                    input_dir = folder_paths.get_input_directory()
+                    audio_filename = os.path.basename(audio_file.strip())
+                    web_audio_path = os.path.join(input_dir, audio_filename)
+                    
+                    # Copy if not already there or if source is newer
+                    if not os.path.exists(web_audio_path) or os.path.getmtime(audio_file.strip()) > os.path.getmtime(web_audio_path):
+                        shutil.copy2(audio_file.strip(), web_audio_path)
+                        print(f"🎵 Audio file copied for web access: {web_audio_path}")
                 
             except Exception as save_error:
-                import traceback
-                print(f"⚠️ Audio Analyzer web data save failed: {save_error}")
+                print(f"⚠️ Audio Analyzer data save failed: {save_error}")
+                # Continue without failing the entire analysis
             
             return (timing_data, visualization_json, analysis_info, processed_audio)
             

@@ -218,9 +218,9 @@ export class AudioAnalyzerVisualization {
         ctx.stroke();
         ctx.restore(); // Restore previous state
         
-        // Minimal debug logging (only once every 3 seconds)
+            // Minimal debug logging (only once every 3 seconds) - but also check if animation should be running
         if (!this.lastLogTime || Date.now() - this.lastLogTime > 3000) {
-            console.log(`🎵 Waveform drawn: ${samples.length} samples, ${duration.toFixed(2)}s, zoom=${this.core.zoomLevel.toFixed(2)}, points=${pointsDrawn}`);
+            console.log(`🎵 Waveform drawn: ${samples.length} samples, ${duration.toFixed(2)}s, zoom=${this.core.zoomLevel.toFixed(2)}, points=${pointsDrawn}, isPlaying=${this.core.isPlaying}, animationId=${this.animationId}`);
             this.lastLogTime = Date.now();
         }
     }

@@ -281,6 +281,7 @@ export class AudioAnalyzerInterface {
             this.audioElement.pause();
         }
         this.isPlaying = false;
+        this.stopPlayheadAnimation(); // Stop animation loop
         this.ui.playButton.textContent = '▶️ Play';
     }
     
@@ -291,13 +292,18 @@ export class AudioAnalyzerInterface {
         }
         this.isPlaying = false;
         this.currentTime = 0;
+        this.stopPlayheadAnimation(); // Stop animation loop
+        this.visualization.stopAnimation(); // Stop visualization animation loop
         this.ui.playButton.textContent = '▶️ Play';
         this.ui.updateTimeDisplay();
         this.visualization.redraw();
     }
     
     updatePlayhead() {
-        if (!this.isPlaying) return;
+        // Double-check both isPlaying and audio element state
+        if (!this.isPlaying || !this.audioElement || this.audioElement.ended || this.audioElement.paused) {
+            return;
+        }
         
         if (this.audioElement) {
             this.currentTime = this.audioElement.currentTime;
@@ -305,8 +311,16 @@ export class AudioAnalyzerInterface {
             this.visualization.redraw();
         }
         
-        if (this.isPlaying) {
-            requestAnimationFrame(() => this.updatePlayhead());
+        // Triple-check before scheduling next frame
+        if (this.isPlaying && this.audioElement && !this.audioElement.ended && !this.audioElement.paused) {
+            this.playheadAnimationId = requestAnimationFrame(() => this.updatePlayhead());
+        }
+    }
+    
+    stopPlayheadAnimation() {
+        if (this.playheadAnimationId) {
+            cancelAnimationFrame(this.playheadAnimationId);
+            this.playheadAnimationId = null;
         }
     }
     

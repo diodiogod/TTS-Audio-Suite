@@ -232,11 +232,15 @@ export class AudioAnalyzerNodeIntegration {
             
             // Audio event listeners
             this.core.audioElement.addEventListener('ended', () => {
+                console.log('🔊 Audio ended - stopping all animations');
                 this.core.isPlaying = false;
                 this.core.ui.playButton.textContent = '▶️ Play';
                 this.core.currentTime = 0;
                 this.core.ui.updateTimeDisplay();
-                this.core.visualization.redraw();
+                this.core.stopPlayheadAnimation(); // Stop the core playhead animation loop
+                this.core.visualization.stopAnimation(); // Stop the visualization animation loop
+                this.core.visualization.redraw(); // Final redraw
+                console.log('🔊 All animations stopped, isPlaying:', this.core.isPlaying);
             });
             
             this.core.audioElement.addEventListener('timeupdate', () => {
