@@ -101,10 +101,9 @@ class AudioAnalyzerNode:
                     "default": "f5tts",
                     "tooltip": "Output format for timing data"
                 }),
-                "node_id": ("STRING", {
-                    "default": "",
-                    "tooltip": "Internal node ID for cache management"
-                }),
+            },
+            "hidden": {
+                "node_id": ("STRING", {"default": "0"}),
             }
         }
     

@@ -59,6 +59,28 @@ function handleNodeExecution(message) {
 // ComfyUI Extension Registration
 app.registerExtension({
     name: "chatterbox.audio_analyzer",
+
+    async setup() {
+        // Patch graphToPrompt to inject node ID right before prompt is sent to backend
+        const onGraphToPrompt = app.graphToPrompt;
+        app.graphToPrompt = async function() {
+            // Get the original prompt
+            const prompt = await onGraphToPrompt.apply(this, arguments);
+
+            // Find our node in the prompt's output and inject the ID
+            if (prompt.output) {
+                for (const nodeId in prompt.output) {
+                    const nodeData = prompt.output[nodeId];
+                    if (nodeData.class_type === "AudioAnalyzerNode") {
+                        // Inject the node_id into the inputs object
+                        nodeData.inputs.node_id = nodeId;
+                    }
+                }
+            }
+            return prompt;
+        };
+        console.log("🎵 Audio Analyzer: Patched graphToPrompt to inject node IDs.");
+    },
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name === "ChatterBoxAudioAnalyzer" || nodeData.name === "AudioAnalyzerNode") {
@@ -73,20 +95,8 @@ app.registerExtension({
                     this.audioAnalyzerInterface = analyzerInterface;
                     audioAnalyzerNodes.set(String(this.id), this);
                     
-                    // Add hidden widget to pass node ID to Python (for cache management)
-                    setTimeout(() => {
-                        let nodeIdWidget = this.widgets?.find(w => w.name === 'node_id');
-                        if (!nodeIdWidget) {
-                            nodeIdWidget = this.addWidget("text", "node_id", String(this.id), () => {});
-                            // Hide the widget from UI
-                            nodeIdWidget.type = "hidden";
-                            nodeIdWidget.computeSize = () => [0, -4]; // Make it invisible
-                        } else {
-                            nodeIdWidget.value = String(this.id);
-                        }
-                    }, 10);
+                    // No need for hidden widget - node_id is now injected via graphToPrompt patch
                     
-                    // Manual refresh functionality is now handled by the Analyze button
                 } catch (error) {
                     console.error('❌ Audio Analyzer: Failed to create interface:', error);
                 }
