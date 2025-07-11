@@ -32,12 +32,24 @@ export class AudioAnalyzerEvents {
     handleMouseDown(e) {
         if (!this.core.waveformData) return;
         
-        const rect = this.core.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const time = this.core.pixelToTime(x);
+        // Use coordinate transformation to handle ComfyUI zoom properly
+        const coords = this.core.getCanvasCoordinates(e.clientX, e.clientY);
+        const time = this.core.pixelToTime(coords.x);
+        
+        // Debug coordinate transformation (only log occasionally)
+        if (!this.lastDebugTime || Date.now() - this.lastDebugTime > 3000) {
+            const rect = this.core.canvas.getBoundingClientRect();
+            console.log('🎵 Mouse click:', {
+                client: { x: e.clientX, y: e.clientY },
+                rect: { left: rect.left.toFixed(1), top: rect.top.toFixed(1), width: rect.width.toFixed(1) },
+                canvas: coords,
+                time: time.toFixed(3) + 's'
+            });
+            this.lastDebugTime = Date.now();
+        }
         
         this.mouseDown = true;
-        this.lastMousePos = { x, y: e.clientY - rect.top };
+        this.lastMousePos = coords;
         
         if (e.button === 0) { // Left mouse button
             if (e.shiftKey) {
@@ -71,9 +83,9 @@ export class AudioAnalyzerEvents {
     handleMouseMove(e) {
         if (!this.core.waveformData) return;
         
-        const rect = this.core.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const time = this.core.pixelToTime(x);
+        // Use coordinate transformation
+        const coords = this.core.getCanvasCoordinates(e.clientX, e.clientY);
+        const time = this.core.pixelToTime(coords.x);
         
         if (this.mouseDown && this.core.isDragging) {
             // Update drag selection
@@ -84,7 +96,7 @@ export class AudioAnalyzerEvents {
             this.core.visualization.redraw();
         } else if (this.mouseDown && e.ctrlKey) {
             // Pan the view
-            const deltaX = x - this.lastMousePos.x;
+            const deltaX = coords.x - this.lastMousePos.x;
             const canvasWidth = this.core.canvas.width / devicePixelRatio;
             const visibleDuration = this.core.waveformData.duration / this.core.zoomLevel;
             const timeDelta = -(deltaX / canvasWidth) * visibleDuration;
@@ -96,7 +108,7 @@ export class AudioAnalyzerEvents {
             this.core.visualization.redraw();
         }
         
-        this.lastMousePos = { x, y: e.clientY - rect.top };
+        this.lastMousePos = coords;
     }
     
     handleMouseUp(e) {
@@ -133,9 +145,9 @@ export class AudioAnalyzerEvents {
         
         e.preventDefault();
         
-        const rect = this.core.canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseTime = this.core.pixelToTime(mouseX);
+        // Use coordinate transformation
+        const coords = this.core.getCanvasCoordinates(e.clientX, e.clientY);
+        const mouseTime = this.core.pixelToTime(coords.x);
         
         // Zoom in/out based on wheel direction
         const zoomFactor = e.deltaY > 0 ? 0.8 : 1.25;
@@ -148,7 +160,7 @@ export class AudioAnalyzerEvents {
             const oldVisibleDuration = this.core.waveformData.duration / oldZoom;
             const newVisibleDuration = this.core.waveformData.duration / this.core.zoomLevel;
             
-            const mouseRatio = mouseX / canvasWidth;
+            const mouseRatio = coords.x / canvasWidth;
             const oldStartTime = this.core.scrollOffset;
             const newStartTime = mouseTime - (mouseRatio * newVisibleDuration);
             
@@ -162,9 +174,9 @@ export class AudioAnalyzerEvents {
     handleDoubleClick(e) {
         if (!this.core.waveformData) return;
         
-        const rect = this.core.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const time = this.core.pixelToTime(x);
+        // Use coordinate transformation
+        const coords = this.core.getCanvasCoordinates(e.clientX, e.clientY);
+        const time = this.core.pixelToTime(coords.x);
         
         // Seek to clicked position
         this.core.currentTime = Math.max(0, Math.min(this.core.waveformData.duration, time));

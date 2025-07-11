@@ -88,14 +88,14 @@ class AudioAnalyzerNode:
                     "tooltip": "Sensitivity for energy-based detection"
                 }),
                 "manual_regions": ("STRING", {
-                    "multiline": True,
+                    "multiline": False,
                     "default": "",
-                    "tooltip": "Manual timing regions (start,end format, one per line)"
+                    "tooltip": "Manual timing regions (start,end format, comma separated)"
                 }),
                 "region_labels": ("STRING", {
-                    "multiline": True,
+                    "multiline": False,
                     "default": "",
-                    "tooltip": "Labels for timing regions (one per line, optional)"
+                    "tooltip": "Labels for timing regions (comma separated, optional)"
                 }),
                 "export_format": (["f5tts", "json", "csv"], {
                     "default": "f5tts",
