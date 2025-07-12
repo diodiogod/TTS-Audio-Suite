@@ -242,7 +242,7 @@ class AudioAnalyzerNode:
     
     def _create_analysis_info(self, audio_tensor: torch.Tensor, sample_rate: int, 
                              regions: List[TimingRegion], method: str, precision_level: str = "milliseconds",
-                             group_threshold: float = 0.0) -> str:
+                             group_threshold: float = 0.0, invert_silence: bool = False) -> str:
         """Create analysis information string with precision formatting."""
         duration = AudioProcessingUtils.get_audio_duration(audio_tensor, sample_rate)
         
@@ -250,11 +250,16 @@ class AudioAnalyzerNode:
         grouped_regions = [r for r in regions if r.metadata and r.metadata.get("type") == "grouped"]
         original_regions = [r for r in regions if not (r.metadata and r.metadata.get("type") == "grouped")]
         
+        # Add silence inversion info to method description
+        method_description = method
+        if method == "silence" and invert_silence:
+            method_description = f"{method} (inverted to speech regions)"
+        
         info_lines = [
             f"Audio Analysis Results",
             f"Duration: {self._format_timing_precision(duration, precision_level)} {self._get_precision_unit(precision_level)}",
             f"Sample Rate: {sample_rate} Hz",
-            f"Analysis Method: {method}",
+            f"Analysis Method: {method_description}",
             f"Regions Found: {len(regions)}",
         ]
         
@@ -323,6 +328,7 @@ class AudioAnalyzerNode:
             # These are sensible defaults that work well for most use cases
             silence_threshold = 0.01
             silence_min_duration = 0.1
+            invert_silence_regions = False
             energy_sensitivity = 0.5
             peak_threshold = 0.02
             peak_min_distance = 0.05
@@ -334,6 +340,7 @@ class AudioAnalyzerNode:
                 # Extract technical parameters from options
                 silence_threshold = options.get("silence_threshold", silence_threshold)
                 silence_min_duration = options.get("silence_min_duration", silence_min_duration)
+                invert_silence_regions = options.get("invert_silence_regions", invert_silence_regions)
                 energy_sensitivity = options.get("energy_sensitivity", energy_sensitivity)
                 peak_threshold = options.get("peak_threshold", peak_threshold)
                 peak_min_distance = options.get("peak_min_distance", peak_min_distance)
@@ -373,7 +380,7 @@ class AudioAnalyzerNode:
             # Generate cache key for analysis
             # Use tensor shape and mean for more stable caching
             tensor_hash = hash((tuple(audio_tensor.shape), float(audio_tensor.mean()), float(audio_tensor.std())))
-            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}"
+            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{invert_silence_regions}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}"
             
             # Check cache first
             cached_result = analysis_cache.get(cache_key)
@@ -386,7 +393,8 @@ class AudioAnalyzerNode:
                     regions = self._parse_manual_regions(manual_regions, region_labels)
                 elif analysis_method == "silence":
                     regions = self.analyzer.detect_silence_regions(
-                        audio_tensor, threshold=silence_threshold, min_duration=silence_min_duration
+                        audio_tensor, threshold=silence_threshold, min_duration=silence_min_duration,
+                        invert=invert_silence_regions
                     )
                 elif analysis_method == "energy":
                     regions = self.analyzer.detect_word_boundaries(
@@ -435,7 +443,7 @@ class AudioAnalyzerNode:
                 timing_data = json.dumps(formatted_timing_data, indent=2)
             
             # Create analysis info with precision formatting
-            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level, group_regions_threshold)
+            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level, group_regions_threshold, invert_silence_regions)
             
             # Format visualization data as JSON
             visualization_json = json.dumps(viz_data, indent=2)

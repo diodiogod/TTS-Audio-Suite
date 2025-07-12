@@ -220,32 +220,89 @@ class AudioAnalyzer:
     
     def detect_silence_regions(self, audio: torch.Tensor, 
                              threshold: float = 0.01, 
-                             min_duration: float = 0.1) -> List[TimingRegion]:
+                             min_duration: float = 0.1,
+                             invert: bool = False) -> List[TimingRegion]:
         """
-        Detect silence regions in audio.
+        Detect silence regions in audio, optionally inverted to get speech regions.
         
         Args:
             audio: Audio tensor
             threshold: Amplitude threshold for silence
             min_duration: Minimum duration for silence region
+            invert: If True, return speech regions instead of silence regions
             
         Returns:
-            List of TimingRegion objects for silence regions
+            List of TimingRegion objects for silence or speech regions
         """
         silent_regions = AudioProcessingUtils.detect_silence(
             audio, threshold, min_duration, self.sample_rate
         )
         
-        return [
-            TimingRegion(
-                start_time=start,
-                end_time=end,
-                label="silence",
-                confidence=1.0,
-                metadata={"type": "silence", "threshold": threshold}
-            )
-            for start, end in silent_regions
-        ]
+        if invert:
+            # Convert silence regions to speech regions by inverting
+            speech_regions = self._invert_silence_to_speech(silent_regions, audio)
+            return [
+                TimingRegion(
+                    start_time=start,
+                    end_time=end,
+                    label="speech",
+                    confidence=1.0,
+                    metadata={"type": "speech", "threshold": threshold, "inverted_from": "silence"}
+                )
+                for start, end in speech_regions
+            ]
+        else:
+            # Return original silence regions
+            return [
+                TimingRegion(
+                    start_time=start,
+                    end_time=end,
+                    label="silence",
+                    confidence=1.0,
+                    metadata={"type": "silence", "threshold": threshold}
+                )
+                for start, end in silent_regions
+            ]
+    
+    def _invert_silence_to_speech(self, silence_regions: List[Tuple[float, float]], audio: torch.Tensor) -> List[Tuple[float, float]]:
+        """
+        Convert silence regions to speech regions by inverting the detection.
+        
+        Args:
+            silence_regions: List of (start, end) tuples for silence
+            audio: Audio tensor to get total duration
+            
+        Returns:
+            List of (start, end) tuples for speech regions
+        """
+        if not silence_regions:
+            # No silence detected, entire audio is speech
+            duration = len(audio) / self.sample_rate
+            return [(0.0, duration)]
+        
+        speech_regions = []
+        total_duration = len(audio) / self.sample_rate
+        
+        # Sort silence regions by start time
+        sorted_silence = sorted(silence_regions, key=lambda x: x[0])
+        
+        # Check for speech before first silence
+        if sorted_silence[0][0] > 0:
+            speech_regions.append((0.0, sorted_silence[0][0]))
+        
+        # Check for speech between silence regions
+        for i in range(len(sorted_silence) - 1):
+            current_silence_end = sorted_silence[i][1]
+            next_silence_start = sorted_silence[i + 1][0]
+            
+            if current_silence_end < next_silence_start:
+                speech_regions.append((current_silence_end, next_silence_start))
+        
+        # Check for speech after last silence
+        if sorted_silence[-1][1] < total_duration:
+            speech_regions.append((sorted_silence[-1][1], total_duration))
+        
+        return speech_regions
     
     def detect_word_boundaries(self, audio: torch.Tensor, 
                              sensitivity: float = 0.5) -> List[TimingRegion]:
