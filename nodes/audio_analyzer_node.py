@@ -241,9 +241,14 @@ class AudioAnalyzerNode:
         return "\n".join(formatted_regions)
     
     def _create_analysis_info(self, audio_tensor: torch.Tensor, sample_rate: int, 
-                             regions: List[TimingRegion], method: str, precision_level: str = "milliseconds") -> str:
+                             regions: List[TimingRegion], method: str, precision_level: str = "milliseconds",
+                             group_threshold: float = 0.0) -> str:
         """Create analysis information string with precision formatting."""
         duration = AudioProcessingUtils.get_audio_duration(audio_tensor, sample_rate)
+        
+        # Count grouped vs original regions
+        grouped_regions = [r for r in regions if r.metadata and r.metadata.get("type") == "grouped"]
+        original_regions = [r for r in regions if not (r.metadata and r.metadata.get("type") == "grouped")]
         
         info_lines = [
             f"Audio Analysis Results",
@@ -251,9 +256,24 @@ class AudioAnalyzerNode:
             f"Sample Rate: {sample_rate} Hz",
             f"Analysis Method: {method}",
             f"Regions Found: {len(regions)}",
+        ]
+        
+        # Add grouping information if applicable
+        if group_threshold > 0.0:
+            total_original = sum(r.metadata.get("source_regions", 1) for r in grouped_regions) + len(original_regions)
+            info_lines.extend([
+                f"",
+                f"Region Grouping:",
+                f"  Grouping Threshold: {group_threshold:.3f}s",
+                f"  Original Regions: {total_original}",
+                f"  Final Regions: {len(regions)} ({len(grouped_regions)} grouped, {len(original_regions)} individual)",
+                f"  Regions Merged: {total_original - len(regions)}"
+            ])
+        
+        info_lines.extend([
             f"",
             "Timing Regions:"
-        ]
+        ])
         
         for i, region in enumerate(regions):
             region_duration = region.end_time - region.start_time
@@ -262,9 +282,16 @@ class AudioAnalyzerNode:
             duration_formatted = self._format_timing_precision(region_duration, precision_level)
             unit = self._get_precision_unit(precision_level)
             
+            # Add grouping details for grouped regions
+            grouping_info = ""
+            if region.metadata and region.metadata.get("type") == "grouped":
+                source_count = region.metadata.get("source_regions", 0)
+                original_labels = region.metadata.get("original_labels", [])
+                grouping_info = f" [grouped from {source_count} regions: {', '.join(original_labels)}]"
+            
             info_lines.append(
                 f"  {i+1}. {region.label}: {start_formatted}{unit} - {end_formatted}{unit} "
-                f"(duration: {duration_formatted}{unit}, confidence: {region.confidence:.2f})"
+                f"(duration: {duration_formatted}{unit}, confidence: {region.confidence:.2f}){grouping_info}"
             )
         
         return "\n".join(info_lines)
@@ -300,6 +327,7 @@ class AudioAnalyzerNode:
             peak_threshold = 0.02
             peak_min_distance = 0.05
             peak_region_size = 0.1
+            group_regions_threshold = 0.000
             
             # Handle options input - if provided, use options values over defaults
             if options is not None and isinstance(options, dict):
@@ -310,6 +338,7 @@ class AudioAnalyzerNode:
                 peak_threshold = options.get("peak_threshold", peak_threshold)
                 peak_min_distance = options.get("peak_min_distance", peak_min_distance)
                 peak_region_size = options.get("peak_region_size", peak_region_size)
+                group_regions_threshold = options.get("group_regions_threshold", group_regions_threshold)
             
             # Handle audio input - either from file or from input
             if audio is not None:
@@ -344,7 +373,7 @@ class AudioAnalyzerNode:
             # Generate cache key for analysis
             # Use tensor shape and mean for more stable caching
             tensor_hash = hash((tuple(audio_tensor.shape), float(audio_tensor.mean()), float(audio_tensor.std())))
-            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}"
+            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}"
             
             # Check cache first
             cached_result = analysis_cache.get(cache_key)
@@ -372,6 +401,10 @@ class AudioAnalyzerNode:
                     )
                 else:
                     raise ValueError(f"Unknown analysis method: {analysis_method}")
+                
+                # Apply region grouping if threshold > 0
+                if group_regions_threshold > 0.000:
+                    regions = self.analyzer.group_regions(regions, group_regions_threshold)
                 
                 # Cache results
                 analysis_cache.put(cache_key, regions)
@@ -402,7 +435,7 @@ class AudioAnalyzerNode:
                 timing_data = json.dumps(formatted_timing_data, indent=2)
             
             # Create analysis info with precision formatting
-            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level)
+            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level, group_regions_threshold)
             
             # Format visualization data as JSON
             visualization_json = json.dumps(viz_data, indent=2)

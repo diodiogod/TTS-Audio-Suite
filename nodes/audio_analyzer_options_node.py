@@ -68,6 +68,15 @@ class AudioAnalyzerOptionsNode:
                     "step": 0.01,
                     "tooltip": "Size of timing region around each peak in seconds (0.02-1.0):\n• 0.02-0.05: Tight regions for precise timing\n• 0.1: Default, good balance for speech editing\n• 0.2-0.5: Wider regions for context around peaks\n• 0.5-1.0: Very wide regions for phrase-level editing\nOnly used when analysis_method is 'peaks'"
                 }),
+                
+                # Region grouping options
+                "group_regions_threshold": ("FLOAT", {
+                    "default": 0.000,
+                    "min": 0.000,
+                    "max": 3.000,
+                    "step": 0.001,
+                    "tooltip": "Group nearby detected regions into larger segments (0.000-3.000 seconds):\n• 0.000: No grouping, keep all regions separate\n• 0.001-0.050: Group very tiny gaps (remove micro-silences)\n• 0.100-0.200: Group small gaps (syllables → words)\n• 0.300-0.500: Group moderate gaps (words → phrases)\n• 1.000-3.000: Group large gaps (phrases → sentences)\nApplies to all detection methods after initial analysis"
+                }),
             }
         }
     
@@ -78,7 +87,7 @@ class AudioAnalyzerOptionsNode:
     
     def create_options(self, silence_threshold=0.01, silence_min_duration=0.1,
                       energy_sensitivity=0.5, peak_threshold=0.02, peak_min_distance=0.05, 
-                      peak_region_size=0.1):
+                      peak_region_size=0.1, group_regions_threshold=0.000):
         """
         Create an options configuration object for the Audio Analyzer node.
         
@@ -89,6 +98,7 @@ class AudioAnalyzerOptionsNode:
             peak_threshold: Threshold for peak detection
             peak_min_distance: Minimum distance between peaks
             peak_region_size: Size of regions around peaks
+            group_regions_threshold: Time threshold for grouping nearby regions
             
         Returns:
             Tuple containing the options dictionary
@@ -107,6 +117,9 @@ class AudioAnalyzerOptionsNode:
             "peak_threshold": max(0.001, min(0.5, peak_threshold)),
             "peak_min_distance": max(0.01, min(1.0, peak_min_distance)),
             "peak_region_size": max(0.02, min(1.0, peak_region_size)),
+            
+            # Region grouping options
+            "group_regions_threshold": max(0.000, min(3.000, group_regions_threshold)),
         }
         
         # Add metadata
@@ -130,6 +143,9 @@ class AudioAnalyzerOptionsNode:
         validated["peak_threshold"] = max(0.001, min(0.5, inputs.get("peak_threshold", 0.02)))
         validated["peak_min_distance"] = max(0.01, min(1.0, inputs.get("peak_min_distance", 0.05)))
         validated["peak_region_size"] = max(0.02, min(1.0, inputs.get("peak_region_size", 0.1)))
+        
+        # Validate grouping options
+        validated["group_regions_threshold"] = max(0.000, min(3.000, inputs.get("group_regions_threshold", 0.000)))
         
         return validated
 

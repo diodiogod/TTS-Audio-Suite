@@ -406,6 +406,98 @@ class AudioAnalyzer:
         else:
             raise ValueError(f"Unknown extraction method: {method}")
     
+    def group_regions(self, regions: List[TimingRegion], threshold: float = 0.0) -> List[TimingRegion]:
+        """
+        Group nearby regions together based on time threshold.
+        
+        Args:
+            regions: List of TimingRegion objects to group
+            threshold: Maximum time gap between regions to group them (0.0 = no grouping)
+            
+        Returns:
+            List of grouped TimingRegion objects
+        """
+        if threshold <= 0.000 or len(regions) <= 1:
+            return regions
+        
+        # Sort regions by start time
+        sorted_regions = sorted(regions, key=lambda r: r.start_time)
+        grouped_regions = []
+        
+        current_group = [sorted_regions[0]]
+        
+        for i in range(1, len(sorted_regions)):
+            current_region = sorted_regions[i]
+            last_in_group = current_group[-1]
+            
+            # Check if current region should be grouped with the current group
+            # Either overlapping or within threshold distance
+            gap = current_region.start_time - last_in_group.end_time
+            
+            if gap <= threshold or current_region.start_time <= last_in_group.end_time:
+                # Add to current group
+                current_group.append(current_region)
+            else:
+                # Finalize current group and start new one
+                grouped_regions.append(self._merge_region_group(current_group))
+                current_group = [current_region]
+        
+        # Don't forget the last group
+        if current_group:
+            grouped_regions.append(self._merge_region_group(current_group))
+        
+        return grouped_regions
+    
+    def _merge_region_group(self, region_group: List[TimingRegion]) -> TimingRegion:
+        """
+        Merge a group of regions into a single region.
+        
+        Args:
+            region_group: List of regions to merge
+            
+        Returns:
+            Single merged TimingRegion
+        """
+        if len(region_group) == 1:
+            return region_group[0]
+        
+        # Find the overall start and end times
+        start_time = min(r.start_time for r in region_group)
+        end_time = max(r.end_time for r in region_group)
+        
+        # Create simple label for grouped regions
+        if len(region_group) == 2:
+            label = f"group_{region_group[0].label.split('_')[-1]}+{region_group[1].label.split('_')[-1]}"
+        else:
+            # Use first and last numbers for multi-region groups
+            first_num = region_group[0].label.split('_')[-1]
+            last_num = region_group[-1].label.split('_')[-1]
+            label = f"group_{first_num}-{last_num}"
+        
+        # Average confidence
+        avg_confidence = sum(r.confidence for r in region_group) / len(region_group)
+        
+        # Merge metadata
+        merged_metadata = {
+            "type": "grouped",
+            "source_regions": len(region_group),
+            "original_labels": [r.label for r in region_group],
+            "group_span": end_time - start_time
+        }
+        
+        # Include original metadata if all regions have the same type
+        original_types = [r.metadata.get("type") if r.metadata else None for r in region_group]
+        if len(set(original_types)) == 1 and original_types[0] is not None:
+            merged_metadata["original_type"] = original_types[0]
+        
+        return TimingRegion(
+            start_time=start_time,
+            end_time=end_time,
+            label=label,
+            confidence=avg_confidence,
+            metadata=merged_metadata
+        )
+    
     def format_timing_for_f5tts(self, regions: List[TimingRegion]) -> str:
         """
         Format timing regions for F5-TTS edit node.
