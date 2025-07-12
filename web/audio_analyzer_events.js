@@ -52,9 +52,9 @@ export class AudioAnalyzerEvents {
             this.core.canvas.focus();
         });
         
-        // Visual focus indicator
+        // Visual focus indicator (disabled - no blue border)
         this.core.canvas.addEventListener('focus', () => {
-            this.core.canvas.style.outline = '2px solid #4a9eff';
+            this.core.canvas.style.outline = 'none';
             this.core.showMessage('Audio analyzer focused - keyboard shortcuts active');
         });
         

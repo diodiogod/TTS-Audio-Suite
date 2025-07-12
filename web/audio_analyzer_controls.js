@@ -99,11 +99,6 @@ export class AudioAnalyzerControls {
         uploadButton.style.cssText = buttonStyle + 'background: #007bff; font-weight: bold;';
         uploadButton.onclick = () => this.handleUploadClick();
         
-        // Analyze button
-        const analyzeButton = document.createElement('button');
-        analyzeButton.textContent = '🔍 Analyze';
-        analyzeButton.style.cssText = buttonStyle + 'background: #28a745;';
-        analyzeButton.onclick = () => this.core.onParametersChanged();
         
         // Delete region button
         const deleteButton = document.createElement('button');
@@ -154,7 +149,6 @@ export class AudioAnalyzerControls {
         exportButton.onclick = () => this.core.exportTiming();
         
         mainControls.appendChild(uploadButton);
-        mainControls.appendChild(analyzeButton);
         mainControls.appendChild(deleteButton);
         mainControls.appendChild(addRegionButton);
         mainControls.appendChild(clearAllButton);
