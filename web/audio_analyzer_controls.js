@@ -110,10 +110,10 @@ export class AudioAnalyzerControls {
         deleteButton.textContent = '🗑️ Delete Region';
         deleteButton.style.cssText = buttonStyle + 'background: #dc3545;';
         deleteButton.onclick = () => {
-            if (this.core.selectedRegionIndex >= 0) {
+            if (this.core.selectedRegionIndices.length > 0 || this.core.highlightedRegionIndex >= 0) {
                 this.core.deleteSelectedRegion();
             } else {
-                this.core.showMessage('No region selected. Alt+click a region to select it for deletion.');
+                this.core.showMessage('No region selected. Click on a region to highlight it for deletion.');
             }
         };
         

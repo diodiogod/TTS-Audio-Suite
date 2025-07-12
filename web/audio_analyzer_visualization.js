@@ -325,13 +325,13 @@ export class AudioAnalyzerVisualization {
                 let strokeColor = '#00ff00';
                 let lineWidth = 2;
                 
-                if (index === this.core.selectedRegionIndex) {
-                    // Selected for deletion
+                if (this.core.selectedRegionIndices.includes(index)) {
+                    // Selected for deletion (multiple selection)
                     fillColor = this.core.colors.regionSelected;
                     strokeColor = '#ff8c00';
                     lineWidth = 3;
-                } else if (index === this.core.hoveredRegionIndex) {
-                    // Hovered
+                } else if (index === this.core.highlightedRegionIndex) {
+                    // Highlighted (click-to-highlight, persists)
                     fillColor = this.core.colors.regionHovered;
                     strokeColor = '#00ff00';
                     lineWidth = 2;
@@ -358,16 +358,19 @@ export class AudioAnalyzerVisualization {
                 // Draw region label with number
                 const labelX = Math.max(5, Math.min(width - 80, startX + 5));
                 ctx.fillStyle = strokeColor;
-                ctx.font = index === this.core.selectedRegionIndex ? 'bold 12px Arial' : '11px Arial';
+                ctx.font = this.core.selectedRegionIndices.includes(index) ? 'bold 12px Arial' : '11px Arial';
                 ctx.textAlign = 'left';
                 const labelText = `${index + 1}. ${region.label}`;
                 ctx.fillText(labelText, labelX, 20 + (index * 15));
                 
-                // Show deletion hint for selected region
-                if (index === this.core.selectedRegionIndex) {
+                // Show deletion hint for selected regions
+                if (this.core.selectedRegionIndices.includes(index)) {
                     ctx.fillStyle = '#ff8c00';
                     ctx.font = '10px Arial';
-                    ctx.fillText('(Press Delete to remove)', labelX, 35 + (index * 15));
+                    const hint = this.core.selectedRegionIndices.length > 1 ? 
+                        `(${this.core.selectedRegionIndices.length} selected - Delete to remove)` :
+                        '(Press Delete to remove)';
+                    ctx.fillText(hint, labelX, 35 + (index * 15));
                 }
             }
         });

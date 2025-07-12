@@ -25,8 +25,8 @@ export class AudioAnalyzerInterface {
         this.dragEnd = null;
         this.selectedStart = null;
         this.selectedEnd = null;
-        this.selectedRegionIndex = -1; // For tracking which region is selected for deletion
-        this.hoveredRegionIndex = -1; // For visual feedback
+        this.selectedRegionIndices = []; // For tracking multiple regions selected for deletion
+        this.highlightedRegionIndex = -1; // For click-to-highlight feedback (persists until next click)
         
         // Loop markers
         this.loopStart = null;
@@ -360,31 +360,42 @@ export class AudioAnalyzerInterface {
     
     clearAllRegions() {
         this.selectedRegions = [];
-        this.selectedRegionIndex = -1;
-        this.hoveredRegionIndex = -1;
+        this.selectedRegionIndices = [];
+        this.highlightedRegionIndex = -1;
         this.visualization.redraw();
         this.updateManualRegions();
     }
     
     deleteSelectedRegion() {
-        if (this.selectedRegionIndex >= 0 && this.selectedRegionIndex < this.selectedRegions.length) {
-            this.selectedRegions.splice(this.selectedRegionIndex, 1);
-            this.selectedRegionIndex = -1;
-            this.hoveredRegionIndex = -1;
-            
-            // Sort regions chronologically by start time (in case they weren't)
-            this.selectedRegions.sort((a, b) => a.start - b.start);
-            
-            // Renumber remaining regions chronologically
-            this.selectedRegions.forEach((region, index) => {
-                if (region.label.match(/^Region \d+$/)) {
-                    region.label = `Region ${index + 1}`;
+        if (this.selectedRegionIndices.length > 0) {
+            // Delete multiple selected regions (orange) - sort indices in reverse order to avoid index shifting
+            const sortedIndices = [...this.selectedRegionIndices].sort((a, b) => b - a);
+            sortedIndices.forEach(index => {
+                if (index >= 0 && index < this.selectedRegions.length) {
+                    this.selectedRegions.splice(index, 1);
                 }
             });
-            
-            this.visualization.redraw();
-            this.updateManualRegions();
+            this.selectedRegionIndices = [];
+            this.showMessage(`Deleted ${sortedIndices.length} selected regions`);
+        } else if (this.highlightedRegionIndex >= 0 && this.highlightedRegionIndex < this.selectedRegions.length) {
+            // Delete single hovered region (green)
+            this.selectedRegions.splice(this.highlightedRegionIndex, 1);
+            this.highlightedRegionIndex = -1;
+            this.showMessage('Deleted hovered region');
         }
+        
+        // Sort regions chronologically by start time (in case they weren't)
+        this.selectedRegions.sort((a, b) => a.start - b.start);
+        
+        // Renumber remaining regions chronologically
+        this.selectedRegions.forEach((region, index) => {
+            if (region.label.match(/^Region \d+$/)) {
+                region.label = `Region ${index + 1}`;
+            }
+        });
+        
+        this.visualization.redraw();
+        this.updateManualRegions();
     }
     
     selectRegionAtTime(time) {
@@ -392,12 +403,23 @@ export class AudioAnalyzerInterface {
         for (let i = 0; i < this.selectedRegions.length; i++) {
             const region = this.selectedRegions[i];
             if (time >= region.start && time <= region.end) {
-                this.selectedRegionIndex = i;
+                // Toggle selection: if already selected, deselect it; otherwise add it
+                const existingIndex = this.selectedRegionIndices.indexOf(i);
+                if (existingIndex >= 0) {
+                    // Deselect: remove from array
+                    this.selectedRegionIndices.splice(existingIndex, 1);
+                    this.showMessage(`Region ${i + 1} deselected. ${this.selectedRegionIndices.length} regions selected.`);
+                } else {
+                    // Select: add to array
+                    this.selectedRegionIndices.push(i);
+                    this.showMessage(`Region ${i + 1} selected. ${this.selectedRegionIndices.length} regions selected.`);
+                }
                 this.visualization.redraw();
                 return i;
             }
         }
-        this.selectedRegionIndex = -1;
+        // Clicked empty space - clear all selections
+        this.selectedRegionIndices = [];
         this.visualization.redraw();
         return -1;
     }

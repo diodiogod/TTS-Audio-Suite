@@ -157,14 +157,24 @@ export class AudioAnalyzerEvents {
                     this.core.showMessage('No region found at this position.');
                 }
             } else {
-                // Start new selection
-                this.core.isDragging = true;
-                this.core.dragStart = time;
-                this.core.dragEnd = time;
-                this.core.selectedStart = time;
-                this.core.selectedEnd = time;
-                this.core.ui.updateSelectionDisplay();
-                this.core.visualization.redraw();
+                // Check if clicking on an existing region first
+                const regionIndex = this.core.getRegionAtTime(time);
+                if (regionIndex >= 0) {
+                    // Left click on existing region: Highlight it (green, persistent)
+                    this.core.highlightedRegionIndex = regionIndex;
+                    this.core.visualization.redraw();
+                    this.core.showMessage(`Region ${regionIndex + 1} highlighted. Press Delete key to remove.`);
+                } else {
+                    // Start new selection (clear any previous highlight)
+                    this.core.highlightedRegionIndex = -1;
+                    this.core.isDragging = true;
+                    this.core.dragStart = time;
+                    this.core.dragEnd = time;
+                    this.core.selectedStart = time;
+                    this.core.selectedEnd = time;
+                    this.core.ui.updateSelectionDisplay();
+                    this.core.visualization.redraw();
+                }
             }
         } else if (e.button === 1) { // Middle mouse button
             // Start panning
@@ -250,12 +260,11 @@ export class AudioAnalyzerEvents {
                 if (loopMarker) {
                     this.core.canvas.style.cursor = 'ew-resize';
                 } else {
-                    // Update hovered region for visual feedback
-                    const time = this.core.pixelToTime(coords.x);
-                    this.core.hoveredRegionIndex = this.core.getRegionAtTime(time);
-                    
                     // Default crosshair cursor for precise selection
-                    if (e.altKey && this.core.hoveredRegionIndex >= 0) {
+                    const time = this.core.pixelToTime(coords.x);
+                    const regionIndex = this.core.getRegionAtTime(time);
+                    
+                    if (e.altKey && regionIndex >= 0) {
                         this.core.canvas.style.cursor = 'pointer'; // Show pointer when over region with Alt
                     } else {
                         this.core.canvas.style.cursor = 'crosshair';
@@ -428,10 +437,10 @@ export class AudioAnalyzerEvents {
                 e.preventDefault();
                 if (e.shiftKey) {
                     this.core.clearAllRegions();
-                } else if (this.core.selectedRegionIndex >= 0) {
+                } else if (this.core.selectedRegionIndices.length > 0 || this.core.highlightedRegionIndex >= 0) {
                     this.core.deleteSelectedRegion();
                 } else {
-                    this.core.showMessage('No region selected. Alt+click a region to select it for deletion.');
+                    this.core.showMessage('No region selected. Click on a region to highlight it for deletion.');
                 }
                 break;
                 
