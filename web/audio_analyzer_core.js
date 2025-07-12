@@ -33,6 +33,10 @@ export class AudioAnalyzerInterface {
         this.loopEnd = null;
         this.isLooping = false;
         
+        // Amplitude scaling
+        this.amplitudeScale = 0.4; // Default scaling factor (0.1 to 1.0)
+        this.maxAmplitudeRange = 1.0; // Maximum amplitude range (+/- 1.0)
+        
         // Color scheme for the interface
         this.colors = {
             background: '#1a1a1a',
@@ -489,6 +493,7 @@ export class AudioAnalyzerInterface {
     resetZoom() {
         this.zoomLevel = 1;
         this.scrollOffset = 0;
+        this.amplitudeScale = 0.4; // Reset amplitude scale to default
         this.visualization.redraw();
     }
     

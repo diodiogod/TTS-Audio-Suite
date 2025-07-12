@@ -106,10 +106,11 @@ export class AudioAnalyzerVisualization {
             }
         }
         
-        // Draw horizontal amplitude lines
-        const amplitudeLines = [-0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8];
+        // Draw horizontal amplitude lines with dynamic scaling
+        const maxAmp = this.core.maxAmplitudeRange;
+        const amplitudeLines = [-maxAmp * 0.8, -maxAmp * 0.6, -maxAmp * 0.4, -maxAmp * 0.2, 0, maxAmp * 0.2, maxAmp * 0.4, maxAmp * 0.6, maxAmp * 0.8];
         amplitudeLines.forEach(amp => {
-            const y = height/2 - (amp * height * 0.4);
+            const y = height/2 - (amp * height * this.core.amplitudeScale);
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(width, y);
@@ -204,8 +205,8 @@ export class AudioAnalyzerVisualization {
                 continue;
             }
             
-            // Convert to screen coordinates (center line is height/2)
-            const y = height/2 - (sample * height * 0.4);
+            // Convert to screen coordinates (center line is height/2) using dynamic amplitude scaling
+            const y = height/2 - (sample * height * this.core.amplitudeScale);
             
             // Draw line (same pattern as RMS)
             if (!hasStarted) {
@@ -297,7 +298,7 @@ export class AudioAnalyzerVisualization {
             
             // Only draw if the time is within visible range
             if (time >= startTime && time <= endTime) {
-                const y = height/2 - (rmsValue * height * 0.4);
+                const y = height/2 - (rmsValue * height * this.core.amplitudeScale);
                 
                 if (!hasStarted) {
                     ctx.moveTo(x, y);
