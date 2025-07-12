@@ -79,44 +79,50 @@ export class AudioAnalyzerInterface {
     }
     
     setupWidgetListeners() {
-        // Add change listener to manual_regions widget for bidirectional sync
+        // Store the last known values for comparison
         const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
+        const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
+        
         if (manualRegionsWidget) {
-            // Store original callback if it exists
-            const originalCallback = manualRegionsWidget.callback;
-            
-            manualRegionsWidget.callback = (value) => {
-                // Call original callback first
-                if (originalCallback) {
-                    originalCallback(value);
-                }
-                
-                // Only parse if not currently updating from interface
-                if (!manualRegionsWidget._updating) {
-                    this.parseManualRegionsFromText();
-                    this.showMessage('Regions updated from text input');
-                }
-            };
+            this.lastManualRegionsValue = manualRegionsWidget.value;
+        }
+        if (labelsWidget) {
+            this.lastLabelsValue = labelsWidget.value;
         }
         
-        // Add change listener to region_labels widget
+        // Add canvas click listener to check for text changes
+        this.canvas.addEventListener('mousedown', () => {
+            this.checkAndSyncTextChanges();
+        });
+        
+        // Also check when canvas gets focus (user clicks on interface)
+        this.canvas.addEventListener('focus', () => {
+            this.checkAndSyncTextChanges();
+        });
+    }
+    
+    checkAndSyncTextChanges() {
+        const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
         const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
-        if (labelsWidget) {
-            // Store original callback if it exists
-            const originalCallback = labelsWidget.callback;
-            
-            labelsWidget.callback = (value) => {
-                // Call original callback first
-                if (originalCallback) {
-                    originalCallback(value);
-                }
-                
-                // Only parse if not currently updating from interface
-                if (!labelsWidget._updating) {
-                    this.parseManualRegionsFromText();
-                    this.showMessage('Region labels updated from text input');
-                }
-            };
+        
+        let hasChanges = false;
+        
+        // Check if manual_regions text changed
+        if (manualRegionsWidget && manualRegionsWidget.value !== this.lastManualRegionsValue) {
+            this.lastManualRegionsValue = manualRegionsWidget.value;
+            hasChanges = true;
+        }
+        
+        // Check if labels text changed
+        if (labelsWidget && labelsWidget.value !== this.lastLabelsValue) {
+            this.lastLabelsValue = labelsWidget.value;
+            hasChanges = true;
+        }
+        
+        // Only sync if there were actual changes
+        if (hasChanges && !manualRegionsWidget?._updating) {
+            this.parseManualRegionsFromText();
+            this.showMessage('Regions synced from text input');
         }
     }
     
