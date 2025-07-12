@@ -94,7 +94,7 @@ export class AudioAnalyzerUI {
             // Setup drag and drop using controls module
             this.controlsModule.setupDragAndDrop();
             
-            console.log('🎵 Audio Analyzer: Interface setup complete - spacer reserves space, interface positioned over it');
+            // console.log('🎵 Audio Analyzer: Interface setup complete - spacer reserves space, interface positioned over it');  // Debug: setup complete
         }
     }
     
@@ -128,7 +128,7 @@ export class AudioAnalyzerUI {
         // Add to canvas container
         this.container.appendChild(floatingAnalyzeButton);
         
-        console.log('🎵 Audio Analyzer: Added floating analyze button at canvas center');
+        // console.log('🎵 Audio Analyzer: Added floating analyze button at canvas center');  // Debug: button placement
     }
     
     // Delegate methods to appropriate modules

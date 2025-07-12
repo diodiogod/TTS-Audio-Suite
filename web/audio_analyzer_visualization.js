@@ -165,15 +165,15 @@ export class AudioAnalyzerVisualization {
         
         // Debug sample data structure first
         if (!this.dataStructureLogged) {
-            console.log('🎵 Sample data debug:', {
-                samplesType: typeof samples,
-                samplesLength: samples.length,
-                isArray: Array.isArray(samples),
-                firstSamples: samples.slice(0, 5),
-                duration,
-                sampleRate,
-                calculatedSampleRate: samples.length / duration
-            });
+            // console.log('🎵 Sample data debug:', {  // Debug: sample data inspection
+            //     samplesType: typeof samples,
+            //     samplesLength: samples.length,
+            //     isArray: Array.isArray(samples),
+            //     firstSamples: samples.slice(0, 5),
+            //     duration,
+            //     sampleRate,
+            //     calculatedSampleRate: samples.length / duration
+            // });
             this.dataStructureLogged = true;
         }
         
@@ -224,7 +224,7 @@ export class AudioAnalyzerVisualization {
         
             // Minimal debug logging (only once every 3 seconds) - but also check if animation should be running
         if (!this.lastLogTime || Date.now() - this.lastLogTime > 3000) {
-            console.log(`🎵 Waveform drawn: ${samples.length} samples, ${duration.toFixed(2)}s, zoom=${this.core.zoomLevel.toFixed(2)}, points=${pointsDrawn}, isPlaying=${this.core.isPlaying}, animationId=${this.animationId}`);
+            // console.log(`🎵 Waveform drawn: ${samples.length} samples, ${duration.toFixed(2)}s, zoom=${this.core.zoomLevel.toFixed(2)}, points=${pointsDrawn}, isPlaying=${this.core.isPlaying}, animationId=${this.animationId}`);  // Debug: render stats
             this.lastLogTime = Date.now();
         }
     }

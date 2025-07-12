@@ -88,7 +88,7 @@ app.registerExtension({
             }
             return prompt;
         };
-        console.log("🎵 Audio Analyzer: Patched graphToPrompt to inject node IDs.");
+        // console.log("🎵 Audio Analyzer: Patched graphToPrompt to inject node IDs.");  // Debug: patch confirmation
     },
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -131,7 +131,7 @@ app.registerExtension({
                                     const savedValue = info.widgets_values[exportFormatIndex];
                                     if (savedValue && ['f5tts', 'json', 'csv'].includes(savedValue)) {
                                         exportFormatWidget.value = savedValue;
-                                        console.log(`🎵 Audio Analyzer: Restored export_format to: ${savedValue}`);
+                                        // console.log(`🎵 Audio Analyzer: Restored export_format to: ${savedValue}`);  // Debug: format restoration
                                     }
                                 }
                             }
@@ -345,7 +345,7 @@ app.registerExtension({
                     }
                     
                     const tempFileUrl = possibleTempUrls[urlIndex++];
-                    console.log(`🎵 Attempting to fetch temp file (${urlIndex}/${possibleTempUrls.length}): ${tempFileUrl}`);
+                    // console.log(`🎵 Attempting to fetch temp file (${urlIndex}/${possibleTempUrls.length}): ${tempFileUrl}`);  // Debug: fetch attempts
                     
                     fetch(tempFileUrl)
                         .then(response => {
@@ -355,7 +355,7 @@ app.registerExtension({
                             return response.json();
                         })
                         .then(vizData => {
-                            console.log(`🎉 Successfully fetched temp file data! Duration: ${vizData.duration}`);
+                            // console.log(`🎉 Successfully fetched temp file data! Duration: ${vizData.duration}`);  // Debug: fetch success
                             if (this.audioAnalyzerInterface) {
                                 this.audioAnalyzerInterface.updateVisualization(vizData);
                                 
@@ -363,7 +363,7 @@ app.registerExtension({
                                 const audioFileWidget = this.widgets?.find(w => w.name === 'audio_file');
                                 if (vizData.web_audio_filename) {
                                     // Connected audio with saved temporary file (has priority)
-                                    console.log('🎵 Setting up connected audio playback from temp file fetch (priority)');
+                                    // console.log('🎵 Setting up connected audio playback from temp file fetch (priority)');  // Debug: audio priority
                                     this.setupAudioPlayback(vizData.web_audio_filename);
                                 } else if (audioFileWidget && audioFileWidget.value) {
                                     this.setupAudioPlayback(audioFileWidget.value);
@@ -485,7 +485,7 @@ app.registerExtension({
                 
                 // Prevent duplicate audio setup for the same file
                 if (this.currentAudioFile === filePath) {
-                    console.log(`🎵 Audio already set up for: ${filePath}`);
+                    // console.log(`🎵 Audio already set up for: ${filePath}`);  // Debug: duplicate setup prevention
                     return;
                 }
                 
@@ -517,18 +517,18 @@ app.registerExtension({
                         }
                         
                         let webUrl = possibleUrls[urlIndex++];
-                        console.log(`🎵 Trying audio URL: ${webUrl}`);
+                        // console.log(`🎵 Trying audio URL: ${webUrl}`);  // Debug: URL attempts
                         
                         this.audioAnalyzerInterface.audioElement = new Audio();
                         this.audioAnalyzerInterface.audioElement.src = webUrl;
                         this.audioAnalyzerInterface.audioElement.preload = 'metadata';
                         
                         this.audioAnalyzerInterface.audioElement.addEventListener('loadedmetadata', () => {
-                            console.log('✅ Audio playback ready with URL:', webUrl);
+                            // console.log('✅ Audio playback ready with URL:', webUrl);  // Debug: playback ready
                         });
                         
                         this.audioAnalyzerInterface.audioElement.addEventListener('ended', () => {
-                            console.log('🔊 Audio ended - stopping all animations (from interface)');
+                            // console.log('🔊 Audio ended - stopping all animations (from interface)');  // Debug: audio end event
                             if (this.audioAnalyzerInterface.core) {
                                 // Set isPlaying to false IMMEDIATELY to stop any pending animation frames
                                 this.audioAnalyzerInterface.core.isPlaying = false;

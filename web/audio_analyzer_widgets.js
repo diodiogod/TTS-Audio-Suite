@@ -106,7 +106,7 @@ export class AudioAnalyzerWidgets {
         // Insert spacer widget
         this.core.node.widgets.splice(insertPosition, 0, spacerWidget);
         
-        console.log(`🎵 Audio Analyzer: Inserted blank spacer widget at position ${insertPosition}`);
+        // console.log(`🎵 Audio Analyzer: Inserted blank spacer widget at position ${insertPosition}`);  // Debug: spacer insertion
         return spacerWidget;
     }
     
@@ -197,7 +197,7 @@ export class AudioAnalyzerWidgets {
         const widgets = this.core.node.widgets;
         
         // Always insert at the very end
-        console.log(`🎵 Inserting spacer at end position ${widgets.length}`);
+        // console.log(`🎵 Inserting spacer at end position ${widgets.length}`);  // Debug: spacer position
         return widgets.length;
     }
     

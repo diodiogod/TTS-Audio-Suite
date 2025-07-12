@@ -348,7 +348,7 @@ class AudioAnalyzerNode:
                         full_path = os.path.join(input_dir, file_path)
                         if os.path.exists(full_path):
                             file_path = full_path
-                            print(f"🎵 Resolved relative path to: {file_path}")
+                            # print(f"🎵 Resolved relative path to: {file_path}")  # Debug: path resolution
                     except ImportError:
                         print("⚠️ Could not import folder_paths, using path as-is")
                 
@@ -371,7 +371,7 @@ class AudioAnalyzerNode:
             cached_result = analysis_cache.get(cache_key)
             if cached_result:
                 regions = cached_result
-                print("📋 Using cached analysis results")
+                # print("📋 Using cached analysis results")  # Debug: cache usage
             else:
                 # Perform analysis based on method
                 if analysis_method == "manual":
@@ -468,10 +468,10 @@ class AudioAnalyzerNode:
                                 sf.write(temp_audio_path, mono_audio, sample_rate)
                         
                         web_audio_filename = temp_audio_filename
-                        print(f"🎵 Connected audio saved for web access: {temp_audio_path}")
+                        # print(f"🎵 Connected audio saved for web access: {temp_audio_path}")  # Debug: audio save
                         
                     except Exception as audio_save_error:
-                        print(f"⚠️ Failed to save connected audio: {audio_save_error}")
+                        print(f"⚠️ Failed to save connected audio: {audio_save_error}")  # Keep: important error
                         # Continue without audio playback for connected audio
                 
                 elif audio_file and audio_file.strip() and os.path.exists(audio_file.strip()):
@@ -483,7 +483,7 @@ class AudioAnalyzerNode:
                     # Copy if not already there or if source is newer
                     if not os.path.exists(web_audio_path) or os.path.getmtime(audio_file.strip()) > os.path.getmtime(web_audio_path):
                         shutil.copy2(audio_file.strip(), web_audio_path)
-                        print(f"🎵 Audio file copied for web access: {web_audio_path}")
+                        # print(f"🎵 Audio file copied for web access: {web_audio_path}")  # Debug: file copy
                     
                     # For file-based audio, provide just the filename for web access
                     # JavaScript will use this with ComfyUI's input URL format
@@ -500,10 +500,10 @@ class AudioAnalyzerNode:
                 with open(temp_file, 'w') as f:
                     json.dump(viz_data, f, indent=2)
                 
-                print(f"🎵 Audio data saved to temp: {temp_file}")
+                # print(f"🎵 Audio data saved to temp: {temp_file}")  # Debug: temp file save
                 
             except Exception as save_error:
-                print(f"⚠️ Audio Analyzer data save failed: {save_error}")
+                print(f"⚠️ Audio Analyzer data save failed: {save_error}")  # Keep: important error
                 # Continue without failing the entire analysis
             
             return (timing_data, visualization_json, analysis_info, processed_audio)
