@@ -652,6 +652,14 @@ export class AudioAnalyzerInterface {
         this.visualization.redraw();
     }
     
+    // Speed control
+    setPlaybackSpeed(speed) {
+        if (this.audioElement) {
+            this.audioElement.playbackRate = speed;
+            this.showMessage(`Playback speed set to ${speed}x`);
+        }
+    }
+    
     // Export functionality
     exportTiming() {
         if (this.selectedRegions.length === 0) {
