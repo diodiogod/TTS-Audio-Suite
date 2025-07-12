@@ -122,7 +122,7 @@ export class AudioAnalyzerRegions {
             } else if (originalType === 'word_boundary') {
                 color = 'rgba(255, 255, 0, 0.2)'; // Yellow for grouped word boundaries
             } else if (originalType === 'speech') {
-                color = 'rgba(0, 255, 0, 0.2)'; // Green for grouped speech
+                color = 'rgba(34, 139, 34, 0.3)'; // Forest green for grouped speech
             }
         } else if (region.label === 'silence') {
             color = 'rgba(128, 128, 128, 0.3)'; // Gray for silence
