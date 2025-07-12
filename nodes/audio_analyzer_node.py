@@ -89,8 +89,8 @@ class AudioAnalyzerNode:
             }
         }
     
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "AUDIO")
-    RETURN_NAMES = ("timing_data", "visualization_data", "analysis_info", "processed_audio")
+    RETURN_TYPES = ("AUDIO", "STRING", "STRING", "AUDIO")
+    RETURN_NAMES = ("processed_audio", "timing_data", "analysis_info", "segmented_audio")
     FUNCTION = "analyze_audio"
     CATEGORY = "ChatterBox Audio"
     
@@ -242,7 +242,7 @@ class AudioAnalyzerNode:
     
     def _create_analysis_info(self, audio_tensor: torch.Tensor, sample_rate: int, 
                              regions: List[TimingRegion], method: str, precision_level: str = "milliseconds",
-                             group_threshold: float = 0.0, invert_silence: bool = False) -> str:
+                             group_threshold: float = 0.0, invert_silence: bool = False, viz_data: Dict = None) -> str:
         """Create analysis information string with precision formatting."""
         duration = AudioProcessingUtils.get_audio_duration(audio_tensor, sample_rate)
         
@@ -299,7 +299,74 @@ class AudioAnalyzerNode:
                 f"(duration: {duration_formatted}{unit}, confidence: {region.confidence:.2f}){grouping_info}"
             )
         
+        # Add visualization summary if available
+        if viz_data:
+            info_lines.extend([
+                f"",
+                "Visualization Summary:",
+                f"  Waveform Points: {len(viz_data.get('samples', []))}",
+                f"  Duration: {viz_data.get('duration', 0):.3f}s",
+                f"  Sample Rate: {viz_data.get('sample_rate', 0)} Hz"
+            ])
+            
+            if viz_data.get('rms'):
+                rms_data = viz_data['rms']
+                if isinstance(rms_data, dict) and 'values' in rms_data:
+                    info_lines.append(f"  RMS Data Points: {len(rms_data['values'])}")
+                elif isinstance(rms_data, list):
+                    info_lines.append(f"  RMS Data Points: {len(rms_data)}")
+        
         return "\n".join(info_lines)
+    
+    def _create_segmented_audio(self, audio_tensor: torch.Tensor, sample_rate: int, regions: List[TimingRegion]) -> torch.Tensor:
+        """
+        Create audio containing only the detected regions, concatenated together.
+        
+        Args:
+            audio_tensor: Original audio tensor
+            sample_rate: Sample rate of the audio
+            regions: List of TimingRegion objects to extract
+            
+        Returns:
+            New audio tensor with only the selected regions
+        """
+        if not regions:
+            # No regions detected, return silence
+            return torch.zeros(1, int(0.1 * sample_rate))  # 0.1 second of silence
+        
+        # Sort regions by start time
+        sorted_regions = sorted(regions, key=lambda r: r.start_time)
+        
+        segments = []
+        for region in sorted_regions:
+            # Convert time to sample indices
+            start_sample = int(region.start_time * sample_rate)
+            end_sample = int(region.end_time * sample_rate)
+            
+            # Ensure indices are within bounds
+            start_sample = max(0, min(start_sample, len(audio_tensor)))
+            end_sample = max(start_sample, min(end_sample, len(audio_tensor)))
+            
+            if end_sample > start_sample:
+                # Extract the audio segment
+                if audio_tensor.dim() == 1:
+                    segment = audio_tensor[start_sample:end_sample]
+                else:
+                    segment = audio_tensor[:, start_sample:end_sample]
+                segments.append(segment)
+        
+        if not segments:
+            # No valid segments found, return silence
+            return torch.zeros(1, int(0.1 * sample_rate))
+        
+        # Concatenate all segments
+        if audio_tensor.dim() == 1:
+            segmented_audio = torch.cat(segments, dim=0)
+        else:
+            segmented_audio = torch.cat(segments, dim=1)
+        
+        # Format for ComfyUI
+        return AudioProcessingUtils.format_for_comfyui(segmented_audio, sample_rate)
     
     def analyze_audio(self, audio_file, analysis_method="silence", precision_level="milliseconds",
                      visualization_points=2000, audio=None, options=None, manual_regions="", region_labels="", 
@@ -320,7 +387,7 @@ class AudioAnalyzerNode:
             export_format: Export format for timing data
             
         Returns:
-            Tuple of (timing_data, visualization_data, analysis_info, processed_audio)
+            Tuple of (processed_audio, timing_data, analysis_info, segmented_audio)
         """
         
         try:
@@ -442,14 +509,14 @@ class AudioAnalyzerNode:
                 formatted_timing_data = self._apply_precision_to_timing_data(raw_timing_data, precision_level)
                 timing_data = json.dumps(formatted_timing_data, indent=2)
             
-            # Create analysis info with precision formatting
-            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level, group_regions_threshold, invert_silence_regions)
+            # Create analysis info with precision formatting (now includes visualization summary)
+            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level, group_regions_threshold, invert_silence_regions, viz_data)
             
-            # Format visualization data as JSON
-            visualization_json = json.dumps(viz_data, indent=2)
-            
-            # Return processed audio in ComfyUI format
+            # Return processed audio in ComfyUI format (passthrough)
             processed_audio = AudioProcessingUtils.format_for_comfyui(audio_tensor, sample_rate)
+            
+            # Generate segmented audio containing only the detected regions
+            segmented_audio = self._create_segmented_audio(audio_tensor, sample_rate, regions)
             
             
             # Save visualization data to ComfyUI temp directory and save audio for web access
@@ -526,7 +593,7 @@ class AudioAnalyzerNode:
                 print(f"⚠️ Audio Analyzer data save failed: {save_error}")  # Keep: important error
                 # Continue without failing the entire analysis
             
-            return (timing_data, visualization_json, analysis_info, processed_audio)
+            return (processed_audio, timing_data, analysis_info, segmented_audio)
             
         except Exception as e:
             import traceback
@@ -537,12 +604,13 @@ class AudioAnalyzerNode:
             # Return error data
             empty_audio = torch.zeros(1, 1000)  # 1 second of silence
             processed_audio = AudioProcessingUtils.format_for_comfyui(empty_audio, 22050)
+            segmented_audio = processed_audio  # Same as processed for errors
             
             return (
+                processed_audio,
                 f"Error: {error_msg}",
-                json.dumps({"error": error_msg, "traceback": traceback.format_exc()}),
                 f"Analysis failed: {error_msg}",
-                processed_audio
+                segmented_audio
             )
     
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
