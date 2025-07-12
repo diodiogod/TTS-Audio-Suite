@@ -288,7 +288,7 @@ if AUDIO_ANALYZER_SUPPORT_AVAILABLE:
 # Add Audio Analyzer Options node if available
 if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = AudioAnalyzerOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🎛️ Audio Analyzer Options"
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🔧 Audio Analyzer Options"
 
 # Print startup banner
 print(SEPARATOR)

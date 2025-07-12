@@ -132,7 +132,7 @@ if AUDIO_ANALYZER_SUPPORT_AVAILABLE and AudioAnalyzerNode is not None:
 # Add Audio Analyzer Options if available
 if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE and AudioAnalyzerOptionsNode is not None:
     NODE_CLASS_MAPPINGS["AudioAnalyzerOptionsNode"] = AudioAnalyzerOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerOptionsNode"] = "🎛️ Audio Analyzer Options"
+    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerOptionsNode"] = "🔧 Audio Analyzer Options"
 
 # Extension info
 __version__ = VERSION_DISPLAY
