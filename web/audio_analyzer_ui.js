@@ -75,6 +75,9 @@ export class AudioAnalyzerUI {
         this.container.appendChild(this.canvas);
         this.container.appendChild(this.controlsContainer);
         
+        // Add floating analyze button to canvas
+        this.addFloatingAnalyzeButton();
+        
         // Add container to node using layout module
         const success = this.layout.addContainerToNode(this.container);
         
@@ -93,6 +96,39 @@ export class AudioAnalyzerUI {
             
             console.log('🎵 Audio Analyzer: Interface setup complete - spacer reserves space, interface positioned over it');
         }
+    }
+    
+    addFloatingAnalyzeButton() {
+        // Create floating analyze button
+        const floatingAnalyzeButton = document.createElement('button');
+        floatingAnalyzeButton.textContent = '🔍 Analyze';
+        floatingAnalyzeButton.onclick = () => this.core.onParametersChanged();
+        
+        // Position it dead center of canvas for testing
+        floatingAnalyzeButton.style.cssText = `
+            position: absolute;
+            top: -6.5%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            background: #28a745;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+        `;
+        
+        // Allow the container to show content outside its bounds
+        this.container.style.overflow = 'visible';
+        
+        // Add to canvas container
+        this.container.appendChild(floatingAnalyzeButton);
+        
+        console.log('🎵 Audio Analyzer: Added floating analyze button at canvas center');
     }
     
     // Delegate methods to appropriate modules
