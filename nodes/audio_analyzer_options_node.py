@@ -36,6 +36,10 @@ class AudioAnalyzerOptionsNode:
                     "step": 0.01,
                     "tooltip": "Shortest pause to count as a break between words (0.01-2.0 seconds):\n• 0.01-0.05: Catches tiny pauses between syllables\n• 0.1: Default, good for word breaks\n• 0.5-2.0: Only long pauses between sentences\nOnly used when analysis_method is 'silence'"
                 }),
+                "invert_silence_regions": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Invert silence detection to get speech regions instead:\n• False: Returns silence regions (pauses between speech)\n• True: Returns speech regions (inverted silence detection)\nUseful for F5-TTS editing where you want speech segments\nOnly used when analysis_method is 'silence'"
+                }),
                 
                 # Energy detection options
                 "energy_sensitivity": ("FLOAT", {
@@ -85,7 +89,7 @@ class AudioAnalyzerOptionsNode:
     FUNCTION = "create_options"
     CATEGORY = "ChatterBox Audio"
     
-    def create_options(self, silence_threshold=0.01, silence_min_duration=0.1,
+    def create_options(self, silence_threshold=0.01, silence_min_duration=0.1, invert_silence_regions=False,
                       energy_sensitivity=0.5, peak_threshold=0.02, peak_min_distance=0.05, 
                       peak_region_size=0.1, group_regions_threshold=0.000):
         """
@@ -94,6 +98,7 @@ class AudioAnalyzerOptionsNode:
         Args:
             silence_threshold: Threshold for silence detection
             silence_min_duration: Minimum silence duration
+            invert_silence_regions: Whether to invert silence detection to get speech regions
             energy_sensitivity: Sensitivity for energy detection
             peak_threshold: Threshold for peak detection
             peak_min_distance: Minimum distance between peaks
@@ -109,6 +114,7 @@ class AudioAnalyzerOptionsNode:
             # Silence detection options
             "silence_threshold": max(0.001, min(0.1, silence_threshold)),
             "silence_min_duration": max(0.01, min(2.0, silence_min_duration)),
+            "invert_silence_regions": bool(invert_silence_regions),
             
             # Energy detection options
             "energy_sensitivity": max(0.0, min(1.0, energy_sensitivity)),
@@ -135,6 +141,7 @@ class AudioAnalyzerOptionsNode:
         # Validate silence options
         validated["silence_threshold"] = max(0.001, min(0.1, inputs.get("silence_threshold", 0.01)))
         validated["silence_min_duration"] = max(0.01, min(2.0, inputs.get("silence_min_duration", 0.1)))
+        validated["invert_silence_regions"] = bool(inputs.get("invert_silence_regions", False))
         
         # Validate energy options
         validated["energy_sensitivity"] = max(0.0, min(1.0, inputs.get("energy_sensitivity", 0.5)))
