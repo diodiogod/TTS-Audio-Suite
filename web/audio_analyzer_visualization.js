@@ -504,6 +504,8 @@ export class AudioAnalyzerVisualization {
                         color = 'rgba(128, 128, 128, 0.3)'; // Gray for silence
                     } else if (region.label.includes('word_boundary')) {
                         color = 'rgba(255, 255, 0, 0.2)'; // Yellow for word boundaries
+                    } else if (region.label.includes('peak_')) {
+                        color = 'rgba(0, 150, 255, 0.25)'; // Blue/cyan for detected peaks
                     } else if (region.label.includes('speech')) {
                         color = 'rgba(0, 255, 0, 0.2)'; // Green for speech
                     }
