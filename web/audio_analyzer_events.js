@@ -15,6 +15,15 @@ export class AudioAnalyzerEvents {
         this.isDraggingLoopStart = false;
         this.isDraggingLoopEnd = false;
         this.loopMarkerHitRadius = 12; // Pixel radius for hit detection
+        
+        // Amplitude scale dragging state
+        this.isDraggingAmplitudeScale = false;
+        this.amplitudeDragStartY = 0;
+        this.amplitudeDragStartScale = 0;
+        
+        // Global mouse event handlers for out-of-bounds dragging
+        this.globalMouseMoveHandler = null;
+        this.globalMouseUpHandler = null;
     }
     
     setupEventListeners() {
@@ -90,7 +99,22 @@ export class AudioAnalyzerEvents {
         this.mouseDown = true;
         this.lastMousePos = coords;
         
-        // Check if clicking on a loop marker first
+        // Check if clicking on amplitude scale first
+        if (this.isOverAmplitudeScale(coords.x, coords.y) && e.button === 0) { // Left click on amplitude scale
+            this.isDraggingAmplitudeScale = true;
+            this.amplitudeDragStartY = coords.y;
+            this.amplitudeDragStartScale = this.core.amplitudeScale;
+            this.core.canvas.style.cursor = 'ns-resize';
+            this.core.showMessage('Dragging amplitude scale - move up/down to resize waveform');
+            
+            // Start global mouse capture for out-of-bounds dragging
+            this.startGlobalAmplitudeCapture(e);
+            
+            e.preventDefault();
+            return;
+        }
+        
+        // Check if clicking on a loop marker next
         const loopMarker = this.getLoopMarkerAtPosition(coords.x, coords.y);
         if (loopMarker && e.button === 0) { // Left click on loop marker
             if (loopMarker === 'start') {
@@ -217,20 +241,25 @@ export class AudioAnalyzerEvents {
             // Show pan cursor when CTRL is held (regardless of zoom level)
             this.core.canvas.style.cursor = 'grab';
         } else if (!this.mouseDown) {
-            // Check if hovering over loop marker
-            const loopMarker = this.getLoopMarkerAtPosition(coords.x, coords.y);
-            if (loopMarker) {
-                this.core.canvas.style.cursor = 'ew-resize';
+            // Check if hovering over amplitude scale
+            if (this.isOverAmplitudeScale(coords.x, coords.y)) {
+                this.core.canvas.style.cursor = 'ns-resize';
             } else {
-                // Update hovered region for visual feedback
-                const time = this.core.pixelToTime(coords.x);
-                this.core.hoveredRegionIndex = this.core.getRegionAtTime(time);
-                
-                // Default crosshair cursor for precise selection
-                if (e.altKey && this.core.hoveredRegionIndex >= 0) {
-                    this.core.canvas.style.cursor = 'pointer'; // Show pointer when over region with Alt
+                // Check if hovering over loop marker
+                const loopMarker = this.getLoopMarkerAtPosition(coords.x, coords.y);
+                if (loopMarker) {
+                    this.core.canvas.style.cursor = 'ew-resize';
                 } else {
-                    this.core.canvas.style.cursor = 'crosshair';
+                    // Update hovered region for visual feedback
+                    const time = this.core.pixelToTime(coords.x);
+                    this.core.hoveredRegionIndex = this.core.getRegionAtTime(time);
+                    
+                    // Default crosshair cursor for precise selection
+                    if (e.altKey && this.core.hoveredRegionIndex >= 0) {
+                        this.core.canvas.style.cursor = 'pointer'; // Show pointer when over region with Alt
+                    } else {
+                        this.core.canvas.style.cursor = 'crosshair';
+                    }
                 }
             }
         }
@@ -242,6 +271,12 @@ export class AudioAnalyzerEvents {
         if (!this.core.waveformData) return;
         
         this.mouseDown = false;
+        
+        // Handle amplitude scale drag end (handled by global capture, but keep as fallback)
+        if (this.isDraggingAmplitudeScale) {
+            this.stopGlobalAmplitudeCapture();
+            return;
+        }
         
         // Handle loop marker drag end
         if (this.isDraggingLoopStart || this.isDraggingLoopEnd) {
@@ -291,7 +326,14 @@ export class AudioAnalyzerEvents {
         this.isCtrlPanning = false;
         this.isDraggingLoopStart = false;
         this.isDraggingLoopEnd = false;
-        this.core.canvas.style.cursor = 'default';
+        
+        // DON'T stop amplitude dragging here - let global capture handle it
+        // this.isDraggingAmplitudeScale = false;
+        
+        // Only reset cursor if not amplitude dragging
+        if (!this.isDraggingAmplitudeScale) {
+            this.core.canvas.style.cursor = 'default';
+        }
         
         if (this.core.isDragging) {
             this.core.isDragging = false;
@@ -509,5 +551,93 @@ export class AudioAnalyzerEvents {
         }
         
         return null;
+    }
+    
+    // Helper method to check if mouse is over amplitude scale area (right side)
+    isOverAmplitudeScale(x, y) {
+        if (!this.core.waveformData) {
+            return false;
+        }
+        
+        const canvas = this.core.canvas;
+        const width = canvas.width / devicePixelRatio;
+        const height = canvas.height / devicePixelRatio;
+        
+        // Check if mouse is in the right edge area where amplitude labels are drawn
+        const amplitudeScaleWidth = 40; // Approximate width of the amplitude scale area
+        if (x >= width - amplitudeScaleWidth && x <= width) {
+            // Check if y position is within reasonable amplitude label area (not at very top/bottom)
+            const marginTop = 20;
+            const marginBottom = 20;
+            if (y >= marginTop && y <= height - marginBottom) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // Start global mouse capture for amplitude dragging
+    startGlobalAmplitudeCapture(startEvent) {
+        // Create global mouse move handler that works anywhere on the document
+        this.globalMouseMoveHandler = (e) => {
+            if (!this.isDraggingAmplitudeScale) return;
+            
+            // Get the original canvas coordinates for the starting point
+            const startCoords = this.core.getCanvasCoordinates(startEvent.clientX, startEvent.clientY);
+            
+            // Calculate delta from global mouse position relative to start position
+            const deltaY = e.clientY - startEvent.clientY;
+            const sensitivity = 0.002; // Same sensitivity as before
+            
+            // Calculate new amplitude scale (drag up = bigger waves, drag down = smaller waves)
+            const newScale = this.amplitudeDragStartScale - (deltaY * sensitivity);
+            
+            // Clamp amplitude scale between reasonable limits
+            this.core.amplitudeScale = Math.max(0.05, Math.min(1.5, newScale));
+            
+            this.core.visualization.redraw();
+            this.core.showMessage(`Amplitude scale: ${(this.core.amplitudeScale / 0.4).toFixed(2)}x`);
+            
+            // Prevent default to avoid any unwanted behaviors
+            e.preventDefault();
+        };
+        
+        // Create global mouse up handler
+        this.globalMouseUpHandler = (e) => {
+            if (!this.isDraggingAmplitudeScale) return;
+            
+            // Stop amplitude dragging
+            this.core.showMessage(`Amplitude scale set to: ${(this.core.amplitudeScale / 0.4).toFixed(2)}x`);
+            this.stopGlobalAmplitudeCapture();
+            
+            e.preventDefault();
+        };
+        
+        // Add global event listeners
+        document.addEventListener('mousemove', this.globalMouseMoveHandler, { passive: false });
+        document.addEventListener('mouseup', this.globalMouseUpHandler, { passive: false });
+    }
+    
+    // Stop global mouse capture for amplitude dragging
+    stopGlobalAmplitudeCapture() {
+        this.isDraggingAmplitudeScale = false;
+        this.core.canvas.style.cursor = 'crosshair';
+        
+        // Remove global event listeners
+        if (this.globalMouseMoveHandler) {
+            document.removeEventListener('mousemove', this.globalMouseMoveHandler);
+            this.globalMouseMoveHandler = null;
+        }
+        
+        if (this.globalMouseUpHandler) {
+            document.removeEventListener('mouseup', this.globalMouseUpHandler);
+            this.globalMouseUpHandler = null;
+        }
+    }
+    
+    // Cleanup method to remove global listeners (call when destroying component)
+    cleanup() {
+        this.stopGlobalAmplitudeCapture();
     }
 }
