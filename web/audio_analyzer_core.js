@@ -71,8 +71,53 @@ export class AudioAnalyzerInterface {
         // Setup canvas resize observer
         this.ui.setupCanvasResize();
         
+        // Setup widget change listeners for bidirectional sync
+        this.setupWidgetListeners();
+        
         // Attempt to load cached data, otherwise show initial message
         this.loadCachedData();
+    }
+    
+    setupWidgetListeners() {
+        // Add change listener to manual_regions widget for bidirectional sync
+        const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
+        if (manualRegionsWidget) {
+            // Store original callback if it exists
+            const originalCallback = manualRegionsWidget.callback;
+            
+            manualRegionsWidget.callback = (value) => {
+                // Call original callback first
+                if (originalCallback) {
+                    originalCallback(value);
+                }
+                
+                // Only parse if not currently updating from interface
+                if (!manualRegionsWidget._updating) {
+                    this.parseManualRegionsFromText();
+                    this.showMessage('Regions updated from text input');
+                }
+            };
+        }
+        
+        // Add change listener to region_labels widget
+        const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
+        if (labelsWidget) {
+            // Store original callback if it exists
+            const originalCallback = labelsWidget.callback;
+            
+            labelsWidget.callback = (value) => {
+                // Call original callback first
+                if (originalCallback) {
+                    originalCallback(value);
+                }
+                
+                // Only parse if not currently updating from interface
+                if (!labelsWidget._updating) {
+                    this.parseManualRegionsFromText();
+                    this.showMessage('Region labels updated from text input');
+                }
+            };
+        }
     }
     
     async loadCachedData() {
@@ -288,6 +333,17 @@ export class AudioAnalyzerInterface {
             };
             
             this.selectedRegions.push(region);
+            
+            // Sort regions chronologically by start time
+            this.selectedRegions.sort((a, b) => a.start - b.start);
+            
+            // Renumber regions to be chronological
+            this.selectedRegions.forEach((region, index) => {
+                if (region.label.match(/^Region \d+$/)) {
+                    region.label = `Region ${index + 1}`;
+                }
+            });
+            
             this.clearSelection();
             this.visualization.redraw();
             
@@ -309,10 +365,17 @@ export class AudioAnalyzerInterface {
             this.selectedRegions.splice(this.selectedRegionIndex, 1);
             this.selectedRegionIndex = -1;
             this.hoveredRegionIndex = -1;
-            // Renumber remaining regions
+            
+            // Sort regions chronologically by start time (in case they weren't)
+            this.selectedRegions.sort((a, b) => a.start - b.start);
+            
+            // Renumber remaining regions chronologically
             this.selectedRegions.forEach((region, index) => {
-                region.label = `Region ${index + 1}`;
+                if (region.label.match(/^Region \d+$/)) {
+                    region.label = `Region ${index + 1}`;
+                }
             });
+            
             this.visualization.redraw();
             this.updateManualRegions();
         }
@@ -347,20 +410,84 @@ export class AudioAnalyzerInterface {
         // Update the manual_regions widget with current selections (multiline format)
         const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
         if (manualRegionsWidget) {
+            // Temporarily disable the change listener to prevent infinite loop
+            manualRegionsWidget._updating = true;
             const regionsText = this.selectedRegions
                 .map(r => `${this.formatRegionValue(r.start)},${this.formatRegionValue(r.end)}`)
                 .join('\n'); // Use newline separator for multiline widget
             manualRegionsWidget.value = regionsText;
+            manualRegionsWidget._updating = false;
         }
         
         // Update labels widget (multiline format)
         const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
         if (labelsWidget) {
+            // Temporarily disable the change listener to prevent infinite loop
+            labelsWidget._updating = true;
             const labelsText = this.selectedRegions
                 .map(r => r.label) // Labels don't need precision, but we keep the structure
                 .join('\n'); // Use newline separator for multiline widget
             labelsWidget.value = labelsText;
+            labelsWidget._updating = false;
         }
+    }
+    
+    // Parse manual regions text back into selectedRegions array
+    parseManualRegionsFromText() {
+        const manualRegionsWidget = this.node.widgets.find(w => w.name === 'manual_regions');
+        const labelsWidget = this.node.widgets.find(w => w.name === 'region_labels');
+        
+        if (!manualRegionsWidget || !manualRegionsWidget.value.trim()) {
+            this.selectedRegions = [];
+            this.visualization.redraw();
+            return;
+        }
+        
+        const regionsText = manualRegionsWidget.value.trim();
+        const labelsText = labelsWidget ? labelsWidget.value.trim() : '';
+        
+        const regionLines = regionsText.split('\n').filter(line => line.trim());
+        const labelLines = labelsText ? labelsText.split('\n').filter(line => line.trim()) : [];
+        
+        const newRegions = [];
+        
+        regionLines.forEach((line, index) => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
+            
+            // Parse start,end format
+            const parts = trimmed.split(',').map(p => p.trim());
+            if (parts.length === 2) {
+                const start = parseFloat(parts[0]);
+                const end = parseFloat(parts[1]);
+                
+                if (!isNaN(start) && !isNaN(end) && start < end) {
+                    const label = labelLines[index] || `Region ${index + 1}`;
+                    newRegions.push({
+                        start: start,
+                        end: end,
+                        label: label,
+                        id: Date.now() + index // Unique ID
+                    });
+                }
+            }
+        });
+        
+        // Sort regions chronologically by start time
+        newRegions.sort((a, b) => a.start - b.start);
+        
+        // Update labels to be chronological (Region 1, Region 2, etc.)
+        newRegions.forEach((region, index) => {
+            if (region.label.match(/^Region \d+$/)) {
+                region.label = `Region ${index + 1}`;
+            }
+        });
+        
+        this.selectedRegions = newRegions;
+        this.visualization.redraw();
+        
+        // Update the labels widget to reflect any changes
+        this.updateManualRegions();
     }
     
     // Loop marker management
