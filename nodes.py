@@ -133,6 +133,27 @@ except (ImportError, FileNotFoundError, AttributeError):
         def error(self, error):
             raise ImportError("Audio Analyzer support not available - missing required modules")
 
+# Load Audio Analyzer Options node conditionally
+try:
+    audio_analyzer_options_module = load_node_module("chatterbox_audio_analyzer_options_node", "audio_analyzer_options_node.py")
+    AudioAnalyzerOptionsNode = audio_analyzer_options_module.AudioAnalyzerOptionsNode
+    AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = True
+except (ImportError, FileNotFoundError, AttributeError):
+    AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = False
+    
+    # Create dummy Audio Analyzer Options node for compatibility
+    class AudioAnalyzerOptionsNode:
+        @classmethod
+        def INPUT_TYPES(cls):
+            return {"required": {"error": ("STRING", {"default": "Audio Analyzer Options support not available"})}}
+        
+        RETURN_TYPES = ("STRING",)
+        FUNCTION = "error"
+        CATEGORY = "ChatterBox Audio"
+        
+        def error(self, error):
+            raise ImportError("Audio Analyzer Options support not available - missing required modules")
+
 # Import foundation components for compatibility
 from core.import_manager import import_manager
 
@@ -263,6 +284,11 @@ if F5TTS_EDIT_SUPPORT_AVAILABLE:
 if AUDIO_ANALYZER_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzer"] = AudioAnalyzerNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzer"] = "🎵 Audio Analyzer"
+
+# Add Audio Analyzer Options node if available
+if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = AudioAnalyzerOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🎛️ Audio Analyzer Options"
 
 # Print startup banner
 print(SEPARATOR)
