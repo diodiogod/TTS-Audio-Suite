@@ -54,6 +54,46 @@ export class AudioAnalyzerControls {
             margin-left: 8px;
         `;
         
+        // Speed control
+        const speedContainer = document.createElement('div');
+        speedContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            margin-left: 12px;
+        `;
+        
+        const speedLabel = document.createElement('span');
+        speedLabel.textContent = 'Speed:';
+        speedLabel.style.cssText = `
+            color: #fff;
+            font-size: 11px;
+            margin-right: 4px;
+        `;
+        
+        this.core.ui.speedControl = document.createElement('select');
+        this.core.ui.speedControl.innerHTML = `
+            <option value="0.25">0.25x</option>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+        `;
+        this.core.ui.speedControl.style.cssText = `
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 3px;
+            font-size: 11px;
+            padding: 2px 4px;
+            cursor: pointer;
+        `;
+        this.core.ui.speedControl.onchange = () => this.core.setPlaybackSpeed(parseFloat(this.core.ui.speedControl.value));
+        
+        speedContainer.appendChild(speedLabel);
+        speedContainer.appendChild(this.core.ui.speedControl);
+        
         // Selection display
         this.core.ui.selectionDisplay = document.createElement('span');
         this.core.ui.selectionDisplay.textContent = 'No selection';
@@ -67,6 +107,7 @@ export class AudioAnalyzerControls {
         playbackContainer.appendChild(this.core.ui.playButton);
         playbackContainer.appendChild(this.core.ui.stopButton);
         playbackContainer.appendChild(this.core.ui.timeDisplay);
+        playbackContainer.appendChild(speedContainer);
         playbackContainer.appendChild(this.core.ui.selectionDisplay);
         
         return playbackContainer;
@@ -81,9 +122,15 @@ export class AudioAnalyzerControls {
             align-items: center;
             padding: 2px 0;
             flex-wrap: wrap;
+            justify-content: space-between;
         `;
         
-        // Button style template
+        const regionGroup = document.createElement('div');
+        regionGroup.style.cssText = 'display: flex; gap: 6px; align-items: center;';
+
+        const loopGroup = document.createElement('div');
+        loopGroup.style.cssText = 'display: flex; gap: 6px; align-items: center;';
+
         const buttonStyle = `
             padding: 3px 6px;
             border: none;
@@ -103,12 +150,12 @@ export class AudioAnalyzerControls {
         // Delete region button
         const deleteButton = document.createElement('button');
         deleteButton.textContent = '🗑️ Delete Region';
-        deleteButton.style.cssText = buttonStyle + 'background: #dc3545;';
+        deleteButton.style.cssText = buttonStyle + 'background: #d35400;';
         deleteButton.onclick = () => {
             if (this.core.selectedRegionIndices.length > 0 || this.core.highlightedRegionIndex >= 0) {
                 this.core.deleteSelectedRegion();
             } else {
-                this.core.showMessage('No region selected. Click on a region to highlight it for deletion.');
+                this.core.showMessage('No region selected. Click a region to highlight it for deletion.');
             }
         };
         
@@ -121,40 +168,44 @@ export class AudioAnalyzerControls {
         // Clear all regions button
         const clearAllButton = document.createElement('button');
         clearAllButton.textContent = '🗑️ Clear All';
-        clearAllButton.style.cssText = buttonStyle + 'background: #6c757d;';
+        clearAllButton.style.cssText = buttonStyle + 'background: #803300ff;';
         clearAllButton.onclick = () => this.core.clearAllRegions();
         
         // Set loop button
         const setLoopButton = document.createElement('button');
-        setLoopButton.textContent = '🔄 Set Loop';
-        setLoopButton.style.cssText = buttonStyle + 'background: #6f42c1;';
+        setLoopButton.textContent = '🔻 Set Loop';
+        setLoopButton.style.cssText = buttonStyle + 'background: #7140cdff;';
         setLoopButton.onclick = () => this.core.setLoopFromSelection();
         
         // Toggle looping button
         const toggleLoopButton = document.createElement('button');
-        toggleLoopButton.textContent = '⏯️ Loop ON/OFF';
-        toggleLoopButton.style.cssText = buttonStyle + 'background: #e83e8c;';
+        toggleLoopButton.textContent = '🔄 Loop ON/OFF';
+        toggleLoopButton.style.cssText = buttonStyle + 'background: #583d8dff;';
         toggleLoopButton.onclick = () => this.core.toggleLooping();
         
         // Clear loop button
         const clearLoopButton = document.createElement('button');
         clearLoopButton.textContent = '🚫 Clear Loop';
-        clearLoopButton.style.cssText = buttonStyle + 'background: #495057;';
+        clearLoopButton.style.cssText = buttonStyle + 'background: #2f204bff;'; 
         clearLoopButton.onclick = () => this.core.clearLoopMarkers();
         
         // Export timing button
         const exportButton = document.createElement('button');
         exportButton.textContent = '📋 Export Timings';
-        exportButton.style.cssText = buttonStyle + 'background: #fd7e14;';
+        exportButton.style.cssText = buttonStyle + 'background: #6c757d;'; 
         exportButton.onclick = () => this.core.exportTiming();
         
-        mainControls.appendChild(uploadButton);
-        mainControls.appendChild(deleteButton);
-        mainControls.appendChild(addRegionButton);
-        mainControls.appendChild(clearAllButton);
-        mainControls.appendChild(setLoopButton);
-        mainControls.appendChild(toggleLoopButton);
-        mainControls.appendChild(clearLoopButton);
+        regionGroup.appendChild(uploadButton);
+        regionGroup.appendChild(addRegionButton);
+        regionGroup.appendChild(deleteButton);
+        regionGroup.appendChild(clearAllButton);
+
+        loopGroup.appendChild(setLoopButton);
+        loopGroup.appendChild(toggleLoopButton);
+        loopGroup.appendChild(clearLoopButton);
+
+        mainControls.appendChild(regionGroup);
+        mainControls.appendChild(loopGroup);
         mainControls.appendChild(exportButton);
         
         return mainControls;
@@ -175,7 +226,7 @@ export class AudioAnalyzerControls {
         zoomInButton.textContent = '🔍+';
         zoomInButton.style.cssText = `
             padding: 4px 8px;
-            background: #6f42c1;
+            background: #46255a; /* Muted purple-gray to de-emphasize */
             color: white;
             border: none;
             border-radius: 3px;
@@ -189,7 +240,7 @@ export class AudioAnalyzerControls {
         zoomOutButton.textContent = '🔍-';
         zoomOutButton.style.cssText = `
             padding: 4px 8px;
-            background: #6f42c1;
+            background: #46255a; /* Muted purple-gray to de-emphasize */
             color: white;
             border: none;
             border-radius: 3px;
@@ -203,7 +254,7 @@ export class AudioAnalyzerControls {
         resetZoomButton.textContent = '🔄 Reset';
         resetZoomButton.style.cssText = `
             padding: 4px 8px;
-            background: #6f42c1;
+            background: #46255a; /* Muted purple-gray to de-emphasize */
             color: white;
             border: none;
             border-radius: 3px;

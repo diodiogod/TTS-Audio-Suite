@@ -298,7 +298,7 @@ export class AudioAnalyzerLayout {
         }
         
         // Position the interface container - move it WAY up
-        const adjustedPosition = yPosition - 322; // Move up offset px. was 250
+        const adjustedPosition = yPosition - 178; // Move up offset px. was 250
         this.core.widget.element.style.top = `${adjustedPosition}px`;
         
         // console.log(`🎵 Audio Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);  // Debug: interface positioning
