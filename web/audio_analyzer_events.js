@@ -10,6 +10,11 @@ export class AudioAnalyzerEvents {
         this.isPanning = false;
         this.isCtrlPanning = false;
         this.lastMousePos = { x: 0, y: 0 };
+        
+        // Loop marker dragging state
+        this.isDraggingLoopStart = false;
+        this.isDraggingLoopEnd = false;
+        this.loopMarkerHitRadius = 12; // Pixel radius for hit detection
     }
     
     setupEventListeners() {
@@ -85,6 +90,22 @@ export class AudioAnalyzerEvents {
         this.mouseDown = true;
         this.lastMousePos = coords;
         
+        // Check if clicking on a loop marker first
+        const loopMarker = this.getLoopMarkerAtPosition(coords.x, coords.y);
+        if (loopMarker && e.button === 0) { // Left click on loop marker
+            if (loopMarker === 'start') {
+                this.isDraggingLoopStart = true;
+                this.core.canvas.style.cursor = 'ew-resize';
+                this.core.showMessage('Dragging loop start marker');
+            } else if (loopMarker === 'end') {
+                this.isDraggingLoopEnd = true;
+                this.core.canvas.style.cursor = 'ew-resize';
+                this.core.showMessage('Dragging loop end marker');
+            }
+            e.preventDefault();
+            return;
+        }
+        
         if ((e.button === 0 || e.button === 2) && e.ctrlKey) { // Left or Right + CTRL
             // CTRL + click = panning mode
             this.isCtrlPanning = true;
@@ -140,7 +161,26 @@ export class AudioAnalyzerEvents {
         const coords = this.core.getCanvasCoordinates(e.clientX, e.clientY);
         const time = this.core.pixelToTime(coords.x);
         
-        if (this.mouseDown && this.core.isDragging) {
+        if (this.isDraggingLoopStart || this.isDraggingLoopEnd) {
+            // Handle loop marker dragging
+            const clampedTime = Math.max(0, Math.min(this.core.waveformData.duration, time));
+            
+            if (this.isDraggingLoopStart) {
+                // Ensure start doesn't go past end
+                if (this.core.loopEnd !== null && clampedTime < this.core.loopEnd) {
+                    this.core.loopStart = clampedTime;
+                    this.core.visualization.redraw();
+                    this.core.showMessage(`Loop start: ${this.core.formatTime(clampedTime)}`);
+                }
+            } else if (this.isDraggingLoopEnd) {
+                // Ensure end doesn't go before start
+                if (this.core.loopStart !== null && clampedTime > this.core.loopStart) {
+                    this.core.loopEnd = clampedTime;
+                    this.core.visualization.redraw();
+                    this.core.showMessage(`Loop end: ${this.core.formatTime(clampedTime)}`);
+                }
+            }
+        } else if (this.mouseDown && this.core.isDragging) {
             // Update drag selection (only when not in CTRL panning mode)
             this.core.dragEnd = time;
             this.core.selectedStart = Math.min(this.core.dragStart, this.core.dragEnd);
@@ -177,15 +217,21 @@ export class AudioAnalyzerEvents {
             // Show pan cursor when CTRL is held (regardless of zoom level)
             this.core.canvas.style.cursor = 'grab';
         } else if (!this.mouseDown) {
-            // Update hovered region for visual feedback
-            const time = this.core.pixelToTime(coords.x);
-            this.core.hoveredRegionIndex = this.core.getRegionAtTime(time);
-            
-            // Default crosshair cursor for precise selection
-            if (e.altKey && this.core.hoveredRegionIndex >= 0) {
-                this.core.canvas.style.cursor = 'pointer'; // Show pointer when over region with Alt
+            // Check if hovering over loop marker
+            const loopMarker = this.getLoopMarkerAtPosition(coords.x, coords.y);
+            if (loopMarker) {
+                this.core.canvas.style.cursor = 'ew-resize';
             } else {
-                this.core.canvas.style.cursor = 'crosshair';
+                // Update hovered region for visual feedback
+                const time = this.core.pixelToTime(coords.x);
+                this.core.hoveredRegionIndex = this.core.getRegionAtTime(time);
+                
+                // Default crosshair cursor for precise selection
+                if (e.altKey && this.core.hoveredRegionIndex >= 0) {
+                    this.core.canvas.style.cursor = 'pointer'; // Show pointer when over region with Alt
+                } else {
+                    this.core.canvas.style.cursor = 'crosshair';
+                }
             }
         }
         
@@ -196,6 +242,16 @@ export class AudioAnalyzerEvents {
         if (!this.core.waveformData) return;
         
         this.mouseDown = false;
+        
+        // Handle loop marker drag end
+        if (this.isDraggingLoopStart || this.isDraggingLoopEnd) {
+            const markerType = this.isDraggingLoopStart ? 'start' : 'end';
+            this.core.showMessage(`Loop ${markerType} marker updated: ${this.core.formatTime(this.isDraggingLoopStart ? this.core.loopStart : this.core.loopEnd)}`);
+            this.isDraggingLoopStart = false;
+            this.isDraggingLoopEnd = false;
+            this.core.canvas.style.cursor = 'crosshair';
+            return;
+        }
         
         if (e.button === 1) { // Middle mouse button
             this.middleMouseDown = false;
@@ -233,6 +289,8 @@ export class AudioAnalyzerEvents {
         this.middleMouseDown = false;
         this.isPanning = false;
         this.isCtrlPanning = false;
+        this.isDraggingLoopStart = false;
+        this.isDraggingLoopEnd = false;
         this.core.canvas.style.cursor = 'default';
         
         if (this.core.isDragging) {
@@ -419,5 +477,37 @@ export class AudioAnalyzerEvents {
                 }
                 break;
         }
+    }
+    
+    // Helper method to check if mouse is over a loop marker
+    getLoopMarkerAtPosition(x, y) {
+        if (!this.core.waveformData || this.core.loopStart === null || this.core.loopEnd === null) {
+            return null;
+        }
+        
+        const canvas = this.core.canvas;
+        const height = canvas.height / devicePixelRatio;
+        const markerHeight = 20;
+        const markerY = height - markerHeight;
+        
+        // Check if y position is in the marker area (bottom area of canvas)
+        if (y < markerY - 5 || y > height + 5) {
+            return null;
+        }
+        
+        const startX = this.core.timeToPixel(this.core.loopStart);
+        const endX = this.core.timeToPixel(this.core.loopEnd);
+        
+        // Check start marker (triangle with 8px width on each side)
+        if (Math.abs(x - startX) <= this.loopMarkerHitRadius) {
+            return 'start';
+        }
+        
+        // Check end marker (triangle with 8px width on each side)
+        if (Math.abs(x - endX) <= this.loopMarkerHitRadius) {
+            return 'end';
+        }
+        
+        return null;
     }
 }
