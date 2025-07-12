@@ -168,7 +168,7 @@ class AudioAnalyzer:
         )
     
     def _find_peaks(self, audio: np.ndarray, sample_rate: int, 
-                   min_distance: float = 0.1, threshold: float = 0.1) -> List[float]:
+                   min_distance: float = 0.1, threshold: float = 0.1, region_size: float = 0.1) -> List[float]:
         """
         Find peaks in audio signal for timing markers.
         
@@ -177,37 +177,45 @@ class AudioAnalyzer:
             sample_rate: Sample rate
             min_distance: Minimum distance between peaks in seconds
             threshold: Minimum amplitude threshold for peaks
+            region_size: Size of region around peaks (not used in this method, passed to caller)
             
         Returns:
             List of peak times in seconds
         """
-        # Calculate envelope using RMS
-        window_size = int(0.02 * sample_rate)  # 20ms window
-        envelope = []
+        # Calculate RMS envelope - use smaller window for better peak detection
+        window_size = int(0.005 * sample_rate)  # 5ms window for better resolution
+        window_size = max(1, window_size)  # Ensure at least 1 sample
+        
+        # Calculate RMS values (downsampled, not repeated)
+        rms_values = []
+        rms_times = []
         
         for i in range(0, len(audio), window_size):
             window = audio[i:i + window_size]
-            rms = np.sqrt(np.mean(window ** 2))
-            envelope.extend([rms] * len(window))
+            if len(window) > 0:
+                rms = np.sqrt(np.mean(window ** 2))
+                rms_values.append(rms)
+                rms_times.append(i / sample_rate)  # Time of this RMS window
         
-        # Pad envelope to match audio length
-        envelope = np.array(envelope[:len(audio)])
+        rms_values = np.array(rms_values)
+        rms_times = np.array(rms_times)
         
-        # Find peaks in envelope
+        # Find peaks in RMS envelope
         peaks = []
-        min_distance_samples = int(min_distance * sample_rate)
+        min_distance_windows = max(1, int(min_distance / (window_size / sample_rate)))
         
-        for i in range(1, len(envelope) - 1):
-            if (envelope[i] > envelope[i-1] and 
-                envelope[i] > envelope[i+1] and 
-                envelope[i] > threshold):
+        for i in range(1, len(rms_values) - 1):
+            if (rms_values[i] > rms_values[i-1] and 
+                rms_values[i] > rms_values[i+1] and 
+                rms_values[i] > threshold):
                 
                 # Check minimum distance from previous peaks
-                if not peaks or i - peaks[-1] > min_distance_samples:
+                if not peaks or i - peaks[-1] >= min_distance_windows:
                     peaks.append(i)
         
-        # Convert to time
-        peak_times = [peak / sample_rate for peak in peaks]
+        # Convert peak indices to time using RMS time array
+        peak_times = [rms_times[peak_idx] for peak_idx in peaks]
+        
         return peak_times
     
     def detect_silence_regions(self, audio: torch.Tensor, 
@@ -337,7 +345,7 @@ class AudioAnalyzer:
         }
     
     def extract_timing_regions(self, audio: torch.Tensor, 
-                             method: str = "silence") -> List[TimingRegion]:
+                             method: str = "silence", **kwargs) -> List[TimingRegion]:
         """
         Extract timing regions using specified method.
         
@@ -353,20 +361,45 @@ class AudioAnalyzer:
         elif method == "energy":
             return self.detect_word_boundaries(audio)
         elif method == "peaks":
-            waveform_data = self.analyze_audio(audio)
-            regions = []
+            # Extract peak detection parameters from kwargs
+            peak_threshold = kwargs.get("peak_threshold", 0.02)
+            peak_min_distance = kwargs.get("peak_min_distance", 0.05)
+            peak_region_size = kwargs.get("peak_region_size", 0.1)
             
-            for i, peak_time in enumerate(waveform_data.peaks):
-                # Create small regions around peaks
-                start = max(0, peak_time - 0.05)
-                end = min(waveform_data.duration, peak_time + 0.05)
+            # Convert to numpy for peak detection
+            if audio.dim() > 1:
+                audio = audio.squeeze()
+            audio_np = audio.detach().numpy() if audio.requires_grad else audio.numpy()
+            
+            # Find peaks with custom parameters
+            peak_times = self._find_peaks(
+                audio_np, self.sample_rate, 
+                min_distance=peak_min_distance, 
+                threshold=peak_threshold,
+                region_size=peak_region_size
+            )
+            
+            regions = []
+            duration = len(audio_np) / self.sample_rate
+            
+            for i, peak_time in enumerate(peak_times):
+                # Create regions around peaks with adjustable size
+                half_region = peak_region_size / 2
+                start = max(0, peak_time - half_region)
+                end = min(duration, peak_time + half_region)
                 
                 regions.append(TimingRegion(
                     start_time=start,
                     end_time=end,
-                    label=f"peak_{i}",
+                    label=f"peak_{i+1}",
                     confidence=1.0,
-                    metadata={"type": "peak", "peak_time": peak_time}
+                    metadata={
+                        "type": "peak", 
+                        "peak_time": peak_time,
+                        "threshold": peak_threshold,
+                        "min_distance": peak_min_distance,
+                        "region_size": peak_region_size
+                    }
                 ))
             
             return regions
