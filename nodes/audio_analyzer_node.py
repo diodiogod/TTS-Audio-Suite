@@ -66,6 +66,9 @@ class AudioAnalyzerNode:
                 "audio": ("AUDIO", {
                     "tooltip": "Connect audio from another node instead of using audio_file path.\nThis input takes priority over the file path if connected."
                 }),
+                "options": ("OPTIONS", {
+                    "tooltip": "Optional configuration from Audio Analyzer Options node.\nIf connected, these settings override the individual parameter widgets below.\nIf not connected, uses the individual parameter values or defaults."
+                }),
                 "silence_threshold": ("FLOAT", {
                     "default": 0.01,
                     "min": 0.001,
@@ -309,7 +312,7 @@ class AudioAnalyzerNode:
         return "\n".join(info_lines)
     
     def analyze_audio(self, audio_file, analysis_method="silence", precision_level="milliseconds",
-                     visualization_points=2000, audio=None, silence_threshold=0.01, silence_min_duration=0.1,
+                     visualization_points=2000, audio=None, options=None, silence_threshold=0.01, silence_min_duration=0.1,
                      energy_sensitivity=0.5, peak_threshold=0.02, peak_min_distance=0.05, peak_region_size=0.1,
                      manual_regions="", region_labels="", export_format="f5tts", node_id=""):
         """
@@ -332,6 +335,20 @@ class AudioAnalyzerNode:
         """
         
         try:
+            # Handle options input - if provided, use options values over individual parameters
+            if options is not None and isinstance(options, dict):
+                # Extract values from options, falling back to current parameter values if not in options
+                analysis_method = options.get("analysis_method", analysis_method)
+                silence_threshold = options.get("silence_threshold", silence_threshold)
+                silence_min_duration = options.get("silence_min_duration", silence_min_duration)
+                energy_sensitivity = options.get("energy_sensitivity", energy_sensitivity)
+                peak_threshold = options.get("peak_threshold", peak_threshold)
+                peak_min_distance = options.get("peak_min_distance", peak_min_distance)
+                peak_region_size = options.get("peak_region_size", peak_region_size)
+                manual_regions = options.get("manual_regions", manual_regions)
+                region_labels = options.get("region_labels", region_labels)
+                export_format = options.get("export_format", export_format)
+            
             # Handle audio input - either from file or from input
             if audio is not None:
                 # Audio input from another node
@@ -534,6 +551,7 @@ class AudioAnalyzerNode:
             raise ValueError("Either audio input or audio_file is required")
         
         validated["audio"] = inputs["audio"]
+        validated["options"] = inputs.get("options", None)
         validated["analysis_method"] = inputs.get("analysis_method", "silence")
         validated["precision_level"] = inputs.get("precision_level", "milliseconds")
         validated["visualization_points"] = max(500, min(10000, inputs.get("visualization_points", 2000)))

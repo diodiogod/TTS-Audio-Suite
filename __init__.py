@@ -79,6 +79,14 @@ except AttributeError:
     AUDIO_ANALYZER_SUPPORT_AVAILABLE = False
     AudioAnalyzerNode = None
 
+# Import Audio Analyzer Options node if available
+try:
+    AudioAnalyzerOptionsNode = nodes_module.AudioAnalyzerOptionsNode
+    AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = nodes_module.AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE
+except AttributeError:
+    AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = False
+    AudioAnalyzerOptionsNode = None
+
 # Node class mappings for ComfyUI
 NODE_CLASS_MAPPINGS = {
     "ChatterBoxVoiceTTSDiogod": ChatterboxTTSNode,
@@ -120,6 +128,11 @@ if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
 if AUDIO_ANALYZER_SUPPORT_AVAILABLE and AudioAnalyzerNode is not None:
     NODE_CLASS_MAPPINGS["AudioAnalyzerNode"] = AudioAnalyzerNode
     NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerNode"] = "🎵 Audio Analyzer"
+
+# Add Audio Analyzer Options if available
+if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE and AudioAnalyzerOptionsNode is not None:
+    NODE_CLASS_MAPPINGS["AudioAnalyzerOptionsNode"] = AudioAnalyzerOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerOptionsNode"] = "🎛️ Audio Analyzer Options"
 
 # Extension info
 __version__ = VERSION_DISPLAY
