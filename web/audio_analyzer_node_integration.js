@@ -11,7 +11,7 @@ export class AudioAnalyzerNodeIntegration {
     
     // Handle visualization data updates from node execution
     updateVisualization(data) {
-        console.log('🎵 Audio Analyzer: Received visualization data from node execution');
+        // console.log('🎵 Audio Analyzer: Received visualization data from node execution');  // Debug: data reception
         
         if (data.error) {
             console.error('❌ Audio Analyzer: Analysis error:', data.error);
@@ -28,7 +28,7 @@ export class AudioAnalyzerNodeIntegration {
             return;
         }
         
-        console.log(`✅ Audio Analyzer: Loaded ${data.waveform.samples.length} audio samples, duration: ${data.duration}s`);
+        // console.log(`✅ Audio Analyzer: Loaded ${data.waveform.samples.length} audio samples, duration: ${data.duration}s`);  // Debug: data loading
         
         // Update waveform data - handle the correct data structure from Python
         this.core.waveformData = {
@@ -94,7 +94,7 @@ export class AudioAnalyzerNodeIntegration {
     
     // Handle parameter changes (now works like manual refresh)
     onParametersChanged() {
-        console.log('Analysis requested');
+        // console.log('Analysis requested');  // Debug: analysis trigger
         
         if (!this.hasAudioSource()) {
             this.core.showMessage('No audio source available for analysis');

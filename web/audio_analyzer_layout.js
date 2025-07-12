@@ -38,7 +38,7 @@ export class AudioAnalyzerLayout {
                 this.core.node.onResize(this.core.node.size);
             }
             
-            console.log(`🎵 Audio Analyzer: Resized node to ${this.core.node.size[0]}x${this.core.node.size[1]} for ${widgets.length} widgets (${otherWidgetsHeight}px for other widgets)`);
+            // console.log(`🎵 Audio Analyzer: Resized node to ${this.core.node.size[0]}x${this.core.node.size[1]} for ${widgets.length} widgets (${otherWidgetsHeight}px for other widgets)`);  // Debug: node resize
             
         } catch (error) {
             console.error('Failed to resize node for interface:', error);
@@ -153,7 +153,7 @@ export class AudioAnalyzerLayout {
             this.core.node.size[1] = fixedHeight;
         }
         
-        console.log(`🎵 Audio Analyzer: Setup horizontal-only resize handling (fixed height: ${fixedHeight}px)`);
+        // console.log(`🎵 Audio Analyzer: Setup horizontal-only resize handling (fixed height: ${fixedHeight}px)`);  // Debug: resize setup
         
         // Watch for changes in multiline widgets to recalculate height
         this.core.widgets.setupMultilineWidgetWatchers();
@@ -248,7 +248,7 @@ export class AudioAnalyzerLayout {
                 
                 this.core.widget = widget;
                 
-                console.log('🎵 Audio Analyzer: Interface widget added with absolute positioning');
+                // console.log('🎵 Audio Analyzer: Interface widget added with absolute positioning');  // Debug: widget positioning
                 
                 // Position the interface over the spacer after a short delay to ensure spacer exists
                 setTimeout(() => {
@@ -298,9 +298,9 @@ export class AudioAnalyzerLayout {
         }
         
         // Position the interface container - move it WAY up
-        const adjustedPosition = yPosition - 250; // Move up offset px
+        const adjustedPosition = yPosition - 322; // Move up offset px. was 250
         this.core.widget.element.style.top = `${adjustedPosition}px`;
         
-        console.log(`🎵 Audio Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);
+        // console.log(`🎵 Audio Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);  // Debug: interface positioning
     }
 }

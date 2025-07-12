@@ -77,22 +77,22 @@ export class AudioAnalyzerEvents {
         if (!this.lastDebugTime || Date.now() - this.lastDebugTime > 3000) {
             const rect = this.core.canvas.getBoundingClientRect();
             const logicalWidth = this.core.canvas.width / devicePixelRatio;
-            console.log('🎵 Mouse click coordinate transformation:', {
-                client: { x: e.clientX, y: e.clientY },
-                rect: { 
-                    left: rect.left.toFixed(1), 
-                    top: rect.top.toFixed(1), 
-                    width: rect.width.toFixed(1), 
-                    height: rect.height.toFixed(1) 
-                },
-                logical: { width: logicalWidth.toFixed(1) },
-                scale: { 
-                    x: (rect.width / logicalWidth).toFixed(3), 
-                    devicePixelRatio: devicePixelRatio 
-                },
-                canvas: { x: coords.x.toFixed(1), y: coords.y.toFixed(1) },
-                time: time.toFixed(3) + 's'
-            });
+            // console.log('🎵 Mouse click coordinate transformation:', {  // Debug: coordinate transform (throttled)
+            //     client: { x: e.clientX, y: e.clientY },
+            //     rect: { 
+            //         left: rect.left.toFixed(1), 
+            //         top: rect.top.toFixed(1), 
+            //         width: rect.width.toFixed(1), 
+            //         height: rect.height.toFixed(1) 
+            //     },
+            //     logical: { width: logicalWidth.toFixed(1) },
+            //     scale: { 
+            //         x: (rect.width / logicalWidth).toFixed(3), 
+            //         devicePixelRatio: devicePixelRatio 
+            //     },
+            //     canvas: { x: coords.x.toFixed(1), y: coords.y.toFixed(1) },
+            //     time: time.toFixed(3) + 's'
+            // });
             this.lastDebugTime = Date.now();
         }
         

@@ -138,7 +138,7 @@ export class AudioAnalyzerInterface {
             this.nodeIntegration.updateVisualization(data);
             console.log(`🎵 Audio Analyzer: Successfully loaded cached data for node ${this.node.id}`);
         } catch (error) {
-            console.log(`🎵 Audio Analyzer: No cache found for node ${this.node.id}. Showing initial message. Details: ${error.message}`);
+            // console.log(`🎵 Audio Analyzer: No cache found for node ${this.node.id}. Showing initial message. Details: ${error.message}`);  // Debug: cache miss
             this.visualization.showInitialMessage();
         }
     }

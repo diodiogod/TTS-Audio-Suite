@@ -84,10 +84,10 @@ class AudioAnalyzer:
         try:
             # Try torchaudio first
             audio, sr = torchaudio.load(audio_path)
-            print(f"✅ Loaded audio using torchaudio: {audio_path}")
+            # print(f"✅ Loaded audio using torchaudio: {audio_path}")  # Debug: load method
             
         except Exception as e:
-            print(f"⚠️ Torchaudio failed: {e}")
+            print(f"⚠️ Torchaudio failed: {e}")  # Keep: important fallback info
             if LIBROSA_AVAILABLE:
                 try:
                     # Fallback to librosa for better format support
@@ -99,10 +99,10 @@ class AudioAnalyzer:
                     else:
                         audio = torch.from_numpy(audio_np)
                     
-                    print(f"✅ Loaded audio using librosa: {audio_path}")
+                    # print(f"✅ Loaded audio using librosa: {audio_path}")  # Debug: fallback success
                     
                 except Exception as e2:
-                    print(f"❌ Librosa also failed: {e2}")
+                    print(f"❌ Librosa also failed: {e2}")  # Keep: critical error
                     raise RuntimeError(f"Failed to load audio file with both torchaudio and librosa: {e}, {e2}")
             else:
                 raise RuntimeError(f"Failed to load audio file: {e}. Consider installing librosa for better format support.")
@@ -117,7 +117,7 @@ class AudioAnalyzer:
             audio = resampler(audio)
             sr = self.sample_rate
         
-        print(f"✅ Audio loaded successfully: {audio_path} - Duration: {audio.shape[-1] / sr:.2f}s")
+        # print(f"✅ Audio loaded successfully: {audio_path} - Duration: {audio.shape[-1] / sr:.2f}s")  # Debug: final load
         
         return audio, sr
     
