@@ -14,17 +14,12 @@ class AudioAnalyzerOptionsNode:
     
     @classmethod
     def NAME(cls):
-        return "🎛️ Audio Analyzer Options"
+        return "🔧 Audio Analyzer Options"
     
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {
-                "analysis_method": (["silence", "energy", "peaks", "manual"], {
-                    "default": "silence",
-                    "tooltip": "Which analysis method these options are for:\n• silence: Configure silence detection parameters\n• energy: Configure energy-based detection\n• peaks: Configure peak detection settings\n• manual: Configure manual region settings"
-                }),
-            },
+            "required": {},
             "optional": {
                 # Silence detection options
                 "silence_threshold": ("FLOAT", {
@@ -73,24 +68,6 @@ class AudioAnalyzerOptionsNode:
                     "step": 0.01,
                     "tooltip": "Size of timing region around each peak in seconds (0.02-1.0):\n• 0.02-0.05: Tight regions for precise timing\n• 0.1: Default, good balance for speech editing\n• 0.2-0.5: Wider regions for context around peaks\n• 0.5-1.0: Very wide regions for phrase-level editing\nOnly used when analysis_method is 'peaks'"
                 }),
-                
-                # Manual region options
-                "manual_regions": ("STRING", {
-                    "multiline": True,
-                    "default": "",
-                    "tooltip": "Define your own timing regions manually.\nFormat: start,end (one per line)\nExample:\n1.5,3.2\n4.0,6.8\n8.1,10.5\n\nBidirectional sync:\n• Type/paste here → syncs to interface when you click back\n• Add regions on interface → automatically updates this text\n• Regions auto-sort chronologically by start time\n\nUse when analysis_method is 'manual' or to add extra regions."
-                }),
-                "region_labels": ("STRING", {
-                    "multiline": True,
-                    "default": "",
-                    "tooltip": "Optional labels for each region (one per line).\nExample:\nIntro\nVerse 1\nChorus\n\nBidirectional sync:\n• Type/paste custom labels here → syncs to interface\n• Interface preserves custom labels when renumbering\n• Auto-generated labels (Region 1, Region 2) get renumbered\n• Custom labels stay unchanged during chronological sorting\n\nMust match the number of manual_regions lines."
-                }),
-                
-                # Output formatting options
-                "export_format": (["f5tts", "json", "csv"], {
-                    "default": "f5tts",
-                    "tooltip": "How to format the timing_data output:\n• f5tts: Simple format for F5-TTS (start,end per line)\n• json: Full data with confidence, labels, metadata\n• csv: Spreadsheet-compatible format for analysis\n\nAll formats respect the precision_level setting."
-                }),
             }
         }
     
@@ -99,23 +76,19 @@ class AudioAnalyzerOptionsNode:
     FUNCTION = "create_options"
     CATEGORY = "ChatterBox Audio"
     
-    def create_options(self, analysis_method="silence", silence_threshold=0.01, silence_min_duration=0.1,
+    def create_options(self, silence_threshold=0.01, silence_min_duration=0.1,
                       energy_sensitivity=0.5, peak_threshold=0.02, peak_min_distance=0.05, 
-                      peak_region_size=0.1, manual_regions="", region_labels="", export_format="f5tts"):
+                      peak_region_size=0.1):
         """
         Create an options configuration object for the Audio Analyzer node.
         
         Args:
-            analysis_method: The analysis method these options are configured for
             silence_threshold: Threshold for silence detection
             silence_min_duration: Minimum silence duration
             energy_sensitivity: Sensitivity for energy detection
             peak_threshold: Threshold for peak detection
             peak_min_distance: Minimum distance between peaks
             peak_region_size: Size of regions around peaks
-            manual_regions: Manual timing regions string
-            region_labels: Labels for manual regions
-            export_format: Output format selection
             
         Returns:
             Tuple containing the options dictionary
@@ -123,8 +96,6 @@ class AudioAnalyzerOptionsNode:
         
         # Validate inputs
         options = {
-            "analysis_method": analysis_method,
-            
             # Silence detection options
             "silence_threshold": max(0.001, min(0.1, silence_threshold)),
             "silence_min_duration": max(0.01, min(2.0, silence_min_duration)),
@@ -136,13 +107,6 @@ class AudioAnalyzerOptionsNode:
             "peak_threshold": max(0.001, min(0.5, peak_threshold)),
             "peak_min_distance": max(0.01, min(1.0, peak_min_distance)),
             "peak_region_size": max(0.02, min(1.0, peak_region_size)),
-            
-            # Manual region options
-            "manual_regions": manual_regions,
-            "region_labels": region_labels,
-            
-            # Output options
-            "export_format": export_format if export_format in ["f5tts", "json", "csv"] else "f5tts",
         }
         
         # Add metadata
@@ -154,12 +118,6 @@ class AudioAnalyzerOptionsNode:
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
         """Validate node inputs."""
         validated = {}
-        
-        # Validate analysis method
-        analysis_method = inputs.get("analysis_method", "silence")
-        if analysis_method not in ["silence", "energy", "peaks", "manual"]:
-            analysis_method = "silence"
-        validated["analysis_method"] = analysis_method
         
         # Validate silence options
         validated["silence_threshold"] = max(0.001, min(0.1, inputs.get("silence_threshold", 0.01)))
@@ -173,16 +131,6 @@ class AudioAnalyzerOptionsNode:
         validated["peak_min_distance"] = max(0.01, min(1.0, inputs.get("peak_min_distance", 0.05)))
         validated["peak_region_size"] = max(0.02, min(1.0, inputs.get("peak_region_size", 0.1)))
         
-        # Validate text inputs
-        validated["manual_regions"] = inputs.get("manual_regions", "")
-        validated["region_labels"] = inputs.get("region_labels", "")
-        
-        # Validate export format
-        export_format = inputs.get("export_format", "f5tts")
-        if export_format not in ["f5tts", "json", "csv"]:
-            export_format = "f5tts"
-        validated["export_format"] = export_format
-        
         return validated
 
 
@@ -192,5 +140,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AudioAnalyzerOptionsNode": "🎛️ Audio Analyzer Options"
+    "AudioAnalyzerOptionsNode": "🔧 Audio Analyzer Options"
 }

@@ -67,49 +67,7 @@ class AudioAnalyzerNode:
                     "tooltip": "Connect audio from another node instead of using audio_file path.\nThis input takes priority over the file path if connected."
                 }),
                 "options": ("OPTIONS", {
-                    "tooltip": "Optional configuration from Audio Analyzer Options node.\nIf connected, these settings override the individual parameter widgets below.\nIf not connected, uses the individual parameter values or defaults."
-                }),
-                "silence_threshold": ("FLOAT", {
-                    "default": 0.01,
-                    "min": 0.001,
-                    "max": 0.1,
-                    "step": 0.001,
-                    "tooltip": "How quiet audio must be to count as silence (0.001-0.1):\n• 0.001-0.005: Very sensitive, catches whispers as speech\n• 0.01: Default, good for most recordings\n• 0.05-0.1: Less sensitive, ignores background noise\nOnly used when analysis_method is 'silence'"
-                }),
-                "silence_min_duration": ("FLOAT", {
-                    "default": 0.1,
-                    "min": 0.01,
-                    "max": 2.0,
-                    "step": 0.01,
-                    "tooltip": "Shortest pause to count as a break between words (0.01-2.0 seconds):\n• 0.01-0.05: Catches tiny pauses between syllables\n• 0.1: Default, good for word breaks\n• 0.5-2.0: Only long pauses between sentences\nOnly used when analysis_method is 'silence'"
-                }),
-                "energy_sensitivity": ("FLOAT", {
-                    "default": 0.5,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.1,
-                    "tooltip": "How sensitive to detect volume changes (0.0-1.0):\n• 0.0-0.3: Very sensitive, detects small volume changes\n• 0.5: Default, balanced detection\n• 0.7-1.0: Less sensitive, only major volume changes\nOnly used when analysis_method is 'energy'"
-                }),
-                "peak_threshold": ("FLOAT", {
-                    "default": 0.02,
-                    "min": 0.001,
-                    "max": 0.5,
-                    "step": 0.001,
-                    "tooltip": "Minimum amplitude threshold for detecting peaks (0.001-0.5):\n• 0.001-0.01: Very sensitive, catches soft consonants and emphasis\n• 0.02: Default for speech, good for normal speaking volume\n• 0.05-0.1: Less sensitive, only strong emphasis or loud sounds\n• 0.2-0.5: Only very loud peaks\nOnly used when analysis_method is 'peaks'"
-                }),
-                "peak_min_distance": ("FLOAT", {
-                    "default": 0.05,
-                    "min": 0.01,
-                    "max": 1.0,
-                    "step": 0.01,
-                    "tooltip": "Minimum time between detected peaks in seconds (0.01-1.0):\n• 0.01-0.03: Very sensitive, catches rapid syllables\n• 0.05: Default for speech, good for normal speech pace\n• 0.1-0.2: Less sensitive, only distinct words/emphasis\n• 0.5-1.0: Only major speech events\nOnly used when analysis_method is 'peaks'"
-                }),
-                "peak_region_size": ("FLOAT", {
-                    "default": 0.1,
-                    "min": 0.02,
-                    "max": 1.0,
-                    "step": 0.01,
-                    "tooltip": "Size of timing region around each peak in seconds (0.02-1.0):\n• 0.02-0.05: Tight regions for precise timing\n• 0.1: Default, good balance for speech editing\n• 0.2-0.5: Wider regions for context around peaks\n• 0.5-1.0: Very wide regions for phrase-level editing\nOnly used when analysis_method is 'peaks'"
+                    "tooltip": "Optional configuration from Audio Analyzer Options node.\nIf connected, uses these advanced settings for analysis.\nIf not connected, uses sensible default values for all analysis methods."
                 }),
                 "manual_regions": ("STRING", {
                     "multiline": True,
@@ -312,9 +270,8 @@ class AudioAnalyzerNode:
         return "\n".join(info_lines)
     
     def analyze_audio(self, audio_file, analysis_method="silence", precision_level="milliseconds",
-                     visualization_points=2000, audio=None, options=None, silence_threshold=0.01, silence_min_duration=0.1,
-                     energy_sensitivity=0.5, peak_threshold=0.02, peak_min_distance=0.05, peak_region_size=0.1,
-                     manual_regions="", region_labels="", export_format="f5tts", node_id=""):
+                     visualization_points=2000, audio=None, options=None, manual_regions="", region_labels="", 
+                     export_format="f5tts", node_id=""):
         """
         Analyze audio for timing extraction and visualization.
         
@@ -335,19 +292,24 @@ class AudioAnalyzerNode:
         """
         
         try:
-            # Handle options input - if provided, use options values over individual parameters
+            # Set up default values for technical parameters
+            # These are sensible defaults that work well for most use cases
+            silence_threshold = 0.01
+            silence_min_duration = 0.1
+            energy_sensitivity = 0.5
+            peak_threshold = 0.02
+            peak_min_distance = 0.05
+            peak_region_size = 0.1
+            
+            # Handle options input - if provided, use options values over defaults
             if options is not None and isinstance(options, dict):
-                # Extract values from options, falling back to current parameter values if not in options
-                analysis_method = options.get("analysis_method", analysis_method)
+                # Extract technical parameters from options
                 silence_threshold = options.get("silence_threshold", silence_threshold)
                 silence_min_duration = options.get("silence_min_duration", silence_min_duration)
                 energy_sensitivity = options.get("energy_sensitivity", energy_sensitivity)
                 peak_threshold = options.get("peak_threshold", peak_threshold)
                 peak_min_distance = options.get("peak_min_distance", peak_min_distance)
                 peak_region_size = options.get("peak_region_size", peak_region_size)
-                manual_regions = options.get("manual_regions", manual_regions)
-                region_labels = options.get("region_labels", region_labels)
-                export_format = options.get("export_format", export_format)
             
             # Handle audio input - either from file or from input
             if audio is not None:
@@ -556,13 +518,7 @@ class AudioAnalyzerNode:
         validated["precision_level"] = inputs.get("precision_level", "milliseconds")
         validated["visualization_points"] = max(500, min(10000, inputs.get("visualization_points", 2000)))
         
-        # Validate optional inputs
-        validated["silence_threshold"] = max(0.001, min(0.1, inputs.get("silence_threshold", 0.01)))
-        validated["silence_min_duration"] = max(0.01, min(2.0, inputs.get("silence_min_duration", 0.1)))
-        validated["energy_sensitivity"] = max(0.0, min(1.0, inputs.get("energy_sensitivity", 0.5)))
-        validated["peak_threshold"] = max(0.001, min(0.5, inputs.get("peak_threshold", 0.02)))
-        validated["peak_min_distance"] = max(0.01, min(1.0, inputs.get("peak_min_distance", 0.05)))
-        validated["peak_region_size"] = max(0.02, min(1.0, inputs.get("peak_region_size", 0.1)))
+        # Validate optional inputs (only main parameters, technical parameters come from options node)
         validated["manual_regions"] = inputs.get("manual_regions", "")
         validated["region_labels"] = inputs.get("region_labels", "")
         validated["export_format"] = inputs.get("export_format", "f5tts")
