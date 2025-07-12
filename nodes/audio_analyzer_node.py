@@ -331,8 +331,9 @@ class AudioAnalyzerNode:
             New audio tensor with only the selected regions
         """
         if not regions:
-            # No regions detected, return silence
-            return torch.zeros(1, int(0.1 * sample_rate))  # 0.1 second of silence
+            # No regions detected, return short silence in ComfyUI format
+            silence = torch.zeros(1, int(0.1 * sample_rate))  # 0.1 second of silence
+            return AudioProcessingUtils.format_for_comfyui(silence, sample_rate)
         
         # Sort regions by start time
         sorted_regions = sorted(regions, key=lambda r: r.start_time)
@@ -344,8 +345,9 @@ class AudioAnalyzerNode:
             end_sample = int(region.end_time * sample_rate)
             
             # Ensure indices are within bounds
-            start_sample = max(0, min(start_sample, len(audio_tensor)))
-            end_sample = max(start_sample, min(end_sample, len(audio_tensor)))
+            audio_length = audio_tensor.shape[-1] if audio_tensor.dim() > 1 else len(audio_tensor)
+            start_sample = max(0, min(start_sample, audio_length))
+            end_sample = max(start_sample, min(end_sample, audio_length))
             
             if end_sample > start_sample:
                 # Extract the audio segment
@@ -356,8 +358,9 @@ class AudioAnalyzerNode:
                 segments.append(segment)
         
         if not segments:
-            # No valid segments found, return silence
-            return torch.zeros(1, int(0.1 * sample_rate))
+            # No valid segments found, return silence in ComfyUI format
+            silence = torch.zeros(1, int(0.1 * sample_rate))
+            return AudioProcessingUtils.format_for_comfyui(silence, sample_rate)
         
         # Concatenate all segments
         if audio_tensor.dim() == 1:
