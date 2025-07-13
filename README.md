@@ -74,6 +74,7 @@ NEW: Audio capture node
 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
+🎛️ **Audio Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/AUDIO_ANALYZER_GUIDE.md)**
 
 > **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity, ComfyUI standards, and enhanced text processing capabilities.
 
