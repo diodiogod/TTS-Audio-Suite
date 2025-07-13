@@ -36,6 +36,13 @@ export class AudioAnalyzerVisualization {
             return;
         }
         
+        // Check for fake test data and show warning
+        if (this.core.waveformData.duration === 10.79 && 
+            this.core.waveformData.waveform && 
+            this.core.waveformData.waveform.samples.length === 0) {
+            this.drawing.showFakeDataWarning(ctx, width, height);
+        }
+        
         // Draw grid
         this.drawing.drawGrid(ctx, width, height);
         

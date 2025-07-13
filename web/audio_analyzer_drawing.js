@@ -18,6 +18,18 @@ export class AudioAnalyzerDrawing {
         ctx.fillText('Supported formats: WAV, MP3, OGG, FLAC', width / 2, height / 2 + 20);
     }
     
+    showFakeDataWarning(ctx, width, height) {
+        // Draw warning background
+        ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
+        ctx.fillRect(0, 0, width, 40);
+        
+        // Draw warning text
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠️ FAKE TEST DATA - Connect proper audio source and analyze again', width / 2, 25);
+    }
+    
     drawGrid(ctx, width, height) {
         if (!this.core.waveformData) return;
         
