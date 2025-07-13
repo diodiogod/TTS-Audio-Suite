@@ -203,3 +203,10 @@ CLAUDE.md
 *CLAUDE.md
 
 IgnoredForGitHubDocs/
+
+# Windows Zone.Identifier files
+*.Identifier
+*:Zone.Identifier
+*Zone.Identifier
+.Identifier
+*Zone*.Identifier
