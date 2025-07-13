@@ -135,6 +135,10 @@ class AudioAnalyzerNode:
         if audio_tensor.dim() == 2:
             audio_tensor = audio_tensor.squeeze(0)  # Remove channel dimension if mono
         
+        # Ensure consistent 1D tensor format
+        if audio_tensor.dim() != 1:
+            raise ValueError(f"Expected 1D audio tensor after processing, got {audio_tensor.dim()}D")
+        
         return audio_tensor, sample_rate
     
     def _parse_manual_regions(self, manual_regions: str, labels: str = "") -> List[TimingRegion]:

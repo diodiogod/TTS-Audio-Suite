@@ -107,9 +107,11 @@ class AudioAnalyzer:
             else:
                 raise RuntimeError(f"Failed to load audio file: {e}. Consider installing librosa for better format support.")
         
-        # Convert to mono if stereo
+        # Convert to mono if stereo (ensure 1D output for consistency)
         if audio.shape[0] > 1:
-            audio = torch.mean(audio, dim=0, keepdim=True)
+            audio = torch.mean(audio, dim=0)  # Remove keepdim=True to get 1D tensor
+        elif audio.dim() == 2:
+            audio = audio.squeeze(0)  # Remove channel dimension if already mono
         
         # Resample if necessary
         if sr != self.sample_rate:
