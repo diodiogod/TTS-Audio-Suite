@@ -168,63 +168,56 @@ export class AudioAnalyzerUI {
         this.core.ui.speedSlider.value = '1';
         this.core.ui.speedSlider.style.cssText = `
             flex: 1;
-            height: 6px;
-            background: #666;
+            height: 20px;
+            background: transparent;
             outline: none;
-            border-radius: 1px;
             cursor: pointer;
             -webkit-appearance: none;
             appearance: none;
             border: none;
+            position: relative;
+            z-index: 2;
         `;
         
-        // Add aggressive CSS to override all browser defaults
-        const globalStyle = document.createElement('style');
-        globalStyle.textContent = `
-            input[type="range"].speed-slider {
-                -webkit-appearance: none !important;
-                appearance: none !important;
-                background: transparent !important;
-            }
-            input[type="range"].speed-slider::-webkit-slider-track {
-                background: #666 !important;
-                height: 2px !important;
-                border-radius: 1px !important;
-                border: none !important;
-            }
+        // Simple CSS for just the thumb
+        const thumbStyle = document.createElement('style');
+        thumbStyle.textContent = `
             input[type="range"].speed-slider::-webkit-slider-thumb {
-                -webkit-appearance: none !important;
-                appearance: none !important;
-                width: 2px !important;
-                height: 20px !important;
-                background: white !important;
-                border: none !important;
-                border-radius: 0 !important;
-                cursor: pointer !important;
-                box-shadow: none !important;
-            }
-            input[type="range"].speed-slider::-moz-range-track {
-                background: #666 !important;
-                height: 2px !important;
-                border-radius: 1px !important;
-                border: none !important;
+                -webkit-appearance: none;
+                width: 2px;
+                height: 20px;
+                background: white;
+                border: none;
+                border-radius: 0;
+                cursor: pointer;
             }
             input[type="range"].speed-slider::-moz-range-thumb {
-                -moz-appearance: none !important;
-                appearance: none !important;
-                width: 2px !important;
-                height: 20px !important;
-                background: white !important;
-                border: none !important;
-                border-radius: 0 !important;
-                cursor: pointer !important;
-                box-shadow: none !important;
+                -moz-appearance: none;
+                width: 2px;
+                height: 20px;
+                background: white;
+                border: none;
+                border-radius: 0;
+                cursor: pointer;
             }
         `;
-        document.head.appendChild(globalStyle);
+        document.head.appendChild(thumbStyle);
         
-        // Add class to the slider
         this.core.ui.speedSlider.className = 'speed-slider';
+        
+        // Create custom track line behind the slider
+        const customTrack = document.createElement('div');
+        customTrack.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #666;
+            transform: translateY(-50%);
+            pointer-events: none;
+            z-index: 1;
+        `;
         
         this.core.ui.speedValue = document.createElement('span');
         this.core.ui.speedValue.textContent = '1.00x';
@@ -317,8 +310,21 @@ export class AudioAnalyzerUI {
             this.core.setPlaybackSpeed(extendedSpeed);
         };
         
+        // Create slider wrapper for proper positioning of track and slider
+        const sliderWrapper = document.createElement('div');
+        sliderWrapper.style.cssText = `
+            position: relative;
+            flex: 1;
+            height: 20px;
+            display: flex;
+            align-items: center;
+        `;
+        
+        sliderWrapper.appendChild(customTrack);
+        sliderWrapper.appendChild(this.core.ui.speedSlider);
+        
         floatingSliderContainer.appendChild(speedLabel);
-        floatingSliderContainer.appendChild(this.core.ui.speedSlider);
+        floatingSliderContainer.appendChild(sliderWrapper);
         floatingSliderContainer.appendChild(this.core.ui.speedValue);
         
         // Allow the container to show content outside its bounds
