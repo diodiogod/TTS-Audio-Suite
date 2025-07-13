@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Regions Module
+ * Audio Wave Analyzer Regions Module
  * Handles drawing and management of timing regions (manual, auto-detected, grouped)
  */
 export class AudioAnalyzerRegions {

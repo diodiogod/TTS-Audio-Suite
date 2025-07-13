@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Layout Management Module
+ * Audio Wave Analyzer Layout Management Module
  * Handles node sizing, positioning, and resize behavior
  */
 export class AudioAnalyzerLayout {
@@ -38,7 +38,7 @@ export class AudioAnalyzerLayout {
                 this.core.node.onResize(this.core.node.size);
             }
             
-            // console.log(`🎵 Audio Analyzer: Resized node to ${this.core.node.size[0]}x${this.core.node.size[1]} for ${widgets.length} widgets (${otherWidgetsHeight}px for other widgets)`);  // Debug: node resize
+            // console.log(`🌊 Audio Wave Analyzer: Resized node to ${this.core.node.size[0]}x${this.core.node.size[1]} for ${widgets.length} widgets (${otherWidgetsHeight}px for other widgets)`);  // Debug: node resize
             
         } catch (error) {
             console.error('Failed to resize node for interface:', error);
@@ -107,7 +107,7 @@ export class AudioAnalyzerLayout {
                     originalOnResize.call(this.core.node, constrainedSize);
                 }
                 
-                console.log(`🎵 Audio Analyzer: Node width constrained to ${constrainedSize[0]}px`);
+                console.log(`🌊 Audio Wave Analyzer: Node width constrained to ${constrainedSize[0]}px`);
             }
             
             // Ensure our canvas resizes with the interface
@@ -153,7 +153,7 @@ export class AudioAnalyzerLayout {
             this.core.node.size[1] = fixedHeight;
         }
         
-        // console.log(`🎵 Audio Analyzer: Setup horizontal-only resize handling (fixed height: ${fixedHeight}px)`);  // Debug: resize setup
+        // console.log(`🌊 Audio Wave Analyzer: Setup horizontal-only resize handling (fixed height: ${fixedHeight}px)`);  // Debug: resize setup
         
         // Watch for changes in multiline widgets to recalculate height
         this.core.widgets.setupMultilineWidgetWatchers();
@@ -170,7 +170,7 @@ export class AudioAnalyzerLayout {
             this.core.widget.element.parentElement.removeChild(this.core.widget.element);
         }
         
-        console.log('🎵 Audio Analyzer Layout destroyed and cleaned up');
+        console.log('🌊 Audio Wave Analyzer Layout destroyed and cleaned up');
     }
     
     createMainContainer() {
@@ -248,7 +248,7 @@ export class AudioAnalyzerLayout {
                 
                 this.core.widget = widget;
                 
-                // console.log('🎵 Audio Analyzer: Interface widget added with absolute positioning');  // Debug: widget positioning
+                // console.log('🌊 Audio Wave Analyzer: Interface widget added with absolute positioning');  // Debug: widget positioning
                 
                 // Position the interface over the spacer after a short delay to ensure spacer exists
                 setTimeout(() => {
@@ -256,7 +256,7 @@ export class AudioAnalyzerLayout {
                 }, 100);
                 
             } else {
-                console.log('🎵 Audio Analyzer: addDOMWidget not available, using fallback');
+                console.log('🌊 Audio Wave Analyzer: addDOMWidget not available, using fallback');
                 return false;
             }
             
@@ -301,6 +301,6 @@ export class AudioAnalyzerLayout {
         const adjustedPosition = yPosition - 178; // Move up offset px. was 250
         this.core.widget.element.style.top = `${adjustedPosition}px`;
         
-        // console.log(`🎵 Audio Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);  // Debug: interface positioning
+        // console.log(`🌊 Audio Wave Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);  // Debug: interface positioning
     }
 }

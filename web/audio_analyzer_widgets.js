@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Widget Management Module
+ * Audio Wave Analyzer Widget Management Module
  * Handles widget creation, positioning, and spacer management
  */
 export class AudioAnalyzerWidgets {
@@ -51,7 +51,7 @@ export class AudioAnalyzerWidgets {
             widget.element.style.maxWidth = '780px';
         }
         
-        console.log(`🎵 Audio Analyzer: Setup widget with reserved height: ${interfaceHeight}px`);
+        console.log(`🌊 Audio Wave Analyzer: Setup widget with reserved height: ${interfaceHeight}px`);
     }
     
     createBlankSpacerWidget() {
@@ -106,7 +106,7 @@ export class AudioAnalyzerWidgets {
         // Insert spacer widget
         this.core.node.widgets.splice(insertPosition, 0, spacerWidget);
         
-        // console.log(`🎵 Audio Analyzer: Inserted blank spacer widget at position ${insertPosition}`);  // Debug: spacer insertion
+        // console.log(`🌊 Audio Wave Analyzer: Inserted blank spacer widget at position ${insertPosition}`);  // Debug: spacer insertion
         return spacerWidget;
     }
     
@@ -142,7 +142,7 @@ export class AudioAnalyzerWidgets {
                         nodeElement.appendChild(this.core.container);
                     }
                     
-                    console.log(`🎵 Audio Analyzer: Positioned interface over spacer at Y=${spacerWidget.renderY}px within node`);
+                    console.log(`🌊 Audio Wave Analyzer: Positioned interface over spacer at Y=${spacerWidget.renderY}px within node`);
                 } else {
                     console.log('🎵 Could not find node element for positioning');
                 }
@@ -176,7 +176,7 @@ export class AudioAnalyzerWidgets {
                     const nodeElements = canvasContainer.querySelectorAll('.litegraph-node, .node, [class*="node"]');
                     for (let element of nodeElements) {
                         // This is a rough check - in a real implementation you'd need more specific identification
-                        if (element.textContent && element.textContent.includes('Audio Analyzer')) {
+                        if (element.textContent && element.textContent.includes('Audio Wave Analyzer')) {
                             return element;
                         }
                     }
@@ -260,7 +260,7 @@ export class AudioAnalyzerWidgets {
                 this.core.node.onResize(this.core.node.size);
             }
             
-            console.log(`🎵 Audio Analyzer: Recalculated node height to ${newHeight}px`);
+            console.log(`🌊 Audio Wave Analyzer: Recalculated node height to ${newHeight}px`);
         }
     }
     
@@ -310,11 +310,11 @@ export class AudioAnalyzerWidgets {
             
             if (nodeElement) {
                 nodeElement.appendChild(container);
-                console.log('🎵 Audio Analyzer: Added container to node DOM');
+                console.log('🌊 Audio Wave Analyzer: Added container to node DOM');
             } else {
                 // Fallback to body
                 document.body.appendChild(container);
-                console.log('🎵 Audio Analyzer: Added container to body as fallback');
+                console.log('🌊 Audio Wave Analyzer: Added container to body as fallback');
             }
         }
     }

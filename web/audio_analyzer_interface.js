@@ -88,7 +88,7 @@ app.registerExtension({
             }
             return prompt;
         };
-        // console.log("🎵 Audio Analyzer: Patched graphToPrompt to inject node IDs.");  // Debug: patch confirmation
+        // console.log("🌊 Audio Wave Analyzer: Patched graphToPrompt to inject node IDs.");  // Debug: patch confirmation
     },
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -107,7 +107,7 @@ app.registerExtension({
                     // No need for hidden widget - node_id is now injected via graphToPrompt patch
                     
                 } catch (error) {
-                    console.error('❌ Audio Analyzer: Failed to create interface:', error);
+                    console.error('❌ Audio Wave Analyzer: Failed to create interface:', error);
                 }
                 
                 return result;
@@ -131,7 +131,7 @@ app.registerExtension({
                                     const savedValue = info.widgets_values[exportFormatIndex];
                                     if (savedValue && ['f5tts', 'json', 'csv'].includes(savedValue)) {
                                         exportFormatWidget.value = savedValue;
-                                        // console.log(`🎵 Audio Analyzer: Restored export_format to: ${savedValue}`);  // Debug: format restoration
+                                        // console.log(`🌊 Audio Wave Analyzer: Restored export_format to: ${savedValue}`);  // Debug: format restoration
                                     }
                                 }
                             }
@@ -151,7 +151,7 @@ app.registerExtension({
                                 }
                             });
                         } catch (error) {
-                            console.warn('🎵 Audio Analyzer: Widget restoration warning:', error);
+                            console.warn('🌊 Audio Wave Analyzer: Widget restoration warning:', error);
                         }
                     }, 100); // Small delay to ensure widgets are fully initialized
                 }

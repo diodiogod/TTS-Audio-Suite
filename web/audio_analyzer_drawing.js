@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Drawing Module
+ * Audio Wave Analyzer Drawing Module
  * Basic drawing utilities and helper functions for canvas rendering
  */
 export class AudioAnalyzerDrawing {

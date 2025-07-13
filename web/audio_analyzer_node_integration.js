@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Node Integration Module
+ * Audio Wave Analyzer Node Integration Module
  * Handles communication with ComfyUI AudioAnalyzerNode
  */
 export class AudioAnalyzerNodeIntegration {
@@ -11,10 +11,10 @@ export class AudioAnalyzerNodeIntegration {
     
     // Handle visualization data updates from node execution
     updateVisualization(data) {
-        // console.log('🎵 Audio Analyzer: Received visualization data from node execution');  // Debug: data reception
+        // console.log('🌊 Audio Wave Analyzer: Received visualization data from node execution');  // Debug: data reception
         
         if (data.error) {
-            console.error('❌ Audio Analyzer: Analysis error:', data.error);
+            console.error('❌ Audio Wave Analyzer: Analysis error:', data.error);
             this.core.showMessage(`Analysis error: ${data.error}`);
             this.core.ui.updateStatus('Analysis failed');
             return;
@@ -22,13 +22,13 @@ export class AudioAnalyzerNodeIntegration {
         
         // Check if we have waveform data
         if (!data.waveform || !data.waveform.samples || data.waveform.samples.length === 0) {
-            console.warn('⚠️ Audio Analyzer: No waveform data received');
+            console.warn('⚠️ Audio Wave Analyzer: No waveform data received');
             this.core.showMessage('No audio data received - check if audio file loaded correctly');
             this.core.ui.updateStatus('No audio data');
             return;
         }
         
-        // console.log(`✅ Audio Analyzer: Loaded ${data.waveform.samples.length} audio samples, duration: ${data.duration}s`);  // Debug: data loading
+        // console.log(`✅ Audio Wave Analyzer: Loaded ${data.waveform.samples.length} audio samples, duration: ${data.duration}s`);  // Debug: data loading
         
         // Update waveform data - handle the correct data structure from Python
         this.core.waveformData = {

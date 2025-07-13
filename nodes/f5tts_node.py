@@ -119,8 +119,8 @@ class F5TTSNode(BaseF5TTSNode):
                     "tooltip": "Duration in seconds for smooth audio transitions between F5-TTS segments. Prevents audio clicks/pops by blending segment boundaries."
                 }),
                 "nfe_step": ("INT", {
-                    "default": 32, "min": 1, "max": 100,
-                    "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance."
+                    "default": 32, "min": 1, "max": 71,
+                    "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance. Values above 71 may cause ODE solver issues."
                 }),
                 "cfg_strength": ("FLOAT", {
                     "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
@@ -297,6 +297,11 @@ class F5TTSNode(BaseF5TTSNode):
             # Determine if chunking is needed
             text_length = len(inputs["text"])
             
+            # Validate and clamp nfe_step to prevent ODE solver issues
+            safe_nfe_step = max(1, min(inputs["nfe_step"], 71))
+            if safe_nfe_step != inputs["nfe_step"]:
+                print(f"⚠️ F5-TTS: Clamped nfe_step from {inputs['nfe_step']} to {safe_nfe_step} to prevent ODE solver issues")
+            
             if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
                 # Process single chunk
                 wav = self.generate_f5tts_audio(
@@ -307,7 +312,7 @@ class F5TTSNode(BaseF5TTSNode):
                     speed=inputs["speed"],
                     target_rms=inputs["target_rms"],
                     cross_fade_duration=inputs["cross_fade_duration"],
-                    nfe_step=inputs["nfe_step"],
+                    nfe_step=safe_nfe_step,
                     cfg_strength=inputs["cfg_strength"]
                 )
                 model_info = self.get_f5tts_model_info()
@@ -333,7 +338,7 @@ class F5TTSNode(BaseF5TTSNode):
                         speed=inputs["speed"],
                         target_rms=inputs["target_rms"],
                         cross_fade_duration=inputs["cross_fade_duration"],
-                        nfe_step=inputs["nfe_step"],
+                        nfe_step=safe_nfe_step,
                         cfg_strength=inputs["cfg_strength"]
                     )
                     audio_segments.append(chunk_audio)

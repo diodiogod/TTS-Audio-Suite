@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Visualization Module
+ * Audio Wave Analyzer Visualization Module
  * Core waveform visualization and animation coordination
  */
 import { AudioAnalyzerRegions } from './audio_analyzer_regions.js';
