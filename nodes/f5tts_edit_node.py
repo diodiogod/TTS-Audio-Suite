@@ -43,7 +43,7 @@ class F5TTSEditNode(BaseF5TTSNode):
     
     @classmethod
     def NAME(cls):
-        return "🎛️ F5-TTS Speech Editor"
+        return "👄 F5-TTS Speech Editor"
     
     @classmethod
     def INPUT_TYPES(cls):
