@@ -80,9 +80,18 @@ class F5TTSNode(BaseF5TTSNode):
                     "default": "",
                     "tooltip": "Direct reference text input (required when using opt_reference_audio)."
                 }),
-                "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
-                "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {"default": "F5TTS_Base"}),
-                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1}),
+                "device": (["auto", "cuda", "cpu"], {
+                    "default": "auto",
+                    "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
+                }),
+                "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {
+                    "default": "F5TTS_Base",
+                    "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
+                }),
+                "seed": ("INT", {
+                    "default": 1, "min": 0, "max": 2**32 - 1,
+                    "tooltip": "Seed for reproducible F5-TTS generation. Same seed with same inputs will produce identical results. Set to 0 for random generation."
+                }),
                 "text": ("STRING", {
                     "multiline": True,
                     "default": "Hello! This is F5-TTS integrated with ChatterBox Voice. It provides high-quality text-to-speech with voice cloning capabilities using reference audio and text.",
@@ -93,16 +102,46 @@ class F5TTSNode(BaseF5TTSNode):
                 "opt_reference_audio": ("AUDIO", {
                     "tooltip": "Direct reference audio input (used when reference_audio_file is 'none')"
                 }),
-                "temperature": ("FLOAT", {"default": 0.8, "min": 0.1, "max": 2.0, "step": 0.1}),
-                "speed": ("FLOAT", {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1}),
-                "target_rms": ("FLOAT", {"default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "cross_fade_duration": ("FLOAT", {"default": 0.15, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "nfe_step": ("INT", {"default": 32, "min": 1, "max": 100}),
-                "cfg_strength": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1}),
-                "enable_chunking": ("BOOLEAN", {"default": True, "tooltip": "Enable text chunking for long texts"}),
-                "max_chars_per_chunk": ("INT", {"default": 400, "min": 100, "max": 1000, "step": 50, "tooltip": "Maximum characters per chunk"}),
-                "chunk_combination_method": (["auto", "concatenate", "silence_padding", "crossfade"], {"default": "auto", "tooltip": "Method to combine audio chunks"}),
-                "silence_between_chunks_ms": ("INT", {"default": 100, "min": 0, "max": 500, "step": 25, "tooltip": "Silence duration between chunks in milliseconds"}),
+                "temperature": ("FLOAT", {
+                    "default": 0.8, "min": 0.1, "max": 2.0, "step": 0.1,
+                    "tooltip": "Controls randomness in F5-TTS generation. Higher values = more creative/varied speech, lower values = more consistent/predictable speech."
+                }),
+                "speed": ("FLOAT", {
+                    "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1,
+                    "tooltip": "F5-TTS native speech speed control. 1.0 = normal speed, 0.5 = half speed (slower), 2.0 = double speed (faster)."
+                }),
+                "target_rms": ("FLOAT", {
+                    "default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01,
+                    "tooltip": "Target audio volume level (Root Mean Square). Controls output loudness normalization. Higher values = louder audio output."
+                }),
+                "cross_fade_duration": ("FLOAT", {
+                    "default": 0.15, "min": 0.0, "max": 1.0, "step": 0.01,
+                    "tooltip": "Duration in seconds for smooth audio transitions between F5-TTS segments. Prevents audio clicks/pops by blending segment boundaries."
+                }),
+                "nfe_step": ("INT", {
+                    "default": 32, "min": 1, "max": 100,
+                    "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance."
+                }),
+                "cfg_strength": ("FLOAT", {
+                    "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
+                    "tooltip": "Classifier-Free Guidance strength. Controls how strictly F5-TTS follows the reference text. Higher values = more adherence to reference, lower values = more creative freedom."
+                }),
+                "enable_chunking": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Enable text chunking for long texts. When enabled, long texts are split into smaller chunks for more stable generation."
+                }),
+                "max_chars_per_chunk": ("INT", {
+                    "default": 400, "min": 100, "max": 1000, "step": 50,
+                    "tooltip": "Maximum characters per chunk when chunking is enabled. Smaller chunks = more stable but potentially less coherent speech."
+                }),
+                "chunk_combination_method": (["auto", "concatenate", "silence_padding", "crossfade"], {
+                    "default": "auto",
+                    "tooltip": "Method to combine audio chunks: 'auto' chooses best method, 'concatenate' joins directly, 'silence_padding' adds silence between chunks, 'crossfade' smoothly blends chunks."
+                }),
+                "silence_between_chunks_ms": ("INT", {
+                    "default": 100, "min": 0, "max": 500, "step": 25,
+                    "tooltip": "Silence duration between chunks in milliseconds when using 'silence_padding' combination method. Longer silences = more distinct separation between chunks."
+                }),
             }
         }
         
