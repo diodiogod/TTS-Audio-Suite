@@ -1,10 +1,3 @@
----
-tags: [Import-1c62]
-title: "\U0001F30A Audio Wave Analyzer - Complete User Guide"
-created: '2025-07-13T11:16:51.946Z'
-modified: '2025-07-13T13:26:10.473Z'
----
-
 # 🌊 Audio Wave Analyzer - Complete User Guide
 
 The Audio Wave Analyzer is a sophisticated waveform visualization and timing extraction tool designed primarily for **F5-TTS speech editing workflows**. It provides precise timing data for speech regions, making it ideal for preparing audio segments for F5-TTS voice cloning and editing.
@@ -30,7 +23,7 @@ The F5-TTS Edit Node requires precise timing data to know which parts of audio t
 6. [Analysis Methods Breakdown](#analysis-methods-breakdown)
 7. [Region Management](#region-management)
 8. [Advanced Features](#advanced-features)
-9. [Outputs Reference](#outputs-reference)
+9. #outputs-reference
 
 ---
 
@@ -46,11 +39,10 @@ The F5-TTS Edit Node requires precise timing data to know which parts of audio t
 
 ![Quick Start Workflow](images/quick_start_workflow.png)
 
----
-
 ## Node Parameters
 
 ### 🎵 Core Inputs
+
 <details>
 <summary><strong>audio_file</strong></summary>
 
@@ -66,11 +58,11 @@ Examples:
 - "C:/Audio/my_voice.mp3"
 - "voices/character_01.flac"
 ```
+
 </details>
 
 > [!IMPORTANT]
 > If both `audio_file` and `audio input` are provided, **audio input takes priority**.
-
 
 <details>
 <summary><strong>analysis_method (DROPDOWN)</strong></summary>
@@ -82,17 +74,20 @@ Examples:
 - **peaks**: Finds sharp audio spikes (useful for percussion/effects)
 
 - **manual**: Uses only user-defined regions
-</details>
+  
+  </details>
 
 <details>
 <summary><strong>precision_level & visualization_points</strong></summary>
 
 **precision_level**: Output timing format
+
 - **milliseconds**: `1.234s` ⭐ **Recommended**
 - **seconds**: `1.23s` (rounded)
 - **samples**: `27225 smp` (exact)
 
 **visualization_points**: Waveform detail (500-10000)
+
 - **2000-3000**: ⭐ **Recommended balance**
 - **500-1000**: Faster, less detail
 - **5000-10000**: Slower, more detail
@@ -116,6 +111,7 @@ Examples:
 - Processed audio from effects chains
 - Real-time audio input streams
 ```
+
 </details>
 
 <details>
@@ -142,6 +138,7 @@ Examples:
 4.0,6.8
 8.1,10.5
 ```
+
 </details>
 
 <details>
@@ -160,6 +157,7 @@ Verse 1
 Chorus
 Bridge
 ```
+
 </details>
 
 <details>
@@ -170,9 +168,8 @@ Bridge
 - **json**: Full data with confidence, labels, metadata
 
 - **csv**: Spreadsheet-compatible format
-</details>
-
----
+  
+  </details>
 
 ## Audio Analyzer Options Node
 
@@ -187,9 +184,12 @@ For advanced control over analysis parameters, use the **Audio Analyzer Options*
 (0.001-1.000, step 0.001)
 
 - **Low values (0.001-0.01)**: Detect very quiet passages
+
 - **Medium values (0.01-0.1)**: Standard speech pauses
+
 - **High values (0.1-1.0)**: Only detect significant silences
-</details>
+  
+  </details>
 
 <details>
 <summary><strong>silence_min_duration</strong></summary>
@@ -198,9 +198,12 @@ For advanced control over analysis parameters, use the **Audio Analyzer Options*
 Minimum silence length to detect:
 
 - **0.01-0.05s**: Detect brief pauses (word boundaries)
+
 - **0.1-0.5s**: Standard sentence breaks
+
 - **0.5s+**: Only long pauses (paragraph breaks)
-</details>
+  
+  </details>
 
 <details>
 <summary><strong>invert_silence_regions</strong></summary>
@@ -211,6 +214,7 @@ Minimum silence length to detect:
 - **Use Case**: F5-TTS workflows where you need speech segments
 
 ![Silence Inversion Example](images/silence_inversion.png)
+
 </details>
 
 ### ⚡ Energy Detection Options
@@ -220,9 +224,12 @@ Minimum silence length to detect:
 (0.1-2.0, step 0.1)
 
 - **Low (0.1-0.5)**: Conservative, fewer boundaries
+
 - **Medium (0.5-1.0)**: Balanced detection
+
 - **High (1.0-2.0)**: Aggressive, more boundaries
-</details>
+  
+  </details>
 
 ### 🏔️ Peak Detection Options
 
@@ -231,6 +238,7 @@ Minimum silence length to detect:
 (0.001-1.0, step 0.001)
 
 Minimum amplitude for peak detection
+
 </details>
 
 <details>
@@ -238,6 +246,7 @@ Minimum amplitude for peak detection
 (0.01-1.0s, step 0.01s)
 
 Minimum time between detected peaks
+
 </details>
 
 <details>
@@ -245,6 +254,7 @@ Minimum time between detected peaks
 (0.01-1.0s, step 0.01s)
 
 Size of region around each detected peak
+
 </details>
 
 ### ⚙️ Advanced Options
@@ -260,10 +270,8 @@ Merge nearby regions within threshold:
 - **0.5-3.0s**: Aggressive merging
 
 ![Region Grouping](images/region_grouping.png)
+
 </details>
-
-
----
 
 ## Interactive Interface
 
@@ -351,7 +359,7 @@ The floating speed slider provides advanced playback control:
 - Thin gray track line for visual reference
 - White vertical bar thumb for precise control
 
----
+
 
 ## Interactive Buttons
 
@@ -377,8 +385,6 @@ The floating speed slider provides advanced playback control:
 - **🔍+ / 🔍-**: Zoom in/out
 - **🔄 Reset**: Reset zoom, amplitude, and speed to defaults
 - **📋 Export Timings**: Copy timing data to clipboard
-
----
 
 ## Analysis Methods Breakdown
 
@@ -495,13 +501,6 @@ The floating speed slider provides advanced playback control:
 
 </details>
 
----
-
-
-
-
----
-
 ## Region Management
 
 <details>
@@ -519,8 +518,8 @@ The floating speed slider provides advanced playback control:
 1. **Method 1**: Drag to select area → press **Enter** or click **Add Region**
 
 2. **Method 2**: Type in `manual_regions` widget:
-1.5,3.2
-4.0,6.8
+   1.5,3.2
+   4.0,6.8
 
 3. **Method 3**: Use manual mode exclusively
 
@@ -609,8 +608,6 @@ The floating speed slider provides advanced playback control:
 - **Detection-based**: silence, speech, peak_1, etc.
 
 </details>
-
----
 
 ## Advanced Features
 
@@ -821,7 +818,6 @@ Visualization Summary:
 ![Segmented Audio Process](images/segmented_audio.png)
 
 </details>
-
 
 ---
 

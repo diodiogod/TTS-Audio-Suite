@@ -209,4 +209,4 @@ IgnoredForGitHubDocs/
 *:Zone.Identifier
 *Zone.Identifier
 .Identifier
-*Zone*.Identifier
+*Zone*.Identifier.roo/
