@@ -117,7 +117,7 @@ if F5TTS_SRT_SUPPORT_AVAILABLE and F5TTSSRTNode is not None:
 # Add F5-TTS Edit node if available
 if F5TTS_EDIT_SUPPORT_AVAILABLE and F5TTSEditNode is not None:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "🎛️ F5-TTS Speech Editor"
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "👄 F5-TTS Speech Editor"
 
 # Add Audio Recorder if available
 if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
