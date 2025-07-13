@@ -13,6 +13,7 @@ finishing touches to finnaly push this back eventually to my main github project
 - **Auto-commit rule**: ALWAYS commit after big updates that I tested and confirmed working
 - **Only commit when I say it works** - do not commit if I gave no feedback
 - **Never push** unless explicitly requested
+- **Commit messages**: Keep them clean and descriptive. No need for Claude co-author credits unless specifically requested
 
 ### Response Style
 
