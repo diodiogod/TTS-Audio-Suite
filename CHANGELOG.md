@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-07-13
+
+### Added
+
+- Implemented F5-TTS nodes for high-quality voice synthesis with reference audio + text cloning.
+- Added Audio Wave Analyzer node for interactive waveform visualization and precise timing extraction for F5-TTS workflows. [📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)
+- Added F5TTSEditNode for speech editing workflows.
+- Added F5TTSSRTNode for generating TTS from SRT files using F5-TTS.
+
+### New Nodes
+
+- F5TTSNode
+- F5TTSSRTNode
+- F5TTSEditNode
+- AudioAnalyzerNode
+- AudioAnalyzerOptionsNode
+
+### Contributors
+
+- Diogod
+
 ## [2.0.2] - 2025-06-27
 
 ### Fixed
@@ -87,8 +108,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2025-06-13
 
 ### Updated
-
-
 
 - Updated `README.md` and `requirements.txt` with proactive advice to upgrade `pip`, `setuptools`, and `wheel` before installing dependencies. This aims to prevent common installation issues with `s3tokenizer` on certain Python environments (e.g., Python 3.10, Stability Matrix setups).
 

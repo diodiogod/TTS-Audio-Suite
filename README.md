@@ -26,7 +26,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v2.0.2
+# ComfyUI ChatterBox SRT Voice (diogod) v3.0.0
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -60,6 +60,8 @@ ChatterBox Text to Speech:
 ![image](https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c)
 
 NEW: Audio capture node
+
+NEW: F5-TTS Nodes and Audio Analyzer Node
 ![image](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
 
 ## Features
@@ -75,6 +77,19 @@ NEW: Audio capture node
 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
+
+## Installation
+
+🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
+🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
+🔄 **ChatterBox VC** - Convert voice from one speaker to another
+🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
+⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
+🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech
+🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
+📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
+📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
+🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 
 > **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity, ComfyUI standards, and enhanced text processing capabilities.
 
