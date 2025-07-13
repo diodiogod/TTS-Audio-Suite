@@ -454,7 +454,8 @@ class AudioAnalyzerNode:
             # Generate cache key for analysis
             # Use tensor shape and mean for more stable caching
             tensor_hash = hash((tuple(audio_tensor.shape), float(audio_tensor.mean()), float(audio_tensor.std())))
-            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{invert_silence_regions}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}"
+            manual_hash = hash((manual_regions, region_labels))  # Include manual regions in cache
+            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{invert_silence_regions}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}_{manual_hash}"
             
             # Check cache first
             cached_result = analysis_cache.get(cache_key)
@@ -483,6 +484,14 @@ class AudioAnalyzerNode:
                     )
                 else:
                     raise ValueError(f"Unknown analysis method: {analysis_method}")
+                
+                # Add manual regions to auto-detected regions (if any manual regions exist)
+                manual_regions_list = self._parse_manual_regions(manual_regions, region_labels)
+                if manual_regions_list and analysis_method != "manual":
+                    # Combine auto-detected and manual regions
+                    regions.extend(manual_regions_list)
+                    # Sort all regions by start time
+                    regions.sort(key=lambda r: r.start_time)
                 
                 # Apply region grouping if threshold > 0
                 if group_regions_threshold > 0.000:

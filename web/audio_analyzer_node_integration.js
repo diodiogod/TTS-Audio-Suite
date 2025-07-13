@@ -59,6 +59,23 @@ export class AudioAnalyzerNodeIntegration {
         // Make hasConnectedAudio available to core for playback checks
         this.core.hasConnectedAudio = () => this.hasConnectedAudio();
         
+        // Restore manual regions from analysis results back to interface
+        if (data.regions) {
+            const manualRegions = data.regions.filter(r => r.metadata && r.metadata.type === "manual");
+            this.core.selectedRegions = manualRegions.map((r, index) => ({
+                start: r.start,
+                end: r.end,
+                label: r.label,
+                id: Date.now() + index
+            }));
+            
+            // Remove manual regions from visualization data to prevent duplication
+            this.core.waveformData.regions = data.regions.filter(r => !(r.metadata && r.metadata.type === "manual"));
+            
+            // Update the manual regions widget to reflect current state
+            this.core.updateManualRegions();
+        }
+        
         // Redraw visualization
         this.core.visualization.redraw();
         
@@ -116,6 +133,9 @@ export class AudioAnalyzerNodeIntegration {
         if (this.core.waveformData) {
             this.core.waveformData.analysisResults = {};
         }
+        
+        // Clear interface manual regions since they'll be included in analysis results
+        this.core.selectedRegions = [];
         
         // Update UI
         this.core.ui.updateStatus('Analyzing audio...');

@@ -363,6 +363,10 @@ export class AudioAnalyzerInterface {
         this.selectedRegions = [];
         this.selectedRegionIndices = [];
         this.highlightedRegionIndex = -1;
+        
+        // Only clear manual regions, keep auto-detected regions
+        // (waveformData.regions only contains auto-detected regions after fix above)
+        
         this.visualization.redraw();
         this.updateManualRegions();
     }
