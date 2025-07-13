@@ -674,6 +674,22 @@ export class AudioAnalyzerInterface {
         this.zoomLevel = 1;
         this.scrollOffset = 0;
         this.amplitudeScale = 0.4; // Reset amplitude scale to default
+        
+        // Reset speed to 1x
+        this.playbackSpeed = 1;
+        if (this.ui.speedSlider) {
+            this.ui.speedSlider.value = '1';
+        }
+        if (this.ui.speedValue) {
+            this.ui.speedValue.textContent = '1.00x';
+        }
+        if (this.audioElement) {
+            this.audioElement.playbackRate = 1;
+            if (this.audioElement.volume === 0) {
+                this.audioElement.volume = 1; // Restore volume if muted from backwards mode
+            }
+        }
+        
         this.visualization.redraw();
     }
     
