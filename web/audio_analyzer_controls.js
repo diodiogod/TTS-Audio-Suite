@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Controls Module
+ * Audio Wave Analyzer Controls Module
  * Handles creation and management of all UI controls
  */
 export class AudioAnalyzerControls {

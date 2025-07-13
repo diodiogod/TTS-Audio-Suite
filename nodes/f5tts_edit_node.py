@@ -99,8 +99,8 @@ class F5TTSEditNode(BaseF5TTSNode):
                     "tooltip": "Target audio volume level (Root Mean Square). Controls output loudness normalization. Higher values = louder audio output."
                 }),
                 "nfe_step": ("INT", {
-                    "default": 32, "min": 1, "max": 100,
-                    "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance."
+                    "default": 32, "min": 1, "max": 71,
+                    "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance. Values above 71 may cause ODE solver issues."
                 }),
                 "cfg_strength": ("FLOAT", {
                     "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
@@ -508,13 +508,18 @@ class F5TTSEditNode(BaseF5TTSNode):
             # Calculate duration
             duration = edited_audio.shape[-1] // hop_length
             
+            # Validate and clamp nfe_step to prevent ODE solver issues
+            safe_nfe_step = max(1, min(nfe_step, 71))
+            if safe_nfe_step != nfe_step:
+                print(f"⚠️ F5-TTS Edit: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
+            
             # Perform inference
             with torch.inference_mode():
                 generated, trajectory = model.sample(
                     cond=edited_audio,
                     text=final_text_list,
                     duration=duration,
-                    steps=nfe_step,
+                    steps=safe_nfe_step,
                     cfg_strength=cfg_strength,
                     sway_sampling_coef=sway_sampling_coef,
                     seed=None,  # Will be set by the model if needed

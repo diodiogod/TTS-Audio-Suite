@@ -34,7 +34,7 @@ class AudioAnalyzerNode:
     
     @classmethod
     def NAME(cls):
-        return "🎵 Audio Analyzer"
+        return "🌊 Audio Wave Analyzer"
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -657,5 +657,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AudioAnalyzerNode": "🎵 Audio Analyzer"
+    "AudioAnalyzerNode": "🌊 Audio Wave Analyzer"
 }

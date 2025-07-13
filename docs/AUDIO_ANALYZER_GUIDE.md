@@ -1,14 +1,14 @@
-# Audio Analyzer - Complete User Guide
+# Audio Wave Analyzer - Complete User Guide
 
-The Audio Analyzer is a sophisticated waveform visualization and timing extraction tool designed for precise audio editing workflows, especially useful for F5-TTS speech editing and audio segment analysis.
+The Audio Wave Analyzer is a sophisticated waveform visualization and timing extraction tool designed for precise audio editing workflows, especially useful for F5-TTS speech editing and audio segment analysis.
 
-![Audio Analyzer Interface Overview](images/audio_analyzer_overview.png)
+![Audio Wave Analyzer Interface Overview](images/audio_analyzer_overview.png)
 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
 2. [Core Parameters](#core-parameters)
-3. [Audio Analyzer Options Node](#audio-analyzer-options-node)
+3. [Audio Wave Analyzer Options Node](#audio-analyzer-options-node)
 4. [Interactive Interface](#interactive-interface)
 5. [Analysis Methods](#analysis-methods)
 6. [Region Management](#region-management)
@@ -42,7 +42,7 @@ $${\color{lightgreen}5)}$$ **Export**: Use timing data output for F5-TTS or othe
 <summary>$${\color{orange}First \space Time \space Setup}$$</summary>
 
 - Place audio files in ComfyUI's `input` directory for easy access
-- For advanced settings, connect an **Audio Analyzer Options** node
+- For advanced settings, connect an **Audio Wave Analyzer Options** node
 - $${\color{yellow}Recommended:}$$ Start with `silence` method for speech analysis
 
 </details>
@@ -99,7 +99,7 @@ Waveform detail level:
 - Useful for processing generated or processed audio
 
 #### $${\color{orange}options}$$ (OPTIONS INPUT)
-- Connect **Audio Analyzer Options** node for advanced settings
+- Connect **Audio Wave Analyzer Options** node for advanced settings
 - If not connected, uses sensible defaults
 
 #### $${\color{orange}manual\_regions}$$ (MULTILINE STRING)
@@ -141,9 +141,9 @@ Bridge
 
 ## $${\color{orange}Audio \space Analyzer \space Options \space Node}$$
 
-For advanced control over analysis parameters, use the **Audio Analyzer Options** node.
+For advanced control over analysis parameters, use the **Audio Wave Analyzer Options** node.
 
-![Audio Analyzer Options](images/options_node.png)
+![Audio Wave Analyzer Options](images/options_node.png)
 
 <details>
 <summary>$${\color{lightgreen}Silence \space Detection \space Options}$$</summary>
@@ -211,7 +211,7 @@ Merge nearby regions within threshold:
 
 ## $${\color{lightgreen}Interactive \space Interface}$$
 
-The Audio Analyzer provides a rich interactive interface for precise audio editing.
+The Audio Wave Analyzer provides a rich interactive interface for precise audio editing.
 
 ![Interface Components](images/interface_components.png)
 
@@ -620,7 +620,7 @@ Intelligent performance optimization.
 
 ## $${\color{lightgreen}Outputs \space Reference}$$
 
-The Audio Analyzer provides four outputs for different use cases:
+The Audio Wave Analyzer provides four outputs for different use cases:
 
 ![Outputs Overview](images/outputs_overview.png)
 
@@ -732,7 +732,7 @@ $${\color{lightgreen}4)}$$ Return as single audio tensor
 <summary>$${\color{orange}F5-TTS \space Preparation \space Workflow}$$ - Voice cloning setup</summary>
 
 $${\color{lightgreen}1)}$$ **Load clean speech audio**
-$${\color{lightgreen}2)}$$ **Connect Audio Analyzer Options** node:
+$${\color{lightgreen}2)}$$ **Connect Audio Wave Analyzer Options** node:
    - Method: `silence`
    - Enable `invert_silence_regions`
    - Set appropriate `silence_threshold`
@@ -1011,21 +1011,21 @@ $${\color{lightgreen}5)}$$ **Export for media players**
 
 **$${\color{lightgreen}F5-TTS \space Pipeline}$$**
 ```
-Audio File → Audio Analyzer → F5-TTS Edit Node
+Audio File → Audio Wave Analyzer → F5-TTS Edit Node
            ↓                 ↓
        Options Node      Timing Data
 ```
 
 **$${\color{orange}Batch \space Processing}$$**
 ```
-Multiple Audio → Load Audio Node → Audio Analyzer → Export Timing
+Multiple Audio → Load Audio Node → Audio Wave Analyzer → Export Timing
                                 ↓
                             Options (shared settings)
 ```
 
 **$${\color{red}Quality \space Control}$$**
 ```
-Audio → Audio Analyzer → Preview → Manual Refinement → Final Export
+Audio → Audio Wave Analyzer → Preview → Manual Refinement → Final Export
                       ↓                               ↓
                   Visual Check                   Verified Timing
 ```

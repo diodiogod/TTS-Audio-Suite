@@ -127,12 +127,12 @@ if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
 # Add Audio Analyzer if available
 if AUDIO_ANALYZER_SUPPORT_AVAILABLE and AudioAnalyzerNode is not None:
     NODE_CLASS_MAPPINGS["AudioAnalyzerNode"] = AudioAnalyzerNode
-    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerNode"] = "🎵 Audio Analyzer"
+    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerNode"] = "🌊 Audio Wave Analyzer"
 
 # Add Audio Analyzer Options if available
 if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE and AudioAnalyzerOptionsNode is not None:
     NODE_CLASS_MAPPINGS["AudioAnalyzerOptionsNode"] = AudioAnalyzerOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerOptionsNode"] = "🔧 Audio Analyzer Options"
+    NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerOptionsNode"] = "🔧 Audio Wave Analyzer Options"
 
 # Extension info
 __version__ = VERSION_DISPLAY

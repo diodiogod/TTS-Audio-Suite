@@ -283,12 +283,12 @@ if F5TTS_EDIT_SUPPORT_AVAILABLE:
 # Add Audio Analyzer node if available
 if AUDIO_ANALYZER_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzer"] = AudioAnalyzerNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzer"] = "🎵 Audio Analyzer"
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzer"] = "🌊 Audio Wave Analyzer"
 
 # Add Audio Analyzer Options node if available
 if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = AudioAnalyzerOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🔧 Audio Analyzer Options"
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🔧 Audio Wave Analyzer Options"
 
 # Print startup banner
 print(SEPARATOR)

@@ -5,8 +5,8 @@ import { AudioAnalyzerVisualization } from "./audio_analyzer_visualization.js";
 import { AudioAnalyzerNodeIntegration } from "./audio_analyzer_node_integration.js";
 
 /**
- * Core Audio Analyzer Interface
- * Main class that coordinates all audio analyzer functionality
+ * Core Audio Wave Analyzer Interface
+ * Main class that coordinates all audio wave analyzer functionality
  */
 export class AudioAnalyzerInterface {
     constructor(node) {
@@ -137,9 +137,9 @@ export class AudioAnalyzerInterface {
             }
             const data = await response.json();
             this.nodeIntegration.updateVisualization(data);
-            console.log(`🎵 Audio Analyzer: Successfully loaded cached data for node ${this.node.id}`);
+            console.log(`🌊 Audio Wave Analyzer: Successfully loaded cached data for node ${this.node.id}`);
         } catch (error) {
-            // console.log(`🎵 Audio Analyzer: No cache found for node ${this.node.id}. Showing initial message. Details: ${error.message}`);  // Debug: cache miss
+            // console.log(`🌊 Audio Wave Analyzer: No cache found for node ${this.node.id}. Showing initial message. Details: ${error.message}`);  // Debug: cache miss
             this.visualization.showInitialMessage();
         }
     }

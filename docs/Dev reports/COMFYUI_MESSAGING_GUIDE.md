@@ -1,10 +1,10 @@
 # ComfyUI Python-JavaScript Communication Guide
 
-This document contains findings from attempting to implement ComfyUI's messaging system for the Audio Analyzer node widget removal.
+This document contains findings from attempting to implement ComfyUI's messaging system for the Audio Wave Analyzer node widget removal.
 
 ## Background
 
-**Goal**: Remove the visible `node_id` widget from Audio Analyzer while maintaining communication between Python backend and JavaScript frontend for visualization data.
+**Goal**: Remove the visible `node_id` widget from Audio Wave Analyzer while maintaining communication between Python backend and JavaScript frontend for visualization data.
 
 **Previous Working Approach**: Used a visible widget that stored the node ID, Python read it to create temp files, JavaScript knew which file to fetch.
 

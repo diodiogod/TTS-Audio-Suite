@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer Events Module
+ * Audio Wave Analyzer Events Module
  * Manages all user interactions and event handling
  */
 export class AudioAnalyzerEvents {

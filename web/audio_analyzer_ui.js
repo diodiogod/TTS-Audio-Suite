@@ -1,5 +1,5 @@
 /**
- * Audio Analyzer UI Module (Refactored)
+ * Audio Wave Analyzer UI Module (Refactored)
  * Main coordinator that orchestrates all UI functionality through modular components
  */
 
@@ -33,7 +33,7 @@ export class AudioAnalyzerUI {
     }
     
     createInterface() {
-        // Create Audio Analyzer UI interface using modular components
+        // Create Audio Wave Analyzer UI interface using modular components
         
         // Remove existing interface
         const existingInterface = this.core.node.widgets?.find(w => w.name === 'audio_analyzer_interface');
@@ -98,7 +98,7 @@ export class AudioAnalyzerUI {
             // Setup drag and drop using controls module
             this.controlsModule.setupDragAndDrop();
             
-            // console.log('🎵 Audio Analyzer: Interface setup complete - spacer reserves space, interface positioned over it');  // Debug: setup complete
+            // console.log('🌊 Audio Wave Analyzer: Interface setup complete - spacer reserves space, interface positioned over it');  // Debug: setup complete
         }
     }
     
@@ -132,7 +132,7 @@ export class AudioAnalyzerUI {
         // Add to canvas container
         this.container.appendChild(floatingAnalyzeButton);
         
-        // console.log('🎵 Audio Analyzer: Added floating analyze button at canvas center');  // Debug: button placement
+        // console.log('🌊 Audio Wave Analyzer: Added floating analyze button at canvas center');  // Debug: button placement
     }
     
     addFloatingSpeedSlider() {
@@ -333,7 +333,7 @@ export class AudioAnalyzerUI {
         // Add to canvas container
         this.container.appendChild(floatingSliderContainer);
         
-        // console.log('🎵 Audio Analyzer: Added floating speed slider spanning canvas width');  // Debug: slider placement
+        // console.log('🌊 Audio Wave Analyzer: Added floating speed slider spanning canvas width');  // Debug: slider placement
     }
     
     // Delegate methods to appropriate modules
@@ -409,6 +409,6 @@ export class AudioAnalyzerUI {
     // Cleanup
     destroy() {
         this.layout.destroy();
-        console.log('🎵 Audio Analyzer UI destroyed and cleaned up');
+        console.log('🌊 Audio Wave Analyzer UI destroyed and cleaned up');
     }
 }
