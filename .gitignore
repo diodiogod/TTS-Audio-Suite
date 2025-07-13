@@ -210,3 +210,7 @@ IgnoredForGitHubDocs/
 *Zone.Identifier
 .Identifier
 *Zone*.Identifier.roo/
+
+
+.roo/
+.vscode/
