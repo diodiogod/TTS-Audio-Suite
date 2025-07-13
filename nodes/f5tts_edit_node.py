@@ -67,9 +67,18 @@ class F5TTSEditNode(BaseF5TTSNode):
                     "default": "1.42,2.44\n4.04,4.9",
                     "tooltip": "Edit regions as 'start,end' in seconds (one per line). These are the time regions to replace."
                 }),
-                "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
-                "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {"default": "F5TTS_v1_Base"}),
-                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1}),
+                "device": (["auto", "cuda", "cpu"], {
+                    "default": "auto",
+                    "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
+                }),
+                "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {
+                    "default": "F5TTS_v1_Base",
+                    "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
+                }),
+                "seed": ("INT", {
+                    "default": 1, "min": 0, "max": 2**32 - 1,
+                    "tooltip": "Seed for reproducible F5-TTS generation. Same seed with same inputs will produce identical results. Set to 0 for random generation."
+                }),
             },
             "optional": {
                 "fix_durations": ("STRING", {
@@ -77,13 +86,34 @@ class F5TTSEditNode(BaseF5TTSNode):
                     "default": "1.2\n1.0",
                     "tooltip": "Fixed durations for each edit region in seconds (one per line). Leave empty to use original durations."
                 }),
-                "temperature": ("FLOAT", {"default": 0.8, "min": 0.1, "max": 2.0, "step": 0.1}),
-                "speed": ("FLOAT", {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1}),
-                "target_rms": ("FLOAT", {"default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "nfe_step": ("INT", {"default": 32, "min": 1, "max": 100}),
-                "cfg_strength": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1}),
-                "sway_sampling_coef": ("FLOAT", {"default": -1.0, "min": -2.0, "max": 2.0, "step": 0.1}),
-                "ode_method": (["euler", "midpoint"], {"default": "euler"}),
+                "temperature": ("FLOAT", {
+                    "default": 0.8, "min": 0.1, "max": 2.0, "step": 0.1,
+                    "tooltip": "Controls randomness in F5-TTS generation. Higher values = more creative/varied speech, lower values = more consistent/predictable speech."
+                }),
+                "speed": ("FLOAT", {
+                    "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1,
+                    "tooltip": "F5-TTS native speech speed control. 1.0 = normal speed, 0.5 = half speed (slower), 2.0 = double speed (faster)."
+                }),
+                "target_rms": ("FLOAT", {
+                    "default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01,
+                    "tooltip": "Target audio volume level (Root Mean Square). Controls output loudness normalization. Higher values = louder audio output."
+                }),
+                "nfe_step": ("INT", {
+                    "default": 32, "min": 1, "max": 100,
+                    "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance."
+                }),
+                "cfg_strength": ("FLOAT", {
+                    "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
+                    "tooltip": "Classifier-Free Guidance strength. Controls how strictly F5-TTS follows the reference text. Higher values = more adherence to reference, lower values = more creative freedom."
+                }),
+                "sway_sampling_coef": ("FLOAT", {
+                    "default": -1.0, "min": -2.0, "max": 2.0, "step": 0.1,
+                    "tooltip": "Sway sampling coefficient for F5-TTS inference. Controls the sampling behavior during generation. Negative values typically work better."
+                }),
+                "ode_method": (["euler", "midpoint"], {
+                    "default": "euler",
+                    "tooltip": "ODE solver method for F5-TTS inference. 'euler' is faster and typically sufficient, 'midpoint' may provide higher quality but slower generation."
+                }),
             }
         }
 

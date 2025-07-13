@@ -4,16 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current Focus
 
-**Primary Focus: Audio Analyzer Node Enhancement**
-
-We are actively developing and improving the Audio Analyzer node (`nodes/audio_analyzer_node.py`) and its interactive web interface (`web/audio_analyzer_*.js`). This is a sophisticated waveform visualization and timing extraction tool for ComfyUI specially usefull to get regions for f5-TTL audio edit node.
-
-## Key Audio Analyzer Files
-
-- **Core**: `nodes/audio_analyzer_node.py`, `core/audio_analysis.py`
-- **Interface**: `web/audio_analyzer_core.js` (main coordinator)
-- **Modules**: `web/audio_analyzer_events.js`, `web/audio_analyzer_visualization.js`, `web/audio_analyzer_controls.js`, `web/audio_analyzer_ui.js`
-- **Integration**: `web/audio_analyzer_node_integration.js`
+finishing touches to finnaly push this back eventually to my main github project
 
 ## Development Rules & Standards
 
