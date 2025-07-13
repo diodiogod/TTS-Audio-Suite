@@ -23,7 +23,7 @@ The F5-TTS Edit Node requires precise timing data to know which parts of audio t
 6. [Analysis Methods Breakdown](#analysis-methods-breakdown)
 7. [Region Management](#region-management)
 8. [Advanced Features](#advanced-features)
-9. #outputs-reference
+9. [Outputs-Reference](#outputs-reference)
 
 ---
 
