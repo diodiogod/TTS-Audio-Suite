@@ -54,45 +54,6 @@ export class AudioAnalyzerControls {
             margin-left: 8px;
         `;
         
-        // Speed control
-        const speedContainer = document.createElement('div');
-        speedContainer.style.cssText = `
-            display: flex;
-            align-items: center;
-            margin-left: 12px;
-        `;
-        
-        const speedLabel = document.createElement('span');
-        speedLabel.textContent = 'Speed:';
-        speedLabel.style.cssText = `
-            color: #fff;
-            font-size: 11px;
-            margin-right: 4px;
-        `;
-        
-        this.core.ui.speedControl = document.createElement('select');
-        this.core.ui.speedControl.innerHTML = `
-            <option value="0.25">0.25x</option>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2x</option>
-        `;
-        this.core.ui.speedControl.style.cssText = `
-            background: #333;
-            color: #fff;
-            border: 1px solid #555;
-            border-radius: 3px;
-            font-size: 11px;
-            padding: 2px 4px;
-            cursor: pointer;
-        `;
-        this.core.ui.speedControl.onchange = () => this.core.setPlaybackSpeed(parseFloat(this.core.ui.speedControl.value));
-        
-        speedContainer.appendChild(speedLabel);
-        speedContainer.appendChild(this.core.ui.speedControl);
         
         // Selection display
         this.core.ui.selectionDisplay = document.createElement('span');
@@ -107,10 +68,87 @@ export class AudioAnalyzerControls {
         playbackContainer.appendChild(this.core.ui.playButton);
         playbackContainer.appendChild(this.core.ui.stopButton);
         playbackContainer.appendChild(this.core.ui.timeDisplay);
-        playbackContainer.appendChild(speedContainer);
         playbackContainer.appendChild(this.core.ui.selectionDisplay);
         
         return playbackContainer;
+    }
+    
+    createSpeedSlider() {
+        const sliderContainer = document.createElement('div');
+        sliderContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 0;
+            gap: 8px;
+        `;
+        
+        const speedLabel = document.createElement('span');
+        speedLabel.textContent = 'Speed:';
+        speedLabel.style.cssText = `
+            color: #fff;
+            font-size: 10px;
+            font-weight: bold;
+        `;
+        
+        this.core.ui.speedSlider = document.createElement('input');
+        this.core.ui.speedSlider.type = 'range';
+        this.core.ui.speedSlider.min = '0.25';
+        this.core.ui.speedSlider.max = '2';
+        this.core.ui.speedSlider.step = '0.05';
+        this.core.ui.speedSlider.value = '1';
+        this.core.ui.speedSlider.style.cssText = `
+            width: 120px;
+            height: 4px;
+            background: #333;
+            outline: none;
+            border-radius: 2px;
+            cursor: pointer;
+        `;
+        
+        // Style the slider thumb (webkit browsers)
+        const style = document.createElement('style');
+        style.textContent = `
+            input[type="range"]::-webkit-slider-thumb {
+                appearance: none;
+                width: 12px;
+                height: 12px;
+                background: white;
+                border-radius: 50%;
+                cursor: pointer;
+            }
+            input[type="range"]::-moz-range-thumb {
+                width: 12px;
+                height: 12px;
+                background: white;
+                border-radius: 50%;
+                cursor: pointer;
+                border: none;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        this.core.ui.speedValue = document.createElement('span');
+        this.core.ui.speedValue.textContent = '1x';
+        this.core.ui.speedValue.style.cssText = `
+            color: #fff;
+            font-size: 10px;
+            font-weight: bold;
+            min-width: 24px;
+            text-align: center;
+        `;
+        
+        this.core.ui.speedSlider.oninput = () => {
+            const speed = parseFloat(this.core.ui.speedSlider.value);
+            this.core.ui.speedValue.textContent = `${speed.toFixed(2)}x`;
+            this.core.setPlaybackSpeed(speed);
+        };
+        
+        sliderContainer.appendChild(speedLabel);
+        sliderContainer.appendChild(this.core.ui.speedSlider);
+        sliderContainer.appendChild(this.core.ui.speedValue);
+        
+        return sliderContainer;
     }
     
     createMainControls() {

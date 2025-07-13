@@ -20,6 +20,7 @@ export class AudioAnalyzerInterface {
         this.isPlaying = false;
         this.currentTime = 0;
         this.audioElement = null;
+        this.playbackSpeed = 1;
         this.isDragging = false;
         this.dragStart = null;
         this.dragEnd = null;
@@ -604,25 +605,49 @@ export class AudioAnalyzerInterface {
     
     updatePlayhead() {
         // Double-check both isPlaying and audio element state
-        if (!this.isPlaying || !this.audioElement || this.audioElement.ended || this.audioElement.paused) {
+        if (!this.isPlaying) {
             return;
         }
         
-        if (this.audioElement) {
-            this.currentTime = this.audioElement.currentTime;
+        if (this.playbackSpeed < 0) {
+            // Backwards movement: manual time control, silent audio
+            const deltaTime = Math.abs(this.playbackSpeed) / 60; // Approximate frame rate adjustment
+            this.currentTime -= deltaTime;
             
-            // Check for loop end
-            if (this.isLooping && this.loopEnd !== null && this.currentTime >= this.loopEnd) {
-                this.currentTime = this.loopStart || 0;
-                this.audioElement.currentTime = this.currentTime;
+            // Clamp to audio bounds and stop at start (don't loop)
+            if (this.currentTime < 0) {
+                this.currentTime = 0;
+                // Don't stop playing - just clamp position
             }
             
-            this.ui.updateTimeDisplay();
-            this.visualization.redraw();
+            // Handle looping in reverse
+            if (this.isLooping && this.loopStart !== null && this.currentTime <= this.loopStart) {
+                this.currentTime = this.loopEnd || (this.waveformData ? this.waveformData.duration : 0);
+            }
+        } else {
+            // Normal forward playback
+            if (this.audioElement) {
+                if (this.audioElement.ended) {
+                    // Audio ended but we're still "playing" - clamp to end position
+                    this.currentTime = this.waveformData ? this.waveformData.duration : this.audioElement.duration;
+                    // Don't stop playing - just clamp position
+                } else if (!this.audioElement.paused) {
+                    this.currentTime = this.audioElement.currentTime;
+                    
+                    // Check for loop end
+                    if (this.isLooping && this.loopEnd !== null && this.currentTime >= this.loopEnd) {
+                        this.currentTime = this.loopStart || 0;
+                        this.audioElement.currentTime = this.currentTime;
+                    }
+                }
+            }
         }
         
-        // Triple-check before scheduling next frame
-        if (this.isPlaying && this.audioElement && !this.audioElement.ended && !this.audioElement.paused) {
+        this.ui.updateTimeDisplay();
+        this.visualization.redraw();
+        
+        // Continue animation if still playing
+        if (this.isPlaying) {
             this.playheadAnimationId = requestAnimationFrame(() => this.updatePlayhead());
         }
     }
@@ -654,8 +679,33 @@ export class AudioAnalyzerInterface {
     
     // Speed control
     setPlaybackSpeed(speed) {
-        if (this.audioElement) {
-            this.audioElement.playbackRate = speed;
+        const wasBackwards = this.playbackSpeed < 0;
+        const isNowBackwards = speed < 0;
+        
+        if (isNowBackwards) {
+            // Negative speed: pause audio, backwards playhead movement
+            this.playbackSpeed = speed;
+            if (this.audioElement && this.isPlaying) {
+                this.audioElement.pause(); // Pause audio completely
+            }
+            this.showMessage(`Backwards mode: ${Math.abs(speed)}x (silent)`);
+        } else {
+            // Positive speed: normal audio playback
+            this.playbackSpeed = speed;
+            if (this.audioElement) {
+                // Always sync position and resume when switching to forward
+                if (wasBackwards && !isNowBackwards && this.isPlaying) {
+                    this.audioElement.currentTime = this.currentTime; // Sync audio to visual playhead
+                    this.audioElement.playbackRate = speed;
+                    
+                    // Force resume playback from current position
+                    this.audioElement.play().catch(e => {
+                        console.log('Audio play failed:', e);
+                    });
+                } else {
+                    this.audioElement.playbackRate = speed;
+                }
+            }
             this.showMessage(`Playback speed set to ${speed}x`);
         }
     }
