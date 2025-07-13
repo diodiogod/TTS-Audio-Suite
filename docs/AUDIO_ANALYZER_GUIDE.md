@@ -19,32 +19,47 @@ The Audio Analyzer is a sophisticated waveform visualization and timing extracti
 
 ---
 
-## Quick Start
+## $${\color{lightgreen}Quick \space Start}$$
 
-### Basic Workflow
-1. **Load Audio**: Drag audio file to interface OR set `audio_file` path OR connect audio input
-2. **Choose Method**: Select analysis method (`silence`, `energy`, `peaks`, or `manual`)
-3. **Click Analyze**: Process audio to detect timing regions
-4. **Refine Regions**: Add/delete manual regions as needed
-5. **Export**: Use timing data output for F5-TTS or other applications
+<details>
+<summary>$${\color{yellow}Basic \space Workflow \space Steps}$$</summary>
+
+$${\color{lightgreen}1)}$$ **Load Audio**: Drag audio file to interface OR set `audio_file` path OR connect audio input
+
+$${\color{lightgreen}2)}$$ **Choose Method**: Select analysis method (`silence`, `energy`, `peaks`, or `manual`)
+
+$${\color{lightgreen}3)}$$ **Click Analyze**: Process audio to detect timing regions
+
+$${\color{lightgreen}4)}$$ **Refine Regions**: Add/delete manual regions as needed
+
+$${\color{lightgreen}5)}$$ **Export**: Use timing data output for F5-TTS or other applications
 
 ![Quick Start Workflow](images/quick_start_workflow.png)
 
-### First Time Setup
+</details>
+
+<details>
+<summary>$${\color{orange}First \space Time \space Setup}$$</summary>
+
 - Place audio files in ComfyUI's `input` directory for easy access
 - For advanced settings, connect an **Audio Analyzer Options** node
-- Recommended: Start with `silence` method for speech analysis
+- $${\color{yellow}Recommended:}$$ Start with `silence` method for speech analysis
+
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
-## Core Parameters
+## $${\color{yellow}Core \space Parameters}$$
 
-### Required Parameters
+<details>
+<summary>$${\color{lightgreen}Required \space Parameters}$$</summary>
 
-#### `audio_file` (STRING)
+#### $${\color{orange}audio\_file}$$ (STRING)
 - **Purpose**: Path to audio file for analysis
 - **Format**: File path or just filename if in ComfyUI input directory
-- **Supported Formats**: WAV, MP3, OGG, FLAC, M4A, AAC
+- **Supported Formats**: $${\color{lightgreen}WAV, \space MP3, \space OGG, \space FLAC, \space M4A, \space AAC}$$
 - **Priority**: If both `audio_file` and audio input are provided, audio input takes priority
 
 ```
@@ -54,37 +69,40 @@ Examples:
 - "voices/character_01.flac"
 ```
 
-#### `analysis_method` (DROPDOWN)
-- **silence**: Detects pauses between speech (best for clean speech)
-- **energy**: Analyzes volume changes (good for music/noisy audio)
-- **peaks**: Finds sharp audio spikes (useful for percussion/effects)
-- **manual**: Uses only user-defined regions
+#### $${\color{orange}analysis\_method}$$ (DROPDOWN)
+- $${\color{lightgreen}silence}$$: Detects pauses between speech (best for clean speech)
+- $${\color{yellow}energy}$$: Analyzes volume changes (good for music/noisy audio)
+- $${\color{orange}peaks}$$: Finds sharp audio spikes (useful for percussion/effects)
+- $${\color{red}manual}$$: Uses only user-defined regions
 
 ![Analysis Methods Comparison](images/analysis_methods.png)
 
-#### `precision_level` (DROPDOWN)
+#### $${\color{orange}precision\_level}$$ (DROPDOWN)
 Controls output timing precision:
-- **seconds**: Rounded to seconds (1.23s) - rough timing
-- **milliseconds**: Precise to milliseconds (1.234s) - recommended
-- **samples**: Raw sample numbers (27225 smp) - exact editing
+- $${\color{yellow}seconds}$$: Rounded to seconds (1.23s) - rough timing
+- $${\color{lightgreen}milliseconds}$$: Precise to milliseconds (1.234s) - $${\color{lightgreen}recommended}$$
+- $${\color{orange}samples}$$: Raw sample numbers (27225 smp) - exact editing
 
-#### `visualization_points` (INT: 500-10000)
+#### $${\color{orange}visualization\_points}$$ (INT: 500-10000)
 Waveform detail level:
-- **500-1000**: Smooth, fast rendering
-- **2000-3000**: Balanced detail (recommended)
-- **5000-10000**: Very detailed, slower but precise
+- $${\color{lightgreen}500-1000}$$: Smooth, fast rendering
+- $${\color{yellow}2000-3000}$$: Balanced detail ($${\color{lightgreen}recommended}$$)
+- $${\color{orange}5000-10000}$$: Very detailed, slower but precise
 
-### Optional Parameters
+</details>
 
-#### `audio` (AUDIO INPUT)
+<details>
+<summary>$${\color{orange}Optional \space Parameters}$$</summary>
+
+#### $${\color{orange}audio}$$ (AUDIO INPUT)
 - Connect audio from other nodes (takes priority over `audio_file`)
 - Useful for processing generated or processed audio
 
-#### `options` (OPTIONS INPUT)
+#### $${\color{orange}options}$$ (OPTIONS INPUT)
 - Connect **Audio Analyzer Options** node for advanced settings
 - If not connected, uses sensible defaults
 
-#### `manual_regions` (MULTILINE STRING)
+#### $${\color{orange}manual\_regions}$$ (MULTILINE STRING)
 Define custom timing regions:
 ```
 Format: start,end (one per line)
@@ -93,11 +111,11 @@ Examples:
 4.0,6.8
 8.1,10.5
 ```
-- **Bidirectional Sync**: Interface ↔ text widget
-- **Auto-sorting**: Regions sorted chronologically
-- **Combined Mode**: Works with auto-detection methods
+- $${\color{lightgreen}Bidirectional \space Sync}$$: Interface ↔ text widget
+- $${\color{yellow}Auto-sorting}$$: Regions sorted chronologically
+- $${\color{orange}Combined \space Mode}$$: Works with auto-detection methods
 
-#### `region_labels` (MULTILINE STRING)
+#### $${\color{orange}region\_labels}$$ (MULTILINE STRING)
 Custom labels for manual regions:
 ```
 Examples:
@@ -110,84 +128,107 @@ Bridge
 - Custom labels preserved during sorting
 - Auto-generated labels (Region 1, Region 2) get renumbered
 
-#### `export_format` (DROPDOWN)
-- **f5tts**: Simple format for F5-TTS (start,end per line)
-- **json**: Full data with confidence, labels, metadata
-- **csv**: Spreadsheet-compatible format
+#### $${\color{orange}export\_format}$$ (DROPDOWN)
+- $${\color{lightgreen}f5tts}$$: Simple format for F5-TTS (start,end per line)
+- $${\color{yellow}json}$$: Full data with confidence, labels, metadata
+- $${\color{orange}csv}$$: Spreadsheet-compatible format
+
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
-## Audio Analyzer Options Node
+## $${\color{orange}Audio \space Analyzer \space Options \space Node}$$
 
 For advanced control over analysis parameters, use the **Audio Analyzer Options** node.
 
 ![Audio Analyzer Options](images/options_node.png)
 
-### Silence Detection Options
+<details>
+<summary>$${\color{lightgreen}Silence \space Detection \space Options}$$</summary>
 
-#### `silence_threshold` (0.001-1.000, step 0.001)
-- **Low values (0.001-0.01)**: Detect very quiet passages
-- **Medium values (0.01-0.1)**: Standard speech pauses
-- **High values (0.1-1.0)**: Only detect significant silences
+#### $${\color{orange}silence\_threshold}$$ (0.001-1.000, step 0.001)
+- $${\color{lightgreen}Low \space values \space (0.001-0.01)}$$: Detect very quiet passages
+- $${\color{yellow}Medium \space values \space (0.01-0.1)}$$: Standard speech pauses
+- $${\color{red}High \space values \space (0.1-1.0)}$$: Only detect significant silences
 
-#### `silence_min_duration` (0.01-5.0s, step 0.01s)
+#### $${\color{orange}silence\_min\_duration}$$ (0.01-5.0s, step 0.01s)
 Minimum silence length to detect:
-- **0.01-0.05s**: Detect brief pauses (word boundaries)
-- **0.1-0.5s**: Standard sentence breaks
-- **0.5s+**: Only long pauses (paragraph breaks)
+- $${\color{lightgreen}0.01-0.05s}$$: Detect brief pauses (word boundaries)
+- $${\color{yellow}0.1-0.5s}$$: Standard sentence breaks
+- $${\color{red}0.5s+}$$: Only long pauses (paragraph breaks)
 
-#### `invert_silence_regions` (BOOLEAN)
-- **False**: Returns silence regions (pauses)
-- **True**: Returns speech regions (inverted detection)
-- **Use Case**: F5-TTS workflows where you need speech segments
+#### $${\color{orange}invert\_silence\_regions}$$ (BOOLEAN)
+- $${\color{red}False}$$: Returns silence regions (pauses)
+- $${\color{lightgreen}True}$$: Returns speech regions (inverted detection)
+- $${\color{yellow}Use \space Case}$$: F5-TTS workflows where you need speech segments
 
 ![Silence Inversion Example](images/silence_inversion.png)
 
-### Energy Detection Options
+</details>
 
-#### `energy_sensitivity` (0.1-2.0, step 0.1)
-- **Low (0.1-0.5)**: Conservative, fewer boundaries
-- **Medium (0.5-1.0)**: Balanced detection
-- **High (1.0-2.0)**: Aggressive, more boundaries
+<details>
+<summary>$${\color{yellow}Energy \space Detection \space Options}$$</summary>
 
-### Peak Detection Options
+#### $${\color{orange}energy\_sensitivity}$$ (0.1-2.0, step 0.1)
+- $${\color{lightgreen}Low \space (0.1-0.5)}$$: Conservative, fewer boundaries
+- $${\color{yellow}Medium \space (0.5-1.0)}$$: Balanced detection
+- $${\color{red}High \space (1.0-2.0)}$$: Aggressive, more boundaries
 
-#### `peak_threshold` (0.001-1.0, step 0.001)
+</details>
+
+<details>
+<summary>$${\color{orange}Peak \space Detection \space Options}$$</summary>
+
+#### $${\color{orange}peak\_threshold}$$ (0.001-1.0, step 0.001)
 Minimum amplitude for peak detection
 
-#### `peak_min_distance` (0.01-1.0s, step 0.01s)
+#### $${\color{orange}peak\_min\_distance}$$ (0.01-1.0s, step 0.01s)
 Minimum time between detected peaks
 
-#### `peak_region_size` (0.01-1.0s, step 0.01s)
+#### $${\color{orange}peak\_region\_size}$$ (0.01-1.0s, step 0.01s)
 Size of region around each detected peak
 
-### Advanced Options
+</details>
 
-#### `group_regions_threshold` (0.000-3.000s, step 0.001s)
+<details>
+<summary>$${\color{red}Advanced \space Options}$$</summary>
+
+#### $${\color{orange}group\_regions\_threshold}$$ (0.000-3.000s, step 0.001s)
 Merge nearby regions within threshold:
-- **0.000**: No grouping (default)
-- **0.1-0.5s**: Merge very close regions
-- **0.5-3.0s**: Aggressive merging
+- $${\color{red}0.000}$$: No grouping (default)
+- $${\color{yellow}0.1-0.5s}$$: Merge very close regions
+- $${\color{orange}0.5-3.0s}$$: Aggressive merging
 
 ![Region Grouping](images/region_grouping.png)
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Interactive Interface
+## $${\color{lightgreen}Interactive \space Interface}$$
 
 The Audio Analyzer provides a rich interactive interface for precise audio editing.
 
 ![Interface Components](images/interface_components.png)
 
-### Waveform Display
-- **Blue waveform**: Audio amplitude over time
-- **Red RMS line**: Root Mean Square energy
-- **Grid lines**: Time markers for navigation
-- **Colored regions**: Detected/manual timing regions
+<details>
+<summary>$${\color{yellow}Waveform \space Display}$$</summary>
 
-### Mouse Controls
+- $${\color{lightblue}Blue \space waveform}$$: Audio amplitude over time
+- $${\color{red}Red \space RMS \space line}$$: Root Mean Square energy
+- $${\color{gray}Grid \space lines}$$: Time markers for navigation
+- $${\color{lightgreen}Colored \space regions}$$: Detected/manual timing regions
 
-#### Selection & Navigation
+</details>
+
+<details>
+<summary>$${\color{orange}Mouse \space Controls}$$</summary>
+
+**$${\color{lightgreen}Selection \space \& \space Navigation}$$**
 - **Left click + drag**: Select audio region
 - **Right click**: Clear selection
 - **Double click**: Seek to position
@@ -195,160 +236,175 @@ The Audio Analyzer provides a rich interactive interface for precise audio editi
 - **Middle mouse + drag**: Pan waveform
 - **CTRL + left/right drag**: Pan waveform
 
-#### Region Interaction
+**$${\color{yellow}Region \space Interaction}$$**
 - **Left click on region**: Highlight region (green, persistent)
 - **Alt + click region**: Multi-select for deletion (orange, toggle)
 - **Alt + click empty**: Clear all multi-selections
 - **Shift + left click**: Extend selection
 
-#### Advanced Controls
+**$${\color{orange}Advanced \space Controls}$$**
 - **Drag amplitude labels (±0.8)**: Scale waveform vertically
 - **Drag loop markers**: Move start/end loop points
 
-### Keyboard Shortcuts
+</details>
 
-#### Playback
+<details>
+<summary>$${\color{red}Keyboard \space Shortcuts}$$</summary>
+
+**$${\color{lightgreen}Playback}$$**
 - **Space**: Play/pause
 - **Arrow keys**: Move playhead (±1s)
 - **Shift + Arrow keys**: Move playhead (±10s)
 - **Home/End**: Go to start/end
 
-#### Editing
+**$${\color{yellow}Editing}$$**
 - **Enter**: Add selected region
 - **Delete**: Delete highlighted/selected regions
 - **Shift + Delete**: Clear all regions
 - **Escape**: Clear selection
 
-#### View
+**$${\color{orange}View}$$**
 - **+/-**: Zoom in/out
 - **0**: Reset zoom and amplitude scale
 
-#### Looping
+**$${\color{red}Looping}$$**
 - **L**: Set loop from selection
 - **Shift + L**: Toggle looping on/off
 - **Shift + C**: Clear loop markers
 
-### Speed Control
+</details>
+
+<details>
+<summary>$${\color{lightgreen}Speed \space Control}$$</summary>
 
 ![Speed Control](images/speed_control.png)
 
 The floating speed slider provides advanced playback control:
 
-#### Normal Range (0.0x - 2.0x)
+**$${\color{yellow}Normal \space Range \space (0.0x \space - \space 2.0x)}$$**
 - Drag within slider for standard speed control
 - Real-time audio playback with speed adjustment
 
-#### Extended Range (Rubberband Effect)
+**$${\color{orange}Extended \space Range \space (Rubberband \space Effect)}$$**
 - **Drag beyond edges**: Access extreme speeds (-8x to +8x)
 - **Acceleration**: Further you drag, faster the speed increases
 - **Negative speeds**: Silent backwards playhead movement
 
-#### Visual Feedback
+**$${\color{lightgreen}Visual \space Feedback}$$**
 - Speed display shows actual value (e.g., "4.25x", "-2.50x")
 - Thin gray track line for visual reference
 - White vertical bar thumb for precise control
 
-### Control Buttons
+</details>
 
-#### Audio Management
+<details>
+<summary>$${\color{orange}Control \space Buttons}$$</summary>
+
+**$${\color{lightgreen}Audio \space Management}$$**
 - **📁 Upload Audio**: Browse and upload files
 - **🔍 Analyze**: Process audio with current settings
 
-#### Region Management
+**$${\color{yellow}Region \space Management}$$**
 - **➕ Add Region**: Add current selection as region
 - **🗑️ Delete Region**: Remove highlighted/selected regions
 - **🗑️ Clear All**: Remove all manual regions (keeps auto-detected)
 
-#### Loop Controls
+**$${\color{orange}Loop \space Controls}$$**
 - **🔻 Set Loop**: Set loop markers from selection
 - **🔄 Loop ON/OFF**: Toggle loop playback mode
 - **🚫 Clear Loop**: Remove loop markers
 
-#### View Controls
+**$${\color{red}View \space Controls}$$**
 - **🔍+ / 🔍-**: Zoom in/out
 - **🔄 Reset**: Reset zoom, amplitude, and speed to defaults
 - **📋 Export Timings**: Copy timing data to clipboard
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Analysis Methods
+## $${\color{yellow}Analysis \space Methods \space Deep \space Dive}$$
 
-### Silence Detection
+<details>
+<summary>$${\color{lightgreen}Silence \space Detection}$$ - **Best for**: Clean speech recordings, voice-overs, podcasts</summary>
 
-**Best for**: Clean speech recordings, voice-overs, podcasts
+#### $${\color{orange}How \space it \space works:}$$
+$${\color{lightgreen}1)}$$ Analyzes amplitude levels across the audio
+$${\color{lightgreen}2)}$$ Identifies regions below silence threshold
+$${\color{lightgreen}3)}$$ Filters by minimum duration requirement
+$${\color{lightgreen}4)}$$ Optionally inverts to get speech regions
 
-#### How it works:
-1. Analyzes amplitude levels across the audio
-2. Identifies regions below silence threshold
-3. Filters by minimum duration requirement
-4. Optionally inverts to get speech regions
-
-#### Settings Impact:
+#### $${\color{yellow}Settings \space Impact:}$$
 - **Lower threshold**: Detects quieter silences
 - **Shorter min duration**: Finds brief pauses
 - **Invert enabled**: Returns speech instead of silence
 
 ![Silence Detection](images/silence_method.png)
 
-#### Use Cases:
-- F5-TTS preparation (with invert enabled)
+#### $${\color{lightgreen}Use \space Cases:}$$
+- $${\color{orange}F5-TTS \space preparation}$$ (with invert enabled)
 - Podcast chapter detection
 - Speech segment isolation
 - Automatic transcription alignment
 
-### Energy Detection
+</details>
 
-**Best for**: Music, noisy audio, variable volume content
+<details>
+<summary>$${\color{yellow}Energy \space Detection}$$ - **Best for**: Music, noisy audio, variable volume content</summary>
 
-#### How it works:
-1. Calculates RMS energy over time windows
-2. Detects significant energy changes
-3. Creates regions around transition points
+#### $${\color{orange}How \space it \space works:}$$
+$${\color{lightgreen}1)}$$ Calculates RMS energy over time windows
+$${\color{lightgreen}2)}$$ Detects significant energy changes
+$${\color{lightgreen}3)}$$ Creates regions around transition points
 
-#### Settings Impact:
+#### $${\color{yellow}Settings \space Impact:}$$
 - **Higher sensitivity**: More word boundaries detected
 - **Lower sensitivity**: Only major transitions
 
 ![Energy Detection](images/energy_method.png)
 
-#### Use Cases:
+#### $${\color{lightgreen}Use \space Cases:}$$
 - Music beat detection
 - Noisy speech processing
 - Dynamic content analysis
 - Volume-based segmentation
 
-### Peak Detection
+</details>
 
-**Best for**: Percussion, sound effects, transient-rich audio
+<details>
+<summary>$${\color{orange}Peak \space Detection}$$ - **Best for**: Percussion, sound effects, transient-rich audio</summary>
 
-#### How it works:
-1. Identifies sharp amplitude peaks
-2. Creates regions around each peak
-3. Filters by threshold and minimum distance
+#### $${\color{orange}How \space it \space works:}$$
+$${\color{lightgreen}1)}$$ Identifies sharp amplitude peaks
+$${\color{lightgreen}2)}$$ Creates regions around each peak
+$${\color{lightgreen}3)}$$ Filters by threshold and minimum distance
 
-#### Settings Impact:
+#### $${\color{yellow}Settings \space Impact:}$$
 - **Lower threshold**: Detects smaller peaks
 - **Smaller min distance**: Allows closer peaks
 - **Larger region size**: Bigger regions around peaks
 
 ![Peak Detection](images/peak_method.png)
 
-#### Use Cases:
+#### $${\color{lightgreen}Use \space Cases:}$$
 - Drum hit isolation
 - Sound effect extraction
 - Transient analysis
 - Rhythmic pattern detection
 
-### Manual Mode
+</details>
 
-**Best for**: Precise custom timing, complex audio structures
+<details>
+<summary>$${\color{red}Manual \space Mode}$$ - **Best for**: Precise custom timing, complex audio structures</summary>
 
-#### How it works:
+#### $${\color{orange}How \space it \space works:}$$
 - Uses only user-defined regions
 - No automatic detection performed
 - Full manual control over timing
 
-#### Features:
+#### $${\color{yellow}Features:}$$
 - Text widget input for precise timing
 - Interactive region creation
 - Custom labeling support
@@ -356,34 +412,39 @@ The floating speed slider provides advanced playback control:
 
 ![Manual Mode](images/manual_method.png)
 
-#### Use Cases:
+#### $${\color{lightgreen}Use \space Cases:}$$
 - Precise speech editing
 - Custom audio segmentation
 - Music arrangement timing
 - Specific interval extraction
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Region Management
+## $${\color{orange}Region \space Management}$$
 
-### Creating Regions
+<details>
+<summary>$${\color{lightgreen}Creating \space Regions}$$ - Multiple methods available</summary>
 
-#### Automatic Detection
-1. Choose analysis method (`silence`, `energy`, `peaks`)
-2. Adjust settings via Options node (optional)
-3. Click **Analyze** button
-4. Regions appear automatically
+**$${\color{yellow}Automatic \space Detection}$$**
+$${\color{lightgreen}1)}$$ Choose analysis method (`silence`, `energy`, `peaks`)
+$${\color{lightgreen}2)}$$ Adjust settings via Options node (optional)
+$${\color{lightgreen}3)}$$ Click **Analyze** button
+$${\color{lightgreen}4)}$$ Regions appear automatically
 
-#### Manual Creation
-1. **Method 1**: Drag to select area → press **Enter** or click **Add Region**
-2. **Method 2**: Type in `manual_regions` widget:
+**$${\color{orange}Manual \space Creation}$$**
+$${\color{lightgreen}1)}$$ **Method 1**: Drag to select area → press **Enter** or click **Add Region**
+$${\color{lightgreen}2)}$$ **Method 2**: Type in `manual_regions` widget:
    ```
    1.5,3.2
    4.0,6.8
    ```
-3. **Method 3**: Use manual mode exclusively
+$${\color{lightgreen}3)}$$ **Method 3**: Use manual mode exclusively
 
-#### Combined Approach
+**$${\color{red}Combined \space Approach}$$**
 - Use any auto-detection method
 - Add manual regions on top
 - Both types included in output
@@ -391,167 +452,203 @@ The floating speed slider provides advanced playback control:
 
 ![Creating Regions](images/creating_regions.png)
 
-### Region Types & Colors
+</details>
 
-#### Manual Regions (Green)
+<details>
+<summary>$${\color{yellow}Region \space Types \space \& \space Colors}$$ - Visual identification system</summary>
+
+**$${\color{lightgreen}Manual \space Regions \space (Green)}$$**
 - Created by user interaction
 - Editable and persistent
 - Always included in output
 - Numbered sequentially (Region 1, Region 2, etc.)
 
-#### Auto-detected Regions
-- **Gray**: Silence regions
-- **Forest Green**: Speech regions (inverted silence)
-- **Yellow**: Energy/word boundaries
-- **Blue**: Peak regions
+**$${\color{orange}Auto-detected \space Regions}$$**
+- $${\color{gray}Gray}$$: Silence regions
+- $${\color{lightgreen}Forest \space Green}$$: Speech regions (inverted silence)
+- $${\color{yellow}Yellow}$$: Energy/word boundaries
+- $${\color{lightblue}Blue}$$: Peak regions
 - Color indicates detection method
 
-#### Grouped Regions
+**$${\color{red}Grouped \space Regions}$$**
 - Maintain original type color
 - Show grouping information in analysis report
 - Created when group threshold > 0
 
-### Editing Regions
+</details>
 
-#### Selection States
-- **Green highlight**: Single region selected (click)
-- **Orange highlight**: Multiple regions selected (Alt+click)
-- **Yellow selection**: Current area selection
+<details>
+<summary>$${\color{orange}Editing \space Regions}$$ - Selection and modification tools</summary>
 
-#### Deletion
+**$${\color{lightgreen}Selection \space States}$$**
+- $${\color{lightgreen}Green \space highlight}$$: Single region selected (click)
+- $${\color{orange}Orange \space highlight}$$: Multiple regions selected (Alt+click)
+- $${\color{yellow}Yellow \space selection}$$: Current area selection
+
+**$${\color{red}Deletion}$$**
 - **Single deletion**: Click region → press Delete
 - **Multi-deletion**: Alt+click multiple → press Delete
 - **Clear all**: Shift+Delete or Clear All button
 
-#### Modification
+**$${\color{yellow}Modification}$$**
 - **Move regions**: Edit `manual_regions` text widget
 - **Rename regions**: Edit `region_labels` text widget
 - **Re-analyze**: Adjust settings → click Analyze
 
 ![Editing Regions](images/editing_regions.png)
 
-### Region Properties
+</details>
 
-#### Timing Information
+<details>
+<summary>$${\color{red}Region \space Properties}$$ - Technical details and metadata</summary>
+
+**$${\color{lightgreen}Timing \space Information}$$**
 - **Start time**: Region beginning
 - **End time**: Region ending  
 - **Duration**: Calculated length
 - **Confidence**: Detection certainty (auto-regions)
 
-#### Metadata
+**$${\color{orange}Metadata}$$**
 - **Type**: manual, silence, speech, energy, peaks
 - **Source**: Detection method used
 - **Grouping info**: If region was merged
 
-#### Labels
+**$${\color{yellow}Labels}$$**
 - **Auto-generated**: Region 1, Region 2, etc.
 - **Custom**: User-defined names
 - **Detection-based**: silence, speech, peak_1, etc.
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Advanced Features
+## $${\color{red}Advanced \space Features}$$
 
-### Region Grouping
+<details>
+<summary>$${\color{orange}Region \space Grouping}$$ - Merge nearby regions automatically</summary>
 
 Automatically merge nearby regions to reduce fragmentation.
 
-#### How it works:
-1. Set `group_regions_threshold` > 0.000s in Options node
-2. Regions within threshold distance get merged
-3. Overlapping regions are combined
-4. Metadata preserved from source regions
+#### $${\color{lightgreen}How \space it \space works:}$$
+$${\color{lightgreen}1)}$$ Set `group_regions_threshold` > 0.000s in Options node
+$${\color{lightgreen}2)}$$ Regions within threshold distance get merged
+$${\color{lightgreen}3)}$$ Overlapping regions are combined
+$${\color{lightgreen}4)}$$ Metadata preserved from source regions
 
 ![Region Grouping Example](images/region_grouping_detail.png)
 
-#### Benefits:
+#### $${\color{yellow}Benefits:}$$
 - Reduces over-segmentation
 - Creates cleaner timing data
 - Maintains original region information
-- Improves F5-TTS results
+- $${\color{orange}Improves \space F5-TTS \space results}$$
 
-### Silence Inversion
+</details>
+
+<details>
+<summary>$${\color{lightgreen}Silence \space Inversion}$$ - Convert silence to speech detection</summary>
 
 Convert silence detection to speech detection for F5-TTS workflows.
 
-#### Process:
-1. Normal silence detection finds pauses
-2. Inversion calculates speech regions between pauses
-3. Output contains only speech segments
-4. Ideal for voice cloning preparation
+#### $${\color{orange}Process:}$$
+$${\color{lightgreen}1)}$$ Normal silence detection finds pauses
+$${\color{lightgreen}2)}$$ Inversion calculates speech regions between pauses
+$${\color{lightgreen}3)}$$ Output contains only speech segments
+$${\color{lightgreen}4)}$$ $${\color{yellow}Ideal \space for \space voice \space cloning \space preparation}$$
 
 ![Silence Inversion Process](images/silence_inversion_process.png)
 
-### Loop Functionality
+</details>
+
+<details>
+<summary>$${\color{yellow}Loop \space Functionality}$$ - Precise playback control</summary>
 
 Precise playback control for detailed editing.
 
-#### Setting Loops:
-1. Select region → press **L** or click **Set Loop**
-2. Drag purple loop markers to adjust
-3. Use **Shift+L** to toggle looping on/off
+#### $${\color{lightgreen}Setting \space Loops:}$$
+$${\color{lightgreen}1)}$$ Select region → press **L** or click **Set Loop**
+$${\color{lightgreen}2)}$$ Drag purple loop markers to adjust
+$${\color{lightgreen}3)}$$ Use **Shift+L** to toggle looping on/off
 
-#### Visual Indicators:
-- **Purple markers**: Loop start/end points
+#### $${\color{orange}Visual \space Indicators:}$$
+- $${\color{purple}Purple \space markers}$$: Loop start/end points
 - **Loop status**: Shown in interface
 - **Automatic repeat**: When looping enabled
 
-### Bidirectional Sync
+</details>
+
+<details>
+<summary>$${\color{orange}Bidirectional \space Sync}$$ - Interface ↔ Text widgets</summary>
 
 Seamless integration between interface and text widgets.
 
-#### Text → Interface:
+#### $${\color{lightgreen}Text \space → \space Interface:}$$
 - Type regions in `manual_regions` widget
 - Click back to interface
 - Regions automatically appear
 
-#### Interface → Text:
+#### $${\color{yellow}Interface \space → \space Text:}$$
 - Add regions via interface
 - Text widgets update automatically
 - Labels and timing stay synchronized
 
-### Caching System
+</details>
+
+<details>
+<summary>$${\color{red}Caching \space System}$$ - Performance optimization</summary>
 
 Intelligent performance optimization.
 
-#### How it works:
+#### $${\color{orange}How \space it \space works:}$$
 - Analysis results cached based on audio + settings
 - Instant results for repeated analyses
 - Cache invalidated when parameters change
 - Manual regions included in cache key
 
-#### Benefits:
+#### $${\color{lightgreen}Benefits:}$$
 - Faster repeated processing
 - Smooth parameter experimentation
 - Reduced computation overhead
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Outputs Reference
+## $${\color{lightgreen}Outputs \space Reference}$$
 
 The Audio Analyzer provides four outputs for different use cases:
 
 ![Outputs Overview](images/outputs_overview.png)
 
-### 1. `processed_audio` (AUDIO)
+<details>
+<summary>$${\color{lightgreen}1. \space processed\_audio}$$ (AUDIO) - Passthrough for chaining</summary>
+
 - **Purpose**: Passthrough of original audio
 - **Use Case**: Continue audio processing pipeline
 - **Format**: Standard ComfyUI audio tensor
-- **Notes**: Always first output for easy chaining
+- $${\color{yellow}Notes}$$: Always first output for easy chaining
 
-### 2. `timing_data` (STRING)
+</details>
+
+<details>
+<summary>$${\color{orange}2. \space timing\_data}$$ (STRING) - Main export output</summary>
+
 - **Purpose**: Main timing export for external use
 - **Format**: Depends on `export_format` setting
 - **Precision**: Respects `precision_level` setting
 
-#### F5TTS Format:
+**$${\color{lightgreen}F5TTS \space Format:}$$**
 ```
 1.500,3.200
 4.000,6.800
 8.100,10.500
 ```
 
-#### JSON Format:
+**$${\color{yellow}JSON \space Format:}$$**
 ```json
 [
   {
@@ -564,19 +661,23 @@ The Audio Analyzer provides four outputs for different use cases:
 ]
 ```
 
-#### CSV Format:
+**$${\color{orange}CSV \space Format:}$$**
 ```
 start,end,label,confidence,duration
 1.500,3.200,speech,1.00,1.700
 4.000,6.800,speech,1.00,2.800
 ```
 
-### 3. `analysis_info` (STRING)
+</details>
+
+<details>
+<summary>$${\color{yellow}3. \space analysis\_info}$$ (STRING) - Detailed analysis report</summary>
+
 - **Purpose**: Detailed analysis report
 - **Content**: Statistics, settings, visualization summary
 - **Use Case**: Documentation, debugging, analysis review
 
-#### Example Report:
+**$${\color{lightgreen}Example \space Report:}$$**
 ```
 Audio Analysis Results
 Duration: 10.789s
@@ -601,99 +702,125 @@ Visualization Summary:
   RMS Data Points: 202
 ```
 
-### 4. `segmented_audio` (AUDIO)
+</details>
+
+<details>
+<summary>$${\color{red}4. \space segmented\_audio}$$ (AUDIO) - Extracted region audio</summary>
+
 - **Purpose**: Audio containing only detected regions
 - **Process**: Extracts and concatenates region audio
-- **Use Case**: F5-TTS training, isolated speech extraction
+- **Use Case**: $${\color{orange}F5-TTS \space training}$$, isolated speech extraction
 - **Format**: Standard ComfyUI audio tensor
 
-#### How it works:
-1. Sort regions by start time
-2. Extract audio for each region
-3. Concatenate segments sequentially
-4. Return as single audio tensor
+**$${\color{lightgreen}How \space it \space works:}$$**
+$${\color{lightgreen}1)}$$ Sort regions by start time
+$${\color{lightgreen}2)}$$ Extract audio for each region
+$${\color{lightgreen}3)}$$ Concatenate segments sequentially
+$${\color{lightgreen}4)}$$ Return as single audio tensor
 
 ![Segmented Audio Process](images/segmented_audio.png)
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Tips & Workflows
+## $${\color{lightgreen}Tips \space \& \space Workflows}$$
 
-### F5-TTS Preparation Workflow
+<details>
+<summary>$${\color{orange}F5-TTS \space Preparation \space Workflow}$$ - Voice cloning setup</summary>
 
-1. **Load clean speech audio**
-2. **Connect Audio Analyzer Options** node:
+$${\color{lightgreen}1)}$$ **Load clean speech audio**
+$${\color{lightgreen}2)}$$ **Connect Audio Analyzer Options** node:
    - Method: `silence`
    - Enable `invert_silence_regions`
    - Set appropriate `silence_threshold`
-3. **Analyze** to get speech regions
-4. **Fine-tune** by adding manual regions if needed
-5. **Use outputs**:
+$${\color{lightgreen}3)}$$ **Analyze** to get speech regions
+$${\color{lightgreen}4)}$$ **Fine-tune** by adding manual regions if needed
+$${\color{lightgreen}5)}$$ **Use outputs**:
    - `timing_data` → F5-TTS timing input
    - `segmented_audio` → F5-TTS audio input
 
 ![F5-TTS Workflow](images/f5tts_workflow.png)
 
-### Music Analysis Workflow
+</details>
 
-1. **Load music track**
-2. **Use `energy` method** for beat detection
-3. **Adjust `energy_sensitivity`** to match dynamics
-4. **Add manual regions** for specific sections
-5. **Group regions** to merge close beats
-6. **Export timing data** for synchronization
+<details>
+<summary>$${\color{yellow}Music \space Analysis \space Workflow}$$ - Beat and rhythm detection</summary>
 
-### Podcast Chapter Detection
+$${\color{lightgreen}1)}$$ **Load music track**
+$${\color{lightgreen}2)}$$ **Use `energy` method** for beat detection
+$${\color{lightgreen}3)}$$ **Adjust `energy_sensitivity`** to match dynamics
+$${\color{lightgreen}4)}$$ **Add manual regions** for specific sections
+$${\color{lightgreen}5)}$$ **Group regions** to merge close beats
+$${\color{lightgreen}6)}$$ **Export timing data** for synchronization
 
-1. **Load podcast audio**
-2. **Use `silence` method** with:
+</details>
+
+<details>
+<summary>$${\color{red}Podcast \space Chapter \space Detection}$$ - Chapter boundary identification</summary>
+
+$${\color{lightgreen}1)}$$ **Load podcast audio**
+$${\color{lightgreen}2)}$$ **Use `silence` method** with:
    - Higher `silence_threshold` for speech gaps
    - Longer `silence_min_duration` for chapter breaks
-3. **Manual refinement** for precise chapter boundaries
-4. **Custom labels** for chapter names
-5. **Export for media players**
+$${\color{lightgreen}3)}$$ **Manual refinement** for precise chapter boundaries
+$${\color{lightgreen}4)}$$ **Custom labels** for chapter names
+$${\color{lightgreen}5)}$$ **Export for media players**
 
-### Quality Control Tips
+</details>
 
-#### Audio Preparation
+<details>
+<summary>$${\color{orange}Quality \space Control \space Tips}$$ - Best practices</summary>
+
+**$${\color{lightgreen}Audio \space Preparation}$$**
 - **Normalize volume** before analysis
 - **Remove background noise** if possible
 - **Use consistent recording conditions**
 - **Check for clipping or distortion**
 
-#### Parameter Tuning
+**$${\color{yellow}Parameter \space Tuning}$$**
 - **Start with defaults** and adjust incrementally
 - **Test with short audio samples** first
 - **Use visual feedback** from waveform display
 - **Compare different methods** for same audio
 
-#### Verification
+**$${\color{orange}Verification}$$**
 - **Listen to detected regions** using loop functionality
 - **Check timing precision** with playhead
 - **Verify region boundaries** at detailed zoom levels
 - **Test output compatibility** with target applications
 
-### Performance Optimization
+</details>
 
-#### For Large Files
+<details>
+<summary>$${\color{red}Performance \space Optimization}$$ - Speed and efficiency</summary>
+
+**$${\color{lightgreen}For \space Large \space Files}$$**
 - **Reduce `visualization_points`** for faster rendering
 - **Use caching** - avoid changing parameters unnecessarily
 - **Process in segments** if memory limited
 - **Consider downsampling** for initial analysis
 
-#### For Real-time Use
+**$${\color{yellow}For \space Real-time \space Use}$$**
 - **Pre-tune parameters** on representative samples
 - **Use manual mode** for known timing patterns
 - **Minimize UI interactions** during processing
 - **Batch process** similar audio files
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Troubleshooting
+## $${\color{red}Troubleshooting}$$
 
-### Common Issues
+<details>
+<summary>$${\color{orange}Common \space Issues}$$ - Frequent problems and solutions</summary>
 
-#### "No audio data received"
+**$${\color{lightgreen}"No \space audio \space data \space received"}$$**
 **Causes:**
 - Audio file not found or corrupted
 - Unsupported audio format
@@ -706,7 +833,7 @@ Visualization Summary:
 - Check audio input connections
 - Try absolute file paths
 
-#### "Fake test data" warning
+**$${\color{yellow}"Fake \space test \space data" \space warning}$$**
 **Causes:**
 - Audio loading failed
 - No audio source provided
@@ -718,7 +845,7 @@ Visualization Summary:
 - Ensure audio format compatibility
 - Re-analyze with proper audio source
 
-#### Regions not appearing
+**$${\color{orange}Regions \space not \space appearing}$$**
 **Causes:**
 - Detection thresholds too strict
 - Audio too quiet/loud for method
@@ -731,7 +858,7 @@ Visualization Summary:
 - Check audio amplitude levels
 - Verify manual region format
 
-#### Performance issues
+**$${\color{red}Performance \space issues}$$**
 **Causes:**
 - Large audio files
 - High visualization point count
@@ -744,9 +871,12 @@ Visualization Summary:
 - Optimize detection parameters
 - Leverage caching system
 
-### Interface Issues
+</details>
 
-#### Speed control not working
+<details>
+<summary>$${\color{yellow}Interface \space Issues}$$ - UI and interaction problems</summary>
+
+**$${\color{lightgreen}Speed \space control \space not \space working}$$**
 **Causes:**
 - Audio not properly loaded
 - Browser audio restrictions
@@ -757,7 +887,7 @@ Visualization Summary:
 - Check browser audio permissions
 - Refresh ComfyUI interface
 
-#### Visual artifacts or duplicates
+**$${\color{yellow}Visual \space artifacts \space or \space duplicates}$$**
 **Causes:**
 - Region synchronization issues
 - Mixed manual/auto regions
@@ -768,7 +898,7 @@ Visualization Summary:
 - Re-analyze to refresh state
 - Restart ComfyUI if persistent
 
-#### Mouse controls unresponsive
+**$${\color{orange}Mouse \space controls \space unresponsive}$$**
 **Causes:**
 - Canvas focus issues
 - Browser compatibility
@@ -779,9 +909,12 @@ Visualization Summary:
 - Try different browser
 - Reset ComfyUI view zoom
 
-### Audio Loading Issues
+</details>
 
-#### Supported formats not working
+<details>
+<summary>$${\color{lightgreen}Audio \space Loading \space Issues}$$ - File and format problems</summary>
+
+**$${\color{yellow}Supported \space formats \space not \space working}$$**
 **Causes:**
 - Missing audio codecs
 - Corrupted files
@@ -792,7 +925,7 @@ Visualization Summary:
 - Re-encode audio files
 - Use WAV format for best compatibility
 
-#### Path resolution problems
+**$${\color{orange}Path \space resolution \space problems}$$**
 **Causes:**
 - Relative vs absolute paths
 - Special characters in paths
@@ -804,9 +937,12 @@ Visualization Summary:
 - Check folder permissions
 - Place files in ComfyUI input directory
 
-### Analysis Problems
+</details>
 
-#### No regions detected
+<details>
+<summary>$${\color{red}Analysis \space Problems}$$ - Detection and accuracy issues</summary>
+
+**$${\color{lightgreen}No \space regions \space detected}$$**
 **Causes:**
 - Thresholds too restrictive
 - Audio characteristics don't match method
@@ -818,7 +954,7 @@ Visualization Summary:
 - Use manual mode for precise control
 - Check audio actually contains target content
 
-#### Too many regions detected
+**$${\color{yellow}Too \space many \space regions \space detected}$$**
 **Causes:**
 - Thresholds too sensitive
 - Noisy audio input
@@ -830,7 +966,7 @@ Visualization Summary:
 - Use region grouping to merge
 - Pre-process audio to reduce noise
 
-#### Inconsistent results
+**$${\color{orange}Inconsistent \space results}$$**
 **Causes:**
 - Variable audio quality
 - Inconsistent recording conditions
@@ -842,70 +978,89 @@ Visualization Summary:
 - Fine-tune parameters per audio type
 - Consider manual verification
 
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
+
 ---
 
-## Advanced Configuration
+## $${\color{orange}Advanced \space Configuration}$$
 
-### Custom Workflows
+<details>
+<summary>$${\color{lightgreen}Custom \space Workflows}$$ - Advanced usage patterns</summary>
 
-#### Multi-language Speech
+**$${\color{yellow}Multi-language \space Speech}$$**
 - Adjust silence thresholds for language characteristics
 - Use manual regions for complex pronunciation patterns
 - Combine methods for different language sections
 
-#### Music Production
+**$${\color{orange}Music \space Production}$$**
 - Use peak detection for drum isolation
 - Energy method for dynamic sections
 - Manual regions for precise arrangement timing
 
-#### Podcast Enhancement
+**$${\color{lightgreen}Podcast \space Enhancement}$$**
 - Silence detection for automatic chapter breaks
 - Manual refinement for sponsor segments
 - Custom labels for content categorization
 
-### Integration Examples
+</details>
 
-#### F5-TTS Pipeline
+<details>
+<summary>$${\color{yellow}Integration \space Examples}$$ - Workflow patterns</summary>
+
+**$${\color{lightgreen}F5-TTS \space Pipeline}$$**
 ```
 Audio File → Audio Analyzer → F5-TTS Edit Node
            ↓                 ↓
        Options Node      Timing Data
 ```
 
-#### Batch Processing
+**$${\color{orange}Batch \space Processing}$$**
 ```
 Multiple Audio → Load Audio Node → Audio Analyzer → Export Timing
                                 ↓
                             Options (shared settings)
 ```
 
-#### Quality Control
+**$${\color{red}Quality \space Control}$$**
 ```
 Audio → Audio Analyzer → Preview → Manual Refinement → Final Export
                       ↓                               ↓
                   Visual Check                   Verified Timing
 ```
 
-### Customization
+</details>
 
-#### Parameter Presets
+<details>
+<summary>$${\color{red}Customization}$$ - Advanced configuration options</summary>
+
+**$${\color{lightgreen}Parameter \space Presets}$$**
 Create Options node presets for common use cases:
-- **Speech-optimized**: Low silence threshold, invert enabled
-- **Music-focused**: Energy detection, higher sensitivity
-- **Podcast-ready**: Longer silence duration, grouping enabled
+- $${\color{orange}Speech-optimized}$$: Low silence threshold, invert enabled
+- $${\color{yellow}Music-focused}$$: Energy detection, higher sensitivity
+- $${\color{lightgreen}Podcast-ready}$$: Longer silence duration, grouping enabled
 
-#### Output Formatting
+**$${\color{yellow}Output \space Formatting}$$**
 Choose export formats based on destination:
-- **F5TTS**: Simple start,end format
-- **Analysis**: Detailed JSON with metadata
-- **External Tools**: CSV for spreadsheet compatibility
+- $${\color{orange}F5TTS}$$: Simple start,end format
+- $${\color{lightgreen}Analysis}$$: Detailed JSON with metadata
+- $${\color{yellow}External \space Tools}$$: CSV for spreadsheet compatibility
 
-#### Performance Tuning
-Optimize settings for your hardware:
-- **Fast Preview**: Low visualization points, conservative settings
-- **High Quality**: Maximum points, precise thresholds
-- **Batch Mode**: Minimal UI updates, caching enabled
+</details>
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
 
 ---
 
-This comprehensive guide covers all aspects of the Audio Analyzer node. For additional support or feature requests, please refer to the main project documentation or community resources.
+$${\color{lightgreen}🎉 \space Document \space transformation \space complete!}$$ This comprehensive guide now features:
+
+- $${\color{orange}Colored \space headers \space and \space text}$$ for better visual hierarchy
+- $${\color{yellow}Collapsible \space sections}$$ using `<details>` tags for cleaner organization  
+- $${\color{lightgreen}"Back \space to \space top"}$$ links throughout for easy navigation
+- $${\color{red}Consolidated \space content}$$ with reduced redundancy
+- $${\color{lightblue}User-friendly \space structure}$$ for improved readability
+
+For additional support or feature requests, please refer to the main project documentation or community resources.
+
+<p align="right">(<a href="#table-of-contents">back to top</a>)</p>
