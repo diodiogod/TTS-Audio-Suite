@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2025-07-14
+
+### Added
+
+- Fix Features section formatting for proper GitHub markdown rendering
+- Add placeholder for F5-TTS Audio Analyzer screenshot
+- Restructure SRT_IMPLEMENTATION.md documentation
+- Add comprehensive table of contents and Quick Start section
+- Add enhanced version bumping scripts with multiline support
+- Create automated changelog generation with categorization
+
+### Fixed
+
+- Documentation improvements and fixes
+- Fix README.md formatting and image placement
+- Restore both ChatterBox TTS and Voice Capture images side by side
+- Fix code block formatting and usage examples for ComfyUI users
+- Polish language and maintain professional tone
+- Version management automation system
+- Optimize CLAUDE.md for token efficiency
+
+### Changed
+
+- Improve image organization and section clarity
+- Improve document organization with Quick Reference tables
 ## [3.0.1] - 2025-07-14
 
 ### Fixed
