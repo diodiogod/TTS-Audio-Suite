@@ -26,7 +26,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.0.0
+# ComfyUI ChatterBox SRT Voice (diogod) v3.0.1
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -240,13 +240,7 @@ ComfyUI/models/voices/
 1. **Easy Method**: Select voice from `reference_audio_file` dropdown → text auto-detected
 2. **Manual Method**: Set `reference_audio_file` to "none" → connect `opt_reference_audio` + `opt_reference_text` inputs
 
-### 3. Install Voice Recording Dependencies (Optional)
-
-```bash
-pip install sounddevice
-```
-
-### 4. Restart ComfyUI
+### 3. Restart ComfyUI
 
 ## Enhanced Features
 
