@@ -102,43 +102,42 @@ pip install -r requirements.txt
 
 ## Usage Examples
 
-### Basic Usage
-```python
-# Load node in ComfyUI
-node = ChatterBoxSRTVoiceTTS()
-
-# Set parameters
-srt_content = "1\n00:00:01,000 --> 00:00:04,000\nHello world!"
-
-# Generate audio
-audio, info, timing_report, adjusted_srt = node.generate(
-    srt_content=srt_content,
-    timing_mode="stretch_to_fit"
-)
-```
+### Basic Usage in ComfyUI
+1. **Add the node**: Search for `🎤 ChatterBox SRT Voice TTS` in ComfyUI
+2. **Paste SRT content** into the `srt_content` field:
+   ```srt
+   1
+   00:00:01,000 --> 00:00:04,000
+   Hello world! This is my first subtitle.
+   
+   2
+   00:00:05,000 --> 00:00:08,000
+   This is the second subtitle with perfect timing.
+   ```
+3. **Select timing mode**: Choose `stretch_to_fit` for beginners
+4. **Set voice parameters**: Adjust exaggeration (0.5), temperature (0.7), etc.
+5. **Connect outputs**: Link `audio` output to PreviewAudio or SaveAudio node
+6. **Execute** to generate timed audio
 
 ### Advanced Usage Examples
 
 #### Video Dubbing (Precise Timing)
-```python
-# Use stretch_to_fit for exact timing match
-timing_mode = "stretch_to_fit"
-max_stretch_ratio = 1.5  # Limit stretching for quality
-```
+**Best for:** Exact timing synchronization with video
+- **Timing Mode**: Select `stretch_to_fit`
+- **Max Stretch Ratio**: Set to `1.5` (limits stretching for better quality)
+- **Use Case**: When audio must match video frames exactly
 
 #### Presentation Audio (Natural Pacing)
-```python
-# Use pad_with_silence for natural speech
-timing_mode = "pad_with_silence"
-fade_duration = 0.02  # Smooth transitions
-```
+**Best for:** Natural-sounding narration with gaps
+- **Timing Mode**: Select `pad_with_silence` 
+- **Fade Duration**: Set to `0.02` for smooth transitions
+- **Use Case**: Educational content, presentations, audiobooks
 
 #### Voice Cloning with SRT
-```python
-# Add reference audio for voice cloning
-reference_audio = load_audio("reference_voice.wav")
-timing_mode = "smart_natural"  # Best balance
-```
+**Best for:** Personalized voice with subtitle timing
+- **Timing Mode**: Select `smart_natural` (best balance)
+- **Reference Audio**: Connect LoadAudio node with your voice sample
+- **Use Case**: Creating personalized narration or dubbing
 
 ---
 
