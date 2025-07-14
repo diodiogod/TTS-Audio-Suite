@@ -61,17 +61,17 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 ## Features
 
-🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
-🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
-🔄 **ChatterBox VC** - Convert voice from one speaker to another
-🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
-⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
-🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech
-🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
-📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
-📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
-🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
-🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
+- 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
+- 🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
+- 🔄 **ChatterBox VC** - Convert voice from one speaker to another
+- 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
+- ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
+- 🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech
+- 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
+- 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
+- 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
+- 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
+- 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
 
 ## 🚀 Quick Start
 
