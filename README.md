@@ -33,7 +33,8 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 </details>
 
 ### F5-TTS Integration and Audio Analyzer
-![F5-TTS and Audio Analyzer](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
+![F5-TTS and Audio Analyzer](images/f5_tts_audio_analyzer_screenshot.png)
+> 📸 **Placeholder image** - Screenshot coming soon
 
 * **F5-TTS Voice Synthesis**: High-quality voice cloning with reference audio + text
 * **Audio Wave Analyzer**: Interactive waveform visualization for precise timing extraction
@@ -41,7 +42,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
 
 ### Enhanced ChatterBox TTS
-![ChatterBox TTS](https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c)
+![ChatterBox Voice Capture](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
 
 * **Voice Recording**: Smart silence detection for voice capture
 * **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
