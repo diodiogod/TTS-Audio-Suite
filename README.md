@@ -42,7 +42,10 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
 
 ### Enhanced ChatterBox TTS
-![ChatterBox Voice Capture](https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe)
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c" width="45%" alt="ChatterBox TTS Nodes" />
+  <img src="https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe" width="45%" alt="ChatterBox Voice Capture" />
+</div>
 
 * **Voice Recording**: Smart silence detection for voice capture
 * **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
