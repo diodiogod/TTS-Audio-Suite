@@ -541,7 +541,10 @@ class F5TTSEditNode(BaseF5TTSNode):
                 
                 # Apply RMS correction
                 if rms < target_rms:
-                    generated_wave = generated_wave * rms / target_rms
+                    # Ensure all tensors are on the same device (CPU) for RMS correction
+                    rms_cpu = rms.cpu() if hasattr(rms, 'device') else rms
+                    target_rms_cpu = target_rms.cpu() if hasattr(target_rms, 'device') else target_rms
+                    generated_wave = generated_wave * rms_cpu / target_rms_cpu
                 
                 print(f"Generated wave: {generated_wave.shape}")
                 
