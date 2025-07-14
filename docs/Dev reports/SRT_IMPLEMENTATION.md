@@ -108,9 +108,7 @@ pip install -r requirements.txt
 node = ChatterBoxSRTVoiceTTS()
 
 # Set parameters
-srt_content = """1
-00:00:01,000 --> 00:00:04,000
-Hello world!"""
+srt_content = "1\n00:00:01,000 --> 00:00:04,000\nHello world!"
 
 # Generate audio
 audio, info, timing_report, adjusted_srt = node.generate(
