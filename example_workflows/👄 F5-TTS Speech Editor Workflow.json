@@ -1,0 +1,1667 @@
+{
+  "id": "b35e2a81-e433-4df0-8c58-fd3827f0fe99",
+  "revision": 0,
+  "last_node_id": 150,
+  "last_link_id": 285,
+  "nodes": [
+    {
+      "id": 95,
+      "type": "PreviewAny",
+      "pos": [
+        2130,
+        -1400
+      ],
+      "size": [
+        520,
+        240
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 229
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 136,
+      "type": "PreviewAny",
+      "pos": [
+        2130,
+        -730
+      ],
+      "size": [
+        520,
+        240
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 243
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 129,
+      "type": "Reroute",
+      "pos": [
+        1310,
+        -1650
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 230
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            253,
+            261,
+            276
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 140,
+      "type": "Reroute",
+      "pos": [
+        1310,
+        -1670
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 254
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            256,
+            265,
+            277
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 142,
+      "type": "Note",
+      "pos": [
+        -580,
+        -1450
+      ],
+      "size": [
+        210,
+        130
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "try these on manual_regions if the node does not work, for the example workflow with  Clint_Eastwood CC3 (enhanced2)\n\n1.913,2.540\n4.350,6.296\n8.329,10.750"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 125,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        930,
+        -1540
+      ],
+      "size": [
+        400,
+        120
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            238,
+            262,
+            274
+          ]
+        }
+      ],
+      "title": "original text",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You know, after 55 years of doing it, you kind of get an idea of when you're on key and when you're off key.\nAnd err sometimes you can go by looking at the camera operator or something."
+      ],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 145,
+      "type": "PreviewAny",
+      "pos": [
+        2130,
+        -60
+      ],
+      "size": [
+        520,
+        240
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 267
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 126,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        930,
+        -1370
+      ],
+      "size": [
+        400,
+        120
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            224
+          ]
+        }
+      ],
+      "title": "Edited text",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You know, after 55 years of decoding alien transmissions, you kind of get an idea of when you're onto something and when it's just microwave burrito instructions.\nAnd err sometimes you can go by how fast the FBI van drives off."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 108,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1050,
+        -1200
+      ],
+      "size": [
+        281.9400329589844,
+        88
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            264,
+            275
+          ]
+        }
+      ],
+      "title": "changing generated timings to fit better",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "2.3\n3\n3"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 147,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        920,
+        -840
+      ],
+      "size": [
+        400,
+        120
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            278
+          ]
+        }
+      ],
+      "title": "Edited text",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You know, after 55 years of making chili, you kind of get an idea of when it’s delicious and when you’ve summoned Satan.\nAnd err sometimes you can go by whether the smoke alarm starts crying."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 149,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1030,
+        -680
+      ],
+      "size": [
+        281.9400329589844,
+        88
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            283
+          ]
+        }
+      ],
+      "title": "changing generated timings to fit better",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "1.2\n3\n2.6"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 135,
+      "type": "PreviewAudio",
+      "pos": [
+        2120,
+        -910
+      ],
+      "size": [
+        530,
+        130
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 242
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 144,
+      "type": "PreviewAudio",
+      "pos": [
+        2120,
+        -240
+      ],
+      "size": [
+        530,
+        130
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 266
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 148,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        910,
+        -230
+      ],
+      "size": [
+        400,
+        120
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            280
+          ]
+        }
+      ],
+      "title": "Edited text",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You know, after 55 years of doing stand-up, you kind of get an idea of when you’re killing and when you're just slowly dying inside.\nAnd err sometimes you can go by the bartender cleaning the same glass for 40 minutes."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 90,
+      "type": "LoadAudio",
+      "pos": [
+        -1120,
+        -1660
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            285
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "Clint_Eastwood CC3 (enhanced).wav",
+        null,
+        null
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 130,
+      "type": "MarkdownNote",
+      "pos": [
+        -770,
+        -1230
+      ],
+      "size": [
+        390,
+        480
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## 🌊 Audio Wave Analyzer Usage Guide\n\n### 🎵 How to Load Audio\nYou can load audio using one of the following methods:\n- Click **Load Audio**\n- Drag and drop the file into the interface\n- Click **Upload Audio**\n\n---\n\n### 📈 Displaying the Waveform\n> ⚠️ A valid output connection is required to view the real waveform.\n\n- If you click **Analyze** without a proper connection,\n  you'll see a **placeholder (fake) waveform** instead.\n\n- If the interface looks blurred, try analyzing again and if it still looks blurred try right clicking and recreating the node.\n\n---\n\n### 🖱️ Helpful Tips\n- Hover your mouse over interface elements to reveal **tooltips**\n- Tooltips provide helpful usage explanations and best practices\n\n---\n\n### 🌊 Audio Wave Analyzer is Optional But Helpful\n- You **don’t need** the **🌊 Audio Wave Analyzer** for this workflow\n- You can define regions directly in **👄 F5-TTS Speech Editor**\n- The Analyzer helps by:\n  - Automatically detecting speech regions\n  - Letting you manually select waveform areas more precisely\n"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 93,
+      "type": "PreviewAny",
+      "pos": [
+        550,
+        -1520
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 160
+        }
+      ],
+      "outputs": [],
+      "title": "Preview timings",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 141,
+      "type": "MarkdownNote",
+      "pos": [
+        850,
+        -2060
+      ],
+      "size": [
+        280,
+        330
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## 🔧 F5-TTS Edit Options\n\n### ⚗️ Experimental Features\nThese options are all **highly experimental** and designed to improve playback flow, but might not do anything. They are supposed to:\n- Reduce clicks and stuttering between **TTS-generated segments** and **original segments**\n- Improve audio **normalization**\n- Adjuste how **loud or balanced** segments sound\n\n---\n\n### 🧹 Cache Behavior\nSometimes the cache system may not work as expected.\n\n> ✅ To resolve this, toggle **`force_cache_clear`** ON to flush stale data.\n"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 128,
+      "type": "ChatterBoxF5TTSEditVoice",
+      "pos": [
+        1640,
+        -1670
+      ],
+      "size": [
+        400,
+        510
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "original_audio",
+          "type": "AUDIO",
+          "link": 265
+        },
+        {
+          "name": "edit_options",
+          "shape": 7,
+          "type": "F5TTS_EDIT_OPTIONS",
+          "link": 260
+        },
+        {
+          "name": "original_text",
+          "type": "STRING",
+          "widget": {
+            "name": "original_text"
+          },
+          "link": 262
+        },
+        {
+          "name": "target_text",
+          "type": "STRING",
+          "widget": {
+            "name": "target_text"
+          },
+          "link": 224
+        },
+        {
+          "name": "edit_regions",
+          "type": "STRING",
+          "widget": {
+            "name": "edit_regions"
+          },
+          "link": 261
+        },
+        {
+          "name": "fix_durations",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "fix_durations"
+          },
+          "link": 264
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            227,
+            228
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": [
+            229
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "32ba11893f64c7089654a0689a4050672a13e770",
+        "Node name for S&R": "ChatterBoxF5TTSEditVoice"
+      },
+      "widgets_values": [
+        "Some call me nature, others call me mother nature.",
+        "Some call me optimist, others call me realist.",
+        "1.42,2.44\n4.04,4.9",
+        "auto",
+        "F5TTS_v1_Base",
+        1650241374,
+        "fixed",
+        "1.2\n1.0",
+        0.8,
+        71,
+        2,
+        -1,
+        "midpoint"
+      ]
+    },
+    {
+      "id": 134,
+      "type": "ChatterBoxF5TTSEditVoice",
+      "pos": [
+        1640,
+        -1000
+      ],
+      "size": [
+        400,
+        510
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "original_audio",
+          "type": "AUDIO",
+          "link": 256
+        },
+        {
+          "name": "edit_options",
+          "shape": 7,
+          "type": "F5TTS_EDIT_OPTIONS",
+          "link": 281
+        },
+        {
+          "name": "original_text",
+          "type": "STRING",
+          "widget": {
+            "name": "original_text"
+          },
+          "link": 238
+        },
+        {
+          "name": "target_text",
+          "type": "STRING",
+          "widget": {
+            "name": "target_text"
+          },
+          "link": 278
+        },
+        {
+          "name": "edit_regions",
+          "type": "STRING",
+          "widget": {
+            "name": "edit_regions"
+          },
+          "link": 253
+        },
+        {
+          "name": "fix_durations",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "fix_durations"
+          },
+          "link": 283
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            242
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": [
+            243
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "32ba11893f64c7089654a0689a4050672a13e770",
+        "Node name for S&R": "ChatterBoxF5TTSEditVoice"
+      },
+      "widgets_values": [
+        "Some call me nature, others call me mother nature.",
+        "Some call me optimist, others call me realist.",
+        "1.42,2.44\n4.04,4.9",
+        "auto",
+        "F5TTS_v1_Base",
+        1650241374,
+        "fixed",
+        "1.2\n1.0",
+        0.8,
+        71,
+        2,
+        -1,
+        "midpoint"
+      ]
+    },
+    {
+      "id": 146,
+      "type": "ChatterBoxF5TTSEditVoice",
+      "pos": [
+        1640,
+        -330
+      ],
+      "size": [
+        400,
+        510
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "original_audio",
+          "type": "AUDIO",
+          "link": 277
+        },
+        {
+          "name": "edit_options",
+          "shape": 7,
+          "type": "F5TTS_EDIT_OPTIONS",
+          "link": 282
+        },
+        {
+          "name": "original_text",
+          "type": "STRING",
+          "widget": {
+            "name": "original_text"
+          },
+          "link": 274
+        },
+        {
+          "name": "target_text",
+          "type": "STRING",
+          "widget": {
+            "name": "target_text"
+          },
+          "link": 280
+        },
+        {
+          "name": "edit_regions",
+          "type": "STRING",
+          "widget": {
+            "name": "edit_regions"
+          },
+          "link": 276
+        },
+        {
+          "name": "fix_durations",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "fix_durations"
+          },
+          "link": 275
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            266
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": [
+            267
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "32ba11893f64c7089654a0689a4050672a13e770",
+        "Node name for S&R": "ChatterBoxF5TTSEditVoice"
+      },
+      "widgets_values": [
+        "Some call me nature, others call me mother nature.",
+        "Some call me optimist, others call me realist.",
+        "1.42,2.44\n4.04,4.9",
+        "auto",
+        "F5TTS_v1_Base",
+        1650241374,
+        "fixed",
+        "1.2\n1.0",
+        0.8,
+        71,
+        2,
+        -1,
+        "midpoint"
+      ]
+    },
+    {
+      "id": 133,
+      "type": "ChatterBoxF5TTSEditOptions",
+      "pos": [
+        1150,
+        -2060
+      ],
+      "size": [
+        320.75,
+        322
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "edit_options",
+          "type": "F5TTS_EDIT_OPTIONS",
+          "links": [
+            260,
+            281,
+            282
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "32ba11893f64c7089654a0689a4050672a13e770",
+        "Node name for S&R": "ChatterBoxF5TTSEditOptions"
+      },
+      "widgets_values": [
+        290,
+        "cosine",
+        false,
+        true,
+        100,
+        true,
+        false,
+        true,
+        true,
+        true,
+        0.15000000000000002,
+        true
+      ]
+    },
+    {
+      "id": 94,
+      "type": "PreviewAudio",
+      "pos": [
+        2120,
+        -1580
+      ],
+      "size": [
+        530,
+        130
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 227
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 100,
+      "type": "SaveAudioMP3",
+      "pos": [
+        2730,
+        -1670
+      ],
+      "size": [
+        480,
+        136
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 228
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "SaveAudioMP3"
+      },
+      "widgets_values": [
+        "audio/ComfyUI",
+        "V0"
+      ]
+    },
+    {
+      "id": 131,
+      "type": "MarkdownNote",
+      "pos": [
+        -1450,
+        -1690
+      ],
+      "size": [
+        320,
+        170
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Test dropping Clint_Eastwood CC3 (enhanced2) here"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 91,
+      "type": "AudioAnalyzerNode",
+      "pos": [
+        -340,
+        -1660
+      ],
+      "size": [
+        850,
+        800
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 285
+        },
+        {
+          "name": "options",
+          "shape": 7,
+          "type": "OPTIONS",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_audio",
+          "type": "AUDIO",
+          "links": [
+            254
+          ]
+        },
+        {
+          "name": "timing_data",
+          "type": "STRING",
+          "links": [
+            160,
+            230
+          ]
+        },
+        {
+          "name": "analysis_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "segmented_audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "9428305a026a63efa630ff9039f902ae79d59580",
+        "Node name for S&R": "AudioAnalyzerNode"
+      },
+      "widgets_values": [
+        "",
+        "manual",
+        "milliseconds",
+        10000,
+        "1.913,2.540\n4.350,6.296\n8.329,10.750",
+        "Region 1\nRegion 2\nRegion 3",
+        "f5tts",
+        ""
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    }
+  ],
+  "links": [
+    [
+      160,
+      91,
+      1,
+      93,
+      0,
+      "*"
+    ],
+    [
+      224,
+      126,
+      0,
+      128,
+      3,
+      "STRING"
+    ],
+    [
+      227,
+      128,
+      0,
+      94,
+      0,
+      "AUDIO"
+    ],
+    [
+      228,
+      128,
+      0,
+      100,
+      0,
+      "AUDIO"
+    ],
+    [
+      229,
+      128,
+      1,
+      95,
+      0,
+      "*"
+    ],
+    [
+      230,
+      91,
+      1,
+      129,
+      0,
+      "*"
+    ],
+    [
+      238,
+      125,
+      0,
+      134,
+      2,
+      "STRING"
+    ],
+    [
+      242,
+      134,
+      0,
+      135,
+      0,
+      "AUDIO"
+    ],
+    [
+      243,
+      134,
+      1,
+      136,
+      0,
+      "*"
+    ],
+    [
+      253,
+      129,
+      0,
+      134,
+      4,
+      "STRING"
+    ],
+    [
+      254,
+      91,
+      0,
+      140,
+      0,
+      "*"
+    ],
+    [
+      256,
+      140,
+      0,
+      134,
+      0,
+      "AUDIO"
+    ],
+    [
+      260,
+      133,
+      0,
+      128,
+      1,
+      "F5TTS_EDIT_OPTIONS"
+    ],
+    [
+      261,
+      129,
+      0,
+      128,
+      4,
+      "STRING"
+    ],
+    [
+      262,
+      125,
+      0,
+      128,
+      2,
+      "STRING"
+    ],
+    [
+      264,
+      108,
+      0,
+      128,
+      5,
+      "STRING"
+    ],
+    [
+      265,
+      140,
+      0,
+      128,
+      0,
+      "AUDIO"
+    ],
+    [
+      266,
+      146,
+      0,
+      144,
+      0,
+      "AUDIO"
+    ],
+    [
+      267,
+      146,
+      1,
+      145,
+      0,
+      "*"
+    ],
+    [
+      274,
+      125,
+      0,
+      146,
+      2,
+      "STRING"
+    ],
+    [
+      275,
+      108,
+      0,
+      146,
+      5,
+      "STRING"
+    ],
+    [
+      276,
+      129,
+      0,
+      146,
+      4,
+      "STRING"
+    ],
+    [
+      277,
+      140,
+      0,
+      146,
+      0,
+      "AUDIO"
+    ],
+    [
+      278,
+      147,
+      0,
+      134,
+      3,
+      "STRING"
+    ],
+    [
+      280,
+      148,
+      0,
+      146,
+      3,
+      "STRING"
+    ],
+    [
+      281,
+      133,
+      0,
+      134,
+      1,
+      "F5TTS_EDIT_OPTIONS"
+    ],
+    [
+      282,
+      133,
+      0,
+      146,
+      1,
+      "F5TTS_EDIT_OPTIONS"
+    ],
+    [
+      283,
+      149,
+      0,
+      134,
+      5,
+      "STRING"
+    ],
+    [
+      285,
+      90,
+      0,
+      91,
+      0,
+      "AUDIO"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Save output",
+      "bounding": [
+        2720,
+        -1740,
+        500,
+        220
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "Exemple 1",
+      "bounding": [
+        1630,
+        -1740,
+        1030,
+        593.5999755859375
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "Exemple 2",
+      "bounding": [
+        1630,
+        -1070,
+        1030,
+        593.5999755859375
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "Exemple 3",
+      "bounding": [
+        1630,
+        -400,
+        1030,
+        593.5999755859375
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 8,
+      "title": "🌊 Audio Wave Analyzer",
+      "bounding": [
+        -780,
+        -1730,
+        1550,
+        993.5999755859375
+      ],
+      "color": "#88A",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 10,
+      "title": "f5 edit options",
+      "bounding": [
+        800,
+        -2180,
+        800,
+        2380
+      ],
+      "color": "#8AA",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 11,
+      "title": "Experimental post-processing options and cache on/off control",
+      "bounding": [
+        840,
+        -2140,
+        650,
+        410
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.2853116706110268,
+      "offset": [
+        1709.6755545396968,
+        2621.509096639798
+      ]
+    },
+    "frontendVersion": "1.23.4",
+    "reroutes": [
+      {
+        "id": 1,
+        "pos": [
+          1420,
+          -1650
+        ],
+        "linkIds": [
+          256,
+          265,
+          277
+        ]
+      },
+      {
+        "id": 2,
+        "parentId": 1,
+        "pos": [
+          1420,
+          -990
+        ],
+        "linkIds": [
+          256,
+          277
+        ]
+      },
+      {
+        "id": 3,
+        "parentId": 4,
+        "pos": [
+          1400,
+          -830
+        ],
+        "linkIds": [
+          253,
+          276
+        ]
+      },
+      {
+        "id": 4,
+        "pos": [
+          1390,
+          -1500
+        ],
+        "linkIds": [
+          253,
+          261,
+          276
+        ]
+      },
+      {
+        "id": 6,
+        "pos": [
+          1360,
+          -1530
+        ],
+        "linkIds": [
+          238,
+          262,
+          274
+        ]
+      },
+      {
+        "id": 7,
+        "parentId": 6,
+        "pos": [
+          1380,
+          -950
+        ],
+        "linkIds": [
+          238,
+          274
+        ]
+      },
+      {
+        "id": 8,
+        "pos": [
+          1350,
+          -1370
+        ],
+        "linkIds": [
+          224
+        ]
+      },
+      {
+        "id": 12,
+        "pos": [
+          1440,
+          -1190
+        ],
+        "linkIds": [
+          264,
+          275
+        ]
+      },
+      {
+        "id": 14,
+        "parentId": 2,
+        "pos": [
+          1420,
+          -320
+        ],
+        "linkIds": [
+          277
+        ]
+      },
+      {
+        "id": 15,
+        "parentId": 3,
+        "pos": [
+          1410,
+          -160
+        ],
+        "linkIds": [
+          276
+        ]
+      },
+      {
+        "id": 16,
+        "parentId": 7,
+        "pos": [
+          1380,
+          -280
+        ],
+        "linkIds": [
+          274
+        ]
+      },
+      {
+        "id": 18,
+        "parentId": 12,
+        "pos": [
+          1440,
+          0
+        ],
+        "linkIds": [
+          275
+        ]
+      },
+      {
+        "id": 19,
+        "pos": [
+          1490,
+          -1640
+        ],
+        "linkIds": [
+          260,
+          281,
+          282
+        ]
+      },
+      {
+        "id": 20,
+        "parentId": 19,
+        "pos": [
+          1500,
+          -970
+        ],
+        "linkIds": [
+          281,
+          282
+        ]
+      },
+      {
+        "id": 21,
+        "parentId": 20,
+        "pos": [
+          1500,
+          -300
+        ],
+        "linkIds": [
+          282
+        ]
+      }
+    ],
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true,
+    "linkExtensions": [
+      {
+        "id": 224,
+        "parentId": 8
+      },
+      {
+        "id": 238,
+        "parentId": 7
+      },
+      {
+        "id": 253,
+        "parentId": 3
+      },
+      {
+        "id": 256,
+        "parentId": 2
+      },
+      {
+        "id": 260,
+        "parentId": 19
+      },
+      {
+        "id": 261,
+        "parentId": 4
+      },
+      {
+        "id": 262,
+        "parentId": 6
+      },
+      {
+        "id": 264,
+        "parentId": 12
+      },
+      {
+        "id": 265,
+        "parentId": 1
+      },
+      {
+        "id": 274,
+        "parentId": 16
+      },
+      {
+        "id": 275,
+        "parentId": 18
+      },
+      {
+        "id": 276,
+        "parentId": 15
+      },
+      {
+        "id": 277,
+        "parentId": 14
+      },
+      {
+        "id": 281,
+        "parentId": 20
+      },
+      {
+        "id": 282,
+        "parentId": 21
+      }
+    ]
+  },
+  "version": 0.4
+}
