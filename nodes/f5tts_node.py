@@ -31,6 +31,7 @@ BaseF5TTSNode = f5tts_base_module.BaseF5TTSNode
 
 from core.text_chunking import ImprovedChatterBoxChunker
 from core.audio_processing import AudioProcessingUtils
+from core.voice_discovery import get_available_voices, load_voice_reference
 import comfy.model_management as model_management
 
 
@@ -46,34 +47,15 @@ class F5TTSNode(BaseF5TTSNode):
     
     @classmethod
     def INPUT_TYPES(cls):
-        import folder_paths
-        import os
-        from pathlib import Path
-        
-        # Get available reference audio files with companion .txt files from models/voices/
-        models_dir = folder_paths.models_dir
-        voices_dir = os.path.join(models_dir, "voices")
-        reference_files = ["none"]  # Add "none" option for manual input
-        
-        if os.path.exists(voices_dir):
-            voice_files = folder_paths.filter_files_content_types(
-                os.listdir(voices_dir), ["audio", "video"]
-            )
-            for file in voice_files:
-                # Check if companion .txt file exists
-                full_file_path = os.path.join(voices_dir, file)
-                txt_file = cls._get_companion_txt_file(full_file_path)
-                if os.path.isfile(txt_file):
-                    reference_files.append(file)
-        
-        reference_files = sorted(reference_files)
+        # Get available reference audio files from both models/voices/ and voices_examples/
+        reference_files = get_available_voices()
         
         # Node layout with opt_reference_text as second widget
         base_types = {
             "required": {
                 "reference_audio_file": (reference_files, {
                     "default": "none",
-                    "tooltip": "Reference voice from models/voices/ folder (with companion .txt file). Select 'none' to use direct inputs below."
+                    "tooltip": "Reference voice from models/voices/ or voices_examples/ folders (with companion .txt/.reference.txt file). Select 'none' to use direct inputs below."
                 }),
                 "opt_reference_text": ("STRING", {
                     "multiline": True,
@@ -157,35 +139,24 @@ class F5TTSNode(BaseF5TTSNode):
     
     @staticmethod
     def _get_companion_txt_file(audio_file_path):
-        """Get the path to companion .txt file for an audio file"""
+        """Get the path to companion .txt file for an audio file (legacy method)"""
         from pathlib import Path
         p = Path(audio_file_path)
         return os.path.join(os.path.dirname(audio_file_path), p.stem + ".txt")
     
     def _load_reference_from_file(self, reference_audio_file):
-        """Load reference audio and text from models/voices/ folder"""
-        import folder_paths
-        
+        """Load reference audio and text from voice discovery system"""
         if reference_audio_file == "none":
             return None, None
         
-        # Get full audio file path from models/voices/
-        models_dir = folder_paths.models_dir
-        voices_dir = os.path.join(models_dir, "voices")
-        audio_path = os.path.join(voices_dir, reference_audio_file)
+        # Use the new voice discovery system
+        audio_path, ref_text = load_voice_reference(reference_audio_file)
+        
+        if not audio_path or not ref_text:
+            raise FileNotFoundError(f"Reference voice '{reference_audio_file}' not found or has no companion text file")
         
         if not os.path.isfile(audio_path):
             raise FileNotFoundError(f"Reference audio file not found: {audio_path}")
-        
-        # Get companion text file
-        txt_file = self._get_companion_txt_file(audio_path)
-        
-        if not os.path.isfile(txt_file):
-            raise FileNotFoundError(f"Companion text file not found: {txt_file}")
-        
-        # Read reference text
-        with open(txt_file, 'r', encoding='utf-8') as file:
-            ref_text = file.read().strip()
         
         return audio_path, ref_text
     
