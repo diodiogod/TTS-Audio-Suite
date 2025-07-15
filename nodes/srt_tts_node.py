@@ -110,7 +110,7 @@ The audio will match these exact timings.""",
                     "step": 0.05,
                     "tooltip": "Classifier-Free Guidance weight. Influences how strongly the model adheres to the input text."
                 }),
-                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1, "control_after_generate": "fixed", "tooltip": "Seed for reproducible speech generation. Set to 0 for random."}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 2**32 - 1, "tooltip": "Seed for reproducible speech generation. Set to 0 for random."}),
                 "timing_mode": (["stretch_to_fit", "pad_with_silence", "smart_natural"], {
                     "default": "smart_natural",
                     "tooltip": "Determines how audio segments are aligned with SRT timings:\n🔹 stretch_to_fit: Stretches/compresses audio to exactly match SRT segment durations.\n🔹 pad_with_silence: Places natural audio at SRT start times, padding gaps with silence. May result in overlaps.\n🔹 smart_natural: Intelligently adjusts timings within 'timing_tolerance', prioritizing natural audio and shifting subsequent segments. Applies stretch/shrink within limits if needed."
