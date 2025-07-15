@@ -94,14 +94,6 @@ class F5TTSEditNode(BaseF5TTSNode):
                     "default": 0.8, "min": 0.1, "max": 2.0, "step": 0.1,
                     "tooltip": "Controls randomness in F5-TTS generation. Higher values = more creative/varied speech, lower values = more consistent/predictable speech."
                 }),
-                "speed": ("FLOAT", {
-                    "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1,
-                    "tooltip": "F5-TTS native speech speed control. 1.0 = normal speed, 0.5 = half speed (slower), 2.0 = double speed (faster)."
-                }),
-                "target_rms": ("FLOAT", {
-                    "default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01,
-                    "tooltip": "Target audio volume level (Root Mean Square). Controls output loudness normalization. Higher values = louder audio output."
-                }),
                 "nfe_step": ("INT", {
                     "default": 32, "min": 1, "max": 71,
                     "tooltip": "Neural Function Evaluation steps for F5-TTS inference. Higher values = better quality but slower generation. 32 is a good balance. Values above 71 may cause ODE solver issues."
@@ -169,8 +161,8 @@ class F5TTSEditNode(BaseF5TTSNode):
         return self.edit_engine
     
     def edit_speech(self, original_audio, original_text, target_text, edit_regions, 
-                   device, model, seed, edit_options=None, fix_durations="", temperature=0.8, speed=1.0, 
-                   target_rms=0.1, nfe_step=32, cfg_strength=2.0, sway_sampling_coef=-1.0, 
+                   device, model, seed, edit_options=None, fix_durations="", temperature=0.8, 
+                   nfe_step=32, cfg_strength=2.0, sway_sampling_coef=-1.0, 
                    ode_method="euler"):
         
         def _process():
@@ -178,8 +170,8 @@ class F5TTSEditNode(BaseF5TTSNode):
             inputs = self.validate_inputs(
                 original_audio=original_audio, original_text=original_text, target_text=target_text,
                 edit_regions=edit_regions, device=device, model=model, seed=seed,
-                fix_durations=fix_durations, temperature=temperature, speed=speed,
-                target_rms=target_rms, nfe_step=nfe_step, cfg_strength=cfg_strength,
+                fix_durations=fix_durations, temperature=temperature,
+                nfe_step=nfe_step, cfg_strength=cfg_strength,
                 sway_sampling_coef=sway_sampling_coef, ode_method=ode_method
             )
             
@@ -216,8 +208,6 @@ class F5TTSEditNode(BaseF5TTSNode):
                 edit_regions=edit_regions_parsed,
                 fix_durations=fix_durations_parsed,
                 temperature=inputs["temperature"],
-                speed=inputs["speed"],
-                target_rms=inputs["target_rms"],
                 nfe_step=inputs["nfe_step"],
                 cfg_strength=inputs["cfg_strength"],
                 sway_sampling_coef=inputs["sway_sampling_coef"],
