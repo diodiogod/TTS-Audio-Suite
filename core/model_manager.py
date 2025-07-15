@@ -8,25 +8,17 @@ import warnings
 import torch
 import folder_paths
 from typing import Optional, List, Tuple, Dict, Any
+from .import_manager import import_manager
 
-# Import management with fallbacks
-try:
-    from chatterbox.tts import ChatterboxTTS
-    from chatterbox.vc import ChatterboxVC
-    CHATTERBOX_TTS_AVAILABLE = True
-    CHATTERBOX_VC_AVAILABLE = True
-    USING_BUNDLED_CHATTERBOX = True
-except ImportError:
-    try:
-        from chatterbox.tts import ChatterboxTTS
-        from chatterbox.vc import ChatterboxVC
-        CHATTERBOX_TTS_AVAILABLE = True
-        CHATTERBOX_VC_AVAILABLE = True
-        USING_BUNDLED_CHATTERBOX = False
-    except ImportError:
-        CHATTERBOX_TTS_AVAILABLE = False
-        CHATTERBOX_VC_AVAILABLE = False
-        USING_BUNDLED_CHATTERBOX = False
+# Use ImportManager for robust dependency checking
+# Try imports first to populate availability status
+tts_success, ChatterboxTTS, tts_source = import_manager.import_chatterbox_tts()
+vc_success, ChatterboxVC, vc_source = import_manager.import_chatterbox_vc()
+
+# Set availability flags
+CHATTERBOX_TTS_AVAILABLE = tts_success
+CHATTERBOX_VC_AVAILABLE = vc_success
+USING_BUNDLED_CHATTERBOX = tts_source == "bundled" or vc_source == "bundled"
 
 
 class ModelManager:
