@@ -204,6 +204,19 @@ class AudioProcessingUtils:
         if len(segments) == 1:
             return segments[0]
         
+        # Normalize all segments to have consistent dimensions
+        normalized_segments = []
+        for segment in segments:
+            if segment.dim() == 1:
+                # Convert 1D to 2D: [samples] -> [1, samples]
+                segment = segment.unsqueeze(0)
+            elif segment.dim() == 2 and segment.shape[0] > segment.shape[1]:
+                # If shape is [samples, channels], transpose to [channels, samples]
+                segment = segment.transpose(0, 1)
+            normalized_segments.append(segment)
+        
+        segments = normalized_segments
+        
         if method == "simple":
             return torch.cat(segments, dim=-1)
         
@@ -213,12 +226,29 @@ class AudioProcessingUtils:
                 if silence_duration > 0:
                     silence = AudioProcessingUtils.create_silence(
                         silence_duration, sample_rate,
-                        channels=result.shape[0] if result.dim() == 2 else 1,
+                        channels=result.shape[0],
                         device=result.device,
                         dtype=result.dtype
                     )
-                    result = torch.cat([result, silence, segment], dim=-1)
+                    # Ensure all tensors have same dimensionality before concatenation
+                    tensors_to_cat = [result, silence, segment]
+                    normalized_tensors = []
+                    
+                    for tensor in tensors_to_cat:
+                        if tensor.dim() == 1:
+                            tensor = tensor.unsqueeze(0)
+                        elif tensor.dim() == 2 and tensor.shape[0] > tensor.shape[1]:
+                            tensor = tensor.transpose(0, 1)
+                        normalized_tensors.append(tensor)
+                    
+                    result = torch.cat(normalized_tensors, dim=-1)
                 else:
+                    # Ensure tensors have same dimensionality 
+                    if result.dim() != segment.dim():
+                        if result.dim() == 1:
+                            result = result.unsqueeze(0)
+                        if segment.dim() == 1:
+                            segment = segment.unsqueeze(0)
                     result = torch.cat([result, segment], dim=-1)
             return result
         
