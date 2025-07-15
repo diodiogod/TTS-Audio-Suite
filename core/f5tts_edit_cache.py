@@ -37,7 +37,7 @@ class F5TTSEditCache:
                           edit_regions: List[Tuple[float, float]], fix_durations: Optional[List[float]],
                           temperature: float, speed: float, target_rms: float, nfe_step: int,
                           cfg_strength: float, sway_sampling_coef: float, ode_method: str,
-                          model_name: str) -> str:
+                          model_name: str, cache_generation_only: bool = True) -> str:
         """
         Generate cache key for F5-TTS edit based on generation parameters
         

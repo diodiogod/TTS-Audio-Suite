@@ -16,11 +16,11 @@ class F5TTSEditOptionsNode:
             "required": {},
             "optional": {
                 "crossfade_duration_ms": ("INT", {
-                    "default": 50, "min": 0, "max": 500, "step": 10,
+                    "default": 100, "min": 0, "max": 500, "step": 10,
                     "tooltip": "Crossfade duration in milliseconds for smooth transitions between segments"
                 }),
                 "crossfade_curve": (["linear", "cosine", "exponential"], {
-                    "default": "linear",
+                    "default": "cosine",
                     "tooltip": "Crossfade curve type: linear (constant), cosine (smooth), exponential (sharp)"
                 }),
                 "adaptive_crossfade": ("BOOLEAN", {
@@ -34,6 +34,30 @@ class F5TTSEditOptionsNode:
                 "cache_size_limit": ("INT", {
                     "default": 100, "min": 10, "max": 1000,
                     "tooltip": "Maximum number of cached audio segments to store in memory"
+                }),
+                "boundary_volume_matching": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Automatically match volume levels at segment boundaries to reduce clicks/pops"
+                }),
+                "full_segment_normalization": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Normalize entire generated segments to match surrounding original audio RMS levels"
+                }),
+                "spectral_matching": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Apply EQ to match spectral characteristics of original audio (experimental)"
+                }),
+                "noise_floor_matching": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Add subtle noise to match the background noise level of original audio"
+                }),
+                "dynamic_range_compression": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Apply gentle compression to reduce volume spikes and make transitions smoother"
+                }),
+                "force_cache_clear": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Force clear cache for debugging (will regenerate F5-TTS audio)"
                 })
             }
         }
@@ -43,8 +67,11 @@ class F5TTSEditOptionsNode:
     FUNCTION = "create_options"
     CATEGORY = "F5-TTS Voice"
     
-    def create_options(self, crossfade_duration_ms=50, crossfade_curve="linear", 
-                      adaptive_crossfade=False, enable_cache=True, cache_size_limit=100):
+    def create_options(self, crossfade_duration_ms=100, crossfade_curve="cosine", 
+                      adaptive_crossfade=False, enable_cache=True, cache_size_limit=100,
+                      boundary_volume_matching=True, full_segment_normalization=True,
+                      spectral_matching=False, noise_floor_matching=False, 
+                      dynamic_range_compression=True, force_cache_clear=False):
         """Create F5-TTS edit options configuration"""
         
         options = {
@@ -52,7 +79,13 @@ class F5TTSEditOptionsNode:
             "crossfade_curve": crossfade_curve,
             "adaptive_crossfade": adaptive_crossfade,
             "enable_cache": enable_cache,
-            "cache_size_limit": cache_size_limit
+            "cache_size_limit": cache_size_limit,
+            "boundary_volume_matching": boundary_volume_matching,
+            "full_segment_normalization": full_segment_normalization,
+            "spectral_matching": spectral_matching,
+            "noise_floor_matching": noise_floor_matching,
+            "dynamic_range_compression": dynamic_range_compression,
+            "force_cache_clear": force_cache_clear
         }
         
         return (options,)
