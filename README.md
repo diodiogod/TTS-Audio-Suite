@@ -229,7 +229,8 @@ ComfyUI/models/F5-TTS/
 ```
 ComfyUI/models/voices/
 ├── character1.wav
-├── character1.txt          ← Contains: "Hello, I am character one speaking clearly."
+├── character1.reference.txt ← Contains: "Hello, I am character one speaking clearly."
+├── character1.txt          ← Contains: "BBC Radio sample, licensed under CC3..."
 ├── narrator.wav
 ├── narrator.txt            ← Contains: "This is the narrator voice for storytelling."
 ├── my_voice.wav
@@ -239,7 +240,7 @@ ComfyUI/models/voices/
 **Voice Reference Requirements:**
 - **Audio files**: WAV format, 5-30 seconds, clean speech, 24kHz recommended
 - **Text files**: Exact transcription of what's spoken in the audio file
-- **Naming**: `filename.wav` + `filename.txt` (same base name)
+- **Naming**: `filename.wav` + `filename.reference.txt` (preferred) or `filename.txt` (fallback)
 
 **Usage:**
 1. **Easy Method**: Select voice from `reference_audio_file` dropdown → text auto-detected
