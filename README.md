@@ -86,7 +86,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 2. **Download Models** (Required)
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
-   - Place in `ComfyUI/models/TTS/chatterbox/`
+   - Place in `ComfyUI/models/chatterbox/`
 
 3. **Try a Workflow**
    - Download: [ChatterBox Integration Workflow](example_workflows/Chatterbox%20integration.json)

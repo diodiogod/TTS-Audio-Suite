@@ -112,6 +112,27 @@ except (ImportError, FileNotFoundError, AttributeError):
         def error(self, error):
             raise ImportError("F5-TTS Edit support not available - missing required modules")
 
+# Load F5-TTS Edit OLD node conditionally
+try:
+    f5tts_edit_old_module = load_node_module("chatterbox_f5tts_edit_old_node", "f5tts_edit_node_old.py")
+    F5TTSEditNodeOld = f5tts_edit_old_module.F5TTSEditNodeOld
+    F5TTS_EDIT_OLD_SUPPORT_AVAILABLE = True
+except (ImportError, FileNotFoundError, AttributeError):
+    F5TTS_EDIT_OLD_SUPPORT_AVAILABLE = False
+    
+    # Create dummy F5-TTS Edit OLD node for compatibility
+    class F5TTSEditNodeOld:
+        @classmethod
+        def INPUT_TYPES(cls):
+            return {"required": {"error": ("STRING", {"default": "F5-TTS Edit OLD support not available"})}}
+        
+        RETURN_TYPES = ("STRING",)
+        FUNCTION = "error"
+        CATEGORY = "F5-TTS Voice"
+        
+        def error(self, error):
+            raise ImportError("F5-TTS Edit OLD support not available - missing required modules")
+
 # Load Audio Analyzer node conditionally
 try:
     audio_analyzer_module = load_node_module("chatterbox_audio_analyzer_node", "audio_analyzer_node.py")
@@ -153,6 +174,27 @@ except (ImportError, FileNotFoundError, AttributeError):
         
         def error(self, error):
             raise ImportError("Audio Analyzer Options support not available - missing required modules")
+
+# Load F5-TTS Edit Options node conditionally
+try:
+    f5tts_edit_options_module = load_node_module("chatterbox_f5tts_edit_options_node", "f5tts_edit_options_node.py")
+    F5TTSEditOptionsNode = f5tts_edit_options_module.F5TTSEditOptionsNode
+    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = True
+except (ImportError, FileNotFoundError, AttributeError):
+    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = False
+    
+    # Create dummy F5-TTS Edit Options node for compatibility
+    class F5TTSEditOptionsNode:
+        @classmethod
+        def INPUT_TYPES(cls):
+            return {"required": {"error": ("STRING", {"default": "F5-TTS Edit Options support not available"})}}
+        
+        RETURN_TYPES = ("STRING",)
+        FUNCTION = "error"
+        CATEGORY = "F5-TTS Voice"
+        
+        def error(self, error):
+            raise ImportError("F5-TTS Edit Options support not available - missing required modules")
 
 # Import foundation components for compatibility
 from core.import_manager import import_manager
@@ -280,6 +322,11 @@ if F5TTS_EDIT_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "👄 F5-TTS Speech Editor"
 
+# Add F5-TTS Edit OLD node if available
+if F5TTS_EDIT_OLD_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoiceOld"] = F5TTSEditNodeOld
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoiceOld"] = "👄 F5-TTS Speech Editor (OLD)"
+
 # Add Audio Analyzer node if available
 if AUDIO_ANALYZER_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzer"] = AudioAnalyzerNode
@@ -289,6 +336,11 @@ if AUDIO_ANALYZER_SUPPORT_AVAILABLE:
 if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = AudioAnalyzerOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🔧 Audio Wave Analyzer Options"
+
+# Add F5-TTS Edit Options node if available
+if F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditOptions"] = F5TTSEditOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditOptions"] = "🔧 F5-TTS Edit Options"
 
 # Print startup banner
 print(SEPARATOR)

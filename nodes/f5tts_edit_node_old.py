@@ -1,5 +1,5 @@
 """
-F5-TTS Edit Node - Speech editing functionality (OLD VERSION WITHOUT COMPOSITING)
+F5-TTS Edit Node - Speech editing functionality
 Enhanced Speech editing node using F5-TTS for targeted word/phrase replacement
 """
 
@@ -22,7 +22,8 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 # Load f5tts_base_node module directly
-f5tts_base_node_path = os.path.join(current_dir, "f5tts_base_node.py")
+nodes_dir = os.path.dirname(__file__)
+f5tts_base_node_path = os.path.join(nodes_dir, "f5tts_base_node.py")
 f5tts_base_spec = importlib.util.spec_from_file_location("f5tts_base_node_module", f5tts_base_node_path)
 f5tts_base_module = importlib.util.module_from_spec(f5tts_base_spec)
 sys.modules["f5tts_base_node_module"] = f5tts_base_module
@@ -37,8 +38,9 @@ import comfy.model_management as model_management
 
 class F5TTSEditNodeOld(BaseF5TTSNode):
     """
-    F5-TTS Speech editing node for targeted word/phrase replacement (OLD VERSION WITHOUT COMPOSITING).
+    F5-TTS Speech editing node for targeted word/phrase replacement.
     Allows editing specific words/phrases in existing speech while maintaining voice characteristics.
+    Original version without audio compositing for comparison.
     """
     
     @classmethod
@@ -245,83 +247,6 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
         torchaudio.save(temp_path, audio, sample_rate)
         return temp_path
     
-    def _composite_edited_audio(self, original_audio: torch.Tensor, generated_audio: torch.Tensor, 
-                               edit_regions: List[Tuple[float, float]], sample_rate: int, 
-                               crossfade_ms: int = 50) -> torch.Tensor:
-        """Composite edited audio by preserving original audio outside edit regions"""
-        # Ensure both audios are same shape
-        if original_audio.dim() > 1:
-            original_audio = torch.mean(original_audio, dim=0, keepdim=True)
-        if generated_audio.dim() > 1:
-            generated_audio = torch.mean(generated_audio, dim=0, keepdim=True)
-        
-        # Ensure same length (pad shorter one with zeros)
-        max_length = max(original_audio.shape[-1], generated_audio.shape[-1])
-        if original_audio.shape[-1] < max_length:
-            padding = max_length - original_audio.shape[-1]
-            original_audio = torch.cat([original_audio, torch.zeros(1, padding, device=original_audio.device)], dim=-1)
-        if generated_audio.shape[-1] < max_length:
-            padding = max_length - generated_audio.shape[-1]
-            generated_audio = torch.cat([generated_audio, torch.zeros(1, padding, device=generated_audio.device)], dim=-1)
-        
-        # Start with original audio
-        composite_audio = original_audio.clone()
-        
-        # Calculate crossfade samples
-        crossfade_samples = int(crossfade_ms * sample_rate / 1000)
-        
-        for start_time, end_time in edit_regions:
-            start_sample = int(start_time * sample_rate)
-            end_sample = int(end_time * sample_rate)
-            
-            # Ensure we don't go beyond audio bounds
-            start_sample = max(0, min(start_sample, max_length))
-            end_sample = max(start_sample, min(end_sample, max_length))
-            
-            if start_sample >= end_sample:
-                continue
-            
-            # Extract edited segment from generated audio
-            edited_segment = generated_audio[:, start_sample:end_sample]
-            
-            # Apply crossfade at boundaries to avoid clicks
-            if crossfade_samples > 0:
-                # Crossfade at start
-                if start_sample > 0:
-                    fade_start = max(0, start_sample - crossfade_samples)
-                    fade_length = start_sample - fade_start
-                    if fade_length > 0:
-                        # Create fade weights
-                        fade_out = torch.linspace(1.0, 0.0, fade_length, device=composite_audio.device)
-                        fade_in = torch.linspace(0.0, 1.0, fade_length, device=composite_audio.device)
-                        
-                        # Apply crossfade
-                        composite_audio[:, fade_start:start_sample] *= fade_out
-                        if fade_start < generated_audio.shape[-1]:
-                            gen_fade_end = min(start_sample, generated_audio.shape[-1])
-                            composite_audio[:, fade_start:gen_fade_end] += generated_audio[:, fade_start:gen_fade_end] * fade_in[:gen_fade_end-fade_start]
-                
-                # Crossfade at end
-                if end_sample < max_length:
-                    fade_end = min(max_length, end_sample + crossfade_samples)
-                    fade_length = fade_end - end_sample
-                    if fade_length > 0:
-                        # Create fade weights
-                        fade_out = torch.linspace(1.0, 0.0, fade_length, device=composite_audio.device)
-                        fade_in = torch.linspace(0.0, 1.0, fade_length, device=composite_audio.device)
-                        
-                        # Apply crossfade
-                        if end_sample < generated_audio.shape[-1]:
-                            gen_fade_start = end_sample
-                            gen_fade_end = min(fade_end, generated_audio.shape[-1])
-                            composite_audio[:, end_sample:gen_fade_end] *= fade_out[:gen_fade_end-end_sample]
-                            composite_audio[:, end_sample:gen_fade_end] += generated_audio[:, gen_fade_start:gen_fade_end] * fade_in[:gen_fade_end-end_sample]
-            
-            # Replace the main edit region
-            composite_audio[:, start_sample:end_sample] = edited_segment
-        
-        return composite_audio
-    
     def edit_speech(self, original_audio, original_text, target_text, edit_regions, 
                    device, model, seed, fix_durations="", temperature=0.8, speed=1.0, 
                    target_rms=0.1, nfe_step=32, cfg_strength=2.0, sway_sampling_coef=-1.0, 
@@ -381,7 +306,7 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
             total_duration = edited_audio.size(-1) / self.f5tts_sample_rate
             model_info = self.get_f5tts_model_info()
             edit_info = (f"Edited {total_duration:.1f}s audio with {len(edit_regions_parsed)} regions using F5-TTS "
-                        f"{model_info.get('model_name', 'unknown')} (OLD VERSION - NO COMPOSITING) - Original: '{inputs['original_text'][:50]}...' "
+                        f"{model_info.get('model_name', 'unknown')} - Original: '{inputs['original_text'][:50]}...' "
                         f"-> Target: '{inputs['target_text'][:50]}...'")
             
             # Return audio in ComfyUI format
@@ -563,8 +488,6 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
             if rms < target_rms:
                 audio = audio * target_rms / rms
             
-            # OLD VERSION: No compositing - just store audio normally
-            
             # Create edit mask and modified audio
             edited_audio, edit_mask = self._create_edit_mask_and_audio(
                 audio, edit_regions, fix_durations, target_sample_rate, hop_length
@@ -580,9 +503,9 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
             else:
                 final_text_list = text_list
             
-            print(f"[OLD VERSION] Original text: {original_text}")
-            print(f"[OLD VERSION] Target text: {target_text}")
-            print(f"[OLD VERSION] Edit regions: {edit_regions}")
+            print(f"Original text: {original_text}")
+            print(f"Target text: {target_text}")
+            print(f"Edit regions: {edit_regions}")
             
             # Calculate duration
             duration = edited_audio.shape[-1] // hop_length
@@ -605,7 +528,7 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
                     edit_mask=edit_mask,
                 )
                 
-                print(f"[OLD VERSION] Generated mel: {generated.shape}")
+                print(f"Generated mel: {generated.shape}")
                 
                 # Generate final audio
                 generated = generated.to(torch.float32)
@@ -625,8 +548,7 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
                     target_rms_cpu = target_rms.cpu() if hasattr(target_rms, 'device') else target_rms
                     generated_wave = generated_wave * rms_cpu / target_rms_cpu
                 
-                print(f"[OLD VERSION] Generated wave: {generated_wave.shape}")
-                print(f"[OLD VERSION] NO COMPOSITING - Returning generated audio directly")
+                print(f"Generated wave: {generated_wave.shape}")
                 
                 return generated_wave
                 
@@ -671,5 +593,7 @@ class F5TTSEditNodeOld(BaseF5TTSNode):
         return validated
 
 
-# Export alias for the OLD node
+# Node class mapping for ComfyUI registration
 ChatterBoxF5TTSEditVoiceOld = F5TTSEditNodeOld
+
+__all__ = ["ChatterBoxF5TTSEditVoiceOld"]
