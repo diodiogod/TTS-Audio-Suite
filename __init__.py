@@ -63,6 +63,14 @@ except AttributeError:
     F5TTS_EDIT_SUPPORT_AVAILABLE = False
     F5TTSEditNode = None
 
+# Import F5-TTS Edit OLD node if available
+try:
+    F5TTSEditNodeOld = nodes_module.F5TTSEditNodeOld
+    F5TTS_EDIT_OLD_SUPPORT_AVAILABLE = nodes_module.F5TTS_EDIT_OLD_SUPPORT_AVAILABLE
+except AttributeError:
+    F5TTS_EDIT_OLD_SUPPORT_AVAILABLE = False
+    F5TTSEditNodeOld = None
+
 # Import Audio Recorder node (now loaded from nodes.py)
 try:
     ChatterBoxVoiceCapture = nodes_module.ChatterBoxVoiceCapture
@@ -86,6 +94,14 @@ try:
 except AttributeError:
     AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = False
     AudioAnalyzerOptionsNode = None
+
+# Import F5-TTS Edit Options node if available
+try:
+    F5TTSEditOptionsNode = nodes_module.F5TTSEditOptionsNode
+    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = nodes_module.F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE
+except AttributeError:
+    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = False
+    F5TTSEditOptionsNode = None
 
 # Node class mappings for ComfyUI
 NODE_CLASS_MAPPINGS = {
@@ -119,6 +135,11 @@ if F5TTS_EDIT_SUPPORT_AVAILABLE and F5TTSEditNode is not None:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "👄 F5-TTS Speech Editor"
 
+# Add F5-TTS Edit OLD node if available
+if F5TTS_EDIT_OLD_SUPPORT_AVAILABLE and F5TTSEditNodeOld is not None:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoiceOld"] = F5TTSEditNodeOld
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoiceOld"] = "👄 F5-TTS Speech Editor (OLD)"
+
 # Add Audio Recorder if available
 if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
     NODE_CLASS_MAPPINGS["ChatterBoxVoiceCaptureDiogod"] = ChatterBoxVoiceCapture
@@ -133,6 +154,11 @@ if AUDIO_ANALYZER_SUPPORT_AVAILABLE and AudioAnalyzerNode is not None:
 if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE and AudioAnalyzerOptionsNode is not None:
     NODE_CLASS_MAPPINGS["AudioAnalyzerOptionsNode"] = AudioAnalyzerOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["AudioAnalyzerOptionsNode"] = "🔧 Audio Wave Analyzer Options"
+
+# Add F5-TTS Edit Options if available
+if F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE and F5TTSEditOptionsNode is not None:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditOptions"] = F5TTSEditOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditOptions"] = "🔧 F5-TTS Edit Options"
 
 # Extension info
 __version__ = VERSION_DISPLAY

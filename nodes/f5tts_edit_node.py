@@ -82,6 +82,9 @@ class F5TTSEditNode(BaseF5TTSNode):
                 }),
             },
             "optional": {
+                "edit_options": ("F5TTS_EDIT_OPTIONS", {
+                    "tooltip": "Optional advanced editing options"
+                }),
                 "fix_durations": ("STRING", {
                     "multiline": True,
                     "default": "1.2\n1.0",
@@ -166,7 +169,7 @@ class F5TTSEditNode(BaseF5TTSNode):
         return self.edit_engine
     
     def edit_speech(self, original_audio, original_text, target_text, edit_regions, 
-                   device, model, seed, fix_durations="", temperature=0.8, speed=1.0, 
+                   device, model, seed, edit_options=None, fix_durations="", temperature=0.8, speed=1.0, 
                    target_rms=0.1, nfe_step=32, cfg_strength=2.0, sway_sampling_coef=-1.0, 
                    ode_method="euler"):
         
@@ -219,15 +222,31 @@ class F5TTSEditNode(BaseF5TTSNode):
                 cfg_strength=inputs["cfg_strength"],
                 sway_sampling_coef=inputs["sway_sampling_coef"],
                 ode_method=inputs["ode_method"],
-                current_model_name=self.current_model_name
+                current_model_name=self.current_model_name,
+                edit_options=edit_options
             )
             
-            # Generate info
+            # Generate detailed info
             total_duration = edited_audio.size(-1) / self.f5tts_sample_rate
+            original_duration = audio_tensor.size(-1) / sample_rate
             model_info = self.get_f5tts_model_info()
-            edit_info = (f"Edited {total_duration:.1f}s audio with {len(edit_regions_parsed)} regions using F5-TTS "
-                        f"{model_info.get('model_name', 'unknown')} - Original: '{inputs['original_text'][:50]}...' "
-                        f"-> Target: '{inputs['target_text'][:50]}...' - Audio compositing: Enabled (preserves original quality outside edit regions)")
+            
+            # Build detailed edit region info
+            region_info = []
+            for i, (start, end) in enumerate(edit_regions_parsed):
+                if fix_durations_parsed and i < len(fix_durations_parsed):
+                    fixed_dur = fix_durations_parsed[i]
+                    region_info.append(f"Region {i+1}: {start:.2f}-{end:.2f}s (orig {end-start:.2f}s) -> fixed {fixed_dur:.2f}s")
+                else:
+                    region_info.append(f"Region {i+1}: {start:.2f}-{end:.2f}s ({end-start:.2f}s)")
+            
+            edit_info = (f"F5-TTS Edit Complete:\n"
+                        f"Duration: {original_duration:.1f}s -> {total_duration:.1f}s\n"
+                        f"Model: {model_info.get('model_name', 'unknown')}\n"
+                        f"Edit Regions ({len(edit_regions_parsed)}):\n" + "\n".join(region_info) + "\n"
+                        f"Original: '{inputs['original_text'][:80]}{'...' if len(inputs['original_text']) > 80 else ''}'\n"
+                        f"Target: '{inputs['target_text'][:80]}{'...' if len(inputs['target_text']) > 80 else ''}'\n"
+                        f"Audio Compositing: Enabled (preserves original quality outside edit regions)")
             
             # Return audio in ComfyUI format
             return (
