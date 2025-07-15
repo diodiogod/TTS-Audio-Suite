@@ -43,14 +43,28 @@ class F5TTSEditEngine:
             edit_options = {}
         
         enable_cache = edit_options.get("enable_cache", True)
-        crossfade_duration_ms = edit_options.get("crossfade_duration_ms", 50)
-        crossfade_curve = edit_options.get("crossfade_curve", "linear")
+        crossfade_duration_ms = edit_options.get("crossfade_duration_ms", 100)
+        crossfade_curve = edit_options.get("crossfade_curve", "cosine")
         adaptive_crossfade = edit_options.get("adaptive_crossfade", False)
         cache_size_limit = edit_options.get("cache_size_limit", 100)
+        boundary_volume_matching = edit_options.get("boundary_volume_matching", True)
+        full_segment_normalization = edit_options.get("full_segment_normalization", True)
+        spectral_matching = edit_options.get("spectral_matching", False)
+        noise_floor_matching = edit_options.get("noise_floor_matching", False)
+        dynamic_range_compression = edit_options.get("dynamic_range_compression", True)
         
         # Check cache if enabled
         cache = get_global_cache()
         cache.resize(cache_size_limit)
+        
+        # IMPORTANT: Cache stores RAW F5-TTS output, but we apply post-processing after
+        # So cache is valid regardless of post-processing options
+        print(f"🧠 CACHE INFO: Stores raw F5-TTS generation only, post-processing applied fresh each time")
+        
+        # For debugging - add option to force cache clear
+        if edit_options.get("force_cache_clear", False):
+            cache.clear()
+            print("🗑️ CACHE CLEARED due to force_cache_clear option")
         
         # Prepare audio for processing (needed for both cache and non-cache paths)
         # Convert to target sample rate if needed
@@ -71,12 +85,16 @@ class F5TTSEditEngine:
                 sway_sampling_coef, ode_method, current_model_name
             )
             if cached_result is not None:
-                # Apply compositing with potentially new crossfade settings
+                print(f"🔥 CACHE HIT! Using cached RAW F5-TTS result, applying fresh post-processing")
+                # Apply compositing with potentially new crossfade settings to CACHED RAW AUDIO
                 compositor = AudioCompositor()
                 return compositor.composite_edited_audio(
-                    original_audio_for_compositing.cpu(), cached_result, edit_regions, self.f5tts_sample_rate,
-                    crossfade_duration_ms, crossfade_curve, adaptive_crossfade
+                    original_audio_for_compositing.cpu(), cached_result.clone(), edit_regions, self.f5tts_sample_rate,
+                    crossfade_duration_ms, crossfade_curve, adaptive_crossfade, boundary_volume_matching,
+                    full_segment_normalization, spectral_matching, noise_floor_matching, dynamic_range_compression
                 )
+            else:
+                print(f"💾 CACHE MISS - Generating F5-TTS audio (cache size: {len(cache.cache)})")
         
         try:
             # Import F5-TTS modules
@@ -109,8 +127,22 @@ class F5TTSEditEngine:
             win_length = model_cfg.model.mel_spec.win_length
             n_fft = model_cfg.model.mel_spec.n_fft
             
-            # Load checkpoint
-            ckpt_path = str(cached_path(f"hf://SWivid/F5-TTS/{exp_name}/model_{ckpt_step}.safetensors"))
+            # Load checkpoint with graceful error handling for E2TTS
+            try:
+                ckpt_path = str(cached_path(f"hf://SWivid/F5-TTS/{exp_name}/model_{ckpt_step}.safetensors"))
+            except Exception as e:
+                if "E2TTS_Base" in str(e) and "404" in str(e):
+                    raise RuntimeError(
+                        f"📥 E2TTS_Base model not found on HuggingFace.\n\n"
+                        f"🔧 SOLUTION: Download E2TTS_Base manually:\n"
+                        f"1. Visit: https://github.com/SWivid/F5-TTS/releases\n"
+                        f"2. Download E2TTS_Base model files\n"
+                        f"3. Place in your F5-TTS models directory\n\n"
+                        f"💡 Alternative: Switch to F5TTS_v1_Base (works out of the box)\n\n"
+                        f"Original error: {e}"
+                    )
+                else:
+                    raise e
             
             # Load vocoder
             vocoder = load_vocoder(vocoder_name=mel_spec_type, is_local=False)
@@ -332,24 +364,30 @@ class F5TTSEditEngine:
                 print(f"Original edit regions: {edit_regions}")
                 print(f"Actual edit regions in generated audio: {actual_edit_regions}")
                 
-                # Cache the generated audio if caching is enabled
+                # Cache the CLEAN generated audio BEFORE any post-processing
                 if enable_cache:
                     cache.put(
-                        audio_tensor, generated_wave, original_text, target_text, edit_regions, fix_durations,
+                        audio_tensor, generated_wave.clone(), original_text, target_text, edit_regions, fix_durations,
                         temperature, speed, target_rms, nfe_step, cfg_strength,
                         sway_sampling_coef, ode_method, current_model_name
                     )
+                    print(f"💾 CACHED: Clean F5-TTS output (shape: {generated_wave.shape})")
                 
                 # Build composite audio with enhanced crossfade options
                 compositor = AudioCompositor()
                 composite_audio = compositor.composite_edited_audio(
                     original_audio_for_compositing.cpu(),
-                    generated_wave,
+                    generated_wave.clone(),  # Use clone to avoid modifying original
                     edit_regions,
                     target_sample_rate,
                     crossfade_duration_ms,
                     crossfade_curve,
-                    adaptive_crossfade
+                    adaptive_crossfade,
+                    boundary_volume_matching,
+                    full_segment_normalization,
+                    spectral_matching,
+                    noise_floor_matching,
+                    dynamic_range_compression
                 )
                 
                 print(f"Composite audio: {composite_audio.shape}")
