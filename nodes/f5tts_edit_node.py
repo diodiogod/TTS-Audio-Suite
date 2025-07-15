@@ -222,6 +222,7 @@ class F5TTSEditNode(BaseF5TTSNode):
                 cfg_strength=inputs["cfg_strength"],
                 sway_sampling_coef=inputs["sway_sampling_coef"],
                 ode_method=inputs["ode_method"],
+                seed=inputs["seed"],
                 current_model_name=self.current_model_name,
                 edit_options=edit_options
             )
