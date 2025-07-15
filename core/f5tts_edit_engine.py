@@ -33,7 +33,7 @@ class F5TTSEditEngine:
                           fix_durations: Optional[List[float]],
                           temperature: float, speed: float, target_rms: float,
                           nfe_step: int, cfg_strength: float, sway_sampling_coef: float,
-                          ode_method: str, current_model_name: str = "F5TTS_v1_Base",
+                          ode_method: str, seed: int, current_model_name: str = "F5TTS_v1_Base",
                           edit_options: Optional[dict] = None) -> torch.Tensor:
         """
         Perform F5-TTS speech editing - exact working implementation
@@ -82,7 +82,7 @@ class F5TTSEditEngine:
             cached_result = cache.get(
                 audio_tensor, original_text, target_text, edit_regions, fix_durations,
                 temperature, speed, target_rms, nfe_step, cfg_strength,
-                sway_sampling_coef, ode_method, current_model_name
+                sway_sampling_coef, ode_method, current_model_name, seed
             )
             if cached_result is not None:
                 print(f"🔥 CACHE HIT! Using cached RAW F5-TTS result, applying fresh post-processing")
@@ -369,7 +369,7 @@ class F5TTSEditEngine:
                     cache.put(
                         audio_tensor, generated_wave.clone(), original_text, target_text, edit_regions, fix_durations,
                         temperature, speed, target_rms, nfe_step, cfg_strength,
-                        sway_sampling_coef, ode_method, current_model_name
+                        sway_sampling_coef, ode_method, current_model_name, seed
                     )
                     print(f"💾 CACHED: Clean F5-TTS output (shape: {generated_wave.shape})")
                 

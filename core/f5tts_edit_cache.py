@@ -37,7 +37,7 @@ class F5TTSEditCache:
                           edit_regions: List[Tuple[float, float]], fix_durations: Optional[List[float]],
                           temperature: float, speed: float, target_rms: float, nfe_step: int,
                           cfg_strength: float, sway_sampling_coef: float, ode_method: str,
-                          model_name: str, cache_generation_only: bool = True) -> str:
+                          model_name: str, seed: int, cache_generation_only: bool = True) -> str:
         """
         Generate cache key for F5-TTS edit based on generation parameters
         
@@ -55,6 +55,7 @@ class F5TTSEditCache:
             sway_sampling_coef: Sway sampling coefficient
             ode_method: ODE solver method
             model_name: F5-TTS model name
+            seed: Random seed for generation
             
         Returns:
             MD5 hash string as cache key
@@ -72,7 +73,8 @@ class F5TTSEditCache:
             'cfg_strength': cfg_strength,
             'sway_sampling_coef': sway_sampling_coef,
             'ode_method': ode_method,
-            'model_name': model_name
+            'model_name': model_name,
+            'seed': seed
         }
         
         # Convert to string and sort for consistent hashing
@@ -98,7 +100,7 @@ class F5TTSEditCache:
             edit_regions: List[Tuple[float, float]], fix_durations: Optional[List[float]],
             temperature: float, speed: float, target_rms: float, nfe_step: int,
             cfg_strength: float, sway_sampling_coef: float, ode_method: str,
-            model_name: str) -> Optional[torch.Tensor]:
+            model_name: str, seed: int) -> Optional[torch.Tensor]:
         """
         Get cached audio if available
         
@@ -109,7 +111,7 @@ class F5TTSEditCache:
         cache_key = self._generate_cache_key(
             audio_hash, original_text, target_text, edit_regions, fix_durations,
             temperature, speed, target_rms, nfe_step, cfg_strength, 
-            sway_sampling_coef, ode_method, model_name
+            sway_sampling_coef, ode_method, model_name, seed
         )
         
         if cache_key in self.cache:
@@ -126,7 +128,7 @@ class F5TTSEditCache:
             original_text: str, target_text: str, edit_regions: List[Tuple[float, float]],
             fix_durations: Optional[List[float]], temperature: float, speed: float,
             target_rms: float, nfe_step: int, cfg_strength: float, 
-            sway_sampling_coef: float, ode_method: str, model_name: str) -> None:
+            sway_sampling_coef: float, ode_method: str, model_name: str, seed: int) -> None:
         """
         Cache generated audio
         
@@ -139,7 +141,7 @@ class F5TTSEditCache:
         cache_key = self._generate_cache_key(
             audio_hash, original_text, target_text, edit_regions, fix_durations,
             temperature, speed, target_rms, nfe_step, cfg_strength,
-            sway_sampling_coef, ode_method, model_name
+            sway_sampling_coef, ode_method, model_name, seed
         )
         
         # Add to cache
