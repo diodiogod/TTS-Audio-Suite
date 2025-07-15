@@ -1,9 +1,11 @@
 """
 Audio compositing utilities for F5-TTS editing.
 Exact working implementation extracted from f5tts_edit_node.py
+Enhanced with configurable crossfade curves and adaptive behavior
 """
 
 import torch
+import numpy as np
 from typing import List, Tuple, Optional
 import torchaudio
 
@@ -12,9 +14,35 @@ class AudioCompositor:
     """Handles compositing of edited audio with original audio to preserve quality."""
     
     @staticmethod
+    def _apply_crossfade_curve(fade_length: int, curve_type: str, device) -> torch.Tensor:
+        """Generate crossfade weights based on curve type"""
+        if curve_type == "linear":
+            return torch.linspace(0.0, 1.0, fade_length, device=device)
+        elif curve_type == "cosine":
+            t = torch.linspace(0, np.pi/2, fade_length, device=device)
+            return torch.sin(t)
+        elif curve_type == "exponential":
+            t = torch.linspace(0, 1, fade_length, device=device)
+            return t ** 2
+        else:
+            # Default to linear if unknown curve type
+            return torch.linspace(0.0, 1.0, fade_length, device=device)
+    
+    @staticmethod
+    def _calculate_adaptive_crossfade(segment_duration: float, base_crossfade_ms: int) -> int:
+        """Calculate adaptive crossfade duration based on segment size"""
+        if segment_duration < 0.5:  # Very short segments
+            return min(int(segment_duration * 1000 * 0.3), base_crossfade_ms * 2)
+        elif segment_duration < 1.0:  # Short segments  
+            return min(int(segment_duration * 1000 * 0.2), base_crossfade_ms * 1.5)
+        else:  # Normal segments
+            return base_crossfade_ms
+    
+    @staticmethod
     def composite_edited_audio(original_audio: torch.Tensor, generated_audio: torch.Tensor, 
                               edit_regions: List[Tuple[float, float]], sample_rate: int, 
-                              crossfade_ms: int = 50) -> torch.Tensor:
+                              crossfade_duration_ms: int = 50, crossfade_curve: str = "linear",
+                              adaptive_crossfade: bool = False) -> torch.Tensor:
         """Composite edited audio by preserving original audio outside edit regions"""
         # Ensure both audios are same shape
         if original_audio.dim() > 1:
@@ -34,10 +62,16 @@ class AudioCompositor:
         # Start with original audio
         composite_audio = original_audio.clone()
         
-        # Calculate crossfade samples
-        crossfade_samples = int(crossfade_ms * sample_rate / 1000)
-        
         for start_time, end_time in edit_regions:
+            # Calculate adaptive crossfade if enabled
+            if adaptive_crossfade:
+                segment_duration = end_time - start_time
+                adaptive_crossfade_ms = AudioCompositor._calculate_adaptive_crossfade(segment_duration, crossfade_duration_ms)
+            else:
+                adaptive_crossfade_ms = crossfade_duration_ms
+            
+            # Calculate crossfade samples
+            crossfade_samples = int(adaptive_crossfade_ms * sample_rate / 1000)
             start_sample = int(start_time * sample_rate)
             end_sample = int(end_time * sample_rate)
             
@@ -58,9 +92,9 @@ class AudioCompositor:
                     fade_start = max(0, start_sample - crossfade_samples)
                     fade_length = start_sample - fade_start
                     if fade_length > 0:
-                        # Create fade weights
-                        fade_out = torch.linspace(1.0, 0.0, fade_length, device=composite_audio.device)
-                        fade_in = torch.linspace(0.0, 1.0, fade_length, device=composite_audio.device)
+                        # Create fade weights using specified curve
+                        fade_out = 1.0 - AudioCompositor._apply_crossfade_curve(fade_length, crossfade_curve, composite_audio.device)
+                        fade_in = AudioCompositor._apply_crossfade_curve(fade_length, crossfade_curve, composite_audio.device)
                         
                         # Apply crossfade
                         composite_audio[:, fade_start:start_sample] *= fade_out
@@ -73,9 +107,9 @@ class AudioCompositor:
                     fade_end = min(max_length, end_sample + crossfade_samples)
                     fade_length = fade_end - end_sample
                     if fade_length > 0:
-                        # Create fade weights
-                        fade_out = torch.linspace(1.0, 0.0, fade_length, device=composite_audio.device)
-                        fade_in = torch.linspace(0.0, 1.0, fade_length, device=composite_audio.device)
+                        # Create fade weights using specified curve
+                        fade_out = 1.0 - AudioCompositor._apply_crossfade_curve(fade_length, crossfade_curve, composite_audio.device)
+                        fade_in = AudioCompositor._apply_crossfade_curve(fade_length, crossfade_curve, composite_audio.device)
                         
                         # Apply crossfade
                         if end_sample < generated_audio.shape[-1]:
