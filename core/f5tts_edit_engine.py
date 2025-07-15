@@ -52,6 +52,18 @@ class F5TTSEditEngine:
         cache = get_global_cache()
         cache.resize(cache_size_limit)
         
+        # Prepare audio for processing (needed for both cache and non-cache paths)
+        # Convert to target sample rate if needed
+        if sample_rate != self.f5tts_sample_rate:
+            # Resample audio to F5-TTS expected sample rate
+            resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=self.f5tts_sample_rate)
+            audio = resampler(audio_tensor)
+        else:
+            audio = audio_tensor
+        
+        # Keep a copy for compositing
+        original_audio_for_compositing = audio.clone()
+        
         if enable_cache:
             cached_result = cache.get(
                 audio_tensor, original_text, target_text, edit_regions, fix_durations,
@@ -62,7 +74,7 @@ class F5TTSEditEngine:
                 # Apply compositing with potentially new crossfade settings
                 compositor = AudioCompositor()
                 return compositor.composite_edited_audio(
-                    audio_tensor, cached_result, edit_regions, self.f5tts_sample_rate,
+                    original_audio_for_compositing.cpu(), cached_result, edit_regions, self.f5tts_sample_rate,
                     crossfade_duration_ms, crossfade_curve, adaptive_crossfade
                 )
         
@@ -205,8 +217,8 @@ class F5TTSEditEngine:
             dtype = torch.float32 if mel_spec_type == "bigvgan" else None
             model = load_checkpoint(model, ckpt_path, self.device, dtype=dtype, use_ema=True)
             
-            # Prepare audio - ensure consistent dimensions
-            audio = audio_tensor.to(self.device)
+            # Use prepared audio from above
+            audio = audio.to(self.device)
             
             # Handle different input formats - ensure we have 2D tensor [channels, samples]
             if audio.dim() == 3:  # [batch, channels, samples]
@@ -217,11 +229,6 @@ class F5TTSEditEngine:
             # Convert to mono if stereo
             if audio.dim() > 1 and audio.shape[0] > 1:
                 audio = torch.mean(audio, dim=0, keepdim=True)
-            
-            # Resample if necessary
-            if sample_rate != target_sample_rate:
-                resampler = torchaudio.transforms.Resample(sample_rate, target_sample_rate).to(self.device)
-                audio = resampler(audio)
             
             # Normalize RMS
             rms = torch.sqrt(torch.mean(torch.square(audio)))
