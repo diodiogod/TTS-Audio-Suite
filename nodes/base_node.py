@@ -216,7 +216,7 @@ class BaseChatterBoxNode:
         return {
             "required": {
                 "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 2**32 - 1}),
+                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1, "control_after_generate": "fixed"}),
             },
             "optional": {
                 "reference_audio": ("AUDIO", {"tooltip": "Optional reference audio for voice cloning"}),
