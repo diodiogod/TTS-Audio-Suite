@@ -57,6 +57,10 @@ class F5TTSEditOptionsNode:
                     "default": True,
                     "tooltip": "EXPERIMENTAL: Apply gentle compression to reduce volume spikes and make transitions smoother"
                 }),
+                "post_rms_normalization": ("FLOAT", {
+                    "default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01,
+                    "tooltip": "Post-processing RMS normalization level. Applied after F5-TTS generation to normalize generated segments volume (does not affect original segments)."
+                }),
                 "force_cache_clear": ("BOOLEAN", {
                     "default": False,
                     "tooltip": "Force clear cache for debugging (will regenerate F5-TTS audio)"
@@ -73,7 +77,8 @@ class F5TTSEditOptionsNode:
                       adaptive_crossfade=False, enable_cache=True, cache_size_limit=100,
                       boundary_volume_matching=True, full_segment_normalization=True,
                       spectral_matching=False, noise_floor_matching=False, 
-                      dynamic_range_compression=True, force_cache_clear=False):
+                      dynamic_range_compression=True, post_rms_normalization=0.1, 
+                      force_cache_clear=False):
         """Create F5-TTS edit options configuration"""
         
         options = {
@@ -87,6 +92,7 @@ class F5TTSEditOptionsNode:
             "spectral_matching": spectral_matching,
             "noise_floor_matching": noise_floor_matching,
             "dynamic_range_compression": dynamic_range_compression,
+            "post_rms_normalization": post_rms_normalization,
             "force_cache_clear": force_cache_clear
         }
         

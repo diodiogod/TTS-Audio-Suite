@@ -31,7 +31,7 @@ class F5TTSEditEngine:
                           original_text: str, target_text: str,
                           edit_regions: List[Tuple[float, float]],
                           fix_durations: Optional[List[float]],
-                          temperature: float, speed: float, target_rms: float,
+                          temperature: float,
                           nfe_step: int, cfg_strength: float, sway_sampling_coef: float,
                           ode_method: str, seed: int, current_model_name: str = "F5TTS_v1_Base",
                           edit_options: Optional[dict] = None) -> torch.Tensor:
@@ -52,6 +52,7 @@ class F5TTSEditEngine:
         spectral_matching = edit_options.get("spectral_matching", False)
         noise_floor_matching = edit_options.get("noise_floor_matching", False)
         dynamic_range_compression = edit_options.get("dynamic_range_compression", True)
+        post_rms_normalization = edit_options.get("post_rms_normalization", 0.1)
         
         # Check cache if enabled
         cache = get_global_cache()
@@ -81,7 +82,7 @@ class F5TTSEditEngine:
         if enable_cache:
             cached_result = cache.get(
                 audio_tensor, original_text, target_text, edit_regions, fix_durations,
-                temperature, speed, target_rms, nfe_step, cfg_strength,
+                temperature, nfe_step, cfg_strength,
                 sway_sampling_coef, ode_method, current_model_name, seed
             )
             if cached_result is not None:
@@ -287,13 +288,13 @@ class F5TTSEditEngine:
             if audio.dim() > 1 and audio.shape[0] > 1:
                 audio = torch.mean(audio, dim=0, keepdim=True)
             
-            # Normalize RMS
-            rms = torch.sqrt(torch.mean(torch.square(audio)))
-            if rms < target_rms:
-                audio = audio * target_rms / rms
-            
-            # Store original audio for compositing (after resampling and normalization)
+            # Store original audio for compositing (before RMS normalization to preserve original segments)
             original_audio_for_compositing = audio.clone()
+            
+            # Normalize RMS only for F5-TTS processing
+            rms = torch.sqrt(torch.mean(torch.square(audio)))
+            if rms < post_rms_normalization:
+                audio = audio * post_rms_normalization / rms
             
             # Create edit mask and modified audio
             edited_audio, edit_mask = EditMaskGenerator.create_edit_mask_and_audio(
@@ -349,11 +350,11 @@ class F5TTSEditEngine:
                     generated_wave = vocoder(gen_mel_spec).cpu()
                 
                 # Apply RMS correction
-                if rms < target_rms:
+                if rms < post_rms_normalization:
                     # Ensure all tensors are on the same device (CPU) for RMS correction
                     rms_cpu = rms.cpu() if hasattr(rms, 'device') else rms
-                    target_rms_cpu = target_rms.cpu() if hasattr(target_rms, 'device') else target_rms
-                    generated_wave = generated_wave * rms_cpu / target_rms_cpu
+                    post_rms_cpu = post_rms_normalization.cpu() if hasattr(post_rms_normalization, 'device') else post_rms_normalization
+                    generated_wave = generated_wave * rms_cpu / post_rms_cpu
                 
                 print(f"Generated wave: {generated_wave.shape}")
                 
@@ -393,7 +394,7 @@ class F5TTSEditEngine:
                 if enable_cache:
                     cache.put(
                         audio_tensor, generated_wave.clone(), original_text, target_text, edit_regions, fix_durations,
-                        temperature, speed, target_rms, nfe_step, cfg_strength,
+                        temperature, nfe_step, cfg_strength,
                         sway_sampling_coef, ode_method, current_model_name, seed
                     )
                     print(f"💾 CACHED: Clean F5-TTS output (shape: {generated_wave.shape})")
