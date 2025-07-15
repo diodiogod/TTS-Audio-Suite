@@ -86,12 +86,37 @@ class F5TTSEditEngine:
             )
             if cached_result is not None:
                 print(f"🔥 CACHE HIT! Using cached RAW F5-TTS result, applying fresh post-processing")
+                
+                # Calculate actual edit regions for cached result (same logic as below)
+                actual_edit_regions = []
+                generated_time_offset = 0
+                original_time_offset = 0
+                
+                for i, (start, end) in enumerate(edit_regions):
+                    if fix_durations and i < len(fix_durations):
+                        actual_duration = fix_durations[i]
+                    else:
+                        actual_duration = end - start
+                    
+                    preserved_duration = start - original_time_offset
+                    generated_time_offset += preserved_duration
+                    
+                    region_start = generated_time_offset
+                    region_end = generated_time_offset + actual_duration
+                    actual_edit_regions.append((region_start, region_end))
+                    
+                    generated_time_offset += actual_duration
+                    original_time_offset = end
+                
+                print(f"🔥 CACHE: Calculated actual edit regions: {actual_edit_regions}")
+                
                 # Apply compositing with potentially new crossfade settings to CACHED RAW AUDIO
                 compositor = AudioCompositor()
                 return compositor.composite_edited_audio(
                     original_audio_for_compositing.cpu(), cached_result.clone(), edit_regions, self.f5tts_sample_rate,
                     crossfade_duration_ms, crossfade_curve, adaptive_crossfade, boundary_volume_matching,
-                    full_segment_normalization, spectral_matching, noise_floor_matching, dynamic_range_compression
+                    full_segment_normalization, spectral_matching, noise_floor_matching, dynamic_range_compression,
+                    fix_durations
                 )
             else:
                 print(f"💾 CACHE MISS - Generating F5-TTS audio (cache size: {len(cache.cache)})")
@@ -373,12 +398,12 @@ class F5TTSEditEngine:
                     )
                     print(f"💾 CACHED: Clean F5-TTS output (shape: {generated_wave.shape})")
                 
-                # Build composite audio with enhanced crossfade options
+                # Build composite audio with enhanced crossfade options (unified approach)
                 compositor = AudioCompositor()
                 composite_audio = compositor.composite_edited_audio(
                     original_audio_for_compositing.cpu(),
                     generated_wave.clone(),  # Use clone to avoid modifying original
-                    edit_regions,
+                    edit_regions,  # Use original edit regions 
                     target_sample_rate,
                     crossfade_duration_ms,
                     crossfade_curve,
@@ -387,7 +412,8 @@ class F5TTSEditEngine:
                     full_segment_normalization,
                     spectral_matching,
                     noise_floor_matching,
-                    dynamic_range_compression
+                    dynamic_range_compression,
+                    fix_durations
                 )
                 
                 print(f"Composite audio: {composite_audio.shape}")
