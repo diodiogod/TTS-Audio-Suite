@@ -114,7 +114,7 @@ The audio will match these exact timings using F5-TTS.""",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
                 }),
                 "seed": ("INT", {
-                    "default": 1, "min": 0, "max": 2**32 - 1,
+                    "default": 1, "min": 0, "max": 2**32 - 1, "control_after_generate": "fixed",
                     "tooltip": "Seed for reproducible F5-TTS generation. Same seed with same inputs will produce identical results. Set to 0 for random generation."
                 }),
                 "timing_mode": (["stretch_to_fit", "pad_with_silence", "smart_natural"], {

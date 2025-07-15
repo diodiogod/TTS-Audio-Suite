@@ -71,7 +71,7 @@ class ChatterboxTTSNode(BaseTTSNode):
                     "max": 1.0, 
                     "step": 0.05
                 }),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 2**32 - 1}),
+                "seed": ("INT", {"default": 1, "min": 0, "max": 2**32 - 1, "control_after_generate": "fixed"}),
             },
             "optional": {
                 "reference_audio": ("AUDIO",),
