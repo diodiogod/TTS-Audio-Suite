@@ -44,20 +44,33 @@ class AudioCompositor:
                               crossfade_duration_ms: int = 50, crossfade_curve: str = "linear",
                               adaptive_crossfade: bool = False) -> torch.Tensor:
         """Composite edited audio by preserving original audio outside edit regions"""
-        # Ensure both audios are same shape
-        if original_audio.dim() > 1:
+        # Ensure both audios are same shape and 2D (1, samples)
+        if original_audio.dim() > 2:
             original_audio = torch.mean(original_audio, dim=0, keepdim=True)
-        if generated_audio.dim() > 1:
+        elif original_audio.dim() == 1:
+            original_audio = original_audio.unsqueeze(0)
+            
+        if generated_audio.dim() > 2:
+            generated_audio = torch.mean(generated_audio, dim=0, keepdim=True)
+        elif generated_audio.dim() == 1:
+            generated_audio = generated_audio.unsqueeze(0)
+        
+        # Further reduce to mono if needed
+        if original_audio.shape[0] > 1:
+            original_audio = torch.mean(original_audio, dim=0, keepdim=True)
+        if generated_audio.shape[0] > 1:
             generated_audio = torch.mean(generated_audio, dim=0, keepdim=True)
         
         # Ensure same length (pad shorter one with zeros)
         max_length = max(original_audio.shape[-1], generated_audio.shape[-1])
         if original_audio.shape[-1] < max_length:
             padding = max_length - original_audio.shape[-1]
-            original_audio = torch.cat([original_audio, torch.zeros(1, padding, device=original_audio.device)], dim=-1)
+            padding_tensor = torch.zeros(original_audio.shape[0], padding, device=original_audio.device)
+            original_audio = torch.cat([original_audio, padding_tensor], dim=-1)
         if generated_audio.shape[-1] < max_length:
             padding = max_length - generated_audio.shape[-1]
-            generated_audio = torch.cat([generated_audio, torch.zeros(1, padding, device=generated_audio.device)], dim=-1)
+            padding_tensor = torch.zeros(generated_audio.shape[0], padding, device=generated_audio.device)
+            generated_audio = torch.cat([generated_audio, padding_tensor], dim=-1)
         
         # Start with original audio
         composite_audio = original_audio.clone()
