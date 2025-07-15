@@ -108,7 +108,7 @@ def main():
         current_parts = list(map(int, current_version.split('.')))
         new_parts = list(map(int, args.version.split('.')))
         
-        if new_parts <= current_parts:
+        if tuple(new_parts) <= tuple(current_parts):
             print(f"Warning: New version {args.version} is not newer than current {current_version}")
             response = input("Continue anyway? (y/N): ")
             if response.lower() != 'y':

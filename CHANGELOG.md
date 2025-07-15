@@ -10,11 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix tensor dimension mismatch in audio concatenation for 5+ TTS chunks
-## [3.0.3] - 2025-07-15
-
-### Fixed
-
-- Fix tensor dimension mismatch in audio concatenation for 5+ TTS chunks
 ## [3.0.7] - 2025-07-15
 
 ### Added
