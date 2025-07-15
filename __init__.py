@@ -63,13 +63,6 @@ except AttributeError:
     F5TTS_EDIT_SUPPORT_AVAILABLE = False
     F5TTSEditNode = None
 
-# Import F5-TTS Edit OLD node if available
-try:
-    F5TTSEditNodeOld = nodes_module.F5TTSEditNodeOld
-    F5TTS_EDIT_OLD_SUPPORT_AVAILABLE = nodes_module.F5TTS_EDIT_OLD_SUPPORT_AVAILABLE
-except AttributeError:
-    F5TTS_EDIT_OLD_SUPPORT_AVAILABLE = False
-    F5TTSEditNodeOld = None
 
 # Import Audio Recorder node (now loaded from nodes.py)
 try:
@@ -135,10 +128,6 @@ if F5TTS_EDIT_SUPPORT_AVAILABLE and F5TTSEditNode is not None:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "👄 F5-TTS Speech Editor"
 
-# Add F5-TTS Edit OLD node if available
-if F5TTS_EDIT_OLD_SUPPORT_AVAILABLE and F5TTSEditNodeOld is not None:
-    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoiceOld"] = F5TTSEditNodeOld
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoiceOld"] = "👄 F5-TTS Speech Editor (OLD)"
 
 # Add Audio Recorder if available
 if AUDIO_RECORDER_AVAILABLE and ChatterBoxVoiceCapture is not None:
