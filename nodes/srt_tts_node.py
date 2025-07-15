@@ -342,7 +342,7 @@ The audio will match these exact timings.""",
                                      subtitles: List, sample_rate: int) -> torch.Tensor:
         """Assemble audio by placing segments at their SRT start times, allowing overlaps."""
         # Delegate to audio assembly engine with EXACT original logic
-        from srt.audio_assembly import AudioAssemblyEngine
+        from chatterbox_srt.audio_assembly import AudioAssemblyEngine
         assembler = AudioAssemblyEngine(sample_rate)
         return assembler.assemble_with_overlaps(audio_segments, subtitles, self.device)
     
@@ -365,8 +365,8 @@ The audio will match these exact timings.""",
             print("Smart natural mode: Using Phase Vocoder stretcher")
         
         # Delegate to timing engine for complex calculations
-        from srt.timing_engine import TimingEngine
-        from srt.audio_assembly import AudioAssemblyEngine
+        from chatterbox_srt.timing_engine import TimingEngine
+        from chatterbox_srt.audio_assembly import AudioAssemblyEngine
         
         timing_engine = TimingEngine(sample_rate)
         assembler = AudioAssemblyEngine(sample_rate)
@@ -384,13 +384,13 @@ The audio will match these exact timings.""",
     def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate detailed timing report."""
         # Delegate to reporting module
-        from srt.reporting import SRTReportGenerator
+        from chatterbox_srt.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
         return reporter.generate_timing_report(subtitles, adjustments, timing_mode)
     
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings."""
         # Delegate to reporting module
-        from srt.reporting import SRTReportGenerator
+        from chatterbox_srt.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
         return reporter.generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
