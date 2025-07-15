@@ -1,7 +1,7 @@
 [project]
 name = "chatterbox_srt_voice"
 description = "ChatterBox SRT Voice TTS Node is a fork of 'ChatteBox Voice' with additional devolpments and full F5-TTS implementation as well. I introduced a SRT node designed to help you synchronize your generated TTS audio with `.srt` subtitle files. Audio wave analyzer will help you find speech segments for f5 speech edit and much more!"
-version = "3.0.4"
+version = "3.0.5"
 license = {file = "LICENSE"}
 dependencies = ["s3tokenizer>=0.1.7", "resemble-perth", "librosa", "scipy", "omegaconf", "accelerate", "transformers==4.46.3", "# Additional dependencies for SRT support and audio processing", "conformer>=0.3.2", "torch", "torchaudio", "numpy", "einops", "phonemizer", "g2p-en", "unidecode", "# Audio processing and timing dependencies", "soundfile", "resampy", "webrtcvad", "# Optional but recommended for better performance", "numba"]
 
