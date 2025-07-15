@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.6] - 2025-07-15
+
+### Fixed
+
+- Fix SRT package naming conflict - resolves issue #2
+- Rename internal 'srt' package to 'chatterbox_srt' to avoid conflict with PyPI srt library
+
+### Changed
+
+- Update all imports in nodes/srt_tts_node.py and nodes/f5tts_srt_node.py
 ## [3.0.5] - 2025-07-14
 
 ### Fixed

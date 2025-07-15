@@ -28,7 +28,7 @@ class VersionManager:
                 'pattern': r'version = "(\d+\.\d+\.\d+)"',
                 'template': 'version = "{version}"'
             },
-            'srt/__init__.py': {
+            'chatterbox_srt/__init__.py': {
                 'pattern': r'__version__ = "(\d+\.\d+\.\d+)"',
                 'template': '__version__ = "{version}"'
             },
