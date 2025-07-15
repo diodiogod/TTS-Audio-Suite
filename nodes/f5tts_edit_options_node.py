@@ -8,6 +8,8 @@ class F5TTSEditOptionsNode:
     """
     🔧 F5-TTS Edit Options
     Advanced configuration options for F5-TTS Speech Editor
+    
+    Crossfade options are stable. Post-processing options are experimental.
     """
     
     @classmethod
@@ -37,23 +39,23 @@ class F5TTSEditOptionsNode:
                 }),
                 "boundary_volume_matching": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Automatically match volume levels at segment boundaries to reduce clicks/pops"
+                    "tooltip": "EXPERIMENTAL: Automatically match volume levels at segment boundaries to reduce clicks/pops"
                 }),
                 "full_segment_normalization": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Normalize entire generated segments to match surrounding original audio RMS levels"
+                    "tooltip": "EXPERIMENTAL: Normalize entire generated segments to match surrounding original audio RMS levels"
                 }),
                 "spectral_matching": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Apply EQ to match spectral characteristics of original audio (experimental)"
+                    "tooltip": "EXPERIMENTAL: Apply EQ to match spectral characteristics of original audio"
                 }),
                 "noise_floor_matching": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Add subtle noise to match the background noise level of original audio"
+                    "tooltip": "EXPERIMENTAL: Add subtle noise to match the background noise level of original audio"
                 }),
                 "dynamic_range_compression": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Apply gentle compression to reduce volume spikes and make transitions smoother"
+                    "tooltip": "EXPERIMENTAL: Apply gentle compression to reduce volume spikes and make transitions smoother"
                 }),
                 "force_cache_clear": ("BOOLEAN", {
                     "default": False,
