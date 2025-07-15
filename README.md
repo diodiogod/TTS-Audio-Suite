@@ -158,7 +158,7 @@ If FFmpeg is not available, ChatterBox will automatically fall back to using the
 **Download the ChatterboxTTS models** and place them in:
 
 ```
-ComfyUI/models/TTS/chatterbox/
+ComfyUI/models/chatterbox/
 ```
 
 **Required files:**
