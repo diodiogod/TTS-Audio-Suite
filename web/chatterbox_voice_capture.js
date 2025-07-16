@@ -5,7 +5,7 @@ import { app } from "../../scripts/app.js";
 app.registerExtension({
     name: "ChatterBoxVoiceCapture.UI",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name === "ChatterBoxVoiceCapture") {
+        if (nodeData.name === "ChatterBoxVoiceCaptureDiogod") {
             
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function() {
