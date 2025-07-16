@@ -27,6 +27,7 @@ scipy
 omegaconf
 accelerate
 transformers==4.46.3
+diffusers
 
 # Additional dependencies for SRT support and audio processing
 conformer>=0.3.2
