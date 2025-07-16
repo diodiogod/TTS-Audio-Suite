@@ -242,10 +242,6 @@ ComfyUI/models/voices/
 - **Text files**: Exact transcription of what's spoken in the audio file
 - **Naming**: `filename.wav` + `filename.reference.txt` (preferred) or `filename.txt` (fallback)
 
-**Usage:**
-1. **Easy Method**: Select voice from `reference_audio_file` dropdown → text auto-detected
-2. **Manual Method**: Set `reference_audio_file` to "none" → connect `opt_reference_audio` + `opt_reference_text` inputs
-
 ### 7. Restart ComfyUI
 
 ## Enhanced Features
@@ -327,6 +323,17 @@ ComfyUI/models/voices/
 2. Enter your target text (any length - automatic chunking)
 3. **Required**: Connect reference audio for voice cloning
 4. **Required**: Enter reference text that matches the reference audio exactly
+
+<details>
+<summary>📖 Voice Reference Setup Options</summary>
+
+**Two ways to provide voice references:**
+
+1. **Easy Method**: Select voice from `reference_audio_file` dropdown → text auto-detected from companion `.txt` file
+2. **Manual Method**: Set `reference_audio_file` to "none" → connect `opt_reference_audio` + `opt_reference_text` inputs
+
+</details>
+
 5. Select F5-TTS model:
    - **F5TTS_Base**: English base model (recommended)
    - **F5TTS_v1_Base**: English v1 model
