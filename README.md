@@ -369,7 +369,7 @@ ComfyUI/models/voices/
 
 | Workflow | Description | Status |
 |----------|-------------|--------|
-| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | 🚧 **Coming Soon** |
+| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) • 🖼️ **Screenshot Coming Soon** |
 | **F5-TTS SRT Workflows** | F5-TTS integration with SRT subtitle processing | 🚧 **Coming Soon** |
 
 > **Note:** To use workflows, download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with the proper node connections.
