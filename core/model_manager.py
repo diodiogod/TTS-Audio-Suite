@@ -14,10 +14,12 @@ from .import_manager import import_manager
 # Try imports first to populate availability status
 tts_success, ChatterboxTTS, tts_source = import_manager.import_chatterbox_tts()
 vc_success, ChatterboxVC, vc_source = import_manager.import_chatterbox_vc()
+f5tts_success, F5TTS, f5tts_source = import_manager.import_f5tts()
 
 # Set availability flags
 CHATTERBOX_TTS_AVAILABLE = tts_success
 CHATTERBOX_VC_AVAILABLE = vc_success
+F5TTS_AVAILABLE = f5tts_success
 USING_BUNDLED_CHATTERBOX = tts_source == "bundled" or vc_source == "bundled"
 
 

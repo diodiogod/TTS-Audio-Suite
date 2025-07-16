@@ -6,20 +6,26 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.0.11
+# ComfyUI ChatterBox SRT Voice (diogod) v3.0.12
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
+<div align="center">
+  <img src="images/AllNodesShowcase.png" alt="ComfyUI ChatterBox Voice Nodes Showcase" />
+</div>
+
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length and with a node specially made for dealing with SRT timings.
 
-## 🆕 What's New in v3.0+
+## 🆕 What's New in my Project?
 
 ### SRT Timing and TTS Node
-![SRT Node Screenshot](images/srt.png)
+
+<img title="" src="images/srt.png" alt="SRT Node Screenshot" width="500" data-align="center">
 
 The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT content (SubRip Subtitle) files, ensuring precise timing and synchronization with your audio.
 
 **Key SRT Features:**
+
 * **SRT style Processing**: Uses SRT style to generate TTS, aligning audio with subtitle timings
 * **`smart_natural` Timing Mode**: Intelligent shifting logic that prevents overlaps and ensures natural speech flow
 * **`Adjusted_SRT` Output**: Provides actual timings for generated audio for accurate post-processing
@@ -32,24 +38,14 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 </details>
 
-### F5-TTS Integration and Audio Analyzer
-![F5-TTS and Audio Analyzer](images/f5_tts_audio_analyzer_screenshot.png)
-> 📸 **Placeholder image** - Screenshot coming soon
+### 🆕 F5-TTS Integration and 🆕 Audio Analyzer
+
+<img title="" src="images/waveanalgif.gif" alt="Audio Wave gif" width="500" data-align="center">
 
 * **F5-TTS Voice Synthesis**: High-quality voice cloning with reference audio + text
 * **Audio Wave Analyzer**: Interactive waveform visualization for precise timing extraction
 * **Multi-language Support**: English, German, Spanish, French, Japanese models
-* **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
-
-### Enhanced ChatterBox TTS
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c" width="45%" alt="ChatterBox TTS Nodes" />
-  <img src="https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe" width="45%" alt="ChatterBox Voice Capture" />
-</div>
-
-* **Voice Recording**: Smart silence detection for voice capture
-* **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
-* **Unlimited Text Length**: No character limits with smart processing
+* **Speech Editing Workflows**: Advanced F5-TTS editing capabilities 
 
 ## 🎥 Demo Video
 
@@ -58,6 +54,17 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 </a>
 
 **[▶️ Watch Full Demo](https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s)**
+
+### [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice) ChatterBox TTS Nodes
+
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c" width="45%" alt="ChatterBox TTS Nodes" />
+  <img src="https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe" width="45%" alt="ChatterBox Voice Capture" />
+</div>
+
+* **Voice Recording**: Smart silence detection for voice capture
+* **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
+* **Unlimited Text Length**: No character limits with smart processing
 
 ## Features
 
@@ -78,6 +85,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 **Get running in 5 minutes:**
 
 1. **Clone & Install**
+   
    ```bash
    cd ComfyUI/custom_nodes
    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
@@ -85,10 +93,12 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
    ```
 
 2. **Download Models** (Required)
+   
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
    - Place in `ComfyUI/models/chatterbox/`
 
 3. **Try a Workflow**
+   
    - Download: [ChatterBox Integration Workflow](example_workflows/Chatterbox%20integration.json)
    - Drag into ComfyUI and start generating!
 
@@ -181,26 +191,29 @@ ComfyUI/models/F5-TTS/
 
 **Available F5-TTS Models:**
 
-| Model | Language | Download | Size |
-|-------|----------|----------|------|
-| **F5TTS_Base** | English | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base) | ~1.2GB |
-| **F5TTS_v1_Base** | English (v1) | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base) | ~1.2GB |
-| **E2TTS_Base** | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base) | ~1.2GB |
-| **F5-DE** | German | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German) | ~1.2GB |
-| **F5-ES** | Spanish | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish) | ~1.2GB |
-| **F5-FR** | French | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
-| **F5-JP** | Japanese | [HuggingFace](https://huggingface.co/Jmica/F5TTS) | ~1.2GB |
+| Model             | Language         | Download                                                                         | Size   |
+| ----------------- | ---------------- | -------------------------------------------------------------------------------- | ------ |
+| **F5TTS_Base**    | English          | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base)         | ~1.2GB |
+| **F5TTS_v1_Base** | English (v1)     | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base)      | ~1.2GB |
+| **E2TTS_Base**    | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base)         | ~1.2GB |
+| **F5-DE**         | German           | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German)                        | ~1.2GB |
+| **F5-ES**         | Spanish          | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish)                     | ~1.2GB |
+| **F5-FR**         | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
+| **F5-JP**         | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
 
 **Vocoder (Optional but Recommended):**
+
 ```
 ComfyUI/models/F5-TTS/vocos/
 ├── config.yaml
 ├── pytorch_model.bin
 └── vocab.txt
 ```
+
 Download from: [Vocos Mel-24kHz](https://huggingface.co/charactr/vocos-mel-24khz)
 
 **Complete Folder Structure:**
+
 ```
 ComfyUI/models/F5-TTS/
 ├── F5TTS_Base/
@@ -215,6 +228,7 @@ ComfyUI/models/F5-TTS/
 ```
 
 **Required Files for Each Model:**
+
 - `model_XXXXXX.safetensors` - The main model weights
 - `vocab.txt` - Vocabulary/tokenizer file (download from same HuggingFace repo)
 
@@ -238,6 +252,7 @@ ComfyUI/models/voices/
 ```
 
 **Voice Reference Requirements:**
+
 - **Audio files**: WAV format, 5-30 seconds, clean speech, 24kHz recommended
 - **Text files**: Exact transcription of what's spoken in the audio file
 - **Naming**: `filename.wav` + `filename.reference.txt` (preferred) or `filename.txt` (fallback)
@@ -360,17 +375,17 @@ ComfyUI/models/voices/
 
 ### Available Workflows
 
-| Workflow | Description | Files |
-|----------|-------------|-------|
-| **ChatterBox SRT** | SRT subtitle timing and TTS generation | [📁 JSON](example_workflows/Chatterbox%20SRT.json) • [🖼️ Preview](example_workflows/Chatterbox%20SRT.jpg) |
-| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion | [📁 JSON](example_workflows/Chatterbox%20integration.json) • [🖼️ Preview](example_workflows/Chatterbox%20integration.jpg) |
+| Workflow                   | Description                                 | Files                                                      |
+| -------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
+| **ChatterBox SRT**         | SRT subtitle timing and TTS generation      | [📁 JSON](example_workflows/Chatterbox%20SRT.json)         |
+| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion | [📁 JSON](example_workflows/Chatterbox%20integration.json) |
 
 ### Coming Soon (Placeholders)
 
-| Workflow | Description | Status |
-|----------|-------------|--------|
-| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) • 🖼️ **Screenshot Coming Soon** |
-| **F5-TTS SRT Workflows** | F5-TTS integration with SRT subtitle processing | 🚧 **Coming Soon** |
+| Workflow                                 | Description                                             | Status                                                                     |
+| ---------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
+| **F5-TTS SRT Workflows**                 | F5-TTS integration with SRT subtitle processing         | 🚧 **Coming Soon**                                                         |
 
 > **Note:** To use workflows, download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with the proper node connections.
 

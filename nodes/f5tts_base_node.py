@@ -84,14 +84,14 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         self.device = device
         
         # Check if we need to reload
-        if not force_reload and self.f5tts_model is not None:
+        if not force_reload and self.f5tts_model is not None and getattr(self, 'current_model_name', None) == model_name:
             return self.f5tts_model
         
         try:
             from chatterbox.f5tts import ChatterBoxF5TTS
             
             # Try to find local models first
-            model_paths = self._find_f5tts_models()
+            model_paths = self._find_f5tts_models(model_name)
             
             model_loaded = False
             last_error = None
@@ -119,6 +119,8 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                     error_msg += f". Last error: {last_error}"
                 raise RuntimeError(error_msg)
             
+            # Store current model name for cache validation
+            self.current_model_name = model_name
             return self.f5tts_model
             
         except ImportError:
@@ -126,11 +128,11 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         except Exception as e:
             raise RuntimeError(f"Failed to load F5-TTS model: {e}")
     
-    def _find_f5tts_models(self) -> List[Tuple[str, Optional[str]]]:
+    def _find_f5tts_models(self, model_name: str = None) -> List[Tuple[str, Optional[str]]]:
         """Find F5-TTS models following existing pattern"""
         try:
-            from chatterbox.f5tts.f5tts import find_f5tts_models
-            return find_f5tts_models()
+            from core.f5tts_model_manager import f5tts_model_manager
+            return f5tts_model_manager.find_f5tts_models(model_name)
         except ImportError:
             return [("huggingface", None)]
     

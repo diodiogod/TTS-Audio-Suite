@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.12] - 2025-07-16
+
+### Added
+
+- Added F5-TTS availability checking to initialization messages
+
+### Fixed
+
+- Fix F5-TTS model switching and improve initialization messages
+- Fixed F5-TTS model cache not reloading when changing model names
+- Removed redundant SRT success messages (only show on actual issues)
+- Enhanced error handling for missing F5-TTS dependencies
+
+### Changed
+
+- Improved F5-TTS model loading to only check matching local folders
 ## [3.0.11] - 2025-07-16
 
 ### Removed
