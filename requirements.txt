@@ -25,7 +25,6 @@ resemble-perth
 librosa
 scipy
 omegaconf
-accelerate
 transformers==4.46.3
 diffusers
 
@@ -35,26 +34,13 @@ torch
 torchaudio
 numpy
 einops
-phonemizer
-g2p-en
-unidecode
 
 # Audio processing and timing dependencies
 soundfile
 sounddevice
-resampy
-webrtcvad
 
 # F5-TTS dependencies (optional - only needed if using F5-TTS nodes)
 # Note: F5-TTS is best installed from source for latest features:
 # git clone https://github.com/SWivid/F5-TTS.git && cd F5-TTS && pip install -e .
 f5-tts>=0.0.1
 cached-path>=1.3.0
-jiwer>=2.3.0
-jieba>=0.42.1
-pypinyin>=0.44.0
-vocos>=0.0.3
-onnxruntime>=1.16.0
-
-# Optional but recommended for better performance
-numba
