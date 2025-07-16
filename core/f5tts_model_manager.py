@@ -39,11 +39,14 @@ class F5TTSModelManager:
         except ImportError:
             self.f5tts_available = False
     
-    def find_f5tts_models(self) -> List[Tuple[str, Optional[str]]]:
+    def find_f5tts_models(self, model_name: str = None) -> List[Tuple[str, Optional[str]]]:
         """
         Find F5-TTS model files in order of priority:
-        1. ComfyUI models/F5-TTS/ directory
+        1. ComfyUI models/F5-TTS/ directory (only matching model name if specified)
         2. HuggingFace download
+        
+        Args:
+            model_name: Optional specific model name to search for
         
         Returns:
             List of tuples containing (source_type, path) in priority order
@@ -56,6 +59,10 @@ class F5TTSModelManager:
             for item in os.listdir(comfyui_f5tts_path):
                 item_path = os.path.join(comfyui_f5tts_path, item)
                 if os.path.isdir(item_path):
+                    # If specific model name provided, only check matching folders
+                    if model_name and item.lower() != model_name.lower():
+                        continue
+                    
                     # Check if it contains model files
                     has_model = False
                     for ext in [".safetensors", ".pt"]:
@@ -111,11 +118,20 @@ class F5TTSModelManager:
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # Get available model paths
-        model_paths = self.find_f5tts_models()
+        # Get available model paths for specific model
+        model_paths = self.find_f5tts_models(model_name)
         
         model_loaded = False
         last_error = None
+        
+        # Check if this model should be available locally
+        local_model_expected = False
+        comfyui_f5tts_path = os.path.join(folder_paths.models_dir, "F5-TTS")
+        if os.path.exists(comfyui_f5tts_path):
+            for item in os.listdir(comfyui_f5tts_path):
+                if item.lower() == model_name.lower() or model_name.lower() in item.lower():
+                    local_model_expected = True
+                    break
         
         for source, path in model_paths:
             try:
@@ -133,6 +149,18 @@ class F5TTSModelManager:
                     from chatterbox.f5tts import ChatterBoxF5TTS
                     model = ChatterBoxF5TTS.from_local(path, device, model_name)
                 elif source == "huggingface":
+                    # If a local model was expected but failed, don't fallback to HuggingFace
+                    if local_model_expected and last_error:
+                        print(f"❌ Model '{model_name}' found in local directory but failed to load")
+                        print(f"❌ Fallback to HuggingFace disabled for locally expected models")
+                        raise RuntimeError(f"Model '{model_name}' exists locally but failed to load. Please check the model files or use a different model.")
+                    
+                    # Check if model is available on HuggingFace
+                    from chatterbox.f5tts.f5tts import F5TTS_MODELS
+                    if model_name not in F5TTS_MODELS:
+                        print(f"❌ Model '{model_name}' not available on HuggingFace")
+                        raise RuntimeError(f"Model '{model_name}' is not available on HuggingFace. Please install it locally or use a different model.")
+                    
                     from chatterbox.f5tts import ChatterBoxF5TTS
                     model = ChatterBoxF5TTS.from_pretrained(device, model_name)
                 else:
@@ -168,9 +196,11 @@ class F5TTSModelManager:
         Returns:
             Model source string or None if not cached
         """
-        # Try to find in cache by checking different sources
-        for source in ["comfyui", "huggingface"]:
-            cache_key = self.get_f5tts_model_cache_key(model_name, device, source)
+        # Try to find in cache by checking different sources with their paths
+        model_paths = self.find_f5tts_models(model_name)
+        
+        for source, path in model_paths:
+            cache_key = self.get_f5tts_model_cache_key(model_name, device, source, path)
             if cache_key in self._f5tts_model_sources:
                 return self._f5tts_model_sources[cache_key]
         

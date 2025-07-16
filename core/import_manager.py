@@ -32,6 +32,7 @@ class ImportManager:
         self.import_status: Dict[str, Dict[str, Any]] = {
             "chatterbox_tts": {"available": False, "source": None, "error": None},
             "chatterbox_vc": {"available": False, "source": None, "error": None},
+            "f5tts": {"available": False, "source": None, "error": None},
             "srt_parser": {"available": False, "source": None, "error": None},
             "audio_timing": {"available": False, "source": None, "error": None},
         }
@@ -149,6 +150,41 @@ class ImportManager:
                 self._log_debug(f"❌ ChatterboxVC not available: {system_error}")
                 return False, None, "none"
     
+    def import_f5tts(self) -> Tuple[bool, Any, str]:
+        """
+        Import F5-TTS with fallback handling.
+        
+        Returns:
+            Tuple of (success, f5tts_module, source)
+        """
+        module_key = "f5tts"
+        
+        # Return cached if available
+        if self.import_status[module_key]["available"]:
+            return True, self.loaded_modules[module_key], self.import_status[module_key]["source"]
+        
+        try:
+            # Try to import F5-TTS API
+            from f5_tts.api import F5TTS
+            
+            self.loaded_modules[module_key] = F5TTS
+            self.import_status[module_key] = {
+                "available": True,
+                "source": "system",
+                "error": None
+            }
+            self._log_debug("✅ F5-TTS loaded from system package")
+            return True, F5TTS, "system"
+            
+        except ImportError as error:
+            self.import_status[module_key] = {
+                "available": False,
+                "source": None,
+                "error": str(error)
+            }
+            self._log_debug(f"❌ F5-TTS not available: {error}")
+            return False, None, "none"
+    
     def import_srt_modules(self) -> Tuple[bool, Dict[str, Any], str]:
         """
         Import SRT-related modules with multiple fallback strategies.
@@ -210,11 +246,11 @@ class ImportManager:
                     "source": "direct_file",
                     "error": None
                 }
-                self._log_debug("✅ SRT modules loaded from direct files")
+                # SRT modules are bundled - no need to show success message
                 return True, modules, "direct_file"
                 
             except Exception as file_error:
-                self._log_debug(f"❌ Failed to load SRT from files: {file_error}")
+                self._log_debug(f"❌ SRT modules failed to load (bundled files corrupted?): {file_error}")
         
         # Strategy 2: Try bundled package import
         if os.path.exists(self.bundled_chatterbox_dir):
@@ -299,7 +335,7 @@ class ImportManager:
                 "source": None,
                 "error": f"All import strategies failed. Last error: {system_error}"
             }
-            self._log_debug(f"❌ SRT modules not available: {system_error}")
+            self._log_debug(f"❌ SRT modules critically failed to load: {system_error}")
             return False, self._create_dummy_srt_modules(), "none"
     
     def _create_fallback_audio_timing(self) -> Dict[str, Any]:
