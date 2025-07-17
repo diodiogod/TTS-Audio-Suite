@@ -4,7 +4,7 @@ Core utilities and shared functionality for the ChatterBox Voice extension
 """
 
 # Version info
-__version__ = "3.0.12"
+__version__ = "3.0.13"
 __author__ = "Diogod"
 
 # Make imports available at package level
