@@ -164,9 +164,23 @@ class CharacterParser:
         current_pos = 0
         current_character = self.default_character
         
+        # IMPORTANT: Each line starts fresh with narrator as default
+        # If the line doesn't start with a character tag, everything is narrator
+        
+        # Quick check: if line doesn't contain any character tags, it's all narrator
+        if not self.CHARACTER_TAG_PATTERN.search(line):
+            if line.strip():
+                segments.append(CharacterSegment(
+                    character=self.default_character,
+                    text=line.strip(),
+                    start_pos=line_start_pos,
+                    end_pos=line_start_pos + len(line)
+                ))
+            return segments
+        
         # Find all character tags in this line
         for match in self.CHARACTER_TAG_PATTERN.finditer(line):
-            # Add text before this tag (if any) with current character
+            # Add text before this tag (if any) with current character (narrator)
             before_tag = line[current_pos:match.start()].strip()
             if before_tag:
                 segments.append(CharacterSegment(
@@ -258,8 +272,12 @@ class CharacterParser:
         Returns:
             List of (character_name, text_content) tuples
         """
+        # Debug: Show what text we're parsing
+        print(f"🔍 Character Parser DEBUG: Input text: {repr(text)}")
         segments = self.parse_text_segments(text)
-        return [(segment.character, segment.text) for segment in segments]
+        result = [(segment.character, segment.text) for segment in segments]
+        print(f"🔍 Character Parser DEBUG: Parsed segments: {result}")
+        return result
     
     def validate_character_tags(self, text: str) -> Tuple[bool, List[str]]:
         """

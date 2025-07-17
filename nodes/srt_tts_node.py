@@ -221,11 +221,11 @@ The audio will match these exact timings.""",
             
             # Check if subtitles have overlaps and handle smart_natural mode
             has_overlaps = self._detect_overlaps(subtitles)
-            original_timing_mode = timing_mode
+            current_timing_mode = timing_mode
             mode_switched = False
-            if has_overlaps and timing_mode == "smart_natural":
+            if has_overlaps and current_timing_mode == "smart_natural":
                 print("⚠️ ChatterBox SRT: Overlapping subtitles detected, switching from smart_natural to pad_with_silence mode")
-                timing_mode = "pad_with_silence"
+                current_timing_mode = "pad_with_silence"
                 mode_switched = True
             
             # Determine audio prompt component for cache key generation
@@ -350,13 +350,13 @@ The audio will match these exact timings.""",
                 adj['sequence'] = subtitle.sequence
             
             # Assemble final audio based on timing mode - ORIGINAL LOGIC
-            if timing_mode == "stretch_to_fit":
+            if current_timing_mode == "stretch_to_fit":
                 # Use time stretching to match exact timing - ORIGINAL IMPLEMENTATION
                 assembler = self.TimedAudioAssembler(self.tts_model.sr)
                 final_audio = assembler.assemble_timed_audio(
                     audio_segments, target_timings, fade_duration=fade_for_StretchToFit
                 )
-            elif timing_mode == "pad_with_silence":
+            elif current_timing_mode == "pad_with_silence":
                 # Add silence to match timing without stretching - ORIGINAL IMPLEMENTATION
                 final_audio = self._assemble_audio_with_overlaps(audio_segments, subtitles, self.tts_model.sr)
             else:  # smart_natural
@@ -368,8 +368,8 @@ The audio will match these exact timings.""",
                 adjustments = smart_adjustments
             
             # Generate reports
-            timing_report = self._generate_timing_report(subtitles, adjustments, timing_mode, has_overlaps, mode_switched, original_timing_mode if mode_switched else None)
-            adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
+            timing_report = self._generate_timing_report(subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None)
+            adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, current_timing_mode)
             
             # Generate info with cache status and stretching method - ORIGINAL LOGIC FROM LINES 1141-1168
             total_duration = self.AudioTimingUtils.get_audio_duration(final_audio, self.tts_model.sr)
@@ -378,9 +378,9 @@ The audio will match these exact timings.""",
             stretch_info = ""
             
             # Get stretching method info - ORIGINAL LOGIC
-            if timing_mode == "stretch_to_fit":
+            if current_timing_mode == "stretch_to_fit":
                 current_stretcher = assembler.time_stretcher
-            elif timing_mode == "smart_natural":
+            elif current_timing_mode == "smart_natural":
                 # Use the stored stretcher type for smart_natural mode
                 if hasattr(self, '_smart_natural_stretcher'):
                     if self._smart_natural_stretcher == "ffmpeg":
@@ -391,7 +391,7 @@ The audio will match these exact timings.""",
                     stretch_info = ", Stretching method: Unknown"
             
             # For stretch_to_fit mode, examine the actual stretcher - ORIGINAL LOGIC
-            if timing_mode == "stretch_to_fit" and 'current_stretcher' in locals():
+            if current_timing_mode == "stretch_to_fit" and 'current_stretcher' in locals():
                 if isinstance(current_stretcher, self.FFmpegTimeStretcher):
                     stretch_info = ", Stretching method: FFmpeg"
                 elif isinstance(current_stretcher, self.PhaseVocoderTimeStretcher):
@@ -399,9 +399,9 @@ The audio will match these exact timings.""",
                 else:
                     stretch_info = f", Stretching method: {current_stretcher.__class__.__name__}"
             
-            mode_info = f"{timing_mode}"
+            mode_info = f"{current_timing_mode}"
             if mode_switched:
-                mode_info = f"{timing_mode} (switched from {original_timing_mode} due to overlaps)"
+                mode_info = f"{current_timing_mode} (switched from {timing_mode} due to overlaps)"
             
             info = (f"Generated {total_duration:.1f}s SRT-timed audio from {len(subtitles)} subtitles "
                    f"using {mode_info} mode ({cache_status} segments, {model_source} models{stretch_info})")
