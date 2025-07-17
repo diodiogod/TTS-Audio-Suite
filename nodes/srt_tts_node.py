@@ -33,6 +33,8 @@ BaseTTSNode = base_module.BaseTTSNode
 
 from core.import_manager import import_manager
 from core.audio_processing import AudioProcessingUtils
+from core.voice_discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
+from core.character_parser import parse_character_text, character_parser
 import comfy.model_management as model_management
 
 # Global audio cache - SAME AS ORIGINAL
@@ -236,30 +238,87 @@ The audio will match these exact timings.""",
                     )
                     print(f"🤫 Segment {i+1} (Seq {subtitle.sequence}): Empty text, generating {natural_duration:.2f}s silence.")
                 else:
-                    # Generate cache key for this segment
-                    model_source = self.model_manager.get_model_source("tts")
-                    segment_cache_key = self._generate_segment_cache_key(
-                        subtitle.text, exaggeration, temperature, cfg_weight, seed,
-                        audio_prompt_component, model_source, device
-                    )
+                    # ENHANCED: Parse character tags from subtitle text (always parse to respect line breaks)
+                    character_segments = parse_character_text(subtitle.text)
                     
-                    # Try to get cached audio
-                    cached_data = self._get_cached_segment_audio(segment_cache_key) if enable_audio_cache else None
-                    
-                    if cached_data:
-                        wav, natural_duration = cached_data
-                        any_segment_cached = True
-                    else:
-                        # Generate new audio
-                        print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
+                    if len(character_segments) > 1 or (len(character_segments) == 1 and character_segments[0][0] != "narrator"):
+                        # Character switching within this subtitle
+                        print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
                         
-                        wav = self.generate_tts_audio(
-                            subtitle.text, audio_prompt, exaggeration, temperature, cfg_weight
-                        )
+                        # Set up character parser with available characters
+                        available_chars = get_available_characters()
+                        character_parser.set_available_characters(list(available_chars))
+                        
+                        # Get character mapping for ChatterBox (audio-only)
+                        characters = [char for char, _ in character_segments]
+                        character_mapping = get_character_mapping(characters, engine_type="chatterbox")
+                        
+                        # Generate audio for each character segment within this subtitle
+                        segment_audio_parts = []
+                        for char, segment_text in character_segments:
+                            # Get character voice or fallback to main
+                            char_audio, _ = character_mapping.get(char, (None, None))
+                            if not char_audio:
+                                char_audio = audio_prompt
+                                print(f"🔄 Using main voice for character '{char}' in subtitle {subtitle.sequence}")
+                            else:
+                                print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
+                            
+                            # Generate cache key for this character segment
+                            char_segment_cache_key = self._generate_segment_cache_key(
+                                f"{char}:{segment_text}", exaggeration, temperature, cfg_weight, seed,
+                                char_audio or audio_prompt_component, self.model_manager.get_model_source("tts"), device
+                            )
+                            
+                            # Try to get cached audio
+                            cached_data = self._get_cached_segment_audio(char_segment_cache_key) if enable_audio_cache else None
+                            
+                            if cached_data:
+                                char_wav, _ = cached_data
+                                any_segment_cached = True
+                                print(f"💾 Using cached audio for character '{char}'")
+                            else:
+                                # Generate new audio for this character segment
+                                char_wav = self.generate_tts_audio(
+                                    segment_text, char_audio, exaggeration, temperature, cfg_weight
+                                )
+                                
+                                if enable_audio_cache:
+                                    char_duration = self.AudioTimingUtils.get_audio_duration(char_wav, self.tts_model.sr)
+                                    self._cache_segment_audio(char_segment_cache_key, char_wav, char_duration)
+                            
+                            segment_audio_parts.append(char_wav)
+                        
+                        # Concatenate all character segments for this subtitle
+                        wav = torch.cat(segment_audio_parts, dim=1)
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
                         
-                        if enable_audio_cache:
-                            self._cache_segment_audio(segment_cache_key, wav, natural_duration)
+                    else:
+                        # Single character/narrator mode (original behavior)
+                        # Generate cache key for this segment
+                        model_source = self.model_manager.get_model_source("tts")
+                        segment_cache_key = self._generate_segment_cache_key(
+                            subtitle.text, exaggeration, temperature, cfg_weight, seed,
+                            audio_prompt_component, model_source, device
+                        )
+                        
+                        # Try to get cached audio
+                        cached_data = self._get_cached_segment_audio(segment_cache_key) if enable_audio_cache else None
+                        
+                        if cached_data:
+                            wav, natural_duration = cached_data
+                            any_segment_cached = True
+                        else:
+                            # Generate new audio
+                            print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
+                            
+                            wav = self.generate_tts_audio(
+                                subtitle.text, audio_prompt, exaggeration, temperature, cfg_weight
+                            )
+                            natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+                            
+                            if enable_audio_cache:
+                                self._cache_segment_audio(segment_cache_key, wav, natural_duration)
                 
                 audio_segments.append(wav)
                 natural_durations.append(natural_duration)

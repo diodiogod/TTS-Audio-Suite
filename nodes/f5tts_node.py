@@ -31,14 +31,16 @@ BaseF5TTSNode = f5tts_base_module.BaseF5TTSNode
 
 from core.text_chunking import ImprovedChatterBoxChunker
 from core.audio_processing import AudioProcessingUtils
-from core.voice_discovery import get_available_voices, load_voice_reference
+from core.voice_discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
+from core.character_parser import parse_character_text, character_parser
 import comfy.model_management as model_management
 
 
 class F5TTSNode(BaseF5TTSNode):
     """
-    Basic F5-TTS text-to-speech generation node.
+    Enhanced F5-TTS text-to-speech generation node.
     Requires reference audio + text for voice cloning.
+    Supports character switching using [Character] tags in text.
     """
     
     @classmethod
@@ -76,8 +78,11 @@ class F5TTSNode(BaseF5TTSNode):
                 }),
                 "text": ("STRING", {
                     "multiline": True,
-                    "default": "Hello! This is F5-TTS integrated with ChatterBox Voice. It provides high-quality text-to-speech with voice cloning capabilities using reference audio and text.",
-                    "tooltip": "The text to convert to speech using F5-TTS."
+                    "default": """Hello! This is F5-TTS with character switching support.
+[Alice] Hi there! I'm Alice speaking with my voice.
+[Bob] And I'm Bob! Nice to meet you both.
+Back to the main narrator voice for the conclusion.""",
+                    "tooltip": "Text to convert to speech. Use [Character] tags for voice switching. Characters not found in voice folders will use the main reference voice."
                 }),
             },
             "optional": {
@@ -263,48 +268,95 @@ class F5TTSNode(BaseF5TTSNode):
             self.set_seed(inputs["seed"])
             
             # Handle reference audio and text with priority chain
-            audio_prompt, validated_ref_text = self._handle_reference_with_priority_chain(inputs)
+            main_audio_prompt, main_ref_text = self._handle_reference_with_priority_chain(inputs)
             
-            # Determine if chunking is needed
-            text_length = len(inputs["text"])
+            # Parse character segments from text
+            character_segments = parse_character_text(inputs["text"])
+            
+            # Check if we have character switching
+            characters = list(set(char for char, _ in character_segments))
+            has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             
             # Validate and clamp nfe_step to prevent ODE solver issues
             safe_nfe_step = max(1, min(inputs["nfe_step"], 71))
             if safe_nfe_step != inputs["nfe_step"]:
                 print(f"⚠️ F5-TTS: Clamped nfe_step from {inputs['nfe_step']} to {safe_nfe_step} to prevent ODE solver issues")
             
-            if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
-                # Process single chunk
-                wav = self.generate_f5tts_audio(
-                    text=inputs["text"],
-                    ref_audio_path=audio_prompt,
-                    ref_text=validated_ref_text,
-                    temperature=inputs["temperature"],
-                    speed=inputs["speed"],
-                    target_rms=inputs["target_rms"],
-                    cross_fade_duration=inputs["cross_fade_duration"],
-                    nfe_step=safe_nfe_step,
-                    cfg_strength=inputs["cfg_strength"]
-                )
-                model_info = self.get_f5tts_model_info()
-                info = f"Generated {wav.size(-1) / self.f5tts_sample_rate:.1f}s audio from {text_length} characters (single chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
-            else:
-                # Split into chunks using improved chunker
-                chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+            if has_multiple_characters:
+                # CHARACTER SWITCHING MODE
+                print(f"🎭 F5-TTS: Character switching mode - found characters: {', '.join(characters)}")
                 
-                # Process each chunk
+                # Set up character parser with available characters
+                available_chars = get_available_characters()
+                character_parser.set_available_characters(list(available_chars))
+                
+                # Get character voice mapping
+                character_mapping = get_character_mapping(characters, engine_type="f5tts")
+                
+                # Build voice references with fallback to main voice
+                voice_refs = {}
+                for character in characters:
+                    audio_path, ref_text = character_mapping.get(character, (None, None))
+                    if audio_path and ref_text:
+                        voice_refs[character] = (audio_path, ref_text)
+                        print(f"🎭 Using character voice for '{character}'")
+                    else:
+                        voice_refs[character] = (main_audio_prompt, main_ref_text)
+                        print(f"🔄 Using main voice for character '{character}' (not found in voice folders)")
+                
+                # Process each character segment
                 audio_segments = []
-                for i, chunk in enumerate(chunks):
+                for i, (character, segment_text) in enumerate(character_segments):
                     # Check for interruption
-                    self.check_interruption(f"F5-TTS generation chunk {i+1}/{len(chunks)}")
+                    self.check_interruption(f"F5-TTS character generation segment {i+1}/{len(character_segments)}")
                     
-                    # Show progress for multi-chunk generation
-                    print(f"🎤 Generating F5-TTS chunk {i+1}/{len(chunks)}...")
+                    # Apply chunking to long segments if enabled
+                    if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
+                        segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                    else:
+                        segment_chunks = [segment_text]
                     
-                    chunk_audio = self.generate_f5tts_audio(
-                        text=chunk,
-                        ref_audio_path=audio_prompt,
-                        ref_text=validated_ref_text,
+                    # Get voice reference for this character
+                    char_audio, char_text = voice_refs[character]
+                    
+                    # Generate audio for each chunk of this character segment
+                    for chunk_i, chunk_text in enumerate(segment_chunks):
+                        print(f"🎤 Generating F5-TTS segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
+                        
+                        chunk_audio = self.generate_f5tts_audio(
+                            text=chunk_text,
+                            ref_audio_path=char_audio,
+                            ref_text=char_text,
+                            temperature=inputs["temperature"],
+                            speed=inputs["speed"],
+                            target_rms=inputs["target_rms"],
+                            cross_fade_duration=inputs["cross_fade_duration"],
+                            nfe_step=safe_nfe_step,
+                            cfg_strength=inputs["cfg_strength"]
+                        )
+                        audio_segments.append(chunk_audio)
+                
+                # Combine all character segments
+                wav = self.combine_f5tts_audio_chunks(
+                    audio_segments, inputs["chunk_combination_method"], 
+                    inputs["silence_between_chunks_ms"], len(inputs["text"])
+                )
+                
+                # Generate info
+                total_duration = wav.size(-1) / self.f5tts_sample_rate
+                model_info = self.get_f5tts_model_info()
+                info = f"Generated {total_duration:.1f}s character-switched audio from {len(character_segments)} segments using {len(characters)} characters (F5-TTS {model_info.get('model_name', 'unknown')})"
+                
+            else:
+                # SINGLE CHARACTER MODE (original behavior)
+                text_length = len(inputs["text"])
+                
+                if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
+                    # Process single chunk
+                    wav = self.generate_f5tts_audio(
+                        text=inputs["text"],
+                        ref_audio_path=main_audio_prompt,
+                        ref_text=main_ref_text,
                         temperature=inputs["temperature"],
                         speed=inputs["speed"],
                         target_rms=inputs["target_rms"],
@@ -312,19 +364,45 @@ class F5TTSNode(BaseF5TTSNode):
                         nfe_step=safe_nfe_step,
                         cfg_strength=inputs["cfg_strength"]
                     )
-                    audio_segments.append(chunk_audio)
-                
-                # Combine audio segments
-                wav = self.combine_f5tts_audio_chunks(
-                    audio_segments, inputs["chunk_combination_method"], 
-                    inputs["silence_between_chunks_ms"], text_length
-                )
-                
-                # Generate info
-                total_duration = wav.size(-1) / self.f5tts_sample_rate
-                avg_chunk_size = text_length // len(chunks)
-                model_info = self.get_f5tts_model_info()
-                info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
+                    model_info = self.get_f5tts_model_info()
+                    info = f"Generated {wav.size(-1) / self.f5tts_sample_rate:.1f}s audio from {text_length} characters (single chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
+                else:
+                    # Split into chunks using improved chunker
+                    chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                    
+                    # Process each chunk
+                    audio_segments = []
+                    for i, chunk in enumerate(chunks):
+                        # Check for interruption
+                        self.check_interruption(f"F5-TTS generation chunk {i+1}/{len(chunks)}")
+                        
+                        # Show progress for multi-chunk generation
+                        print(f"🎤 Generating F5-TTS chunk {i+1}/{len(chunks)}...")
+                        
+                        chunk_audio = self.generate_f5tts_audio(
+                            text=chunk,
+                            ref_audio_path=main_audio_prompt,
+                            ref_text=main_ref_text,
+                            temperature=inputs["temperature"],
+                            speed=inputs["speed"],
+                            target_rms=inputs["target_rms"],
+                            cross_fade_duration=inputs["cross_fade_duration"],
+                            nfe_step=safe_nfe_step,
+                            cfg_strength=inputs["cfg_strength"]
+                        )
+                        audio_segments.append(chunk_audio)
+                    
+                    # Combine audio segments
+                    wav = self.combine_f5tts_audio_chunks(
+                        audio_segments, inputs["chunk_combination_method"], 
+                        inputs["silence_between_chunks_ms"], text_length
+                    )
+                    
+                    # Generate info
+                    total_duration = wav.size(-1) / self.f5tts_sample_rate
+                    avg_chunk_size = text_length // len(chunks)
+                    model_info = self.get_f5tts_model_info()
+                    info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
             
             # Return audio in ComfyUI format
             return (

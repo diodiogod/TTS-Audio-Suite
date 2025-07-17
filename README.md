@@ -45,7 +45,28 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **F5-TTS Voice Synthesis**: High-quality voice cloning with reference audio + text
 * **Audio Wave Analyzer**: Interactive waveform visualization for precise timing extraction
 * **Multi-language Support**: English, German, Spanish, French, Japanese models
-* **Speech Editing Workflows**: Advanced F5-TTS editing capabilities 
+* **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
+
+### 🎭 Character & Narrator Switching
+
+**NEW in v3.0.13**: Seamless character switching for both F5TTS and ChatterBox engines!
+
+* **Multi-Character Support**: Use `[CharacterName]` tags to switch between different voices
+* **Voice Folder Integration**: Organized character voice management system
+* **Robust Fallback**: Graceful handling when characters not found (no errors!)
+* **Universal Compatibility**: Works with both F5TTS and ChatterBox TTS engines
+* **SRT Integration**: Character switching within subtitle timing
+* **Backward Compatible**: Existing workflows work unchanged
+
+**📖 [Complete Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
+
+Example usage:
+```
+Hello! This is the narrator speaking.
+[Alice] Hi there! I'm Alice, nice to meet you.
+[Bob] And I'm Bob! Great to meet you both.
+Back to the narrator for the conclusion.
+``` 
 
 ## 🎥 Demo Video
 
