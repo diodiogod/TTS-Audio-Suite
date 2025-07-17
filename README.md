@@ -49,7 +49,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 ### 🎭 Character & Narrator Switching
 
-**NEW in v3.0.13**: Seamless character switching for both F5TTS and ChatterBox engines!
+**NEW in v3.1.0**: Seamless character switching for both F5TTS and ChatterBox engines!
 
 * **Multi-Character Support**: Use `[CharacterName]` tags to switch between different voices
 * **Voice Folder Integration**: Organized character voice management system
