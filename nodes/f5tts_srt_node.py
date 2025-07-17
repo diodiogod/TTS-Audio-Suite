@@ -285,6 +285,15 @@ Hello! This is F5-TTS SRT with character switching.
     def _cache_segment_audio(self, segment_cache_key: str, audio_tensor: torch.Tensor, natural_duration: float):
         """Cache generated audio for a single segment in global cache"""
         GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
+    
+    def _detect_overlaps(self, subtitles: List) -> bool:
+        """Detect if subtitles have overlapping time ranges."""
+        for i in range(len(subtitles) - 1):
+            current = subtitles[i]
+            next_sub = subtitles[i + 1]
+            if current.end_time > next_sub.start_time:
+                return True
+        return False
 
     def generate_srt_speech(self, srt_content, reference_audio_file, opt_reference_text, device, model, seed,
                            timing_mode, opt_reference_audio=None, temperature=0.8, speed=1.0, target_rms=0.1,
@@ -317,9 +326,18 @@ Hello! This is F5-TTS SRT with character switching.
             # Handle reference audio and text with priority chain
             audio_prompt, validated_ref_text = self._handle_reference_with_priority_chain(inputs)
             
-            # Parse SRT content
+            # Parse SRT content with overlap support
             srt_parser = self.SRTParser()
-            subtitles = srt_parser.parse_srt_content(srt_content)
+            subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
+            
+            # Check if subtitles have overlaps and handle smart_natural mode
+            has_overlaps = self._detect_overlaps(subtitles)
+            current_timing_mode = timing_mode
+            mode_switched = False
+            if has_overlaps and current_timing_mode == "smart_natural":
+                print("⚠️ F5-TTS SRT: Overlapping subtitles detected, switching from smart_natural to pad_with_silence mode")
+                current_timing_mode = "pad_with_silence"
+                mode_switched = True
             
             # Determine audio prompt component for cache key generation
             audio_prompt_component = ""
@@ -356,7 +374,7 @@ Hello! This is F5-TTS SRT with character switching.
                     
                     if len(character_segments) > 1 or (len(character_segments) == 1 and character_segments[0][0] != "narrator"):
                         # Character switching within this subtitle
-                        print(f"🎭 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
+                        # print(f"🎭 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
                         
                         # Set up character parser with available characters
                         available_chars = get_available_characters()
@@ -471,13 +489,13 @@ Hello! This is F5-TTS SRT with character switching.
                 adj['sequence'] = subtitle.sequence
             
             # Assemble final audio based on timing mode
-            if timing_mode == "stretch_to_fit":
+            if current_timing_mode == "stretch_to_fit":
                 # Use time stretching to match exact timing
                 assembler = self.TimedAudioAssembler(self.f5tts_sample_rate)
                 final_audio = assembler.assemble_timed_audio(
                     audio_segments, target_timings, fade_duration=fade_for_StretchToFit
                 )
-            elif timing_mode == "pad_with_silence":
+            elif current_timing_mode == "pad_with_silence":
                 # Add silence to match timing without stretching
                 final_audio = self._assemble_audio_with_overlaps(audio_segments, subtitles, self.f5tts_sample_rate)
             else:  # smart_natural
@@ -489,8 +507,8 @@ Hello! This is F5-TTS SRT with character switching.
                 adjustments = smart_adjustments
             
             # Generate reports
-            timing_report = self._generate_timing_report(subtitles, adjustments, timing_mode)
-            adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
+            timing_report = self._generate_timing_report(subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None)
+            adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, current_timing_mode)
             
             # Generate info with cache status and stretching method
             total_duration = self.AudioTimingUtils.get_audio_duration(final_audio, self.f5tts_sample_rate)
@@ -498,9 +516,9 @@ Hello! This is F5-TTS SRT with character switching.
             stretch_info = ""
             
             # Get stretching method info
-            if timing_mode == "stretch_to_fit":
+            if current_timing_mode == "stretch_to_fit":
                 current_stretcher = assembler.time_stretcher
-            elif timing_mode == "smart_natural":
+            elif current_timing_mode == "smart_natural":
                 # Use the stored stretcher type for smart_natural mode
                 if hasattr(self, '_smart_natural_stretcher'):
                     if self._smart_natural_stretcher == "ffmpeg":
@@ -511,7 +529,7 @@ Hello! This is F5-TTS SRT with character switching.
                     stretch_info = ", Stretching method: Unknown"
             
             # For stretch_to_fit mode, examine the actual stretcher
-            if timing_mode == "stretch_to_fit" and 'current_stretcher' in locals():
+            if current_timing_mode == "stretch_to_fit" and 'current_stretcher' in locals():
                 if isinstance(current_stretcher, self.FFmpegTimeStretcher):
                     stretch_info = ", Stretching method: FFmpeg"
                 elif isinstance(current_stretcher, self.PhaseVocoderTimeStretcher):
@@ -519,8 +537,12 @@ Hello! This is F5-TTS SRT with character switching.
                 else:
                     stretch_info = f", Stretching method: {current_stretcher.__class__.__name__}"
             
+            mode_info = f"{current_timing_mode}"
+            if mode_switched:
+                mode_info = f"{current_timing_mode} (switched from {timing_mode} due to overlaps)"
+            
             info = (f"Generated {total_duration:.1f}s F5-TTS SRT-timed audio from {len(subtitles)} subtitles "
-                   f"using {timing_mode} mode ({cache_status} segments, F5-TTS {model}{stretch_info})")
+                   f"using {mode_info} mode ({cache_status} segments, F5-TTS {model}{stretch_info})")
             
             # Format final audio for ComfyUI
             if final_audio.dim() == 1:
@@ -578,12 +600,12 @@ Hello! This is F5-TTS SRT with character switching.
         
         return final_audio, adjustments
     
-    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
+    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None) -> str:
         """Generate detailed timing report."""
         # Delegate to reporting module
         from chatterbox_srt.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
-        return reporter.generate_timing_report(subtitles, adjustments, timing_mode)
+        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, has_original_overlaps, mode_switched, original_mode)
     
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings."""

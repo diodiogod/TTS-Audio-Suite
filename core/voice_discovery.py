@@ -116,7 +116,7 @@ class VoiceDiscovery:
             self._scan_directory(voices_examples_dir, "voices_examples", "voices_examples")
         
         self._cache_valid = True
-        print(f"🎤 Voice Discovery: Found {len(self._cache)} voices across all locations")
+        # print(f"🎤 Voice Discovery: Found {len(self._cache)} voices across all locations")
     
     def _get_models_voices_dir(self) -> Optional[str]:
         """Get the ComfyUI models/voices directory path."""
@@ -390,8 +390,7 @@ class VoiceDiscovery:
                     print(f"⚠️ Character Aliases: Invalid alias entry '{alias}' -> '{target}' in {alias_file}")
             
             if loaded_count > 0:
-                print(f"🗂️ Character Aliases: Loaded {loaded_count} aliases from {source_name}")
-                
+                pass  # print(f"🗂️ Character Aliases: Loaded {loaded_count} aliases from {source_name}")
         except json.JSONDecodeError as e:
             print(f"⚠️ Character Aliases: Invalid JSON in {alias_file}: {e}")
         except Exception as e:

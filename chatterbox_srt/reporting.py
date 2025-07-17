@@ -16,13 +16,33 @@ class SRTReportGenerator:
         """Initialize report generator"""
         pass
     
-    def generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
-        """Generate detailed timing report - EXACT ORIGINAL LOGIC FROM LINES 1291-1431"""
+    def _get_original_overlapping_segments(self, subtitles: List) -> set:
+        """Get set of segment indices that overlap with next segments in original SRT."""
+        overlapping_segments = set()
+        for i in range(len(subtitles) - 1):
+            current = subtitles[i]
+            next_sub = subtitles[i + 1]
+            if current.end_time > next_sub.start_time:
+                overlapping_segments.add(i)
+        return overlapping_segments
+    
+    def generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None) -> str:
+        """Generate detailed timing report with original vs generated overlap distinction"""
         import numpy as np
+        
+        # Get original overlapping segments if needed
+        original_overlapping_segments = set()
+        if has_original_overlaps:
+            original_overlapping_segments = self._get_original_overlapping_segments(subtitles)
+        
+        # Prepare timing mode display info
+        mode_display = timing_mode
+        if mode_switched and original_mode:
+            mode_display = f"{timing_mode} (switched from {original_mode} due to overlapping subtitles)"
         
         # Handle edge case where no subtitles were processed (immediate interruption)
         if not subtitles:
-            return f"""SRT Timing Report ({timing_mode} mode)
+            return f"""SRT Timing Report ({mode_display} mode)
 {'=' * 50}
 Total subtitles: 0 (interrupted immediately)
 Total duration: 0.000s
@@ -31,7 +51,7 @@ No segments were processed due to immediate interruption.
 """
         
         report_lines = [
-            f"SRT Timing Report ({timing_mode} mode)",
+            f"SRT Timing Report ({mode_display} mode)",
             "=" * 50,
             f"Total subtitles: {len(subtitles)}",
             f"Total duration: {subtitles[-1].end_time:.3f}s",
@@ -63,12 +83,20 @@ No segments were processed due to immediate interruption.
             # For other modes, iterate using zip with original subtitles
             for i, (subtitle, adj) in enumerate(zip(subtitles, adjustments)):
                 if timing_mode == "pad_with_silence":
-                    # For pad_with_silence mode, show overlap/gap information
+                    # For pad_with_silence mode, show overlap/gap information with distinction
                     timing_info = ""
                     if adj['natural_duration'] > subtitle.duration:
                         # Audio is longer than SRT slot - will overlap
                         overlap = adj['natural_duration'] - subtitle.duration
-                        timing_info = f" 🔁 [OVERLAP: +{overlap:.2f}s]"
+                        if i in original_overlapping_segments:
+                            # Both original overlap AND generation overlap
+                            timing_info = f" 🔁✔️ [ORIGINAL+GEN OVERLAP: +{overlap:.2f}s]"
+                        else:
+                            # Only generation overlap
+                            timing_info = f" 🔁 [GEN OVERLAP: +{overlap:.2f}s]"
+                    elif i in original_overlapping_segments:
+                        # Only original overlap (generation fits within SRT timing)
+                        timing_info = f" 🔁✔️ [ORIGINAL OVERLAP]"
                     elif i < len(subtitles) - 1:
                         # Check for silence gap to next subtitle
                         next_subtitle = subtitles[i + 1]
@@ -81,14 +109,19 @@ No segments were processed due to immediate interruption.
                         f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){timing_info}"
                     )
                 else:
-                    # For other modes (e.g., stretch_to_fit), show stretch information
+                    # For other modes (e.g., stretch_to_fit), show stretch information and original overlaps
                     stretch_info = ""
                     if adj['needs_stretching']:
                         stretch_info = f" [{adj['stretch_type']} {adj['stretch_factor']:.2f}x]"
                     
+                    # Add original overlap indicator for stretch_to_fit mode
+                    overlap_info = ""
+                    if i in original_overlapping_segments:
+                        overlap_info = f" 🔁✔️ [ORIGINAL OVERLAP - expected]"
+                    
                     report_lines.append(
                         f"  {subtitle.sequence:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
-                        f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){stretch_info}"
+                        f"({subtitle.duration:.2f}s target, {adj['natural_duration']:.2f}s natural){stretch_info}{overlap_info}"
                     )
                 
                 report_lines.append(f"      Text: {subtitle.text[:60]}{'...' if len(subtitle.text) > 60 else ''}")
@@ -97,13 +130,20 @@ No segments were processed due to immediate interruption.
         if timing_mode == "pad_with_silence":
             total_gaps = 0
             total_gap_duration = 0
-            total_overlaps = 0
-            total_overlap_duration = 0
+            total_gen_overlaps = 0
+            total_gen_overlap_duration = 0
+            total_original_overlaps = len(original_overlapping_segments)
+            total_combined_overlaps = 0
             
             for i, (subtitle, adj) in enumerate(zip(subtitles, adjustments)):
                 if adj['natural_duration'] > subtitle.duration:
-                    total_overlaps += 1
-                    total_overlap_duration += adj['natural_duration'] - subtitle.duration
+                    overlap_duration = adj['natural_duration'] - subtitle.duration
+                    if i in original_overlapping_segments:
+                        total_combined_overlaps += 1
+                        total_gen_overlap_duration += overlap_duration
+                    else:
+                        total_gen_overlaps += 1
+                        total_gen_overlap_duration += overlap_duration
                 elif i < len(subtitles) - 1:
                     gap_duration = subtitles[i + 1].start_time - subtitles[i].end_time
                     if gap_duration > 0:
@@ -116,13 +156,19 @@ No segments were processed due to immediate interruption.
                 f"  Audio preserved at natural timing (no stretching)"
             ]
             
-            if total_overlaps > 0:
-                summary_lines.append(f"  Timing overlaps: {total_overlaps} segments, +{total_overlap_duration:.2f}s total overlap")
+            if total_original_overlaps > 0:
+                summary_lines.append(f"  Original SRT overlaps: {total_original_overlaps} segments (expected from subtitle file)")
+                
+            if total_gen_overlaps > 0:
+                summary_lines.append(f"  Generation overlaps: {total_gen_overlaps} segments, +{total_gen_overlap_duration:.2f}s total (audio longer than SRT timing)")
+                
+            if total_combined_overlaps > 0:
+                summary_lines.append(f"  Combined overlaps: {total_combined_overlaps} segments (both original + generation)")
             
             if total_gaps > 0:
                 summary_lines.append(f"  Silence gaps added: {total_gaps} gaps, {total_gap_duration:.2f}s total silence")
             
-            if total_overlaps == 0 and total_gaps == 0:
+            if total_gen_overlaps == 0 and total_gaps == 0 and total_original_overlaps == 0:
                 summary_lines.append(f"  Perfect timing match - no gaps or overlaps")
             
             report_lines.extend(summary_lines)
@@ -148,13 +194,19 @@ No segments were processed due to immediate interruption.
         else:
             total_stretch_needed = sum(1 for adj in adjustments if adj['needs_stretching'])
             avg_stretch = np.mean([adj['stretch_factor'] for adj in adjustments])
+            total_original_overlaps = len(original_overlapping_segments)
             
-            report_lines.extend([
+            summary_lines = [
                 "",
                 "Summary:",
                 f"  Segments needing time adjustment: {total_stretch_needed}/{len(adjustments)}",
                 f"  Average stretch factor: {avg_stretch:.2f}x",
-            ])
+            ]
+            
+            if total_original_overlaps > 0:
+                summary_lines.append(f"  Original SRT overlaps: {total_original_overlaps} segments (expected behavior - segments will overlap as intended)")
+            
+            report_lines.extend(summary_lines)
         
         return "\n".join(report_lines)
     

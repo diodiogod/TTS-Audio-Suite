@@ -128,12 +128,13 @@ class SRTParser:
             )
     
     @classmethod
-    def parse_srt_content(cls, content: str) -> List[SRTSubtitle]:
+    def parse_srt_content(cls, content: str, allow_overlaps: bool = False) -> List[SRTSubtitle]:
         """
         Parse SRT content string into list of SRTSubtitle objects
         
         Args:
             content: Raw SRT file content as string
+            allow_overlaps: If True, allow overlapping subtitles (default: False)
             
         Returns:
             List of SRTSubtitle objects sorted by start time
@@ -221,17 +222,18 @@ class SRTParser:
         # Sort by start time and validate sequence
         subtitles.sort(key=lambda s: s.start_time)
         
-        # Check for overlapping subtitles
-        for i in range(len(subtitles) - 1):
-            current = subtitles[i]
-            next_sub = subtitles[i + 1]
-            
-            if current.end_time > next_sub.start_time:
-                raise SRTParseError(
-                    f"Overlapping subtitles detected: "
-                    f"Subtitle {current.sequence} ends at {current.end_time:.3f}s "
-                    f"but subtitle {next_sub.sequence} starts at {next_sub.start_time:.3f}s"
-                )
+        # Check for overlapping subtitles (only if not allowing overlaps)
+        if not allow_overlaps:
+            for i in range(len(subtitles) - 1):
+                current = subtitles[i]
+                next_sub = subtitles[i + 1]
+                
+                if current.end_time > next_sub.start_time:
+                    raise SRTParseError(
+                        f"Overlapping subtitles detected: "
+                        f"Subtitle {current.sequence} ends at {current.end_time:.3f}s "
+                        f"but subtitle {next_sub.sequence} starts at {next_sub.start_time:.3f}s"
+                    )
         
         return subtitles
     

@@ -186,6 +186,15 @@ The audio will match these exact timings.""",
     def _cache_segment_audio(self, segment_cache_key: str, audio_tensor: torch.Tensor, natural_duration: float):
         """Cache generated audio for a single segment in global cache - ORIGINAL BEHAVIOR"""
         GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
+    
+    def _detect_overlaps(self, subtitles: List) -> bool:
+        """Detect if subtitles have overlapping time ranges."""
+        for i in range(len(subtitles) - 1):
+            current = subtitles[i]
+            next_sub = subtitles[i + 1]
+            if current.end_time > next_sub.start_time:
+                return True
+        return False
 
     def generate_srt_speech(self, srt_content, device, exaggeration, temperature, cfg_weight, seed,
                             timing_mode, reference_audio=None, audio_prompt_path="",
@@ -206,9 +215,18 @@ The audio will match these exact timings.""",
             # Handle reference audio
             audio_prompt = self.handle_reference_audio(reference_audio, audio_prompt_path)
             
-            # Parse SRT content
+            # Parse SRT content with overlap support
             srt_parser = self.SRTParser()
-            subtitles = srt_parser.parse_srt_content(srt_content)
+            subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
+            
+            # Check if subtitles have overlaps and handle smart_natural mode
+            has_overlaps = self._detect_overlaps(subtitles)
+            original_timing_mode = timing_mode
+            mode_switched = False
+            if has_overlaps and timing_mode == "smart_natural":
+                print("⚠️ ChatterBox SRT: Overlapping subtitles detected, switching from smart_natural to pad_with_silence mode")
+                timing_mode = "pad_with_silence"
+                mode_switched = True
             
             # Determine audio prompt component for cache key generation
             audio_prompt_component = ""
@@ -243,7 +261,7 @@ The audio will match these exact timings.""",
                     
                     if len(character_segments) > 1 or (len(character_segments) == 1 and character_segments[0][0] != "narrator"):
                         # Character switching within this subtitle
-                        print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
+                        # print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
                         
                         # Set up character parser with available characters
                         available_chars = get_available_characters()
@@ -350,7 +368,7 @@ The audio will match these exact timings.""",
                 adjustments = smart_adjustments
             
             # Generate reports
-            timing_report = self._generate_timing_report(subtitles, adjustments, timing_mode)
+            timing_report = self._generate_timing_report(subtitles, adjustments, timing_mode, has_overlaps, mode_switched, original_timing_mode if mode_switched else None)
             adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
             
             # Generate info with cache status and stretching method - ORIGINAL LOGIC FROM LINES 1141-1168
@@ -381,8 +399,12 @@ The audio will match these exact timings.""",
                 else:
                     stretch_info = f", Stretching method: {current_stretcher.__class__.__name__}"
             
+            mode_info = f"{timing_mode}"
+            if mode_switched:
+                mode_info = f"{timing_mode} (switched from {original_timing_mode} due to overlaps)"
+            
             info = (f"Generated {total_duration:.1f}s SRT-timed audio from {len(subtitles)} subtitles "
-                   f"using {timing_mode} mode ({cache_status} segments, {model_source} models{stretch_info})")
+                   f"using {mode_info} mode ({cache_status} segments, {model_source} models{stretch_info})")
             
             # Format final audio for ComfyUI
             if final_audio.dim() == 1:
@@ -440,12 +462,12 @@ The audio will match these exact timings.""",
         
         return final_audio, adjustments
     
-    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
+    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None) -> str:
         """Generate detailed timing report."""
         # Delegate to reporting module
         from chatterbox_srt.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
-        return reporter.generate_timing_report(subtitles, adjustments, timing_mode)
+        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, has_original_overlaps, mode_switched, original_mode)
     
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings."""
