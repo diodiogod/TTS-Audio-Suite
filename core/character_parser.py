@@ -272,11 +272,10 @@ class CharacterParser:
         Returns:
             List of (character_name, text_content) tuples
         """
-        # Debug: Show what text we're parsing
-        print(f"🔍 Character Parser DEBUG: Input text: {repr(text)}")
+        # print(f"🔍 Character Parser DEBUG: Input text: {repr(text)}")
         segments = self.parse_text_segments(text)
         result = [(segment.character, segment.text) for segment in segments]
-        print(f"🔍 Character Parser DEBUG: Parsed segments: {result}")
+        # print(f"🔍 Character Parser DEBUG: Parsed segments: {result}")
         return result
     
     def validate_character_tags(self, text: str) -> Tuple[bool, List[str]]:
