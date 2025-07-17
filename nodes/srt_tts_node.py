@@ -212,7 +212,22 @@ The audio will match these exact timings.""",
             # Set seed for reproducibility
             self.set_seed(seed)
             
-            # Handle reference audio
+            # Determine audio prompt component for cache key generation (stable identifier)
+            # This must be done BEFORE handle_reference_audio to avoid using temporary file paths
+            stable_audio_prompt_component = ""
+            print(f"🔍 Stable Cache DEBUG: reference_audio is None: {reference_audio is None}")
+            print(f"🔍 Stable Cache DEBUG: audio_prompt_path: {repr(audio_prompt_path)}")
+            if reference_audio is not None:
+                waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
+                stable_audio_prompt_component = f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
+                print(f"🔍 Stable Cache DEBUG: Using reference_audio hash: {stable_audio_prompt_component}")
+            elif audio_prompt_path:
+                stable_audio_prompt_component = audio_prompt_path
+                print(f"🔍 Stable Cache DEBUG: Using audio_prompt_path: {stable_audio_prompt_component}")
+            else:
+                print(f"🔍 Stable Cache DEBUG: No reference audio or path provided")
+            
+            # Handle reference audio (this may create temporary files, but we don't use them in cache key)
             audio_prompt = self.handle_reference_audio(reference_audio, audio_prompt_path)
             
             # Parse SRT content with overlap support
@@ -227,14 +242,6 @@ The audio will match these exact timings.""",
                 print("⚠️ ChatterBox SRT: Overlapping subtitles detected, switching from smart_natural to pad_with_silence mode")
                 current_timing_mode = "pad_with_silence"
                 mode_switched = True
-            
-            # Determine audio prompt component for cache key generation
-            audio_prompt_component = ""
-            if reference_audio is not None:
-                waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
-                audio_prompt_component = f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
-            elif audio_prompt_path:
-                audio_prompt_component = audio_prompt_path
             
             # Generate audio segments
             audio_segments = []
@@ -276,17 +283,28 @@ The audio will match these exact timings.""",
                         for char, segment_text in character_segments:
                             # Get character voice or fallback to main
                             char_audio, _ = character_mapping.get(char, (None, None))
+                            print(f"🔍 Character Mapping DEBUG: char='{char}', char_audio={repr(char_audio)}")
+                            print(f"🔍 Character Mapping DEBUG: audio_prompt={repr(audio_prompt)}")
+                            print(f"🔍 Character Mapping DEBUG: stable_audio_prompt_component={repr(stable_audio_prompt_component)}")
+                            
+                            # Store the original char_audio for cache key generation
+                            original_char_audio = char_audio
+                            
                             if not char_audio:
-                                char_audio = audio_prompt
+                                char_audio = audio_prompt  # For actual TTS generation
                                 print(f"🔄 Using main voice for character '{char}' in subtitle {subtitle.sequence}")
                             else:
                                 print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
                             
                             # Generate cache key for this character segment
+                            # Use stable component for cache key when falling back to main voice
+                            audio_component = original_char_audio or stable_audio_prompt_component
+                            print(f"🔍 Cache DEBUG: Character '{char}' using audio_component: {repr(audio_component)}")
                             char_segment_cache_key = self._generate_segment_cache_key(
                                 f"{char}:{segment_text}", exaggeration, temperature, cfg_weight, seed,
-                                char_audio or audio_prompt_component, self.model_manager.get_model_source("tts"), device
+                                audio_component, self.model_manager.get_model_source("tts"), device
                             )
+                            print(f"🔍 Cache DEBUG: Generated cache key: {char_segment_cache_key[:50]}...")
                             
                             # Try to get cached audio
                             cached_data = self._get_cached_segment_audio(char_segment_cache_key) if enable_audio_cache else None
@@ -317,7 +335,7 @@ The audio will match these exact timings.""",
                         model_source = self.model_manager.get_model_source("tts")
                         segment_cache_key = self._generate_segment_cache_key(
                             subtitle.text, exaggeration, temperature, cfg_weight, seed,
-                            audio_prompt_component, model_source, device
+                            stable_audio_prompt_component, model_source, device
                         )
                         
                         # Try to get cached audio
