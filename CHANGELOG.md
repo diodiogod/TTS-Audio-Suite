@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2025-07-17
+
+### Added
+
+#### 🎭 Character Switching System
+- **NEW**: Universal `[Character]` tag support across all TTS nodes
+- **NEW**: Character alias mapping with JSON configuration files
+- **NEW**: Dual voice discovery (models/voices + voices_examples directories)
+- **NEW**: Line-by-line character parsing for natural narrator fallback
+- **NEW**: Robust fallback system for missing characters
+- **ENHANCED**: Voice discovery with flat file and folder structure support
+- **ENHANCED**: Character-aware caching system
+- **DOCS**: Added comprehensive CHARACTER_SWITCHING_GUIDE.md
+
+#### 🎙️ Overlapping Subtitles Support
+- **NEW**: Support for overlapping subtitles in SRT nodes
+- **NEW**: Automatic mode switching (smart_natural → pad_with_silence)
+- **NEW**: Enhanced audio mixing for conversation patterns
+- **ENHANCED**: SRT parser with overlap detection and optional validation
+- **ENHANCED**: Audio assembly with overlap-aware timing
+
+### Enhanced
+
+#### 🔧 Technical Improvements
+- **ENHANCED**: SRT parser preserves newlines for character switching
+- **ENHANCED**: Character parsing with punctuation normalization
+- **ENHANCED**: Voice discovery initialization on startup
+- **ENHANCED**: Timing reports distinguish original vs generated overlaps
+- **ENHANCED**: Mode switching info displayed in generation output
+
+### Fixed
+
+- **FIXED**: Line-by-line processing in SRT mode for proper narrator fallback
+- **FIXED**: Character tag removal before TTS generation
+- **FIXED**: "Back to me" bug in character parsing
+- **FIXED**: ChatterBox SRT caching issue with character system
+- **FIXED**: UnboundLocalError in timing mode processing
 ## [3.0.13] - 2025-07-16
 
 ### Added
