@@ -192,11 +192,10 @@ class SRTParser:
                 # Extract text (everything after timing line)
                 if len(lines) >= 3:
                     text_lines = lines[2:]
-                    # Debug: Show what text lines we're joining
-                    print(f"🔍 SRT Parser DEBUG: Text lines to join: {text_lines}")
+                    # print(f"🔍 SRT Parser DEBUG: Text lines to join: {text_lines}")
                     # Preserve newlines for character parsing - join with newlines instead of spaces
                     text = '\n'.join(text_lines).strip()
-                    print(f"🔍 SRT Parser DEBUG: Joined text: {repr(text)}")
+                    # print(f"🔍 SRT Parser DEBUG: Joined text: {repr(text)}")
                 else: # len(lines) == 2, implies no text or only whitespace lines that were filtered out
                     text = ""
                 
