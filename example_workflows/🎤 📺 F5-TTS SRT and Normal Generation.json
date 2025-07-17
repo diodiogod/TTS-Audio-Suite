@@ -1,0 +1,1507 @@
+{
+  "id": "076be553-821b-4849-8d05-12c66730733b",
+  "revision": 0,
+  "last_node_id": 128,
+  "last_link_id": 203,
+  "nodes": [
+    {
+      "id": 89,
+      "type": "PreviewAny",
+      "pos": [
+        4450,
+        -2150
+      ],
+      "size": [
+        660,
+        530
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 155
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAny",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 19,
+      "type": "RegexReplace",
+      "pos": [
+        4000,
+        -1920
+      ],
+      "size": [
+        400,
+        292
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "widget": {
+            "name": "string"
+          },
+          "link": 154
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            155,
+            160,
+            165
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "RegexReplace",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "^\\d+\\n\\d{2}:\\d{2}:\\d{2},\\d{3} --> \\d{2}:\\d{2}:\\d{2},\\d{3}\\n",
+        "",
+        true,
+        true,
+        false,
+        0
+      ]
+    },
+    {
+      "id": 92,
+      "type": "RegexReplace",
+      "pos": [
+        3990,
+        -1460
+      ],
+      "size": [
+        400,
+        292
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "widget": {
+            "name": "string"
+          },
+          "link": 160
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            161,
+            174
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "RegexReplace",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "\\n+",
+        " ",
+        true,
+        true,
+        false,
+        0
+      ]
+    },
+    {
+      "id": 93,
+      "type": "PreviewAudio",
+      "pos": [
+        5600,
+        -1470
+      ],
+      "size": [
+        550,
+        88
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 173
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "PreviewAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 91,
+      "type": "PreviewAny",
+      "pos": [
+        4470,
+        -1470
+      ],
+      "size": [
+        660,
+        530
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 161
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PreviewAny",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 86,
+      "type": "PreviewAudio",
+      "pos": [
+        5570,
+        -2130
+      ],
+      "size": [
+        550,
+        88
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 158
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "PreviewAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 97,
+      "type": "ChatterBoxF5TTSVoice",
+      "pos": [
+        5160,
+        -1470
+      ],
+      "size": [
+        400,
+        522
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 174
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            173
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "ce0f9a43e76727143eb3eaa041a8a7e9cd1951df",
+        "Node name for S&R": "ChatterBoxF5TTSVoice",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        "",
+        "auto",
+        "F5TTS_v1_Base",
+        4120247617,
+        "fixed",
+        "Hello! This is F5-TTS integrated with ChatterBox Voice. It provides high-quality text-to-speech with voice cloning capabilities using reference audio and text.",
+        1.5,
+        0.8,
+        0.20000000000000004,
+        0.15,
+        32,
+        2,
+        true,
+        400,
+        "auto",
+        100
+      ]
+    },
+    {
+      "id": 100,
+      "type": "MarkdownNote",
+      "pos": [
+        5620,
+        -1830
+      ],
+      "size": [
+        340,
+        240
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "## Play with parameters\n---\n### - Here for example I increased temperature and decreased speed, to compensate Clint naturally speaking too fast.\n### - Increased target_rms, to supposedly get a better quality (I can't hear any difference, so, who knows...)\n### - Separating sentences or just feeding all in one big paragraph seams to make a difference in how it sounds, but surprisingly the total time is always the same."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 106,
+      "type": "PreviewAny",
+      "pos": [
+        1670,
+        -600
+      ],
+      "size": [
+        720,
+        390
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 190
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 108,
+      "type": "PreviewAny",
+      "pos": [
+        2410,
+        -660
+      ],
+      "size": [
+        350,
+        450
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 191
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 109,
+      "type": "PreviewAny",
+      "pos": [
+        1670,
+        -750
+      ],
+      "size": [
+        720,
+        90
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 192
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 83,
+      "type": "PreviewAudio",
+      "pos": [
+        1670,
+        -890
+      ],
+      "size": [
+        710,
+        90
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 185
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "Node name for S&R": "PreviewAudio",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 88,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        3400,
+        -2160
+      ],
+      "size": [
+        550,
+        470
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            154
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "Node name for S&R": "PrimitiveStringMultiline",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:03,500\nWelcome to ComfyUI ChatterBox Voice, the ultimate text-to-speech solution.\n\n2\n00:00:03,500 --> 00:00:07,000\nThis project integrates F5-TTS technology with ComfyUI workflows.\n\n3\n00:00:07,000 --> 00:00:10,500\nF5-TTS: A Fairytaler that Fakes Fluent and Faithful Speech with Flow Matching.\n\n4\n00:00:10,500 --> 00:00:14,000\nIt provides high-quality voice cloning with reference audio samples.\n\n5\n00:00:14,000 --> 00:00:17,500\nOur implementation supports multiple languages including English and German.\n\n6\n00:00:17,500 --> 00:00:21,000\nThe Audio Wave Analyzer provides interactive waveform visualization.\n\n7\n00:00:21,000 --> 00:00:24,500\nYou can extract precise timing information for speech editing workflows.\n\n8\n00:00:24,500 --> 00:00:28,000\nThis project extends the original ChatterBox nodes by ShmuelRonen.\n\n9\n00:00:28,000 --> 00:00:31,500\nWe've added SRT subtitle processing with intelligent timing modes.\n\n10\n00:00:31,500 --> 00:00:35,000\nThe smart natural timing prevents overlaps and ensures natural flow.\n\n11\n00:00:35,000 --> 00:00:38,500\nSegment-level caching only regenerates modified parts for efficiency.\n\n12\n00:00:38,500 --> 00:00:42,000\nF5-TTS models support Spanish, French, and Japanese languages too.\n\n13\n00:00:42,000 --> 00:00:45,500\nVoice references can be managed easily with our dedicated folder system.\n\n14\n00:00:45,500 --> 00:00:49,000\nSimply place your WAV files with matching transcription text files.\n\n15\n00:00:49,000 --> 00:00:52,500\nThe system auto-detects voice references from dropdown selections.\n\n16\n00:00:52,500 --> 00:00:56,000\nEnhanced chunking breaks long texts into manageable sentence segments.\n\n17\n00:00:56,000 --> 00:00:59,500\nMultiple combination methods include crossfade and silence padding.\n\n18\n00:00:59,500 --> 00:01:03,000\nComfyUI workflows can be downloaded and dragged directly into the interface.\n\n19\n00:01:03,000 --> 00:01:06,500\nThe Audio Wave Analyzer workflow enables precise F5-TTS speech editing.\n\n20\n00:01:06,500 --> 00:01:10,000\nThis comprehensive solution brings professional TTS capabilities to ComfyUI.\n\n21\n00:01:10,000 --> 00:01:13,500\nVoice conversion transforms one speaker's voice into another's style.\n\n22\n00:01:13,500 --> 00:01:17,000\nSmart silence detection captures voice input with configurable thresholds.\n\n23\n00:01:17,000 --> 00:01:20,500\nTemperature and CFG settings control voice variation and guidance strength.\n\n24\n00:01:20,500 --> 00:01:24,000\nThe project maintains backward compatibility with existing workflows.\n\n25\n00:01:24,000 --> 00:01:27,500\nInstallation is straightforward with pip requirements and model downloads.\n\n26\n00:01:27,500 --> 00:01:31,000\nThank you for exploring ComfyUI ChatterBox Voice with F5-TTS integration."
+      ]
+    },
+    {
+      "id": 110,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        540,
+        -640
+      ],
+      "size": [
+        550,
+        470
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            193
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:04,300\nPad with silence... places natural audio\n\n2\n00:00:04,300 --> 00:00:09,500\nwith no stretching at all at the SRT start times,\n\n3\n00:00:09,500 --> 00:00:14,200\npadding any gaps with silence.\n\n4\n00:00:14,200 --> 00:00:20,000\nThe problem is, if the generated audio is too long, it may result in overlaps.\n"
+      ]
+    },
+    {
+      "id": 112,
+      "type": "PreviewAny",
+      "pos": [
+        1680,
+        -1450
+      ],
+      "size": [
+        720,
+        390
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 202
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 113,
+      "type": "PreviewAny",
+      "pos": [
+        2420,
+        -1510
+      ],
+      "size": [
+        350,
+        450
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 203
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 114,
+      "type": "PreviewAny",
+      "pos": [
+        1680,
+        -1600
+      ],
+      "size": [
+        720,
+        90
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 201
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 115,
+      "type": "PreviewAudio",
+      "pos": [
+        1680,
+        -1740
+      ],
+      "size": [
+        710,
+        90
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 200
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": [],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 117,
+      "type": "PreviewAny",
+      "pos": [
+        1670,
+        -2300
+      ],
+      "size": [
+        720,
+        390
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 198
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 118,
+      "type": "PreviewAny",
+      "pos": [
+        2410,
+        -2360
+      ],
+      "size": [
+        350,
+        450
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 199
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 119,
+      "type": "PreviewAny",
+      "pos": [
+        1670,
+        -2450
+      ],
+      "size": [
+        720,
+        90
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 197
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 120,
+      "type": "PreviewAudio",
+      "pos": [
+        1670,
+        -2590
+      ],
+      "size": [
+        710,
+        90
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 196
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": [],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 116,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        540,
+        -1490
+      ],
+      "size": [
+        550,
+        470
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            194
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:04,500\nStretch to fit... stretches or compresses audio\n\n2\n00:00:04,500 --> 00:00:10,000\nto exactly match the SRT segment durations.\n\n3\n00:00:10,000 --> 00:00:15,000\nIt will always stretch to reach the start and end.\n\n4\n00:00:15,000 --> 00:00:22,000\nIf audio quality weren’t so bad when stretching, this could be a very natural-sounding option.\n\n5\n00:00:23,000 --> 00:00:28,000\nOh! But it's not a problem anymore now that we are using FFmpeg!!"
+      ]
+    },
+    {
+      "id": 121,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        540,
+        -2340
+      ],
+      "size": [
+        550,
+        470
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            195
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.44",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "1\n00:00:00,000 --> 00:00:06,000\nSmart natural... intelligently adjusts timings\n\n2\n00:00:06,000 --> 00:00:11,200\nwithin the timing tolerance setting,\n\n3\n00:00:11,200 --> 00:00:15,800\nprioritizing natural audio and shifting later segments.\n\n4\n00:00:15,800 --> 00:00:21,500\nIt applies stretch or shrink within the limits\n\n5\n00:00:21,500 --> 00:00:26,000\nset by the minimum and maximum stretch ratio.\n\n6\n00:00:26,000 --> 00:00:31,000\nThis would be the perfect, most natural option...\n\n7\n00:00:31,000 --> 00:00:35,000\nif stretching didn’t hurt the audio quality so much...\n\n8\n00:00:35,000 --> 00:00:40,000\nOh! But it's not a problem anymore now that we are using FFmpeg!\n\n9\n00:00:40,000 --> 00:00:48,000\nTry changing limiting the max stretch ratio option to 1.0 to make it more natural!"
+      ]
+    },
+    {
+      "id": 102,
+      "type": "ChatterBoxF5TTSSRTVoice",
+      "pos": [
+        1150,
+        -1570
+      ],
+      "size": [
+        400,
+        580
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 194
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            200
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            201
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            202
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": [
+            203
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "799a457e1852438903cd8ef6a5d0fd331525518c",
+        "Node name for S&R": "ChatterBoxF5TTSSRTVoice",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle with F5-TTS voice cloning.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings using F5-TTS.",
+        "David_Attenborough CC3.wav",
+        "",
+        "auto",
+        "F5TTS_v1_Base",
+        1,
+        "fixed",
+        "stretch_to_fit",
+        0.8,
+        1,
+        0.25000000000000006,
+        0.15,
+        32,
+        1.5,
+        true,
+        0.01,
+        1.2000000000000002,
+        0.5,
+        2
+      ]
+    },
+    {
+      "id": 105,
+      "type": "ChatterBoxF5TTSSRTVoice",
+      "pos": [
+        1130,
+        -720
+      ],
+      "size": [
+        400,
+        580
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 193
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            185
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            192
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            190
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": [
+            191
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "799a457e1852438903cd8ef6a5d0fd331525518c",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "ChatterBoxF5TTSSRTVoice"
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle with F5-TTS voice cloning.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings using F5-TTS.",
+        "David_Attenborough CC3.wav",
+        "",
+        "auto",
+        "F5TTS_v1_Base",
+        1,
+        "fixed",
+        "pad_with_silence",
+        0.8,
+        1,
+        0.25000000000000006,
+        0.15,
+        32,
+        1.5,
+        true,
+        0.01,
+        1.2000000000000002,
+        0.5,
+        2
+      ]
+    },
+    {
+      "id": 90,
+      "type": "ChatterBoxF5TTSVoice",
+      "pos": [
+        5140,
+        -2130
+      ],
+      "size": [
+        400,
+        522
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 165
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            158
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "ce0f9a43e76727143eb3eaa041a8a7e9cd1951df",
+        "Node name for S&R": "ChatterBoxF5TTSVoice",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        "",
+        "auto",
+        "F5TTS_v1_Base",
+        4120247617,
+        "fixed",
+        "Hello! This is F5-TTS integrated with ChatterBox Voice. It provides high-quality text-to-speech with voice cloning capabilities using reference audio and text.",
+        1.5,
+        0.8,
+        0.20000000000000004,
+        0.15,
+        71,
+        2,
+        true,
+        400,
+        "auto",
+        100
+      ]
+    },
+    {
+      "id": 123,
+      "type": "Label (rgthree)",
+      "pos": [
+        4490,
+        -2360
+      ],
+      "size": [
+        779.35546875,
+        60
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "🎤 F5-TTS Voice Generation",
+      "properties": {
+        "fontSize": 60,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "widget_ue_connectable": {}
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 101,
+      "type": "ChatterBoxF5TTSSRTVoice",
+      "pos": [
+        1150,
+        -2420
+      ],
+      "size": [
+        400,
+        580
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_reference_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 195
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            196
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            197
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            198
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": [
+            199
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "799a457e1852438903cd8ef6a5d0fd331525518c",
+        "Node name for S&R": "ChatterBoxF5TTSSRTVoice",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is the first subtitle with F5-TTS voice cloning.\n\n2\n00:00:04,500 --> 00:00:09,500\nThis is the second subtitle with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\nThe audio will match these exact timings using F5-TTS.",
+        "David_Attenborough CC3.wav",
+        "",
+        "auto",
+        "F5TTS_v1_Base",
+        1,
+        "fixed",
+        "smart_natural",
+        0.8,
+        1,
+        0.25000000000000006,
+        0.15,
+        32,
+        1.5,
+        true,
+        0.01,
+        1.2000000000000002,
+        0.5,
+        2
+      ]
+    },
+    {
+      "id": 122,
+      "type": "Label (rgthree)",
+      "pos": [
+        1250,
+        -2790
+      ],
+      "size": [
+        1048.2421875,
+        60
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "📺 F5-TTS SRT Voice Generation-TTS",
+      "properties": {
+        "fontSize": 60,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "widget_ue_connectable": {}
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 103,
+      "type": "MarkdownNote",
+      "pos": [
+        50,
+        -2320
+      ],
+      "size": [
+        340,
+        240
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "## Play with parameters\n---\n### - You can notice that F5 is way more sensitive than Chatterbox\n### - Chatterbox have an `exaggeration` slider, F5 does not.\n### - You should watch out for any exclamation point \"!\""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      154,
+      88,
+      0,
+      19,
+      0,
+      "STRING"
+    ],
+    [
+      155,
+      19,
+      0,
+      89,
+      0,
+      "*"
+    ],
+    [
+      158,
+      90,
+      0,
+      86,
+      0,
+      "AUDIO"
+    ],
+    [
+      160,
+      19,
+      0,
+      92,
+      0,
+      "STRING"
+    ],
+    [
+      161,
+      92,
+      0,
+      91,
+      0,
+      "*"
+    ],
+    [
+      165,
+      19,
+      0,
+      90,
+      1,
+      "STRING"
+    ],
+    [
+      173,
+      97,
+      0,
+      93,
+      0,
+      "AUDIO"
+    ],
+    [
+      174,
+      92,
+      0,
+      97,
+      1,
+      "STRING"
+    ],
+    [
+      185,
+      105,
+      0,
+      83,
+      0,
+      "AUDIO"
+    ],
+    [
+      190,
+      105,
+      2,
+      106,
+      0,
+      "*"
+    ],
+    [
+      191,
+      105,
+      3,
+      108,
+      0,
+      "*"
+    ],
+    [
+      192,
+      105,
+      1,
+      109,
+      0,
+      "*"
+    ],
+    [
+      193,
+      110,
+      0,
+      105,
+      1,
+      "STRING"
+    ],
+    [
+      194,
+      116,
+      0,
+      102,
+      1,
+      "STRING"
+    ],
+    [
+      195,
+      121,
+      0,
+      101,
+      1,
+      "STRING"
+    ],
+    [
+      196,
+      101,
+      0,
+      120,
+      0,
+      "AUDIO"
+    ],
+    [
+      197,
+      101,
+      1,
+      119,
+      0,
+      "*"
+    ],
+    [
+      198,
+      101,
+      2,
+      117,
+      0,
+      "*"
+    ],
+    [
+      199,
+      101,
+      3,
+      118,
+      0,
+      "*"
+    ],
+    [
+      200,
+      102,
+      0,
+      115,
+      0,
+      "AUDIO"
+    ],
+    [
+      201,
+      102,
+      1,
+      114,
+      0,
+      "*"
+    ],
+    [
+      202,
+      102,
+      2,
+      112,
+      0,
+      "*"
+    ],
+    [
+      203,
+      102,
+      3,
+      113,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Cleaning up a subtitle for normal F5-TTS",
+      "bounding": [
+        3380,
+        -2240,
+        2830,
+        1350
+      ],
+      "color": "#b06634",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "F5-TTS SRT: smart_natural",
+      "bounding": [
+        530,
+        -2660,
+        2250,
+        830
+      ],
+      "color": "#A88",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "F5-TTS SRT: stretch_to_fit",
+      "bounding": [
+        530,
+        -1810,
+        2250,
+        830
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "F5-TTS SRT: pad_with_silence",
+      "bounding": [
+        530,
+        -960,
+        2250,
+        830
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.2853116706110208,
+      "offset": [
+        2261.5793178653657,
+        4074.5248912225234
+      ]
+    },
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "frontendVersion": "1.23.4",
+    "VHS_latentpreview": true,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.0.12
+# ComfyUI ChatterBox SRT Voice (diogod) v3.0.13
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -373,19 +373,19 @@ ComfyUI/models/voices/
 
 **Ready-to-use ComfyUI workflows** - Download and drag into ComfyUI:
 
-### Available Workflows
+### Chatterbox Workflows
 
 | Workflow                   | Description                                 | Files                                                      |
 | -------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
-| **ChatterBox SRT**         | SRT subtitle timing and TTS generation      | [📁 JSON](example_workflows/Chatterbox%20SRT.json)         |
+| **ChatterBox SRT**         | SRT subtitle timing and TTS generation      | [📁 JSON](example_workflows/📺%20Chatterbox%20SRT.json)    |
 | **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion | [📁 JSON](example_workflows/Chatterbox%20integration.json) |
 
-### Coming Soon (Placeholders)
+### F5-TTS Workflows
 
-| Workflow                                 | Description                                             | Status                                                                     |
-| ---------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
-| **F5-TTS SRT Workflows**                 | F5-TTS integration with SRT subtitle processing         | 🚧 **Coming Soon**                                                         |
+| Workflow                                 | Description                                             | Files                                                                                |
+| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json)           |
+| **F5-TTS SRT and Normal Generation**     | F5-TTS integration with SRT subtitle processing         | [📁 JSON](example_workflows/🎤%20📺%20F5-TTS%20SRT%20and%20Normal%20Generation.json) |
 
 > **Note:** To use workflows, download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with the proper node connections.
 
