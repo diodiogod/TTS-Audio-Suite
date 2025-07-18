@@ -6,6 +6,11 @@ Enhanced Text-to-Speech node using ChatterboxTTS with improved chunking
 import torch
 import numpy as np
 import os
+import gc
+import subprocess
+import json
+import tempfile
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 # Use direct file imports that work when loaded via importlib
@@ -88,6 +93,10 @@ Back to the main narrator voice for the conclusion.""",
                 "max_chars_per_chunk": ("INT", {"default": 400, "min": 100, "max": 1000, "step": 50}),
                 "chunk_combination_method": (["auto", "concatenate", "silence_padding", "crossfade"], {"default": "auto"}),
                 "silence_between_chunks_ms": ("INT", {"default": 100, "min": 0, "max": 500, "step": 25}),
+                "crash_protection_template": ("STRING", {
+                    "default": "hmm ,, {seg} hmm ,,",
+                    "tooltip": "Custom padding template for short text segments to prevent ChatterBox crashes. ChatterBox has a bug where text shorter than ~21 characters causes CUDA tensor errors in sequential generation. Use {seg} as placeholder for the original text. Examples: '...ummmmm {seg}' (default hesitation), '{seg}... yes... {seg}' (repetition), 'Well, {seg}' (natural prefix), or empty string to disable padding. This only affects ChatterBox nodes, not F5-TTS nodes."
+                }),
             }
         }
 
@@ -100,13 +109,13 @@ Back to the main narrator voice for the conclusion.""",
         super().__init__()
         self.chunker = ImprovedChatterBoxChunker()
     
-    def _pad_short_text_for_chatterbox(self, text: str, min_length: int = 10) -> str:
+    def _pad_short_text_for_chatterbox(self, text: str, padding_template: str = "hmm ,, {seg} hmm ,,", min_length: int = 15) -> str:
         """
-        Add natural hesitation prefix to short text to prevent ChatterBox crashes.
+        Add custom padding to short text to prevent ChatterBox crashes.
         
         ChatterBox has a bug where short text segments cause CUDA tensor indexing errors
-        in sequential generation scenarios. Adding meaningful tokens with natural hesitation
-        sounds like someone thinking then saying the word clearly.
+        in sequential generation scenarios. Adding meaningful tokens with custom templates
+        prevents these crashes while allowing user customization.
         
         Based on testing:
         - "w" + spaces/periods crashes even with 150 char padding
@@ -115,17 +124,106 @@ Back to the main narrator voice for the conclusion.""",
         
         Args:
             text: Input text to check and pad if needed
-            min_length: Minimum text length threshold (default: 10 characters)
+            padding_template: Custom template with {seg} placeholder for original text
+            min_length: Minimum text length threshold (default: 21 characters)
             
         Returns:
-            Original text or text with natural hesitation prefix if too short
+            Original text or text with custom padding template if too short
         """
         stripped_text = text.strip()
         if len(stripped_text) < min_length:
-            # Add natural hesitation prefix - sounds like thinking then saying the word
-            # "w" becomes "...ummmmm w" (natural and preserves original text)
-            return f"...ummmmm {stripped_text}"
+            # If template is empty, disable padding
+            if not padding_template.strip():
+                return text
+            # Replace {seg} placeholder with original text
+            return padding_template.replace("{seg}", stripped_text)
         return text
+
+    def _is_problematic_text(self, text: str, is_already_padded: bool = False) -> tuple[bool, str]:
+        """
+        Predict if text is likely to cause ChatterBox CUDA crashes.
+        Based on analysis of crash patterns.
+        
+        Args:
+            text: The text to check (may be original or already padded)
+            is_already_padded: True if text is already padded, False if it needs padding check
+        
+        Returns:
+            tuple: (is_problematic, reason)
+        """
+        # Don't strip - leading/trailing spaces might help prevent the bug
+        original_text = text
+        
+        # If text is already padded, check its length directly
+        # If not padded, check what the length would be after padding
+        if is_already_padded:
+            final_length = len(original_text)
+            display_text = repr(original_text)  # repr shows spaces clearly
+        else:
+            padded_text = self._pad_short_text_for_chatterbox(text)
+            final_length = len(padded_text)
+            display_text = f"{repr(original_text)} → padded: {repr(padded_text)}"
+        
+        # Text shorter than 21 characters (after padding if needed) is high risk
+        if final_length < 15:
+            return True, f"text too short ({final_length} chars < 21) - {display_text}"
+        
+        # Repetitive patterns like "Yes!Yes!Yes!" are high risk
+        # if len(stripped) <= 20 and stripped.count(stripped[:4]) > 1:
+        #     return True, f"repetitive pattern detected ('{stripped[:4]}' appears {stripped.count(stripped[:4])} times)"
+        
+        # Single words with exclamations (check the actual text, not stripped)
+        text_without_spaces = original_text.replace(' ', '')
+        if len(original_text.split()) == 1 and ('!' in original_text or '?' in original_text):
+            return True, f"single word with punctuation ({repr(original_text)})"
+        
+        # Short phrases with repetitive character patterns
+        if len(original_text) <= 25 and len(set(text_without_spaces)) <= 4:
+            return True, f"limited character variety ({len(set(text_without_spaces))} unique chars in {len(original_text)} chars) - {repr(original_text)}"
+        
+        return False, ""
+
+
+
+    def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight, enable_crash_protection=True):
+        """
+        Wrapper around generate_tts_audio with crash protection.
+        If enable_crash_protection=False, behaves like original generate_tts_audio.
+        """
+        if not enable_crash_protection:
+            # No protection - original behavior (may crash ComfyUI)
+            return self.generate_tts_audio(text, audio_prompt, exaggeration, temperature, cfg_weight)
+        
+        # Predict and skip problematic text before it crashes
+        # The text passed here is already processed/padded, so check it directly
+        is_problematic, reason = self._is_problematic_text(text, is_already_padded=True)
+        if is_problematic:
+            print(f"🚨 SKIPPING PROBLEMATIC SEGMENT: '{text[:50]}...' - Reason: {reason}")
+            print(f"🛡️ Generating silence to prevent ChatterBox CUDA crash and avoid ComfyUI reboot")
+            # Return silence instead of attempting generation
+            silence_duration = max(1.0, len(text) * 0.05)  # Rough estimate
+            silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050))
+            return torch.zeros(1, silence_samples)
+        
+        # If prediction says it's safe, try generation with fallback
+        try:
+            return self.generate_tts_audio(text, audio_prompt, exaggeration, temperature, cfg_weight)
+        except Exception as e:
+            error_msg = str(e)
+            is_cuda_crash = ("srcIndex < srcSelectDimSize" in error_msg or 
+                           "CUDA" in error_msg or 
+                           "device-side assert" in error_msg or
+                           "an illegal memory access" in error_msg)
+            if is_cuda_crash:
+                print(f"🚨 UNEXPECTED CUDA CRASH occurred during generation: '{text[:50]}...'")
+                print(f"🛡️ Crash detection missed this pattern - returning silence to prevent ComfyUI reboot")
+                # Return silence instead of crashing
+                silence_duration = max(1.0, len(text) * 0.05)  # Rough estimate
+                silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050))
+                return torch.zeros(1, silence_samples)
+            else:
+                raise
+
 
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
         """Validate and normalize inputs."""
@@ -140,6 +238,8 @@ Back to the main narrator voice for the conclusion.""",
             validated["chunk_combination_method"] = "auto"
         if validated.get("silence_between_chunks_ms") is None:
             validated["silence_between_chunks_ms"] = 100
+        if validated.get("crash_protection_template") is None:
+            validated["crash_protection_template"] = "hmm ,, {seg} hmm ,,"
         
         return validated
 
@@ -181,7 +281,9 @@ Back to the main narrator voice for the conclusion.""",
     def generate_speech(self, text, device, exaggeration, temperature, cfg_weight, seed, 
                        reference_audio=None, audio_prompt_path="", 
                        enable_chunking=True, max_chars_per_chunk=400, 
-                       chunk_combination_method="auto", silence_between_chunks_ms=100):
+                       chunk_combination_method="auto", silence_between_chunks_ms=100,
+                       crash_protection_template="hmm ,, {seg} hmm ,,", 
+                       enable_crash_protection=True):
         
         def _process():
             # Validate inputs
@@ -191,7 +293,9 @@ Back to the main narrator voice for the conclusion.""",
                 reference_audio=reference_audio, audio_prompt_path=audio_prompt_path,
                 enable_chunking=enable_chunking, max_chars_per_chunk=max_chars_per_chunk,
                 chunk_combination_method=chunk_combination_method,
-                silence_between_chunks_ms=silence_between_chunks_ms
+                silence_between_chunks_ms=silence_between_chunks_ms,
+                crash_protection_template=crash_protection_template,
+                enable_crash_protection=enable_crash_protection
             )
             
             # Load model
@@ -253,18 +357,20 @@ Back to the main narrator voice for the conclusion.""",
                     for chunk_i, chunk_text in enumerate(segment_chunks):
                         print(f"🎤 Generating ChatterBox segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
                         
-                        # BUGFIX: Pad short text with spaces to prevent ChatterBox sequential generation crashes
+                        # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
                         # Only for ChatterBox (not F5TTS) and only when text is very short
-                        processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text)
+                        processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text, inputs["crash_protection_template"])
                         
-                        # DEBUG: Show actual text being sent to ChatterBox
-                        if len(chunk_text.strip()) < 10:  # Only show for short segments
+                        # DEBUG: Show actual text being sent to ChatterBox when padding might occur
+                        if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
                             print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
                         
                         try:
-                            chunk_audio = self.generate_tts_audio(
+                            # Determine crash protection based on padding template
+                            enable_protection = bool(inputs["crash_protection_template"].strip())
+                            chunk_audio = self._safe_generate_tts_audio(
                                 processed_chunk_text, char_audio_prompt, inputs["exaggeration"], 
-                                inputs["temperature"], inputs["cfg_weight"]
+                                inputs["temperature"], inputs["cfg_weight"], enable_protection
                             )
                             print(f"✅ ChatterBox segment {i+1} chunk {chunk_i+1} completed successfully")
                             print(f"🔍 DEBUG: Audio shape: {chunk_audio.shape}, dtype: {chunk_audio.dtype}")
@@ -290,10 +396,12 @@ Back to the main narrator voice for the conclusion.""",
                 text_length = len(inputs["text"])
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
-                    # Process single chunk (UNCHANGED)
-                    wav = self.generate_tts_audio(
+                    # Process single chunk with crash protection
+                    # Determine crash protection based on padding template
+                    enable_protection = bool(inputs["crash_protection_template"].strip())
+                    wav = self._safe_generate_tts_audio(
                         inputs["text"], main_audio_prompt, inputs["exaggeration"], 
-                        inputs["temperature"], inputs["cfg_weight"]
+                        inputs["temperature"], inputs["cfg_weight"], enable_protection
                     )
                     model_source = self.model_manager.get_model_source("tts")
                     info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
@@ -310,9 +418,11 @@ Back to the main narrator voice for the conclusion.""",
                         # Show progress for multi-chunk generation
                         print(f"🎤 Generating TTS chunk {i+1}/{len(chunks)}...")
                         
-                        chunk_audio = self.generate_tts_audio(
+                        # Determine crash protection based on padding template
+                        enable_protection = bool(inputs["crash_protection_template"].strip())
+                        chunk_audio = self._safe_generate_tts_audio(
                             chunk, main_audio_prompt, inputs["exaggeration"], 
-                            inputs["temperature"], inputs["cfg_weight"]
+                            inputs["temperature"], inputs["cfg_weight"], enable_protection
                         )
                         audio_segments.append(chunk_audio)
                     
