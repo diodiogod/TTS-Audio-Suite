@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.1.0
+# ComfyUI ChatterBox SRT Voice (diogod) v3.1.1
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -277,6 +277,7 @@ ComfyUI/models/voices/
 - **Audio files**: WAV format, 5-30 seconds, clean speech, 24kHz recommended
 - **Text files**: Exact transcription of what's spoken in the audio file
 - **Naming**: `filename.wav` + `filename.reference.txt` (preferred) or `filename.txt` (fallback)
+- **Character Names**: Character name = audio filename (without extension). Subfolders supported for organization.
 
 ### 7. Restart ComfyUI
 

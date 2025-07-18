@@ -29,21 +29,25 @@ Hello! This is the narrator speaking.
 Back to the narrator for the conclusion.
 ```
 
-### 2. Voice Folder Structure
-Create character folders in `voices_examples/`:
+### 2. Voice File Structure
+Organize character voices using filenames in `voices_examples/`:
 
 ```
 voices_examples/
-├── narrator/
-│   ├── main.wav
-│   └── main.reference.txt (for F5TTS only)
-├── alice/
-│   ├── alice.wav
-│   └── alice.reference.txt (for F5TTS only)
-└── bob/
-    ├── bob.wav
-    └── bob.reference.txt (for F5TTS only)
+├── narrator.wav
+├── narrator.reference.txt (for F5TTS only)
+├── alice.wav
+├── alice.reference.txt (for F5TTS only)
+├── bob.wav
+├── bob.reference.txt (for F5TTS only)
+└── characters/          (folders for organization)
+    ├── female_01.wav
+    ├── female_01.reference.txt
+    ├── male_01.wav
+    └── male_01.reference.txt
 ```
+
+**Character names are determined by the audio filename, not folder names. Folders are for organization only.**
 
 ### 3. Engine Differences
 - **F5TTS**: Requires both `.wav` and `.reference.txt` files
@@ -95,14 +99,15 @@ Hello! This is F5-TTS SRT with character switching.
 
 ### For F5TTS Nodes
 
-1. **Create Character Folders**:
+1. **Add Character Voice Files**:
    ```
-   voices_examples/alice/
-   voices_examples/bob/
-   voices_examples/narrator/
+   voices_examples/alice.wav
+   voices_examples/alice.reference.txt
+   voices_examples/bob.wav
+   voices_examples/bob.reference.txt
    ```
 
-2. **Add Voice Files**:
+2. **Voice File Requirements**:
    - `alice.wav` - Audio sample of Alice's voice (5-15 seconds recommended)
    - `alice.reference.txt` - Transcript of what Alice says in the audio
 
@@ -113,15 +118,27 @@ Hello! This is F5-TTS SRT with character switching.
 
 ### For ChatterBox Nodes
 
-1. **Create Character Folders** (same as above)
-
-2. **Add Audio Files Only**:
-   - `alice.wav` - Audio sample of Alice's voice
+1. **Add Audio Files Only**:
+   ```
+   voices_examples/alice.wav
+   voices_examples/bob.wav
+   ```
    - No text files needed!
 
+2. **Flexible Organization**:
+   ```
+   voices_examples/
+   ├── main_characters/
+   │   ├── alice.wav
+   │   └── bob.wav
+   └── background_voices/
+       ├── shopkeeper.wav
+       └── guard.wav
+   ```
+
 ### Alternative Voice Sources
-- **ComfyUI Models**: `models/voices/character_name/`
-- **Custom Locations**: Any subfolder structure is supported
+- **ComfyUI Models**: `models/voices/` directory (same filename-based system)
+- **Flexible Organization**: Any subfolder structure supported for organization
 
 ---
 
@@ -200,8 +217,8 @@ The system gracefully handles missing characters:
 ### Common Issues
 
 #### "Character not found" warnings
-- **Cause**: Character folder missing or incorrectly named
-- **Solution**: Check voice folder structure and spelling
+- **Cause**: Character audio file missing or incorrectly named
+- **Solution**: Check that audio filename matches character name used in `[Character]` tags
 - **Result**: Uses fallback voice (no workflow break)
 
 #### F5TTS missing reference text
@@ -228,12 +245,17 @@ Enable detailed logging to see character detection:
 ```
 voices_examples/
 ├── story1/
-│   ├── hero/
-│   └── villain/
+│   ├── hero.wav
+│   ├── hero.reference.txt
+│   ├── villain.wav
+│   └── villain.reference.txt
 ├── story2/
-│   ├── alice/
-│   └── bob/
-└── narrator/
+│   ├── alice.wav
+│   ├── alice.reference.txt
+│   ├── bob.wav
+│   └── bob.reference.txt
+└── narrator.wav
+└── narrator.reference.txt
 ```
 
 ### Mixed Character Scenes
@@ -248,8 +270,9 @@ voices_examples/
 ### Dynamic Character Assignment
 - Characters are detected automatically from text
 - No pre-configuration needed
-- Add new characters by creating voice folders
-- Remove characters by deleting folders
+- Add new characters by adding audio files with matching names
+- Remove characters by deleting audio files
+- Character name = audio filename (without extension)
 
 ---
 

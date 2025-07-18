@@ -426,59 +426,47 @@ class VoiceDiscovery:
     
     def _scan_character_directories(self, base_dir: str, source_name: str):
         """
-        Scan for character voices in both directory structure and flat files.
+        Scan for character voices using filename-only approach.
+        Folders are used for organization only, not as character names.
         
-        Supported structures:
-        1. Directory structure:
-           base_dir/
-           ├── narrator/
-           │   ├── main.wav
-           │   └── main.reference.txt (for F5TTS)
-           └── alice/
-               ├── alice.wav
-               └── alice.reference.txt (for F5TTS)
-        
-        2. Flat file structure:
+        Supported structure:
            base_dir/
            ├── female_01.wav
            ├── female_01.reference.txt (for F5TTS)
-           ├── male_01.wav
-           └── male_01.reference.txt (for F5TTS)
+           ├── subfolder/
+           │   ├── male_01.wav
+           │   └── male_01.reference.txt (for F5TTS)
+           └── alice.wav
+               └── alice.reference.txt (for F5TTS)
+        
+        Character name is always extracted from the audio filename.
         """
         try:
-            # First, scan for character directories
-            self._scan_character_folders(base_dir, source_name)
-            
-            # Then, scan for flat character files
-            self._scan_flat_character_files(base_dir, source_name)
+            # Recursively scan all directories for audio files
+            self._scan_all_audio_files_recursive(base_dir, source_name)
                     
         except Exception as e:
             print(f"⚠️ Character Discovery: Error scanning {source_name}: {e}")
     
-    def _scan_character_folders(self, base_dir: str, source_name: str):
-        """Scan for character-organized voice directories."""
+    def _scan_all_audio_files_recursive(self, base_dir: str, source_name: str):
+        """
+        Recursively scan all directories for audio files and use filename as character name.
+        Folders are ignored as character identifiers - they're only for organization.
+        """
         try:
-            for item in os.listdir(base_dir):
-                item_path = os.path.join(base_dir, item)
+            for root, dirs, files in os.walk(base_dir):
+                # Filter to only audio files
+                audio_files = self._filter_audio_files(files)
                 
-                # Skip files, only process directories
-                if not os.path.isdir(item_path):
-                    continue
-                
-                # Character name is the directory name
-                character_name = item.lower()
-                
-                # Find audio files in this character directory
-                try:
-                    files = os.listdir(item_path)
-                    audio_files = self._filter_audio_files(files)
+                for audio_file in audio_files:
+                    audio_path = os.path.join(root, audio_file)
                     
-                    if not audio_files:
+                    # Extract character name from filename (remove extension)
+                    character_name = Path(audio_file).stem.lower()
+                    
+                    # Skip if this character was already found (first occurrence wins)
+                    if character_name in self._character_cache:
                         continue
-                    
-                    # Use the first audio file found
-                    audio_file = audio_files[0]
-                    audio_path = os.path.join(item_path, audio_file)
                     
                     # Look for companion text file
                     text_path, text_content = self._find_companion_text(audio_path)
@@ -489,50 +477,11 @@ class VoiceDiscovery:
                         'text_path': text_path,
                         'text_content': text_content or "",
                         'source_folder': source_name,
-                        'character_directory': item_path
+                        'character_directory': root  # Store the actual directory containing the file
                     }
                     
-                        
-                except Exception as e:
-                    print(f"⚠️ Error scanning character directory {item_path}: {e}")
-                    
         except Exception as e:
-            print(f"⚠️ Character Discovery: Error scanning character folders in {source_name}: {e}")
-    
-    def _scan_flat_character_files(self, base_dir: str, source_name: str):
-        """Scan for character voice files in flat structure (e.g., female_01.wav, male_01.wav)."""
-        try:
-            files = os.listdir(base_dir)
-            audio_files = self._filter_audio_files(files)
-            
-            for audio_file in audio_files:
-                audio_path = os.path.join(base_dir, audio_file)
-                
-                # Skip if this is a file inside a character directory (already processed)
-                if os.path.dirname(audio_path) != base_dir:
-                    continue
-                
-                # Extract character name from filename (remove extension)
-                character_name = Path(audio_file).stem.lower()
-                
-                # Skip if this character was already found in a directory
-                if character_name in self._character_cache:
-                    continue
-                
-                # Look for companion text file
-                text_path, text_content = self._find_companion_text(audio_path)
-                
-                # Store character info
-                self._character_cache[character_name] = {
-                    'audio_path': audio_path,
-                    'text_path': text_path,
-                    'text_content': text_content or "",
-                    'source_folder': source_name,
-                    'character_directory': None  # Flat file, no directory
-                }
-                    
-        except Exception as e:
-            print(f"⚠️ Character Discovery: Error scanning flat files in {source_name}: {e}")
+            print(f"⚠️ Character Discovery: Error scanning audio files in {source_name}: {e}")
     
     def has_character_support(self) -> bool:
         """
