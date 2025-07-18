@@ -140,6 +140,35 @@ Hello! This is F5-TTS SRT with character switching.
 - **ComfyUI Models**: `models/voices/` directory (same filename-based system)
 - **Flexible Organization**: Any subfolder structure supported for organization
 
+### 🏷️ Character Aliases (Optional)
+
+Create a `#character_alias_map.txt` file to use friendly names that map to your audio filenames:
+
+```
+# Character Alias Map
+# Supported formats: Alias = Character_Name  OR  Alias[TAB]Character_Name
+
+# Main Characters:
+Alice		female_01
+Bob		male_01
+Narrator	david_attenborough_cc3
+
+# Supporting Cast:
+Girl     = female_01
+Woman    = female_02
+Cowboy   = clint_eastwood_cc3_enhanced2
+
+# Background Voices:
+Old Man		male_01
+Shopkeeper	male_02
+```
+
+**Benefits:**
+- Use `[Alice]` instead of `[female_01]` in your text
+- Multiple aliases can point to the same voice file
+- Flexible format: supports both `=` and tab separation
+- Comments and empty lines are ignored
+
 ---
 
 ## 🔄 Fallback System
