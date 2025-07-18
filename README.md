@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.1.1
+# ComfyUI ChatterBox SRT Voice (diogod) v3.1.2
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -52,7 +52,8 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 **NEW in v3.1.0**: Seamless character switching for both F5TTS and ChatterBox engines!
 
 * **Multi-Character Support**: Use `[CharacterName]` tags to switch between different voices
-* **Voice Folder Integration**: Organized character voice management system
+* **Voice Folder Integration**: Organized character voice management system  
+* **🏷️ Character Aliases**: User-friendly alias system - use `[Alice]` instead of `[female_01]` with `#character_alias_map.txt`
 * **Robust Fallback**: Graceful handling when characters not found (no errors!)
 * **Universal Compatibility**: Works with both F5TTS and ChatterBox TTS engines
 * **SRT Integration**: Character switching within subtitle timing
@@ -94,7 +95,8 @@ Back to the narrator for the conclusion.
 - 🔄 **ChatterBox VC** - Convert voice from one speaker to another
 - 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
 - ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
-- 🎭 **Emotion Control** - Unique exaggeration parameter for expressive speech
+- 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
+- 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
 - 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience

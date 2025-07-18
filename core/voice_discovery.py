@@ -366,12 +366,80 @@ class VoiceDiscovery:
         self._aliases_valid = True
     
     def _load_alias_file(self, base_dir: str, source_name: str):
-        """Load character aliases from a character_alias_map.json file."""
-        alias_file = os.path.join(base_dir, "character_alias_map.json")
-        
-        if not os.path.exists(alias_file):
+        """Load character aliases from a #character_alias_map.txt file (or fallback to .json)."""
+        # Try new txt format first
+        txt_alias_file = os.path.join(base_dir, "#character_alias_map.txt")
+        if os.path.exists(txt_alias_file):
+            self._load_txt_alias_file(txt_alias_file, source_name)
             return
         
+        # Fallback to old JSON format for backward compatibility
+        json_alias_file = os.path.join(base_dir, "character_alias_map.json")
+        if os.path.exists(json_alias_file):
+            self._load_json_alias_file(json_alias_file, source_name)
+    
+    def _load_txt_alias_file(self, alias_file: str, source_name: str):
+        """Load character aliases from txt file with flexible format."""
+        try:
+            with open(alias_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            loaded_count = 0
+            for line_num, line in enumerate(lines, 1):
+                # Strip whitespace
+                line = line.strip()
+                
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    continue
+                
+                # Try parsing the line
+                alias, target = self._parse_alias_line(line, line_num, alias_file)
+                if alias and target:
+                    # Convert to lowercase for consistent matching
+                    self._character_aliases[alias.lower()] = target.lower()
+                    loaded_count += 1
+            
+            if loaded_count > 0:
+                pass  # print(f"🗂️ Character Aliases: Loaded {loaded_count} aliases from {source_name}")
+                
+        except Exception as e:
+            print(f"⚠️ Character Aliases: Error reading {alias_file}: {e}")
+    
+    def _parse_alias_line(self, line: str, line_num: int, alias_file: str) -> tuple[str, str]:
+        """Parse a single alias line supporting both = and tab formats."""
+        alias = None
+        target = None
+        
+        try:
+            # Try splitting on = first
+            if '=' in line:
+                parts = line.split('=', 1)
+                if len(parts) == 2:
+                    alias = parts[0].strip()
+                    target = parts[1].strip()
+            # Try splitting on tab(s)
+            elif '\t' in line:
+                parts = line.split('\t')
+                # Filter out empty parts (handles multiple tabs)
+                parts = [p.strip() for p in parts if p.strip()]
+                if len(parts) >= 2:
+                    alias = parts[0]
+                    target = parts[1]
+            
+            # Validate
+            if not alias or not target:
+                print(f"⚠️ Character Aliases: Invalid format on line {line_num} in {alias_file}: '{line}'")
+                return None, None
+            
+            return alias, target
+            
+        except Exception as e:
+            print(f"⚠️ Character Aliases: Error parsing line {line_num} in {alias_file}: {e}")
+            return None, None
+    
+    def _load_json_alias_file(self, alias_file: str, source_name: str):
+        """Load character aliases from JSON file (backward compatibility)."""
         try:
             with open(alias_file, 'r', encoding='utf-8') as f:
                 aliases = json.load(f)

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.2] - 2025-07-17
+
+### Added
+
+- Implement user-friendly character alias system with #character_alias_map.txt file
+- Add comprehensive alias documentation to CHARACTER_SWITCHING_GUIDE.md with examples
+- Update README features to highlight new alias system and improve emoji clarity
+
+### Fixed
+
+- Support flexible alias formats: 'Alias = Character' and 'Alias[TAB]Character' with smart parsing
+- Replace old JSON character_alias_map.json with more accessible text format
+- Maintain backward compatibility with existing JSON files for seamless migration
 ## [3.1.1] - 2025-07-17
 
 ### Added
