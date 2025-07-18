@@ -111,7 +111,7 @@ Hello! This is F5-TTS SRT with character switching.
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),
                 "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {
-                    "default": "F5TTS_Base",
+                    "default": "F5TTS_v1_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
                 }),
                 "seed": ("INT", {
