@@ -99,6 +99,32 @@ Back to the main narrator voice for the conclusion.""",
     def __init__(self):
         super().__init__()
         self.chunker = ImprovedChatterBoxChunker()
+    
+    def _pad_short_text_for_chatterbox(self, text: str, min_length: int = 35) -> str:
+        """
+        Pad short text with spaces to prevent ChatterBox sequential generation crashes.
+        
+        ChatterBox has a bug where short text segments cause CUDA tensor indexing errors
+        in sequential generation scenarios. Adding spaces provides sufficient tokens
+        without affecting the actual speech content.
+        
+        Based on testing:
+        - "word" (4 chars) crashes in sequential generation
+        - "word" + 26+ spaces works reliably
+        - Safe threshold appears to be 35+ characters
+        
+        Args:
+            text: Input text to check and pad if needed
+            min_length: Minimum text length threshold (default: 35 characters)
+            
+        Returns:
+            Original text or text padded with spaces if too short
+        """
+        stripped_text = text.strip()
+        if len(stripped_text) < min_length:
+            padding_needed = min_length - len(stripped_text)
+            return stripped_text + " " * padding_needed
+        return text
 
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
         """Validate and normalize inputs."""
@@ -226,8 +252,12 @@ Back to the main narrator voice for the conclusion.""",
                     for chunk_i, chunk_text in enumerate(segment_chunks):
                         print(f"🎤 Generating ChatterBox segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
                         
+                        # BUGFIX: Pad short text with spaces to prevent ChatterBox sequential generation crashes
+                        # Only for ChatterBox (not F5TTS) and only when text is very short
+                        processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text)
+                        
                         chunk_audio = self.generate_tts_audio(
-                            chunk_text, char_audio_prompt, inputs["exaggeration"], 
+                            processed_chunk_text, char_audio_prompt, inputs["exaggeration"], 
                             inputs["temperature"], inputs["cfg_weight"]
                         )
                         audio_segments.append(chunk_audio)

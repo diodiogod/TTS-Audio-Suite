@@ -109,13 +109,13 @@ def main():
         new_parts = list(map(int, args.version.split('.')))
         
         if tuple(new_parts) <= tuple(current_parts):
-            print(f"Warning: New version {args.version} is not newer than current {current_version}")
-            response = input("Continue anyway? (y/N): ")
-            if response.lower() != 'y':
-                print("Version bump cancelled")
-                sys.exit(0)
+            print(f"Error: New version {args.version} is not newer than current {current_version}")
+            print("Cannot bump to an older or same version number.")
+            print("Use a higher version number for the next release.")
+            sys.exit(1)
     except Exception as e:
         print(f"Warning: Could not compare versions: {e}")
+        print("Proceeding with caution...")
     
     # Create backup
     print("\nCreating backup of current files...")
