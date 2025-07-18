@@ -1,0 +1,126 @@
+CHATTERBOX CHARACTER SWITCHING BUG TEST CASES
+============================================
+
+Test 1 fails, log:
+
+📦 Loading local ChatterBox models from: J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\ComfyUI\models\chatterbox
+input frame rate=25
+loaded PerthNet (Implicit) at step 250,000
+✅ Successfully loaded all local ChatterBox models
+🎭 ChatterBox: Character switching mode - found characters: narrator, female_01, male_01
+🔄 Using main voice for character 'narrator' (not found in voice folders)
+🎭 Using character voice for 'female_01'
+🎭 Using character voice for 'male_01'
+🎤 Generating ChatterBox segment 1/6 chunk 1/1 for 'narrator'...
+Sampling:   0%|                                                                               | 0/1000 [00:00<?, ?it/s]We detected that you are passing `past_key_values` as a tuple of tuples. This is deprecated and will be removed in v4.47. Please convert your cache or use an appropriate `Cache` class (https://huggingface.co/docs/transformers/kv_cache#legacy-cache-format)
+Sampling:   5%|███▋                                                                  | 52/1000 [00:01<00:32, 28.77it/s]
+🎤 Generating ChatterBox segment 2/6 chunk 1/1 for 'female_01'...
+Sampling:   2%|█▌                                                                    | 23/1000 [00:00<00:33, 28.86it/s]
+🎤 Generating ChatterBox segment 3/6 chunk 1/1 for 'male_01'...
+Reference mel length is not equal to 2 * reference token length.
+
+Sampling:   3%|█▊                                                                    | 26/1000 [00:00<00:33, 28.68it/s]
+🎤 Generating ChatterBox segment 4/6 chunk 1/1 for 'narrator'...
+Sampling:   2%|█▌                                                                    | 22/1000 [00:00<00:33, 29.33it/s]
+🎤 Generating ChatterBox segment 5/6 chunk 1/1 for 'female_01'...
+Sampling:   2%|█▎                                                                    | 18/1000 [00:00<00:33, 28.99it/s]
+🎤 Generating ChatterBox segment 6/6 chunk 1/1 for 'narrator'...
+Sampling:   4%|███                                                                   | 43/1000 [00:01<00:32, 29.13it/s]
+C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\cuda\Indexing.cu:1553: block: [40,0,0], thread: [0,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
+C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\cuda\Indexing.cu:1553: block: [40,0,0], thread: [1,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
+
+
+
+Test Case 2: Question Mark Focus (Target: punctuation)
+------------------------------------------------------
+This is a test.
+[Alice] Really?
+[Bob] Why not?
+What do you think?
+[Alice] Maybe?
+Final words.
+
+Test Case 3: Very Short Segments (Target: minimal text)
+-------------------------------------------------------
+Start.
+[Alice] Ok.
+[Bob] No.
+Yes?
+[Alice] Go.
+End.
+
+Test Case 4: Mixed Long/Short (Target: length variation)
+-------------------------------------------------------
+This is a longer introduction that should work fine without issues.
+[Alice] Short.
+[Bob] This is a much longer segment that might work better than short ones.
+Brief?
+[Alice] Another very long segment that contains multiple sentences and should be processed without the same issues.
+Done.
+
+Test Case 5: Exact Position Test (Target: 5th segment)
+------------------------------------------------------
+Segment one here.
+[Alice] Segment two here.
+[Bob] Segment three here.
+[Alice] Segment four here.
+This is segment five.
+[Bob] Segment six here.
+Final segment.
+
+Test Case 6: Character Switching Pattern (Target: same pattern as bug)
+----------------------------------------------------------------------
+Opening statement.
+[crestfallen_original] Character line.
+[Girl] Another character.
+[crestfallen_original] Second time.
+Back to narrator.
+[Bob] Different character.
+Closing statement.
+
+Test Case 7: Special Characters & Punctuation
+---------------------------------------------
+Hello there!
+[Alice] What's this?
+[Bob] It's... complicated.
+Really?!
+[Alice] Yes—exactly that.
+The end.
+
+Test Case 8: Empty/Whitespace Lines
+-----------------------------------
+First line.
+[Alice] Second line.
+
+[Bob] After empty line.
+Another gap coming.
+
+Final line.
+
+Test Case 9: Single Words (Target: minimal content)
+---------------------------------------------------
+Beginning.
+[Alice] Word.
+[Bob] Another.
+Question?
+[Alice] Answer.
+Conclusion.
+
+Test Case 10: Exact Recreation (Target: original crash)
+-------------------------------------------------------
+Hello! This is the first subtitle. I'll make it long on purpose.
+[crestfallen_original] This is Long?!
+
+[Girl]This is the second [crestfallen_original] subtitle with precise timing.
+Back to me?
+
+[Bob] The audio will match these exact timings.
+
+Back to me again? This looks like a meeees...
+
+INSTRUCTIONS:
+- Test each case separately
+- Note which segment number crashes (if any)
+- Record any "Reference mel length" warnings
+- Try with same characters: crestfallen_original, Girl (maps to female_01), Bob (maps to male_01)
+- Look for patterns in crashes (position, text length, punctuation, etc.)
