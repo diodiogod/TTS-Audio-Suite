@@ -273,7 +273,7 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                 "default": "This is the reference text that matches the reference audio.",
                 "tooltip": "Text that corresponds to the reference audio. Required for F5-TTS voice cloning."
             }),
-            "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {"default": "F5TTS_Base"}),
+            "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {"default": "F5TTS_v1_Base"}),
         })
         
         # Add F5-TTS specific optional inputs
