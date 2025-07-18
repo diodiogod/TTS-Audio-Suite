@@ -73,7 +73,7 @@ Welcome to our story! This is the narrator.
 
 [Alice] Great to meet you too, Bob!
 
-[Wizard] *mysterious voice* I am the ancient wizard...
+[Wizard] I am the ancient wizard...
 
 And the narrator concludes the tale.
 ```
@@ -187,39 +187,12 @@ The system gracefully handles missing characters:
 [UnknownCharacter] This falls back to narrator voice
 [Bob] This uses Bob's voice (if available)
 ```
-
----
-
-## ⚙️ Node-Specific Features
-
-### 🎤 F5TTS Voice Generation
-- **Input**: Text with `[Character]` tags
-- **Voice Source**: Voice folders or direct reference audio/text
-- **Features**: Character switching + all existing F5TTS features
-- **Output**: Seamless multi-character audio
-
-### 🎤 ChatterBox Voice TTS
-- **Input**: Text with `[Character]` tags  
-- **Voice Source**: Voice folders or direct reference audio
-- **Features**: Character switching + all existing ChatterBox features
-- **Simpler Setup**: No reference text files needed
-
-### 📺 F5TTS SRT Voice Generation
-- **Input**: SRT subtitles with `[Character]` tags
-- **Features**: Character switching within precise timing
-- **Benefits**: Perfect for dialogue with multiple characters
-
-### 📺 ChatterBox SRT Voice TTS
-- **Input**: SRT subtitles with `[Character]` tags
-- **Features**: Character switching + SRT timing
-- **Performance**: Maintains all caching optimizations
-
 ---
 
 ## 💡 Tips & Best Practices
 
 ### Voice Recording
-- **Duration**: 5-15 seconds per character voice
+- **Duration**: 5-15 seconds per character voice but it's not mandatory
 - **Quality**: Clear, noise-free recordings
 - **Content**: Natural speech that represents the character
 - **Format**: WAV, MP3, FLAC supported
@@ -261,10 +234,9 @@ The system gracefully handles missing characters:
 - **Tip**: Use consistent volume and background noise levels
 
 ### Debugging
-Enable detailed logging to see character detection:
+Detailed logging to see character detection:
 - Character switching mode messages: `🎭 F5-TTS: Character switching mode`
 - Voice loading messages: `🎭 Using character voice for 'Alice'`
-- Fallback messages: `🔄 Using main voice for character 'Unknown'`
 
 ---
 
