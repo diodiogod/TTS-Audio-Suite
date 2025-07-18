@@ -4,20 +4,17 @@
 # Supported formats:
 # Alias = Character_Name
 # Alias[TAB]Character_Name
-# Alias[TAB][TAB][TAB]Character_Name (multiple tabs)
-# Alias    =    Character_Name (spaces around = are ignored)
-#
+
 # Examples by category:
-#
 # Main Characters:
 Alice		female_01
 Bob		male_01
 Narrator	david_attenborough_cc3
 
 # Supporting Cast:
-Girl     = female_01
-Woman    = female_02
-Cowboy   = clint_eastwood_cc3_enhanced2
+Girl = female_01
+Woman = female_02
+Cowboy = clint_eastwood_cc3_enhanced2
 
 # Background Voices:
 Old Man		male_01
