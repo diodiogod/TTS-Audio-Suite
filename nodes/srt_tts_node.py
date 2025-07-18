@@ -293,9 +293,9 @@ The audio will match these exact timings.""",
                             
                             if not char_audio:
                                 char_audio = audio_prompt  # For actual TTS generation
-                                print(f"🔄 Using main voice for character '{char}' in subtitle {subtitle.sequence}")
-                            else:
-                                print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
+                                # Character not found, will use main voice (no message needed, handled in generation)
+                            # else:
+                            #     print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
                             
                             # Generate cache key for this character segment
                             # Use stable component for cache key when falling back to main voice
@@ -315,6 +315,11 @@ The audio will match these exact timings.""",
                                 any_segment_cached = True
                                 print(f"💾 Using cached audio for character '{char}'")
                             else:
+                                # Show generation message with character info
+                                if char == "narrator":
+                                    print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
+                                else:
+                                    print(f"🎭 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) using '{char}'")
                                 # Generate new audio for this character segment
                                 char_wav = self.generate_tts_audio(
                                     segment_text, char_audio, exaggeration, temperature, cfg_weight

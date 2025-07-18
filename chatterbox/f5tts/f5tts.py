@@ -185,18 +185,22 @@ class ChatterBoxF5TTS:
             raise FileNotFoundError(f"Reference audio file not found: {ref_audio_path}")
         
         try:
-            # Generate audio using F5-TTS
-            wav, sr, _ = self.f5tts_model.infer(
-                ref_file=ref_audio_path,
-                ref_text=ref_text,
-                gen_text=text,
-                target_rms=target_rms,
-                cross_fade_duration=cross_fade_duration,
-                nfe_step=nfe_step,
-                cfg_strength=cfg_strength,
-                speed=speed,
-                remove_silence=False
-            )
+            # Generate audio using F5-TTS (suppress stdout debug messages, keep stderr progress bars)
+            from contextlib import redirect_stdout
+            
+            with open(os.devnull, 'w') as devnull:
+                with redirect_stdout(devnull):
+                    wav, sr, _ = self.f5tts_model.infer(
+                        ref_file=ref_audio_path,
+                        ref_text=ref_text,
+                        gen_text=text,
+                        target_rms=target_rms,
+                        cross_fade_duration=cross_fade_duration,
+                        nfe_step=nfe_step,
+                        cfg_strength=cfg_strength,
+                        speed=speed,
+                        remove_silence=False
+                    )
             
             # Convert to torch tensor
             if isinstance(wav, np.ndarray):

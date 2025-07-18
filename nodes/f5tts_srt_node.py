@@ -391,9 +391,9 @@ Hello! This is F5-TTS SRT with character switching.
                             char_audio, char_text = character_mapping.get(char, (None, None))
                             if not char_audio or not char_text:
                                 char_audio, char_text = audio_prompt, validated_ref_text
-                                print(f"🔄 Using main voice for character '{char}' in subtitle {subtitle.sequence}")
-                            else:
-                                print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
+                                # Character not found, will use main voice (no message needed, handled in generation)
+                            # else:
+                            #     print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
                             
                             # Generate cache key for this character segment
                             char_segment_cache_key = self._generate_segment_cache_key(
@@ -409,6 +409,11 @@ Hello! This is F5-TTS SRT with character switching.
                                 any_segment_cached = True
                                 print(f"💾 Using cached audio for character '{char}'")
                             else:
+                                # Show generation message with character info
+                                if char == "narrator":
+                                    print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
+                                else:
+                                    print(f"🎭 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) using '{char}'")
                                 # Validate and clamp nfe_step to prevent ODE solver issues
                                 safe_nfe_step = max(1, min(nfe_step, 71))
                                 if safe_nfe_step != nfe_step:
@@ -453,8 +458,8 @@ Hello! This is F5-TTS SRT with character switching.
                             any_segment_cached = True
                             print(f"💾 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Using cached audio")
                         else:
-                            # Generate new audio
-                            print(f"🎤 Generating F5-TTS SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
+                            # Generate new audio - narrator (single character mode)
+                            print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
                             
                             # Validate and clamp nfe_step to prevent ODE solver issues
                             safe_nfe_step = max(1, min(nfe_step, 71))

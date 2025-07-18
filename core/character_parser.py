@@ -87,7 +87,7 @@ class CharacterParser:
             from core.voice_discovery import voice_discovery
             resolved = voice_discovery.resolve_character_alias(normalized)
             if resolved != normalized:
-                print(f"🗂️ Character Parser: '{character_name}' → '{resolved}' (alias)")
+                # print(f"🗂️ Character Parser: '{character_name}' → '{resolved}' (alias)")
                 normalized = resolved
         except Exception as e:
             # If alias resolution fails, continue with original name
