@@ -8,6 +8,7 @@ import numpy as np
 import tempfile
 import os
 import hashlib
+import gc
 from typing import Dict, Any, Optional, List, Tuple
 
 # Use direct file imports that work when loaded via importlib
@@ -153,6 +154,10 @@ The audio will match these exact timings.""",
                     "step": 0.5,
                     "tooltip": "Maximum allowed deviation (in seconds) for timing adjustments in 'smart_natural' mode. Higher values allow more flexibility."
                 }),
+                "crash_protection_template": ("STRING", {
+                    "default": "hmm ,, {seg} hmm ,,",
+                    "tooltip": "Custom padding template for short text segments to prevent ChatterBox crashes. ChatterBox has a bug where text shorter than ~21 characters causes CUDA tensor errors in sequential generation. Use {seg} as placeholder for the original text. Examples: '...ummmmm {seg}' (default hesitation), '{seg}... yes... {seg}' (repetition), 'Well, {seg}' (natural prefix), or empty string to disable padding. This only affects ChatterBox nodes, not F5-TTS nodes."
+                }),
             }
         }
 
@@ -160,6 +165,52 @@ The audio will match these exact timings.""",
     RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
     FUNCTION = "generate_srt_speech"
     CATEGORY = "ChatterBox Voice"
+
+    def _pad_short_text_for_chatterbox(self, text: str, padding_template: str = "...ummmmm {seg}", min_length: int = 21) -> str:
+        """
+        Add custom padding to short text to prevent ChatterBox crashes.
+        
+        ChatterBox has a bug where short text segments cause CUDA tensor indexing errors
+        in sequential generation scenarios. Adding meaningful tokens with custom templates
+        prevents these crashes while allowing user customization.
+        
+        Args:
+            text: Input text to check and pad if needed
+            padding_template: Custom template with {seg} placeholder for original text
+            min_length: Minimum text length threshold (default: 21 characters)
+            
+        Returns:
+            Original text or text with custom padding template if too short
+        """
+        stripped_text = text.strip()
+        if len(stripped_text) < min_length:
+            # If template is empty, disable padding
+            if not padding_template.strip():
+                return text
+            # Replace {seg} placeholder with original text
+            return padding_template.replace("{seg}", stripped_text)
+        return text
+
+    def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight):
+        """
+        Wrapper around generate_tts_audio - simplified to just call the base method.
+        CUDA crash recovery was removed as it didn't work reliably.
+        """
+        try:
+            return self.generate_tts_audio(text, audio_prompt, exaggeration, temperature, cfg_weight)
+        except Exception as e:
+            error_msg = str(e)
+            is_cuda_crash = ("srcIndex < srcSelectDimSize" in error_msg or 
+                           "CUDA" in error_msg or 
+                           "device-side assert" in error_msg or
+                           "an illegal memory access" in error_msg)
+            
+            if is_cuda_crash:
+                print(f"🚨 ChatterBox CUDA crash detected: '{text[:50]}...'")
+                print(f"🛡️ This is a known ChatterBox bug with certain text patterns.")
+                raise RuntimeError(f"ChatterBox CUDA crash occurred. Text: '{text[:50]}...' - Try using padding template or longer text, or restart ComfyUI.")
+            else:
+                raise
 
     def _generate_segment_cache_key(self, subtitle_text: str, exaggeration: float, temperature: float, 
                                    cfg_weight: float, seed: int, audio_prompt_component: str, 
@@ -199,7 +250,8 @@ The audio will match these exact timings.""",
     def generate_srt_speech(self, srt_content, device, exaggeration, temperature, cfg_weight, seed,
                             timing_mode, reference_audio=None, audio_prompt_path="",
                             max_stretch_ratio=2.0, min_stretch_ratio=0.5, fade_for_StretchToFit=0.01, 
-                            enable_audio_cache=True, timing_tolerance=2.0):
+                            enable_audio_cache=True, timing_tolerance=2.0, 
+                            crash_protection_template="hmm ,, {seg} hmm ,,"):
         
         def _process():
             # Check if SRT support is available
@@ -320,9 +372,16 @@ The audio will match these exact timings.""",
                                     print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
                                 else:
                                     print(f"🎭 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) using '{char}'")
-                                # Generate new audio for this character segment
-                                char_wav = self.generate_tts_audio(
-                                    segment_text, char_audio, exaggeration, temperature, cfg_weight
+                                # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
+                                processed_segment_text = self._pad_short_text_for_chatterbox(segment_text, crash_protection_template)
+                                
+                                # DEBUG: Show actual text being sent to ChatterBox when padding might occur
+                                if len(segment_text.strip()) < 21:
+                                    print(f"🔍 DEBUG: Original text: '{segment_text}' → Processed: '{processed_segment_text}' (len: {len(processed_segment_text)})")
+                                
+                                # Generate new audio for this character segment with CUDA recovery
+                                char_wav = self._safe_generate_tts_audio(
+                                    processed_segment_text, char_audio, exaggeration, temperature, cfg_weight
                                 )
                                 
                                 if enable_audio_cache:
@@ -354,8 +413,16 @@ The audio will match these exact timings.""",
                             # Generate new audio
                             print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
                             
-                            wav = self.generate_tts_audio(
-                                subtitle.text, audio_prompt, exaggeration, temperature, cfg_weight
+                            # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
+                            processed_subtitle_text = self._pad_short_text_for_chatterbox(subtitle.text, crash_protection_template)
+                            
+                            # DEBUG: Show actual text being sent to ChatterBox when padding might occur
+                            if len(subtitle.text.strip()) < 21:
+                                print(f"🔍 DEBUG: Original text: '{subtitle.text}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
+                            
+                            # Generate new audio with CUDA recovery
+                            wav = self._safe_generate_tts_audio(
+                                processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight
                             )
                             natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
                             
