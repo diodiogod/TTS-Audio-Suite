@@ -100,30 +100,31 @@ Back to the main narrator voice for the conclusion.""",
         super().__init__()
         self.chunker = ImprovedChatterBoxChunker()
     
-    def _pad_short_text_for_chatterbox(self, text: str, min_length: int = 35) -> str:
+    def _pad_short_text_for_chatterbox(self, text: str, min_length: int = 10) -> str:
         """
-        Pad short text with spaces to prevent ChatterBox sequential generation crashes.
+        Add natural hesitation prefix to short text to prevent ChatterBox crashes.
         
         ChatterBox has a bug where short text segments cause CUDA tensor indexing errors
-        in sequential generation scenarios. Adding spaces provides sufficient tokens
-        without affecting the actual speech content.
+        in sequential generation scenarios. Adding meaningful tokens with natural hesitation
+        sounds like someone thinking then saying the word clearly.
         
         Based on testing:
-        - "word" (4 chars) crashes in sequential generation
-        - "word" + 26+ spaces works reliably
-        - Safe threshold appears to be 35+ characters
+        - "w" + spaces/periods crashes even with 150 char padding
+        - "word is a word is a world" works for 4+ runs
+        - "...ummmmm w" provides natural hesitation + preserves original text
         
         Args:
             text: Input text to check and pad if needed
-            min_length: Minimum text length threshold (default: 35 characters)
+            min_length: Minimum text length threshold (default: 10 characters)
             
         Returns:
-            Original text or text padded with spaces if too short
+            Original text or text with natural hesitation prefix if too short
         """
         stripped_text = text.strip()
         if len(stripped_text) < min_length:
-            padding_needed = min_length - len(stripped_text)
-            return stripped_text + " " * padding_needed
+            # Add natural hesitation prefix - sounds like thinking then saying the word
+            # "w" becomes "...ummmmm w" (natural and preserves original text)
+            return f"...ummmmm {stripped_text}"
         return text
 
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
@@ -256,11 +257,22 @@ Back to the main narrator voice for the conclusion.""",
                         # Only for ChatterBox (not F5TTS) and only when text is very short
                         processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text)
                         
-                        chunk_audio = self.generate_tts_audio(
-                            processed_chunk_text, char_audio_prompt, inputs["exaggeration"], 
-                            inputs["temperature"], inputs["cfg_weight"]
-                        )
-                        audio_segments.append(chunk_audio)
+                        # DEBUG: Show actual text being sent to ChatterBox
+                        if len(chunk_text.strip()) < 10:  # Only show for short segments
+                            print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
+                        
+                        try:
+                            chunk_audio = self.generate_tts_audio(
+                                processed_chunk_text, char_audio_prompt, inputs["exaggeration"], 
+                                inputs["temperature"], inputs["cfg_weight"]
+                            )
+                            print(f"✅ ChatterBox segment {i+1} chunk {chunk_i+1} completed successfully")
+                            print(f"🔍 DEBUG: Audio shape: {chunk_audio.shape}, dtype: {chunk_audio.dtype}")
+                            audio_segments.append(chunk_audio)
+                            print(f"🔍 DEBUG: Total segments so far: {len(audio_segments)}")
+                        except Exception as e:
+                            print(f"❌ ChatterBox segment {i+1} chunk {chunk_i+1} failed: {e}")
+                            raise
                 
                 # Combine all character segments (PRESERVE EXISTING COMBINE LOGIC)
                 wav = self.combine_audio_chunks(
