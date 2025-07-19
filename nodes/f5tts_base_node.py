@@ -33,6 +33,7 @@ BaseChatterBoxNode = base_module.BaseChatterBoxNode
 
 from core.text_chunking import ImprovedChatterBoxChunker
 from core.audio_processing import AudioProcessingUtils
+from core.pause_tag_processor import PauseTagProcessor
 import comfy.model_management as model_management
 
 # F5-TTS specific constants
@@ -154,6 +155,68 @@ class BaseF5TTSNode(BaseChatterBoxNode):
             cross_fade_duration=cross_fade_duration,
             nfe_step=nfe_step,
             cfg_strength=cfg_strength
+        )
+
+    def generate_f5tts_with_pause_tags(self, text: str, ref_audio_path: str, ref_text: str,
+                                     enable_pause_tags: bool = True, character: str = "narrator", 
+                                     seed: int = 0, enable_cache: bool = False, cache_fn=None, **generation_kwargs) -> torch.Tensor:
+        """
+        Generate F5-TTS audio with pause tag support.
+        
+        Args:
+            text: Input text potentially with pause tags
+            ref_audio_path: Reference audio file path
+            ref_text: Reference text
+            enable_pause_tags: Whether to process pause tags
+            character: Character name for cache key
+            seed: Seed for reproducibility and cache key
+            enable_cache: Whether to use caching
+            cache_fn: Function to handle caching (cache_fn(text_content) -> cached_audio or None)
+            **generation_kwargs: Additional F5-TTS generation parameters
+            
+        Returns:
+            Generated audio tensor with pauses
+        """
+        # Preprocess text for pause tags
+        processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+            text, enable_pause_tags
+        )
+        
+        if pause_segments is None:
+            # No pause tags, use regular generation with optional caching
+            if enable_cache and cache_fn:
+                cached_audio = cache_fn(processed_text)
+                if cached_audio is not None:
+                    return cached_audio
+            
+            audio = self.generate_f5tts_audio(
+                processed_text, ref_audio_path, ref_text, **generation_kwargs
+            )
+            
+            if enable_cache and cache_fn:
+                cache_fn(processed_text, audio)  # Cache the result
+            
+            return audio
+        
+        # Generate audio with pause tags, with optional caching per text segment
+        def f5tts_generate_func(text_content: str) -> torch.Tensor:
+            """F5-TTS generation function for pause tag processor with optional caching"""
+            if enable_cache and cache_fn:
+                cached_audio = cache_fn(text_content)
+                if cached_audio is not None:
+                    return cached_audio
+            
+            audio = self.generate_f5tts_audio(
+                text_content, ref_audio_path, ref_text, **generation_kwargs
+            )
+            
+            if enable_cache and cache_fn:
+                cache_fn(text_content, audio)  # Cache the result
+            
+            return audio
+        
+        return PauseTagProcessor.generate_audio_with_pauses(
+            pause_segments, f5tts_generate_func, F5TTS_SAMPLE_RATE
         )
     
     def handle_f5tts_reference(self, reference_audio: Optional[Dict[str, Any]], 

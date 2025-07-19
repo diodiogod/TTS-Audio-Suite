@@ -52,7 +52,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 **NEW in v3.1.0**: Seamless character switching for both F5TTS and ChatterBox engines!
 
 * **Multi-Character Support**: Use `[CharacterName]` tags to switch between different voices
-* **Voice Folder Integration**: Organized character voice management system  
+* **Voice Folder Integration**: Organized character voice management system
 * **🏷️ Character Aliases**: User-friendly alias system - use `[Alice]` instead of `[female_01]` with `#character_alias_map.txt`
 * **Robust Fallback**: Graceful handling when characters not found (no errors!)
 * **Universal Compatibility**: Works with both F5TTS and ChatterBox TTS engines
@@ -67,7 +67,7 @@ Hello! This is the narrator speaking.
 [Alice] Hi there! I'm Alice, nice to meet you.
 [Bob] And I'm Bob! Great to meet you both.
 Back to the narrator for the conclusion.
-``` 
+```
 
 ## 🎥 Demo Video
 
@@ -108,7 +108,7 @@ Back to the narrator for the conclusion.
 **Get running in 5 minutes:**
 
 1. **Clone & Install**
-   
+
    ```bash
    cd ComfyUI/custom_nodes
    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
@@ -116,12 +116,12 @@ Back to the narrator for the conclusion.
    ```
 
 2. **Download Models** (Required)
-   
+
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
    - Place in `ComfyUI/models/chatterbox/`
 
 3. **Try a Workflow**
-   
+
    - Download: [ChatterBox Integration Workflow](example_workflows/Chatterbox%20integration.json)
    - Drag into ComfyUI and start generating!
 
@@ -131,7 +131,129 @@ Back to the narrator for the conclusion.
 
 ## Installation
 
-> **Note:** There are multiple ChatterBox extensions available. This implementation focuses on simplicity, ComfyUI standards, and enhanced text processing capabilities.
+<details>
+<summary>Detailed Installation Guide</summary>
+
+This section provides a detailed guide for installing ComfyUI ChatterBox SRT Voice, covering different ComfyUI installation methods.
+
+### Prerequisites
+
+*   ComfyUI installation (Portable, Direct with venv, or through Manager)
+*   Python 3.12 or higher
+
+### Installation Methods
+
+#### 1. Portable Installation
+
+For portable installations, follow these steps:
+
+1.  Clone the repository into the `ComfyUI/custom_nodes` folder:
+
+    ```bash
+    cd ComfyUI/custom_nodes
+    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+    ```
+2.  Navigate to the cloned directory:
+
+    ```bash
+    cd ComfyUI_ChatterBox_SRT_Voice
+    ```
+3.  Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation to ensure the packages are installed in the correct environment.
+
+    ```bash
+    ComfyUI/python_embeded/python.exe -m pip install -r requirements.txt
+    ```
+
+#### 2. Direct Installation with venv
+
+If you have a direct installation with a virtual environment (venv), follow these steps:
+
+1.  Clone the repository into the `ComfyUI/custom_nodes` folder:
+
+    ```bash
+    cd ComfyUI/custom_nodes
+    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+    ```
+2.  Activate your ComfyUI virtual environment.  This is crucial to ensure dependencies are installed in the correct environment. The method to activate the venv may vary depending on your setup.  Here's a common example:
+
+    ```bash
+    cd ComfyUI
+    . ./venv/bin/activate
+    ```
+
+    or on Windows:
+
+    ```bash
+    ComfyUI\venv\Scripts\activate
+    ```
+3.  Navigate to the cloned directory:
+
+    ```bash
+    cd custom_nodes/ComfyUI_ChatterBox_SRT_Voice
+    ```
+4.  Install the required dependencies using `pip`:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+#### 3. Installation through the ComfyUI Manager
+
+1.  Install the ComfyUI Manager if you haven't already.
+2.  Use the Manager to install the "ComfyUI ChatterBox SRT Voice" node.
+3.  The manager might handle dependencies automatically, but it's still recommended to verify the installation.  Navigate to the node's directory:
+
+    ```bash
+    cd ComfyUI/custom_nodes/ComfyUI_ChatterBox_SRT_Voice
+    ```
+4.  Activate your ComfyUI virtual environment (see instructions in "Direct Installation with venv").
+5.  If you encounter issues, manually install the dependencies:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Troubleshooting Dependency Issues
+
+A common problem is installing dependencies in the wrong Python environment. Always ensure you are installing dependencies within your ComfyUI's Python environment.
+
+*   **Verify your Python environment:** After activating your venv or navigating to your portable ComfyUI installation, check the Python executable being used:
+
+    ```bash
+    which python
+    ```
+
+    This should point to the Python executable within your ComfyUI installation (e.g., `ComfyUI/python_embeded/python.exe` or `ComfyUI/venv/bin/python`).
+*   **If `s3tokenizer` fails to install:** This dependency can be problematic. Try upgrading your pip and setuptools:
+
+    ```bash
+    python -m pip install --upgrade pip setuptools wheel
+    ```
+
+    Then, try installing the requirements again.
+*   **If you cloned the node manually (without the Manager):** Make sure you install the requirements.txt file.
+
+### Updating the Node
+
+To update the node to the latest version:
+
+1.  Navigate to the node's directory:
+
+    ```bash
+    cd ComfyUI/custom_nodes/ComfyUI_ChatterBox_SRT_Voice
+    ```
+2.  Pull the latest changes from the repository:
+
+    ```bash
+    git pull
+    ```
+3.  Reinstall the dependencies (in case they have been updated):
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+</details>
 
 ### 1. Clone Repository
 
@@ -198,7 +320,7 @@ ComfyUI/models/chatterbox/
 
 - `conds.pt` (105 KB)
 - `s3gen.pt` (~1 GB)
-- `t3_cfg.pt` (~1 GB)  
+- `t3_cfg.pt` (~1 GB)
 - `tokenizer.json` (25 KB)
 - `ve.pt` (5.5 MB)
 
@@ -309,7 +431,7 @@ ComfyUI/models/voices/
 **Auto-selection logic:**
 
 - **Text > 1000 chars** → silence_padding (natural pauses)
-- **Text > 500 chars** → crossfade (smooth blending)  
+- **Text > 500 chars** → crossfade (smooth blending)
 - **Text < 500 chars** → concatenate (simple joining)
 
 ### 📦 Smart Model Loading
@@ -317,7 +439,7 @@ ComfyUI/models/voices/
 **Priority-based model detection:**
 
 1. **Bundled models** in node folder (self-contained)
-2. **ComfyUI models** in standard location  
+2. **ComfyUI models** in standard location
 3. **HuggingFace download** with authentication
 
 **Console output shows source:**
@@ -467,7 +589,7 @@ ComfyUI/models/voices/
 Unlike many TTS systems:
 
 - **OpenAI TTS**: 4096 character limit
-- **ElevenLabs**: 2500 character limit  
+- **ElevenLabs**: 2500 character limit
 - **ChatterBox**: No documented limits + intelligent chunking
 
 ### 🧠 Smart Text Splitting

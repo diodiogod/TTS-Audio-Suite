@@ -339,7 +339,7 @@ Hello! This is F5-TTS SRT with character switching.
                 current_timing_mode = "pad_with_silence"
                 mode_switched = True
             
-            # Determine audio prompt component for cache key generation
+            # Determine audio prompt component for cache key generation (stable identifier)
             audio_prompt_component = ""
             if opt_reference_audio is not None:
                 waveform_hash = hashlib.md5(opt_reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
@@ -347,7 +347,21 @@ Hello! This is F5-TTS SRT with character switching.
             elif reference_audio_file != "none":
                 audio_prompt_component = f"ref_file_{reference_audio_file}"
             elif audio_prompt:
-                audio_prompt_component = audio_prompt
+                # Handle potential temporary file paths by creating stable identifier
+                if audio_prompt.startswith('/tmp/') or 'tmp' in str(audio_prompt):
+                    try:
+                        import hashlib
+                        if os.path.exists(audio_prompt):
+                            with open(audio_prompt, 'rb') as f:
+                                content = f.read()
+                                content_hash = hashlib.md5(content).hexdigest()
+                                audio_prompt_component = f"temp_audio_{content_hash}"
+                        else:
+                            audio_prompt_component = str(audio_prompt)
+                    except Exception:
+                        audio_prompt_component = str(audio_prompt)
+                else:
+                    audio_prompt_component = audio_prompt
             
             # Generate audio segments
             audio_segments = []
@@ -369,7 +383,7 @@ Hello! This is F5-TTS SRT with character switching.
                     )
                     print(f"🤫 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Empty text, generating {natural_duration:.2f}s silence.")
                 else:
-                    # ENHANCED: Parse character tags from subtitle text (always parse to respect line breaks)
+                    # ENHANCED: Parse character tags from subtitle text (character parser now ignores pause tags)
                     character_segments = parse_character_text(subtitle.text)
                     
                     if len(character_segments) > 1 or (len(character_segments) == 1 and character_segments[0][0] != "narrator"):
@@ -395,46 +409,53 @@ Hello! This is F5-TTS SRT with character switching.
                             # else:
                             #     print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
                             
-                            # Generate cache key for this character segment
-                            char_segment_cache_key = self._generate_segment_cache_key(
-                                f"{char}:{segment_text}", model, device, audio_prompt_component, char_text,
-                                temperature, speed, target_rms, cross_fade_duration, nfe_step, cfg_strength, seed
-                            )
-                            
-                            # Try to get cached audio
-                            cached_data = self._get_cached_segment_audio(char_segment_cache_key) if enable_audio_cache else None
-                            
-                            if cached_data:
-                                char_wav, _ = cached_data
-                                any_segment_cached = True
-                                print(f"💾 Using cached audio for character '{char}'")
+                            # Show generation message with character info
+                            if char == "narrator":
+                                print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
                             else:
-                                # Show generation message with character info
-                                if char == "narrator":
-                                    print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
-                                else:
-                                    print(f"🎭 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) using '{char}'")
-                                # Validate and clamp nfe_step to prevent ODE solver issues
-                                safe_nfe_step = max(1, min(nfe_step, 71))
-                                if safe_nfe_step != nfe_step:
-                                    print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
-                                
-                                # Generate new audio for this character segment
-                                char_wav = self.generate_f5tts_audio(
-                                    text=segment_text,
-                                    ref_audio_path=char_audio,
-                                    ref_text=char_text,
-                                    temperature=temperature,
-                                    speed=speed,
-                                    target_rms=target_rms,
-                                    cross_fade_duration=cross_fade_duration,
-                                    nfe_step=safe_nfe_step,
-                                    cfg_strength=cfg_strength
+                                print(f"🎭 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) using '{char}'")
+                            
+                            # Validate and clamp nfe_step to prevent ODE solver issues
+                            safe_nfe_step = max(1, min(nfe_step, 71))
+                            if safe_nfe_step != nfe_step:
+                                print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
+                            
+                            # Create cache function for this character
+                            def char_cache_fn(text_content: str, audio_result=None):
+                                cache_key = self._generate_segment_cache_key(
+                                    f"{char}:{text_content}", model, device, audio_prompt_component, char_text,
+                                    temperature, speed, target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed
                                 )
-                                
-                                if enable_audio_cache:
-                                    char_duration = self.AudioTimingUtils.get_audio_duration(char_wav, self.f5tts_sample_rate)
-                                    self._cache_segment_audio(char_segment_cache_key, char_wav, char_duration)
+                                if audio_result is None:
+                                    # Get from cache
+                                    cached_data = self._get_cached_segment_audio(cache_key) if enable_audio_cache else None
+                                    if cached_data:
+                                        print(f"💾 Using cached audio for character '{char}' text: '{text_content[:30]}...'")
+                                        return cached_data[0]
+                                    return None
+                                else:
+                                    # Store in cache
+                                    if enable_audio_cache:
+                                        char_duration = self.AudioTimingUtils.get_audio_duration(audio_result, self.f5tts_sample_rate)
+                                        self._cache_segment_audio(cache_key, audio_result, char_duration)
+                            
+                            # Generate new audio for this character segment with pause tag support (includes internal caching)
+                            char_wav = self.generate_f5tts_with_pause_tags(
+                                text=segment_text,
+                                ref_audio_path=char_audio,
+                                ref_text=char_text,
+                                enable_pause_tags=True,
+                                character=char,
+                                seed=seed,
+                                enable_cache=enable_audio_cache,
+                                cache_fn=char_cache_fn,
+                                temperature=temperature,
+                                speed=speed,
+                                target_rms=target_rms,
+                                cross_fade_duration=cross_fade_duration,
+                                nfe_step=safe_nfe_step,
+                                cfg_strength=cfg_strength
+                            )
                             
                             segment_audio_parts.append(char_wav)
                         
@@ -443,44 +464,51 @@ Hello! This is F5-TTS SRT with character switching.
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                         
                     else:
-                        # Single character/narrator mode (original behavior)
-                        # Generate cache key for this segment
-                        segment_cache_key = self._generate_segment_cache_key(
-                            subtitle.text, model, device, audio_prompt_component, validated_ref_text,
-                            temperature, speed, target_rms, cross_fade_duration, nfe_step, cfg_strength, seed
-                        )
+                        # Single character/narrator mode
+                        print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
                         
-                        # Try to get cached audio
-                        cached_data = self._get_cached_segment_audio(segment_cache_key) if enable_audio_cache else None
+                        # Validate and clamp nfe_step to prevent ODE solver issues
+                        safe_nfe_step = max(1, min(nfe_step, 71))
+                        if safe_nfe_step != nfe_step:
+                            print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
                         
-                        if cached_data:
-                            wav, natural_duration = cached_data
-                            any_segment_cached = True
-                            print(f"💾 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Using cached audio")
-                        else:
-                            # Generate new audio - narrator (single character mode)
-                            print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
-                            
-                            # Validate and clamp nfe_step to prevent ODE solver issues
-                            safe_nfe_step = max(1, min(nfe_step, 71))
-                            if safe_nfe_step != nfe_step:
-                                print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
-                            
-                            wav = self.generate_f5tts_audio(
-                                text=subtitle.text,
-                                ref_audio_path=audio_prompt,
-                                ref_text=validated_ref_text,
-                                temperature=temperature,
-                                speed=speed,
-                                target_rms=target_rms,
-                                cross_fade_duration=cross_fade_duration,
-                                nfe_step=safe_nfe_step,
-                                cfg_strength=cfg_strength
+                        # Create cache function for narrator
+                        def narrator_cache_fn(text_content: str, audio_result=None):
+                            cache_key = self._generate_segment_cache_key(
+                                f"narrator:{text_content}", model, device, audio_prompt_component, validated_ref_text,
+                                temperature, speed, target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed
                             )
-                            natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
-                            
-                            if enable_audio_cache:
-                                self._cache_segment_audio(segment_cache_key, wav, natural_duration)
+                            if audio_result is None:
+                                # Get from cache
+                                cached_data = self._get_cached_segment_audio(cache_key) if enable_audio_cache else None
+                                if cached_data:
+                                    print(f"💾 Using cached audio for narrator text: '{text_content[:30]}...'")
+                                    return cached_data[0]
+                                return None
+                            else:
+                                # Store in cache
+                                if enable_audio_cache:
+                                    char_duration = self.AudioTimingUtils.get_audio_duration(audio_result, self.f5tts_sample_rate)
+                                    self._cache_segment_audio(cache_key, audio_result, char_duration)
+                        
+                        # Generate new audio with pause tag support (includes internal caching)
+                        wav = self.generate_f5tts_with_pause_tags(
+                            text=subtitle.text,
+                            ref_audio_path=audio_prompt,
+                            ref_text=validated_ref_text,
+                            enable_pause_tags=True,
+                            character="narrator",
+                            seed=seed,
+                            enable_cache=enable_audio_cache,
+                            cache_fn=narrator_cache_fn,
+                            temperature=temperature,
+                            speed=speed,
+                            target_rms=target_rms,
+                            cross_fade_duration=cross_fade_duration,
+                            nfe_step=safe_nfe_step,
+                            cfg_strength=cfg_strength
+                        )
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                 
                 audio_segments.append(wav)
                 natural_durations.append(natural_duration)

@@ -141,6 +141,7 @@ Back to the main narrator voice for the conclusion.""",
 
     def __init__(self):
         super().__init__()
+
     
     @staticmethod
     def _get_companion_txt_file(audio_file_path):
@@ -271,6 +272,7 @@ Back to the main narrator voice for the conclusion.""",
             main_audio_prompt, main_ref_text = self._handle_reference_with_priority_chain(inputs)
             
             # Parse character segments from text
+            # NOTE: We parse characters from original text, then handle pause tags within each segment
             character_segments = parse_character_text(inputs["text"])
             
             # Check if we have character switching
@@ -323,10 +325,11 @@ Back to the main narrator voice for the conclusion.""",
                     for chunk_i, chunk_text in enumerate(segment_chunks):
                         print(f"🎤 Generating F5-TTS segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
                         
-                        chunk_audio = self.generate_f5tts_audio(
+                        chunk_audio = self.generate_f5tts_with_pause_tags(
                             text=chunk_text,
                             ref_audio_path=char_audio,
                             ref_text=char_text,
+                            enable_pause_tags=True,
                             temperature=inputs["temperature"],
                             speed=inputs["speed"],
                             target_rms=inputs["target_rms"],
@@ -353,10 +356,11 @@ Back to the main narrator voice for the conclusion.""",
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
                     # Process single chunk
-                    wav = self.generate_f5tts_audio(
+                    wav = self.generate_f5tts_with_pause_tags(
                         text=inputs["text"],
                         ref_audio_path=main_audio_prompt,
                         ref_text=main_ref_text,
+                        enable_pause_tags=True,
                         temperature=inputs["temperature"],
                         speed=inputs["speed"],
                         target_rms=inputs["target_rms"],
@@ -379,10 +383,11 @@ Back to the main narrator voice for the conclusion.""",
                         # Show progress for multi-chunk generation
                         print(f"🎤 Generating F5-TTS chunk {i+1}/{len(chunks)}...")
                         
-                        chunk_audio = self.generate_f5tts_audio(
+                        chunk_audio = self.generate_f5tts_with_pause_tags(
                             text=chunk,
                             ref_audio_path=main_audio_prompt,
                             ref_text=main_ref_text,
+                            enable_pause_tags=True,
                             temperature=inputs["temperature"],
                             speed=inputs["speed"],
                             target_rms=inputs["target_rms"],

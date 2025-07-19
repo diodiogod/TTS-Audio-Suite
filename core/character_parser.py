@@ -33,8 +33,8 @@ class CharacterParser:
     - Compatible with voice folder structure
     """
     
-    # Regex pattern for character tags: [CharacterName]
-    CHARACTER_TAG_PATTERN = re.compile(r'\[([^\]]+)\]')
+    # Regex pattern for character tags: [CharacterName] (excludes pause tags)
+    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!pause:)([^\]]+)\]')
     
     def __init__(self, default_character: str = "narrator"):
         """
