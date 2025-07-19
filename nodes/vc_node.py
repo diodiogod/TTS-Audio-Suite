@@ -79,7 +79,7 @@ class ChatterboxVCNode(BaseVCNode):
         if source_waveform.dim() == 3:
             source_waveform = source_waveform.squeeze(0)  # Remove batch dimension
         
-        torchaudio.save(source_temp.name, source_waveform, source_audio["sample_rate"])
+        torchaudio.save(source_temp.name, source_waveform.cpu(), source_audio["sample_rate"])
         self._temp_files.append(source_temp.name)
         
         # Save target audio to temporary file
@@ -90,7 +90,7 @@ class ChatterboxVCNode(BaseVCNode):
         if target_waveform.dim() == 3:
             target_waveform = target_waveform.squeeze(0)  # Remove batch dimension
         
-        torchaudio.save(target_temp.name, target_waveform, target_audio["sample_rate"])
+        torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
         self._temp_files.append(target_temp.name)
         
         return source_temp.name, target_temp.name
