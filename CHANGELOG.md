@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2025-07-19
+
+### Added
+
+- MAJOR NEW FEATURES:
+- Automatic processing with no additional UI parameters
+- Added full caching support to ChatterBox TTS and F5-TTS nodes
+- Implemented stable audio component hashing for consistent cache keys
+- This release brings substantial performance improvements and new creative possibilities for speech generation workflows\!
+
+### Fixed
+
+- Version 3.2.0: Pause Tags System and Universal Caching
+- ⏸️ Pause Tags System - Universal pause insertion with intelligent syntax
+- Smart pause syntax: [pause:1s], [pause:500ms], [pause:2]
+- Seamless character integration and parser protection
+- Universal support across all TTS nodes (ChatterBox, F5-TTS, SRT)
+- 🚀 Universal Audio Caching - Comprehensive caching system for all nodes
+- Intelligent cache keys prevent invalidation from temporary file paths
+- Individual segment caching with character-aware separation
+- Cache hit/miss logging for performance monitoring
+- 🔧 Cache Architecture Overhaul
+- Fixed cache instability issues across all SRT and TTS nodes
+- Resolved cache lookup/store mismatch causing permanent cache misses
+- Optimized pause tag processing to cache text segments independently
+- Fixed character parser conflicts with pause tag detection
+- 🛠️ Code Quality & Performance
+- Streamlined codebase with comprehensive pause tag processor
+
+### Changed
+
+- Intelligent caching: pause changes don't invalidate text cache
+- Significant speed improvements for iterative workflows
+- TECHNICAL IMPROVEMENTS:
+- 🎭 Character System Enhancements
+- Updated text processing order for proper pause/character integration
+- Enhanced character switching compatibility with pause tags
+- Improved progress messaging consistency across all nodes
+- Enhanced crash protection integration with pause tag system
+
+### Removed
+
+- Removed unnecessary enable_pause_tags UI parameters (automatic now)
 ## [3.1.4] - 2025-07-18
 
 ### Added

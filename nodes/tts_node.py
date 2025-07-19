@@ -10,8 +10,9 @@ import gc
 import subprocess
 import json
 import tempfile
+import hashlib
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 # Use direct file imports that work when loaded via importlib
 import os
@@ -40,6 +41,9 @@ from core.voice_discovery import get_available_characters, get_character_mapping
 from core.pause_tag_processor import PauseTagProcessor
 from core.character_parser import parse_character_text, character_parser
 import comfy.model_management as model_management
+
+# Global audio cache for ChatterBox TTS segments
+GLOBAL_AUDIO_CACHE = {}
 
 
 class ChatterboxTTSNode(BaseTTSNode):
@@ -97,6 +101,10 @@ Back to the main narrator voice for the conclusion.""",
                 "crash_protection_template": ("STRING", {
                     "default": "hmm ,, {seg} hmm ,,",
                     "tooltip": "Custom padding template for short text segments to prevent ChatterBox crashes. ChatterBox has a bug where text shorter than ~21 characters causes CUDA tensor errors in sequential generation. Use {seg} as placeholder for the original text. Examples: '...ummmmm {seg}' (default hesitation), '{seg}... yes... {seg}' (repetition), 'Well, {seg}' (natural prefix), or empty string to disable padding. This only affects ChatterBox nodes, not F5-TTS nodes."
+                }),
+                "enable_audio_cache": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
             }
         }
@@ -356,12 +364,165 @@ Back to the main narrator voice for the conclusion.""",
         else:
             # Fallback to concatenation
             return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
+    
+    def _generate_stable_audio_component(self, reference_audio, audio_prompt_path: str) -> str:
+        """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
+        if reference_audio is not None:
+            waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
+            return f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
+        elif audio_prompt_path:
+            return audio_prompt_path
+        else:
+            return ""
+
+    def _generate_segment_cache_key(self, text: str, exaggeration: float, temperature: float, 
+                                   cfg_weight: float, seed: int, audio_component: str, 
+                                   model_source: str, device: str, character: str = "narrator") -> str:
+        """Generate cache key for a single audio segment based on generation parameters."""
+        cache_data = {
+            'text': text,
+            'exaggeration': exaggeration,
+            'temperature': temperature,
+            'cfg_weight': cfg_weight,
+            'seed': seed,
+            'audio_component': audio_component,
+            'model_source': model_source,
+            'device': device,
+            'character': character,
+            'engine': 'chatterbox'
+        }
+        cache_string = str(sorted(cache_data.items()))
+        cache_key = hashlib.md5(cache_string.encode()).hexdigest()
+        return cache_key
+
+    def _get_cached_segment_audio(self, segment_cache_key: str) -> Optional[Tuple[torch.Tensor, float]]:
+        """Retrieve cached audio for a single segment if available from global cache."""
+        return GLOBAL_AUDIO_CACHE.get(segment_cache_key)
+
+    def _cache_segment_audio(self, segment_cache_key: str, audio_tensor: torch.Tensor, natural_duration: float):
+        """Cache generated audio for a single segment in global cache."""
+        GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
+
+    def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 
+                                    temperature: float, cfg_weight: float, enable_pause_tags: bool = True,
+                                    character: str = "narrator", seed: int = 0, enable_cache: bool = True,
+                                    crash_protection_template: str = "hmm ,, {seg} hmm ,,", 
+                                    stable_audio_component: str = None) -> torch.Tensor:
+        """
+        Generate ChatterBox TTS audio with pause tag support.
+        
+        Args:
+            text: Input text potentially with pause tags
+            audio_prompt: Audio prompt for TTS generation
+            exaggeration: ChatterBox exaggeration parameter
+            temperature: ChatterBox temperature parameter
+            cfg_weight: ChatterBox CFG weight parameter
+            enable_pause_tags: Whether to process pause tags
+            character: Character name for cache key
+            seed: Seed for reproducibility and cache key
+            enable_cache: Whether to use caching
+            crash_protection_template: Template for crash protection
+            stable_audio_component: Stable audio identifier for cache
+            
+        Returns:
+            Generated audio tensor with pauses
+        """
+        # Preprocess text for pause tags
+        processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+            text, enable_pause_tags
+        )
+        
+        if pause_segments is None:
+            # No pause tags, use regular generation with caching
+            if enable_cache:
+                # Use stable audio component for cache key
+                audio_component = stable_audio_component if stable_audio_component else ""
+                
+                # Apply crash protection first for consistency
+                protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                
+                cache_key = self._generate_segment_cache_key(
+                    protected_text, exaggeration, temperature, cfg_weight, seed,
+                    audio_component, self.model_manager.get_model_source("tts"), self.device, character
+                )
+                
+                # Try cache first
+                cached_data = self._get_cached_segment_audio(cache_key)
+                if cached_data:
+                    print(f"💾 CACHE HIT for {character}: '{processed_text[:30]}...'")
+                    return cached_data[0]
+                
+                # Generate and cache
+                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                self._cache_segment_audio(cache_key, audio, 0.0)  # Duration not needed for basic caching
+                return audio
+            else:
+                protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                return self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+        
+        # Generate audio with pause tags, caching individual text segments
+        def tts_generate_func(text_content: str) -> torch.Tensor:
+            """TTS generation function for pause tag processor with caching"""
+            if enable_cache:
+                # Use stable audio component for cache key
+                audio_component = stable_audio_component if stable_audio_component else ""
+                
+                # Apply crash protection first for consistency
+                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
+                if len(text_content.strip()) < 21:
+                    print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                
+                cache_key = self._generate_segment_cache_key(
+                    protected_text, exaggeration, temperature, cfg_weight, seed,
+                    audio_component, self.model_manager.get_model_source("tts"), self.device, character
+                )
+                
+                # Try cache first  
+                cached_data = self._get_cached_segment_audio(cache_key)
+                if cached_data:
+                    print(f"💾 CACHE HIT for {character}: '{text_content[:30]}...'")
+                    return cached_data[0]
+                
+                # Generate and cache
+                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                self._cache_segment_audio(cache_key, audio, 0.0)  # Duration not needed for basic caching
+                return audio
+            else:
+                # Apply crash protection
+                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
+                if len(text_content.strip()) < 21:
+                    print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                
+                return self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+        
+        return PauseTagProcessor.generate_audio_with_pauses(
+            pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+        )
+
+    def _generate_with_pause_tags(self, pause_segments, inputs, main_audio_prompt):
+        """Generate audio using the pause tag processor with character switching support."""
+        if inputs.get("enable_audio_cache"):
+            stable_audio_component = self._generate_stable_audio_component(
+                inputs.get("reference_audio"), inputs.get("audio_prompt_path", "")
+            )
+        else:
+            stable_audio_component = ""
+        
+        # Use the pause tag processor with caching
+        return self._generate_tts_with_pause_tags(
+            inputs["text"], main_audio_prompt, inputs["exaggeration"], 
+            inputs["temperature"], inputs["cfg_weight"], True,
+            character="narrator", seed=inputs["seed"], 
+            enable_cache=inputs.get("enable_audio_cache", True),
+            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+            stable_audio_component=stable_audio_component
+        )
 
     def generate_speech(self, text, device, exaggeration, temperature, cfg_weight, seed, 
                        reference_audio=None, audio_prompt_path="", 
                        enable_chunking=True, max_chars_per_chunk=400, 
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
-                       crash_protection_template="hmm ,, {seg} hmm ,,"):
+                       crash_protection_template="hmm ,, {seg} hmm ,,", enable_audio_cache=True):
         
         def _process():
             # Validate inputs
@@ -372,7 +533,8 @@ Back to the main narrator voice for the conclusion.""",
                 enable_chunking=enable_chunking, max_chars_per_chunk=max_chars_per_chunk,
                 chunk_combination_method=chunk_combination_method,
                 silence_between_chunks_ms=silence_between_chunks_ms,
-                crash_protection_template=crash_protection_template
+                crash_protection_template=crash_protection_template,
+                enable_audio_cache=enable_audio_cache
             )
             
             # Load model
@@ -383,6 +545,11 @@ Back to the main narrator voice for the conclusion.""",
             
             # Handle main reference audio
             main_audio_prompt = self.handle_reference_audio(
+                inputs.get("reference_audio"), inputs.get("audio_prompt_path", "")
+            )
+            
+            # Generate stable audio component for cache consistency
+            stable_audio_component = self._generate_stable_audio_component(
                 inputs.get("reference_audio"), inputs.get("audio_prompt_path", "")
             )
             
@@ -459,20 +626,16 @@ Back to the main narrator voice for the conclusion.""",
                         if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
                             print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
                         
-                        try:
-                            # Determine crash protection based on padding template
-                            enable_protection = bool(inputs["crash_protection_template"].strip())
-                            chunk_audio = self._safe_generate_tts_audio(
-                                processed_chunk_text, char_audio_prompt, inputs["exaggeration"], 
-                                inputs["temperature"], inputs["cfg_weight"], enable_protection
-                            )
-                            print(f"✅ ChatterBox segment {i+1} chunk {chunk_i+1} completed successfully")
-                            print(f"🔍 DEBUG: Audio shape: {chunk_audio.shape}, dtype: {chunk_audio.dtype}")
-                            audio_segments.append(chunk_audio)
-                            print(f"🔍 DEBUG: Total segments so far: {len(audio_segments)}")
-                        except Exception as e:
-                            print(f"❌ ChatterBox segment {i+1} chunk {chunk_i+1} failed: {e}")
-                            raise
+                        # Generate audio with caching support for character segments
+                        chunk_audio = self._generate_tts_with_pause_tags(
+                            chunk_text, char_audio_prompt, inputs["exaggeration"], 
+                            inputs["temperature"], inputs["cfg_weight"], True,
+                            character=character, seed=inputs["seed"], 
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                            stable_audio_component=stable_audio_component
+                        )
+                        audio_segments.append(chunk_audio)
                 
                 # Combine all character segments (PRESERVE EXISTING COMBINE LOGIC)
                 wav = self.combine_audio_chunks(
@@ -490,12 +653,14 @@ Back to the main narrator voice for the conclusion.""",
                 text_length = len(inputs["text"])
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
-                    # Process single chunk with crash protection
-                    # Determine crash protection based on padding template
-                    enable_protection = bool(inputs["crash_protection_template"].strip())
-                    wav = self._safe_generate_tts_audio(
+                    # Process single chunk with caching support
+                    wav = self._generate_tts_with_pause_tags(
                         inputs["text"], main_audio_prompt, inputs["exaggeration"], 
-                        inputs["temperature"], inputs["cfg_weight"], enable_protection
+                        inputs["temperature"], inputs["cfg_weight"], True,
+                        character="narrator", seed=inputs["seed"], 
+                        enable_cache=inputs.get("enable_audio_cache", True),
+                        crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                        stable_audio_component=stable_audio_component
                     )
                     model_source = self.model_manager.get_model_source("tts")
                     info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
@@ -510,13 +675,16 @@ Back to the main narrator voice for the conclusion.""",
                         self.check_interruption(f"TTS generation chunk {i+1}/{len(chunks)}")
                         
                         # Show progress for multi-chunk generation
-                        print(f"🎤 Generating TTS chunk {i+1}/{len(chunks)}...")
+                        print(f"🎤 Generating ChatterBox chunk {i+1}/{len(chunks)}...")
                         
-                        # Determine crash protection based on padding template
-                        enable_protection = bool(inputs["crash_protection_template"].strip())
-                        chunk_audio = self._safe_generate_tts_audio(
+                        # Generate chunk with caching support
+                        chunk_audio = self._generate_tts_with_pause_tags(
                             chunk, main_audio_prompt, inputs["exaggeration"], 
-                            inputs["temperature"], inputs["cfg_weight"], enable_protection
+                            inputs["temperature"], inputs["cfg_weight"], True,
+                            character="narrator", seed=inputs["seed"], 
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                            stable_audio_component=stable_audio_component
                         )
                         audio_segments.append(chunk_audio)
                     

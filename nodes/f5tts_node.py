@@ -6,7 +6,8 @@ Enhanced Text-to-Speech node using F5-TTS with reference audio + text
 import torch
 import numpy as np
 import os
-from typing import Dict, Any, Optional, List
+import hashlib
+from typing import Dict, Any, Optional, List, Tuple
 
 # Use direct file imports that work when loaded via importlib
 import os
@@ -34,6 +35,9 @@ from core.audio_processing import AudioProcessingUtils
 from core.voice_discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
 from core.character_parser import parse_character_text, character_parser
 import comfy.model_management as model_management
+
+# Global audio cache for F5-TTS segments
+GLOBAL_AUDIO_CACHE = {}
 
 
 class F5TTSNode(BaseF5TTSNode):
@@ -128,6 +132,10 @@ Back to the main narrator voice for the conclusion.""",
                 "silence_between_chunks_ms": ("INT", {
                     "default": 100, "min": 0, "max": 500, "step": 25,
                     "tooltip": "Silence duration between chunks in milliseconds when using 'silence_padding' combination method. Longer silences = more distinct separation between chunks."
+                }),
+                "enable_audio_cache": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
             }
         }
@@ -243,12 +251,58 @@ Back to the main narrator voice for the conclusion.""",
         except ImportError:
             return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
     
+    def _generate_stable_audio_component(self, reference_audio_file: str, opt_reference_audio, audio_prompt_path: str) -> str:
+        """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
+        if opt_reference_audio is not None:
+            waveform_hash = hashlib.md5(opt_reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
+            return f"ref_audio_{waveform_hash}_{opt_reference_audio['sample_rate']}"
+        elif reference_audio_file != "none":
+            return f"ref_file_{reference_audio_file}"
+        elif audio_prompt_path:
+            return audio_prompt_path
+        else:
+            return ""
+
+    def _generate_segment_cache_key(self, text: str, model_name: str, device: str,
+                                   audio_component: str, ref_text: str, temperature: float,
+                                   speed: float, target_rms: float, cross_fade_duration: float,
+                                   nfe_step: int, cfg_strength: float, seed: int, character: str = "narrator") -> str:
+        """Generate cache key for a single F5-TTS audio segment based on generation parameters."""
+        cache_data = {
+            'text': text,
+            'model_name': model_name,
+            'device': device,
+            'audio_component': audio_component,
+            'ref_text': ref_text,
+            'temperature': temperature,
+            'speed': speed,
+            'target_rms': target_rms,
+            'cross_fade_duration': cross_fade_duration,
+            'nfe_step': nfe_step,
+            'cfg_strength': cfg_strength,
+            'seed': seed,
+            'character': character,
+            'engine': 'f5tts'
+        }
+        cache_string = str(sorted(cache_data.items()))
+        cache_key = hashlib.md5(cache_string.encode()).hexdigest()
+        return cache_key
+
+    def _get_cached_segment_audio(self, segment_cache_key: str) -> Optional[Tuple[torch.Tensor, float]]:
+        """Retrieve cached audio for a single segment if available from global cache."""
+        return GLOBAL_AUDIO_CACHE.get(segment_cache_key)
+
+    def _cache_segment_audio(self, segment_cache_key: str, audio_tensor: torch.Tensor, natural_duration: float):
+        """Cache generated audio for a single segment in global cache."""
+        GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
+    
     def generate_speech(self, reference_audio_file, text, device, model, seed,
                        opt_reference_audio=None, opt_reference_text="",
                        audio_prompt_path="", enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
                        temperature=0.8, speed=1.0, target_rms=0.1,
-                       cross_fade_duration=0.15, nfe_step=32, cfg_strength=2.0):
+                       cross_fade_duration=0.15, nfe_step=32, cfg_strength=2.0, 
+                       enable_audio_cache=True):
         
         def _process():
             # Validate inputs
@@ -259,7 +313,7 @@ Back to the main narrator voice for the conclusion.""",
                 max_chars_per_chunk=max_chars_per_chunk, chunk_combination_method=chunk_combination_method,
                 silence_between_chunks_ms=silence_between_chunks_ms, temperature=temperature,
                 speed=speed, target_rms=target_rms, cross_fade_duration=cross_fade_duration,
-                nfe_step=nfe_step, cfg_strength=cfg_strength
+                nfe_step=nfe_step, cfg_strength=cfg_strength, enable_audio_cache=enable_audio_cache
             )
             
             # Load F5-TTS model
@@ -270,6 +324,12 @@ Back to the main narrator voice for the conclusion.""",
             
             # Handle reference audio and text with priority chain
             main_audio_prompt, main_ref_text = self._handle_reference_with_priority_chain(inputs)
+            
+            # Generate stable audio component for cache consistency
+            stable_audio_component = self._generate_stable_audio_component(
+                inputs["reference_audio_file"], inputs.get("opt_reference_audio"), 
+                inputs.get("audio_prompt_path", "")
+            )
             
             # Parse character segments from text
             # NOTE: We parse characters from original text, then handle pause tags within each segment
@@ -325,11 +385,43 @@ Back to the main narrator voice for the conclusion.""",
                     for chunk_i, chunk_text in enumerate(segment_chunks):
                         print(f"🎤 Generating F5-TTS segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
                         
+                        # Create cache function for this character if caching is enabled
+                        cache_fn = None
+                        if inputs.get("enable_audio_cache", True):
+                            def create_cache_fn(char_name, char_audio_comp, char_ref_text):
+                                def cache_fn_impl(text_content: str, audio_result=None):
+                                    cache_key = self._generate_segment_cache_key(
+                                        f"{char_name}:{text_content}", inputs["model"], inputs["device"], 
+                                        char_audio_comp, char_ref_text, inputs["temperature"], inputs["speed"],
+                                        inputs["target_rms"], inputs["cross_fade_duration"], 
+                                        safe_nfe_step, inputs["cfg_strength"], inputs["seed"], char_name
+                                    )
+                                    if audio_result is None:
+                                        # Get from cache
+                                        cached_data = self._get_cached_segment_audio(cache_key)
+                                        if cached_data:
+                                            print(f"💾 CACHE HIT for character '{char_name}': '{text_content[:30]}...'")
+                                            return cached_data[0]
+                                        return None
+                                    else:
+                                        # Store in cache
+                                        char_duration = char_audio.size(-1) / self.f5tts_sample_rate if hasattr(char_audio, 'size') else 0.0
+                                        self._cache_segment_audio(cache_key, audio_result, char_duration)
+                                return cache_fn_impl
+                            
+                            # Determine character audio component for cache key
+                            char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
+                            cache_fn = create_cache_fn(character, char_audio_component, char_text)
+                        
                         chunk_audio = self.generate_f5tts_with_pause_tags(
                             text=chunk_text,
                             ref_audio_path=char_audio,
                             ref_text=char_text,
                             enable_pause_tags=True,
+                            character=character,
+                            seed=inputs["seed"],
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            cache_fn=cache_fn,
                             temperature=inputs["temperature"],
                             speed=inputs["speed"],
                             target_rms=inputs["target_rms"],
@@ -355,12 +447,39 @@ Back to the main narrator voice for the conclusion.""",
                 text_length = len(inputs["text"])
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
-                    # Process single chunk
+                    # Process single chunk with caching
+                    # Create cache function for narrator if caching is enabled
+                    cache_fn = None
+                    if inputs.get("enable_audio_cache", True):
+                        def narrator_cache_fn(text_content: str, audio_result=None):
+                            cache_key = self._generate_segment_cache_key(
+                                f"narrator:{text_content}", inputs["model"], inputs["device"], 
+                                stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
+                                inputs["target_rms"], inputs["cross_fade_duration"], 
+                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                            )
+                            if audio_result is None:
+                                # Get from cache
+                                cached_data = self._get_cached_segment_audio(cache_key)
+                                if cached_data:
+                                    print(f"💾 CACHE HIT for narrator: '{text_content[:30]}...'")
+                                    return cached_data[0]
+                                return None
+                            else:
+                                # Store in cache
+                                audio_duration = audio_result.size(-1) / self.f5tts_sample_rate if hasattr(audio_result, 'size') else 0.0
+                                self._cache_segment_audio(cache_key, audio_result, audio_duration)
+                        cache_fn = narrator_cache_fn
+                    
                     wav = self.generate_f5tts_with_pause_tags(
                         text=inputs["text"],
                         ref_audio_path=main_audio_prompt,
                         ref_text=main_ref_text,
                         enable_pause_tags=True,
+                        character="narrator",
+                        seed=inputs["seed"],
+                        enable_cache=inputs.get("enable_audio_cache", True),
+                        cache_fn=cache_fn,
                         temperature=inputs["temperature"],
                         speed=inputs["speed"],
                         target_rms=inputs["target_rms"],
@@ -373,6 +492,29 @@ Back to the main narrator voice for the conclusion.""",
                 else:
                     # Split into chunks using improved chunker
                     chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                    
+                    # Create cache function for narrator chunks if caching is enabled
+                    cache_fn = None
+                    if inputs.get("enable_audio_cache", True):
+                        def chunk_cache_fn(text_content: str, audio_result=None):
+                            cache_key = self._generate_segment_cache_key(
+                                f"narrator:{text_content}", inputs["model"], inputs["device"], 
+                                stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
+                                inputs["target_rms"], inputs["cross_fade_duration"], 
+                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                            )
+                            if audio_result is None:
+                                # Get from cache
+                                cached_data = self._get_cached_segment_audio(cache_key)
+                                if cached_data:
+                                    print(f"💾 CACHE HIT for narrator chunk: '{text_content[:30]}...'")
+                                    return cached_data[0]
+                                return None
+                            else:
+                                # Store in cache
+                                audio_duration = audio_result.size(-1) / self.f5tts_sample_rate if hasattr(audio_result, 'size') else 0.0
+                                self._cache_segment_audio(cache_key, audio_result, audio_duration)
+                        cache_fn = chunk_cache_fn
                     
                     # Process each chunk
                     audio_segments = []
@@ -388,6 +530,10 @@ Back to the main narrator voice for the conclusion.""",
                             ref_audio_path=main_audio_prompt,
                             ref_text=main_ref_text,
                             enable_pause_tags=True,
+                            character="narrator",
+                            seed=inputs["seed"],
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            cache_fn=cache_fn,
                             temperature=inputs["temperature"],
                             speed=inputs["speed"],
                             target_rms=inputs["target_rms"],
