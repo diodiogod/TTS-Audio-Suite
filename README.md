@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.1.4
+# ComfyUI ChatterBox SRT Voice (diogod) v3.2.0
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -68,6 +68,33 @@ Hello! This is the narrator speaking.
 [Bob] And I'm Bob! Great to meet you both.
 Back to the narrator for the conclusion.
 ```
+
+### ⏸️ Pause Tags System
+
+**NEW**: Intelligent pause insertion for natural speech timing control!
+
+* **Smart Pause Syntax**: Use `[pause:duration]` tags anywhere in your text
+* **Flexible Duration Formats**: 
+  - Seconds: `[pause:1.5]` or `[pause:2s]`
+  - Milliseconds: `[pause:500ms]` or `[pause:1200ms]`
+  - Numbers only: `[pause:2]` (defaults to seconds)
+* **Character Integration**: Pause tags work seamlessly with character switching
+* **Intelligent Caching**: Changing pause durations won't regenerate unchanged text segments
+* **Universal Support**: Works across all TTS nodes (ChatterBox, F5-TTS, SRT)
+* **Automatic Processing**: No additional parameters needed - just add tags to your text
+
+Example usage:
+```
+Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
+[Alice] I'm really excited! [pause:500ms] This will be great.
+[pause:2] Let's get started with the main content.
+```
+
+**Features:**
+- **Cache Optimized**: Only pause durations regenerate, text stays cached
+- **Parser Protected**: Pause tags won't interfere with character name detection
+- **Crash Protection**: Integrated with ChatterBox crash prevention system
+- **SRT Compatible**: Works perfectly with subtitle timing workflows
 
 ## 🎥 Demo Video
 
