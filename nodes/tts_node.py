@@ -37,6 +37,7 @@ BaseTTSNode = base_module.BaseTTSNode
 from core.text_chunking import ImprovedChatterBoxChunker
 from core.audio_processing import AudioProcessingUtils
 from core.voice_discovery import get_available_characters, get_character_mapping
+from core.pause_tag_processor import PauseTagProcessor
 from core.character_parser import parse_character_text, character_parser
 import comfy.model_management as model_management
 
@@ -224,6 +225,84 @@ Back to the main narrator voice for the conclusion.""",
             else:
                 raise
 
+    def _generate_with_pause_tags(self, pause_segments: List, inputs: Dict, main_audio_prompt) -> torch.Tensor:
+        """
+        Generate audio with pause tag support, handling character switching within segments.
+        
+        Args:
+            pause_segments: List of ('text', content) or ('pause', duration) segments
+            inputs: Input parameters dictionary
+            main_audio_prompt: Default audio prompt
+            
+        Returns:
+            Combined audio tensor with pauses
+        """
+        def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
+            """Generate audio for a text segment with crash protection"""
+            # Apply padding for crash protection
+            processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])
+            
+            # Determine crash protection based on template
+            enable_protection = bool(inputs["crash_protection_template"].strip())
+            
+            return self._safe_generate_tts_audio(
+                processed_text, audio_prompt, inputs["exaggeration"], 
+                inputs["temperature"], inputs["cfg_weight"], enable_protection
+            )
+        
+        # Check if we need character switching within pause segments
+        has_character_switching = any(
+            segment_type == 'text' and '[' in content and ']' in content 
+            for segment_type, content in pause_segments
+        )
+        
+        if has_character_switching:
+            # Set up character voice mapping
+            from core.voice_discovery import get_available_characters, get_character_mapping
+            available_chars = get_available_characters()
+            character_parser.set_available_characters(list(available_chars))
+            
+            # Process each segment and extract characters
+            all_characters = set()
+            for segment_type, content in pause_segments:
+                if segment_type == 'text':
+                    char_segments = parse_character_text(content)
+                    chars = set(char for char, _ in char_segments)
+                    all_characters.update(chars)
+            
+            character_mapping = get_character_mapping(list(all_characters), engine_type="chatterbox")
+            
+            # Build voice references
+            voice_refs = {}
+            for character in all_characters:
+                audio_path, _ = character_mapping.get(character, (None, None))
+                voice_refs[character] = audio_path if audio_path else main_audio_prompt
+        
+        # Generate audio using pause tag processor
+        def tts_generate_func(text_content: str) -> torch.Tensor:
+            """TTS generation function for pause tag processor"""
+            if has_character_switching and ('[' in text_content and ']' in text_content):
+                # Handle character switching within this segment
+                char_segments = parse_character_text(text_content)
+                segment_audio_parts = []
+                
+                for character, segment_text in char_segments:
+                    audio_prompt = voice_refs.get(character, main_audio_prompt)
+                    audio_part = generate_segment_audio(segment_text, audio_prompt)
+                    segment_audio_parts.append(audio_part)
+                
+                # Combine character segments
+                if segment_audio_parts:
+                    return torch.cat(segment_audio_parts, dim=-1)
+                else:
+                    return torch.zeros(1, 0)
+            else:
+                # Simple text segment without character switching
+                return generate_segment_audio(text_content, main_audio_prompt)
+        
+        return PauseTagProcessor.generate_audio_with_pauses(
+            pause_segments, tts_generate_func, self.tts_model.sr
+        )
 
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
         """Validate and normalize inputs."""
@@ -282,8 +361,7 @@ Back to the main narrator voice for the conclusion.""",
                        reference_audio=None, audio_prompt_path="", 
                        enable_chunking=True, max_chars_per_chunk=400, 
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
-                       crash_protection_template="hmm ,, {seg} hmm ,,", 
-                       enable_crash_protection=True):
+                       crash_protection_template="hmm ,, {seg} hmm ,,"):
         
         def _process():
             # Validate inputs
@@ -294,8 +372,7 @@ Back to the main narrator voice for the conclusion.""",
                 enable_chunking=enable_chunking, max_chars_per_chunk=max_chars_per_chunk,
                 chunk_combination_method=chunk_combination_method,
                 silence_between_chunks_ms=silence_between_chunks_ms,
-                crash_protection_template=crash_protection_template,
-                enable_crash_protection=enable_crash_protection
+                crash_protection_template=crash_protection_template
             )
             
             # Load model
@@ -309,14 +386,31 @@ Back to the main narrator voice for the conclusion.""",
                 inputs.get("reference_audio"), inputs.get("audio_prompt_path", "")
             )
             
-            # Parse character segments from text
-            character_segments = parse_character_text(inputs["text"])
+            # Preprocess text for pause tags
+            processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+                inputs["text"], True
+            )
             
-            # Check if we have character switching
+            # Parse character segments from text (use processed text without pause tags)
+            character_segments = parse_character_text(processed_text)
+            
+            # Check if we have pause tags or character switching
+            has_pause_tags = pause_segments is not None
             characters = list(set(char for char, _ in character_segments))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             
-            if has_multiple_characters:
+            if has_pause_tags:
+                # PAUSE TAG MODE - handle pause tags with potential character switching
+                print(f"⏸️ ChatterBox: Pause tag mode detected")
+                if has_multiple_characters:
+                    print(f"🎭 + Character switching mode - found characters: {', '.join(characters)}")
+                
+                # Generate audio with pause tags using special processor
+                wav = self._generate_with_pause_tags(pause_segments, inputs, main_audio_prompt)
+                model_source = self.model_manager.get_model_source("tts")
+                info = f"Generated audio with pause tags (characters: {', '.join(characters) if has_multiple_characters else 'narrator'}, {model_source} models)"
+                
+            elif has_multiple_characters:
                 # CHARACTER SWITCHING MODE
                 print(f"🎭 ChatterBox: Character switching mode - found characters: {', '.join(characters)}")
                 
