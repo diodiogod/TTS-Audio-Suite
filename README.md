@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.2.0
+# ComfyUI ChatterBox SRT Voice (diogod) v3.2.1
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -69,6 +69,14 @@ Hello! This is the narrator speaking.
 Back to the narrator for the conclusion.
 ```
 
+### 🔄 Iterative Voice Conversion
+
+**NEW**: Progressive voice refinement with intelligent caching for instant experimentation!
+
+* **Refinement Passes**: Multiple conversion iterations (1-30, recommended 1-5)
+* **Smart Caching**: Results cached up to 5 iterations - change from 5→3→4 passes instantly
+* **Progressive Quality**: Each pass refines output to sound more like target voice
+
 ### ⏸️ Pause Tags System
 
 **NEW**: Intelligent pause insertion for natural speech timing control!
@@ -113,7 +121,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 
 - 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
 - 🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
-- 🔄 **ChatterBox VC** - Convert voice from one speaker to another
+- 🔄 **ChatterBox VC** - Convert voice from one speaker to another with iterative refinement
 - 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
 - ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
 - 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
@@ -530,11 +538,23 @@ ComfyUI/models/voices/
    - **CFG Strength**: Guidance strength (0.0-10.0, default: 2.0)
    - **NFE Step**: Quality vs speed (1-100, default: 32)
 
-### Voice Conversion
+### Voice Conversion with Iterative Refinement
 
 1. Add **"🔄 ChatterBox Voice Conversion"** node
 2. Connect source audio (voice to convert)
 3. Connect target audio (voice style to copy)
+4. Configure refinement settings:
+   - **Refinement Passes**: Number of conversion iterations (1-30, recommended 1-5)
+   - Each pass refines the output to sound more like the target
+   - **Smart Caching**: Results cached up to 5 iterations for instant experimentation
+
+**🧠 Intelligent Caching Examples:**
+- Run **3 passes** → caches iterations 1, 2, 3
+- Change to **5 passes** → resumes from cached 3, runs 4, 5  
+- Change to **2 passes** → returns cached iteration 2 instantly
+- Change to **4 passes** → resumes from cached 3, runs 4
+
+**💡 Pro Tip**: Start with 1 pass, then experiment with 2-5 passes to find the sweet spot for your audio. Each iteration progressively improves voice similarity!
 
 ## 📁 Example Workflows
 
