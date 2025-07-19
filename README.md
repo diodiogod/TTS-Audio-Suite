@@ -90,12 +90,6 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 [pause:2] Let's get started with the main content.
 ```
 
-**Features:**
-- **Cache Optimized**: Only pause durations regenerate, text stays cached
-- **Parser Protected**: Pause tags won't interfere with character name detection
-- **Crash Protection**: Integrated with ChatterBox crash prevention system
-- **SRT Compatible**: Works perfectly with subtitle timing workflows
-
 ## 🎥 Demo Video
 
 <a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">
@@ -159,7 +153,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 ## Installation
 
 <details>
-<summary>Detailed Installation Guide</summary>
+<summary>📋 Detailed Installation Guide (Click to expand if you're having dependency issues)</summary>
 
 This section provides a detailed guide for installing ComfyUI ChatterBox SRT Voice, covering different ComfyUI installation methods.
 
