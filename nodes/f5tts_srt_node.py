@@ -350,7 +350,6 @@ Hello! This is F5-TTS SRT with character switching.
                 # Handle potential temporary file paths by creating stable identifier
                 if audio_prompt.startswith('/tmp/') or 'tmp' in str(audio_prompt):
                     try:
-                        import hashlib
                         if os.path.exists(audio_prompt):
                             with open(audio_prompt, 'rb') as f:
                                 content = f.read()
