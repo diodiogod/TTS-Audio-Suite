@@ -1,5 +1,5 @@
 # Version and constants
-VERSION = "3.2.1"
+VERSION = "3.2.2"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -266,6 +266,38 @@ except Exception:
     SRT_SUPPORT_AVAILABLE = False
     if IS_DEV:
         print("❌ SRT support initialization failed")
+
+# Update F5-TTS node availability with detailed diagnostics
+try:
+    success, f5tts_class, source = import_manager.import_f5tts()
+    if success:
+        # F5-TTS is available - update global flag if needed
+        if not F5TTS_SUPPORT_AVAILABLE:
+            # This means the node loading failed earlier, but core F5-TTS is available
+            if IS_DEV:
+                print(f"⚠️ F5-TTS core available ({source}) but node loading failed - check node dependencies")
+        else:
+            if IS_DEV:
+                print(f"✅ F5-TTS available! (source: {source})")
+    else:
+        # F5-TTS not available - get detailed error info
+        from chatterbox.f5tts import F5TTS_IMPORT_ERROR
+        F5TTS_SUPPORT_AVAILABLE = False
+        F5TTS_SRT_SUPPORT_AVAILABLE = False  
+        F5TTS_EDIT_SUPPORT_AVAILABLE = False
+        F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = False
+        # Always show F5-TTS errors to help with troubleshooting
+        if F5TTS_IMPORT_ERROR:
+            print(f"❌ F5-TTS not available: {F5TTS_IMPORT_ERROR}")
+        else:
+            print("❌ F5-TTS support not available")
+except Exception as e:
+    F5TTS_SUPPORT_AVAILABLE = False
+    F5TTS_SRT_SUPPORT_AVAILABLE = False
+    F5TTS_EDIT_SUPPORT_AVAILABLE = False
+    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = False
+    # Always show critical F5-TTS errors
+    print(f"❌ F5-TTS initialization failed: {str(e)}")
 
 # Legacy compatibility: Remove old large SRT implementation - it's now in the new node
 

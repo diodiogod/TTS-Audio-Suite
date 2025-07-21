@@ -163,4 +163,20 @@ WEB_DIRECTORY = "./web"
 print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
 for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
     print(f"   • {node}")
+
+# Report missing optional features
+missing_features = []
+if not F5TTS_SUPPORT_AVAILABLE:
+    missing_features.append("F5-TTS nodes")
+if not SRT_SUPPORT_AVAILABLE:
+    missing_features.append("SRT nodes") 
+if not AUDIO_ANALYZER_SUPPORT_AVAILABLE:
+    missing_features.append("Audio Analyzer")
+if not AUDIO_RECORDER_AVAILABLE:
+    missing_features.append("Voice Recorder")
+
+if missing_features:
+    print(f"⚠️  Missing optional features: {', '.join(missing_features)}")
+    print("   Install missing dependencies to enable all features")
+
 print(SEPARATOR)
