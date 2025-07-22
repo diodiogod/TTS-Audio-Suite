@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')
     parser.add_argument('--file', help='Read description from file (supports multiline)')
     parser.add_argument('--interactive', action='store_true', help='Interactive mode for detailed changelog entry')
+    parser.add_argument('--allow-downgrade', action='store_true', help='Allow bumping to a lower version number (for reverts/fixes)')
     
     args = parser.parse_args()
     
@@ -103,19 +104,23 @@ def main():
         print(f"Error: Invalid version format '{args.version}'. Use semantic versioning (e.g., 3.0.1)")
         sys.exit(1)
     
-    # Check if version is newer than current
-    try:
-        current_parts = list(map(int, current_version.split('.')))
-        new_parts = list(map(int, args.version.split('.')))
-        
-        if tuple(new_parts) <= tuple(current_parts):
-            print(f"Error: New version {args.version} is not newer than current {current_version}")
-            print("Cannot bump to an older or same version number.")
-            print("Use a higher version number for the next release.")
-            sys.exit(1)
-    except Exception as e:
-        print(f"Warning: Could not compare versions: {e}")
-        print("Proceeding with caution...")
+    # Check if version is newer than current (unless downgrade is explicitly allowed)
+    if not args.allow_downgrade:
+        try:
+            current_parts = list(map(int, current_version.split('.')))
+            new_parts = list(map(int, args.version.split('.')))
+            
+            if tuple(new_parts) <= tuple(current_parts):
+                print(f"Error: New version {args.version} is not newer than current {current_version}")
+                print("Cannot bump to an older or same version number.")
+                print("Use a higher version number for the next release.")
+                print("To force a downgrade, use --allow-downgrade flag.")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Warning: Could not compare versions: {e}")
+            print("Proceeding with caution...")
+    else:
+        print("⚠️  Downgrade allowed - skipping version comparison check")
     
     # Create backup
     print("\nCreating backup of current files...")
