@@ -112,7 +112,13 @@ No segments were processed due to immediate interruption.
                     # For other modes (e.g., stretch_to_fit), show stretch information and original overlaps
                     stretch_info = ""
                     if adj['needs_stretching']:
-                        stretch_info = f" [{adj['stretch_type']} {adj['stretch_factor']:.2f}x]"
+                        # Add emoji for compress/expand modes
+                        emoji = ""
+                        if adj['stretch_type'] == 'compress':
+                            emoji = "🐌 "
+                        elif adj['stretch_type'] == 'expand':
+                            emoji = "🐰 "
+                        stretch_info = f" [{emoji}{adj['stretch_type']} {adj['stretch_factor']:.2f}x]"
                     
                     # Add original overlap indicator for stretch_to_fit mode
                     overlap_info = ""
@@ -323,7 +329,13 @@ No segments were processed due to immediate interruption.
             if adj.get('needs_stretching'):
                 stretch_type = adj.get('stretch_type', 'unknown')
                 stretch_factor = adj.get('stretch_factor', 1.0)
-                stretch_info = f" [{stretch_type} {stretch_factor:.2f}x]"
+                # Add emoji for compress/expand modes
+                emoji = ""
+                if stretch_type == 'compress':
+                    emoji = "🐌 "
+                elif stretch_type == 'expand':
+                    emoji = "🐰 "
+                stretch_info = f" [{emoji}{stretch_type} {stretch_factor:.2f}x]"
             
             natural_duration = adj.get('natural_duration', duration)
             
