@@ -21,12 +21,13 @@ F5TTS_MODELS = {
     "F5TTS_Base": {"repo": "SWivid/F5-TTS", "exp": "F5TTS_Base", "step": 1200000, "ext": "safetensors"},
     "F5TTS_v1_Base": {"repo": "SWivid/F5-TTS", "exp": "F5TTS_v1_Base", "step": 1250000, "ext": "safetensors"},
     "E2TTS_Base": {"repo": "SWivid/E2-TTS", "exp": "E2TTS_Base", "step": 1200000, "ext": "safetensors"},
-    "F5-DE": {"repo": "aihpi/F5-TTS-German", "exp": "F5TTS_Base", "step": 420000, "ext": "safetensors"},
+    "F5-DE": {"repo": "aihpi/F5-TTS-German", "exp": "F5TTS_Base", "step": 365000, "ext": "safetensors"},
     "F5-ES": {"repo": "jpgallegoar/F5-Spanish", "exp": "", "step": 1200000, "ext": "safetensors"},
     "F5-FR": {"repo": "RASPIAUDIO/F5-French-MixedSpeakers-reduced", "exp": "", "step": 1374000, "ext": "pt"},
     "F5-JP": {"repo": "Jmica/F5TTS", "exp": "JA_8500000", "step": 8499660, "ext": "pt"},
     "F5-IT": {"repo": "alien79/F5-TTS-italian", "exp": "", "step": 159600, "ext": "safetensors"},
-    "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI", "exp": "", "step": 600000, "ext": "pt"},
+    "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI", "exp": "", "step": 1000000, "ext": "pt"},
+    "F5-PT-BR": {"repo": "firstpixel/F5-TTS-pt-br", "exp": "pt-br", "step": 200000, "ext": "pt"},
 }
 
 def get_f5tts_models():
@@ -93,9 +94,17 @@ class ChatterBoxF5TTS:
                     print(f"📁 Found local model: {model_file}")
                     print(f"📁 Found local vocab: {vocab_file}")
                     
-                    # Load with explicit local files
+                    # Load with explicit local files - determine correct config
+                    model_config = "F5TTS_Base"  # Default config
+                    if "v1" in self.model_name.lower() or "1.1" in self.model_name.lower():
+                        model_config = "F5TTS_v1_Base"
+                    elif "e2tts" in self.model_name.lower():
+                        model_config = "E2TTS_Base"
+                    # Language models use base configs
+                    
+                    print(f"📁 Using model config: {model_config}")
                     self.f5tts_model = F5TTS(
-                        model=self.model_name,
+                        model=model_config,
                         ckpt_file=model_file,
                         vocab_file=vocab_file,
                         device=self.device
@@ -124,9 +133,17 @@ class ChatterBoxF5TTS:
                 print(f"📁 Found local model: {model_file}")
                 print(f"📁 Found local vocab: {vocab_file}")
                 
-                # Load local model
+                # Load local model - determine correct config based on folder name
+                model_config = "F5TTS_Base"  # Default config
+                if "v1" in local_name.lower() or "1.1" in local_name.lower():
+                    model_config = "F5TTS_v1_Base"
+                elif "e2tts" in local_name.lower():
+                    model_config = "E2TTS_Base"
+                # Language models use base configs - they don't have their own
+                
+                print(f"📁 Using model config: {model_config}")
                 self.f5tts_model = F5TTS(
-                    model=self.model_name.replace("local:", "F5TTS_Base"),  # Use base config
+                    model=model_config,
                     ckpt_file=model_file,
                     vocab_file=vocab_file,
                     device=self.device
@@ -135,11 +152,95 @@ class ChatterBoxF5TTS:
                 
             elif self.model_name in F5TTS_MODELS:
                 # Pre-configured model from HuggingFace
-                print(f"📦 Loading F5-TTS model '{self.model_name}' from HuggingFace")
-                self.f5tts_model = F5TTS(
-                    model=self.model_name,
-                    device=self.device
-                )
+                model_config = F5TTS_MODELS[self.model_name]
+                
+                # Language models need to use base configs but download from custom repos
+                if self.model_name.startswith("F5-") and self.model_name not in ["F5TTS_Base", "F5TTS_v1_Base"]:
+                    # Use base config but download from language-specific repo
+                    config_name = "F5TTS_Base"
+                    repo_id = model_config["repo"]
+                    step = model_config["step"]
+                    ext = model_config["ext"]
+                    
+                    # Show download size warning for large models and quality warnings
+                    if self.model_name == "F5-JP":
+                        print(f"📦 Loading F5-TTS model '{self.model_name}' from {repo_id} using config '{config_name}' (⚠️  Large download: ~5.4GB)")
+                    elif self.model_name == "F5-PT-BR":
+                        print(f"📦 Loading F5-TTS model '{self.model_name}' from {repo_id} using config '{config_name}' (⚠️  Uses English vocab - may have quality issues)")
+                    else:
+                        print(f"📦 Loading F5-TTS model '{self.model_name}' from {repo_id} using config '{config_name}'")
+                    
+                    # Manually construct the model path for custom repo
+                    from huggingface_hub import hf_hub_download
+                    
+                    # Download model and vocab from custom repo  
+                    # Use reduced model for F5-FR to save space (1.35GB vs 5.39GB)
+                    if self.model_name == "F5-FR":
+                        model_filename = "model_last_reduced.pt"
+                        vocab_filename = "vocab.txt"
+                    elif self.model_name == "F5-JP":
+                        # Japanese model is in a subfolder with different vocab name
+                        exp_name = model_config["exp"]
+                        model_filename = f"{exp_name}/model_{step}.{ext}"
+                        vocab_filename = f"{exp_name}/vocab_updated.txt"
+                    elif self.model_name == "F5-DE":
+                        # German model is in F5TTS_Base subfolder
+                        exp_name = model_config["exp"]
+                        model_filename = f"{exp_name}/model_{step}.{ext}"
+                        vocab_filename = "vocab.txt"
+                    elif self.model_name == "F5-PT-BR":
+                        # Brazilian Portuguese model is in pt-br subfolder, uses smaller safetensors version
+                        exp_name = model_config["exp"]
+                        model_filename = f"{exp_name}/model_last.safetensors"  # Use 1.35GB version instead of 5.39GB
+                        # This model doesn't have its own vocab file, use original F5-TTS vocab
+                        vocab_filename = None  # Will download from original F5-TTS repo
+                    else:
+                        model_filename = f"model_{step}.{ext}"
+                        vocab_filename = "vocab.txt"
+                    
+                    model_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
+                    
+                    # Handle vocab file - some models don't have their own vocab
+                    if vocab_filename is None:
+                        # Use original F5-TTS vocab for models that don't have their own
+                        # First check if we have F5TTS_Base locally
+                        import folder_paths
+                        local_f5tts_base = os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt")
+                        if os.path.exists(local_f5tts_base):
+                            vocab_file = local_f5tts_base
+                            print(f"📁 Using local F5TTS_Base vocab: {vocab_file}")
+                        else:
+                            # Download from original F5-TTS repo
+                            vocab_file = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
+                    else:
+                        vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
+                    
+                    print(f"📁 Downloaded model: {model_file}")
+                    print(f"📁 Downloaded vocab: {vocab_file}")
+                    
+                    # Load with base config but custom files
+                    self.f5tts_model = F5TTS(
+                        model=config_name,
+                        ckpt_file=model_file,
+                        vocab_file=vocab_file,
+                        device=self.device
+                    )
+                    
+                elif self.model_name.startswith("E2-"):
+                    # E2 variants use E2 config
+                    config_name = "E2TTS_Base"
+                    print(f"📦 Loading F5-TTS model '{self.model_name}' from HuggingFace using config '{config_name}'")
+                    self.f5tts_model = F5TTS(
+                        model=config_name,
+                        device=self.device
+                    )
+                else:
+                    # Standard models (F5TTS_Base, F5TTS_v1_Base, E2TTS_Base)
+                    print(f"📦 Loading F5-TTS model '{self.model_name}' from HuggingFace")
+                    self.f5tts_model = F5TTS(
+                        model=self.model_name,
+                        device=self.device
+                    )
             else:
                 # Default fallback to HuggingFace
                 print(f"📦 Loading F5-TTS model 'F5TTS_Base' from HuggingFace (fallback)")
@@ -186,10 +287,17 @@ class ChatterBoxF5TTS:
         
         try:
             # Generate audio using F5-TTS (suppress stdout debug messages, keep stderr progress bars)
-            from contextlib import redirect_stdout
+            from contextlib import redirect_stdout, redirect_stderr
+            import sys
+            import io
             
-            with open(os.devnull, 'w') as devnull:
-                with redirect_stdout(devnull):
+            # For Windows, we need to handle Unicode encoding issues in F5-TTS debug output
+            # Redirect both stdout and stderr to prevent encoding errors with Japanese/Unicode text
+            stdout_buffer = io.StringIO()
+            stderr_buffer = io.StringIO()
+            
+            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+                try:
                     wav, sr, _ = self.f5tts_model.infer(
                         ref_file=ref_audio_path,
                         ref_text=ref_text,
@@ -201,6 +309,28 @@ class ChatterBoxF5TTS:
                         speed=speed,
                         remove_silence=False
                     )
+                except UnicodeEncodeError as e:
+                    # If we get encoding errors, it's likely from debug prints in F5-TTS
+                    # Try again with environment variable to suppress debug output
+                    old_env = os.environ.get('PYTHONIOENCODING')
+                    os.environ['PYTHONIOENCODING'] = 'utf-8'
+                    try:
+                        wav, sr, _ = self.f5tts_model.infer(
+                            ref_file=ref_audio_path,
+                            ref_text=ref_text,
+                            gen_text=text,
+                            target_rms=target_rms,
+                            cross_fade_duration=cross_fade_duration,
+                            nfe_step=nfe_step,
+                            cfg_strength=cfg_strength,
+                            speed=speed,
+                            remove_silence=False
+                        )
+                    finally:
+                        if old_env is not None:
+                            os.environ['PYTHONIOENCODING'] = old_env
+                        else:
+                            os.environ.pop('PYTHONIOENCODING', None)
             
             # Convert to torch tensor
             if isinstance(wav, np.ndarray):

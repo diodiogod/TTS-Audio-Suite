@@ -72,7 +72,7 @@ class F5TTSEditNode(BaseF5TTSNode):
                     "default": "auto",
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),
-                "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {
+                "model": (BaseF5TTSNode.get_available_models_for_dropdown(), {
                     "default": "F5TTS_v1_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
                 }),

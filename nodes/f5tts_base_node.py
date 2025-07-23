@@ -84,8 +84,11 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         device = self.resolve_device(device)
         self.device = device
         
-        # Check if we need to reload
-        if not force_reload and self.f5tts_model is not None and getattr(self, 'current_model_name', None) == model_name:
+        # Normalize model name for caching consistency
+        normalized_model_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
+        
+        # Check if we need to reload (use normalized name for cache consistency)
+        if not force_reload and self.f5tts_model is not None and getattr(self, 'current_model_name', None) == normalized_model_name:
             return self.f5tts_model
         
         try:
@@ -101,10 +104,24 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                 try:
                     if source == "comfyui" and path:
                         # Load from local ComfyUI models directory
-                        self.f5tts_model = ChatterBoxF5TTS.from_local(path, device, model_name)
+                        # Normalize model name (remove local: prefix if present)
+                        normalized_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
+                        self.f5tts_model = ChatterBoxF5TTS.from_local(path, device, normalized_name)
                     else:
-                        # Load from HuggingFace
-                        self.f5tts_model = ChatterBoxF5TTS.from_pretrained(device, model_name)
+                        # Load from HuggingFace - but check if we have local files first
+                        local_path = None
+                        if model_name in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]:
+                            import folder_paths
+                            potential_path = os.path.join(folder_paths.models_dir, "F5-TTS", model_name)
+                            if os.path.exists(potential_path):
+                                local_path = potential_path
+                        
+                        if local_path:
+                            # Use local files even for non-local model names for consistency
+                            self.f5tts_model = ChatterBoxF5TTS.from_local(local_path, device, model_name)
+                        else:
+                            # True HuggingFace download
+                            self.f5tts_model = ChatterBoxF5TTS.from_pretrained(device, model_name)
                     
                     model_loaded = True
                     break
@@ -120,8 +137,8 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                     error_msg += f". Last error: {last_error}"
                 raise RuntimeError(error_msg)
             
-            # Store current model name for cache validation
-            self.current_model_name = model_name
+            # Store normalized model name for cache validation
+            self.current_model_name = normalized_model_name
             return self.f5tts_model
             
         except ImportError:
@@ -265,6 +282,15 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         except ImportError:
             return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
     
+    @classmethod
+    def get_available_models_for_dropdown(cls) -> List[str]:
+        """Get list of available F5-TTS models for dropdown use in INPUT_TYPES"""
+        try:
+            from chatterbox.f5tts.f5tts import get_f5tts_models
+            return get_f5tts_models()
+        except ImportError:
+            return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
+    
     def format_f5tts_audio_output(self, audio_tensor: torch.Tensor) -> Dict[str, Any]:
         """Format F5-TTS audio tensor for ComfyUI output"""
         return self.format_audio_output(audio_tensor, self.f5tts_sample_rate)
@@ -336,7 +362,7 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                 "default": "This is the reference text that matches the reference audio.",
                 "tooltip": "Text that corresponds to the reference audio. Required for F5-TTS voice cloning."
             }),
-            "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {"default": "F5TTS_v1_Base"}),
+            "model": (cls.get_available_models_for_dropdown(), {"default": "F5TTS_v1_Base"}),
         })
         
         # Add F5-TTS specific optional inputs
