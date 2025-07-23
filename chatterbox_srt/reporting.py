@@ -86,14 +86,30 @@ No segments were processed due to immediate interruption.
                     # For pad_with_silence mode, show overlap/gap information with distinction
                     timing_info = ""
                     if adj['natural_duration'] > subtitle.duration:
-                        # Audio is longer than SRT slot - will overlap
+                        # Audio is longer than SRT slot - check if it's a real overlap or gap extension
                         overlap = adj['natural_duration'] - subtitle.duration
-                        if i in original_overlapping_segments:
-                            # Both original overlap AND generation overlap
-                            timing_info = f" 🔁✔️ [ORIGINAL+GEN OVERLAP: +{overlap:.2f}s]"
+                        audio_end_time = subtitle.start_time + adj['natural_duration']
+                        
+                        # Check if there's a next segment and if audio truly overlaps with it
+                        has_real_overlap = False
+                        if i < len(subtitles) - 1:
+                            next_subtitle = subtitles[i + 1]
+                            if audio_end_time > next_subtitle.start_time:
+                                has_real_overlap = True
+                                real_overlap = audio_end_time - next_subtitle.start_time
+                        
+                        if has_real_overlap:
+                            # True overlap - audio collides with next segment
+                            if i in original_overlapping_segments:
+                                timing_info = f" 🔁✔️ [ORIGINAL+REAL OVERLAP: +{real_overlap:.2f}s into next]"
+                            else:
+                                timing_info = f" 🔁 [REAL OVERLAP: +{real_overlap:.2f}s into next segment]"
                         else:
-                            # Only generation overlap
-                            timing_info = f" 🔁 [GEN OVERLAP: +{overlap:.2f}s]"
+                            # Gap extension - audio extends into silence, not a real problem
+                            if i in original_overlapping_segments:
+                                timing_info = f" 🔁✔️ [ORIGINAL OVERLAP] [gap extension: +{overlap:.2f}s into silence]"
+                            else:
+                                timing_info = f" [gap extension: +{overlap:.2f}s into silence]"
                     elif i in original_overlapping_segments:
                         # Only original overlap (generation fits within SRT timing)
                         timing_info = f" 🔁✔️ [ORIGINAL OVERLAP]"
@@ -102,7 +118,7 @@ No segments were processed due to immediate interruption.
                         next_subtitle = subtitles[i + 1]
                         gap_duration = next_subtitle.start_time - subtitle.end_time
                         if gap_duration > 0:
-                            timing_info = f" [+{gap_duration:.2f}s silence]"
+                            timing_info = f" [+{gap_duration:.2f}s silence available]"
                     
                     report_lines.append(
                         f"  {subtitle.sequence:2d}. {subtitle.start_time:6.2f}-{subtitle.end_time:6.2f}s "
@@ -136,20 +152,39 @@ No segments were processed due to immediate interruption.
         if timing_mode == "pad_with_silence":
             total_gaps = 0
             total_gap_duration = 0
-            total_gen_overlaps = 0
-            total_gen_overlap_duration = 0
+            total_real_overlaps = 0
+            total_real_overlap_duration = 0
+            total_gap_extensions = 0
+            total_gap_extension_duration = 0
             total_original_overlaps = len(original_overlapping_segments)
             total_combined_overlaps = 0
             
             for i, (subtitle, adj) in enumerate(zip(subtitles, adjustments)):
                 if adj['natural_duration'] > subtitle.duration:
-                    overlap_duration = adj['natural_duration'] - subtitle.duration
-                    if i in original_overlapping_segments:
-                        total_combined_overlaps += 1
-                        total_gen_overlap_duration += overlap_duration
+                    extend_duration = adj['natural_duration'] - subtitle.duration
+                    audio_end_time = subtitle.start_time + adj['natural_duration']
+                    
+                    # Check if there's a real overlap with next segment
+                    has_real_overlap = False
+                    real_overlap_duration = 0
+                    if i < len(subtitles) - 1:
+                        next_subtitle = subtitles[i + 1]
+                        if audio_end_time > next_subtitle.start_time:
+                            has_real_overlap = True
+                            real_overlap_duration = audio_end_time - next_subtitle.start_time
+                    
+                    if has_real_overlap:
+                        # True overlap with next segment
+                        if i in original_overlapping_segments:
+                            total_combined_overlaps += 1
+                        else:
+                            total_real_overlaps += 1
+                        total_real_overlap_duration += real_overlap_duration
                     else:
-                        total_gen_overlaps += 1
-                        total_gen_overlap_duration += overlap_duration
+                        # Gap extension into silence
+                        total_gap_extensions += 1
+                        total_gap_extension_duration += extend_duration
+                        
                 elif i < len(subtitles) - 1:
                     gap_duration = subtitles[i + 1].start_time - subtitles[i].end_time
                     if gap_duration > 0:
@@ -165,16 +200,19 @@ No segments were processed due to immediate interruption.
             if total_original_overlaps > 0:
                 summary_lines.append(f"  Original SRT overlaps: {total_original_overlaps} segments (expected from subtitle file)")
                 
-            if total_gen_overlaps > 0:
-                summary_lines.append(f"  Generation overlaps: {total_gen_overlaps} segments, +{total_gen_overlap_duration:.2f}s total (audio longer than SRT timing)")
+            if total_real_overlaps > 0:
+                summary_lines.append(f"  🔁 Real overlaps: {total_real_overlaps} segments, +{total_real_overlap_duration:.2f}s total (audio collides with next segment)")
                 
             if total_combined_overlaps > 0:
-                summary_lines.append(f"  Combined overlaps: {total_combined_overlaps} segments (both original + generation)")
+                summary_lines.append(f"  Combined overlaps: {total_combined_overlaps} segments (both original + real generation overlaps)")
             
+            if total_gap_extensions > 0:
+                summary_lines.append(f"  Gap extensions: {total_gap_extensions} segments, +{total_gap_extension_duration:.2f}s total (extending into silence - not problematic)")
+                
             if total_gaps > 0:
-                summary_lines.append(f"  Silence gaps added: {total_gaps} gaps, {total_gap_duration:.2f}s total silence")
+                summary_lines.append(f"  Silence gaps available: {total_gaps} gaps, {total_gap_duration:.2f}s total silence")
             
-            if total_gen_overlaps == 0 and total_gaps == 0 and total_original_overlaps == 0:
+            if total_real_overlaps == 0 and total_gap_extensions == 0 and total_gaps == 0 and total_original_overlaps == 0:
                 summary_lines.append(f"  Perfect timing match - no gaps or overlaps")
             
             report_lines.extend(summary_lines)
