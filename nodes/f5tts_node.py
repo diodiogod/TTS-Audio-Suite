@@ -72,7 +72,7 @@ class F5TTSNode(BaseF5TTSNode):
                     "default": "auto",
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),
-                "model": (["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"], {
+                "model": (cls.get_available_models_for_dropdown(), {
                     "default": "F5TTS_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
                 }),
@@ -249,7 +249,11 @@ Back to the main narrator voice for the conclusion.""",
             from chatterbox.f5tts.f5tts import get_f5tts_models
             return get_f5tts_models()
         except ImportError:
-            return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
+            try:
+                from chatterbox.f5tts.f5tts import get_f5tts_models
+                return get_f5tts_models()
+            except ImportError:
+                return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
     
     def _generate_stable_audio_component(self, reference_audio_file: str, opt_reference_audio, audio_prompt_path: str) -> str:
         """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
