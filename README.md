@@ -98,13 +98,25 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 [pause:2] Let's get started with the main content.
 ```
 
-## 🎥 Demo Video
+## 🎥 Demo Videos
 
-<a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">
-  <img src="https://img.youtube.com/vi/VyOawMrCB1g/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice Demo">
-</a>
+<div align="center">
+  <a href="https://youtu.be/aHz1mQ2bvEY">
+    <img src="https://img.youtube.com/vi/aHz1mQ2bvEY/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice v3.2 - F5-TTS Integration & Features Overview">
+  </a>
+  <br>
+  <strong><a href="https://youtu.be/aHz1mQ2bvEY">▶️ v3.2 Features Overview (20min) - F5-TTS Integration, Speech Editor & More!</a></strong>
+</div>
 
-**[▶️ Watch Full Demo](https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s)**
+<br>
+
+<div align="center">
+  <a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">
+    <img src="https://img.youtube.com/vi/VyOawMrCB1g/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice Demo">
+  </a>
+  <br>
+  <strong><a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">▶️ Original Demo - SRT Timing & Basic Features</a></strong>
+</div>
 
 ### [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice) ChatterBox TTS Nodes
 
