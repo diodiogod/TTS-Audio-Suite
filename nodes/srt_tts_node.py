@@ -341,8 +341,8 @@ The audio will match these exact timings.""",
 
     def generate_srt_speech(self, srt_content, device, exaggeration, temperature, cfg_weight, seed,
                             timing_mode, reference_audio=None, audio_prompt_path="",
-                            max_stretch_ratio=2.0, min_stretch_ratio=0.5, fade_for_StretchToFit=0.01, 
-                            enable_audio_cache=True, timing_tolerance=2.0, 
+                            enable_audio_cache=True, fade_for_StretchToFit=0.01, 
+                            max_stretch_ratio=2.0, min_stretch_ratio=0.5, timing_tolerance=2.0,
                             crash_protection_template="hmm ,, {seg} hmm ,,"):
         
         def _process():
@@ -456,7 +456,7 @@ The audio will match these exact timings.""",
                             
                             # Generate new audio for this character segment with pause tag support (includes internal caching)
                             char_wav = self._generate_tts_with_pause_tags(
-                                segment_text, char_audio, exaggeration, temperature, cfg_weight, True,
+                                processed_segment_text, char_audio, exaggeration, temperature, cfg_weight, True,
                                 character=char, seed=seed, enable_cache=enable_audio_cache,
                                 crash_protection_template=crash_protection_template,
                                 stable_audio_component=stable_audio_prompt_component
@@ -482,7 +482,7 @@ The audio will match these exact timings.""",
                         
                         # Generate new audio with pause tag support (includes internal caching)
                         wav = self._generate_tts_with_pause_tags(
-                            subtitle.text, audio_prompt, exaggeration, temperature, cfg_weight, True,
+                            processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight, True,
                             character="narrator", seed=seed, enable_cache=enable_audio_cache,
                             crash_protection_template=crash_protection_template,
                             stable_audio_component=stable_audio_prompt_component

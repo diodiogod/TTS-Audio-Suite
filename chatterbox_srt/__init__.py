@@ -4,7 +4,7 @@ SRT subtitle processing and timing functionality
 """
 
 # Version info
-__version__ = "3.2.6"
+__version__ = "3.2.7"
 __author__ = "Diogod"
 
 # Import the new SRT modules
