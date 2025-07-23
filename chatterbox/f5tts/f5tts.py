@@ -204,7 +204,6 @@ class ChatterBoxF5TTS:
                     if vocab_filename is None:
                         # Use original F5-TTS vocab for models that don't have their own
                         # First check if we have F5TTS_Base locally
-                        import folder_paths
                         local_f5tts_base = os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt")
                         if os.path.exists(local_f5tts_base):
                             vocab_file = local_f5tts_base
@@ -286,18 +285,17 @@ class ChatterBoxF5TTS:
             raise FileNotFoundError(f"Reference audio file not found: {ref_audio_path}")
         
         try:
-            # Generate audio using F5-TTS (suppress stdout debug messages, keep stderr progress bars)
-            from contextlib import redirect_stdout, redirect_stderr
-            import sys
-            import io
+            # Generate audio using F5-TTS (suppress debug messages, keep progress bars)
+            # Set UTF-8 encoding to prevent Windows console encoding issues with international text
+            old_env = os.environ.get('PYTHONIOENCODING')
+            os.environ['PYTHONIOENCODING'] = 'utf-8'
             
-            # For Windows, we need to handle Unicode encoding issues in F5-TTS debug output
-            # Redirect both stdout and stderr to prevent encoding errors with Japanese/Unicode text
-            stdout_buffer = io.StringIO()
-            stderr_buffer = io.StringIO()
-            
-            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-                try:
+            try:
+                from contextlib import redirect_stdout
+                import io
+                
+                # Suppress stdout debug messages but keep stderr progress bars
+                with redirect_stdout(io.StringIO()):
                     wav, sr, _ = self.f5tts_model.infer(
                         ref_file=ref_audio_path,
                         ref_text=ref_text,
@@ -309,28 +307,12 @@ class ChatterBoxF5TTS:
                         speed=speed,
                         remove_silence=False
                     )
-                except UnicodeEncodeError as e:
-                    # If we get encoding errors, it's likely from debug prints in F5-TTS
-                    # Try again with environment variable to suppress debug output
-                    old_env = os.environ.get('PYTHONIOENCODING')
-                    os.environ['PYTHONIOENCODING'] = 'utf-8'
-                    try:
-                        wav, sr, _ = self.f5tts_model.infer(
-                            ref_file=ref_audio_path,
-                            ref_text=ref_text,
-                            gen_text=text,
-                            target_rms=target_rms,
-                            cross_fade_duration=cross_fade_duration,
-                            nfe_step=nfe_step,
-                            cfg_strength=cfg_strength,
-                            speed=speed,
-                            remove_silence=False
-                        )
-                    finally:
-                        if old_env is not None:
-                            os.environ['PYTHONIOENCODING'] = old_env
-                        else:
-                            os.environ.pop('PYTHONIOENCODING', None)
+            finally:
+                # Restore original encoding
+                if old_env is not None:
+                    os.environ['PYTHONIOENCODING'] = old_env
+                else:
+                    os.environ.pop('PYTHONIOENCODING', None)
             
             # Convert to torch tensor
             if isinstance(wav, np.ndarray):
