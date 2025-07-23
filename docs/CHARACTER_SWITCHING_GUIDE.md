@@ -111,7 +111,9 @@ Hello! This is F5-TTS SRT with character switching.
    - `alice.wav` - Audio sample of Alice's voice (5-15 seconds recommended)
    - `alice.reference.txt` - Transcript of what Alice says in the audio
 
-3. **Reference Text Example**:
+3. **⚠️ F5-TTS Best Practices**: Follow [F5-TTS inference guidelines](#f5-tts-inference-guidelines) to avoid generation failures
+
+4. **Reference Text Example**:
    ```
    Hello, this is Alice speaking clearly and naturally.
    ```
@@ -299,6 +301,24 @@ Helps distinguish speakers in audio content for better comprehension.
 - **[Audio Processing](../core/audio_processing.py)**: Smart audio chunking and combining
 - **[SRT Integration](../chatterbox_srt/)**: Subtitle timing with character voices
 - **[Caching System](../core/)**: Performance optimizations for character voices
+
+---
+
+## 📋 F5-TTS Inference Guidelines
+
+To avoid possible inference failures when using F5-TTS character voices, make sure you follow these optimization guidelines:
+
+1. **Reference Audio Duration**: Use reference audio <12s and leave proper silence space (e.g. 1s) at the end. Otherwise there is a risk of truncating in the middle of word, leading to suboptimal generation.
+
+2. **Letter Case Handling**: Uppercased letters (best with form like K.F.C.) will be uttered letter by letter, and lowercased letters used for common words.
+
+3. **Pause Control**: Add some spaces (blank: " ") or punctuations (e.g. "," ".") to explicitly introduce some pauses.
+
+4. **Punctuation Spacing**: If English punctuation marks the end of a sentence, make sure there is a space " " after it. Otherwise not regarded as sentence chunk.
+
+5. **Number Processing**: Preprocess numbers to Chinese letters if you want to have them read in Chinese, otherwise they will be read in English.
+
+These guidelines help ensure optimal F5-TTS generation quality and prevent common audio artifacts.
 
 ---
 
