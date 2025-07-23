@@ -432,6 +432,27 @@ ComfyUI/models/voices/
 - **Naming**: `filename.wav` + `filename.reference.txt` (preferred) or `filename.txt` (fallback)
 - **Character Names**: Character name = audio filename (without extension). Subfolders supported for organization.
 
+**⚠️ F5-TTS Best Practices**: [Follow these guidelines to avoid inference failures](#f5-tts-inference-guidelines)
+
+<details>
+<summary><strong>📋 F5-TTS Inference Guidelines</strong></summary>
+
+To avoid possible inference failures, make sure you follow these F5-TTS optimization guidelines:
+
+1. **Reference Audio Duration**: Use reference audio <12s and leave proper silence space (e.g. 1s) at the end. Otherwise there is a risk of truncating in the middle of word, leading to suboptimal generation.
+
+2. **Letter Case Handling**: Uppercased letters (best with form like K.F.C.) will be uttered letter by letter, and lowercased letters used for common words.
+
+3. **Pause Control**: Add some spaces (blank: " ") or punctuations (e.g. "," ".") to explicitly introduce some pauses.
+
+4. **Punctuation Spacing**: If English punctuation marks the end of a sentence, make sure there is a space " " after it. Otherwise not regarded as sentence chunk.
+
+5. **Number Processing**: Preprocess numbers to Chinese letters if you want to have them read in Chinese, otherwise they will be read in English.
+
+These guidelines help ensure optimal F5-TTS generation quality and prevent common audio artifacts.
+
+</details>
+
 ### 7. Restart ComfyUI
 
 ## Enhanced Features
