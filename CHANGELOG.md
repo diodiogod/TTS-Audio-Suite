@@ -17,9 +17,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix F5-TTS progress bars and variable scope issues
 ## [3.2.5] - 2025-07-23
 
+### Added
+
+- **Dynamic Model Discovery**: Automatically detect local models in `ComfyUI/models/F5-TTS/` directory
+- **Multi-Language Support**: Added support for 9 language variants (German, Spanish, French, Japanese, Italian, Thai, Brazilian Portuguese)
+- **Custom Download Logic**: Implemented language-specific model repository structure handling
+- **Smart Model Config Detection**: Automatic model config detection based on folder/model name
+- **Enhanced Model Support**: F5-DE, F5-ES, F5-FR, F5-JP, F5-IT, F5-TH, F5-PT-BR alongside standard models
+
+### Fixed
+
+- **Config Mismatch Issues**: Resolved configuration problems affecting audio quality
+- **Vocabulary File Handling**: Smart handling of vocabulary files for different language models
+- **Cross-Platform Compatibility**: Improved international character set support
+
 ### Changed
 
-- Major F5-TTS Enhancement: Automatic Local Model Detection and Multi-Language Support
+- **Model Loading System**: Normalized model loading across base and language-specific models
+- **Error Handling**: Enhanced error handling and console output for better debugging
+- **Download Warnings**: Added download size and quality warnings for specific models
+- **Model Name Handling**: Improved model name handling and caching mechanisms
+
+**Technical Note**: Resolves GitHub issue #3, significantly improving F5-TTS model detection and language support capabilities.
 ## [3.2.4] - 2025-07-23
 
 ### Added
