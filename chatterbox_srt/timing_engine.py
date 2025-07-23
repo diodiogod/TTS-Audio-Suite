@@ -24,6 +24,44 @@ class TimingEngine:
         """
         self.sample_rate = sample_rate
         
+    def calculate_concatenation_adjustments(self, audio_segments: List[torch.Tensor],
+                                          subtitles: List) -> List[Dict]:
+        """
+        Calculate timing adjustments for concatenation mode
+        Ignores original SRT timings and creates new sequential timings
+        """
+        adjustments = []
+        current_time = 0.0
+        
+        for i, (audio_segment, subtitle) in enumerate(zip(audio_segments, subtitles)):
+            # Get natural duration of this segment
+            natural_duration = self._get_audio_duration(audio_segment)
+            
+            # Calculate new timing for this segment
+            start_time = current_time
+            end_time = current_time + natural_duration
+            
+            # Create adjustment record
+            adjustment = {
+                'sequence': subtitle.sequence,
+                'start_time': start_time,
+                'end_time': end_time,
+                'natural_duration': natural_duration,
+                'original_text': subtitle.text,
+                'original_srt_start': subtitle.start_time,
+                'original_srt_end': subtitle.end_time,
+                'original_srt_duration': subtitle.duration,
+                'timing_change': end_time - subtitle.end_time,  # How much timing changed
+                'needs_stretching': False,  # No stretching in concatenate mode
+                'mode': 'concatenate'
+            }
+            adjustments.append(adjustment)
+            
+            # Update current time for next segment
+            current_time = end_time
+        
+        return adjustments
+        
     def calculate_smart_timing_adjustments(self, audio_segments: List[torch.Tensor],
                                          subtitles: List, tolerance: float,
                                          max_stretch_ratio: float,

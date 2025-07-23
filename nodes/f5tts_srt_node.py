@@ -118,9 +118,9 @@ Hello! This is F5-TTS SRT with character switching.
                     "default": 1, "min": 0, "max": 2**32 - 1,
                     "tooltip": "Seed for reproducible F5-TTS generation. Same seed with same inputs will produce identical results. Set to 0 for random generation."
                 }),
-                "timing_mode": (["stretch_to_fit", "pad_with_silence", "smart_natural"], {
+                "timing_mode": (["stretch_to_fit", "pad_with_silence", "smart_natural", "concatenate"], {
                     "default": "smart_natural",
-                    "tooltip": "Determines how audio segments are aligned with SRT timings:\n🔹 stretch_to_fit: Stretches/compresses audio to exactly match SRT segment durations.\n🔹 pad_with_silence: Places natural audio at SRT start times, padding gaps with silence. May result in overlaps.\n🔹 smart_natural: Intelligently adjusts timings within 'timing_tolerance', prioritizing natural audio and shifting subsequent segments. Applies stretch/shrink within limits if needed."
+                    "tooltip": "Determines how audio segments are aligned with SRT timings:\n🔹 stretch_to_fit: Stretches/compresses audio to exactly match SRT segment durations.\n🔹 pad_with_silence: Places natural audio at SRT start times, padding gaps with silence. May result in overlaps.\n🔹 smart_natural: Intelligently adjusts timings within 'timing_tolerance', prioritizing natural audio and shifting subsequent segments. Applies stretch/shrink within limits if needed.\n🔹 concatenate: Ignores original SRT timings, concatenates audio naturally and generates new SRT with actual timings."
                 }),
             },
             "optional": {
@@ -530,6 +530,19 @@ Hello! This is F5-TTS SRT with character switching.
             elif current_timing_mode == "pad_with_silence":
                 # Add silence to match timing without stretching
                 final_audio = self._assemble_audio_with_overlaps(audio_segments, subtitles, self.f5tts_sample_rate)
+            elif current_timing_mode == "concatenate":
+                # Concatenate audio naturally and recalculate SRT timings using modular approach
+                from chatterbox_srt.timing_engine import TimingEngine
+                from chatterbox_srt.audio_assembly import AudioAssemblyEngine
+                
+                timing_engine = TimingEngine(self.f5tts_sample_rate)
+                assembler = AudioAssemblyEngine(self.f5tts_sample_rate)
+                
+                # Calculate new timings for concatenation
+                adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
+                
+                # Assemble audio with optional crossfading
+                final_audio = assembler.assemble_concatenation(audio_segments, fade_for_StretchToFit)
             else:  # smart_natural
                 # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
                 final_audio, smart_adjustments = self._assemble_with_smart_timing(

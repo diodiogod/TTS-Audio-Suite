@@ -27,6 +27,62 @@ class AudioAssemblyEngine:
         self.sample_rate = sample_rate
         self.stretcher_cache = {}  # Cache for time stretching instances
         
+    def assemble_concatenation(self, audio_segments: List[torch.Tensor],
+                             fade_duration: float = 0.0) -> torch.Tensor:
+        """
+        Concatenate audio segments naturally with optional crossfading
+        
+        Args:
+            audio_segments: List of audio tensors to concatenate
+            fade_duration: Duration for crossfading between segments (seconds)
+            
+        Returns:
+            Concatenated audio tensor
+        """
+        if not audio_segments:
+            return torch.empty((1, 0))
+        if len(audio_segments) == 1:
+            return audio_segments[0]
+        
+        if fade_duration > 0.0:
+            return self._concatenate_with_crossfade(audio_segments, fade_duration)
+        else:
+            # Simple concatenation
+            return torch.cat(audio_segments, dim=1)
+    
+    def _concatenate_with_crossfade(self, audio_segments: List[torch.Tensor], 
+                                  fade_duration: float) -> torch.Tensor:
+        """Concatenate audio segments with crossfading between them"""
+        fade_samples = int(fade_duration * self.sample_rate)
+        result = audio_segments[0]
+        
+        for i in range(1, len(audio_segments)):
+            current_segment = audio_segments[i]
+            
+            if fade_samples > 0 and result.size(1) >= fade_samples and current_segment.size(1) >= fade_samples:
+                # Create fade out for end of previous segment
+                fade_out = torch.linspace(1.0, 0.0, fade_samples, device=result.device)
+                fade_in = torch.linspace(0.0, 1.0, fade_samples, device=current_segment.device)
+                
+                # Apply fades
+                result_end = result[:, -fade_samples:] * fade_out
+                current_start = current_segment[:, :fade_samples] * fade_in
+                
+                # Crossfade by overlapping
+                crossfaded = result_end + current_start
+                
+                # Combine: previous audio (minus fade region) + crossfaded region + rest of current segment
+                result = torch.cat([
+                    result[:, :-fade_samples],
+                    crossfaded,
+                    current_segment[:, fade_samples:]
+                ], dim=1)
+            else:
+                # No crossfading, just concatenate
+                result = torch.cat([result, current_segment], dim=1)
+        
+        return result
+        
     def assemble_stretch_to_fit(self, audio_segments: List[torch.Tensor],
                                target_timings: List[Tuple[float, float]],
                                fade_duration: float = 0.01) -> torch.Tensor:

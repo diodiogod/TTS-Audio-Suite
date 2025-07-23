@@ -79,6 +79,22 @@ No segments were processed due to immediate interruption.
                 # This assumes subtitles are sorted by sequence or index
                 original_subtitle_text = next((s.text for s in subtitles if s.sequence == adj['sequence']), "N/A")
                 report_lines.append(f"      Text: {original_subtitle_text[:60]}{'...' if len(original_subtitle_text) > 60 else ''}")
+        elif timing_mode == "concatenate":
+            # For concatenate mode, show original vs new timings
+            for adj in adjustments:
+                timing_change = adj.get('timing_change', 0.0)
+                timing_change_info = ""
+                if abs(timing_change) > 0.01:  # Only show significant changes
+                    if timing_change > 0:
+                        timing_change_info = f" [timing +{timing_change:.2f}s later]"
+                    else:
+                        timing_change_info = f" [timing {timing_change:.2f}s earlier]"
+                
+                report_lines.append(
+                    f"  {adj['sequence']:2d}. Original SRT: {adj['original_srt_start']:6.2f}-{adj['original_srt_end']:6.2f}s "
+                    f"→ New: {adj['start_time']:6.2f}-{adj['end_time']:6.2f}s ({adj['natural_duration']:.2f}s){timing_change_info}"
+                )
+                report_lines.append(f"      Text: {adj['original_text'][:60]}{'...' if len(adj['original_text']) > 60 else ''}")
         else:
             # For other modes, iterate using zip with original subtitles
             for i, (subtitle, adj) in enumerate(zip(subtitles, adjustments)):
@@ -216,6 +232,28 @@ No segments were processed due to immediate interruption.
                 summary_lines.append(f"  Perfect timing match - no gaps or overlaps")
             
             report_lines.extend(summary_lines)
+        elif timing_mode == "concatenate":
+            # Summary for concatenate mode
+            total_original_duration = sum(adj.get('original_srt_duration', 0) for adj in adjustments)
+            total_new_duration = sum(adj.get('natural_duration', 0) for adj in adjustments)
+            duration_difference = total_new_duration - total_original_duration
+            
+            segments_earlier = sum(1 for adj in adjustments if adj.get('timing_change', 0) < -0.01)
+            segments_later = sum(1 for adj in adjustments if adj.get('timing_change', 0) > 0.01)
+            segments_unchanged = len(adjustments) - segments_earlier - segments_later
+            
+            summary_lines = [
+                "",
+                "Summary (Concatenate Mode):",
+                f"  Original SRT duration: {total_original_duration:.2f}s",
+                f"  Natural audio duration: {total_new_duration:.2f}s",
+                f"  Duration change: {duration_difference:+.2f}s",
+                f"  Segments with earlier timing: {segments_earlier}",
+                f"  Segments with later timing: {segments_later}",
+                f"  Segments with similar timing: {segments_unchanged}",
+                f"  Audio quality: Natural (no stretching or padding applied)"
+            ]
+            report_lines.extend(summary_lines)
         elif timing_mode == "smart_natural":
             # Define the same threshold used in smart timing processing
             INSIGNIFICANT_TRUNCATION_THRESHOLD = 0.05
@@ -272,6 +310,10 @@ No segments were processed due to immediate interruption.
             if timing_mode == "smart_natural":
                 start_time = adj.get('final_srt_start', adj.get('original_srt_start', 0))
                 end_time = start_time + adj.get('final_segment_duration', adj.get('natural_audio_duration', 1))
+            elif timing_mode == "concatenate":
+                # Use the recalculated timings from concatenation
+                start_time = adj.get('start_time', 0)
+                end_time = adj.get('end_time', adj.get('start_time', 0) + adj.get('natural_duration', 1))
             else:
                 start_time = adj.get('start_time', subtitles[i].start_time if i < len(subtitles) else 0)
                 end_time = adj.get('end_time', subtitles[i].end_time if i < len(subtitles) else 1)
