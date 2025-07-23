@@ -115,7 +115,7 @@ Back to the main narrator voice for the conclusion.""",
                 }),
                 "cfg_strength": ("FLOAT", {
                     "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
-                    "tooltip": "Classifier-Free Guidance strength. Controls how strictly F5-TTS follows the reference text. Higher values = more adherence to reference, lower values = more creative freedom."
+                    "tooltip": "Speech generation control. Lower values (1.0-1.5) = more natural, conversational delivery. Higher values (3.0-5.0) = crisper, more articulated speech with stronger emphasis. Default 2.0 balances naturalness and clarity."
                 }),
                 "enable_chunking": ("BOOLEAN", {
                     "default": True,
