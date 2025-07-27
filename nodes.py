@@ -1,5 +1,5 @@
 # Version and constants
-VERSION = "3.2.7"
+VERSION = "3.2.8"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -371,6 +371,21 @@ else:
     print("⚠️ No local models found - will download from Hugging Face")
     print("💡 Tip: First generation will download models (~1GB)")
     print("   Models will be saved locally for future use")
+
+# Check for system dependency issues (only show warnings if problems detected)
+dependency_warnings = []
+
+# Check PortAudio availability for voice recording
+if hasattr(audio_recorder_module, 'SOUNDDEVICE_AVAILABLE') and not audio_recorder_module.SOUNDDEVICE_AVAILABLE:
+    dependency_warnings.append("⚠️ PortAudio library not found - Voice recording disabled")
+    dependency_warnings.append("   Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)")
+
+# Only show dependency section if there are warnings
+if dependency_warnings:
+    print("📋 System Dependencies:")
+    for warning in dependency_warnings:
+        print(f"   {warning}")
+
 print(SEPARATOR)
 
 # Print final initialization with nodes list

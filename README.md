@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.2.7
+# ComfyUI ChatterBox SRT Voice (diogod) v3.2.8
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -221,6 +221,10 @@ This section provides a detailed guide for installing ComfyUI ChatterBox SRT Voi
 
 *   ComfyUI installation (Portable, Direct with venv, or through Manager)
 *   Python 3.12 or higher
+*   **PortAudio library** (required for voice recording features):
+    *   Linux: `sudo apt-get install portaudio19-dev`
+    *   macOS: `brew install portaudio`
+    *   Windows: Usually bundled with pip packages (no action needed)
 
 ### Installation Methods
 

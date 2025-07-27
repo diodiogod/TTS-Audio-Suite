@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.8] - 2025-07-27
+
+### Added
+
+- Add graceful fallback when PortAudio is missing
+- Add startup diagnostic for missing dependencies
+
+### Fixed
+
+- Fix PortAudio dependency handling for voice recording
+
+### Changed
+
+- Update README with system dependency requirements
 ## [3.2.7] - 2025-07-23
 
 ### Fixed
