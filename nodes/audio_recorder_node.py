@@ -1,20 +1,41 @@
 import torch
 import torchaudio
 import numpy as np
-import sounddevice as sd
 import tempfile
 import os
 import threading
 import time
 import queue
 
+# Graceful handling of sounddevice/PortAudio dependency
+try:
+    import sounddevice as sd
+    SOUNDDEVICE_AVAILABLE = True
+except ImportError as e:
+    SOUNDDEVICE_AVAILABLE = False
+    SOUNDDEVICE_ERROR = str(e)
+    print(f"⚠️  ChatterBox Voice Capture: sounddevice not available - {e}")
+    print("📋 To enable voice recording, install PortAudio:")
+    print("   Linux: sudo apt-get install portaudio19-dev")
+    print("   macOS: brew install portaudio") 
+    print("   Windows: Usually bundled with sounddevice")
+
 class ChatterBoxVoiceCapture:
     @classmethod
     def NAME(cls):
+        if not SOUNDDEVICE_AVAILABLE:
+            return "🎙️ ChatterBox Voice Capture (diogod) - PortAudio Required"
         return "🎙️ ChatterBox Voice Capture (diogod)"
     
     @classmethod
     def INPUT_TYPES(cls):
+        if not SOUNDDEVICE_AVAILABLE:
+            return {
+                "required": {
+                    "error_message": (["PortAudio library not found. Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)"], {"default": "PortAudio library not found. Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)"}),
+                }
+            }
+        
         # Get available audio devices
         devices = sd.query_devices()
         device_names = []
@@ -80,9 +101,25 @@ class ChatterBoxVoiceCapture:
     FUNCTION = "capture_voice_audio"
     CATEGORY = "ChatterBox Voice"
 
-    def capture_voice_audio(self, voice_device, voice_sample_rate, voice_max_recording_time, 
-                           voice_volume_gain, voice_silence_threshold, voice_silence_duration, 
-                           voice_auto_normalize, voice_trigger=0):
+    def capture_voice_audio(self, **kwargs):
+        if not SOUNDDEVICE_AVAILABLE:
+            print(f"❌ ChatterBox Voice Capture error: {SOUNDDEVICE_ERROR}")
+            print("📋 Install PortAudio to enable voice recording:")
+            print("   Linux: sudo apt-get install portaudio19-dev")
+            print("   macOS: brew install portaudio")
+            print("   Windows: Usually bundled with sounddevice")
+            # Return empty audio tensor
+            return (torch.zeros(1, 1, 22050),)
+        
+        # Extract parameters with defaults for graceful fallback
+        voice_device = kwargs.get('voice_device', '')
+        voice_sample_rate = kwargs.get('voice_sample_rate', 44100)
+        voice_max_recording_time = kwargs.get('voice_max_recording_time', 10.0)
+        voice_volume_gain = kwargs.get('voice_volume_gain', 1.0)
+        voice_silence_threshold = kwargs.get('voice_silence_threshold', 0.02)
+        voice_silence_duration = kwargs.get('voice_silence_duration', 2.0)
+        voice_auto_normalize = kwargs.get('voice_auto_normalize', True)
+        voice_trigger = kwargs.get('voice_trigger', 0)
         
         print(f"🎤 Starting ChatterBox Voice Capture...")
         print(f"Settings: max_time={voice_max_recording_time}s, volume_gain={voice_volume_gain}x, silence_threshold={voice_silence_threshold}, silence_duration={voice_silence_duration}s, rate={voice_sample_rate}")
