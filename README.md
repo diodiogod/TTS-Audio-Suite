@@ -16,6 +16,38 @@
 
 An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length and with a node specially made for dealing with SRT timings.
 
+<details>
+<summary><h2>📋 Table of Contents</h2></summary>
+
+- [🆕 What's New in my Project?](#-whats-new-in-my-project)
+  - [SRT Timing and TTS Node](#srt-timing-and-tts-node)
+  - [🆕 F5-TTS Integration and 🆕 Audio Analyzer](#-f5-tts-integration-and--audio-analyzer)
+  - [🎭 Character & Narrator Switching](#-character--narrator-switching)
+  - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
+  - [⏸️ Pause Tags System](#️-pause-tags-system)
+- [🎥 Demo Videos](#-demo-videos)
+- [Features](#features)
+- [🚀 Quick Start](#-quick-start)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Installation Methods](#installation-methods)
+  - [Troubleshooting Dependency Issues](#troubleshooting-dependency-issues)
+  - [Updating the Node](#updating-the-node)
+- [Enhanced Features](#enhanced-features)
+- [Usage](#usage)
+  - [Voice Recording](#voice-recording)
+  - [Enhanced Text-to-Speech](#enhanced-text-to-speech)
+  - [F5-TTS Voice Synthesis](#f5-tts-voice-synthesis)
+  - [Voice Conversion with Iterative Refinement](#voice-conversion-with-iterative-refinement)
+- [📁 Example Workflows](#-example-workflows)
+- [Settings Guide](#settings-guide)
+- [Text Processing Capabilities](#text-processing-capabilities)
+- [License](#license)
+- [Credits](#credits)
+- [🔗 Links](#-links)
+
+</details>
+
 ## 🆕 What's New in my Project?
 
 ### SRT Timing and TTS Node
@@ -98,6 +130,8 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 [pause:2] Let's get started with the main content.
 ```
 
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
+
 ## 🎥 Demo Videos
 
 <div align="center">
@@ -129,6 +163,8 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 * **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
 * **Unlimited Text Length**: No character limits with smart processing
 
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
+
 ## Features
 
 - 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
@@ -143,6 +179,8 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
+
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
 ## 🚀 Quick Start
 
@@ -169,6 +207,8 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 4. **Restart ComfyUI** and look for 🎤 ChatterBox nodes
 
 > **Need F5-TTS?** Also download F5-TTS models to `ComfyUI/models/F5-TTS/` from the links in the detailed installation below.
+
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
 ## Installation
 
@@ -467,6 +507,8 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 
 ### 7. Restart ComfyUI
 
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
+
 ## Enhanced Features
 
 ### 📝 Intelligent Text Chunking (NEW!)
@@ -511,6 +553,8 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 📦 Loading from bundled models: ./models/chatterbox
 ✅ ChatterboxTTS model loaded from bundled!
 ```
+
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
 ## Usage
 
@@ -589,6 +633,8 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 
 **💡 Pro Tip**: Start with 1 pass, then experiment with 2-5 passes to find the sweet spot for your audio. Each iteration progressively improves voice similarity!
 
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
+
 ## 📁 Example Workflows
 
 **Ready-to-use ComfyUI workflows** - Download and drag into ComfyUI:
@@ -608,6 +654,8 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 | **F5-TTS SRT and Normal Generation**     | F5-TTS integration with SRT subtitle processing         | [📁 JSON](example_workflows/🎤%20📺%20F5-TTS%20SRT%20and%20Normal%20Generation.json) |
 
 > **Note:** To use workflows, download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with the proper node connections.
+
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
 ## Settings Guide
 
@@ -656,6 +704,8 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 - Lower `cfg_weight` (~0.3) + higher `exaggeration` (~0.7)
 - Higher exaggeration speeds up speech; lower CFG slows it down
 
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
+
 ## Text Processing Capabilities
 
 ### 📚 No Hard Text Limits!
@@ -688,9 +738,13 @@ Input: "This is a very long article about artificial intelligence and machine le
 Output: 3 well-formed chunks with natural boundaries
 ```
 
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
+
 ## License
 
 MIT License - Same as ChatterboxTTS
+
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
 ## Credits
 
@@ -699,6 +753,8 @@ MIT License - Same as ChatterboxTTS
 - **sounddevice** library for audio recording functionality
 - **[ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice)** for the Original ChatteBox Voice TTS node
 - **[Diogod](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice)** for the SRT Timing and TTS Node implementation
+
+<div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
 ## 🔗 Links
 
