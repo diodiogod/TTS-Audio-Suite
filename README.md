@@ -202,7 +202,11 @@ Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles depen
    
    **ComfyUI Portable:**
    ```bash
-   ComfyUI/python_embeded/python.exe -m pip install -r ComfyUI_ChatterBox_SRT_Voice/requirements.txt
+   # Windows:
+   ..\..\python_embeded\python.exe -m pip install -r ComfyUI_ChatterBox_SRT_Voice\requirements.txt
+   
+   # Linux/Mac:
+   ../../python_embeded/python.exe -m pip install -r ComfyUI_ChatterBox_SRT_Voice/requirements.txt
    ```
    
    **ComfyUI with venv/conda:**
