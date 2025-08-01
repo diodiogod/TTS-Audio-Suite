@@ -34,24 +34,26 @@ Organize character voices using filenames in `voices_examples/`:
 
 ```
 voices_examples/
-├── narrator.wav
+├── narrator.wav (or .mp3, .flac, .ogg, .m4a, .aac)
 ├── narrator.reference.txt (for F5TTS only)
-├── alice.wav
+├── alice.mp3
 ├── alice.reference.txt (for F5TTS only)
-├── bob.wav
+├── bob.flac
 ├── bob.reference.txt (for F5TTS only)
 └── characters/          (folders for organization)
     ├── female_01.wav
     ├── female_01.reference.txt
-    ├── male_01.wav
+    ├── male_01.ogg
     └── male_01.reference.txt
 ```
 
 **Character names are determined by the audio filename, not folder names. Folders are for organization only.**
 
+**Supported audio formats:** `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac`
+
 ### 3. Engine Differences
-- **F5TTS**: Requires both `.wav` and `.reference.txt` files
-- **ChatterBox**: Only needs `.wav` files (simpler setup)
+- **F5TTS**: Requires both **audio files** and `.reference.txt` files
+- **ChatterBox**: Only needs **audio files** (simpler setup)
 
 ---
 
@@ -101,15 +103,16 @@ Hello! This is F5-TTS SRT with character switching.
 
 1. **Add Character Voice Files**:
    ```
-   voices_examples/alice.wav
+   voices_examples/alice.wav (or .mp3, .flac, etc.)
    voices_examples/alice.reference.txt
-   voices_examples/bob.wav
+   voices_examples/bob.mp3
    voices_examples/bob.reference.txt
    ```
 
 2. **Voice File Requirements**:
    - `alice.wav` - Audio sample of Alice's voice (5-15 seconds recommended)
    - `alice.reference.txt` - Transcript of what Alice says in the audio
+   - **Supported formats:** `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac`
 
 3. **⚠️ F5-TTS Best Practices**: Follow [F5-TTS inference guidelines](#f5-tts-inference-guidelines) to avoid generation failures
 
@@ -122,20 +125,21 @@ Hello! This is F5-TTS SRT with character switching.
 
 1. **Add Audio Files Only**:
    ```
-   voices_examples/alice.wav
-   voices_examples/bob.wav
+   voices_examples/alice.wav (or .mp3, .flac, etc.)
+   voices_examples/bob.ogg
    ```
    - No text files needed!
+   - **Supported formats:** `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac`
 
 2. **Flexible Organization**:
    ```
    voices_examples/
    ├── main_characters/
    │   ├── alice.wav
-   │   └── bob.wav
+   │   └── bob.mp3
    └── background_voices/
-       ├── shopkeeper.wav
-       └── guard.wav
+       ├── shopkeeper.flac
+       └── guard.ogg
    ```
 
 ### Alternative Voice Sources
@@ -223,6 +227,7 @@ The system gracefully handles missing characters:
 #### "Character not found" warnings
 - **Cause**: Character audio file missing or incorrectly named
 - **Solution**: Check that audio filename matches character name used in `[Character]` tags
+- **Note**: Supports `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac` formats
 - **Result**: Uses fallback voice (no workflow break)
 
 #### F5TTS missing reference text
@@ -250,14 +255,14 @@ voices_examples/
 ├── story1/
 │   ├── hero.wav
 │   ├── hero.reference.txt
-│   ├── villain.wav
+│   ├── villain.mp3
 │   └── villain.reference.txt
 ├── story2/
-│   ├── alice.wav
+│   ├── alice.flac
 │   ├── alice.reference.txt
-│   ├── bob.wav
+│   ├── bob.ogg
 │   └── bob.reference.txt
-└── narrator.wav
+└── narrator.m4a
 └── narrator.reference.txt
 ```
 
@@ -276,6 +281,7 @@ voices_examples/
 - Add new characters by adding audio files with matching names
 - Remove characters by deleting audio files
 - Character name = audio filename (without extension)
+- **Supports all audio formats:** `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac`
 
 ---
 
