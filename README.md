@@ -196,6 +196,7 @@ Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles depen
    ```bash
    cd ComfyUI/custom_nodes
    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+   cd ComfyUI_ChatterBox_SRT_Voice
    ```
 
 2. **Install Dependencies** (⚠️ **Critical for Manual Install**):
@@ -203,10 +204,10 @@ Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles depen
    **ComfyUI Portable:**
    ```bash
    # Windows:
-   ..\..\python_embeded\python.exe -m pip install -r ComfyUI_ChatterBox_SRT_Voice\requirements.txt
+   ..\..\..\python_embeded\python.exe -m pip install -r requirements.txt --no-user
    
    # Linux/Mac:
-   ../../python_embeded/python.exe -m pip install -r ComfyUI_ChatterBox_SRT_Voice/requirements.txt
+   ../../../python_embeded/python.exe -m pip install -r requirements.txt --no-user
    ```
    
    **ComfyUI with venv/conda:**
@@ -266,11 +267,15 @@ For portable installations, follow these steps:
     ```bash
     cd ComfyUI_ChatterBox_SRT_Voice
     ```
-3.  Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation to ensure the packages are installed in the correct environment.
+3.  Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation with environment isolation flags.
 
     ```bash
-    ComfyUI/python_embeded/python.exe -m pip install -r requirements.txt
+    ../../../python_embeded/python.exe -m pip install -r requirements.txt --no-user
     ```
+    
+    **Why the `--no-user` flag?**
+    - Prevents installing to your system Python's user directory, which can cause import conflicts
+    - Ensures packages install only to the portable environment for proper isolation
 
 #### 2. Direct Installation with venv
 
