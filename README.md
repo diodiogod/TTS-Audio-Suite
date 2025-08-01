@@ -184,17 +184,36 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 
 ## 🚀 Quick Start
 
+### Option 1: ComfyUI Manager (Recommended)
+Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles dependencies automatically.
+
+### Option 2: Manual Installation
+
 **Get running in 5 minutes:**
 
-1. **Clone & Install**
+1. **Clone the repository**
 
    ```bash
    cd ComfyUI/custom_nodes
    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+   ```
+
+2. **Install Dependencies** (⚠️ **Critical for Manual Install**):
+   
+   **ComfyUI Portable:**
+   ```bash
+   ComfyUI/python_embeded/python.exe -m pip install -r ComfyUI_ChatterBox_SRT_Voice/requirements.txt
+   ```
+   
+   **ComfyUI with venv/conda:**
+   ```bash
+   # First activate your ComfyUI environment, then:
    pip install -r ComfyUI_ChatterBox_SRT_Voice/requirements.txt
    ```
 
-2. **Download Models** (Required)
+> ⚠️ **Important**: Manual installs require installing dependencies in your ComfyUI's Python environment. If you get missing dependency errors, see the [detailed installation guide](#installation) below.
+
+3. **Download Models** (Required)
 
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
    - Place in `ComfyUI/models/chatterbox/`
