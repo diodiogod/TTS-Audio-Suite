@@ -362,6 +362,10 @@ Hello! This is F5-TTS SRT with character switching.
                 else:
                     audio_prompt_component = audio_prompt
             
+            # Set up character parser with available characters BEFORE processing subtitles
+            available_chars = get_available_characters()
+            character_parser.set_available_characters(list(available_chars))
+            
             # Generate audio segments
             audio_segments = []
             natural_durations = []
@@ -389,9 +393,6 @@ Hello! This is F5-TTS SRT with character switching.
                         # Character switching within this subtitle
                         # print(f"🎭 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
                         
-                        # Set up character parser with available characters
-                        available_chars = get_available_characters()
-                        character_parser.set_available_characters(list(available_chars))
                         
                         # Get character mapping
                         characters = [char for char, _ in character_segments]

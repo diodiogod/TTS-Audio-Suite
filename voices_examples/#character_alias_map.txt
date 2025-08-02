@@ -3,23 +3,31 @@
 # 
 # Supported formats:
 # Alias = Character_Name
+# Alias = Character_Name, language_code    (with default language)
 # Alias[TAB]Character_Name
+# Alias[TAB]Character_Name[TAB]language_code
 
 # Examples by category:
 # Main Characters:
-Alice		female_01
-Bob		male_01
+Alice		female_01		de
+Bob		male_01			fr
 Narrator	david_attenborough_cc3
 
-# Supporting Cast:
-Girl = female_01
-Woman = female_02
-Cowboy = clint_eastwood_cc3_enhanced2
+# Supporting Cast with language defaults:
+Girl = female_01, en
+Woman = female_02, en
+Cowboy = clint_eastwood_cc3_enhanced2, en
 
 # Background Voices:
 Old Man		male_01
 Female Ana = female_ana_01
 Shopkeeper	male_02
 Guard   =   male_01
+
+# Language defaults in alias system:
+# - Alice uses German (de) by default  
+# - Bob uses French (fr) by default
+# - Girl, Woman, Cowboy use English (en) by default
+# - Others use global default language
 
 # Empty lines and comments are ignored

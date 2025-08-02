@@ -402,6 +402,10 @@ The audio will match these exact timings.""",
                 current_timing_mode = "pad_with_silence"
                 mode_switched = True
             
+            # Set up character parser with available characters BEFORE processing subtitles
+            available_chars = get_available_characters()
+            character_parser.set_available_characters(list(available_chars))
+            
             # Generate audio segments
             audio_segments = []
             natural_durations = []
@@ -429,9 +433,6 @@ The audio will match these exact timings.""",
                         # Character switching within this subtitle
                         # print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
                         
-                        # Set up character parser with available characters
-                        available_chars = get_available_characters()
-                        character_parser.set_available_characters(list(available_chars))
                         
                         # Get character mapping for ChatterBox (audio-only)
                         characters = [char for char, _ in character_segments]

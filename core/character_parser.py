@@ -5,20 +5,22 @@ Handles character tag parsing for both F5TTS and ChatterBox TTS nodes
 
 import re
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 from pathlib import Path
 
 
 @dataclass
 class CharacterSegment:
-    """Represents a single text segment with character assignment"""
+    """Represents a single text segment with character assignment and language"""
     character: str
     text: str
     start_pos: int
     end_pos: int
+    language: Optional[str] = None
     
     def __str__(self) -> str:
-        return f"CharacterSegment(character='{self.character}', text='{self.text[:50]}...', pos={self.start_pos}-{self.end_pos})"
+        lang_info = f", lang='{self.language}'" if self.language else ""
+        return f"CharacterSegment(character='{self.character}'{lang_info}, text='{self.text[:50]}...', pos={self.start_pos}-{self.end_pos})"
 
 
 class CharacterParser:
@@ -26,26 +28,33 @@ class CharacterParser:
     Universal character parsing system for both F5TTS and ChatterBox TTS.
     
     Features:
-    - Parse [CharacterName] tags from text
-    - Split text into character-specific segments
+    - Parse [CharacterName] and [language:CharacterName] tags from text
+    - Split text into character-specific segments with language awareness
     - Robust fallback system for missing characters
     - Support for both single text and SRT subtitle processing
     - Compatible with voice folder structure
+    - Language-aware character switching
     """
     
-    # Regex pattern for character tags: [CharacterName] (excludes pause tags)
+    # Regex pattern for character tags: [CharacterName] or [language:CharacterName] (excludes pause tags)
     CHARACTER_TAG_PATTERN = re.compile(r'\[(?!pause:)([^\]]+)\]')
     
-    def __init__(self, default_character: str = "narrator"):
+    # Regex to parse language:character format
+    LANGUAGE_CHARACTER_PATTERN = re.compile(r'^([a-zA-Z]{2,3}):(.+)$')
+    
+    def __init__(self, default_character: str = "narrator", default_language: Optional[str] = None):
         """
         Initialize character parser.
         
         Args:
             default_character: Default character name for untagged text
+            default_language: Default language for characters without explicit language
         """
         self.default_character = default_character
+        self.default_language = default_language or "en"
         self.available_characters = set()
         self.character_fallbacks = {}
+        self.character_language_defaults = {}
     
     def set_available_characters(self, characters: List[str]):
         """
@@ -65,6 +74,70 @@ class CharacterParser:
             fallback: Character name to use as fallback
         """
         self.character_fallbacks[character.lower()] = fallback.lower()
+    
+    def set_character_language_default(self, character: str, language: str):
+        """
+        Set default language for a character.
+        
+        Args:
+            character: Character name
+            language: Default language code (e.g., 'en', 'de', 'fr')
+        """
+        self.character_language_defaults[character.lower()] = language.lower()
+    
+    def parse_language_character_tag(self, tag_content: str) -> Tuple[Optional[str], str]:
+        """
+        Parse character tag content to extract language and character.
+        
+        Args:
+            tag_content: Content inside character brackets (e.g., "Alice" or "de:Alice")
+            
+        Returns:
+            Tuple of (language, character_name) where language can be None
+        """
+        # Check if it's in language:character format
+        match = self.LANGUAGE_CHARACTER_PATTERN.match(tag_content.strip())
+        if match:
+            language = match.group(1).lower()
+            character = match.group(2).strip()
+            return language, character
+        else:
+            # Just a character name, no explicit language
+            return None, tag_content.strip()
+    
+    def resolve_character_language(self, character: str, explicit_language: Optional[str] = None) -> str:
+        """
+        Resolve the language to use for a character.
+        
+        Priority:
+        1. Explicitly provided language (from [lang:character] tag)
+        2. Character's default language (from alias system)
+        3. Global default language
+        
+        Args:
+            character: Character name
+            explicit_language: Language explicitly specified in tag
+            
+        Returns:
+            Language code to use
+        """
+        if explicit_language:
+            return explicit_language
+        
+        character_lower = character.lower()
+        if character_lower in self.character_language_defaults:
+            return self.character_language_defaults[character_lower]
+        
+        # Check voice discovery system for language defaults
+        try:
+            from core.voice_discovery import voice_discovery
+            alias_language = voice_discovery.get_character_default_language(character_lower)
+            if alias_language:
+                return alias_language
+        except Exception:
+            pass
+        
+        return self.default_language
     
     def normalize_character_name(self, character_name: str) -> str:
         """
@@ -144,7 +217,8 @@ class CharacterParser:
                 character=self.default_character,
                 text=text.strip(),
                 start_pos=0,
-                end_pos=len(text)
+                end_pos=len(text),
+                language=self.resolve_character_language(self.default_character)
             ))
         
         return segments
@@ -163,6 +237,7 @@ class CharacterParser:
         segments = []
         current_pos = 0
         current_character = self.default_character
+        current_language = self.default_language
         
         # IMPORTANT: Each line starts fresh with narrator as default
         # If the line doesn't start with a character tag, everything is narrator
@@ -174,7 +249,8 @@ class CharacterParser:
                     character=self.default_character,
                     text=line.strip(),
                     start_pos=line_start_pos,
-                    end_pos=line_start_pos + len(line)
+                    end_pos=line_start_pos + len(line),
+                    language=self.resolve_character_language(self.default_character)
                 ))
             return segments
         
@@ -187,12 +263,17 @@ class CharacterParser:
                     character=current_character,
                     text=before_tag,
                     start_pos=line_start_pos + current_pos,
-                    end_pos=line_start_pos + match.start()
+                    end_pos=line_start_pos + match.start(),
+                    language=current_language
                 ))
             
+            # Parse language and character from the tag
+            raw_tag_content = match.group(1)
+            explicit_language, raw_character = self.parse_language_character_tag(raw_tag_content)
+            
             # Update current character for text after this tag
-            raw_character = match.group(1)
             current_character = self.normalize_character_name(raw_character)
+            current_language = self.resolve_character_language(current_character, explicit_language)
             current_pos = match.end()
         
         # Add remaining text after last tag (or entire line if no tags)
@@ -202,7 +283,8 @@ class CharacterParser:
                 character=current_character,
                 text=remaining_text,
                 start_pos=line_start_pos + current_pos,
-                end_pos=line_start_pos + len(line)
+                end_pos=line_start_pos + len(line),
+                language=current_language
             ))
         elif not segments and line.strip():
             # Line with only tags and no text after - still need a segment for the line
@@ -211,7 +293,8 @@ class CharacterParser:
                 character=current_character,
                 text="",
                 start_pos=line_start_pos,
-                end_pos=line_start_pos + len(line)
+                end_pos=line_start_pos + len(line),
+                language=current_language
             ))
         
         return segments
@@ -261,22 +344,44 @@ class CharacterParser:
         """
         return self.CHARACTER_TAG_PATTERN.sub('', text).strip()
     
-    def split_by_character(self, text: str) -> List[Tuple[str, str]]:
+    def split_by_character(self, text: str, include_language: bool = False) -> Union[List[Tuple[str, str]], List[Tuple[str, str, str]]]:
         """
-        Split text by character, returning (character, text) tuples.
+        Split text by character, returning (character, text, language) tuples.
         This is the main method used by TTS nodes.
         
         Args:
             text: Input text with [Character] tags
+            include_language: If True, returns (character, text, language) tuples
             
         Returns:
-            List of (character_name, text_content) tuples
+            List of (character_name, text_content, language) tuples if include_language=True
+            List of (character_name, text_content) tuples if include_language=False (backward compatibility)
         """
         # print(f"🔍 Character Parser DEBUG: Input text: {repr(text)}")
         segments = self.parse_text_segments(text)
-        result = [(segment.character, segment.text) for segment in segments]
+        
+        if include_language:
+            result = [(segment.character, segment.text, segment.language) for segment in segments]
+        else:
+            # Backward compatibility: return old tuple format
+            result = [(segment.character, segment.text) for segment in segments]
+        
         # print(f"🔍 Character Parser DEBUG: Parsed segments: {result}")
         return result
+    
+    def split_by_character_with_language(self, text: str) -> List[Tuple[str, str, str]]:
+        """
+        Split text by character, returning (character, text, language) tuples.
+        Convenience method that always includes language information.
+        
+        Args:
+            text: Input text with [Character] or [language:Character] tags
+            
+        Returns:
+            List of (character_name, text_content, language_code) tuples
+        """
+        segments = self.parse_text_segments(text)
+        return [(segment.character, segment.text, segment.language) for segment in segments]
     
     def validate_character_tags(self, text: str) -> Tuple[bool, List[str]]:
         """

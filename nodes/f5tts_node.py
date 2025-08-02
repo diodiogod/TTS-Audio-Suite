@@ -320,10 +320,7 @@ Back to the main narrator voice for the conclusion.""",
                 nfe_step=nfe_step, cfg_strength=cfg_strength, enable_audio_cache=enable_audio_cache
             )
             
-            # Load F5-TTS model
-            self.load_f5tts_model(inputs["model"], inputs["device"])
-            
-            # Set seed for reproducibility
+            # Set seed for reproducibility (can be done without loading model)
             self.set_seed(inputs["seed"])
             
             # Handle reference audio and text with priority chain
@@ -335,26 +332,34 @@ Back to the main narrator voice for the conclusion.""",
                 inputs.get("audio_prompt_path", "")
             )
             
-            # Parse character segments from text
-            # NOTE: We parse characters from original text, then handle pause tags within each segment
-            character_segments = parse_character_text(inputs["text"])
+            # Set up character parser with available characters BEFORE parsing
+            available_chars = get_available_characters()
+            character_parser.set_available_characters(list(available_chars))
             
-            # Check if we have character switching
-            characters = list(set(char for char, _ in character_segments))
+            # Parse character segments from text with language awareness
+            # NOTE: We parse characters and languages from original text, then handle pause tags within each segment
+            character_segments_with_lang = character_parser.split_by_character_with_language(inputs["text"])
+            
+            # Check if we have character switching or language switching
+            characters = list(set(char for char, _, _ in character_segments_with_lang))
+            languages = list(set(lang for _, _, lang in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
+            has_multiple_languages = len(languages) > 1
+            
+            # Create backward-compatible character segments for existing logic
+            character_segments = [(char, segment_text) for char, segment_text, _ in character_segments_with_lang]
             
             # Validate and clamp nfe_step to prevent ODE solver issues
             safe_nfe_step = max(1, min(inputs["nfe_step"], 71))
             if safe_nfe_step != inputs["nfe_step"]:
                 print(f"⚠️ F5-TTS: Clamped nfe_step from {inputs['nfe_step']} to {safe_nfe_step} to prevent ODE solver issues")
             
-            if has_multiple_characters:
-                # CHARACTER SWITCHING MODE
-                print(f"🎭 F5-TTS: Character switching mode - found characters: {', '.join(characters)}")
-                
-                # Set up character parser with available characters
-                available_chars = get_available_characters()
-                character_parser.set_available_characters(list(available_chars))
+            if has_multiple_characters or has_multiple_languages:
+                # CHARACTER AND/OR LANGUAGE SWITCHING MODE
+                if has_multiple_languages:
+                    print(f"🌍 F5-TTS: Language switching mode - found languages: {', '.join(languages)}")
+                if has_multiple_characters:
+                    print(f"🎭 F5-TTS: Character switching mode - found characters: {', '.join(characters)}")
                 
                 # Get character voice mapping
                 character_mapping = get_character_mapping(characters, engine_type="f5tts")
@@ -370,70 +375,183 @@ Back to the main narrator voice for the conclusion.""",
                         voice_refs[character] = (main_audio_prompt, main_ref_text)
                         print(f"🔄 Using main voice for character '{character}' (not found in voice folders)")
                 
-                # Process each character segment
-                audio_segments = []
-                for i, (character, segment_text) in enumerate(character_segments):
-                    # Check for interruption
-                    self.check_interruption(f"F5-TTS character generation segment {i+1}/{len(character_segments)}")
+                # Map language codes to F5-TTS model names
+                def get_f5tts_model_for_language(lang_code: str) -> str:
+                    """Map language codes to F5-TTS model names"""
+                    lang_model_map = {
+                        'en': inputs["model"],  # Use selected model for English (default)
+                        'de': 'F5-DE',         # German
+                        'es': 'F5-ES',         # Spanish  
+                        'fr': 'F5-FR',         # French
+                        'jp': 'F5-JP',         # Japanese
+                        'ja': 'F5-JP',         # Japanese (alternative code)
+                        'it': 'F5-IT',         # Italian
+                        'th': 'F5-TH',         # Thai
+                        'pt': 'F5-PT-BR',      # Portuguese (Brazilian)
+                        'pt-br': 'F5-PT-BR',   # Portuguese (Brazilian)
+                    }
+                    return lang_model_map.get(lang_code.lower(), inputs["model"])
+                
+                # Group segments by language with original order tracking
+                language_groups = {}
+                for idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+                    if lang not in language_groups:
+                        language_groups[lang] = []
+                    language_groups[lang].append((idx, char, segment_text, lang))  # Include original index
+                
+                # Generate audio for each language group, tracking original positions
+                audio_segments_with_order = []  # Will store (original_index, audio_tensor)
+                total_segments = len(character_segments_with_lang)
+                
+                # Track if base model has been loaded
+                base_model_loaded = False
+                
+                # Process each language group with appropriate model
+                for lang_code, lang_segments in language_groups.items():
+                    required_model = get_f5tts_model_for_language(lang_code)
                     
-                    # Apply chunking to long segments if enabled
-                    if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
-                        segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
-                    else:
-                        segment_chunks = [segment_text]
-                    
-                    # Get voice reference for this character
-                    char_audio, char_text = voice_refs[character]
-                    
-                    # Generate audio for each chunk of this character segment
-                    for chunk_i, chunk_text in enumerate(segment_chunks):
-                        print(f"🎤 Generating F5-TTS segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
-                        
-                        # Create cache function for this character if caching is enabled
-                        cache_fn = None
-                        if inputs.get("enable_audio_cache", True):
-                            def create_cache_fn(char_name, char_audio_comp, char_ref_text):
-                                def cache_fn_impl(text_content: str, audio_result=None):
-                                    cache_key = self._generate_segment_cache_key(
-                                        f"{char_name}:{text_content}", inputs["model"], inputs["device"], 
-                                        char_audio_comp, char_ref_text, inputs["temperature"], inputs["speed"],
-                                        inputs["target_rms"], inputs["cross_fade_duration"], 
-                                        safe_nfe_step, inputs["cfg_strength"], inputs["seed"], char_name
-                                    )
-                                    if audio_result is None:
-                                        # Get from cache
-                                        cached_data = self._get_cached_segment_audio(cache_key)
-                                        if cached_data:
-                                            print(f"💾 CACHE HIT for character '{char_name}': '{text_content[:30]}...'")
-                                            return cached_data[0]
-                                        return None
-                                    else:
-                                        # Store in cache
-                                        char_duration = char_audio.size(-1) / self.f5tts_sample_rate if hasattr(char_audio, 'size') else 0.0
-                                        self._cache_segment_audio(cache_key, audio_result, char_duration)
-                                return cache_fn_impl
+                    # Check if ALL segments in this language group are cached
+                    all_segments_cached = True
+                    if inputs.get("enable_audio_cache", True):
+                        for original_idx, character, segment_text, segment_lang in lang_segments:
+                            # Get voice reference for this character
+                            char_audio, char_text = voice_refs[character]
                             
-                            # Determine character audio component for cache key
-                            char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
-                            cache_fn = create_cache_fn(character, char_audio_component, char_text)
+                            # Apply chunking to check cache for each chunk
+                            if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
+                                segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                            else:
+                                segment_chunks = [segment_text]
+                            
+                            # Check cache for each chunk, accounting for pause tag processing
+                            for chunk_text in segment_chunks:
+                                # Apply pause tag processing to see what text segments will actually be generated
+                                from core.pause_tag_processor import PauseTagProcessor
+                                processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk_text, True)
+                                
+                                if pause_segments is None:
+                                    # No pause tags, check cache for the full processed text
+                                    cache_texts = [processed_text]
+                                else:
+                                    # Extract only text segments (not pause segments) 
+                                    cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
+                                
+                                # Check cache for each text segment that will be generated
+                                char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
+                                for cache_text in cache_texts:
+                                    cache_key = self._generate_segment_cache_key(
+                                        f"{character}:{cache_text}", required_model, inputs["device"], 
+                                        char_audio_component, char_text, inputs["temperature"], inputs["speed"],
+                                        inputs["target_rms"], inputs["cross_fade_duration"], 
+                                        safe_nfe_step, inputs["cfg_strength"], inputs["seed"], character
+                                    )
+                                    cached_data = self._get_cached_segment_audio(cache_key)
+                                    if not cached_data:
+                                        all_segments_cached = False
+                                        break
+                                if not all_segments_cached:
+                                    break
+                            if not all_segments_cached:
+                                break
+                    else:
+                        all_segments_cached = False
+                    
+                    # Only load model if we need to generate new audio
+                    if not all_segments_cached:
+                        # Load base model if this is the first time we need to generate anything
+                        if not base_model_loaded:
+                            print(f"🔄 Loading base F5-TTS model '{inputs['model']}' for generation")
+                            self.load_f5tts_model(inputs["model"], inputs["device"])
+                            base_model_loaded = True
                         
-                        chunk_audio = self.generate_f5tts_with_pause_tags(
-                            text=chunk_text,
-                            ref_audio_path=char_audio,
-                            ref_text=char_text,
-                            enable_pause_tags=True,
-                            character=character,
-                            seed=inputs["seed"],
-                            enable_cache=inputs.get("enable_audio_cache", True),
-                            cache_fn=cache_fn,
-                            temperature=inputs["temperature"],
-                            speed=inputs["speed"],
-                            target_rms=inputs["target_rms"],
-                            cross_fade_duration=inputs["cross_fade_duration"],
-                            nfe_step=safe_nfe_step,
-                            cfg_strength=inputs["cfg_strength"]
-                        )
-                        audio_segments.append(chunk_audio)
+                        print(f"🌍 Loading F5-TTS model '{required_model}' for language '{lang_code}' ({len(lang_segments)} segments)")
+                        try:
+                            self.load_f5tts_model(required_model, inputs["device"])
+                        except Exception as e:
+                            print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
+                            print(f"🔄 Falling back to default model '{inputs['model']}'")
+                            self.load_f5tts_model(inputs["model"], inputs["device"])
+                    else:
+                        print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
+                    
+                    # Process each segment in this language group
+                    for original_idx, character, segment_text, segment_lang in lang_segments:
+                        segment_display_idx = original_idx + 1  # For display (1-based)
+                        
+                        # Check for interruption
+                        self.check_interruption(f"F5-TTS generation segment {segment_display_idx}/{total_segments} (lang: {lang_code})")
+                        
+                        # Apply chunking to long segments if enabled
+                        if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
+                            segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                        else:
+                            segment_chunks = [segment_text]
+                        
+                        # Get voice reference for this character
+                        char_audio, char_text = voice_refs[character]
+                        
+                        # Generate audio for each chunk of this character segment
+                        segment_audio_chunks = []
+                        for chunk_i, chunk_text in enumerate(segment_chunks):
+                            print(f"🎤 Generating F5-TTS segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
+                            
+                            # Create cache function for this character if caching is enabled
+                            cache_fn = None
+                            if inputs.get("enable_audio_cache", True):
+                                def create_cache_fn(char_name, char_audio_comp, char_ref_text):
+                                    def cache_fn_impl(text_content: str, audio_result=None):
+                                        cache_key = self._generate_segment_cache_key(
+                                            f"{char_name}:{text_content}", required_model, inputs["device"], 
+                                            char_audio_comp, char_ref_text, inputs["temperature"], inputs["speed"],
+                                            inputs["target_rms"], inputs["cross_fade_duration"], 
+                                            safe_nfe_step, inputs["cfg_strength"], inputs["seed"], char_name
+                                        )
+                                        if audio_result is None:
+                                            # Get from cache
+                                            cached_data = self._get_cached_segment_audio(cache_key)
+                                            if cached_data:
+                                                print(f"💾 CACHE HIT for character '{char_name}': '{text_content[:30]}...'")
+                                                return cached_data[0]
+                                            return None
+                                        else:
+                                            # Store in cache
+                                            char_duration = char_audio.size(-1) / self.f5tts_sample_rate if hasattr(char_audio, 'size') else 0.0
+                                            self._cache_segment_audio(cache_key, audio_result, char_duration)
+                                    return cache_fn_impl
+                                
+                                # Determine character audio component for cache key
+                                char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
+                                cache_fn = create_cache_fn(character, char_audio_component, char_text)
+                            
+                            chunk_audio = self.generate_f5tts_with_pause_tags(
+                                text=chunk_text,
+                                ref_audio_path=char_audio,
+                                ref_text=char_text,
+                                enable_pause_tags=True,
+                                character=character,
+                                seed=inputs["seed"],
+                                enable_cache=inputs.get("enable_audio_cache", True),
+                                cache_fn=cache_fn,
+                                temperature=inputs["temperature"],
+                                speed=inputs["speed"],
+                                target_rms=inputs["target_rms"],
+                                cross_fade_duration=inputs["cross_fade_duration"],
+                                nfe_step=safe_nfe_step,
+                                cfg_strength=inputs["cfg_strength"]
+                            )
+                            segment_audio_chunks.append(chunk_audio)
+                        
+                        # Combine chunks for this segment and store with original order
+                        if segment_audio_chunks:
+                            if len(segment_audio_chunks) == 1:
+                                segment_audio = segment_audio_chunks[0]
+                            else:
+                                segment_audio = torch.cat(segment_audio_chunks, dim=-1)
+                            audio_segments_with_order.append((original_idx, segment_audio))
+                
+                # Sort audio segments back to original order
+                audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
+                audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
                 # Combine all character segments
                 wav = self.combine_f5tts_audio_chunks(
@@ -444,11 +562,75 @@ Back to the main narrator voice for the conclusion.""",
                 # Generate info
                 total_duration = wav.size(-1) / self.f5tts_sample_rate
                 model_info = self.get_f5tts_model_info()
-                info = f"Generated {total_duration:.1f}s character-switched audio from {len(character_segments)} segments using {len(characters)} characters (F5-TTS {model_info.get('model_name', 'unknown')})"
+                
+                language_info = ""
+                if has_multiple_languages:
+                    language_info = f" across {len(languages)} languages ({', '.join(languages)})"
+                
+                info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} (F5-TTS {model_info.get('model_name', 'unknown')})"
                 
             else:
                 # SINGLE CHARACTER MODE (original behavior)
                 text_length = len(inputs["text"])
+                
+                # Check if single character content is cached before loading model
+                single_content_cached = False
+                if inputs.get("enable_audio_cache", True):
+                    if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
+                        # Check cache for single chunk
+                        from core.pause_tag_processor import PauseTagProcessor
+                        processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(inputs["text"], True)
+                        
+                        if pause_segments is None:
+                            cache_texts = [processed_text]
+                        else:
+                            cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
+                        
+                        single_content_cached = True
+                        for cache_text in cache_texts:
+                            cache_key = self._generate_segment_cache_key(
+                                f"narrator:{cache_text}", inputs["model"], inputs["device"], 
+                                stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
+                                inputs["target_rms"], inputs["cross_fade_duration"], 
+                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                            )
+                            cached_data = self._get_cached_segment_audio(cache_key)
+                            if not cached_data:
+                                single_content_cached = False
+                                break
+                    else:
+                        # Check cache for multiple chunks
+                        chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                        single_content_cached = True
+                        for chunk in chunks:
+                            from core.pause_tag_processor import PauseTagProcessor
+                            processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk, True)
+                            
+                            if pause_segments is None:
+                                cache_texts = [processed_text]
+                            else:
+                                cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
+                            
+                            for cache_text in cache_texts:
+                                cache_key = self._generate_segment_cache_key(
+                                    f"narrator:{cache_text}", inputs["model"], inputs["device"], 
+                                    stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
+                                    inputs["target_rms"], inputs["cross_fade_duration"], 
+                                    safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                                )
+                                cached_data = self._get_cached_segment_audio(cache_key)
+                                if not cached_data:
+                                    single_content_cached = False
+                                    break
+                            if not single_content_cached:
+                                break
+                
+                # Only load model if we need to generate something
+                if not single_content_cached:
+                    print(f"🔄 Loading F5-TTS model '{inputs['model']}' for single character generation")
+                    self.load_f5tts_model(inputs["model"], inputs["device"])
+                else:
+                    print(f"💾 All single character content cached - skipping model loading")
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
                     # Process single chunk with caching

@@ -2,16 +2,18 @@
 
 ## Overview
 
-ChatterBox Voice now supports seamless character and narrator switching for both **F5TTS** and **ChatterBox TTS** engines. Use `[CharacterName]` tags in your text to automatically switch between different voices, creating dynamic multi-character audio content.
+ChatterBox Voice now supports seamless character and narrator switching with **language-aware processing** for both **F5TTS** and **ChatterBox TTS** engines. Use `[CharacterName]` or `[language:CharacterName]` tags in your text to automatically switch between different voices and languages, creating dynamic multilingual multi-character audio content.
 
 ---
 
 ## ✨ Key Features
 
 - **🎭 Universal Character Parsing** - Works with both F5TTS and ChatterBox engines
-- **🔄 Robust Fallback System** - No errors when characters not found
+- **🌍 Language-Aware Switching** - Switch both character AND language with `[lang:character]` syntax
+- **🔄 Robust Fallback System** - No errors when characters or languages not found
 - **📁 Voice Folder Integration** - Organized character voice management
-- **📺 SRT Support** - Character switching in subtitle timing
+- **📺 SRT Support** - Character and language switching in subtitle timing
+- **🗂️ Default Language Settings** - Set default languages per character in alias files
 - **⚡ Performance Optimized** - Preserves all existing caching systems
 - **🔙 Backward Compatible** - Existing workflows work unchanged
 
@@ -20,8 +22,9 @@ ChatterBox Voice now supports seamless character and narrator switching for both
 ## 🚀 Quick Start
 
 ### 1. Text Format
-Use `[CharacterName]` tags to switch voices:
+Use `[CharacterName]` tags to switch voices, with optional language specification:
 
+#### Basic Character Switching
 ```
 Hello! This is the narrator speaking.
 [Alice] Hi there! I'm Alice, nice to meet you.
@@ -29,7 +32,41 @@ Hello! This is the narrator speaking.
 Back to the narrator for the conclusion.
 ```
 
-### 2. Voice File Structure
+#### Language-Aware Character Switching (NEW!)
+```
+Hello! This is English narrator.
+[de:Alice] Hallo! Ich bin Alice und spreche Deutsch.
+[fr:Bob] Bonjour! Je suis Bob et je parle français.
+[Alice] Alice now speaks in her default language.
+Back to the narrator in default language.
+```
+
+**Language Tag Format:** `[language:character]`
+- `[de:Alice]` - Alice speaks in German
+- `[fr:Bob]` - Bob speaks in French  
+- `[en:narrator]` - Narrator speaks in English
+- `[Alice]` - Alice uses her default language (from alias settings or global default)
+
+### 2. Supported Languages
+
+#### F5-TTS Language Models
+- **English** (`en`) - F5TTS_Base, F5TTS_v1_Base, E2TTS_Base
+- **German** (`de`) - F5-DE
+- **Spanish** (`es`) - F5-ES
+- **French** (`fr`) - F5-FR
+- **Japanese** (`jp`, `ja`) - F5-JP
+- **Italian** (`it`) - F5-IT
+- **Thai** (`th`) - F5-TH
+- **Portuguese Brazilian** (`pt`, `pt-br`) - F5-PT-BR
+
+#### ChatterBox Language Models
+- **English** (`en`) - English
+- **German** (`de`) - German
+- **Norwegian** (`no`, `nb`, `nn`) - Norwegian
+
+**Note:** If a language model is not available, the system will fallback to the default model with a warning.
+
+### 3. Voice File Structure
 Organize character voices using filenames in `voices_examples/`:
 
 ```
@@ -146,18 +183,25 @@ Hello! This is F5-TTS SRT with character switching.
 - **ComfyUI Models**: `models/voices/` directory (same filename-based system)
 - **Flexible Organization**: Any subfolder structure supported for organization
 
-### 🏷️ Character Aliases (Optional)
+### 🏷️ Character Aliases with Language Defaults (Optional)
 
-Create a `#character_alias_map.txt` file to use friendly names that map to your audio filenames:
+Create a `#character_alias_map.txt` file to use friendly names and set default languages:
 
 ```
 # Character Alias Map
-# Supported formats: Alias = Character_Name  OR  Alias[TAB]Character_Name
+# Supported formats: 
+# Alias = Character_Name
+# Alias = Character_Name, default_language
+# Alias[TAB]Character_Name[TAB]default_language
 
-# Main Characters:
-Alice		female_01
-Bob		male_01
+# Main Characters with language defaults:
+Alice		female_01		de
+Bob		male_01			fr
 Narrator	david_attenborough_cc3
+
+# Supporting Cast with language defaults:
+Girl = female_01, en
+Woman = female_02, en
 
 # Supporting Cast:
 Girl     = female_01
@@ -241,9 +285,11 @@ The system gracefully handles missing characters:
 - **Tip**: Use consistent volume and background noise levels
 
 ### Debugging
-Detailed logging to see character detection:
+Detailed logging to see character and language detection:
 - Character switching mode messages: `🎭 F5-TTS: Character switching mode`
+- Language switching mode messages: `🌍 F5-TTS: Language switching mode`
 - Voice loading messages: `🎭 Using character voice for 'Alice'`
+- Model switching messages: `🌍 Loading F5-TTS model 'F5-DE' for language 'de'`
 
 ---
 
@@ -266,6 +312,21 @@ voices_examples/
 └── narrator.reference.txt
 ```
 
+### Language Priority System
+
+The language selection follows this priority order:
+1. **Explicit language tag**: `[de:Alice]` (highest priority)
+2. **Character default language**: Set in alias file (medium priority)
+3. **Global default language**: From node settings (lowest priority)
+
+Example:
+```
+# If Alice has default language 'de' in alias file:
+[Alice] Uses German (from alias default)
+[en:Alice] Uses English (explicit override)
+[fr:Alice] Uses French (explicit override)
+```
+
 ### Mixed Character Scenes
 ```
 [Narrator] The scene opens in a busy marketplace.
@@ -273,6 +334,15 @@ voices_examples/
 [Customer] How much for a dozen?
 [Merchant] Two coins, good sir!
 [Narrator] The customer nodded and made the purchase.
+```
+
+### Multilingual Character Scenes (NEW!)
+```
+[en:Narrator] Welcome to our international marketplace!
+[de:Merchant] Frische Äpfel! Holt euch frische Äpfel!
+[fr:Customer] Combien pour une douzaine?
+[de:Merchant] Zwei Münzen, mein Herr!
+[en:Narrator] The transaction concluded successfully.
 ```
 
 ### Dynamic Character Assignment

@@ -277,9 +277,7 @@ Back to the main narrator voice for the conclusion.""",
         
         if has_character_switching:
             # Set up character voice mapping
-            from core.voice_discovery import get_available_characters, get_character_mapping
-            available_chars = get_available_characters()
-            character_parser.set_available_characters(list(available_chars))
+            from core.voice_discovery import get_character_mapping
             
             # Process each segment and extract characters
             all_characters = set()
@@ -551,10 +549,7 @@ Back to the main narrator voice for the conclusion.""",
                 enable_audio_cache=enable_audio_cache
             )
             
-            # Load model
-            self.load_tts_model(inputs["device"], inputs["language"])
-            
-            # Set seed for reproducibility
+            # Set seed for reproducibility (can be done without loading model)
             self.set_seed(inputs["seed"])
             
             # Handle main reference audio
@@ -572,32 +567,49 @@ Back to the main narrator voice for the conclusion.""",
                 inputs["text"], True
             )
             
-            # Parse character segments from text (use processed text without pause tags)
-            character_segments = parse_character_text(processed_text)
+            # Set up character parser with available characters BEFORE parsing
+            from core.voice_discovery import get_available_characters
+            available_chars = get_available_characters()
+            character_parser.set_available_characters(list(available_chars))
             
-            # Check if we have pause tags or character switching
+            # Parse character segments from text with language awareness (use processed text without pause tags)
+            character_segments_with_lang = character_parser.split_by_character_with_language(processed_text)
+            
+            # Check if we have pause tags, character switching, or language switching
             has_pause_tags = pause_segments is not None
-            characters = list(set(char for char, _ in character_segments))
+            characters = list(set(char for char, _, _ in character_segments_with_lang))
+            languages = list(set(lang for _, _, lang in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
+            has_multiple_languages = len(languages) > 1
+            
+            # Create backward-compatible character segments for existing logic
+            character_segments = [(char, segment_text) for char, segment_text, _ in character_segments_with_lang]
             
             if has_pause_tags:
                 # PAUSE TAG MODE - handle pause tags with potential character switching
                 print(f"⏸️ ChatterBox: Pause tag mode detected")
                 if has_multiple_characters:
                     print(f"🎭 + Character switching mode - found characters: {', '.join(characters)}")
+                if has_multiple_languages:
+                    print(f"🌍 + Language switching mode - found languages: {', '.join(languages)}")
                 
                 # Generate audio with pause tags using special processor
                 wav = self._generate_with_pause_tags(pause_segments, inputs, main_audio_prompt)
                 model_source = self.model_manager.get_model_source("tts")
-                info = f"Generated audio with pause tags (characters: {', '.join(characters) if has_multiple_characters else 'narrator'}, {model_source} models)"
                 
-            elif has_multiple_characters:
-                # CHARACTER SWITCHING MODE
-                print(f"🎭 ChatterBox: Character switching mode - found characters: {', '.join(characters)}")
+                language_info = ""
+                if has_multiple_languages:
+                    language_info = f" across {len(languages)} languages ({', '.join(languages)})"
                 
-                # Set up character parser with available characters
-                available_chars = get_available_characters()
-                character_parser.set_available_characters(list(available_chars))
+                info = f"Generated audio with pause tags (characters: {', '.join(characters) if has_multiple_characters else 'narrator'}{language_info}, {model_source} models)"
+                
+            elif has_multiple_characters or has_multiple_languages:
+                # CHARACTER AND/OR LANGUAGE SWITCHING MODE
+                if has_multiple_languages:
+                    print(f"🌍 ChatterBox: Language switching mode - found languages: {', '.join(languages)}")
+                if has_multiple_characters:
+                    print(f"🎭 ChatterBox: Character switching mode - found characters: {', '.join(characters)}")
+                
                 
                 # Get character voice mapping (ChatterBox doesn't need reference text)
                 character_mapping = get_character_mapping(characters, engine_type="chatterbox")
@@ -613,43 +625,150 @@ Back to the main narrator voice for the conclusion.""",
                         voice_refs[character] = main_audio_prompt
                         print(f"🔄 Using main voice for character '{character}' (not found in voice folders)")
                 
-                # Process each character segment
-                audio_segments = []
-                for i, (character, segment_text) in enumerate(character_segments):
-                    # Check for interruption
-                    self.check_interruption(f"ChatterBox character generation segment {i+1}/{len(character_segments)}")
+                # Map language codes to ChatterBox model names
+                def get_chatterbox_model_for_language(lang_code: str) -> str:
+                    """Map language codes to ChatterBox model names"""
+                    lang_model_map = {
+                        'en': inputs["language"],  # Use selected model for English (default)
+                        'de': 'German',           # German
+                        'no': 'Norwegian',        # Norwegian
+                        'nb': 'Norwegian',        # Norwegian Bokmål
+                        'nn': 'Norwegian',        # Norwegian Nynorsk
+                    }
+                    return lang_model_map.get(lang_code.lower(), inputs["language"])
+                
+                # Group segments by language with original order tracking
+                language_groups = {}
+                for idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+                    if lang not in language_groups:
+                        language_groups[lang] = []
+                    language_groups[lang].append((idx, char, segment_text, lang))  # Include original index
+                
+                # Generate audio for each language group, tracking original positions
+                audio_segments_with_order = []  # Will store (original_index, audio_tensor)
+                total_segments = len(character_segments_with_lang)
+                
+                # Track if base model has been loaded
+                base_model_loaded = False
+                
+                # Process each language group with appropriate model
+                for lang_code, lang_segments in language_groups.items():
+                    required_language = get_chatterbox_model_for_language(lang_code)
                     
-                    # Apply chunking to long segments if enabled (PRESERVE EXISTING CHUNKING)
-                    if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
-                        segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                    # Check if ALL segments in this language group are cached
+                    all_segments_cached = True
+                    if inputs.get("enable_audio_cache", True):
+                        for original_idx, character, segment_text, segment_lang in lang_segments:
+                            # Get voice reference for this character
+                            char_audio, char_text = voice_refs[character]
+                            
+                            # Apply chunking to check cache for each chunk
+                            if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
+                                segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                            else:
+                                segment_chunks = [segment_text]
+                            
+                            # Check cache for each chunk, accounting for pause tag processing
+                            for chunk_text in segment_chunks:
+                                # Apply pause tag processing to see what text segments will actually be generated
+                                from core.pause_tag_processor import PauseTagProcessor
+                                processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk_text, True)
+                                
+                                if pause_segments is None:
+                                    # No pause tags, check cache for the full processed text
+                                    cache_texts = [processed_text]
+                                else:
+                                    # Extract only text segments (not pause segments) 
+                                    cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
+                                
+                                # Check cache for each text segment that will be generated
+                                char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
+                                for cache_text in cache_texts:
+                                    cache_key = self._generate_segment_cache_key(
+                                        f"{character}:{cache_text}", inputs["exaggeration"], inputs["temperature"],
+                                        inputs["cfg_weight"], inputs["seed"], char_audio_component,
+                                        inputs["model_source"], inputs["device"], required_language, character
+                                    )
+                                    cached_data = self._get_cached_segment_audio(cache_key)
+                                    if not cached_data:
+                                        all_segments_cached = False
+                                        break
+                                if not all_segments_cached:
+                                    break
+                            if not all_segments_cached:
+                                break
                     else:
-                        segment_chunks = [segment_text]
+                        all_segments_cached = False
                     
-                    # Get voice reference for this character
-                    char_audio_prompt = voice_refs[character]
+                    # Only load model if we need to generate new audio
+                    if not all_segments_cached:
+                        # Load base model if this is the first time we need to generate anything
+                        if not base_model_loaded:
+                            print(f"🔄 Loading base ChatterBox model '{inputs['language']}' for generation")
+                            self.load_tts_model(inputs["device"], inputs["language"])
+                            base_model_loaded = True
+                        
+                        print(f"🌍 Loading ChatterBox model '{required_language}' for language '{lang_code}' ({len(lang_segments)} segments)")
+                        try:
+                            self.load_tts_model(inputs["device"], required_language)
+                        except Exception as e:
+                            print(f"⚠️ Failed to load model '{required_language}' for language '{lang_code}': {e}")
+                            print(f"🔄 Falling back to default model '{inputs['language']}'")
+                            self.load_tts_model(inputs["device"], inputs["language"])
+                    else:
+                        print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
                     
-                    # Generate audio for each chunk of this character segment (PRESERVE EXISTING TTS GENERATION)
-                    for chunk_i, chunk_text in enumerate(segment_chunks):
-                        print(f"🎤 Generating ChatterBox segment {i+1}/{len(character_segments)} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}'...")
+                    # Process each segment in this language group
+                    for original_idx, character, segment_text, segment_lang in lang_segments:
+                        segment_display_idx = original_idx + 1  # For display (1-based)
                         
-                        # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
-                        # Only for ChatterBox (not F5TTS) and only when text is very short
-                        processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text, inputs["crash_protection_template"])
+                        # Check for interruption
+                        self.check_interruption(f"ChatterBox generation segment {segment_display_idx}/{total_segments} (lang: {lang_code})")
                         
-                        # DEBUG: Show actual text being sent to ChatterBox when padding might occur
-                        if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
-                            print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
+                        # Apply chunking to long segments if enabled (PRESERVE EXISTING CHUNKING)
+                        if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
+                            segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                        else:
+                            segment_chunks = [segment_text]
                         
-                        # Generate audio with caching support for character segments
-                        chunk_audio = self._generate_tts_with_pause_tags(
-                            chunk_text, char_audio_prompt, inputs["exaggeration"], 
-                            inputs["temperature"], inputs["cfg_weight"], inputs["language"],
-                            True, character=character, seed=inputs["seed"], 
-                            enable_cache=inputs.get("enable_audio_cache", True),
-                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                            stable_audio_component=stable_audio_component
-                        )
-                        audio_segments.append(chunk_audio)
+                        # Get voice reference for this character
+                        char_audio_prompt = voice_refs[character]
+                        
+                        # Generate audio for each chunk of this character segment (PRESERVE EXISTING TTS GENERATION)
+                        segment_audio_chunks = []
+                        for chunk_i, chunk_text in enumerate(segment_chunks):
+                            print(f"🎤 Generating ChatterBox segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
+                            
+                            # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
+                            # Only for ChatterBox (not F5TTS) and only when text is very short
+                            processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text, inputs["crash_protection_template"])
+                            
+                            # DEBUG: Show actual text being sent to ChatterBox when padding might occur
+                            if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
+                                print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
+                            
+                            # Generate audio with caching support for character segments
+                            chunk_audio = self._generate_tts_with_pause_tags(
+                                chunk_text, char_audio_prompt, inputs["exaggeration"], 
+                                inputs["temperature"], inputs["cfg_weight"], required_language,
+                                True, character=character, seed=inputs["seed"], 
+                                enable_cache=inputs.get("enable_audio_cache", True),
+                                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                                stable_audio_component=stable_audio_component
+                            )
+                            segment_audio_chunks.append(chunk_audio)
+                        
+                        # Combine chunks for this segment and store with original order
+                        if segment_audio_chunks:
+                            if len(segment_audio_chunks) == 1:
+                                segment_audio = segment_audio_chunks[0]
+                            else:
+                                segment_audio = torch.cat(segment_audio_chunks, dim=-1)
+                            audio_segments_with_order.append((original_idx, segment_audio))
+                
+                # Sort audio segments back to original order
+                audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
+                audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
                 # Combine all character segments (PRESERVE EXISTING COMBINE LOGIC)
                 wav = self.combine_audio_chunks(
@@ -660,11 +779,73 @@ Back to the main narrator voice for the conclusion.""",
                 # Generate info
                 total_duration = wav.size(-1) / self.tts_model.sr
                 model_source = self.model_manager.get_model_source("tts")
-                info = f"Generated {total_duration:.1f}s character-switched audio from {len(character_segments)} segments using {len(characters)} characters ({model_source} models)"
+                
+                language_info = ""
+                if has_multiple_languages:
+                    language_info = f" across {len(languages)} languages ({', '.join(languages)})"
+                
+                info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} ({model_source} models)"
                 
             else:
                 # SINGLE CHARACTER MODE (PRESERVE ORIGINAL BEHAVIOR)
                 text_length = len(inputs["text"])
+                
+                # Check if single character content is cached before loading model
+                single_content_cached = False
+                if inputs.get("enable_audio_cache", True):
+                    if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
+                        # Check cache for single chunk
+                        from core.pause_tag_processor import PauseTagProcessor
+                        processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(inputs["text"], True)
+                        
+                        if pause_segments is None:
+                            cache_texts = [processed_text]
+                        else:
+                            cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
+                        
+                        single_content_cached = True
+                        for cache_text in cache_texts:
+                            cache_key = self._generate_segment_cache_key(
+                                f"narrator:{cache_text}", inputs["exaggeration"], inputs["temperature"],
+                                inputs["cfg_weight"], inputs["seed"], stable_audio_component,
+                                inputs["model_source"], inputs["device"], inputs["language"], "narrator"
+                            )
+                            cached_data = self._get_cached_segment_audio(cache_key)
+                            if not cached_data:
+                                single_content_cached = False
+                                break
+                    else:
+                        # Check cache for multiple chunks
+                        chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                        single_content_cached = True
+                        for chunk in chunks:
+                            from core.pause_tag_processor import PauseTagProcessor
+                            processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk, True)
+                            
+                            if pause_segments is None:
+                                cache_texts = [processed_text]
+                            else:
+                                cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
+                            
+                            for cache_text in cache_texts:
+                                cache_key = self._generate_segment_cache_key(
+                                    f"narrator:{cache_text}", inputs["exaggeration"], inputs["temperature"],
+                                    inputs["cfg_weight"], inputs["seed"], stable_audio_component,
+                                    inputs["model_source"], inputs["device"], inputs["language"], "narrator"
+                                )
+                                cached_data = self._get_cached_segment_audio(cache_key)
+                                if not cached_data:
+                                    single_content_cached = False
+                                    break
+                            if not single_content_cached:
+                                break
+                
+                # Only load model if we need to generate something
+                if not single_content_cached:
+                    print(f"🔄 Loading ChatterBox model '{inputs['language']}' for single character generation")
+                    self.load_tts_model(inputs["device"], inputs["language"])
+                else:
+                    print(f"💾 All single character content cached - skipping model loading")
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
                     # Process single chunk with caching support
