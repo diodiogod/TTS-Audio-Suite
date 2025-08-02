@@ -5,7 +5,14 @@ Provides standardized interface for ChatterBox operations in multilingual engine
 
 import torch
 from typing import Dict, Any, Optional, List
-from ..core.language_model_mapper import get_model_for_language
+# Use absolute import to avoid relative import issues in ComfyUI
+import sys
+import os
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+from core.language_model_mapper import get_model_for_language
 
 
 class ChatterBoxEngineAdapter:
@@ -77,53 +84,61 @@ class ChatterBoxEngineAdapter:
         
         # Create cache function if caching is enabled
         cache_fn = None
-        if enable_cache and hasattr(self.node, '_generate_segment_cache_key'):
-            def create_cache_fn():
-                def cache_fn_impl(text_content: str, audio_result=None):
-                    # Get audio component for cache key
-                    audio_component = params.get("stable_audio_component", "main_reference")
-                    if character != "narrator":
-                        audio_component = f"char_file_{character}"
-                    
-                    # Get current language/model for cache key
-                    current_language = params.get("current_language", params.get("language", "English"))
-                    model_source = params.get("model_source") or self.node.model_manager.get_model_source("tts")
-                    
-                    cache_key = self.node._generate_segment_cache_key(
-                        f"{character}:{text_content}", exaggeration, temperature,
-                        cfg_weight, seed, audio_component, model_source,
-                        params.get("device", "auto"), current_language, character
-                    )
-                    
-                    if audio_result is None:
-                        # Get from cache
-                        cached_data = self.node._get_cached_segment_audio(cache_key)
-                        if cached_data:
-                            print(f"💾 Using cached audio for character '{character}' ({current_language}) text: '{text_content[:30]}...'")
-                            return cached_data[0]
-                        return None
-                    else:
-                        # Store in cache
-                        duration = self._get_audio_duration(audio_result)
-                        self.node._cache_segment_audio(cache_key, audio_result, duration)
-                
-                return cache_fn_impl
+        if enable_cache:
+            from core.audio_cache import create_cache_function
             
-            cache_fn = create_cache_fn()
+            # Get current language/model for cache key
+            current_language = params.get("current_language", params.get("model", "English"))
+            audio_component = params.get("stable_audio_component", "main_reference")
+            if character != "narrator":
+                audio_component = f"char_file_{character}"
+            
+            # Get model source
+            model_source = params.get("model_source")
+            if not model_source and hasattr(self.node, 'model_manager'):
+                model_source = self.node.model_manager.get_model_source("tts")
+            
+            cache_fn = create_cache_function(
+                engine_type="chatterbox",
+                character=character,
+                exaggeration=exaggeration,
+                temperature=temperature,
+                cfg_weight=cfg_weight,
+                seed=seed,
+                audio_component=audio_component,
+                model_source=model_source or "unknown",
+                device=params.get("device", "auto"),
+                language=current_language
+            )
+        
+        # Handle caching externally for consistency with F5-TTS
+        if cache_fn:
+            # Check cache first
+            cached_audio = cache_fn(text)
+            if cached_audio is not None:
+                return cached_audio
         
         # Generate audio using ChatterBox with pause tag support
-        return self.node._generate_tts_with_pause_tags(
+        audio_result = self.node._generate_tts_with_pause_tags(
             text=text,
             audio_prompt=char_audio,
+            exaggeration=exaggeration,
+            temperature=temperature,
+            cfg_weight=cfg_weight,
+            language=params.get("current_language", params.get("model", "English")),
             enable_pause_tags=True,
             character=character,
             seed=seed,
-            enable_cache=enable_cache,
-            cache_fn=cache_fn,
-            exaggeration=exaggeration,
-            temperature=temperature,
-            cfg_weight=cfg_weight
+            enable_cache=False,  # Disable internal caching since we handle it externally
+            crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+            stable_audio_component=params.get("stable_audio_component", "main_reference")
         )
+        
+        # Cache the result if caching is enabled
+        if cache_fn:
+            cache_fn(text, audio_result)
+        
+        return audio_result
     
     def combine_audio_chunks(self, audio_segments: List[torch.Tensor], **params) -> torch.Tensor:
         """
@@ -140,7 +155,7 @@ class ChatterBoxEngineAdapter:
             return audio_segments[0]
         
         # ChatterBox uses simple concatenation
-        from ..core.audio_processing import AudioProcessingUtils
+        from core.audio_processing import AudioProcessingUtils
         return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
     
     def _get_audio_duration(self, audio_tensor: torch.Tensor) -> float:

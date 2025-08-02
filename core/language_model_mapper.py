@@ -36,8 +36,13 @@ class LanguageModelMapper:
         if lang_code == 'en':
             return default_model
         
-        # For other languages, use mapped model or fallback to default
-        return engine_mappings.get(lang_code, default_model)
+        # Check if language is supported
+        if lang_code in engine_mappings:
+            return engine_mappings[lang_code]
+        else:
+            # Language not supported - show warning and fallback to default
+            print(f"⚠️ {self.engine_type.title()}: Language '{lang_code}' not supported, falling back to English model")
+            return default_model
     
     def get_supported_languages(self) -> List[str]:
         """Get list of supported language codes for current engine."""
@@ -65,10 +70,6 @@ class LanguageModelMapper:
             "chatterbox": {
                 "en": "English",     # This will be overridden by default_model
                 "de": "German",      # German
-                "es": "Spanish",     # Spanish
-                "fr": "French",      # French
-                "it": "Italian",     # Italian
-                "pt": "Portuguese",  # Portuguese
                 "no": "Norwegian",   # Norwegian
                 "nb": "Norwegian",   # Norwegian Bokmål
                 "nn": "Norwegian",   # Norwegian Nynorsk

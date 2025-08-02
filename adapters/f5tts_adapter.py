@@ -5,7 +5,14 @@ Provides standardized interface for F5-TTS operations in multilingual engine
 
 import torch
 from typing import Dict, Any, Optional, List
-from ..core.language_model_mapper import get_model_for_language
+# Use absolute import to avoid relative import issues in ComfyUI
+import sys
+import os
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+from core.language_model_mapper import get_model_for_language
 
 
 class F5TTSEngineAdapter:
@@ -86,38 +93,32 @@ class F5TTSEngineAdapter:
         
         # Create cache function if caching is enabled
         cache_fn = None
-        if enable_cache and hasattr(self.node, '_generate_segment_cache_key'):
-            def create_cache_fn():
-                def cache_fn_impl(text_content: str, audio_result=None):
-                    # Get audio component for cache key
-                    audio_component = params.get("stable_audio_component", "main_reference")
-                    if character != "narrator":
-                        audio_component = f"char_file_{character}"
-                    
-                    # Get current model name for cache key
-                    current_model = getattr(self.node, 'current_model_name', params.get("model", "F5TTS_Base"))
-                    
-                    cache_key = self.node._generate_segment_cache_key(
-                        f"{character}:{text_content}", current_model, params.get("device", "auto"),
-                        audio_component, char_text, temperature, speed, target_rms,
-                        cross_fade_duration, safe_nfe_step, cfg_strength, seed
-                    )
-                    
-                    if audio_result is None:
-                        # Get from cache
-                        cached_data = self.node._get_cached_segment_audio(cache_key)
-                        if cached_data:
-                            print(f"💾 Using cached audio for character '{character}' text: '{text_content[:30]}...'")
-                            return cached_data[0]
-                        return None
-                    else:
-                        # Store in cache
-                        duration = self._get_audio_duration(audio_result)
-                        self.node._cache_segment_audio(cache_key, audio_result, duration)
-                
-                return cache_fn_impl
+        if enable_cache:
+            from core.audio_cache import create_cache_function
             
-            cache_fn = create_cache_fn()
+            # Get audio component for cache key
+            audio_component = params.get("stable_audio_component", "main_reference")
+            if character != "narrator":
+                audio_component = f"char_file_{character}"
+            
+            # Get current model name for cache key
+            current_model = getattr(self.node, 'current_model_name', params.get("model", "F5TTS_Base"))
+            
+            cache_fn = create_cache_function(
+                engine_type="f5tts",
+                character=character,
+                model_name=current_model,
+                device=params.get("device", "auto"),
+                audio_component=audio_component,
+                ref_text=char_text,
+                temperature=temperature,
+                speed=speed,
+                target_rms=target_rms,
+                cross_fade_duration=cross_fade_duration,
+                nfe_step=safe_nfe_step,
+                cfg_strength=cfg_strength,
+                seed=seed
+            )
         
         # Generate audio using F5-TTS with pause tag support
         return self.node.generate_f5tts_with_pause_tags(

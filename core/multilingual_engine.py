@@ -128,7 +128,11 @@ class MultilingualEngine:
                         char_audio = params.get("main_audio_reference")
                         char_text = params.get("main_text_reference") 
                 else:  # chatterbox
-                    char_audio = character_mapping.get(character, params.get("main_audio_reference"))
+                    char_audio_tuple = character_mapping.get(character, (None, None))
+                    if char_audio_tuple[0]:
+                        char_audio = char_audio_tuple[0]  # Only get the audio path
+                    else:
+                        char_audio = params.get("main_audio_reference")
                 
                 # Show generation message with character and language info
                 if character == "narrator":
