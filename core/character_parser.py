@@ -196,6 +196,11 @@ class CharacterParser:
         lines = text.split('\n')
         global_pos = 0
         
+        # DEBUG: Print lines to see what we're processing
+        print(f"🔍 DEBUG: Character parser processing {len(lines)} lines:")
+        for i, line in enumerate(lines):
+            print(f"🔍 DEBUG: Line {i+1}: '{line.strip()}'")
+        
         for line in lines:
             line_start_pos = global_pos
             original_line = line
@@ -207,6 +212,11 @@ class CharacterParser:
             
             # Each line is processed independently - no character state carries over
             line_segments = self._parse_single_line(line, line_start_pos)
+            
+            # DEBUG: Print what segments this line produced
+            for seg in line_segments:
+                print(f"🔍 DEBUG: Line '{line}' → Character: '{seg.character}', Text: '{seg.text}', Language: '{seg.language}'")
+            
             segments.extend(line_segments)
             
             global_pos += len(original_line) + 1  # +1 for newline
