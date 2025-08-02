@@ -6,6 +6,8 @@ import torch
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
 import warnings
+# Import safetensors for multilanguage model support
+from safetensors.torch import load_file
 
 # Import perth with warnings disabled
 with warnings.catch_warnings():
@@ -19,8 +21,16 @@ from .models.tokenizers import EnTokenizer
 from .models.voice_encoder import VoiceEncoder
 from .models.t3.modules.cond_enc import T3Cond
 
+# Import language model registry
+try:
+    from .language_models import get_model_config, CHATTERBOX_MODELS
+except ImportError:
+    # Fallback if language_models not available
+    CHATTERBOX_MODELS = {"English": {"repo": "ResembleAI/chatterbox", "format": "pt"}}
+    def get_model_config(language):
+        return CHATTERBOX_MODELS.get(language, CHATTERBOX_MODELS["English"])
 
-REPO_ID = "ResembleAI/chatterbox"
+REPO_ID = "ResembleAI/chatterbox"  # Default for backward compatibility
 
 
 def punc_norm(text: str) -> str:
@@ -135,39 +145,53 @@ class ChatterboxTTS:
         print(f"📦 Loading local ChatterBox models from: {ckpt_dir}")
         ckpt_dir = Path(ckpt_dir)
         
+        # Auto-detect model format
+        def load_model_file(base_name: str):
+            """Load model file with auto-detection of format (.safetensors preferred over .pt)"""
+            safetensors_path = ckpt_dir / f"{base_name}.safetensors"
+            pt_path = ckpt_dir / f"{base_name}.pt"
+            
+            if safetensors_path.exists():
+                print(f"📁 Loading {base_name} from safetensors format")
+                return load_file(safetensors_path, device=device)
+            elif pt_path.exists():
+                print(f"📁 Loading {base_name} from pt format")
+                return torch.load(pt_path, map_location=device)
+            else:
+                raise FileNotFoundError(f"Neither {base_name}.safetensors nor {base_name}.pt found in {ckpt_dir}")
+        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             
+            # Load VoiceEncoder
             ve = VoiceEncoder()
-            ve.load_state_dict(
-                torch.load(ckpt_dir / "ve.pt")
-            )
+            ve_state = load_model_file("ve")
+            ve.load_state_dict(ve_state)
             ve.to(device).eval()
 
-            # Load model state
-            t3_state = torch.load(ckpt_dir / "t3_cfg.pt")
+            # Load T3 config
+            t3_state = load_model_file("t3_cfg")
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
             
             # Create config with proper settings
             from .models.t3.t3 import T3Config
             config = T3Config()
-            # Use default model_cfg from T3Config which includes proper attention settings
             
             # Initialize model with config
             t3 = T3(config)
             
             # Load state and ensure settings
             t3.load_state_dict(t3_state)
-            # Settings are already handled by the config
             t3.tfmr.output_attentions = False
             
             t3.to(device).eval()
 
+            # Load S3Gen
             s3gen = S3Gen()
-            s3gen.load_state_dict(
-                torch.load(ckpt_dir / "s3gen.pt")
-            )
+            s3gen_state = load_model_file("s3gen")
+            # Apply JaneDoe84's critical fix: strict=False to handle missing keys
+            s3gen.load_state_dict(s3gen_state, strict=False)
             s3gen.to(device).eval()
 
             tokenizer = EnTokenizer(
@@ -183,11 +207,59 @@ class ChatterboxTTS:
             return instance
 
     @classmethod
-    def from_pretrained(cls, device) -> 'ChatterboxTTS':
-        for fpath in ["ve.pt", "t3_cfg.pt", "s3gen.pt", "tokenizer.json", "conds.pt"]:
-            local_path = hf_hub_download(repo_id=REPO_ID, filename=fpath)
+    def from_pretrained(cls, device, language="English") -> 'ChatterboxTTS':
+        """
+        Load ChatterBox model from HuggingFace Hub with language support.
+        
+        Args:
+            device: Device to load model on
+            language: Language model to load (English, German, Norwegian, etc.)
+        """
+        # Get model configuration for the specified language
+        model_config = get_model_config(language)
+        if not model_config:
+            print(f"⚠️ Language '{language}' not found, falling back to English")
+            model_config = get_model_config("English")
+        
+        repo_id = model_config.get("repo", REPO_ID)
+        model_format = model_config.get("format", "pt")
+        
+        print(f"📦 Loading ChatterBox model for {language} from {repo_id}")
+        
+        # Define file extensions based on format
+        if model_format == "safetensors":
+            file_extensions = ["ve.safetensors", "t3_cfg.safetensors", "s3gen.safetensors", "tokenizer.json", "conds.pt"]
+        elif model_format == "pt":
+            file_extensions = ["ve.pt", "t3_cfg.pt", "s3gen.pt", "tokenizer.json", "conds.pt"]
+        else:
+            # Auto format - try both, safetensors preferred
+            print("🔍 Auto-detecting model format...")
+            file_extensions = ["ve.safetensors", "t3_cfg.safetensors", "s3gen.safetensors", "tokenizer.json", "conds.pt"]
+        
+        # Download files
+        local_paths = []
+        for fpath in file_extensions:
+            try:
+                local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
+                local_paths.append(local_path)
+            except Exception as e:
+                # If safetensors fails, try .pt format
+                if fpath.endswith('.safetensors'):
+                    fallback_fpath = fpath.replace('.safetensors', '.pt')
+                    print(f"⚠️ {fpath} not found, trying {fallback_fpath}")
+                    try:
+                        local_path = hf_hub_download(repo_id=repo_id, filename=fallback_fpath)
+                        local_paths.append(local_path)
+                    except Exception as e2:
+                        print(f"❌ Failed to download both {fpath} and {fallback_fpath}: {e2}")
+                        raise e2
+                else:
+                    print(f"❌ Failed to download {fpath}: {e}")
+                    raise e
 
-        return cls.from_local(Path(local_path).parent, device)
+        # Use the directory of the first downloaded file
+        model_dir = Path(local_paths[0]).parent
+        return cls.from_local(model_dir, device)
 
     def prepare_conditionals(self, wav_fpath, exaggeration=0.5):
         ## Load reference wav
