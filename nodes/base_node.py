@@ -273,12 +273,13 @@ class BaseTTSNode(BaseChatterBoxNode):
         super().__init__()
         self.tts_model = None
     
-    def load_tts_model(self, device: str = "auto", force_reload: bool = False):
+    def load_tts_model(self, device: str = "auto", language: str = "English", force_reload: bool = False):
         """
         Load TTS model using the model manager.
         
         Args:
             device: Target device
+            language: Language model to load
             force_reload: Force reload even if cached
             
         Returns:
@@ -287,7 +288,7 @@ class BaseTTSNode(BaseChatterBoxNode):
         device = self.resolve_device(device)
         self.device = device
         
-        self.tts_model = self.model_manager.load_tts_model(device, force_reload)
+        self.tts_model = self.model_manager.load_tts_model(device, language, force_reload)
         return self.tts_model
     
     def generate_tts_audio(self, text: str, audio_prompt: Optional[str] = None,

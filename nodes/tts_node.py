@@ -59,6 +59,13 @@ class ChatterboxTTSNode(BaseTTSNode):
     
     @classmethod
     def INPUT_TYPES(cls):
+        # Import language models for dropdown
+        try:
+            from chatterbox.language_models import get_available_languages
+            available_languages = get_available_languages()
+        except ImportError:
+            available_languages = ["English"]
+        
         return {
             "required": {
                 "text": ("STRING", {
@@ -68,6 +75,10 @@ class ChatterboxTTSNode(BaseTTSNode):
 [Bob] And I'm Bob! Great to meet you both.
 Back to the main narrator voice for the conclusion.""",
                     "tooltip": "Text to convert to speech. Use [Character] tags for voice switching. Characters not found in voice folders will use the main reference audio."
+                }),
+                "language": (available_languages, {
+                    "default": "English",
+                    "tooltip": "Language model to use for text-to-speech generation. Local models are preferred over remote downloads."
                 }),
                 "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
                 "exaggeration": ("FLOAT", {
@@ -377,7 +388,8 @@ Back to the main narrator voice for the conclusion.""",
 
     def _generate_segment_cache_key(self, text: str, exaggeration: float, temperature: float, 
                                    cfg_weight: float, seed: int, audio_component: str, 
-                                   model_source: str, device: str, character: str = "narrator") -> str:
+                                   model_source: str, device: str, language: str = "English", 
+                                   character: str = "narrator") -> str:
         """Generate cache key for a single audio segment based on generation parameters."""
         cache_data = {
             'text': text,
@@ -388,6 +400,7 @@ Back to the main narrator voice for the conclusion.""",
             'audio_component': audio_component,
             'model_source': model_source,
             'device': device,
+            'language': language,
             'character': character,
             'engine': 'chatterbox'
         }
@@ -404,8 +417,9 @@ Back to the main narrator voice for the conclusion.""",
         GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
 
     def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 
-                                    temperature: float, cfg_weight: float, enable_pause_tags: bool = True,
-                                    character: str = "narrator", seed: int = 0, enable_cache: bool = True,
+                                    temperature: float, cfg_weight: float, language: str = "English",
+                                    enable_pause_tags: bool = True, character: str = "narrator", 
+                                    seed: int = 0, enable_cache: bool = True,
                                     crash_protection_template: str = "hmm ,, {seg} hmm ,,", 
                                     stable_audio_component: str = None) -> torch.Tensor:
         """
@@ -443,7 +457,7 @@ Back to the main narrator voice for the conclusion.""",
                 
                 cache_key = self._generate_segment_cache_key(
                     protected_text, exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device, character
+                    audio_component, self.model_manager.get_model_source("tts"), self.device, language, character
                 )
                 
                 # Try cache first
@@ -474,7 +488,7 @@ Back to the main narrator voice for the conclusion.""",
                 
                 cache_key = self._generate_segment_cache_key(
                     protected_text, exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device, character
+                    audio_component, self.model_manager.get_model_source("tts"), self.device, language, character
                 )
                 
                 # Try cache first  
@@ -511,14 +525,14 @@ Back to the main narrator voice for the conclusion.""",
         # Use the pause tag processor with caching
         return self._generate_tts_with_pause_tags(
             inputs["text"], main_audio_prompt, inputs["exaggeration"], 
-            inputs["temperature"], inputs["cfg_weight"], True,
-            character="narrator", seed=inputs["seed"], 
+            inputs["temperature"], inputs["cfg_weight"], inputs["language"],
+            True, character="narrator", seed=inputs["seed"], 
             enable_cache=inputs.get("enable_audio_cache", True),
             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
             stable_audio_component=stable_audio_component
         )
 
-    def generate_speech(self, text, device, exaggeration, temperature, cfg_weight, seed, 
+    def generate_speech(self, text, language, device, exaggeration, temperature, cfg_weight, seed, 
                        reference_audio=None, audio_prompt_path="", 
                        enable_chunking=True, max_chars_per_chunk=400, 
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
@@ -527,7 +541,7 @@ Back to the main narrator voice for the conclusion.""",
         def _process():
             # Validate inputs
             inputs = self.validate_inputs(
-                text=text, device=device, exaggeration=exaggeration,
+                text=text, language=language, device=device, exaggeration=exaggeration,
                 temperature=temperature, cfg_weight=cfg_weight, seed=seed,
                 reference_audio=reference_audio, audio_prompt_path=audio_prompt_path,
                 enable_chunking=enable_chunking, max_chars_per_chunk=max_chars_per_chunk,
@@ -538,7 +552,7 @@ Back to the main narrator voice for the conclusion.""",
             )
             
             # Load model
-            self.load_tts_model(inputs["device"])
+            self.load_tts_model(inputs["device"], inputs["language"])
             
             # Set seed for reproducibility
             self.set_seed(inputs["seed"])
@@ -629,8 +643,8 @@ Back to the main narrator voice for the conclusion.""",
                         # Generate audio with caching support for character segments
                         chunk_audio = self._generate_tts_with_pause_tags(
                             chunk_text, char_audio_prompt, inputs["exaggeration"], 
-                            inputs["temperature"], inputs["cfg_weight"], True,
-                            character=character, seed=inputs["seed"], 
+                            inputs["temperature"], inputs["cfg_weight"], inputs["language"],
+                            True, character=character, seed=inputs["seed"], 
                             enable_cache=inputs.get("enable_audio_cache", True),
                             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                             stable_audio_component=stable_audio_component
@@ -656,8 +670,8 @@ Back to the main narrator voice for the conclusion.""",
                     # Process single chunk with caching support
                     wav = self._generate_tts_with_pause_tags(
                         inputs["text"], main_audio_prompt, inputs["exaggeration"], 
-                        inputs["temperature"], inputs["cfg_weight"], True,
-                        character="narrator", seed=inputs["seed"], 
+                        inputs["temperature"], inputs["cfg_weight"], inputs["language"],
+                        True, character="narrator", seed=inputs["seed"], 
                         enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=stable_audio_component
@@ -680,8 +694,8 @@ Back to the main narrator voice for the conclusion.""",
                         # Generate chunk with caching support
                         chunk_audio = self._generate_tts_with_pause_tags(
                             chunk, main_audio_prompt, inputs["exaggeration"], 
-                            inputs["temperature"], inputs["cfg_weight"], True,
-                            character="narrator", seed=inputs["seed"], 
+                            inputs["temperature"], inputs["cfg_weight"], inputs["language"],
+                            True, character="narrator", seed=inputs["seed"], 
                             enable_cache=inputs.get("enable_audio_cache", True),
                             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                             stable_audio_component=stable_audio_component

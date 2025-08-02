@@ -84,6 +84,55 @@ class ModelManager:
         
         return model_paths
     
+    def find_local_language_model(self, language: str) -> Optional[str]:
+        """
+        Find local ChatterBox model for a specific language.
+        
+        Args:
+            language: Language to find model for
+            
+        Returns:
+            Path to local model directory if found, None otherwise
+        """
+        # Import language models functionality
+        try:
+            from chatterbox.language_models import find_local_model_path
+            return find_local_model_path(language)
+        except ImportError:
+            # Fallback: check standard locations manually
+            language_paths = [
+                os.path.join(folder_paths.models_dir, "chatterbox", language),
+                os.path.join(folder_paths.models_dir, "chatterbox", language.lower()),
+                os.path.join(self.bundled_models_dir, language),
+                os.path.join(self.bundled_models_dir, language.lower())
+            ]
+            
+            for path in language_paths:
+                if os.path.exists(path):
+                    # Check if it contains the required model files
+                    required_files = ["ve.", "t3_cfg.", "s3gen.", "tokenizer.json"]
+                    has_all_files = True
+                    
+                    for required in required_files:
+                        found = False
+                        for ext in [".pt", ".safetensors"]:
+                            if required == "tokenizer.json":
+                                if os.path.exists(os.path.join(path, required)):
+                                    found = True
+                                    break
+                            else:
+                                if os.path.exists(os.path.join(path, required + ext.replace(".", ""))):
+                                    found = True
+                                    break
+                        if not found:
+                            has_all_files = False
+                            break
+                    
+                    if has_all_files:
+                        return path
+            
+            return None
+
     def get_model_cache_key(self, model_type: str, device: str, source: str, path: Optional[str] = None) -> str:
         """
         Generate a cache key for model instances.
@@ -100,12 +149,13 @@ class ModelManager:
         path_component = path or "default"
         return f"{model_type}_{device}_{source}_{path_component}"
     
-    def load_tts_model(self, device: str = "auto", force_reload: bool = False) -> Any:
+    def load_tts_model(self, device: str = "auto", language: str = "English", force_reload: bool = False) -> Any:
         """
-        Load ChatterboxTTS model with caching.
+        Load ChatterboxTTS model with caching and language support.
         
         Args:
             device: Target device ('auto', 'cuda', 'cpu')
+            language: Language model to load ('English', 'German', 'Norwegian', etc.)
             force_reload: Force reload even if cached
             
         Returns:
@@ -122,53 +172,138 @@ class ModelManager:
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # Check if we need to load/reload
+        # Include language in cache check
+        cache_key_base = f"tts_{device}_{language}"
+        
+        # Check if we need to load/reload (including language check)
         if not force_reload and self.tts_model is not None and self.current_device == device:
-            return self.tts_model
+            # Also check if the current model matches the requested language
+            current_cache_key = getattr(self, '_current_tts_cache_key', None)
+            if current_cache_key and language in current_cache_key:
+                return self.tts_model
         
-        # Get available model paths
-        model_paths = self.find_chatterbox_models()
+        # For English, also check the original model discovery paths
+        if language == "English":
+            # Check original model paths first for English (backward compatibility)
+            model_paths = self.find_chatterbox_models()
+            for source, path in model_paths:
+                if source in ["bundled", "comfyui"] and path:
+                    try:
+                        cache_key = f"{cache_key_base}_local_{path}"
+                        
+                        # Check class-level cache first
+                        if not force_reload and cache_key in self._model_cache:
+                            self.tts_model = self._model_cache[cache_key]
+                            self.current_device = device
+                            self._current_tts_cache_key = cache_key
+                            return self.tts_model
+                        
+                        print(f"📁 Loading local English ChatterBox model from: {path}")
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            model = ChatterboxTTS.from_local(path, device)
+                        
+                        # Cache the loaded model
+                        self._model_cache[cache_key] = model
+                        self._model_sources[cache_key] = source
+                        self.tts_model = model
+                        self.current_device = device
+                        self._current_tts_cache_key = cache_key
+                        return self.tts_model
+                        
+                    except Exception as e:
+                        print(f"⚠️ Failed to load local English model from {path}: {e}")
+                        continue
         
+        # Try to find local model for the specific language
+        local_language_path = self.find_local_language_model(language)
         model_loaded = False
         last_error = None
         
-        for source, path in model_paths:
+        if local_language_path:
+            # Load local language-specific model
             try:
-                cache_key = self.get_model_cache_key("tts", device, source, path)
+                cache_key = f"{cache_key_base}_local_{local_language_path}"
                 
                 # Check class-level cache first
                 if not force_reload and cache_key in self._model_cache:
                     self.tts_model = self._model_cache[cache_key]
                     self.current_device = device
-                    self._model_sources[cache_key] = source
-                    model_loaded = True
-                    break
+                    self._current_tts_cache_key = cache_key
+                    return self.tts_model
                 
-                # Load model based on source
-                if source in ["bundled", "comfyui"]:
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        model = ChatterboxTTS.from_local(path, device)
-                elif source == "huggingface":
-                    model = ChatterboxTTS.from_pretrained(device)
-                else:
-                    continue
+                print(f"📁 Loading local {language} ChatterBox model from: {local_language_path}")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    model = ChatterboxTTS.from_local(local_language_path, device)
                 
                 # Cache the loaded model
                 self._model_cache[cache_key] = model
-                self._model_sources[cache_key] = source
+                self._model_sources[cache_key] = "local"
                 self.tts_model = model
                 self.current_device = device
+                self._current_tts_cache_key = cache_key
                 model_loaded = True
-                break
                 
             except Exception as e:
-                print(f"⚠️ Failed to load TTS model from {source}: {str(e)}")
+                print(f"⚠️ Failed to load local {language} model: {e}")
                 last_error = e
-                continue
+        
+        # If local loading failed or no local model, try HuggingFace
+        if not model_loaded:
+            try:
+                cache_key = f"{cache_key_base}_huggingface"
+                
+                # Check class-level cache first
+                if not force_reload and cache_key in self._model_cache:
+                    self.tts_model = self._model_cache[cache_key]
+                    self.current_device = device
+                    self._current_tts_cache_key = cache_key
+                    return self.tts_model
+                
+                print(f"📦 Loading {language} ChatterBox model from HuggingFace")
+                model = ChatterboxTTS.from_pretrained(device, language=language)
+                
+                # Cache the loaded model
+                self._model_cache[cache_key] = model
+                self._model_sources[cache_key] = "huggingface"
+                self.tts_model = model
+                self.current_device = device
+                self._current_tts_cache_key = cache_key
+                model_loaded = True
+                
+            except Exception as e:
+                print(f"⚠️ Failed to load {language} model from HuggingFace: {e}")
+                last_error = e
+        
+        # Fallback: try English if requested language failed and it's not English
+        if not model_loaded and language != "English":
+            print(f"🔄 Falling back to English model...")
+            try:
+                cache_key = f"tts_{device}_English_fallback"
+                
+                if not force_reload and cache_key in self._model_cache:
+                    self.tts_model = self._model_cache[cache_key]
+                    self.current_device = device
+                    self._current_tts_cache_key = cache_key
+                    return self.tts_model
+                
+                model = ChatterboxTTS.from_pretrained(device, language="English")
+                
+                # Cache the loaded model
+                self._model_cache[cache_key] = model
+                self._model_sources[cache_key] = "huggingface"
+                self.tts_model = model
+                self.current_device = device
+                self._current_tts_cache_key = cache_key
+                model_loaded = True
+                
+            except Exception as e:
+                print(f"❌ Even English fallback failed: {e}")
+                last_error = e
         
         if not model_loaded:
-            error_msg = f"Failed to load ChatterboxTTS from any source"
+            error_msg = f"Failed to load ChatterBox TTS model for language '{language}' from any source"
             if last_error:
                 error_msg += f". Last error: {last_error}"
             raise RuntimeError(error_msg)
@@ -260,12 +395,28 @@ class ModelManager:
             Model source string or None if no model loaded
         """
         if model_type == "tts" and self.tts_model is not None:
+            # Use the current cache key to determine source
+            current_cache_key = getattr(self, '_current_tts_cache_key', None)
+            if current_cache_key:
+                # Extract source from cache key or _model_sources
+                source = self._model_sources.get(current_cache_key)
+                if source:
+                    return source
+                
+                # Fallback: parse from cache key format
+                if "_local_" in current_cache_key:
+                    return "comfyui"
+                elif "_huggingface" in current_cache_key:
+                    return "huggingface"
+                elif "_fallback" in current_cache_key:
+                    return "huggingface (fallback)"
+            
+            # Legacy fallback
             device = self.current_device or "cpu"
             model_paths = self.find_chatterbox_models()
             if model_paths:
                 source, path = model_paths[0]
-                cache_key = self.get_model_cache_key("tts", device, source, path)
-                return self._model_sources.get(cache_key)
+                return source
         elif model_type == "vc" and self.vc_model is not None:
             device = self.current_device or "cpu"
             model_paths = self.find_chatterbox_models()
