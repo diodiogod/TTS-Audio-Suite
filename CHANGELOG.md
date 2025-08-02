@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-08-01
+
+### Added
+
+- Major Feature: Multilanguage ChatterBox Support
+- 🌍 NEW: Multi-language ChatterBox TTS
+- Added language parameter as second input in both TTS nodes
+- All example workflows updated for new parameter structure
+
+### Fixed
+
+- Language dropdown for English, German, Norwegian models
+- Automatic HuggingFace model download and management
+- Local model prioritization for faster generation
+- Safetensors format support with .pt backward compatibility
+- Language-aware caching system to prevent model conflicts
+- ChatterBox TTS Node: Full multilanguage support
+- ChatterBox SRT TTS Node: SRT timing with multilanguage models
+- Character switching works seamlessly with all supported languages
+- Existing workflows need manual parameter adjustment
+- Robust fallback system: local → HuggingFace → English fallback
+- JaneDoe84's safetensors loading fix integrated safely
+- Language-aware cache keys prevent cross-language conflicts
+
+### Changed
+
+- 🎯 Enhanced Nodes:
+- ⚠️  BREAKING CHANGE: Workflow Compatibility
+- 🔧 Technical Improvements:
+- Enhanced model manager with language-specific loading
 ## [3.2.9] - 2025-08-01
 
 ### Fixed

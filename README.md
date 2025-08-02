@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.2.9
+# ComfyUI ChatterBox SRT Voice (diogod) v3.3.0
 
 *This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
 
@@ -174,11 +174,26 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
 - 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
+- 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
 - 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
+
+### 🌍 Multi-language ChatterBox Models
+The ChatterBox TTS and SRT nodes now support multiple languages with automatic model management:
+
+**Supported Languages:**
+- 🇺🇸 **English**: Original ResembleAI model (default)
+- 🇩🇪 **German**: High-quality German ChatterBox model
+- 🇳🇴 **Norwegian**: Norwegian ChatterBox model (Bokmål and Nynorsk dialects)
+
+**Smart Model Management:**
+- Language dropdown in both TTS and SRT nodes
+- Automatic download from HuggingFace when needed
+- Local model prioritization for faster generation
+- Safetensors format support with .pt backward compatibility
 
 <div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
