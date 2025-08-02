@@ -100,6 +100,9 @@ class CharacterParser:
         if match:
             language = match.group(1).lower()
             character = match.group(2).strip()
+            # If character is empty (e.g., [fr:]), default to narrator
+            if not character:
+                character = self.default_character
             return language, character
         else:
             # Just a character name, no explicit language
