@@ -37,6 +37,7 @@ from core.audio_processing import AudioProcessingUtils
 from core.voice_discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
 from core.character_parser import parse_character_text, character_parser
 from core.pause_tag_processor import PauseTagProcessor
+# Lazy imports for modular components (loaded when needed to avoid torch import issues during node registration)
 import comfy.model_management as model_management
 
 # Global audio cache - SAME AS ORIGINAL
@@ -54,6 +55,7 @@ class ChatterboxSRTTTSNode(BaseTTSNode):
         self.srt_available = False
         self.srt_modules = {}
         self._load_srt_modules()
+        self.multilingual_engine = None  # Lazy loaded
     
     def _load_srt_modules(self):
         """Load SRT modules using the import manager."""
@@ -406,16 +408,140 @@ The audio will match these exact timings.""",
             available_chars = get_available_characters()
             character_parser.set_available_characters(list(available_chars))
             
-            # Generate audio segments
-            audio_segments = []
-            natural_durations = []
+            # SMART OPTIMIZATION: Group subtitles by language to minimize model switching
+            subtitle_language_groups = {}
+            all_subtitle_segments = []
+            
+            # First pass: analyze all subtitles and group by language
+            for i, subtitle in enumerate(subtitles):
+                if not subtitle.text.strip():
+                    # Empty subtitle - will be handled separately
+                    all_subtitle_segments.append((i, subtitle, 'empty', None, None))
+                    continue
+                
+                # Parse character segments with language awareness
+                character_segments_with_lang = character_parser.split_by_character_with_language(subtitle.text)
+                
+                # Check if we have character switching or language switching
+                characters = list(set(char for char, _, _ in character_segments_with_lang))
+                languages = list(set(lang for _, _, lang in character_segments_with_lang))
+                has_multiple_characters_in_subtitle = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
+                has_multiple_languages_in_subtitle = len(languages) > 1
+                
+                if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle:
+                    # Complex subtitle - group by dominant language or mark as multilingual
+                    primary_lang = languages[0] if languages else 'en'
+                    subtitle_type = 'multilingual' if has_multiple_languages_in_subtitle else 'multicharacter'
+                    all_subtitle_segments.append((i, subtitle, subtitle_type, primary_lang, character_segments_with_lang))
+                    
+                    # Add to language groups for smart processing
+                    if primary_lang not in subtitle_language_groups:
+                        subtitle_language_groups[primary_lang] = []
+                    subtitle_language_groups[primary_lang].append((i, subtitle, subtitle_type, character_segments_with_lang))
+                else:
+                    # Simple subtitle - group by language
+                    single_char, single_text, single_lang = character_segments_with_lang[0]
+                    all_subtitle_segments.append((i, subtitle, 'simple', single_lang, character_segments_with_lang))
+                    
+                    if single_lang not in subtitle_language_groups:
+                        subtitle_language_groups[single_lang] = []
+                    subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
+            
+            # Generate audio segments using smart language grouping
+            audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order
+            natural_durations = [0.0] * len(subtitles)
             any_segment_cached = False
             
-            for i, subtitle in enumerate(subtitles):
-                # Check for interruption
-                self.check_interruption(f"SRT generation segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})")
+            # Process each language group
+            for lang_code in sorted(subtitle_language_groups.keys()):
+                lang_subtitles = subtitle_language_groups[lang_code]
                 
-                if not subtitle.text.strip():
+                print(f"📋 Processing {len(lang_subtitles)} SRT subtitle(s) in '{lang_code}' language group...")
+                
+                # Load correct model for this language group at the start
+                from core.language_model_mapper import get_model_for_language
+                required_language = get_model_for_language("chatterbox", lang_code, language)
+                current_language = getattr(self, 'current_language', None)
+                if current_language != required_language:
+                    print(f"🎯 SRT: Switching to {required_language} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}'")
+                    self.load_tts_model(device, required_language)
+                    self.current_language = required_language
+                else:
+                    print(f"✅ SRT: Using {required_language} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
+                
+                # Process each subtitle in this language group
+                for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
+                    print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) in {lang_code}...")
+                    
+                    # Check for interruption
+                    self.check_interruption(f"SRT generation segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})")
+                    
+                    if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
+                        # Use modular multilingual engine for character/language switching
+                        characters = list(set(char for char, _, _ in character_segments_with_lang))
+                        languages = list(set(lang for _, _, lang in character_segments_with_lang))
+                        
+                        if len(languages) > 1:
+                            print(f"🌍 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
+                        if len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator"):
+                            print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
+                        
+                        print(f"🔧 Note: Multilingual engine may load additional models for character/language switching within this segment")
+                        
+                        # Lazy load modular components
+                        if self.multilingual_engine is None:
+                            from core.multilingual_engine import MultilingualEngine
+                            from adapters.chatterbox_adapter import ChatterBoxEngineAdapter
+                            self.multilingual_engine = MultilingualEngine("chatterbox")
+                            self.chatterbox_adapter = ChatterBoxEngineAdapter(self)
+                        
+                        # Use modular multilingual engine
+                        result = self.multilingual_engine.process_multilingual_text(
+                            text=subtitle.text,
+                            engine_adapter=self.chatterbox_adapter,
+                            model=language,
+                            device=device,
+                            main_audio_reference=audio_prompt,
+                            main_text_reference="",  # ChatterBox doesn't use text reference
+                            stable_audio_component=stable_audio_prompt_component,
+                            temperature=temperature,
+                            exaggeration=exaggeration,
+                            cfg_weight=cfg_weight,
+                            seed=seed,
+                            enable_audio_cache=enable_audio_cache,
+                            crash_protection_template=crash_protection_template
+                        )
+                        
+                        wav = result.audio
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+                        
+                    else:  # subtitle_type == 'simple'
+                        # Single character mode - model already loaded for this language group
+                        single_char, single_text, single_lang = character_segments_with_lang[0]
+                        
+                        # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
+                        processed_subtitle_text = self._pad_short_text_for_chatterbox(single_text, crash_protection_template)
+                        
+                        # DEBUG: Show actual text being sent to ChatterBox when padding might occur
+                        if len(single_text.strip()) < 21:
+                            print(f"🔍 DEBUG: Original text: '{single_text}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
+                        
+                        # Generate new audio with pause tag support (includes internal caching)
+                        wav = self._generate_tts_with_pause_tags(
+                            processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight, self.current_language,
+                            True, character="narrator", seed=seed, enable_cache=enable_audio_cache,
+                            crash_protection_template=crash_protection_template,
+                            stable_audio_component=stable_audio_prompt_component
+                        )
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+                    
+                    # Store results in correct position
+                    audio_segments[i] = wav
+                    natural_durations[i] = natural_duration
+            
+            # Handle empty subtitles separately
+            for i, subtitle, subtitle_type, _, _ in all_subtitle_segments:
+                if subtitle_type == 'empty':
                     # Handle empty text by creating silence
                     natural_duration = subtitle.duration
                     wav = self.AudioTimingUtils.create_silence(
@@ -425,87 +551,8 @@ The audio will match these exact timings.""",
                         device=self.device
                     )
                     print(f"🤫 Segment {i+1} (Seq {subtitle.sequence}): Empty text, generating {natural_duration:.2f}s silence.")
-                else:
-                    # ENHANCED: Parse character tags from subtitle text (character parser now ignores pause tags)
-                    character_segments = parse_character_text(subtitle.text)
-                    
-                    if len(character_segments) > 1 or (len(character_segments) == 1 and character_segments[0][0] != "narrator"):
-                        # Character switching within this subtitle
-                        # print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching detected")
-                        
-                        
-                        # Get character mapping for ChatterBox (audio-only)
-                        characters = [char for char, _ in character_segments]
-                        character_mapping = get_character_mapping(characters, engine_type="chatterbox")
-                        
-                        # Generate audio for each character segment within this subtitle
-                        segment_audio_parts = []
-                        for char, segment_text in character_segments:
-                            # Get character voice or fallback to main
-                            char_audio, _ = character_mapping.get(char, (None, None))
-                            # print(f"🔍 Character Mapping DEBUG: char='{char}', char_audio={repr(char_audio)}")
-                            # print(f"🔍 Character Mapping DEBUG: audio_prompt={repr(audio_prompt)}")
-                            # print(f"🔍 Character Mapping DEBUG: stable_audio_prompt_component={repr(stable_audio_prompt_component)}")
-                            
-                            # Store the original char_audio for cache key generation
-                            original_char_audio = char_audio
-                            
-                            if not char_audio:
-                                char_audio = audio_prompt  # For actual TTS generation
-                                # Character not found, will use main voice (no message needed, handled in generation)
-                            # else:
-                            #     print(f"🎭 Using character voice for '{char}' in subtitle {subtitle.sequence}")
-                            
-                            # Show generation message with character info
-                            if char == "narrator":
-                                print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
-                            else:
-                                print(f"🎭 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) using '{char}'")
-                            
-                            # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
-                            processed_segment_text = self._pad_short_text_for_chatterbox(segment_text, crash_protection_template)
-                            
-                            # DEBUG: Show actual text being sent to ChatterBox when padding might occur
-                            if len(segment_text.strip()) < 21:
-                                print(f"🔍 DEBUG: Original text: '{segment_text}' → Processed: '{processed_segment_text}' (len: {len(processed_segment_text)})")
-                            
-                            # Generate new audio for this character segment with pause tag support (includes internal caching)
-                            char_wav = self._generate_tts_with_pause_tags(
-                                processed_segment_text, char_audio, exaggeration, temperature, cfg_weight, language,
-                                True, character=char, seed=seed, enable_cache=enable_audio_cache,
-                                crash_protection_template=crash_protection_template,
-                                stable_audio_component=stable_audio_prompt_component
-                            )
-                            
-                            segment_audio_parts.append(char_wav)
-                        
-                        # Concatenate all character segments for this subtitle
-                        wav = torch.cat(segment_audio_parts, dim=1)
-                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
-                        
-                    else:
-                        # Single character/narrator mode (original behavior)
-                        # Generate new audio
-                        print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})...")
-                        
-                        # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
-                        processed_subtitle_text = self._pad_short_text_for_chatterbox(subtitle.text, crash_protection_template)
-                        
-                        # DEBUG: Show actual text being sent to ChatterBox when padding might occur
-                        if len(subtitle.text.strip()) < 21:
-                            print(f"🔍 DEBUG: Original text: '{subtitle.text}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
-                        
-                        # Generate new audio with pause tag support (includes internal caching)
-                        wav = self._generate_tts_with_pause_tags(
-                            processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight, language,
-                            True, character="narrator", seed=seed, enable_cache=enable_audio_cache,
-                            crash_protection_template=crash_protection_template,
-                            stable_audio_component=stable_audio_prompt_component
-                        )
-                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
-                
-                audio_segments.append(wav)
-                natural_durations.append(natural_duration)
+                    audio_segments[i] = wav
+                    natural_durations[i] = natural_duration
             
             # Calculate timing adjustments
             target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
