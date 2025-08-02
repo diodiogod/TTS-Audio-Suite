@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2025-08-02
+
+### Added
+
+- Major Feature Release: Language Switching with Bracket Syntax
+- 🌍 New Language Switching Feature:
+
+### Fixed
+
+- Introduced [language:character] syntax for inline language switching
+- Support for [fr:Alice], [de:Bob], [es:] patterns in text
+- Fixed character parser regex bug to support empty character names like [fr:]
+- Language codes automatically map to appropriate models (F5-DE, F5-FR, German, Norwegian, etc.)
+- 📋 Language Support:
+- F5-TTS: English, German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt)
+- ChatterBox: English, German (de), Norwegian (no/nb/nn)
+- Character alias system integration with language defaults
+- Automatic fallback to English model for unsupported languages with warnings
+- 🚀 Performance Optimizations:
+- Smart language loading: SRT nodes now analyze subtitles before model initialization
+- Eliminated wasteful default English model loading on startup
+- Language groups processed alphabetically (de→en→fr) for predictable behavior
+- Reduced model switching overhead in multilingual SRT processing
+- Modular multilingual engine architecture with engine-specific adapters
+- Unified audio cache system with engine-specific cache key generation
+- Character audio tuple handling fixes for ChatterBox engine
+- This release enables users to seamlessly switch between languages and models within the same text using simple bracket notation, making multilingual TTS generation more intuitive and powerful.
+
+### Changed
+
+- 🔧 Technical Improvements:
+- Enhanced logging to distinguish SRT-level vs multilingual engine operations
 ## [3.3.0] - 2025-08-01
 
 ### Added

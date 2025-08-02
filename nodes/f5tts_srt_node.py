@@ -312,10 +312,7 @@ Hello! This is F5-TTS SRT with character switching.
             if not self.f5tts_available:
                 raise ImportError("F5-TTS support not available - missing required modules")
             
-            # Load F5-TTS model
-            self.load_f5tts_model(model, device)
-            
-            # Set seed for reproducibility
+            # Set seed for reproducibility (do this before model loading)
             self.set_seed(seed)
             
             # Prepare inputs for reference handling
@@ -407,6 +404,13 @@ Hello! This is F5-TTS SRT with character switching.
                         subtitle_language_groups[single_lang] = []
                     subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
             
+            # SMART INITIALIZATION: Load the first language model we'll actually need
+            first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
+            from core.language_model_mapper import get_model_for_language
+            required_model = get_model_for_language("f5tts", first_language_code, model)
+            print(f"🚀 SRT: Smart initialization - loading {required_model} model for first language '{first_language_code}'")
+            self.load_f5tts_model(required_model, device)
+            
             # Generate audio segments using smart language grouping
             audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order
             natural_durations = [0.0] * len(subtitles)
@@ -418,8 +422,7 @@ Hello! This is F5-TTS SRT with character switching.
                 
                 print(f"📋 Processing {len(lang_subtitles)} F5-TTS SRT subtitle(s) in '{lang_code}' language group...")
                 
-                # Load correct model for this language group at the start
-                from core.language_model_mapper import get_model_for_language
+                # Check if we need to switch models for this language group
                 required_model = get_model_for_language("f5tts", lang_code, model)
                 current_model = getattr(self, 'current_model_name', None)
                 if current_model != required_model:

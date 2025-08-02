@@ -366,10 +366,7 @@ The audio will match these exact timings.""",
             if not self.srt_available:
                 raise ImportError("SRT support not available - missing required modules")
             
-            # Load TTS model
-            self.load_tts_model(device, language)
-            
-            # Set seed for reproducibility
+            # Set seed for reproducibility (do this before model loading)
             self.set_seed(seed)
             
             # Determine audio prompt component for cache key generation (stable identifier)
@@ -447,6 +444,14 @@ The audio will match these exact timings.""",
                         subtitle_language_groups[single_lang] = []
                     subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
             
+            # SMART INITIALIZATION: Load the first language model we'll actually need
+            first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
+            from core.language_model_mapper import get_model_for_language
+            required_language = get_model_for_language("chatterbox", first_language_code, language)
+            print(f"🚀 SRT: Smart initialization - loading {required_language} model for first language '{first_language_code}'")
+            self.load_tts_model(device, required_language)
+            self.current_language = required_language
+            
             # Generate audio segments using smart language grouping
             audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order
             natural_durations = [0.0] * len(subtitles)
@@ -458,11 +463,9 @@ The audio will match these exact timings.""",
                 
                 print(f"📋 Processing {len(lang_subtitles)} SRT subtitle(s) in '{lang_code}' language group...")
                 
-                # Load correct model for this language group at the start
-                from core.language_model_mapper import get_model_for_language
+                # Check if we need to switch models for this language group
                 required_language = get_model_for_language("chatterbox", lang_code, language)
-                current_language = getattr(self, 'current_language', None)
-                if current_language != required_language:
+                if self.current_language != required_language:
                     print(f"🎯 SRT: Switching to {required_language} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}'")
                     self.load_tts_model(device, required_language)
                     self.current_language = required_language
