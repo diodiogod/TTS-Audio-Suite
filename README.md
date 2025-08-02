@@ -23,6 +23,7 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
   - [SRT Timing and TTS Node](#srt-timing-and-tts-node)
   - [🆕 F5-TTS Integration and 🆕 Audio Analyzer](#-f5-tts-integration-and--audio-analyzer)
   - [🎭 Character & Narrator Switching](#-character--narrator-switching)
+  - [🌍 Language Switching with Bracket Syntax](#-language-switching-with-bracket-syntax)
   - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
   - [⏸️ Pause Tags System](#️-pause-tags-system)
   - [🌍 Multi-language ChatterBox Support](#-multi-language-chatterbox-support)
@@ -102,6 +103,48 @@ Hello! This is the narrator speaking.
 [Alice] Hi there! I'm Alice, nice to meet you.
 [Bob] And I'm Bob! Great to meet you both.
 Back to the narrator for the conclusion.
+```
+
+</details>
+
+<details>
+<summary><h3>🌍 Language Switching with Bracket Syntax</h3></summary>
+
+**NEW in v3.4.0**: Seamless language switching using simple bracket notation!
+
+* **Language Code Syntax**: Use `[language:character]` tags to switch languages and models automatically
+* **Smart Model Loading**: Automatically loads correct language models (F5-DE, F5-FR, German, Norwegian, etc.)
+* **Flexible Format**: Support for `[fr:Alice]`, `[de:Bob]`, or `[es:]` (language only) patterns
+* **Character Integration**: Combines perfectly with character switching and alias system
+* **Performance Optimized**: Language groups processed efficiently to minimize model switching
+* **Alias Support**: Language defaults work with character alias system
+
+**Supported Languages:**
+* **F5-TTS**: English (en), German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt)
+* **ChatterBox**: English (en), German (de), Norwegian (no/nb/nn)
+
+Example usage:
+```
+Hello! This is English text with the default model.
+[de:Alice] Hallo! Ich spreche Deutsch mit Alice's Stimme.
+[fr:] Bonjour! Je parle français avec la voix du narrateur.
+[es:Bob] ¡Hola! Soy Bob hablando en español.
+Back to English with the original model.
+```
+
+**Advanced SRT Integration:**
+```srt
+1
+00:00:01,000 --> 00:00:04,000
+Hello! Welcome to our multilingual show.
+
+2
+00:00:04,500 --> 00:00:08,000
+[de:female_01] Willkommen zu unserer mehrsprachigen Show!
+
+3
+00:00:08,500 --> 00:00:12,000
+[fr:] Bienvenue à notre émission multilingue!
 ```
 
 </details>
@@ -210,6 +253,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
 - ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
 - 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
+- 🌍 **Language Switching** - NEW v3.4.0! Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
 - 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
 - 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
