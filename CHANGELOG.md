@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.9] - 2025-08-01
+
+### Fixed
+
+- Fix seed validation range error - clamp seed values to NumPy valid range (0 to 2^32-1)
 ## [3.2.8] - 2025-07-27
 
 ### Added
