@@ -41,9 +41,9 @@ def load_node_module(module_name, file_name):
     return module
 
 # Load node modules
-tts_module = load_node_module("chatterbox_tts_node", "tts_node.py")
-vc_module = load_node_module("chatterbox_vc_node", "vc_node.py")
-audio_recorder_module = load_node_module("chatterbox_audio_recorder_node", "audio_recorder_node.py")
+tts_module = load_node_module("chatterbox_tts_node", "chatterbox/chatterbox_tts_node.py")
+vc_module = load_node_module("chatterbox_vc_node", "chatterbox/chatterbox_vc_node.py")
+audio_recorder_module = load_node_module("chatterbox_audio_recorder_node", "audio/recorder_node.py")
 
 ChatterboxTTSNode = tts_module.ChatterboxTTSNode
 ChatterboxVCNode = vc_module.ChatterboxVCNode
@@ -51,7 +51,7 @@ ChatterBoxVoiceCapture = audio_recorder_module.ChatterBoxVoiceCapture
 
 # Load F5-TTS nodes conditionally
 try:
-    f5tts_module = load_node_module("chatterbox_f5tts_node", "f5tts_node.py")
+    f5tts_module = load_node_module("chatterbox_f5tts_node", "f5tts/f5tts_node.py")
     F5TTSNode = f5tts_module.F5TTSNode
     F5TTS_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -72,7 +72,7 @@ except (ImportError, FileNotFoundError, AttributeError):
 
 # Load F5-TTS SRT node conditionally
 try:
-    f5tts_srt_module = load_node_module("chatterbox_f5tts_srt_node", "f5tts_srt_node.py")
+    f5tts_srt_module = load_node_module("chatterbox_f5tts_srt_node", "f5tts/f5tts_srt_node.py")
     F5TTSSRTNode = f5tts_srt_module.F5TTSSRTNode
     F5TTS_SRT_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -93,7 +93,7 @@ except (ImportError, FileNotFoundError, AttributeError):
 
 # Load F5-TTS Edit node conditionally
 try:
-    f5tts_edit_module = load_node_module("chatterbox_f5tts_edit_node", "f5tts_edit_node.py")
+    f5tts_edit_module = load_node_module("chatterbox_f5tts_edit_node", "f5tts/f5tts_edit_node.py")
     F5TTSEditNode = f5tts_edit_module.F5TTSEditNode
     F5TTS_EDIT_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -115,7 +115,7 @@ except (ImportError, FileNotFoundError, AttributeError):
 
 # Load Audio Analyzer node conditionally
 try:
-    audio_analyzer_module = load_node_module("chatterbox_audio_analyzer_node", "audio_analyzer_node.py")
+    audio_analyzer_module = load_node_module("chatterbox_audio_analyzer_node", "audio/analyzer_node.py")
     AudioAnalyzerNode = audio_analyzer_module.AudioAnalyzerNode
     AUDIO_ANALYZER_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -136,7 +136,7 @@ except (ImportError, FileNotFoundError, AttributeError):
 
 # Load Audio Analyzer Options node conditionally
 try:
-    audio_analyzer_options_module = load_node_module("chatterbox_audio_analyzer_options_node", "audio_analyzer_options_node.py")
+    audio_analyzer_options_module = load_node_module("chatterbox_audio_analyzer_options_node", "audio/analyzer_options_node.py")
     AudioAnalyzerOptionsNode = audio_analyzer_options_module.AudioAnalyzerOptionsNode
     AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -157,7 +157,7 @@ except (ImportError, FileNotFoundError, AttributeError):
 
 # Load F5-TTS Edit Options node conditionally
 try:
-    f5tts_edit_options_module = load_node_module("chatterbox_f5tts_edit_options_node", "f5tts_edit_options_node.py")
+    f5tts_edit_options_module = load_node_module("chatterbox_f5tts_edit_options_node", "f5tts/f5tts_edit_options_node.py")
     F5TTSEditOptionsNode = f5tts_edit_options_module.F5TTSEditOptionsNode
     F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -177,7 +177,7 @@ except (ImportError, FileNotFoundError, AttributeError):
             raise ImportError("F5-TTS Edit Options support not available - missing required modules")
 
 # Import foundation components for compatibility
-from core.import_manager import import_manager
+from utils.system.import_manager import import_manager
 
 # Legacy compatibility - keep these for existing workflows
 GLOBAL_AUDIO_CACHE = {}
@@ -221,7 +221,7 @@ def find_chatterbox_models():
 
 # Import SRT node conditionally
 try:
-    srt_module = load_node_module("chatterbox_srt_node", "srt_tts_node.py")
+    srt_module = load_node_module("chatterbox_srt_node", "chatterbox/chatterbox_srt_node.py")
     ChatterboxSRTTTSNode = srt_module.ChatterboxSRTTTSNode
     SRT_SUPPORT_AVAILABLE = True
 except (ImportError, FileNotFoundError, AttributeError):
@@ -281,7 +281,7 @@ try:
                 print(f"✅ F5-TTS available! (source: {source})")
     else:
         # F5-TTS not available - get detailed error info
-        from chatterbox.f5tts import F5TTS_IMPORT_ERROR
+        from engines.f5tts.f5tts import F5TTS_IMPORT_ERROR
         F5TTS_SUPPORT_AVAILABLE = False
         F5TTS_SRT_SUPPORT_AVAILABLE = False  
         F5TTS_EDIT_SUPPORT_AVAILABLE = False

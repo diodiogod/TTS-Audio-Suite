@@ -48,33 +48,33 @@ This extension features a **modular multilingual architecture** that provides:
 
 ## Modular Multilingual Architecture
 
-**core/multilingual_engine.py** - Central orchestrator for multilingual TTS generation handling language switching, character management, and smart model loading optimization for any TTS engine
+**utils/voice/multilingual_engine.py** - Central orchestrator for multilingual TTS generation handling language switching, character management, and smart model loading optimization for any TTS engine
 
-**core/language_model_mapper.py** - Language-to-model mapping system for F5-TTS and ChatterBox engines with fallback support and unsupported language warnings
+**utils/models/language_mapper.py** - Language-to-model mapping system for F5-TTS and ChatterBox engines with fallback support and unsupported language warnings
 
-**core/audio_cache.py** - Unified caching system for TTS engines with engine-specific cache key generators, global cache management, and modular cache function factory
+**utils/audio/cache.py** - Unified caching system for TTS engines with engine-specific cache key generators, global cache management, and modular cache function factory
 
-**adapters/f5tts_adapter.py** - F5-TTS engine adapter providing standardized interface for F5-TTS operations in the modular multilingual engine with cache integration and parameter handling
+**engines/adapters/f5tts_adapter.py** - F5-TTS engine adapter providing standardized interface for F5-TTS operations in the modular multilingual engine with cache integration and parameter handling
 
-**adapters/chatterbox_adapter.py** - ChatterBox engine adapter providing standardized interface for ChatterBox operations in the modular multilingual engine with external caching and parameter mapping
+**engines/adapters/chatterbox_adapter.py** - ChatterBox engine adapter providing standardized interface for ChatterBox operations in the modular multilingual engine with external caching and parameter mapping
 
 ## Core Foundation
 
-**core/import_manager.py** - Smart dependency resolution system managing bundled ChatterBox vs system installations with graceful fallbacks and import status tracking
+**utils/system/import_manager.py** - Smart dependency resolution system managing bundled ChatterBox vs system installations with graceful fallbacks and import status tracking
 
-**core/model_manager.py** - Intelligent model discovery and caching across bundled models, ComfyUI directories, and HuggingFace auto-download with source prioritization
+**utils/models/manager.py** - Intelligent model discovery and caching across bundled models, ComfyUI directories, and HuggingFace auto-download with source prioritization
 
-**nodes/base_node.py** - Base class providing common functionality for all ChatterBox Voice nodes including device resolution and temp file cleanup
+**nodes/base/base_node.py** - Base class providing common functionality for all ChatterBox Voice nodes including device resolution and temp file cleanup
 
-**core/text_chunking.py** - Enhanced text chunker with character-based limits, sentence boundary detection, and Orpheus TTS-inspired splitting algorithms
+**utils/text/chunking.py** - Enhanced text chunker with character-based limits, sentence boundary detection, and Orpheus TTS-inspired splitting algorithms
 
-**core/audio_processing.py** - Audio utility functions for tensor manipulation, duration calculation, normalization, and common audio operations
+**utils/audio/processing.py** - Audio utility functions for tensor manipulation, duration calculation, normalization, and common audio operations
 
-**core/character_parser.py** - Universal character switching system using [CharacterName] tags with language-aware parsing, regex fix for empty character names like [fr:], and voice folder integration
+**utils/text/character_parser.py** - Universal character switching system using [CharacterName] tags with language-aware parsing, regex fix for empty character names like [fr:], and voice folder integration
 
-**core/pause_tag_processor.py** - Pause tag parsing and audio generation supporting [pause:xx] syntax in seconds/milliseconds for precise timing control
+**utils/text/pause_processor.py** - Pause tag parsing and audio generation supporting [pause:xx] syntax in seconds/milliseconds for precise timing control
 
-**core/f5tts_model_manager.py** - F5-TTS specific model manager extending base ModelManager with F5-TTS model discovery, loading, and caching functionality
+**utils/models/f5tts_manager.py** - F5-TTS specific model manager extending base ModelManager with F5-TTS model discovery, loading, and caching functionality
 
 **core/f5tts_edit_engine.py** - Core F5-TTS speech editing engine for targeted word/phrase replacement while maintaining voice characteristics
 
