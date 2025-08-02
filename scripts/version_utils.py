@@ -129,26 +129,68 @@ class VersionManager:
                 changed_items = []
                 removed_items = []
                 
-                for line in lines:
+                # Track if we're in a specific section (🌍, 📋, 🚀, 🔧, etc.)
+                current_section = "added"  # Default to added for new features
+                
+                for i, line in enumerate(lines):
                     line = line.strip()
                     if not line or line.startswith('#'):
                         continue
                     
-                    # Remove leading bullet points or dashes
-                    line = re.sub(r'^[-*•]\s*', '', line)
+                    # Skip the main title (first non-empty line)
+                    if i == 0 and not line.startswith('-') and not line.startswith('•'):
+                        continue
                     
-                    # Categorize based on keywords
-                    if any(word in line.lower() for word in ['add', 'new', 'implement', 'feature', 'create']):
-                        added_items.append(line)
-                    elif any(word in line.lower() for word in ['fix', 'bug', 'error', 'issue', 'resolve']):
-                        fixed_items.append(line)
-                    elif any(word in line.lower() for word in ['update', 'enhance', 'improve', 'change', 'modify']):
-                        changed_items.append(line)
-                    elif any(word in line.lower() for word in ['remove', 'delete', 'deprecate']):
-                        removed_items.append(line)
+                    # Remove leading bullet points or dashes
+                    clean_line = re.sub(r'^[-*•]\s*', '', line)
+                    
+                    # Check for section headers (emoji-based sections)
+                    if any(emoji in line for emoji in ['🌍', '📋', '🚀', '⚡', '🎯']):
+                        if any(word in line.lower() for word in ['new', 'feature', 'added', 'support', 'language']):
+                            current_section = "added"
+                        elif any(word in line.lower() for word in ['performance', 'optimization', 'smart', 'improve']):
+                            current_section = "changed"
+                        elif any(word in line.lower() for word in ['technical', 'architecture', 'engine']):
+                            current_section = "changed"
+                        continue
+                    
+                    # Enhanced categorization based on keywords and context
+                    line_lower = clean_line.lower()
+                    
+                    # More comprehensive keyword matching for Added
+                    if any(word in line_lower for word in [
+                        'add', 'new', 'implement', 'feature', 'create', 'introduce', 'support',
+                        'language switching', 'syntax', 'bracket', 'character', 'integration'
+                    ]):
+                        added_items.append(clean_line)
+                    # More comprehensive keyword matching for Fixed  
+                    elif any(word in line_lower for word in [
+                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch'
+                    ]):
+                        fixed_items.append(clean_line)
+                    # More comprehensive keyword matching for Changed
+                    elif any(word in line_lower for word in [
+                        'update', 'enhance', 'improve', 'change', 'modify', 'optimize', 'performance',
+                        'smart', 'efficient', 'reduced', 'eliminated', 'loading'
+                    ]):
+                        changed_items.append(clean_line)
+                    # More comprehensive keyword matching for Removed
+                    elif any(word in line_lower for word in [
+                        'remove', 'delete', 'deprecate', 'drop'
+                    ]):
+                        removed_items.append(clean_line)
                     else:
-                        # Default to Fixed if no clear category
-                        fixed_items.append(line)
+                        # Use current section context instead of defaulting to Fixed
+                        if current_section == "added":
+                            added_items.append(clean_line)
+                        elif current_section == "changed":
+                            changed_items.append(clean_line)
+                        else:
+                            # Only default to fixed if it's clearly not a feature
+                            if any(word in line_lower for word in ['processing', 'group', 'model', 'cache']):
+                                changed_items.append(clean_line)
+                            else:
+                                added_items.append(clean_line)  # Default to added for new features
                 
                 # Build changelog entry
                 entry_parts = [f"## [{version}] - {today}", ""]
