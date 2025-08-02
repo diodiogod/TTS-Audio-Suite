@@ -50,7 +50,8 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
 
 ## 🆕 What's New in my Project?
 
-### SRT Timing and TTS Node
+<details>
+<summary><h3>📺 SRT Timing and TTS Node</h3></summary>
 
 <img title="" src="images/srt.png" alt="SRT Node Screenshot" width="500" data-align="center">
 
@@ -63,14 +64,12 @@ The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT 
 * **`Adjusted_SRT` Output**: Provides actual timings for generated audio for accurate post-processing
 * **Segment-Level Caching**: Only regenerates modified segments, significantly speeding up workflows
 
-<details>
-<summary>📖 More SRT Technical Details</summary>
-
 For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](docs/Dev%20reports/SRT_IMPLEMENTATION.md) file.
 
 </details>
 
-### 🆕 F5-TTS Integration and 🆕 Audio Analyzer
+<details>
+<summary><h3>🆕 F5-TTS Integration and 🆕 Audio Analyzer</h3></summary>
 
 <img title="" src="images/waveanalgif.gif" alt="Audio Wave gif" width="500" data-align="center">
 
@@ -79,7 +78,10 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **Multi-language Support**: English, German, Spanish, French, Japanese models
 * **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
 
-### 🎭 Character & Narrator Switching
+</details>
+
+<details>
+<summary><h3>🎭 Character & Narrator Switching</h3></summary>
 
 **NEW in v3.1.0**: Seamless character switching for both F5TTS and ChatterBox engines!
 
@@ -101,7 +103,10 @@ Hello! This is the narrator speaking.
 Back to the narrator for the conclusion.
 ```
 
-### 🔄 Iterative Voice Conversion
+</details>
+
+<details>
+<summary><h3>🔄 Iterative Voice Conversion</h3></summary>
 
 **NEW**: Progressive voice refinement with intelligent caching for instant experimentation!
 
@@ -109,7 +114,10 @@ Back to the narrator for the conclusion.
 * **Smart Caching**: Results cached up to 5 iterations - change from 5→3→4 passes instantly
 * **Progressive Quality**: Each pass refines output to sound more like target voice
 
-### ⏸️ Pause Tags System
+</details>
+
+<details>
+<summary><h3>⏸️ Pause Tags System</h3></summary>
 
 **NEW**: Intelligent pause insertion for natural speech timing control!
 
@@ -129,6 +137,29 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 [Alice] I'm really excited! [pause:500ms] This will be great.
 [pause:2] Let's get started with the main content.
 ```
+
+</details>
+
+<details>
+<summary><h3>🌍 Multi-language ChatterBox Support</h3></summary>
+
+**NEW in v3.3.0**: ChatterBox TTS and SRT nodes now support multiple languages with automatic model management!
+
+**Supported Languages:**
+- 🇺🇸 **English**: Original ResembleAI model (default)
+- 🇩🇪 **German**: High-quality German ChatterBox model (stlohrey/chatterbox_de)
+- 🇳🇴 **Norwegian**: Norwegian ChatterBox model (akhbar/chatterbox-tts-norwegian)
+
+**Key Features:**
+* **Language Dropdown**: Simple language selection in all ChatterBox nodes
+* **Auto-Download**: Models download automatically on first use (~1GB per language)
+* **Local Priority**: Prefers locally installed models over downloads for offline use
+* **Safetensors Support**: Modern format support for newer language models
+* **Seamless Integration**: Works with existing workflows - just select your language
+
+**Usage**: Select language from dropdown → First generation downloads model → Subsequent generations use cached model
+
+</details>
 
 <div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
@@ -180,20 +211,6 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
-
-### 🌍 Multi-language ChatterBox Models
-The ChatterBox TTS and SRT nodes now support multiple languages with automatic model management:
-
-**Supported Languages:**
-- 🇺🇸 **English**: Original ResembleAI model (default)
-- 🇩🇪 **German**: High-quality German ChatterBox model
-- 🇳🇴 **Norwegian**: Norwegian ChatterBox model (Bokmål and Nynorsk dialects)
-
-**Smart Model Management:**
-- Language dropdown in both TTS and SRT nodes
-- Automatic download from HuggingFace when needed
-- Local model prioritization for faster generation
-- Safetensors format support with .pt backward compatibility
 
 <div align="right"><a href="#readme-top">↗️ Back to top</a></div>
 
@@ -453,6 +470,44 @@ ComfyUI/models/chatterbox/
 - `ve.pt` (5.5 MB)
 
 **Download from:** https://huggingface.co/ResembleAI/chatterbox/tree/main
+
+#### 4.1. Multilanguage ChatterBox Models (Optional)
+
+**NEW in v3.3.0**: ChatterBox now supports multiple languages! Models will auto-download on first use, or you can manually install them for offline use.
+
+**For manual installation**, create language-specific folders and download models:
+
+```
+ComfyUI/models/chatterbox/
+├── English/          # Optional - for explicit English organization
+│   ├── conds.pt
+│   ├── s3gen.pt
+│   ├── t3_cfg.pt
+│   ├── tokenizer.json
+│   └── ve.pt
+├── German/           # German language models
+│   ├── conds.safetensors
+│   ├── s3gen.safetensors
+│   ├── t3_cfg.safetensors
+│   ├── tokenizer.json
+│   └── ve.safetensors
+└── Norwegian/        # Norwegian language models
+    ├── conds.safetensors
+    ├── s3gen.safetensors
+    ├── t3_cfg.safetensors
+    ├── tokenizer.json
+    └── ve.safetensors
+```
+
+**Available ChatterBox Language Models:**
+
+| Language   | HuggingFace Repository                                              | Format       | Auto-Download |
+| ---------- | ------------------------------------------------------------------- | ------------ | ------------- |
+| English    | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | .pt          | ✅             |
+| German     | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de) | .safetensors | ✅             |
+| Norwegian  | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
+
+**Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model (~1GB per language).
 
 ### 5. F5-TTS Models (Optional)
 
