@@ -51,18 +51,6 @@ An unofficial ComfyUI custom node integration for High-quality Text-to-Speech an
 
 ## 🆕 What's New in my Project?
 
-<style>
-.compact-details details {
-  margin-bottom: 0.5rem;
-}
-.compact-details details summary h3 {
-  margin: 0.5rem 0;
-  display: inline;
-}
-</style>
-
-<div class="compact-details">
-
 <details>
 <summary><h3>📺 SRT Timing and TTS Node</h3></summary>
 
@@ -173,8 +161,6 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 **Usage**: Select language from dropdown → First generation downloads model → Subsequent generations use cached model
 
 </details>
-
-</div>
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
