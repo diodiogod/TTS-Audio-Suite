@@ -2,6 +2,14 @@
 
 *Concise file index for reference - describes purpose and role of each file in the modular TTS/Voice system*
 
+## Architecture Overview
+
+This extension features a **modular multilingual architecture** that provides:
+- **Smart Language Grouping**: SRT nodes process subtitles by language groups (English→German→French) instead of sequential order (1→2→3→4) to minimize model switching
+- **Unified Engine Support**: Both F5-TTS and ChatterBox engines share the same multilingual processing core with engine-specific adapters
+- **Comprehensive Caching**: Engine-specific cache key generation with global cache management for optimal performance
+- **Character & Language Switching**: Advanced parsing supports `[character]` tags and language codes like `[de:Alice]` with automatic fallbacks
+
 ## Documentation Files
 
 **README.md** - Main project documentation with installation, features, and usage guide for ChatterBox Voice TTS/VC extension
@@ -38,6 +46,18 @@
 
 **nodes/__init__.py** - Empty package marker for nodes directory
 
+## Modular Multilingual Architecture
+
+**core/multilingual_engine.py** - Central orchestrator for multilingual TTS generation handling language switching, character management, and smart model loading optimization for any TTS engine
+
+**core/language_model_mapper.py** - Language-to-model mapping system for F5-TTS and ChatterBox engines with fallback support and unsupported language warnings
+
+**core/audio_cache.py** - Unified caching system for TTS engines with engine-specific cache key generators, global cache management, and modular cache function factory
+
+**adapters/f5tts_adapter.py** - F5-TTS engine adapter providing standardized interface for F5-TTS operations in the modular multilingual engine with cache integration and parameter handling
+
+**adapters/chatterbox_adapter.py** - ChatterBox engine adapter providing standardized interface for ChatterBox operations in the modular multilingual engine with external caching and parameter mapping
+
 ## Core Foundation
 
 **core/import_manager.py** - Smart dependency resolution system managing bundled ChatterBox vs system installations with graceful fallbacks and import status tracking
@@ -50,7 +70,7 @@
 
 **core/audio_processing.py** - Audio utility functions for tensor manipulation, duration calculation, normalization, and common audio operations
 
-**core/character_parser.py** - Universal character switching system using [CharacterName] tags with fallback support and voice folder integration
+**core/character_parser.py** - Universal character switching system using [CharacterName] tags with language-aware parsing, regex fix for empty character names like [fr:], and voice folder integration
 
 **core/pause_tag_processor.py** - Pause tag parsing and audio generation supporting [pause:xx] syntax in seconds/milliseconds for precise timing control
 
@@ -74,7 +94,7 @@
 
 ## Node Implementations
 
-**nodes/tts_node.py** - Enhanced ChatterBox TTS node with character switching, pause tags, and improved text chunking for unlimited text length
+**nodes/tts_node.py** - Enhanced ChatterBox TTS node with modular multilingual engine, character switching, pause tags, smart language grouping, and improved text chunking
 
 **nodes/vc_node.py** - ChatterBox Voice Conversion node with iterative refinement system and intelligent caching for progressive quality improvement
 
@@ -82,7 +102,7 @@
 
 **nodes/f5tts_edit_node.py** - F5-TTS Speech Editor node for targeted word/phrase replacement in existing speech while maintaining voice characteristics
 
-**nodes/f5tts_srt_node.py** - F5-TTS SRT node combining subtitle timing with F5-TTS voice cloning for precise subtitle-synchronized speech generation
+**nodes/f5tts_srt_node.py** - F5-TTS SRT node with smart language grouping, modular multilingual engine integration, and optimized subtitle timing for efficient multilingual SRT processing
 
 **nodes/audio_recorder_node.py** - Voice recording node with microphone input, silence detection, and smart audio capture functionality
 
@@ -100,7 +120,7 @@
 
 **chatterbox_srt/__init__.py** - SRT package initialization and module exports for subtitle processing functionality
 
-**nodes/srt_tts_node.py** - ChatterBox SRT TTS node for subtitle-aware text-to-speech with precise timing synchronization and character switching support
+**nodes/srt_tts_node.py** - ChatterBox SRT TTS node with smart language grouping, modular multilingual engine integration, and optimized subtitle processing for efficient multilingual SRT generation
 
 **chatterbox/srt_parser.py** - SRT subtitle format parser with timestamp extraction, validation, and comprehensive error handling for subtitle processing
 
@@ -108,7 +128,7 @@
 
 ## F5-TTS Implementation
 
-**nodes/f5tts_node.py** - F5-TTS text-to-speech node requiring reference audio + text for voice cloning with character switching and text chunking support
+**nodes/f5tts_node.py** - F5-TTS text-to-speech node with modular multilingual engine integration, character switching, smart language grouping, and comprehensive caching system
 
 **chatterbox/f5tts/f5tts.py** - F5-TTS wrapper class bridging F5-TTS API with ChatterBox interface standards including model configurations and sample rate management
 
