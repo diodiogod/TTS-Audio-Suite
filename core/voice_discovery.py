@@ -33,6 +33,7 @@ class VoiceDiscovery:
         self._character_cache = {}
         self._character_cache_valid = False
         self._character_aliases = {}
+        self._character_language_defaults = {}
         self._aliases_valid = False
         
         # Initialize character discovery on first import
@@ -245,6 +246,7 @@ class VoiceDiscovery:
         self._character_cache.clear()
         self._aliases_valid = False
         self._character_aliases.clear()
+        self._character_language_defaults.clear()
     
     def get_available_characters(self) -> Set[str]:
         """
@@ -352,6 +354,7 @@ class VoiceDiscovery:
     def _refresh_character_aliases(self):
         """Refresh character aliases from alias map files."""
         self._character_aliases.clear()
+        self._character_language_defaults.clear()
         
         # Load aliases from voices_examples folder first (lower priority)
         voices_examples_dir = self._get_voices_examples_dir()
@@ -394,10 +397,12 @@ class VoiceDiscovery:
                     continue
                 
                 # Try parsing the line
-                alias, target = self._parse_alias_line(line, line_num, alias_file)
+                alias, target, language = self._parse_alias_line(line, line_num, alias_file)
                 if alias and target:
                     # Convert to lowercase for consistent matching
                     self._character_aliases[alias.lower()] = target.lower()
+                    if language:
+                        self._character_language_defaults[alias.lower()] = language.lower()
                     loaded_count += 1
             
             if loaded_count > 0:
@@ -406,10 +411,11 @@ class VoiceDiscovery:
         except Exception as e:
             print(f"⚠️ Character Aliases: Error reading {alias_file}: {e}")
     
-    def _parse_alias_line(self, line: str, line_num: int, alias_file: str) -> tuple[str, str]:
-        """Parse a single alias line supporting both = and tab formats."""
+    def _parse_alias_line(self, line: str, line_num: int, alias_file: str) -> tuple[str, str, str]:
+        """Parse a single alias line supporting both = and tab formats with optional language."""
         alias = None
         target = None
+        language = None
         
         try:
             # Try splitting on = first
@@ -417,7 +423,16 @@ class VoiceDiscovery:
                 parts = line.split('=', 1)
                 if len(parts) == 2:
                     alias = parts[0].strip()
-                    target = parts[1].strip()
+                    right_side = parts[1].strip()
+                    
+                    # Check if right side has language (comma-separated)
+                    if ',' in right_side:
+                        target_parts = right_side.split(',', 1)
+                        target = target_parts[0].strip()
+                        language = target_parts[1].strip()
+                    else:
+                        target = right_side
+                        
             # Try splitting on tab(s)
             elif '\t' in line:
                 parts = line.split('\t')
@@ -426,17 +441,20 @@ class VoiceDiscovery:
                 if len(parts) >= 2:
                     alias = parts[0]
                     target = parts[1]
+                    # Check for third part (language)
+                    if len(parts) >= 3:
+                        language = parts[2]
             
             # Validate
             if not alias or not target:
                 print(f"⚠️ Character Aliases: Invalid format on line {line_num} in {alias_file}: '{line}'")
-                return None, None
+                return None, None, None
             
-            return alias, target
+            return alias, target, language
             
         except Exception as e:
             print(f"⚠️ Character Aliases: Error parsing line {line_num} in {alias_file}: {e}")
-            return None, None
+            return None, None, None
     
     def _load_json_alias_file(self, alias_file: str, source_name: str):
         """Load character aliases from JSON file (backward compatibility)."""
@@ -491,6 +509,33 @@ class VoiceDiscovery:
             self._refresh_character_aliases()
         
         return self._character_aliases.copy()
+    
+    def get_character_language_defaults(self) -> Dict[str, str]:
+        """
+        Get character language defaults from alias system.
+        
+        Returns:
+            Dictionary of character -> default language mappings
+        """
+        if not self._aliases_valid:
+            self._refresh_character_aliases()
+        
+        return self._character_language_defaults.copy()
+    
+    def get_character_default_language(self, character: str) -> Optional[str]:
+        """
+        Get default language for a specific character.
+        
+        Args:
+            character: Character name
+            
+        Returns:
+            Default language code or None if not set
+        """
+        if not self._aliases_valid:
+            self._refresh_character_aliases()
+        
+        return self._character_language_defaults.get(character.lower())
     
     def _scan_character_directories(self, base_dir: str, source_name: str):
         """
@@ -621,3 +666,15 @@ def get_character_mapping(characters: List[str], engine_type: str = "f5tts") -> 
 def has_character_support() -> bool:
     """Convenience function to check if character voices are available."""
     return voice_discovery.has_character_support()
+
+
+# Language-aware convenience functions
+
+def get_character_language_defaults() -> Dict[str, str]:
+    """Convenience function to get character language defaults."""
+    return voice_discovery.get_character_language_defaults()
+
+
+def get_character_default_language(character: str) -> Optional[str]:
+    """Convenience function to get default language for a character."""
+    return voice_discovery.get_character_default_language(character)
