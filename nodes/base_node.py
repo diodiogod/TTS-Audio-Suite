@@ -75,10 +75,12 @@ class BaseChatterBoxNode:
             seed: Random seed value (0 means no seed setting)
         """
         if seed != 0:
-            torch.manual_seed(seed)
+            # Clamp seed to valid NumPy range (0 to 2^32-1)
+            clamped_seed = max(0, min(seed, 2**32 - 1))
+            torch.manual_seed(clamped_seed)
             if torch.cuda.is_available():
-                torch.cuda.manual_seed(seed)
-            np.random.seed(seed)
+                torch.cuda.manual_seed(clamped_seed)
+            np.random.seed(clamped_seed)
     
     def check_interruption(self, operation_name: str = "Generation"):
         """
