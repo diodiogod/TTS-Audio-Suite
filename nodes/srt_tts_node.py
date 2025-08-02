@@ -75,6 +75,13 @@ class ChatterboxSRTTTSNode(BaseTTSNode):
     
     @classmethod
     def INPUT_TYPES(cls):
+        # Import language models for dropdown
+        try:
+            from chatterbox.language_models import get_available_languages
+            available_languages = get_available_languages()
+        except ImportError:
+            available_languages = ["English"]
+        
         return {
             "required": {
                 "srt_content": ("STRING", {
@@ -91,6 +98,10 @@ This is the second subtitle with precise timing.
 00:00:10,000 --> 00:00:14,000
 The audio will match these exact timings.""",
                     "tooltip": "The SRT subtitle content. Each entry defines a text segment and its precise start and end times."
+                }),
+                "language": (available_languages, {
+                    "default": "English",
+                    "tooltip": "Language model to use for text-to-speech generation. Local models are preferred over remote downloads."
                 }),
                 "device": (["auto", "cuda", "cpu"], {"default": "auto", "tooltip": "The device to run the TTS model on (auto, cuda, or cpu)."}),
                 "exaggeration": ("FLOAT", {
@@ -214,8 +225,9 @@ The audio will match these exact timings.""",
                 raise
 
     def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 
-                                    temperature: float, cfg_weight: float, enable_pause_tags: bool = True,
-                                    character: str = "narrator", seed: int = 0, enable_cache: bool = True,
+                                    temperature: float, cfg_weight: float, language: str = "English",
+                                    enable_pause_tags: bool = True, character: str = "narrator", 
+                                    seed: int = 0, enable_cache: bool = True,
                                     crash_protection_template: str = "hmm ,, {seg} hmm ,,", 
                                     stable_audio_component: str = None) -> torch.Tensor:
         """
@@ -247,7 +259,7 @@ The audio will match these exact timings.""",
                 audio_component = stable_audio_component if stable_audio_component else (getattr(audio_prompt, 'name', str(audio_prompt)) if audio_prompt else "")
                 cache_key = self._generate_segment_cache_key(
                     f"{character}:{processed_text}", exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device
+                    audio_component, self.model_manager.get_model_source("tts"), self.device, language
                 )
                 
                 # Try cache first
@@ -278,7 +290,7 @@ The audio will match these exact timings.""",
                 # Use protected text for BOTH lookup and caching to ensure consistency
                 cache_key = self._generate_segment_cache_key(
                     f"{character}:{protected_text}", exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device
+                    audio_component, self.model_manager.get_model_source("tts"), self.device, language
                 )
                 
                 # Try cache first  
@@ -306,7 +318,7 @@ The audio will match these exact timings.""",
 
     def _generate_segment_cache_key(self, subtitle_text: str, exaggeration: float, temperature: float, 
                                    cfg_weight: float, seed: int, audio_prompt_component: str, 
-                                   model_source: str, device: str) -> str:
+                                   model_source: str, device: str, language: str = "English") -> str:
         """Generate cache key for a single audio segment based on generation parameters."""
         cache_data = {
             'text': subtitle_text,
@@ -316,7 +328,9 @@ The audio will match these exact timings.""",
             'seed': seed,
             'audio_prompt_component': audio_prompt_component,
             'model_source': model_source,
-            'device': device
+            'device': device,
+            'language': language,
+            'engine': 'chatterbox_srt'
         }
         cache_string = str(sorted(cache_data.items()))
         cache_key = hashlib.md5(cache_string.encode()).hexdigest()
@@ -339,7 +353,7 @@ The audio will match these exact timings.""",
                 return True
         return False
 
-    def generate_srt_speech(self, srt_content, device, exaggeration, temperature, cfg_weight, seed,
+    def generate_srt_speech(self, srt_content, language, device, exaggeration, temperature, cfg_weight, seed,
                             timing_mode, reference_audio=None, audio_prompt_path="",
                             enable_audio_cache=True, fade_for_StretchToFit=0.01, 
                             max_stretch_ratio=2.0, min_stretch_ratio=0.5, timing_tolerance=2.0,
@@ -351,7 +365,7 @@ The audio will match these exact timings.""",
                 raise ImportError("SRT support not available - missing required modules")
             
             # Load TTS model
-            self.load_tts_model(device)
+            self.load_tts_model(device, language)
             
             # Set seed for reproducibility
             self.set_seed(seed)
@@ -456,8 +470,8 @@ The audio will match these exact timings.""",
                             
                             # Generate new audio for this character segment with pause tag support (includes internal caching)
                             char_wav = self._generate_tts_with_pause_tags(
-                                processed_segment_text, char_audio, exaggeration, temperature, cfg_weight, True,
-                                character=char, seed=seed, enable_cache=enable_audio_cache,
+                                processed_segment_text, char_audio, exaggeration, temperature, cfg_weight, language,
+                                True, character=char, seed=seed, enable_cache=enable_audio_cache,
                                 crash_protection_template=crash_protection_template,
                                 stable_audio_component=stable_audio_prompt_component
                             )
@@ -482,8 +496,8 @@ The audio will match these exact timings.""",
                         
                         # Generate new audio with pause tag support (includes internal caching)
                         wav = self._generate_tts_with_pause_tags(
-                            processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight, True,
-                            character="narrator", seed=seed, enable_cache=enable_audio_cache,
+                            processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight, language,
+                            True, character="narrator", seed=seed, enable_cache=enable_audio_cache,
                             crash_protection_template=crash_protection_template,
                             stable_audio_component=stable_audio_prompt_component
                         )
