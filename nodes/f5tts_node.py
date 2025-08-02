@@ -309,6 +309,9 @@ Back to the main narrator voice for the conclusion.""",
                        enable_audio_cache=True):
         
         def _process():
+            # Import PauseTagProcessor at the top to avoid scoping issues
+            from core.pause_tag_processor import PauseTagProcessor
+            
             # Validate inputs
             inputs = self.validate_inputs(
                 reference_audio_file=reference_audio_file, text=text, device=device, model=model, seed=seed,
@@ -426,7 +429,6 @@ Back to the main narrator voice for the conclusion.""",
                             # Check cache for each chunk, accounting for pause tag processing
                             for chunk_text in segment_chunks:
                                 # Apply pause tag processing to see what text segments will actually be generated
-                                from core.pause_tag_processor import PauseTagProcessor
                                 processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk_text, True)
                                 
                                 if pause_segments is None:
@@ -578,7 +580,6 @@ Back to the main narrator voice for the conclusion.""",
                 if inputs.get("enable_audio_cache", True):
                     if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
                         # Check cache for single chunk
-                        from core.pause_tag_processor import PauseTagProcessor
                         processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(inputs["text"], True)
                         
                         if pause_segments is None:
@@ -603,7 +604,6 @@ Back to the main narrator voice for the conclusion.""",
                         chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
                         single_content_cached = True
                         for chunk in chunks:
-                            from core.pause_tag_processor import PauseTagProcessor
                             processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk, True)
                             
                             if pause_segments is None:
