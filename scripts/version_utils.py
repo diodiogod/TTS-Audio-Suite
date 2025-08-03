@@ -27,14 +27,6 @@ class VersionManager:
             'pyproject.toml': {
                 'pattern': r'version = "(\d+\.\d+\.\d+)"',
                 'template': 'version = "{version}"'
-            },
-            'chatterbox_srt/__init__.py': {
-                'pattern': r'__version__ = "(\d+\.\d+\.\d+)"',
-                'template': '__version__ = "{version}"'
-            },
-            'core/__init__.py': {
-                'pattern': r'__version__ = "(\d+\.\d+\.\d+)"',
-                'template': '__version__ = "{version}"'
             }
         }
     

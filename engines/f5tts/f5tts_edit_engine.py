@@ -30,12 +30,16 @@ class F5TTSEditEngine:
                           original_text: str, target_text: str,
                           edit_regions: List[Tuple[float, float]],
                           fix_durations: Optional[List[float]],
-                          temperature: float, speed: float, target_rms: float,
+                          temperature: float,
                           nfe_step: int, cfg_strength: float, sway_sampling_coef: float,
-                          ode_method: str, current_model_name: str = "F5TTS_v1_Base") -> torch.Tensor:
+                          ode_method: str, seed: int, current_model_name: str = "F5TTS_v1_Base",
+                          edit_options: Optional[dict] = None) -> torch.Tensor:
         """
         Perform F5-TTS speech editing - exact working implementation
         """
+        # Set default target_rms value (not in method signature but needed internally)
+        target_rms = 0.1
+        
         try:
             # Import F5-TTS modules
             from f5_tts.model import CFM
@@ -237,7 +241,7 @@ class F5TTSEditEngine:
                     steps=safe_nfe_step,
                     cfg_strength=cfg_strength,
                     sway_sampling_coef=sway_sampling_coef,
-                    seed=None,  # Will be set by the model if needed
+                    seed=seed,  # Use provided seed
                     edit_mask=edit_mask,
                 )
                 
@@ -263,11 +267,37 @@ class F5TTSEditEngine:
                 
                 print(f"Generated wave: {generated_wave.shape}")
                 
+                # Calculate actual edit regions in generated audio (accounting for fixed durations)
+                actual_edit_regions = []
+                generated_time_offset = 0  # Running offset in generated audio
+                original_time_offset = 0   # Running offset in original audio
+                
+                for i, (start, end) in enumerate(edit_regions):
+                    # Get the actual duration used for this region
+                    if fix_durations and i < len(fix_durations):
+                        actual_duration = fix_durations[i]
+                    else:
+                        actual_duration = end - start
+                    
+                    # Add preserved audio before this edit region
+                    preserved_duration = start - original_time_offset
+                    generated_time_offset += preserved_duration
+                    
+                    # This edit region in generated audio
+                    region_start = generated_time_offset
+                    region_end = generated_time_offset + actual_duration
+                    actual_edit_regions.append((region_start, region_end))
+                    
+                    # Update offsets
+                    generated_time_offset += actual_duration
+                    original_time_offset = end
+                
                 # Composite the edited audio with original audio to preserve quality outside edit regions
-                composite_audio = AudioCompositor.composite_edited_audio(
+                composite_audio = self._build_composite_audio(
                     original_audio_for_compositing.cpu(),
                     generated_wave,
                     edit_regions,
+                    actual_edit_regions,
                     target_sample_rate
                 )
                 
@@ -279,6 +309,68 @@ class F5TTSEditEngine:
             raise ImportError(f"F5-TTS modules not available for speech editing: {e}")
         except Exception as e:
             raise RuntimeError(f"F5-TTS speech editing failed: {e}")
+    
+    def _build_composite_audio(self, original_audio: torch.Tensor, generated_audio: torch.Tensor,
+                              original_edit_regions: List[Tuple[float, float]], 
+                              actual_edit_regions: List[Tuple[float, float]],
+                              sample_rate: int) -> torch.Tensor:
+        """Build composite audio using pre-calculated actual edit regions"""
+        
+        # Ensure both audios are mono
+        if original_audio.dim() > 1:
+            original_audio = torch.mean(original_audio, dim=0, keepdim=True)
+        if generated_audio.dim() > 1:
+            generated_audio = torch.mean(generated_audio, dim=0, keepdim=True)
+        
+        composite_segments = []
+        original_pos = 0.0  # Current position in original audio
+        
+        print(f"🔨 Building composite from original: {original_audio.shape}, generated: {generated_audio.shape}")
+        
+        for i, ((orig_start, orig_end), (gen_start, gen_end)) in enumerate(zip(original_edit_regions, actual_edit_regions)):
+            print(f"\\n🔧 Processing edit region {i}: orig({orig_start:.2f}-{orig_end:.2f}s) -> gen({gen_start:.2f}-{gen_end:.2f}s)")
+            
+            # Add preserved audio before this edit region (if any)
+            if orig_start > original_pos:
+                preserved_start_sample = int(original_pos * sample_rate)
+                preserved_end_sample = int(orig_start * sample_rate)
+                preserved_end_sample = min(preserved_end_sample, original_audio.shape[-1])
+                
+                if preserved_start_sample < preserved_end_sample:
+                    preserved_segment = original_audio[:, preserved_start_sample:preserved_end_sample]
+                    composite_segments.append(preserved_segment)
+                    print(f"  ✅ Added preserved segment: original {original_pos:.2f}-{orig_start:.2f}s ({preserved_segment.shape[-1]} samples)")
+            
+            # Add edited segment from generated audio
+            edit_start_sample = int(gen_start * sample_rate)
+            edit_end_sample = int(gen_end * sample_rate)
+            edit_end_sample = min(edit_end_sample, generated_audio.shape[-1])
+            
+            if edit_start_sample < edit_end_sample:
+                edited_segment = generated_audio[:, edit_start_sample:edit_end_sample]
+                composite_segments.append(edited_segment)
+                print(f"  🎵 Added edited segment: generated {gen_start:.2f}-{gen_end:.2f}s ({edited_segment.shape[-1]} samples)")
+            
+            # Update position to end of original edit region
+            original_pos = orig_end
+        
+        # Add remaining original audio after last edit region
+        original_duration = original_audio.shape[-1] / sample_rate
+        if original_pos < original_duration:
+            remaining_start_sample = int(original_pos * sample_rate)
+            remaining_segment = original_audio[:, remaining_start_sample:]
+            composite_segments.append(remaining_segment)
+            remaining_duration = original_duration - original_pos
+            print(f"  ✅ Added remaining segment: original {original_pos:.2f}-{original_duration:.2f}s ({remaining_segment.shape[-1]} samples)")
+        
+        # Concatenate all segments
+        if composite_segments:
+            composite_audio = torch.cat(composite_segments, dim=-1)
+            total_duration = composite_audio.shape[-1] / sample_rate
+            print(f"🎉 Final composite: {composite_audio.shape} ({total_duration:.2f}s)")
+            return composite_audio
+        else:
+            return generated_audio
     
     @staticmethod
     def save_audio_temp(audio: torch.Tensor, sample_rate: int) -> str:
