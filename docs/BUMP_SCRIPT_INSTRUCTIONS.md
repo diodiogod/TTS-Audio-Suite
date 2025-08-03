@@ -2,29 +2,45 @@
 
 ## Quick Reference for Future Version Bumps
 
-### Command
+### Recommended Command (Separate Commit & Changelog)
 ```bash
-python3 scripts/bump_version_enhanced.py <version> "<description>"
+python3 scripts/bump_version_enhanced.py <version> --commit "<commit_desc>" --changelog "<changelog_desc>"
 ```
 
 ### Examples
 ```bash
 # Patch release (bug fixes)
-python3 scripts/bump_version_enhanced.py 3.2.9 "Fix character alias resolution and F5-TTS imports"
+python3 scripts/bump_version_enhanced.py 3.2.9 \
+  --commit "Fix character alias resolution and F5-TTS import issues" \
+  --changelog "Bug fixes and stability improvements"
 
-# Minor release (new features)
-python3 scripts/bump_version_enhanced.py 3.3.0 "Add character support for F5-TTS generation"
+# Minor release (new features)  
+python3 scripts/bump_version_enhanced.py 3.3.0 \
+  --commit "Add character support system for F5-TTS generation" \
+  --changelog "Add character support for F5-TTS generation"
 
 # Major release (breaking changes)
-python3 scripts/bump_version_enhanced.py 4.0.0 "Complete architecture refactoring with new folder structure"
+python3 scripts/bump_version_enhanced.py 4.0.0 \
+  --commit "Complete architecture refactoring with new modular structure" \
+  --changelog "Project restructure for better maintainability"
+```
+
+### Interactive Mode (Recommended for Complex Changes)
+```bash
+python3 scripts/bump_version_enhanced.py 3.2.9 --interactive
+```
+
+### Legacy Mode (Same Description for Both)
+```bash
+python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 ```
 
 ### What the Script Does
-- Updates version in `__init__.py`
-- Updates version in `pyproject.toml` 
-- Updates changelog with new version entry
-- Creates git commit with proper message format
+- Updates version in `nodes.py`, `README.md`, and `pyproject.toml` 
+- Updates changelog with user-focused description
+- Creates git commit with developer-focused description
 - Follows semantic versioning (MAJOR.MINOR.PATCH)
+- Supports separate commit/changelog descriptions for better communication
 
 ### When to Bump Versions
 
@@ -63,3 +79,20 @@ python3 scripts/bump_version_enhanced.py 4.0.0 "Complete architecture refactorin
 - **Only bump when user confirms changes work**
 - **Read detailed guide**: `docs/Dev reports/CLAUDE_VERSION_MANAGEMENT_GUIDE.md`
 - **Follow project commit policy**: No Claude co-author credits in commits
+
+### Commit vs Changelog Guidelines
+
+#### Commit Description (--commit)
+- **Developer diary**: What this specific version bump does
+- **Include internal details**: Bug fixes, refactoring, technical changes
+- **Development perspective**: "Fixed F5-TTS edit issues after refactoring"
+- **Can mention temporary problems**: "Restore functionality broken by restructure"
+
+#### Changelog Description (--changelog)  
+- **User perspective only**: Write for users upgrading from previous version
+- **Don't document internal fixes**: Skip temporary issues introduced and fixed during development
+- **Focus on net result**: What changed for the user, not the development process
+- **Example**: If refactoring broke something then fixed it, only mention the refactoring benefit
+
+#### Key Principle
+**Commit = Development diary, Changelog = User release notes**
