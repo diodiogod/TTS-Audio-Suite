@@ -15,7 +15,7 @@ F5TTS_IMPORT_ERROR = None
 try:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        from .f5tts import ChatterBoxF5TTS
+        from .f5tts import ChatterBoxF5TTS, get_f5tts_models
     F5TTS_AVAILABLE = True
 except ImportError as e:
     F5TTS_AVAILABLE = False
@@ -28,5 +28,9 @@ except ImportError as e:
         @classmethod
         def from_local(cls, path, device, model_name):
             raise ImportError(f"F5-TTS not available: {F5TTS_IMPORT_ERROR}")
+    
+    # Create dummy function for compatibility
+    def get_f5tts_models():
+        return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
 
-__all__ = ['ChatterBoxF5TTS', 'F5TTS_AVAILABLE', 'F5TTS_IMPORT_ERROR']
+__all__ = ['ChatterBoxF5TTS', 'get_f5tts_models', 'F5TTS_AVAILABLE', 'F5TTS_IMPORT_ERROR']

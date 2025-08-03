@@ -54,6 +54,29 @@ except ImportError:
         def from_local(cls, path, device, model_name):
             raise ImportError("F5-TTS not available - missing dependencies")
 
+# Language models support
+try:
+    from .language_models import (
+        get_chatterbox_models, get_model_config, get_model_files_for_language,
+        find_local_model_path, detect_model_format, get_available_languages
+    )
+    LANGUAGE_MODELS_AVAILABLE = True
+except ImportError:
+    LANGUAGE_MODELS_AVAILABLE = False
+    # Create dummy functions for compatibility
+    def get_available_languages():
+        return ["English"]
+    def find_local_model_path(language):
+        return None
+    def get_chatterbox_models():
+        return ["English"]
+    def get_model_config(language):
+        return None
+    def get_model_files_for_language(language):
+        return ("pt", "ResembleAI/chatterbox")
+    def detect_model_format(model_path):
+        return "pt"
+
 # SRT subtitle support modules - import independently
 try:
     from .srt_parser import SRTParser, SRTSubtitle, SRTParseError, validate_srt_timing_compatibility
@@ -65,11 +88,17 @@ try:
     
     __all__ = [
         'ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS',
+        'get_chatterbox_models', 'get_model_config', 'get_model_files_for_language',
+        'find_local_model_path', 'detect_model_format', 'get_available_languages',
         'SRTParser', 'SRTSubtitle', 'SRTParseError', 'validate_srt_timing_compatibility',
         'AudioTimingUtils', 'PhaseVocoderTimeStretcher', 'TimedAudioAssembler',
         'calculate_timing_adjustments', 'AudioTimingError'
     ]
 except ImportError:
     SRT_AVAILABLE = False
-    # SRT support not available - only export main modules
-    __all__ = ['ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS']
+    # SRT support not available - only export main modules and language functions
+    __all__ = [
+        'ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS',
+        'get_chatterbox_models', 'get_model_config', 'get_model_files_for_language',
+        'find_local_model_path', 'detect_model_format', 'get_available_languages'
+    ]

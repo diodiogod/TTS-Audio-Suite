@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.1] - 2025-08-03
+
+### Added
+
+- 🔧 Technical Architecture:
+- Modular engine architecture with separated concerns
+- Restored sophisticated audio compositing system
+- Restored F5-TTS multilingual model discovery
+
+### Fixed
+
+- Better error handling and import management
+- 🐛 Critical Bug Fixes:
+- Fixed F5-TTS edit functionality broken by refactoring
+- Fixed language model discovery (F5-TTS showing all languages again)
+- Fixed missing exports in engine __init__.py files
+- Corrected method signatures for F5-TTS edit operations
+- Fixed ChatterBox language model enumeration
+- Fixed SRT node multilingual engine adapter access
+- Fixed edit region timing mapping for generated audio
+
+### Changed
+
+- Improved ChatterBox and F5-TTS engine isolation
+- Restored advanced segment-by-segment audio compositing
+- Maintained backward compatibility with existing workflows
 ## [3.4.0] - 2025-08-02
 
 ### Added
