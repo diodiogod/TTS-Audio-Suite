@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
 Enhanced Automated Version Bumping Script for ComfyUI ChatterBox Voice
-Usage: python scripts/bump_version_enhanced.py <version> "<description>"
-Example: python scripts/bump_version_enhanced.py 3.0.2 "Add sounddevice dependency"
 
-Supports multiline descriptions:
-python scripts/bump_version_enhanced.py 3.0.2 "Fix missing sounddevice dependency\nAdd comprehensive error handling\nUpdate installation documentation"
+SEPARATE COMMIT & CHANGELOG MODE (recommended):
+python scripts/bump_version_enhanced.py 3.0.2 --commit "Fix critical bugs" --changelog "Bug fixes and improvements"
 
-Or read from file:
-python scripts/bump_version_enhanced.py 3.0.2 --file changelog.txt
+LEGACY MODE (same description for both):
+python scripts/bump_version_enhanced.py 3.0.2 "Add sounddevice dependency"
+
+INTERACTIVE MODE:
+python scripts/bump_version_enhanced.py 3.0.2 --interactive
+
+FILE MODE:
+python scripts/bump_version_enhanced.py 3.0.2 --changelog-file changelog.txt --commit-file commit.txt
 """
 
 import os
@@ -31,13 +35,23 @@ def run_git_command(command: str) -> bool:
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description='Bump version across all project files with enhanced multiline support')
+    parser = argparse.ArgumentParser(description='Bump version with separate commit and changelog descriptions')
     parser.add_argument('version', help='New version number (e.g., 3.0.2)')
-    parser.add_argument('description', nargs='?', help='Description of changes for changelog (use quotes for multiline)')
+    parser.add_argument('description', nargs='?', help='[LEGACY] Description for both commit and changelog')
+    
+    # Separate commit and changelog descriptions (recommended)
+    parser.add_argument('--commit', help='Commit message description (what this version bump does)')
+    parser.add_argument('--changelog', help='Changelog description (what users should know)')
+    
+    # File input options
+    parser.add_argument('--commit-file', help='Read commit description from file')
+    parser.add_argument('--changelog-file', help='Read changelog description from file')
+    parser.add_argument('--file', help='[LEGACY] Read description from file for both commit and changelog')
+    
+    # Other options
+    parser.add_argument('--interactive', action='store_true', help='Interactive mode for separate commit and changelog entry')
     parser.add_argument('--no-commit', action='store_true', help='Skip git commit')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')
-    parser.add_argument('--file', help='Read description from file (supports multiline)')
-    parser.add_argument('--interactive', action='store_true', help='Interactive mode for detailed changelog entry')
     parser.add_argument('--allow-downgrade', action='store_true', help='Allow bumping to a lower version number (for reverts/fixes)')
     
     args = parser.parse_args()
@@ -51,39 +65,101 @@ def main():
         print("Error: Could not determine current version")
         sys.exit(1)
     
-    # Handle description input
-    description = ""
-    if args.file:
-        try:
-            with open(args.file, 'r') as f:
-                description = f.read().strip()
-        except Exception as e:
-            print(f"Error reading description file: {e}")
+    # Handle input for commit and changelog descriptions
+    commit_description = ""
+    changelog_description = ""
+    
+    # Check for separate commit/changelog mode
+    if args.commit or args.changelog or args.commit_file or args.changelog_file:
+        # Separate mode - get commit description
+        if args.commit_file:
+            try:
+                with open(args.commit_file, 'r') as f:
+                    commit_description = f.read().strip()
+            except Exception as e:
+                print(f"Error reading commit file: {e}")
+                sys.exit(1)
+        elif args.commit:
+            commit_description = args.commit
+        else:
+            print("Error: --commit or --commit-file required when using separate mode")
             sys.exit(1)
+        
+        # Get changelog description
+        if args.changelog_file:
+            try:
+                with open(args.changelog_file, 'r') as f:
+                    changelog_description = f.read().strip()
+            except Exception as e:
+                print(f"Error reading changelog file: {e}")
+                sys.exit(1)
+        elif args.changelog:
+            changelog_description = args.changelog
+        else:
+            print("Error: --changelog or --changelog-file required when using separate mode")
+            sys.exit(1)
+            
     elif args.interactive:
-        print("Enter changelog description (press Ctrl+D on empty line to finish):")
-        lines = []
+        # Interactive mode for separate descriptions
+        print("=== COMMIT DESCRIPTION ===")
+        print("Enter commit description (what this version bump does):")
+        print("(Press Ctrl+D on empty line to finish)")
+        commit_lines = []
         try:
             while True:
                 line = input()
-                lines.append(line)
+                commit_lines.append(line)
         except EOFError:
             pass
-        description = '\n'.join(lines)
+        commit_description = '\n'.join(commit_lines)
+        
+        print("\n=== CHANGELOG DESCRIPTION ===")
+        print("Enter changelog description (what users should know):")
+        print("(Press Ctrl+D on empty line to finish)")
+        changelog_lines = []
+        try:
+            while True:
+                line = input()
+                changelog_lines.append(line)
+        except EOFError:
+            pass
+        changelog_description = '\n'.join(changelog_lines)
+        
+    elif args.file:
+        # Legacy file mode - same description for both
+        try:
+            with open(args.file, 'r') as f:
+                description = f.read().strip()
+                commit_description = description
+                changelog_description = description
+        except Exception as e:
+            print(f"Error reading description file: {e}")
+            sys.exit(1)
     elif args.description:
-        description = args.description
+        # Legacy mode - same description for both
+        commit_description = args.description
+        changelog_description = args.description
     else:
-        print("Error: Description required (use --file, --interactive, or provide as argument)")
+        print("Error: Description required. Use one of:")
+        print("  --commit 'text' --changelog 'text'  (recommended)")
+        print("  --interactive                       (recommended)")
+        print("  'description'                       (legacy)")
+        print("  --file filename                     (legacy)")
         sys.exit(1)
     
-    # Process newline characters in description
-    description = description.replace('\\n', '\n')
+    # Process newline characters
+    commit_description = commit_description.replace('\\n', '\n')
+    changelog_description = changelog_description.replace('\\n', '\n')
     
     print(f"Current version: {current_version}")
     print(f"New version: {args.version}")
-    print(f"Description preview:")
+    print(f"\nCommit description:")
     print("=" * 50)
-    print(description)
+    print(commit_description)
+    print("=" * 50)
+    print(f"\nChangelog description:")
+    print("=" * 50)
+    print(changelog_description)
     print("=" * 50)
     
     if args.dry_run:
@@ -137,7 +213,7 @@ def main():
         
         # Add changelog entry with multiline support
         print("\nUpdating changelog...")
-        if not vm.add_changelog_entry(args.version, description):
+        if not vm.add_changelog_entry(args.version, changelog_description):
             print("Error: Failed to update changelog")
             print("Restoring backup...")
             vm.restore_files(backup)
@@ -163,12 +239,12 @@ def main():
                 else:
                     # Create commit message
                     commit_title = f"Version {args.version}"
-                    if '\n' in description:
+                    if '\n' in commit_description:
                         # Multiline commit message
-                        commit_message = f"{commit_title}\n\n{description}"
+                        commit_message = f"{commit_title}\n\n{commit_description}"
                     else:
                         # Single line commit message
-                        commit_message = f"{commit_title}: {description}"
+                        commit_message = f"{commit_title}: {commit_description}"
                     
                     # Write commit message to temp file for complex messages
                     import tempfile
