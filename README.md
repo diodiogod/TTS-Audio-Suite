@@ -114,7 +114,8 @@ Back to the narrator for the conclusion.
 
 * **Language Code Syntax**: Use `[language:character]` tags to switch languages and models automatically
 * **Smart Model Loading**: Automatically loads correct language models (F5-DE, F5-FR, German, Norwegian, etc.)
-* **Flexible Format**: Support for `[fr:Alice]`, `[de:Bob]`, or `[es:]` (language only) patterns
+* **Flexible Aliases** *(v3.4.3)*: Support for `[German:Alice]`, `[Brazil:Bob]`, `[USA:]`, `[Portugal:]` - no need to remember language codes!
+* **Standard Format**: Also supports traditional `[fr:Alice]`, `[de:Bob]`, or `[es:]` (language only) patterns
 * **Character Integration**: Combines perfectly with character switching and alias system
 * **Performance Optimized**: Language groups processed efficiently to minimize model switching
 * **Alias Support**: Language defaults work with character alias system
