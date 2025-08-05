@@ -5,13 +5,26 @@
 ## Automated Version Bumping Instructions
 
 ### Primary Command
-**ALWAYS use the enhanced script**: `python3 scripts/bump_version_enhanced.py <version> "<description>"`
+**NEW DEFAULT**: `python3 scripts/bump_version_enhanced.py <version> "<commit_desc>" "<changelog_desc>"`
+
+**Auto-increment support**: Use `patch`, `minor`, or `major` instead of version numbers for automatic increment.
 
 ### Usage Examples
 
-#### Simple Version Bump
+#### NEW Default Usage (RECOMMENDED)
 ```bash
-python3 scripts/bump_version_enhanced.py 3.0.2 "Add sounddevice dependency"
+# Auto-increment with separate descriptions
+python3 scripts/bump_version_enhanced.py patch "Fix character tag removal bug in single character mode" "Fix unrecognized character tags not being removed from TTS output"
+
+python3 scripts/bump_version_enhanced.py minor "Add RVC TTS engine support" "Add new RVC (Real-time Voice Conversion) TTS engine with voice cloning capabilities"
+
+# Manual version with separate descriptions  
+python3 scripts/bump_version_enhanced.py 3.4.3 "Fix crash in audio processing" "Fix crashes when processing certain audio file formats"
+```
+
+#### Legacy Usage (DEPRECATED)
+```bash
+python3 scripts/bump_version_enhanced.py patch --legacy "Fix character tag removal bug"
 ```
 
 #### Multiline Description
@@ -93,16 +106,24 @@ If the automated script fails, refer to: `docs/Dev reports/VERSION_UPDATE_GUIDE.
 
 ### CRITICAL: Fix Poor Changelog Generation
 
-**Problem**: Script generates detailed commit messages but pathetic one-liner changelog entries.
+**Problem**: Script generates detailed commit messages but poorly categorized changelog entries.
 
-**Solution**: Use multiline descriptions for the script:
+**Root Cause**: The categorization algorithm has flawed keyword matching that can misclassify bug fixes as "Added" items.
 
+**Solutions**:
+
+1. **Start descriptions with clear action words** for better categorization:
 ```bash
-# Bad - generates poor changelog
-python3 scripts/bump_version_enhanced.py 3.2.8 "Fix SRT crash bug"
+# Good - starts with "Fix" for proper categorization
+python3 scripts/bump_version_enhanced.py patch "Fix character tag removal bug in single character mode\nRoot cause: TTS nodes bypassed character parser\nResult: Unrecognized character tags are now properly removed"
 
-# Good - generates detailed changelog  
-python3 scripts/bump_version_enhanced.py 3.2.8 "Fix SRT node crash protection template bug\nRoot cause: double-padding where text was padded but original passed to generation\nAffected: character switching and single character modes\nResult: custom templates now work correctly, prevents CUDA crashes"
+# Bad - ambiguous wording leads to miscategorization  
+python3 scripts/bump_version_enhanced.py patch "Character tag removal bug in single character mode\nRoot cause: TTS nodes bypassed character parser\nResult: Character tags are now properly removed"
+```
+
+2. **Use separate commit and changelog descriptions** for precise control:
+```bash
+python3 scripts/bump_version_enhanced.py patch --commit "Fix character tag removal bug" --changelog "Fix character tags not being removed in single character mode"
 ```
 
 **For complex changes, use interactive mode**:

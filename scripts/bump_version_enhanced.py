@@ -36,12 +36,14 @@ def run_git_command(command: str) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description='Bump version with separate commit and changelog descriptions')
-    parser.add_argument('version', help='New version number (e.g., 3.0.2)')
-    parser.add_argument('description', nargs='?', help='[LEGACY] Description for both commit and changelog')
+    parser.add_argument('version', nargs='?', help='New version number (e.g., 3.0.2) or auto-increment type (patch/minor/major)')
+    parser.add_argument('commit_description', nargs='?', help='Commit message description (what this version bump does)')
+    parser.add_argument('changelog_description', nargs='?', help='Changelog description (what users should know)')
     
-    # Separate commit and changelog descriptions (recommended)
-    parser.add_argument('--commit', help='Commit message description (what this version bump does)')
-    parser.add_argument('--changelog', help='Changelog description (what users should know)')
+    # Legacy mode (deprecated)
+    parser.add_argument('--legacy', help='[DEPRECATED] Single description for both commit and changelog')
+    parser.add_argument('--commit', help='[OVERRIDE] Commit message description')
+    parser.add_argument('--changelog', help='[OVERRIDE] Changelog description')
     
     # File input options
     parser.add_argument('--commit-file', help='Read commit description from file')
@@ -65,41 +67,57 @@ def main():
         print("Error: Could not determine current version")
         sys.exit(1)
     
+    # Handle auto-increment version types early
+    if args.version and args.version.lower() in ['patch', 'minor', 'major']:
+        current_parts = list(map(int, current_version.split('.')))
+        if args.version.lower() == 'patch':
+            current_parts[2] += 1
+        elif args.version.lower() == 'minor':
+            current_parts[1] += 1
+            current_parts[2] = 0
+        elif args.version.lower() == 'major':
+            current_parts[0] += 1
+            current_parts[1] = 0
+            current_parts[2] = 0
+        args.version = '.'.join(map(str, current_parts))
+        print(f"Auto-increment: {current_version} → {args.version}")
+    
     # Handle input for commit and changelog descriptions
     commit_description = ""
     changelog_description = ""
     
-    # Check for separate commit/changelog mode
-    if args.commit or args.changelog or args.commit_file or args.changelog_file:
-        # Separate mode - get commit description
-        if args.commit_file:
-            try:
-                with open(args.commit_file, 'r') as f:
-                    commit_description = f.read().strip()
-            except Exception as e:
-                print(f"Error reading commit file: {e}")
-                sys.exit(1)
-        elif args.commit:
-            commit_description = args.commit
-        else:
-            print("Error: --commit or --commit-file required when using separate mode")
+    # New default mode: separate commit and changelog descriptions
+    if args.commit_description and args.changelog_description:
+        commit_description = args.commit_description
+        changelog_description = args.changelog_description
+    elif args.commit_file and args.changelog_file:
+        # File input mode
+        try:
+            with open(args.commit_file, 'r') as f:
+                commit_description = f.read().strip()
+            with open(args.changelog_file, 'r') as f:
+                changelog_description = f.read().strip()
+        except Exception as e:
+            print(f"Error reading files: {e}")
             sys.exit(1)
-        
-        # Get changelog description
-        if args.changelog_file:
-            try:
-                with open(args.changelog_file, 'r') as f:
-                    changelog_description = f.read().strip()
-            except Exception as e:
-                print(f"Error reading changelog file: {e}")
-                sys.exit(1)
-        elif args.changelog:
-            changelog_description = args.changelog
-        else:
-            print("Error: --changelog or --changelog-file required when using separate mode")
-            sys.exit(1)
-            
-    elif args.interactive:
+    elif args.legacy:
+        # Legacy mode - same description for both
+        commit_description = args.legacy
+        changelog_description = args.legacy
+    else:
+        print("Error: Please provide both commit and changelog descriptions")
+        print("Usage: python3 scripts/bump_version_enhanced.py <version> \"<commit_desc>\" \"<changelog_desc>\"")
+        print("Legacy: python3 scripts/bump_version_enhanced.py <version> --legacy \"<description>\"")
+        sys.exit(1)
+    
+    # Override with explicit flags if provided
+    if args.commit:
+        commit_description = args.commit
+    if args.changelog:
+        changelog_description = args.changelog
+    
+    # Handle interactive mode
+    if args.interactive:
         # Interactive mode for separate descriptions
         print("=== COMMIT DESCRIPTION ===")
         print("Enter commit description (what this version bump does):")
@@ -135,17 +153,6 @@ def main():
         except Exception as e:
             print(f"Error reading description file: {e}")
             sys.exit(1)
-    elif args.description:
-        # Legacy mode - same description for both
-        commit_description = args.description
-        changelog_description = args.description
-    else:
-        print("Error: Description required. Use one of:")
-        print("  --commit 'text' --changelog 'text'  (recommended)")
-        print("  --interactive                       (recommended)")
-        print("  'description'                       (legacy)")
-        print("  --file filename                     (legacy)")
-        sys.exit(1)
     
     # Process newline characters
     commit_description = commit_description.replace('\\n', '\n')
@@ -213,7 +220,7 @@ def main():
         
         # Add changelog entry with multiline support
         print("\nUpdating changelog...")
-        if not vm.add_changelog_entry(args.version, changelog_description):
+        if not vm.add_changelog_entry(args.version, changelog_description, simple_mode=True):
             print("Error: Failed to update changelog")
             print("Restoring backup...")
             vm.restore_files(backup)

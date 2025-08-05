@@ -97,7 +97,7 @@ class VersionManager:
         
         return success
     
-    def add_changelog_entry(self, version: str, description: str, details: List[str] = None) -> bool:
+    def add_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> bool:
         """Add entry to CHANGELOG.md with support for multiline descriptions"""
         try:
             changelog_path = os.path.join(self.project_root, 'CHANGELOG.md')
@@ -108,8 +108,16 @@ class VersionManager:
             # Generate changelog entry
             today = datetime.now().strftime('%Y-%m-%d')
             
+            # Simple mode - use exact text without categorization
+            if simple_mode:
+                new_entry = f"""## [{version}] - {today}
+
+### Fixed
+
+- {description}
+"""
             # Parse description for structured changelog
-            if '\n' in description or (details and len(details) > 0):
+            elif '\n' in description or (details and len(details) > 0):
                 # Multiline description - create detailed changelog
                 lines = description.split('\n') if '\n' in description else [description]
                 if details:
@@ -149,17 +157,18 @@ class VersionManager:
                     # Enhanced categorization based on keywords and context
                     line_lower = clean_line.lower()
                     
-                    # More comprehensive keyword matching for Added
+                    # More comprehensive keyword matching for Fixed (check first for bug fixes)
                     if any(word in line_lower for word in [
-                        'add', 'new', 'implement', 'feature', 'create', 'introduce', 'support',
-                        'language switching', 'syntax', 'bracket', 'character', 'integration'
-                    ]):
-                        added_items.append(clean_line)
-                    # More comprehensive keyword matching for Fixed  
-                    elif any(word in line_lower for word in [
-                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch'
+                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch', 
+                        'crash', 'problem', 'fail', 'broken'
                     ]):
                         fixed_items.append(clean_line)
+                    # More comprehensive keyword matching for Added
+                    elif line_lower.startswith('add') or any(word in line_lower for word in [
+                        'new', 'implement', 'feature', 'create', 'introduce', 'support',
+                        'language switching', 'syntax', 'integration'
+                    ]):
+                        added_items.append(clean_line)
                     # More comprehensive keyword matching for Changed
                     elif any(word in line_lower for word in [
                         'update', 'enhance', 'improve', 'change', 'modify', 'optimize', 'performance',
