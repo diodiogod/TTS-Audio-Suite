@@ -879,8 +879,10 @@ Back to the main narrator voice for the conclusion.""",
                 
                 if not inputs["enable_chunking"] or text_length <= inputs["max_chars_per_chunk"]:
                     # Process single chunk with caching support
+                    # BUGFIX: Clean character tags from text even in single character mode
+                    clean_text = character_parser.remove_character_tags(inputs["text"])
                     wav = self._generate_tts_with_pause_tags(
-                        inputs["text"], main_audio_prompt, inputs["exaggeration"], 
+                        clean_text, main_audio_prompt, inputs["exaggeration"], 
                         inputs["temperature"], inputs["cfg_weight"], inputs["language"],
                         True, character="narrator", seed=inputs["seed"], 
                         enable_cache=inputs.get("enable_audio_cache", True),
@@ -891,7 +893,9 @@ Back to the main narrator voice for the conclusion.""",
                     info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
                 else:
                     # Split into chunks using improved chunker (UNCHANGED)
-                    chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                    # BUGFIX: Clean character tags from text before chunking in single character mode
+                    clean_text = character_parser.remove_character_tags(inputs["text"])
+                    chunks = self.chunker.split_into_chunks(clean_text, inputs["max_chars_per_chunk"])
                     
                     # Process each chunk (UNCHANGED)
                     audio_segments = []
