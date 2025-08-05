@@ -602,7 +602,9 @@ Back to the main narrator voice for the conclusion.""",
                                 break
                     else:
                         # Check cache for multiple chunks
-                        chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                        # BUGFIX: Clean character tags from text before chunking in single character mode
+                        clean_text = character_parser.remove_character_tags(inputs["text"])
+                        chunks = self.chunker.split_into_chunks(clean_text, inputs["max_chars_per_chunk"])
                         single_content_cached = True
                         for chunk in chunks:
                             processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk, True)
@@ -658,8 +660,10 @@ Back to the main narrator voice for the conclusion.""",
                                 self._cache_segment_audio(cache_key, audio_result, audio_duration)
                         cache_fn = narrator_cache_fn
                     
+                    # BUGFIX: Clean character tags from text even in single character mode
+                    clean_text = character_parser.remove_character_tags(inputs["text"])
                     wav = self.generate_f5tts_with_pause_tags(
-                        text=inputs["text"],
+                        text=clean_text,
                         ref_audio_path=main_audio_prompt,
                         ref_text=main_ref_text,
                         enable_pause_tags=True,
@@ -678,7 +682,9 @@ Back to the main narrator voice for the conclusion.""",
                     info = f"Generated {wav.size(-1) / self.f5tts_sample_rate:.1f}s audio from {text_length} characters (single chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
                 else:
                     # Split into chunks using improved chunker
-                    chunks = self.chunker.split_into_chunks(inputs["text"], inputs["max_chars_per_chunk"])
+                    # BUGFIX: Clean character tags from text before chunking in single character mode
+                    clean_text = character_parser.remove_character_tags(inputs["text"])
+                    chunks = self.chunker.split_into_chunks(clean_text, inputs["max_chars_per_chunk"])
                     
                     # Create cache function for narrator chunks if caching is enabled
                     cache_fn = None
