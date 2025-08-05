@@ -39,8 +39,8 @@ class CharacterParser:
     # Regex pattern for character tags: [CharacterName] or [language:CharacterName] (excludes pause tags)
     CHARACTER_TAG_PATTERN = re.compile(r'\[(?!pause:)([^\]]+)\]')
     
-    # Regex to parse language:character format (allows empty character names like [fr:])
-    LANGUAGE_CHARACTER_PATTERN = re.compile(r'^([a-zA-Z]{2,3}):(.*)$')
+    # Regex to parse language:character format (supports flexible language names)
+    LANGUAGE_CHARACTER_PATTERN = re.compile(r'^([a-zA-Z0-9\-_À-ÿ\s]+):(.*)$')
     
     def __init__(self, default_character: str = "narrator", default_language: Optional[str] = None):
         """
@@ -55,6 +55,75 @@ class CharacterParser:
         self.available_characters = set()
         self.character_fallbacks = {}
         self.character_language_defaults = {}
+        
+        # Language alias system for flexible language switching
+        self.language_aliases = {
+            # German variations
+            'de': 'de', 'german': 'de', 'deutsch': 'de', 'germany': 'de', 'deutschland': 'de',
+            
+            # English variations
+            'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'uk': 'en', 'america': 'en', 'britain': 'en',
+            
+            # Brazilian Portuguese (separate from European Portuguese)
+            'pt-br': 'pt-br', 'ptbr': 'pt-br', 'brazilian': 'pt-br', 'brasilian': 'pt-br',
+            'brazil': 'pt-br', 'brasil': 'pt-br', 'br': 'pt-br', 'português brasileiro': 'pt-br',
+            
+            # European Portuguese (separate from Brazilian)
+            'pt-pt': 'pt-pt', 'portugal': 'pt-pt', 'european portuguese': 'pt-pt',
+            'portuguese': 'pt-pt', 'português': 'pt-pt', 'portugues': 'pt-pt',
+            
+            # French variations
+            'fr': 'fr', 'french': 'fr', 'français': 'fr', 'francais': 'fr', 
+            'france': 'fr', 'français de france': 'fr',
+            
+            # Spanish variations
+            'es': 'es', 'spanish': 'es', 'español': 'es', 'espanol': 'es',
+            'spain': 'es', 'españa': 'es', 'castilian': 'es',
+            
+            # Italian variations
+            'it': 'it', 'italian': 'it', 'italiano': 'it', 'italy': 'it', 'italia': 'it',
+            
+            # Norwegian variations
+            'no': 'no', 'norwegian': 'no', 'norsk': 'no', 'norway': 'no', 'norge': 'no',
+            
+            # Dutch variations
+            'nl': 'nl', 'dutch': 'nl', 'nederlands': 'nl', 'netherlands': 'nl', 'holland': 'nl',
+            
+            # Japanese variations
+            'ja': 'ja', 'japanese': 'ja', '日本語': 'ja', 'japan': 'ja', 'nihongo': 'ja',
+            
+            # Chinese variations
+            'zh': 'zh', 'chinese': 'zh', '中文': 'zh', 'china': 'zh',
+            'zh-cn': 'zh-cn', 'mandarin': 'zh-cn', 'simplified': 'zh-cn', 'mainland': 'zh-cn',
+            'zh-tw': 'zh-tw', 'traditional': 'zh-tw', 'taiwan': 'zh-tw', 'taiwanese': 'zh-tw',
+            
+            # Russian variations
+            'ru': 'ru', 'russian': 'ru', 'русский': 'ru', 'russia': 'ru', 'россия': 'ru',
+            
+            # Korean variations
+            'ko': 'ko', 'korean': 'ko', '한국어': 'ko', 'korea': 'ko', 'south korea': 'ko',
+        }
+    
+    def resolve_language_alias(self, language_input: str) -> str:
+        """
+        Resolve language alias to canonical language code.
+        
+        Args:
+            language_input: User input language (e.g., "German", "brasil", "pt-BR")
+            
+        Returns:
+            Canonical language code (e.g., "de", "pt-br")
+        """
+        # Normalize input: lowercase and strip whitespace
+        normalized = language_input.strip().lower()
+        
+        # Look up in aliases
+        canonical = self.language_aliases.get(normalized)
+        if canonical:
+            return canonical
+            
+        # If no alias found, return the original (for backward compatibility)
+        return normalized
     
     def set_available_characters(self, characters: List[str]):
         """
@@ -98,8 +167,10 @@ class CharacterParser:
         # Check if it's in language:character format
         match = self.LANGUAGE_CHARACTER_PATTERN.match(tag_content.strip())
         if match:
-            language = match.group(1).lower()
+            raw_language = match.group(1)
             character = match.group(2).strip()
+            # Resolve language alias to canonical form
+            language = self.resolve_language_alias(raw_language)
             # If character is empty (e.g., [fr:]), default to narrator
             if not character:
                 character = self.default_character
