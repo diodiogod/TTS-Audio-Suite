@@ -32,9 +32,14 @@ class LanguageModelMapper:
         """
         engine_mappings = self.mappings.get(self.engine_type, {})
         
-        # For base language (usually English), use the provided default model
+        # Check if we should use the default model for this language
+        # Only use default model if it's actually for the requested language
         if lang_code == 'en':
-            return default_model
+            # For English, always use English model regardless of default
+            if self.engine_type == 'f5tts':
+                return 'F5TTS_v1_Base'  # Use v1 for better quality
+            else:  # chatterbox
+                return 'English'
         
         # Check if language is supported
         if lang_code in engine_mappings:

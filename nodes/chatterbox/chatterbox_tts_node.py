@@ -617,17 +617,24 @@ Back to the main narrator voice for the conclusion.""",
                 def get_chatterbox_model_for_language(lang_code: str) -> str:
                     """Map language codes to ChatterBox model names"""
                     lang_model_map = {
-                        'en': inputs["language"],  # Use selected model for English (default)
+                        'en': 'English',          # English (always use English model)
                         'de': 'German',           # German
                         'es': 'Spanish',          # Spanish
                         'fr': 'French',           # French
                         'it': 'Italian',          # Italian
                         'pt': 'Portuguese',       # Portuguese
+                        'pt-br': 'Portuguese',    # Brazilian Portuguese (use Portuguese model)
+                        'pt-pt': 'Portuguese',    # European Portuguese (use Portuguese model)
                         'no': 'Norwegian',        # Norwegian
                         'nb': 'Norwegian',        # Norwegian Bokmål
                         'nn': 'Norwegian',        # Norwegian Nynorsk
                     }
-                    return lang_model_map.get(lang_code.lower(), inputs["language"])
+                    # For the main model language, use the selected model; for others, use language-specific models
+                    selected_lang = inputs["language"].lower()
+                    if lang_code.lower() == selected_lang:
+                        return inputs["language"]  # Use selected model for main language
+                    else:
+                        return lang_model_map.get(lang_code.lower(), inputs["language"])
                 
                 # Group segments by language with original order tracking
                 language_groups = {}
