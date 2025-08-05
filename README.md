@@ -254,12 +254,11 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
 - ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
 - 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
-- 🌍 **Language Switching** - NEW v3.4.0! Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
+- 🌍 **Language Switching** - Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
 - 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
 - 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
-- 📦 **Self-Contained** - Bundled ChatterBox for zero-installation-hassle experience
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
 
@@ -731,11 +730,6 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
    - **Exaggeration**: Emotion intensity (0.25-2.0)
    - **Temperature**: Randomness (0.05-5.0)
    - **CFG Weight**: Guidance strength (0.0-1.0)
-5. Configure chunking (optional):
-   - **Enable Chunking**: For long texts
-   - **Max Chars Per Chunk**: Chunk size (100-1000)
-   - **Combination Method**: How to join chunks
-   - **Silence Between Chunks**: Pause duration
 
 ### F5-TTS Voice Synthesis
 
@@ -784,7 +778,7 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 - Change to **2 passes** → returns cached iteration 2 instantly
 - Change to **4 passes** → resumes from cached 3, runs 4
 
-**💡 Pro Tip**: Start with 1 pass, then experiment with 2-5 passes to find the sweet spot for your audio. Each iteration progressively improves voice similarity!
+**💡 Pro Tip**: Start with 1 pass, then experiment with 2-5 passes to find the sweet spot for your audio. Each iteration can improves voice similarity!
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -882,14 +876,6 @@ Unlike many TTS systems:
 - Splits on commas when sentences are too long
 - Maintains natural speech patterns
 - Falls back to character limits only when necessary
-
-**Examples:**
-
-```
-Input: "This is a very long article about artificial intelligence and machine learning. It contains multiple sentences and complex punctuation, including lists, quotes, and technical terms. The enhanced chunking system will split this intelligently."
-
-Output: 3 well-formed chunks with natural boundaries
-```
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
