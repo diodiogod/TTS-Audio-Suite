@@ -1,13 +1,13 @@
 # Version and constants
-VERSION = "3.4.3"
+VERSION = "4.0.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
 
 """
-ComfyUI Custom Nodes for ChatterboxTTS - Voice Edition
-Enhanced with bundled ChatterBox support and improved chunking
-SUPPORTS: Bundled ChatterBox (recommended) + System ChatterBox (fallback)
+TTS Audio Suite - Universal multi-engine TTS extension for ComfyUI
+Unified architecture supporting ChatterBox, F5-TTS, and future engines like RVC
+Features modular engine adapters, character voice management, and comprehensive audio processing
 """
 
 import warnings
@@ -18,8 +18,7 @@ warnings.filterwarnings('ignore', message='.*requires authentication.*')
 import os
 import folder_paths
 
-# Import new node implementations
-# Use absolute imports to avoid relative import issues when loaded via importlib
+# Import unified node implementations
 import sys
 import os
 import importlib.util
@@ -40,141 +39,113 @@ def load_node_module(module_name, file_name):
     spec.loader.exec_module(module)
     return module
 
-# Load node modules
-tts_module = load_node_module("chatterbox_tts_node", "chatterbox/chatterbox_tts_node.py")
-vc_module = load_node_module("chatterbox_vc_node", "chatterbox/chatterbox_vc_node.py")
-audio_recorder_module = load_node_module("chatterbox_audio_recorder_node", "audio/recorder_node.py")
+# Load unified nodes
+print("🔧 Loading TTS Audio Suite unified architecture...")
 
-ChatterboxTTSNode = tts_module.ChatterboxTTSNode
-ChatterboxVCNode = vc_module.ChatterboxVCNode
-ChatterBoxVoiceCapture = audio_recorder_module.ChatterBoxVoiceCapture
-
-# Load F5-TTS nodes conditionally
+# Load engine nodes
 try:
-    f5tts_module = load_node_module("chatterbox_f5tts_node", "f5tts/f5tts_node.py")
-    F5TTSNode = f5tts_module.F5TTSNode
-    F5TTS_SUPPORT_AVAILABLE = True
-except (ImportError, FileNotFoundError, AttributeError):
-    F5TTS_SUPPORT_AVAILABLE = False
-    
-    # Create dummy F5-TTS node for compatibility
-    class F5TTSNode:
-        @classmethod
-        def INPUT_TYPES(cls):
-            return {"required": {"error": ("STRING", {"default": "F5-TTS support not available"})}}
-        
-        RETURN_TYPES = ("STRING",)
-        FUNCTION = "error"
-        CATEGORY = "F5-TTS Voice"
-        
-        def error(self, error):
-            raise ImportError("F5-TTS support not available - missing required modules")
+    chatterbox_engine_module = load_node_module("chatterbox_engine_node", "engines/chatterbox_engine_node.py")
+    ChatterBoxEngineNode = chatterbox_engine_module.ChatterBoxEngineNode
+    CHATTERBOX_ENGINE_AVAILABLE = True
+    print("✓ ChatterBox TTS Engine loaded")
+except Exception as e:
+    print(f"❌ ChatterBox Engine failed: {e}")
+    CHATTERBOX_ENGINE_AVAILABLE = False
 
-# Load F5-TTS SRT node conditionally
 try:
-    f5tts_srt_module = load_node_module("chatterbox_f5tts_srt_node", "f5tts/f5tts_srt_node.py")
-    F5TTSSRTNode = f5tts_srt_module.F5TTSSRTNode
-    F5TTS_SRT_SUPPORT_AVAILABLE = True
-except (ImportError, FileNotFoundError, AttributeError):
-    F5TTS_SRT_SUPPORT_AVAILABLE = False
-    
-    # Create dummy F5-TTS SRT node for compatibility
-    class F5TTSSRTNode:
-        @classmethod
-        def INPUT_TYPES(cls):
-            return {"required": {"error": ("STRING", {"default": "F5-TTS SRT support not available"})}}
-        
-        RETURN_TYPES = ("STRING",)
-        FUNCTION = "error"
-        CATEGORY = "F5-TTS Voice"
-        
-        def error(self, error):
-            raise ImportError("F5-TTS SRT support not available - missing required modules")
+    f5tts_engine_module = load_node_module("f5tts_engine_node", "engines/f5tts_engine_node.py")
+    F5TTSEngineNode = f5tts_engine_module.F5TTSEngineNode
+    F5TTS_ENGINE_AVAILABLE = True
+    print("✓ F5 TTS Engine loaded")
+except Exception as e:
+    print(f"❌ F5 TTS Engine failed: {e}")
+    F5TTS_ENGINE_AVAILABLE = False
 
-# Load F5-TTS Edit node conditionally
+# Load shared nodes
 try:
-    f5tts_edit_module = load_node_module("chatterbox_f5tts_edit_node", "f5tts/f5tts_edit_node.py")
-    F5TTSEditNode = f5tts_edit_module.F5TTSEditNode
-    F5TTS_EDIT_SUPPORT_AVAILABLE = True
-except (ImportError, FileNotFoundError, AttributeError):
-    F5TTS_EDIT_SUPPORT_AVAILABLE = False
-    
-    # Create dummy F5-TTS Edit node for compatibility
-    class F5TTSEditNode:
-        @classmethod
-        def INPUT_TYPES(cls):
-            return {"required": {"error": ("STRING", {"default": "F5-TTS Edit support not available"})}}
-        
-        RETURN_TYPES = ("STRING",)
-        FUNCTION = "error"
-        CATEGORY = "F5-TTS Voice"
-        
-        def error(self, error):
-            raise ImportError("F5-TTS Edit support not available - missing required modules")
+    character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
+    CharacterVoicesNode = character_voices_module.CharacterVoicesNode
+    CHARACTER_VOICES_AVAILABLE = True
+    print("✓ Character Voices node loaded")
+except Exception as e:
+    print(f"❌ Character Voices failed: {e}")
+    CHARACTER_VOICES_AVAILABLE = False
 
+# Load unified nodes
+try:
+    unified_text_module = load_node_module("unified_tts_text_node", "unified/tts_text_node.py")
+    UnifiedTTSTextNode = unified_text_module.UnifiedTTSTextNode
+    UNIFIED_TEXT_AVAILABLE = True
+    print("✓ Unified TTS Text node loaded")
+except Exception as e:
+    print(f"❌ Unified TTS Text failed: {e}")
+    UNIFIED_TEXT_AVAILABLE = False
 
-# Load Audio Analyzer node conditionally
+try:
+    unified_srt_module = load_node_module("unified_tts_srt_node", "unified/tts_srt_node.py")
+    UnifiedTTSSRTNode = unified_srt_module.UnifiedTTSSRTNode
+    UNIFIED_SRT_AVAILABLE = True
+    print("✓ Unified TTS SRT node loaded")
+except Exception as e:
+    print(f"❌ Unified TTS SRT failed: {e}")
+    UNIFIED_SRT_AVAILABLE = False
+
+try:
+    unified_vc_module = load_node_module("unified_voice_changer_node", "unified/voice_changer_node.py")
+    UnifiedVoiceChangerNode = unified_vc_module.UnifiedVoiceChangerNode
+    UNIFIED_VC_AVAILABLE = True
+    print("✓ Unified Voice Changer node loaded")
+except Exception as e:
+    print(f"❌ Unified Voice Changer failed: {e}")
+    UNIFIED_VC_AVAILABLE = False
+
+# Load legacy support nodes (Audio Analyzer, Voice Recorder) that don't need refactoring
+try:
+    audio_recorder_module = load_node_module("chatterbox_audio_recorder_node", "audio/recorder_node.py")
+    ChatterBoxVoiceCapture = audio_recorder_module.ChatterBoxVoiceCapture
+    VOICE_CAPTURE_AVAILABLE = True
+    print("✓ Voice Capture node loaded")
+except Exception as e:
+    print(f"❌ Voice Capture failed: {e}")
+    VOICE_CAPTURE_AVAILABLE = False
+
+# Load legacy audio analysis nodes (keep unchanged for compatibility)
 try:
     audio_analyzer_module = load_node_module("chatterbox_audio_analyzer_node", "audio/analyzer_node.py")
     AudioAnalyzerNode = audio_analyzer_module.AudioAnalyzerNode
-    AUDIO_ANALYZER_SUPPORT_AVAILABLE = True
-except (ImportError, FileNotFoundError, AttributeError):
-    AUDIO_ANALYZER_SUPPORT_AVAILABLE = False
-    
-    # Create dummy Audio Analyzer node for compatibility
-    class AudioAnalyzerNode:
-        @classmethod
-        def INPUT_TYPES(cls):
-            return {"required": {"error": ("STRING", {"default": "Audio Analyzer support not available"})}}
-        
-        RETURN_TYPES = ("STRING",)
-        FUNCTION = "error"
-        CATEGORY = "ChatterBox Audio"
-        
-        def error(self, error):
-            raise ImportError("Audio Analyzer support not available - missing required modules")
+    AUDIO_ANALYZER_AVAILABLE = True
+    print("✓ Audio Wave Analyzer loaded")
+except Exception as e:
+    print(f"❌ Audio Analyzer failed: {e}")
+    AUDIO_ANALYZER_AVAILABLE = False
 
-# Load Audio Analyzer Options node conditionally
 try:
     audio_analyzer_options_module = load_node_module("chatterbox_audio_analyzer_options_node", "audio/analyzer_options_node.py")
     AudioAnalyzerOptionsNode = audio_analyzer_options_module.AudioAnalyzerOptionsNode
-    AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = True
-except (ImportError, FileNotFoundError, AttributeError):
-    AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE = False
-    
-    # Create dummy Audio Analyzer Options node for compatibility
-    class AudioAnalyzerOptionsNode:
-        @classmethod
-        def INPUT_TYPES(cls):
-            return {"required": {"error": ("STRING", {"default": "Audio Analyzer Options support not available"})}}
-        
-        RETURN_TYPES = ("STRING",)
-        FUNCTION = "error"
-        CATEGORY = "ChatterBox Audio"
-        
-        def error(self, error):
-            raise ImportError("Audio Analyzer Options support not available - missing required modules")
+    AUDIO_ANALYZER_OPTIONS_AVAILABLE = True
+    print("✓ Audio Analyzer Options loaded")
+except Exception as e:
+    print(f"❌ Audio Analyzer Options failed: {e}")
+    AUDIO_ANALYZER_OPTIONS_AVAILABLE = False
 
-# Load F5-TTS Edit Options node conditionally
+# Load F5-TTS Edit nodes (keep for specialized editing functionality)
+try:
+    f5tts_edit_module = load_node_module("chatterbox_f5tts_edit_node", "f5tts/f5tts_edit_node.py")
+    F5TTSEditNode = f5tts_edit_module.F5TTSEditNode
+    F5TTS_EDIT_AVAILABLE = True
+    print("✓ F5-TTS Speech Editor loaded")
+except Exception as e:
+    print(f"❌ F5-TTS Edit failed: {e}")
+    F5TTS_EDIT_AVAILABLE = False
+
 try:
     f5tts_edit_options_module = load_node_module("chatterbox_f5tts_edit_options_node", "f5tts/f5tts_edit_options_node.py")
     F5TTSEditOptionsNode = f5tts_edit_options_module.F5TTSEditOptionsNode
-    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = True
-except (ImportError, FileNotFoundError, AttributeError):
-    F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE = False
-    
-    # Create dummy F5-TTS Edit Options node for compatibility
-    class F5TTSEditOptionsNode:
-        @classmethod
-        def INPUT_TYPES(cls):
-            return {"required": {"error": ("STRING", {"default": "F5-TTS Edit Options support not available"})}}
-        
-        RETURN_TYPES = ("STRING",)
-        FUNCTION = "error"
-        CATEGORY = "F5-TTS Voice"
-        
-        def error(self, error):
-            raise ImportError("F5-TTS Edit Options support not available - missing required modules")
+    F5TTS_EDIT_OPTIONS_AVAILABLE = True
+    print("✓ F5-TTS Edit Options loaded")
+except Exception as e:
+    print(f"❌ F5-TTS Edit Options failed: {e}")
+    F5TTS_EDIT_OPTIONS_AVAILABLE = False
 
 # Import foundation components for compatibility
 from utils.system.import_manager import import_manager
@@ -301,82 +272,93 @@ except Exception as e:
 
 # Legacy compatibility: Remove old large SRT implementation - it's now in the new node
 
-# Register nodes
-NODE_CLASS_MAPPINGS = {
-    "ChatterBoxVoiceTTSDiogod": ChatterboxTTSNode,
-    "ChatterBoxVoiceVCDiogod": ChatterboxVCNode,
-    "ChatterBoxVoiceCaptureDiogod": ChatterBoxVoiceCapture,
-}
+# Register unified nodes
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "ChatterBoxVoiceTTSDiogod": "🎤 ChatterBox Voice TTS (diogod)",
-    "ChatterBoxVoiceVCDiogod": "🔄 ChatterBox Voice Conversion (diogod)",
-    "ChatterBoxVoiceCaptureDiogod": "🎙️ ChatterBox Voice Capture (diogod)",
-}
+print("🔧 Registering TTS Audio Suite nodes...")
 
-# Add SRT node if available
-if SRT_SUPPORT_AVAILABLE:
-    NODE_CLASS_MAPPINGS["ChatterBoxSRTVoiceTTS"] = ChatterboxSRTTTSNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxSRTVoiceTTS"] = "📺 ChatterBox SRT Voice TTS"
+# Register engine nodes
+if CHATTERBOX_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxEngineNode"] = ChatterBoxEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxEngineNode"] = "⚙️ ChatterBox TTS Engine"
 
-# Add F5-TTS node if available
-if F5TTS_SUPPORT_AVAILABLE:
-    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSVoice"] = F5TTSNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSVoice"] = "🎤 F5-TTS Voice Generation"
+if F5TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["F5TTSEngineNode"] = F5TTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["F5TTSEngineNode"] = "⚙️ F5 TTS Engine"
 
-# Add F5-TTS SRT node if available
-if F5TTS_SRT_SUPPORT_AVAILABLE:
-    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSSRTVoice"] = F5TTSSRTNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSSRTVoice"] = "📺 F5-TTS SRT Voice Generation"
+# Register shared nodes
+if CHARACTER_VOICES_AVAILABLE:
+    NODE_CLASS_MAPPINGS["CharacterVoicesNode"] = CharacterVoicesNode
+    NODE_DISPLAY_NAME_MAPPINGS["CharacterVoicesNode"] = "🎭 Character Voices"
 
-# Add F5-TTS Edit node if available
-if F5TTS_EDIT_SUPPORT_AVAILABLE:
-    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "👄 F5-TTS Speech Editor"
+# Register unified nodes
+if UNIFIED_TEXT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedTTSTextNode"] = UnifiedTTSTextNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedTTSTextNode"] = "🎤 TTS Text"
 
+if UNIFIED_SRT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedTTSSRTNode"] = UnifiedTTSSRTNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedTTSSRTNode"] = "📺 TTS SRT"
 
-# Add Audio Analyzer node if available
-if AUDIO_ANALYZER_SUPPORT_AVAILABLE:
+if UNIFIED_VC_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedVoiceChangerNode"] = UnifiedVoiceChangerNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedVoiceChangerNode"] = "🔄 Voice Changer"
+
+# Register legacy support nodes
+if VOICE_CAPTURE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxVoiceCapture"] = ChatterBoxVoiceCapture
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxVoiceCapture"] = "🎙️ Voice Capture"
+
+if AUDIO_ANALYZER_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzer"] = AudioAnalyzerNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzer"] = "🌊 Audio Wave Analyzer"
 
-# Add Audio Analyzer Options node if available
-if AUDIO_ANALYZER_OPTIONS_SUPPORT_AVAILABLE:
+if AUDIO_ANALYZER_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = AudioAnalyzerOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🔧 Audio Wave Analyzer Options"
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxAudioAnalyzerOptions"] = "🔧 Audio Analyzer Options"
 
-# Add F5-TTS Edit Options node if available
-if F5TTS_EDIT_OPTIONS_SUPPORT_AVAILABLE:
+if F5TTS_EDIT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditVoice"] = F5TTSEditNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditVoice"] = "👄 F5-TTS Speech Editor"
+
+if F5TTS_EDIT_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditOptions"] = F5TTSEditOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditOptions"] = "🔧 F5-TTS Edit Options"
 
 # Print startup banner
 print(SEPARATOR)
-print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY}")
+print(f"🚀 TTS Audio Suite {VERSION_DISPLAY}")
+print("Universal multi-engine TTS extension for ComfyUI")
 
-# Check for local models
-model_paths = find_chatterbox_models()
-first_source = model_paths[0][0] if model_paths else None
-print(f"Using model source: {first_source}")
+# Show architecture status
+unified_count = sum([UNIFIED_TEXT_AVAILABLE, UNIFIED_SRT_AVAILABLE, UNIFIED_VC_AVAILABLE])
+engine_count = sum([CHATTERBOX_ENGINE_AVAILABLE, F5TTS_ENGINE_AVAILABLE])
+support_count = sum([CHARACTER_VOICES_AVAILABLE, VOICE_CAPTURE_AVAILABLE, AUDIO_ANALYZER_AVAILABLE, F5TTS_EDIT_AVAILABLE])
 
-if first_source == "bundled":
-    print("✓ Using bundled models")
-elif first_source == "comfyui":
-    print("✓ Using ComfyUI models")
-elif first_source == "huggingface":
-    print("⚠️ No local models found - will download from Hugging Face")
-    print("💡 Tip: First generation will download models (~1GB)")
-    print("   Models will be saved locally for future use")
-else:
-    print("⚠️ No local models found - will download from Hugging Face")
-    print("💡 Tip: First generation will download models (~1GB)")
-    print("   Models will be saved locally for future use")
+print(f"📊 Architecture Status:")
+print(f"   • Unified Nodes: {unified_count}/3 loaded")
+print(f"   • Engine Nodes: {engine_count}/2 loaded") 
+print(f"   • Support Nodes: {support_count} loaded")
+
+# Check for local models (legacy compatibility)
+try:
+    model_paths = find_chatterbox_models()
+    first_source = model_paths[0][0] if model_paths else None
+    if first_source == "bundled":
+        print("✓ Using bundled ChatterBox models")
+    elif first_source == "comfyui":
+        print("✓ Using ComfyUI ChatterBox models")
+    else:
+        print("⚠️ No local ChatterBox models found - will download from Hugging Face")
+except:
+    print("⚠️ ChatterBox model discovery not available")
 
 # Check for system dependency issues (only show warnings if problems detected)
 dependency_warnings = []
 
 # Check PortAudio availability for voice recording
-if hasattr(audio_recorder_module, 'SOUNDDEVICE_AVAILABLE') and not audio_recorder_module.SOUNDDEVICE_AVAILABLE:
+if VOICE_CAPTURE_AVAILABLE and hasattr(audio_recorder_module, 'SOUNDDEVICE_AVAILABLE') and not audio_recorder_module.SOUNDDEVICE_AVAILABLE:
     dependency_warnings.append("⚠️ PortAudio library not found - Voice recording disabled")
     dependency_warnings.append("   Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)")
 
@@ -386,10 +368,5 @@ if dependency_warnings:
     for warning in dependency_warnings:
         print(f"   {warning}")
 
+print(f"✅ TTS Audio Suite {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes")
 print(SEPARATOR)
-
-# Print final initialization with nodes list
-# print(f"🚀 ChatterBox Voice Extension {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
-# for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
-#     print(f"   • {node}")
-# print(SEPARATOR)
