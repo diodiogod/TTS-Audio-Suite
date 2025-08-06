@@ -87,8 +87,13 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             config = engine_data.get("config", {})
             
             if engine_type == "chatterbox":
-                # Import and create the original ChatterBox VC node
-                from nodes.chatterbox.chatterbox_vc_node import ChatterboxVCNode
+                # Import and create the original ChatterBox VC node using absolute import
+                chatterbox_vc_path = os.path.join(nodes_dir, "chatterbox", "chatterbox_vc_node.py")
+                chatterbox_vc_spec = importlib.util.spec_from_file_location("chatterbox_vc_module", chatterbox_vc_path)
+                chatterbox_vc_module = importlib.util.module_from_spec(chatterbox_vc_spec)
+                chatterbox_vc_spec.loader.exec_module(chatterbox_vc_module)
+                
+                ChatterboxVCNode = chatterbox_vc_module.ChatterboxVCNode
                 engine_instance = ChatterboxVCNode()
                 # Apply configuration
                 for key, value in config.items():
@@ -178,8 +183,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             traceback.print_exc()
             
             # Return empty audio and error info
-            empty_audio = AudioProcessingUtils.create_silence_tensor(1.0, 24000)
-            empty_comfy = AudioProcessingUtils.tensor_to_comfy_audio(empty_audio, 24000)
+            empty_audio = AudioProcessingUtils.create_silence(1.0, 24000)
+            empty_comfy = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             
             return (empty_comfy, error_msg)
 

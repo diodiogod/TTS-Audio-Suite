@@ -111,7 +111,7 @@ Back to the main narrator voice for the conclusion.""",
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("audio", "generation_info")
     FUNCTION = "generate_speech"
-    CATEGORY = "TTS Audio Suite/Unified"
+    CATEGORY = "TTS Audio Suite"
 
     def __init__(self):
         super().__init__()
@@ -135,8 +135,13 @@ Back to the main narrator voice for the conclusion.""",
             config = engine_data.get("config", {})
             
             if engine_type == "chatterbox":
-                # Import and create the original ChatterBox node
-                from nodes.chatterbox.chatterbox_tts_node import ChatterboxTTSNode
+                # Import and create the original ChatterBox node using absolute import
+                chatterbox_node_path = os.path.join(nodes_dir, "chatterbox", "chatterbox_tts_node.py")
+                chatterbox_spec = importlib.util.spec_from_file_location("chatterbox_tts_module", chatterbox_node_path)
+                chatterbox_module = importlib.util.module_from_spec(chatterbox_spec)
+                chatterbox_spec.loader.exec_module(chatterbox_module)
+                
+                ChatterboxTTSNode = chatterbox_module.ChatterboxTTSNode
                 engine_instance = ChatterboxTTSNode()
                 # Apply configuration
                 for key, value in config.items():
@@ -145,8 +150,13 @@ Back to the main narrator voice for the conclusion.""",
                 return engine_instance
                 
             elif engine_type == "f5tts":
-                # Import and create the original F5-TTS node
-                from nodes.f5tts.f5tts_node import F5TTSNode
+                # Import and create the original F5-TTS node using absolute import
+                f5tts_node_path = os.path.join(nodes_dir, "f5tts", "f5tts_node.py")
+                f5tts_spec = importlib.util.spec_from_file_location("f5tts_module", f5tts_node_path)
+                f5tts_module = importlib.util.module_from_spec(f5tts_spec)
+                f5tts_spec.loader.exec_module(f5tts_module)
+                
+                F5TTSNode = f5tts_module.F5TTSNode
                 engine_instance = F5TTSNode()
                 # Apply configuration
                 for key, value in config.items():
@@ -326,8 +336,8 @@ Back to the main narrator voice for the conclusion.""",
             traceback.print_exc()
             
             # Return empty audio and error info
-            empty_audio = AudioProcessingUtils.create_silence_tensor(1.0, 24000)
-            empty_comfy = AudioProcessingUtils.tensor_to_comfy_audio(empty_audio, 24000)
+            empty_audio = AudioProcessingUtils.create_silence(1.0, 24000)
+            empty_comfy = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             
             return (empty_comfy, error_msg)
 

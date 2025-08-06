@@ -129,7 +129,7 @@ Hello! This is unified SRT TTS with character switching.
     RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
     FUNCTION = "generate_srt_speech"
-    CATEGORY = "TTS Audio Suite/Unified"
+    CATEGORY = "TTS Audio Suite"
 
     def _create_proper_engine_node_instance(self, engine_data: Dict[str, Any]):
         """
@@ -147,8 +147,13 @@ Hello! This is unified SRT TTS with character switching.
             config = engine_data.get("config", {})
             
             if engine_type == "chatterbox":
-                # Import and create the original ChatterBox SRT node
-                from nodes.chatterbox.chatterbox_srt_node import ChatterboxSRTTTSNode
+                # Import and create the original ChatterBox SRT node using absolute import
+                chatterbox_srt_path = os.path.join(nodes_dir, "chatterbox", "chatterbox_srt_node.py")
+                chatterbox_srt_spec = importlib.util.spec_from_file_location("chatterbox_srt_module", chatterbox_srt_path)
+                chatterbox_srt_module = importlib.util.module_from_spec(chatterbox_srt_spec)
+                chatterbox_srt_spec.loader.exec_module(chatterbox_srt_module)
+                
+                ChatterboxSRTTTSNode = chatterbox_srt_module.ChatterboxSRTTTSNode
                 engine_instance = ChatterboxSRTTTSNode()
                 # Apply configuration
                 for key, value in config.items():
@@ -157,8 +162,13 @@ Hello! This is unified SRT TTS with character switching.
                 return engine_instance
                 
             elif engine_type == "f5tts":
-                # Import and create the original F5-TTS SRT node
-                from nodes.f5tts.f5tts_srt_node import F5TTSSRTNode
+                # Import and create the original F5-TTS SRT node using absolute import
+                f5tts_srt_path = os.path.join(nodes_dir, "f5tts", "f5tts_srt_node.py")
+                f5tts_srt_spec = importlib.util.spec_from_file_location("f5tts_srt_module", f5tts_srt_path)
+                f5tts_srt_module = importlib.util.module_from_spec(f5tts_srt_spec)
+                f5tts_srt_spec.loader.exec_module(f5tts_srt_module)
+                
+                F5TTSSRTNode = f5tts_srt_module.F5TTSSRTNode
                 engine_instance = F5TTSSRTNode()
                 # Apply configuration
                 for key, value in config.items():
@@ -342,8 +352,8 @@ Hello! This is unified SRT TTS with character switching.
             traceback.print_exc()
             
             # Return empty audio and error info (preserving original return structure)
-            empty_audio = AudioProcessingUtils.create_silence_tensor(1.0, 24000)
-            empty_comfy = AudioProcessingUtils.tensor_to_comfy_audio(empty_audio, 24000)
+            empty_audio = AudioProcessingUtils.create_silence(1.0, 24000)
+            empty_comfy = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             
             return (empty_comfy, error_msg, "Error: No timing report available", "Error: No adjusted SRT available")
 
