@@ -6,15 +6,15 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# ComfyUI ChatterBox SRT Voice (diogod) v3.4.3
+# TTS Audio Suite v4.0.0
 
-*This is a refactored node, originally created by [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice).*
+*Universal multi-engine TTS extension for ComfyUI - evolved from the original ChatterBox Voice project.*
 
 <div align="center">
-  <img src="images/AllNodesShowcase.png" alt="ComfyUI ChatterBox Voice Nodes Showcase" />
+  <img src="images/AllNodesShowcase.png" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
-An unofficial ComfyUI custom node integration for High-quality Text-to-Speech and Voice Conversion nodes for ComfyUI using ResembleAI's ChatterboxTTS with unlimited text length and with a node specially made for dealing with SRT timings.
+A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS and F5-TTS, with modular architecture designed for extensibility and future engine integrations like RVC.
 
 <details>
 <summary><h2>📋 Table of Contents</h2></summary>
