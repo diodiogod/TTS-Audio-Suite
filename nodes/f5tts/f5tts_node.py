@@ -340,6 +340,9 @@ Back to the main narrator voice for the conclusion.""",
             available_chars = get_available_characters()
             character_parser.set_available_characters(list(available_chars))
             
+            # Set engine-aware default language to prevent unnecessary model switching
+            character_parser.set_engine_aware_default_language(inputs["model"], "f5tts")
+            
             # Parse character segments from text with language awareness
             # NOTE: We parse characters and languages from original text, then handle pause tags within each segment
             character_segments_with_lang = character_parser.split_by_character_with_language(inputs["text"])
