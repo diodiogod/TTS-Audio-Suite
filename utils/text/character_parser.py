@@ -213,6 +213,62 @@ class CharacterParser:
         
         return self.default_language
     
+    def set_engine_aware_default_language(self, engine_model: str, engine_type: str):
+        """
+        Set default language based on engine model to prevent unnecessary model switching.
+        
+        Args:
+            engine_model: Engine's configured model name
+            engine_type: Engine type ("f5tts" or "chatterbox")
+        """
+        inferred_language = self._infer_language_from_engine_model(engine_model, engine_type)
+        if inferred_language:
+            self.default_language = inferred_language
+            # print(f"🔧 Character Parser: Default language set to '{inferred_language}' based on {engine_type} model '{engine_model}'")
+    
+    def _infer_language_from_engine_model(self, model_name: str, engine_type: str) -> Optional[str]:
+        """
+        Infer language code from engine model name.
+        
+        Args:
+            model_name: Model name (e.g., "F5-PT-BR", "F5TTS_Base")
+            engine_type: Engine type ("f5tts" or "chatterbox")
+            
+        Returns:
+            Inferred language code or None if can't infer
+        """
+        if engine_type == "f5tts":
+            # F5-TTS model to language mapping
+            model_lower = model_name.lower()
+            if any(x in model_lower for x in ['pt-br', 'ptbr', 'portuguese', 'brasil']):
+                return 'pt-br'
+            elif 'f5-de' in model_lower or 'german' in model_lower:
+                return 'de'
+            elif 'f5-es' in model_lower or 'spanish' in model_lower:
+                return 'es'
+            elif 'f5-fr' in model_lower or 'french' in model_lower:
+                return 'fr'
+            elif 'f5-it' in model_lower or 'italian' in model_lower:
+                return 'it'
+            elif 'f5-jp' in model_lower or 'japanese' in model_lower:
+                return 'jp'
+            elif 'f5-th' in model_lower or 'thai' in model_lower:
+                return 'th'
+            elif any(x in model_lower for x in ['f5tts_base', 'f5tts_v1_base', 'e2tts_base']):
+                return 'en'  # F5-TTS base models are English
+            
+        elif engine_type == "chatterbox":
+            # ChatterBox model to language mapping  
+            model_lower = model_name.lower()
+            if 'german' in model_lower:
+                return 'de'
+            elif 'norwegian' in model_lower:
+                return 'no'
+            else:
+                return 'en'  # ChatterBox defaults to English
+                
+        return None  # Can't infer language
+    
     def normalize_character_name(self, character_name: str) -> str:
         """
         Normalize character name and apply alias resolution and fallback if needed.

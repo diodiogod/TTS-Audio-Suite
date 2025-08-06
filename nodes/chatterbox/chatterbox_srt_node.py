@@ -406,6 +406,9 @@ The audio will match these exact timings.""",
             available_chars = get_available_characters()
             character_parser.set_available_characters(list(available_chars))
             
+            # Set engine-aware default language to prevent unnecessary model switching
+            character_parser.set_engine_aware_default_language(language, "chatterbox")
+            
             # SMART OPTIMIZATION: Group subtitles by language to minimize model switching
             subtitle_language_groups = {}
             all_subtitle_segments = []
