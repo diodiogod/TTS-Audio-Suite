@@ -208,17 +208,83 @@ class MultilingualEngine:
     
     def _analyze_cache_coverage(self, language_groups: Dict, character_mapping: Dict, 
                                engine_adapter, **params) -> Dict[str, Dict[str, Any]]:
-        """Analyze cache coverage for each language group."""
+        """Analyze cache coverage for each language group to optimize model loading."""
         cache_info = {}
         
+        # Only check cache if caching is enabled
+        enable_cache = params.get("enable_audio_cache", True)
+        if not enable_cache:
+            for lang_code, lang_segments in language_groups.items():
+                cache_info[lang_code] = {
+                    "all_cached": False,
+                    "segments_count": len(lang_segments)
+                }
+            return cache_info
+        
         for lang_code, lang_segments in language_groups.items():
-            # For now, assume no caching analysis (can be enhanced later)
+            cached_segments = 0
+            total_segments = len(lang_segments)
+            
+            for original_idx, character, segment_text, segment_lang in lang_segments:
+                # Check if this specific segment is cached
+                if self._is_segment_cached(character, segment_text, segment_lang, character_mapping, **params):
+                    cached_segments += 1
+            
+            all_cached = cached_segments == total_segments
             cache_info[lang_code] = {
-                "all_cached": False,
-                "segments_count": len(lang_segments)
+                "all_cached": all_cached,
+                "cached_segments": cached_segments,
+                "segments_count": total_segments
             }
+            
+            if all_cached:
+                print(f"💾 Cache optimization: All {total_segments} segments in '{lang_code}' are cached")
         
         return cache_info
+    
+    def _is_segment_cached(self, character: str, text: str, language: str, character_mapping: Dict, **params) -> bool:
+        """Check if a specific segment is cached."""
+        try:
+            # Import cache function
+            from utils.audio.cache import create_cache_function
+            
+            # Get character voice information
+            if self.engine_type == "f5tts":
+                char_audio, char_text = character_mapping.get(character, (None, None))
+                if not char_audio or not char_text:
+                    char_audio = params.get("main_audio_reference")
+                    char_text = params.get("main_text_reference", "")
+                audio_component = char_audio or "main_reference"
+                ref_text_component = char_text or ""
+            else:  # chatterbox
+                char_audio_tuple = character_mapping.get(character, (None, None))
+                char_audio = char_audio_tuple[0] if char_audio_tuple[0] else params.get("main_audio_reference")
+                audio_component = char_audio or "main_reference"
+                ref_text_component = ""
+            
+            # Create cache function to check if segment exists
+            cache_fn = create_cache_function(
+                text_content=text,
+                audio_component=str(audio_component),
+                ref_text_component=ref_text_component,
+                character=character,
+                language=language,
+                model_name=params.get("model", "default"),
+                temperature=params.get("temperature", 0.8),
+                speed=params.get("speed", 1.0) if self.engine_type == "f5tts" else None,
+                nfe_step=params.get("nfe_step", 32) if self.engine_type == "f5tts" else None,
+                cfg_strength=params.get("cfg_strength", 2.0) if self.engine_type == "f5tts" else None,
+                exaggeration=params.get("exaggeration", 0.5) if self.engine_type == "chatterbox" else None,
+                cfg_weight=params.get("cfg_weight", 0.5) if self.engine_type == "chatterbox" else None
+            )
+            
+            # Check cache - if it returns data, segment is cached
+            cached_data = cache_fn(text, audio_result=None)
+            return cached_data is not None
+            
+        except Exception as e:
+            # If cache checking fails, assume not cached
+            return False
     
     def _get_audio_duration(self, audio_tensor: torch.Tensor) -> float:
         """Calculate audio duration in seconds."""
