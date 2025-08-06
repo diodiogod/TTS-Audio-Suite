@@ -131,10 +131,15 @@ Hello! This is unified SRT TTS with character switching.
     FUNCTION = "generate_srt_speech"
     CATEGORY = "TTS Audio Suite"
 
+    def __init__(self):
+        super().__init__()
+        # Cache engine instances to prevent model reloading
+        self._cached_engine_instances = {}
+
     def _create_proper_engine_node_instance(self, engine_data: Dict[str, Any]):
         """
         Create a proper engine SRT node instance that has all the needed functionality.
-        This preserves all existing SRT functionality by creating instances of the original SRT nodes.
+        Uses caching to reuse instances and preserve model state across segments.
         
         Args:
             engine_data: Engine configuration from TTS_engine input
@@ -145,6 +150,17 @@ Hello! This is unified SRT TTS with character switching.
         try:
             engine_type = engine_data.get("engine_type")
             config = engine_data.get("config", {})
+            
+            # Create cache key based on engine type and stable config
+            cache_key = f"{engine_type}_{hashlib.md5(str(sorted(config.items())).encode()).hexdigest()[:8]}"
+            
+            # Check if we have a cached instance with the same configuration
+            if cache_key in self._cached_engine_instances:
+                cached_instance = self._cached_engine_instances[cache_key]
+                print(f"🔄 Reusing cached {engine_type} SRT engine instance (preserves model state)")
+                return cached_instance
+            
+            print(f"🔧 Creating new {engine_type} SRT engine instance")
             
             if engine_type == "chatterbox":
                 # Import and create the original ChatterBox SRT node using absolute import
@@ -159,6 +175,9 @@ Hello! This is unified SRT TTS with character switching.
                 for key, value in config.items():
                     if hasattr(engine_instance, key):
                         setattr(engine_instance, key, value)
+                
+                # Cache the instance
+                self._cached_engine_instances[cache_key] = engine_instance
                 return engine_instance
                 
             elif engine_type == "f5tts":
@@ -174,6 +193,9 @@ Hello! This is unified SRT TTS with character switching.
                 for key, value in config.items():
                     if hasattr(engine_instance, key):
                         setattr(engine_instance, key, value)
+                
+                # Cache the instance
+                self._cached_engine_instances[cache_key] = engine_instance
                 return engine_instance
                 
             else:
