@@ -69,12 +69,17 @@ class UnifiedVoiceChangerNode(BaseVCNode):
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("converted_audio", "conversion_info")
     FUNCTION = "convert_voice"
-    CATEGORY = "TTS Audio Suite/Unified"
+    CATEGORY = "TTS Audio Suite"
+
+    def __init__(self):
+        super().__init__()
+        # Cache engine instances to prevent model reloading
+        self._cached_engine_instances = {}
 
     def _create_proper_engine_node_instance(self, engine_data: Dict[str, Any]):
         """
         Create a proper engine VC node instance that has all the needed functionality.
-        This preserves all existing VC functionality by creating instances of the original VC nodes.
+        Uses caching to reuse instances and preserve model state across conversions.
         
         Args:
             engine_data: Engine configuration from TTS_engine input
@@ -86,7 +91,18 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             engine_type = engine_data.get("engine_type")
             config = engine_data.get("config", {})
             
+            # Create cache key based on engine type and stable config
+            cache_key = f"{engine_type}_{hashlib.md5(str(sorted(config.items())).encode()).hexdigest()[:8]}"
+            
+            # Check if we have a cached instance with the same configuration
+            if cache_key in self._cached_engine_instances:
+                cached_instance = self._cached_engine_instances[cache_key]
+                print(f"🔄 Reusing cached {engine_type} VC engine instance (preserves model state)")
+                return cached_instance
+            
             if engine_type == "chatterbox":
+                print(f"🔧 Creating new {engine_type} VC engine instance")
+                
                 # Import and create the original ChatterBox VC node using absolute import
                 chatterbox_vc_path = os.path.join(nodes_dir, "chatterbox", "chatterbox_vc_node.py")
                 chatterbox_vc_spec = importlib.util.spec_from_file_location("chatterbox_vc_module", chatterbox_vc_path)
@@ -99,6 +115,9 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 for key, value in config.items():
                     if hasattr(engine_instance, key):
                         setattr(engine_instance, key, value)
+                
+                # Cache the instance
+                self._cached_engine_instances[cache_key] = engine_instance
                 return engine_instance
                 
             elif engine_type == "f5tts":
