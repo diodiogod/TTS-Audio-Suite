@@ -35,9 +35,14 @@ class LanguageModelMapper:
         # Check if we should use the default model for this language
         # Only use default model if it's actually for the requested language
         if lang_code == 'en':
-            # For English, always use English model regardless of default
+            # For English, prefer the default model if it's an English model
             if self.engine_type == 'f5tts':
-                return 'F5TTS_v1_Base'  # Use v1 for better quality
+                # Check if default model is already an English F5-TTS model
+                english_models = ['F5TTS_Base', 'F5TTS_v1_Base', 'E2TTS_Base']
+                if default_model in english_models:
+                    return default_model  # Use engine's configured model
+                else:
+                    return 'F5TTS_v1_Base'  # Use v1 for better quality as fallback
             else:  # chatterbox
                 return 'English'
         
