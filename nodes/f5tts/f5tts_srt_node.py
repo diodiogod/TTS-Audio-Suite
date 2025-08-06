@@ -408,12 +408,10 @@ Hello! This is F5-TTS SRT with character switching.
                         subtitle_language_groups[single_lang] = []
                     subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
             
-            # SMART INITIALIZATION: Load the first language model we'll actually need
+            # NOTE: Model loading is now handled by the multilingual engine for complex subtitles
+            # Only load model for simple single-language subtitles that don't use multilingual engine
             first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
-            from utils.models.language_mapper import get_model_for_language
-            required_model = get_model_for_language("f5tts", first_language_code, model)
-            print(f"🚀 SRT: Smart initialization - loading {required_model} model for first language '{first_language_code}'")
-            self.load_f5tts_model(required_model, device)
+            # print(f"🚀 SRT: Processing languages: {sorted(subtitle_language_groups.keys())}")
             
             # Generate audio segments using smart language grouping
             audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order
@@ -426,14 +424,22 @@ Hello! This is F5-TTS SRT with character switching.
                 
                 print(f"📋 Processing {len(lang_subtitles)} F5-TTS SRT subtitle(s) in '{lang_code}' language group...")
                 
-                # Check if we need to switch models for this language group
+                # Check if any subtitles in this group use multilingual engine
+                has_multilingual_subtitles = any(subtitle_type in ['multilingual', 'multicharacter'] 
+                                                for _, _, subtitle_type, _ in lang_subtitles)
+                
                 required_model = get_model_for_language("f5tts", lang_code, model)
-                current_model = getattr(self, 'current_model_name', None)
-                if current_model != required_model:
-                    print(f"🎯 SRT: Switching to {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}'")
-                    self.load_f5tts_model(required_model, device)
+                
+                if has_multilingual_subtitles:
+                    print(f"📋 SRT: Processing {len(lang_subtitles)} subtitle(s) in '{lang_code}' (multilingual engine handles model loading)")
                 else:
-                    print(f"✅ SRT: Using {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
+                    # Only load model for simple subtitles that don't use multilingual engine
+                    current_model = getattr(self, 'current_model_name', None)
+                    if current_model != required_model:
+                        print(f"🎯 SRT: Loading {required_model} model for {len(lang_subtitles)} simple subtitle(s) in '{lang_code}'")
+                        self.load_f5tts_model(required_model, device)
+                    else:
+                        print(f"✅ SRT: Using {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
                 
                 # Process each subtitle in this language group
                 for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
