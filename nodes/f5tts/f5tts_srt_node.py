@@ -428,6 +428,7 @@ Hello! This is F5-TTS SRT with character switching.
                 has_multilingual_subtitles = any(subtitle_type in ['multilingual', 'multicharacter'] 
                                                 for _, _, subtitle_type, _ in lang_subtitles)
                 
+                from utils.models.language_mapper import get_model_for_language
                 required_model = get_model_for_language("f5tts", lang_code, model)
                 
                 if has_multilingual_subtitles:
