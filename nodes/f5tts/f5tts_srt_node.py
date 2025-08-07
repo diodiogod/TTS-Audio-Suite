@@ -369,75 +369,214 @@ Hello! This is F5-TTS SRT with character switching.
             # Set engine-aware default language to prevent unnecessary model switching
             character_parser.set_engine_aware_default_language(model, "f5tts")
             
-            # SMART OPTIMIZATION: Group subtitles by language to minimize model switching
-            subtitle_language_groups = {}
-            all_subtitle_segments = []
+            # SMART OPTIMIZATION: Group individual character segments by language to minimize model switching
+            segment_language_groups = {}
+            all_character_segments = []
             
-            # First pass: analyze all subtitles and group by language
+            # First pass: extract ALL character segments from all subtitles and group by language
             for i, subtitle in enumerate(subtitles):
                 if not subtitle.text.strip():
                     # Empty subtitle - will be handled separately
-                    all_subtitle_segments.append((i, subtitle, 'empty', None, None))
+                    all_character_segments.append((i, None, subtitle, 'empty', None, None, None))
                     continue
                 
                 # Parse character segments with language awareness
                 character_segments_with_lang = character_parser.split_by_character_with_language(subtitle.text)
                 
-                # Check if we have character switching or language switching
-                characters = list(set(char for char, _, _ in character_segments_with_lang))
-                languages = list(set(lang for _, _, lang in character_segments_with_lang))
-                has_multiple_characters_in_subtitle = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
-                has_multiple_languages_in_subtitle = len(languages) > 1
-                
-                if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle:
-                    # Complex subtitle - group by dominant language or mark as multilingual
-                    primary_lang = languages[0] if languages else 'en'
-                    subtitle_type = 'multilingual' if has_multiple_languages_in_subtitle else 'multicharacter'
-                    all_subtitle_segments.append((i, subtitle, subtitle_type, primary_lang, character_segments_with_lang))
+                # Process each individual character segment separately
+                for seg_idx, (character, text, language) in enumerate(character_segments_with_lang):
+                    segment_info = (i, seg_idx, subtitle, 'character_segment', character, text, language)
+                    all_character_segments.append(segment_info)
                     
-                    # Add to language groups for smart processing
-                    if primary_lang not in subtitle_language_groups:
-                        subtitle_language_groups[primary_lang] = []
-                    subtitle_language_groups[primary_lang].append((i, subtitle, subtitle_type, character_segments_with_lang))
-                else:
-                    # Simple subtitle - group by language
-                    single_char, single_text, single_lang = character_segments_with_lang[0]
-                    all_subtitle_segments.append((i, subtitle, 'simple', single_lang, character_segments_with_lang))
-                    
-                    if single_lang not in subtitle_language_groups:
-                        subtitle_language_groups[single_lang] = []
-                    subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
+                    # Group this individual segment by its language
+                    if language not in segment_language_groups:
+                        segment_language_groups[language] = []
+                    segment_language_groups[language].append(segment_info)
             
-            # NOTE: Model loading is now handled by the multilingual engine for complex subtitles
-            # Only load model for simple single-language subtitles that don't use multilingual engine
-            first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
-            # print(f"🚀 SRT: Processing languages: {sorted(subtitle_language_groups.keys())}")
-            
-            # Generate audio segments using smart language grouping
-            audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order
+            # Generate audio segments using smart segment-level language grouping
+            print(f"🚀 SRT: Processing languages: {sorted(segment_language_groups.keys())}")
+            audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order  
             natural_durations = [0.0] * len(subtitles)
-            any_segment_cached = False
             
-            # Process each language group
-            for lang_code in sorted(subtitle_language_groups.keys()):
-                lang_subtitles = subtitle_language_groups[lang_code]
+            # Track generated segment audio by (subtitle_idx, segment_idx)
+            generated_segment_audio = {}
+            
+            # Process each language group (now containing individual character segments)
+            for lang_code in sorted(segment_language_groups.keys()):
+                lang_segments = segment_language_groups[lang_code]
                 
-                print(f"📋 Processing {len(lang_subtitles)} F5-TTS SRT subtitle(s) in '{lang_code}' language group...")
+                # Skip empty segments
+                if lang_code == 'empty':
+                    for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
+                        # Handle empty text by creating silence
+                        natural_duration = subtitle.duration
+                        wav = self.AudioTimingUtils.create_silence(
+                            duration_seconds=natural_duration,
+                            sample_rate=self.f5tts_sample_rate,
+                            channels=1,
+                            device=self.device
+                        )
+                        print(f"🤫 F5-TTS Segment {subtitle_idx+1} (Seq {subtitle.sequence}): Empty text, generating {natural_duration:.2f}s silence.")
+                        generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
+                    continue
                 
-                # Check if any subtitles in this group use multilingual engine
-                has_multilingual_subtitles = any(subtitle_type in ['multilingual', 'multicharacter'] 
-                                                for _, _, subtitle_type, _ in lang_subtitles)
+                print(f"📋 Processing {len(lang_segments)} F5-TTS character segment(s) in '{lang_code}' language group...")
                 
+                # Load model for this language group
                 from utils.models.language_mapper import get_model_for_language
                 required_model = get_model_for_language("f5tts", lang_code, model)
                 
-                # Load model once per language group (for both simple and multilingual subtitles)
                 current_model = getattr(self, 'current_model_name', None)
                 if current_model != required_model:
-                    print(f"🎯 SRT: Loading {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}'")
+                    print(f"🎯 SRT: Loading {required_model} model for {len(lang_segments)} segment(s) in '{lang_code}' language group")
                     self.load_f5tts_model(required_model, device)
                 else:
-                    print(f"✅ SRT: Using {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
+                    print(f"✅ SRT: Using {required_model} model for {len(lang_segments)} segment(s) in '{lang_code}' (already loaded)")
+                
+                # Process each character segment in this language group
+                for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
+                    # Check for interruption
+                    self.check_interruption(f"F5-TTS character segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence})")
+                    
+                    # Show generation message
+                    if character == "narrator":
+                        if language != 'en':
+                            print(f"🎤 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence}) in {language}...")
+                        else:
+                            print(f"🎤 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence})...")
+                    else:
+                        if language != 'en':
+                            print(f"🎭 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} using '{character}' in {language}")
+                        else:
+                            print(f"🎭 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} using '{character}'")
+                    
+                    # Get character voice or use main reference
+                    from utils.voice.discovery import get_character_mapping
+                    character_mapping = get_character_mapping([character], engine_type="f5tts")
+                    char_audio, char_text = character_mapping.get(character, (None, None))
+                    if not char_audio or not char_text:
+                        char_audio = audio_prompt
+                        char_text = validated_ref_text
+                    
+                    # Validate and clamp nfe_step to prevent ODE solver issues
+                    safe_nfe_step = max(1, min(nfe_step, 71))
+                    if safe_nfe_step != nfe_step:
+                        print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
+                    
+                    # Generate audio for this character segment
+                    wav = self.generate_f5tts_with_pause_tags(
+                        text=text,
+                        ref_audio_path=char_audio,
+                        ref_text=char_text,
+                        enable_pause_tags=True,
+                        character=character,
+                        temperature=temperature,
+                        speed=speed,
+                        target_rms=target_rms,
+                        cross_fade_duration=cross_fade_duration,
+                        nfe_step=safe_nfe_step,
+                        cfg_strength=cfg_strength,
+                        seed=seed,
+                        enable_cache=enable_audio_cache,
+                        cache_fn=None  # Use standard caching
+                    )
+                    
+                    # Calculate duration and store
+                    natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
+                    generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
+            
+            # Reassemble character segments back into complete subtitles
+            print(f"🔗 Assembling {len(generated_segment_audio)} character segments back into {len(subtitles)} subtitles...")
+            for subtitle_idx in range(len(subtitles)):
+                subtitle_segments = []
+                
+                # Collect all segments for this subtitle in order
+                seg_idx = 0
+                while (subtitle_idx, seg_idx) in generated_segment_audio:
+                    wav, duration = generated_segment_audio[(subtitle_idx, seg_idx)]
+                    subtitle_segments.append(wav)
+                    seg_idx += 1
+                
+                if subtitle_segments:
+                    # Concatenate all character segments for this subtitle
+                    if len(subtitle_segments) == 1:
+                        audio_segments[subtitle_idx] = subtitle_segments[0]
+                    else:
+                        # Concatenate multiple character segments with crossfade
+                        audio_segments[subtitle_idx] = self.AudioTimingUtils.concatenate_tensors_with_crossfade(
+                            subtitle_segments, cross_fade_duration, self.f5tts_sample_rate
+                        )
+                    
+                    # Calculate total duration for this subtitle
+                    natural_durations[subtitle_idx] = self.AudioTimingUtils.get_audio_duration(
+                        audio_segments[subtitle_idx], self.f5tts_sample_rate
+                    )
+            
+            # Calculate timing adjustments
+            target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
+            adjustments = self.calculate_timing_adjustments(natural_durations, target_timings)
+            
+            # Add sequence numbers to adjustments
+            for i, (adj, subtitle) in enumerate(zip(adjustments, subtitles)):
+                adj['sequence'] = subtitle.sequence
+            
+            # Assemble final audio based on timing mode
+            if current_timing_mode == "stretch_to_fit":
+                # Use time stretching to match exact timing
+                assembler = self.TimedAudioAssembler(self.f5tts_sample_rate)
+                final_audio = assembler.assemble_timed_audio(
+                    audio_segments, target_timings, fade_duration=fade_for_StretchToFit
+                )
+            elif current_timing_mode == "pad_with_silence":
+                # Add silence to match timing without stretching
+                final_audio = self._assemble_audio_with_overlaps(audio_segments, subtitles, self.f5tts_sample_rate)
+            elif current_timing_mode == "concatenate":
+                # Concatenate audio naturally and recalculate SRT timings using modular approach
+                from utils.timing.engine import TimingEngine
+                from utils.timing.assembly import AudioAssemblyEngine
+                
+                timing_engine = TimingEngine(self.f5tts_sample_rate)
+                assembler = AudioAssemblyEngine(self.f5tts_sample_rate)
+                
+                # Calculate new timings for concatenation
+                adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
+                
+                # Assemble audio with optional crossfading
+                final_audio = assembler.assemble_concatenation(audio_segments, fade_for_StretchToFit)
+            else:  # smart_natural
+                # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
+                from utils.timing.engine import TimingEngine
+                from utils.timing.assembly import AudioAssemblyEngine
+                
+                timing_engine = TimingEngine(self.f5tts_sample_rate)
+                assembler = AudioAssemblyEngine(self.f5tts_sample_rate)
+                
+                # Calculate smart natural adjustments within tolerance
+                adjustments = timing_engine.calculate_smart_natural_adjustments(
+                    audio_segments, subtitles, timing_tolerance, max_stretch_ratio, min_stretch_ratio
+                )
+                
+                # Assemble with smart natural timing
+                final_audio = assembler.assemble_smart_natural(
+                    audio_segments, subtitles, adjustments, fade_for_StretchToFit
+                )
+            
+            # Log timing information if mode was switched due to overlaps
+            if mode_switched:
+                print(f"⚠️ F5-TTS SRT: Mode switched from smart_natural to {current_timing_mode} due to overlapping subtitles")
+                
+            return final_audio, adjustments
+                
+                def ensure_model_loaded():
+                    nonlocal model_loaded_for_group
+                    if not model_loaded_for_group:
+                        current_model = getattr(self, 'current_model_name', None)
+                        if current_model != required_model:
+                            print(f"🎯 SRT: Loading {required_model} model for generation in '{lang_code}' language group")
+                            self.load_f5tts_model(required_model, device)
+                        else:
+                            print(f"✅ SRT: Using {required_model} model for generation in '{lang_code}' (already loaded)")
+                        model_loaded_for_group = True
                 
                 # Process each subtitle in this language group
                 for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
@@ -459,13 +598,21 @@ Hello! This is F5-TTS SRT with character switching.
                         if safe_nfe_step != nfe_step:
                             print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
                         
-                        # Process character switching within this subtitle using already-loaded model
-                        wav = self.generate_f5tts_with_pause_tags(
+                        # Initialize multilingual engine if needed
+                        if self.multilingual_engine is None:
+                            from utils.voice.multilingual_engine import MultilingualEngine
+                            from engines.adapters.f5tts_adapter import F5TTSEngineAdapter
+                            self.multilingual_engine = MultilingualEngine("f5tts")
+                            self.f5tts_adapter = F5TTSEngineAdapter(self)
+                        
+                        # Use modular multilingual engine for character/language switching
+                        result = self.multilingual_engine.process_multilingual_text(
                             text=subtitle.text,
-                            ref_audio_path=audio_prompt,
-                            ref_text=validated_ref_text,
-                            enable_pause_tags=True,
-                            character="multilingual_subtitle",
+                            engine_adapter=self.f5tts_adapter,
+                            model=required_model,
+                            device=device,
+                            main_audio_reference=audio_prompt,
+                            main_text_reference=validated_ref_text,
                             temperature=temperature,
                             speed=speed,
                             target_rms=target_rms,
@@ -473,9 +620,10 @@ Hello! This is F5-TTS SRT with character switching.
                             nfe_step=safe_nfe_step,
                             cfg_strength=cfg_strength,
                             seed=seed,
-                            enable_cache=enable_audio_cache,
-                            cache_fn=None  # Let internal caching handle this
+                            enable_audio_cache=enable_audio_cache
                         )
+                        
+                        wav = result.audio
                         
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                         
@@ -514,23 +662,33 @@ Hello! This is F5-TTS SRT with character switching.
                                     char_duration = self.AudioTimingUtils.get_audio_duration(audio_result, self.f5tts_sample_rate)
                                     self._cache_segment_audio(cache_key, audio_result, char_duration)
                         
-                        # Generate new audio with pause tag support (includes internal caching)
-                        wav = self.generate_f5tts_with_pause_tags(
-                            text=single_text,
-                            ref_audio_path=audio_prompt,
-                            ref_text=validated_ref_text,
-                            enable_pause_tags=True,
-                            character="narrator",
-                            seed=seed,
-                            enable_cache=enable_audio_cache,
-                            cache_fn=narrator_cache_fn,
-                            temperature=temperature,
-                            speed=speed,
-                            target_rms=target_rms,
-                            cross_fade_duration=cross_fade_duration,
-                            nfe_step=safe_nfe_step,
-                            cfg_strength=cfg_strength
-                        )
+                        # Check cache first before loading model - only for simple single-character subtitles
+                        cached_audio = narrator_cache_fn(single_text) if enable_audio_cache else None
+                        if cached_audio is not None:
+                            # Cache hit - no model loading needed
+                            wav = cached_audio
+                            print(f"💾 F5-TTS SRT Segment {i+1}: Cache hit, skipping model loading")
+                        else:
+                            # Cache miss - need to generate, so ensure model is loaded
+                            ensure_model_loaded()
+                            
+                            # Generate new audio with pause tag support (includes internal caching)
+                            wav = self.generate_f5tts_with_pause_tags(
+                                text=single_text,
+                                ref_audio_path=audio_prompt,
+                                ref_text=validated_ref_text,
+                                enable_pause_tags=True,
+                                character="narrator",
+                                seed=seed,
+                                enable_cache=enable_audio_cache,
+                                cache_fn=narrator_cache_fn,
+                                temperature=temperature,
+                                speed=speed,
+                                target_rms=target_rms,
+                                cross_fade_duration=cross_fade_duration,
+                                nfe_step=safe_nfe_step,
+                                cfg_strength=cfg_strength
+                            )
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                     
                     # Store results in correct position
