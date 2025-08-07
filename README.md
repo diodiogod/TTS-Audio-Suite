@@ -267,7 +267,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 ## 🚀 Quick Start
 
 ### Option 1: ComfyUI Manager (Recommended)
-Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles dependencies automatically.
+Use ComfyUI Manager to install "TTS Audio Suite" - it handles dependencies automatically.
 
 ### Option 2: Manual Installation
 
@@ -277,8 +277,8 @@ Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles depen
 
    ```bash
    cd ComfyUI/custom_nodes
-   git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
-   cd ComfyUI_ChatterBox_SRT_Voice
+   git clone https://github.com/diodiogod/TTS-Audio-Suite.git
+   cd TTS-Audio-Suite
    ```
 
 2. **Install Dependencies** (⚠️ **Critical for Manual Install**):
@@ -295,7 +295,7 @@ Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles depen
    **ComfyUI with venv/conda:**
    ```bash
    # First activate your ComfyUI environment, then:
-   pip install -r ComfyUI_ChatterBox_SRT_Voice/requirements.txt
+   pip install -r TTS-Audio-Suite/requirements.txt
    ```
 
 > ⚠️ **Important**: Manual installs require installing dependencies in your ComfyUI's Python environment. If you get missing dependency errors, see the [detailed installation guide](#installation) below.
@@ -321,7 +321,7 @@ Use ComfyUI Manager to install "ComfyUI ChatterBox SRT Voice" - it handles depen
 <details>
 <summary>📋 Detailed Installation Guide (Click to expand if you're having dependency issues)</summary>
 
-This section provides a detailed guide for installing ComfyUI ChatterBox SRT Voice, covering different ComfyUI installation methods.
+This section provides a detailed guide for installing TTS Audio Suite, covering different ComfyUI installation methods.
 
 ### Prerequisites
 
@@ -342,12 +342,12 @@ For portable installations, follow these steps:
 
     ```bash
     cd ComfyUI/custom_nodes
-    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+    git clone https://github.com/diodiogod/TTS-Audio-Suite.git
     ```
 2.  Navigate to the cloned directory:
 
     ```bash
-    cd ComfyUI_ChatterBox_SRT_Voice
+    cd TTS-Audio-Suite
     ```
 3.  Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation with environment isolation flags.
 
@@ -367,7 +367,7 @@ If you have a direct installation with a virtual environment (venv), follow thes
 
     ```bash
     cd ComfyUI/custom_nodes
-    git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+    git clone https://github.com/diodiogod/TTS-Audio-Suite.git
     ```
 2.  Activate your ComfyUI virtual environment.  This is crucial to ensure dependencies are installed in the correct environment. The method to activate the venv may vary depending on your setup.  Here's a common example:
 
@@ -384,7 +384,7 @@ If you have a direct installation with a virtual environment (venv), follow thes
 3.  Navigate to the cloned directory:
 
     ```bash
-    cd custom_nodes/ComfyUI_ChatterBox_SRT_Voice
+    cd custom_nodes/TTS-Audio-Suite
     ```
 4.  Install the required dependencies using `pip`:
 
@@ -395,11 +395,11 @@ If you have a direct installation with a virtual environment (venv), follow thes
 #### 3. Installation through the ComfyUI Manager
 
 1.  Install the ComfyUI Manager if you haven't already.
-2.  Use the Manager to install the "ComfyUI ChatterBox SRT Voice" node.
+2.  Use the Manager to install the "TTS Audio Suite" node.
 3.  The manager might handle dependencies automatically, but it's still recommended to verify the installation.  Navigate to the node's directory:
 
     ```bash
-    cd ComfyUI/custom_nodes/ComfyUI_ChatterBox_SRT_Voice
+    cd ComfyUI/custom_nodes/TTS-Audio-Suite
     ```
 4.  Activate your ComfyUI virtual environment (see instructions in "Direct Installation with venv").
 5.  If you encounter issues, manually install the dependencies:
@@ -435,7 +435,7 @@ To update the node to the latest version:
 1.  Navigate to the node's directory:
 
     ```bash
-    cd ComfyUI/custom_nodes/ComfyUI_ChatterBox_SRT_Voice
+    cd ComfyUI/custom_nodes/TTS-Audio-Suite
     ```
 2.  Pull the latest changes from the repository:
 
@@ -454,7 +454,7 @@ To update the node to the latest version:
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice.git
+git clone https://github.com/diodiogod/TTS-Audio-Suite.git
 ```
 
 ### 2. Install Dependencies
@@ -891,7 +891,7 @@ MIT License - Same as ChatterboxTTS
 - **ComfyUI** team for the amazing framework
 - **sounddevice** library for audio recording functionality
 - **[ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice)** for the Original ChatteBox Voice TTS node
-- **[Diogod](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice)** for the SRT Timing and TTS Node implementation
+- **[Diogod](https://github.com/diodiogod/TTS-Audio-Suite)** for the TTS Audio Suite universal multi-engine implementation
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -911,16 +911,16 @@ MIT License - Same as ChatterboxTTS
 
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-[contributors-shield]: https://img.shields.io/github/contributors/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
-[contributors-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
-[forks-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/network/members
-[stars-shield]: https://img.shields.io/github/stars/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
-[stars-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/stargazers
-[issues-shield]: https://img.shields.io/github/issues/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
-[issues-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/issues
-[license-shield]: https://img.shields.io/github/license/diodiogod/ComfyUI_ChatterBox_SRT_Voice.svg?style=for-the-badge
-[license-url]: https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/diodiogod/TTS-Audio-Suite.svg?style=for-the-badge
+[contributors-url]: https://github.com/diodiogod/TTS-Audio-Suite/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/diodiogod/TTS-Audio-Suite.svg?style=for-the-badge
+[forks-url]: https://github.com/diodiogod/TTS-Audio-Suite/network/members
+[stars-shield]: https://img.shields.io/github/stars/diodiogod/TTS-Audio-Suite.svg?style=for-the-badge
+[stars-url]: https://github.com/diodiogod/TTS-Audio-Suite/stargazers
+[issues-shield]: https://img.shields.io/github/issues/diodiogod/TTS-Audio-Suite.svg?style=for-the-badge
+[issues-url]: https://github.com/diodiogod/TTS-Audio-Suite/issues
+[license-shield]: https://img.shields.io/github/license/diodiogod/TTS-Audio-Suite.svg?style=for-the-badge
+[license-url]: https://github.com/diodiogod/TTS-Audio-Suite/blob/master/LICENSE.txt
 
-[version-shield]: https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdiodiogod%2FComfyUI_ChatterBox_SRT_Voice%2Fmain%2Fpyproject.toml&query=%24.project.version&label=Version&color=red&style=for-the-badge
+[version-shield]: https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdiodiogod%2FTTS-Audio-Suite%2Fmain%2Fpyproject.toml&query=%24.project.version&label=Version&color=red&style=for-the-badge
 [version-url]: pyproject.toml
