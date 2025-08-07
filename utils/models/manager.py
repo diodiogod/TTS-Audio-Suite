@@ -133,7 +133,7 @@ class ModelManager:
             
             return None
 
-    def get_model_cache_key(self, model_type: str, device: str, source: str, path: Optional[str] = None) -> str:
+    def get_model_cache_key(self, model_type: str, device: str, source: str, path: Optional[str] = None, language: str = "English") -> str:
         """
         Generate a cache key for model instances.
         
@@ -142,12 +142,13 @@ class ModelManager:
             device: Target device ('cuda', 'cpu')
             source: Model source ('bundled', 'comfyui', 'huggingface')
             path: Optional path for local models
+            language: Language model (for multilingual support)
             
         Returns:
             Cache key string
         """
         path_component = path or "default"
-        return f"{model_type}_{device}_{source}_{path_component}"
+        return f"{model_type}_{device}_{source}_{path_component}_{language}"
     
     def load_tts_model(self, device: str = "auto", language: str = "English", force_reload: bool = False) -> Any:
         """
@@ -337,13 +338,14 @@ class ModelManager:
         
         return self.tts_model
     
-    def load_vc_model(self, device: str = "auto", force_reload: bool = False) -> Any:
+    def load_vc_model(self, device: str = "auto", force_reload: bool = False, language: str = "English") -> Any:
         """
-        Load ChatterboxVC model with caching.
+        Load ChatterboxVC model with caching and multilingual support.
         
         Args:
             device: Target device ('auto', 'cuda', 'cpu')
             force_reload: Force reload even if cached
+            language: Language model to use (English, German, Norwegian)
             
         Returns:
             ChatterboxVC model instance
@@ -359,8 +361,10 @@ class ModelManager:
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # Check if we need to load/reload
-        if not force_reload and self.vc_model is not None and self.current_device == device:
+        # Check if we need to load/reload (include language in check)
+        current_language = getattr(self, 'current_vc_language', None)
+        if (not force_reload and self.vc_model is not None and 
+            self.current_device == device and current_language == language):
             return self.vc_model
         
         # Get available model paths
@@ -371,12 +375,13 @@ class ModelManager:
         
         for source, path in model_paths:
             try:
-                cache_key = self.get_model_cache_key("vc", device, source, path)
+                cache_key = self.get_model_cache_key("vc", device, source, path, language)
                 
                 # Check class-level cache first
                 if not force_reload and cache_key in self._model_cache:
                     self.vc_model = self._model_cache[cache_key]
                     self.current_device = device
+                    self.current_vc_language = language
                     self._model_sources[cache_key] = source
                     model_loaded = True
                     break
@@ -385,9 +390,13 @@ class ModelManager:
                 if source in ["bundled", "comfyui"]:
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
+                        # Note: Local models currently don't support language selection
+                        # They use whatever language they were trained on
+                        if language != "English":
+                            print(f"⚠️ Local VC model at {path} may not support {language} - using existing model")
                         model = ChatterboxVC.from_local(path, device)
                 elif source == "huggingface":
-                    model = ChatterboxVC.from_pretrained(device)
+                    model = ChatterboxVC.from_pretrained(device, language)
                 else:
                     continue
                 
@@ -396,7 +405,9 @@ class ModelManager:
                 self._model_sources[cache_key] = source
                 self.vc_model = model
                 self.current_device = device
+                self.current_vc_language = language
                 model_loaded = True
+                print(f"✅ Successfully loaded {language} ChatterBox VC model from {source}")
                 break
                 
             except Exception as e:
@@ -449,7 +460,7 @@ class ModelManager:
             model_paths = self.find_chatterbox_models()
             if model_paths:
                 source, path = model_paths[0]
-                cache_key = self.get_model_cache_key("vc", device, source, path)
+                cache_key = self.get_model_cache_key("vc", device, source, path, getattr(self, 'current_vc_language', 'English'))
                 return self._model_sources.get(cache_key)
         
         return None

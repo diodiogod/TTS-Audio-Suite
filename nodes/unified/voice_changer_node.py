@@ -216,19 +216,45 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             
             # Prepare parameters for the original VC node's convert_voice method
             if engine_type == "chatterbox":
-                # ChatterBox VC parameters
+                # Extract language from engine config for multilingual VC support
+                language = config.get("language", "English")
+                print(f"🔄 Voice Changer: Using {language} language model for conversion")
+                
+                # ChatterBox VC parameters with language support
                 result = engine_instance.convert_voice(
                     source_audio=processed_source_audio,
                     target_audio=processed_narrator_target,  # Map narrator_target to target_audio for original node
                     refinement_passes=refinement_passes,
-                    device=config.get("device", "auto")
+                    device=config.get("device", "auto"),
+                    language=language  # Pass language parameter to VC node
                 )
                 
                 # ChatterBox VC node returns only (converted_audio,)
                 converted_audio = result[0]
                 
+                # Get detailed model information for debugging
+                model_source = "unknown"
+                model_repo = "unknown"
+                if hasattr(engine_instance, 'model_manager') and hasattr(engine_instance.model_manager, 'get_model_source'):
+                    model_source = engine_instance.model_manager.get_model_source("vc") or "local/bundled"
+                
+                # Get repository information for HuggingFace models
+                if model_source == "huggingface":
+                    try:
+                        from engines.chatterbox.language_models import get_model_config
+                        model_config = get_model_config(language)
+                        if model_config:
+                            model_repo = model_config.get("repo", "unknown")
+                        else:
+                            model_repo = "ResembleAI/chatterbox"  # Default English repo
+                    except ImportError:
+                        model_repo = "ResembleAI/chatterbox"  # Fallback
+                
                 conversion_info = (
                     f"🔄 Voice Changer (Unified) - CHATTERBOX Engine:\n"
+                    f"Language Model: {language}\n"
+                    f"Model Source: {model_source}\n"
+                    + (f"Repository: {model_repo}\n" if model_source == "huggingface" else "") +
                     f"Refinement passes: {refinement_passes}\n"
                     f"Device: {config.get('device', 'auto')}\n"
                     f"Conversion completed successfully"

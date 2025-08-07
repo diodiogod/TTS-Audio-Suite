@@ -352,13 +352,14 @@ class BaseVCNode(BaseChatterBoxNode):
         super().__init__()
         self.vc_model = None
     
-    def load_vc_model(self, device: str = "auto", force_reload: bool = False):
+    def load_vc_model(self, device: str = "auto", force_reload: bool = False, language: str = "English"):
         """
         Load VC model using the model manager.
         
         Args:
             device: Target device
             force_reload: Force reload even if cached
+            language: Language model to use for conversion (English, German, Norwegian)
             
         Returns:
             Loaded VC model
@@ -366,7 +367,7 @@ class BaseVCNode(BaseChatterBoxNode):
         device = self.resolve_device(device)
         self.device = device
         
-        self.vc_model = self.model_manager.load_vc_model(device, force_reload)
+        self.vc_model = self.model_manager.load_vc_model(device, force_reload, language)
         return self.vc_model
     
     def convert_voice(self, source_path: str, target_path: str) -> torch.Tensor:

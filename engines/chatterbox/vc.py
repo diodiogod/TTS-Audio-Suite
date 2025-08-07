@@ -66,9 +66,43 @@ class ChatterboxVC:
             return instance
 
     @classmethod
-    def from_pretrained(cls, device) -> 'ChatterboxVC':
+    def from_pretrained(cls, device, language="English") -> 'ChatterboxVC':
+        """
+        Load ChatterBox VC model from HuggingFace Hub with language support.
+        
+        Args:
+            device: Target device
+            language: Language model to load (English, German, Norwegian, etc.)
+            
+        Returns:
+            ChatterboxVC model instance
+        """
+        # Import language model support
+        try:
+            from .language_models import get_model_config
+            
+            # Get model configuration for the specified language  
+            model_config = get_model_config(language)
+            if not model_config:
+                print(f"⚠️ Language '{language}' not found, falling back to English")
+                model_config = get_model_config("English")
+                if not model_config:
+                    # Final fallback to original repo
+                    repo_id = REPO_ID
+                else:
+                    repo_id = model_config["repo"]
+            else:
+                repo_id = model_config["repo"]
+                
+        except ImportError:
+            # Fallback if language_models not available
+            print(f"⚠️ Language models not available, using English model")
+            repo_id = REPO_ID
+        
+        print(f"📦 Loading ChatterBox VC model for {language} from {repo_id}")
+        
         for fpath in ["s3gen.pt", "conds.pt"]:
-            local_path = hf_hub_download(repo_id=REPO_ID, filename=fpath)
+            local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
 
         return cls.from_local(Path(local_path).parent, device)
 
