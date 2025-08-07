@@ -8,7 +8,7 @@
 
 # TTS Audio Suite v4.0.0
 
-*Universal multi-engine TTS extension for ComfyUI - evolved from the original ChatterBox Voice project.*
+*Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
 <div align="center">
   <img src="images/AllNodesShowcase.png" alt="TTS Audio Suite Nodes Showcase" />
