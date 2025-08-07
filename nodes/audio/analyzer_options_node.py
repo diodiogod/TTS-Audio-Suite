@@ -87,7 +87,7 @@ class AudioAnalyzerOptionsNode:
     RETURN_TYPES = ("OPTIONS",)
     RETURN_NAMES = ("options",)
     FUNCTION = "create_options"
-    CATEGORY = "ChatterBox Audio"
+    CATEGORY = "TTS Audio Suite/Audio"
     
     def create_options(self, silence_threshold=0.01, silence_min_duration=0.1, invert_silence_regions=False,
                       energy_sensitivity=0.5, peak_threshold=0.02, peak_min_distance=0.05, 
