@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2025-08-06
+
+### 🚨 BREAKING CHANGES
+
+- **Complete architectural transformation to TTS Audio Suite**
+  - Project evolved from ChatterBox-focused implementation to universal multi-engine TTS system
+  - **⚠️ WORKFLOW COMPATIBILITY BROKEN**: Existing workflows require migration to new unified node structure
+  - New project name reflects expanded scope beyond ChatterBox to support multiple TTS engines
+
+### Added
+
+- **🏗️ MAJOR: Unified Multi-Engine Architecture**
+  - Universal TTS nodes that work with any engine (TTS Text, TTS SRT, Voice Changer)
+  - Engine configuration nodes for easy switching between ChatterBox, F5-TTS, and future engines
+  - Modular engine adapter system for seamless engine integration
+  - Character Voices node providing NARRATOR_VOICE outputs for any TTS node
+
+- **🔧 Advanced Engine Management**
+  - Engine-specific configuration nodes (ChatterBox Engine, F5-TTS Engine)
+  - Engine adapter pattern for standardized interfaces
+  - Separation of engine logic from user interface
+
+- **📁 Complete Project Restructure**
+  - Engine implementations in `engines/chatterbox/` and `engines/f5tts/`
+  - Unified interface nodes in `nodes/unified/`
+  - Engine adapters in `engines/adapters/`
+  - Comprehensive utility systems in `utils/`
+  - Clear separation between engine-agnostic and engine-specific functionality
+
+### Changed
+
+- **🎯 Node Architecture**
+  - Text and SRT processing now handled by separate, engine-agnostic unified nodes
+  - Consistent interface across all engines through unified nodes
+  - Enhanced node categorization for better organization in ComfyUI
+
+- **⚡ Performance Optimizations**
+  - Cache-aware model loading system prevents unnecessary model reloads
+  - Smart language grouping processes SRT files by language to reduce model switching overhead
+  - Optimized memory usage through intelligent model lifecycle management
+
+
+### Technical Details
+
+- **Engine Adapter Pattern**: Standardized interface allowing easy addition of new TTS engines (RVC, Tortoise, etc.)
+- **Unified Caching**: Consistent cache management across all engines with engine-specific keys
+- **Modular Design**: Clear separation between engine implementations, adapters, and unified interface
+- **Future-Proof Architecture**: Foundation for supporting additional TTS engines beyond ChatterBox and F5-TTS
+
+### Migration Required
+
+- **⚠️ Complete workflow migration required** - old workflows are incompatible with v4
+- This is a new project (TTS Audio Suite) separate from the original ChatterBox project
+- Users must recreate workflows using new unified node structure
+
+This release represents a fundamental architectural transformation, evolving from a ChatterBox extension to a universal multi-engine TTS platform capable of supporting any TTS engine while maintaining the same user experience.
+
 ## [3.4.3] - 2025-08-05
 
 ### Fixed
