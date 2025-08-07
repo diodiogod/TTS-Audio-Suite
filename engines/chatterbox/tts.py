@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+import os
 
 import librosa
 import torch
@@ -8,6 +9,12 @@ from huggingface_hub import hf_hub_download
 import warnings
 # Import safetensors for multilanguage model support
 from safetensors.torch import load_file
+
+# Import folder_paths for model directory detection
+try:
+    import folder_paths
+except ImportError:
+    folder_paths = None
 
 # Import perth with warnings disabled
 with warnings.catch_warnings():
@@ -219,6 +226,33 @@ class ChatterboxTTS:
         model_config = get_model_config(language)
         if not model_config:
             print(f"⚠️ Language '{language}' not found, falling back to English")
+            # If falling back to English, try local first
+            if language != "English":
+                from utils.models.fallback_utils import try_local_first, get_models_dir
+                
+                # Build search paths for ChatterBox
+                search_paths = []
+                models_dir = get_models_dir()
+                if models_dir:
+                    search_paths.append(os.path.join(models_dir, "chatterbox"))
+                
+                # Add common fallback paths
+                search_paths.extend([
+                    os.path.join(os.getcwd(), "models", "chatterbox"),
+                    os.path.join(os.path.dirname(__file__), "..", "..", "models", "chatterbox")
+                ])
+                
+                try:
+                    return try_local_first(
+                        search_paths=search_paths,
+                        local_loader=lambda path: cls.from_local(path, device),
+                        fallback_loader=lambda: cls.from_pretrained(device, language="English"),
+                        fallback_name="English",
+                        original_request=language
+                    )
+                except Exception as e:
+                    print(f"⚠️ Fallback failed: {e}, proceeding with direct HuggingFace download")
+            
             model_config = get_model_config("English")
         
         repo_id = model_config.get("repo", REPO_ID)
