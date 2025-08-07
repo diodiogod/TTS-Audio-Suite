@@ -54,6 +54,7 @@ class MultilingualEngine:
         """
         self.engine_type = engine_type
         self.sample_rate = 24000 if engine_type == "f5tts" else 44100
+        self.loaded_models = set()  # Track loaded models across calls
         
     def process_multilingual_text(self, text: str, engine_adapter, **params) -> MultilingualResult:
         """
@@ -91,10 +92,17 @@ class MultilingualEngine:
         # 5. Check cache optimization opportunities
         cache_info = self._analyze_cache_coverage(language_groups, character_mapping, engine_adapter, **params)
         
-        # 6. Process each language group with smart model loading
+        # 6. Process each language group with smart model loading  
         all_audio_segments = []
         base_model_loaded = False
-        loaded_models = set()  # Track which models have been loaded
+        
+        # Initialize loaded_models tracking with currently loaded model (if any)
+        current_model = getattr(engine_adapter.node, 'current_model_name', None)
+        if current_model and current_model not in self.loaded_models:
+            self.loaded_models.add(current_model)
+            print(f"💾 Multilingual engine: Detected already loaded model '{current_model}'")
+        
+        # Use persistent loaded_models tracking across calls
         
         for lang_code, lang_segments in language_groups.items():
             # Get required model for this language
@@ -111,11 +119,11 @@ class MultilingualEngine:
                     base_model_loaded = True
                 
                 # Only load language model if we haven't loaded this specific model yet
-                if required_model not in loaded_models:
+                if required_model not in self.loaded_models:
                     print(f"🌍 Loading {self.engine_type.title()} model '{required_model}' for language '{lang_code}' ({len(lang_segments)} segments)")
                     try:
                         engine_adapter.load_language_model(required_model, params.get("device", "auto"))
-                        loaded_models.add(required_model)  # Track that this model is now loaded
+                        self.loaded_models.add(required_model)  # Track that this model is now loaded
                     except Exception as e:
                         print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
                         print(f"🔄 Falling back to default model")
