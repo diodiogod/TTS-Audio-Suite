@@ -142,10 +142,11 @@ class ChatterboxTTS:
         self.tokenizer = tokenizer
         self.device = device
         self.conds = conds
-        # Initialize watermarker silently
+        # Initialize watermarker silently (but disabled by default)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.watermarker = perth.PerthImplicitWatermarker()
+        self.enable_watermarking = False  # Disabled by default for maximum compatibility
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
@@ -373,5 +374,8 @@ class ChatterboxTTS:
                 ref_dict=self.conds.gen,
             )
             wav = wav.squeeze(0).detach().cpu().numpy()
-            watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
-        return torch.from_numpy(watermarked_wav).unsqueeze(0)
+            if self.enable_watermarking:
+                watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
+                return torch.from_numpy(watermarked_wav).unsqueeze(0)
+            else:
+                return torch.from_numpy(wav).unsqueeze(0)
