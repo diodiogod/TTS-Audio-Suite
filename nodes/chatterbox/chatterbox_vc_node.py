@@ -135,7 +135,7 @@ class ChatterboxVCNode(BaseVCNode):
         
         return source_temp.name, target_temp.name
 
-    def convert_voice(self, source_audio, target_audio, refinement_passes, device):
+    def convert_voice(self, source_audio, target_audio, refinement_passes, device, language="English"):
         """
         Perform iterative voice conversion using the loaded model.
         
@@ -144,13 +144,14 @@ class ChatterboxVCNode(BaseVCNode):
             target_audio: Target voice audio from ComfyUI
             refinement_passes: Number of conversion iterations
             device: Target device
+            language: Language model to use for conversion (English, German, Norwegian)
             
         Returns:
             Converted audio in ComfyUI format
         """
         def _process():
-            # Load model
-            self.load_vc_model(device)
+            # Load model with language support
+            self.load_vc_model(device, language=language)
             
             # Generate cache key for this conversion
             cache_key = self._generate_vc_cache_key(source_audio, target_audio, device)
