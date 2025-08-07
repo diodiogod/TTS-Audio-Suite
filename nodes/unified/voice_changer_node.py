@@ -34,6 +34,13 @@ BaseVCNode = base_module.BaseVCNode
 from utils.audio.processing import AudioProcessingUtils
 import comfy.model_management as model_management
 
+# AnyType for flexible input types (accepts any data type)
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+any_typ = AnyType("*")
+
 
 class UnifiedVoiceChangerNode(BaseVCNode):
     """
@@ -53,11 +60,11 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 "TTS_engine": ("TTS_ENGINE", {
                     "tooltip": "TTS/VC engine configuration. For now, only ChatterBox supports voice conversion. Future engines like RVC will be supported."
                 }),
-                "source_audio": ("AUDIO", {
-                    "tooltip": "The original voice audio you want to convert to sound like the target voice"
+                "source_audio": (any_typ, {
+                    "tooltip": "The original voice audio you want to convert to sound like the target voice. Accepts AUDIO input or Character Voices node output."
                 }),
-                "narrator_target": ("AUDIO", {
-                    "tooltip": "The reference voice audio whose characteristics will be applied to the source audio (renamed from target_audio for consistency)"
+                "narrator_target": (any_typ, {
+                    "tooltip": "The reference voice audio whose characteristics will be applied to the source audio. Accepts AUDIO input or Character Voices node output."
                 }),
                 "refinement_passes": ("INT", {
                     "default": 1, "min": 1, "max": 30, "step": 1,
@@ -75,6 +82,41 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         super().__init__()
         # Cache engine instances to prevent model reloading
         self._cached_engine_instances = {}
+
+    def _extract_audio_from_input(self, audio_input, input_name: str):
+        """
+        Extract audio tensor from either AUDIO input or NARRATOR_VOICE input.
+        
+        Args:
+            audio_input: Either AUDIO dict or NARRATOR_VOICE dict
+            input_name: Name of input for error messages
+            
+        Returns:
+            Audio dict suitable for voice conversion engines
+        """
+        try:
+            if audio_input is None:
+                raise ValueError(f"{input_name} input is required")
+            
+            # Check if it's a Character Voices node output (NARRATOR_VOICE)
+            if isinstance(audio_input, dict) and "audio" in audio_input:
+                # NARRATOR_VOICE input - extract the audio component
+                audio_data = audio_input.get("audio")
+                character_name = audio_input.get("character_name", "unknown")
+                print(f"🔄 Voice Changer: Using {input_name} from Character Voices node ({character_name})")
+                return audio_data
+            
+            # Check if it's a direct audio input (AUDIO)
+            elif isinstance(audio_input, dict) and "waveform" in audio_input:
+                # Direct AUDIO input
+                print(f"🔄 Voice Changer: Using direct audio input for {input_name}")
+                return audio_input
+            
+            else:
+                raise ValueError(f"Invalid {input_name} format - expected AUDIO or Character Voices node output")
+                
+        except Exception as e:
+            raise ValueError(f"Failed to process {input_name}: {e}")
 
     def _create_proper_engine_node_instance(self, engine_data: Dict[str, Any]):
         """
@@ -163,6 +205,10 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             if engine_type not in ["chatterbox"]:
                 raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox")
             
+            # Extract audio data from flexible inputs (support both AUDIO and NARRATOR_VOICE types)
+            processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
+            processed_narrator_target = self._extract_audio_from_input(narrator_target, "narrator_target")
+            
             # Create proper engine VC node instance to preserve ALL functionality
             engine_instance = self._create_proper_engine_node_instance(TTS_engine)
             if not engine_instance:
@@ -172,8 +218,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             if engine_type == "chatterbox":
                 # ChatterBox VC parameters
                 result = engine_instance.convert_voice(
-                    source_audio=source_audio,
-                    target_audio=narrator_target,  # Map narrator_target to target_audio for original node
+                    source_audio=processed_source_audio,
+                    target_audio=processed_narrator_target,  # Map narrator_target to target_audio for original node
                     refinement_passes=refinement_passes,
                     device=config.get("device", "auto")
                 )

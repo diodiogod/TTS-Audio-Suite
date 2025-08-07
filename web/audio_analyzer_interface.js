@@ -80,7 +80,7 @@ app.registerExtension({
             if (prompt.output) {
                 for (const nodeId in prompt.output) {
                     const nodeData = prompt.output[nodeId];
-                    if (nodeData.class_type === "AudioAnalyzerNode") {
+                    if (nodeData.class_type === "ChatterBoxAudioAnalyzer") {
                         // Inject the node_id into the inputs object
                         nodeData.inputs.node_id = nodeId;
                     }
@@ -92,7 +92,7 @@ app.registerExtension({
     },
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name === "AudioAnalyzerNode") {
+        if (nodeData.name === "ChatterBoxAudioAnalyzer") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function() {
                 const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
