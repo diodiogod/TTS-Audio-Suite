@@ -561,13 +561,13 @@ Hello! This is F5-TTS SRT with character switching.
                 assembler = AudioAssemblyEngine(self.f5tts_sample_rate)
                 
                 # Calculate smart natural adjustments within tolerance
-                adjustments = timing_engine.calculate_smart_natural_adjustments(
-                    audio_segments, subtitles, timing_tolerance, max_stretch_ratio, min_stretch_ratio
+                adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+                    audio_segments, subtitles, timing_tolerance, max_stretch_ratio, min_stretch_ratio, self.device
                 )
                 
                 # Assemble with smart natural timing
                 final_audio = assembler.assemble_smart_natural(
-                    audio_segments, subtitles, adjustments, fade_for_StretchToFit
+                    audio_segments, processed_segments, adjustments, subtitles, self.device
                 )
             
             # Log timing information if mode was switched due to overlaps
