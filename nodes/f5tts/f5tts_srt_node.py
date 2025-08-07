@@ -400,6 +400,7 @@ Hello! This is F5-TTS SRT with character switching.
             
             # Track generated segment audio by (subtitle_idx, segment_idx)
             generated_segment_audio = {}
+            any_segment_cached = False
             
             # Process each language group (now containing individual character segments)
             for lang_code in sorted(segment_language_groups.keys()):
@@ -422,7 +423,53 @@ Hello! This is F5-TTS SRT with character switching.
                 
                 print(f"📋 Processing {len(lang_segments)} F5-TTS character segment(s) in '{lang_code}' language group...")
                 
-                # Load model for this language group
+                # Check if all segments in this language group are cached before loading model
+                if enable_audio_cache:
+                    all_segments_cached = True
+                    cached_segments_info = []
+                    
+                    # Get required model for this language group for consistent cache key generation
+                    from utils.models.language_mapper import get_model_for_language
+                    required_model = get_model_for_language("f5tts", lang_code, model)
+                    
+                    for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
+                        # Get character voice or use main reference for cache key
+                        from utils.voice.discovery import get_character_mapping
+                        character_mapping = get_character_mapping([character], engine_type="f5tts")
+                        char_audio, char_text = character_mapping.get(character, (None, None))
+                        if not char_audio or not char_text:
+                            char_audio = audio_prompt
+                            char_text = validated_ref_text
+                        
+                        # Validate and clamp nfe_step
+                        safe_nfe_step = max(1, min(nfe_step, 71))
+                        
+                        # Generate cache key using the required model for this language
+                        # This ensures consistent cache keys regardless of current model state
+                        cache_key = self._generate_segment_cache_key(
+                            f"{character}:{text}", required_model, self.device, audio_prompt_component,
+                            char_text, temperature, speed, target_rms, cross_fade_duration,
+                            safe_nfe_step, cfg_strength, seed
+                        )
+                        cached_data = self._get_cached_segment_audio(cache_key)
+                        
+                        if cached_data:
+                            cached_segments_info.append((subtitle_idx, seg_idx, cached_data, character, text, language))
+                        else:
+                            all_segments_cached = False
+                            break
+                    
+                    # If all segments are cached, skip model loading and use cached data
+                    if all_segments_cached:
+                        print(f"💾 All {len(lang_segments)} segment(s) in '{lang_code}' language group are cached - skipping model load")
+                        for subtitle_idx, seg_idx, cached_data, character, text, language in cached_segments_info:
+                            wav, natural_duration = cached_data
+                            print(f"💾 Using cached audio for {character} ({language}) segment {subtitle_idx+1}.{seg_idx+1}: '{text[:30]}...'")
+                            generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
+                            any_segment_cached = True
+                        continue
+                
+                # Load model for this language group (only if we have non-cached segments)
                 from utils.models.language_mapper import get_model_for_language
                 required_model = get_model_for_language("f5tts", lang_code, model)
                 
@@ -463,6 +510,22 @@ Hello! This is F5-TTS SRT with character switching.
                     if safe_nfe_step != nfe_step:
                         print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
                     
+                    # Check cache first before generating (using consistent required model name)
+                    if enable_audio_cache:
+                        cache_key = self._generate_segment_cache_key(
+                            f"{character}:{text}", required_model, self.device, audio_prompt_component, 
+                            char_text, temperature, speed, target_rms, cross_fade_duration, 
+                            safe_nfe_step, cfg_strength, seed
+                        )
+                        cached_data = self._get_cached_segment_audio(cache_key)
+                        if cached_data:
+                            wav = cached_data[0]
+                            natural_duration = cached_data[1]
+                            print(f"💾 Using cached audio for {character} ({language}) segment {subtitle_idx+1}.{seg_idx+1}: '{text[:30]}...'")
+                            generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
+                            any_segment_cached = True
+                            continue
+                    
                     # Generate audio for this character segment
                     wav = self.generate_f5tts_with_pause_tags(
                         text=text,
@@ -484,6 +547,15 @@ Hello! This is F5-TTS SRT with character switching.
                     # Calculate duration and store
                     natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                     generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
+                    
+                    # Cache the generated segment for future use (using consistent required model name)
+                    if enable_audio_cache:
+                        cache_key = self._generate_segment_cache_key(
+                            f"{character}:{text}", required_model, self.device, audio_prompt_component, 
+                            char_text, temperature, speed, target_rms, cross_fade_duration, 
+                            safe_nfe_step, cfg_strength, seed
+                        )
+                        self._cache_segment_audio(cache_key, wav, natural_duration)
             
             # Reassemble character segments back into complete subtitles
             print(f"🔗 Assembling {len(generated_segment_audio)} character segments back into {len(subtitles)} subtitles...")
@@ -580,7 +652,6 @@ Hello! This is F5-TTS SRT with character switching.
             
             # Generate info with cache status
             total_duration = self.AudioTimingUtils.get_audio_duration(final_audio, self.f5tts_sample_rate)
-            any_segment_cached = False  # TODO: Track cache hits during segment processing
             cache_status = "cached" if any_segment_cached else "generated"
             
             mode_info = f"{current_timing_mode}"
