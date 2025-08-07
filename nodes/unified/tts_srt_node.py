@@ -37,6 +37,13 @@ from utils.voice.discovery import get_available_voices
 from utils.audio.processing import AudioProcessingUtils
 import comfy.model_management as model_management
 
+# AnyType for flexible input types (accepts any data type)
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+any_typ = AnyType("*")
+
 
 class UnifiedTTSSRTNode(BaseTTSNode):
     """
@@ -88,8 +95,8 @@ Hello! This is unified SRT TTS with character switching.
                 }),
             },
             "optional": {
-                "opt_narrator": ("NARRATOR_VOICE", {
-                    "tooltip": "Voice reference from Character Voices node. Takes priority over narrator_voice dropdown when connected."
+                "opt_narrator": (any_typ, {
+                    "tooltip": "Voice reference: Connect Character Voices node output OR direct audio input. Takes priority over narrator_voice dropdown when connected."
                 }),
                 "enable_audio_cache": ("BOOLEAN", {
                     "default": True,
@@ -210,22 +217,36 @@ Hello! This is unified SRT TTS with character switching.
         Get voice reference from opt_narrator input or narrator_voice dropdown.
         
         Args:
-            opt_narrator: Voice data from Character Voices node (priority)
+            opt_narrator: Voice data from Character Voices node OR direct audio input (priority)
             narrator_voice: Fallback voice from dropdown
             
         Returns:
             Tuple of (audio_path, audio_tensor, reference_text, character_name)
         """
         try:
-            # Priority 1: opt_narrator input from Character Voices node
+            # Priority 1: opt_narrator input
             if opt_narrator is not None:
-                audio = opt_narrator.get("audio")
-                audio_path = opt_narrator.get("audio_path") 
-                reference_text = opt_narrator.get("reference_text", "")
-                character_name = opt_narrator.get("character_name", "narrator")
+                # Check if it's a Character Voices node output (dict with specific keys)
+                if isinstance(opt_narrator, dict) and "audio" in opt_narrator:
+                    # Character Voices node output
+                    audio = opt_narrator.get("audio")
+                    audio_path = opt_narrator.get("audio_path") 
+                    reference_text = opt_narrator.get("reference_text", "")
+                    character_name = opt_narrator.get("character_name", "narrator")
+                    
+                    print(f"📺 TTS SRT: Using voice reference from Character Voices node ({character_name})")
+                    return audio_path, audio, reference_text, character_name
                 
-                print(f"📺 TTS SRT: Using voice reference from Character Voices node ({character_name})")
-                return audio_path, audio, reference_text, character_name
+                # Check if it's a direct audio input (dict with waveform and sample_rate)
+                elif isinstance(opt_narrator, dict) and "waveform" in opt_narrator:
+                    # Direct audio input - no reference text available
+                    audio_tensor = opt_narrator
+                    character_name = "narrator"
+                    reference_text = ""  # No reference text available from direct audio
+                    
+                    print(f"📺 TTS SRT: Using direct audio input ({character_name})")
+                    print(f"⚠️ TTS SRT: Direct audio input has no reference text - F5-TTS engines will fail")
+                    return None, audio_tensor, reference_text, character_name
             
             # Priority 2: narrator_voice dropdown (fallback)
             elif narrator_voice != "none":
@@ -291,6 +312,13 @@ Hello! This is unified SRT TTS with character switching.
             
             # Get voice reference (opt_narrator takes priority)
             audio_path, audio_tensor, reference_text, character_name = self._get_voice_reference(opt_narrator, narrator_voice)
+            
+            # Validate F5-TTS requirements: must have reference text
+            if engine_type == "f5tts" and not reference_text.strip():
+                raise ValueError(
+                    "F5-TTS requires reference text. When using direct audio input, "
+                    "please use Character Voices node instead, which provides both audio and text."
+                )
             
             # Create proper engine SRT node instance to preserve ALL functionality
             engine_instance = self._create_proper_engine_node_instance(TTS_engine)
