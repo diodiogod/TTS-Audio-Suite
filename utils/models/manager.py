@@ -261,6 +261,14 @@ class ModelManager:
                     self._current_tts_cache_key = cache_key
                     return self.tts_model
                 
+                # Check if this language is supported before calling from_pretrained
+                # This prevents the engine's internal fallback from bypassing our cache logic
+                from engines.chatterbox.language_models import get_model_config
+                if not get_model_config(language) and language != "English":
+                    # Language not supported - skip to our fallback logic instead of engine's fallback
+                    print(f"📦 Language '{language}' not supported by ChatterBox, skipping to fallback")
+                    raise Exception(f"Language '{language}' not supported")
+                
                 print(f"📦 Loading {language} ChatterBox model from HuggingFace")
                 model = ChatterboxTTS.from_pretrained(device, language=language)
                 
@@ -279,6 +287,18 @@ class ModelManager:
         # Fallback: try English if requested language failed and it's not English
         if not model_loaded and language != "English":
             print(f"🔄 Falling back to English model...")
+            
+            # First check if English is already loaded in any form
+            english_cache_keys = [key for key in self._model_cache.keys() if "English" in key and device in key]
+            if english_cache_keys and not force_reload:
+                existing_key = english_cache_keys[0]  # Use first found English model
+                print(f"💾 Reusing already-loaded English model from cache")
+                self.tts_model = self._model_cache[existing_key]
+                self.current_device = device
+                self._current_tts_cache_key = existing_key
+                return self.tts_model
+            
+            # If no English model in cache, try loading English (check local first)
             try:
                 cache_key = f"tts_{device}_English_fallback"
                 
@@ -288,7 +308,14 @@ class ModelManager:
                     self._current_tts_cache_key = cache_key
                     return self.tts_model
                 
-                model = ChatterboxTTS.from_pretrained(device, language="English")
+                # Try local English first before HuggingFace
+                english_local_path = self.find_local_language_model("English")
+                if english_local_path:
+                    print(f"📁 Loading local English ChatterBox model as fallback from: {english_local_path}")
+                    model = ChatterboxTTS.from_local(english_local_path, device)
+                else:
+                    print(f"📦 Loading English ChatterBox model from HuggingFace as fallback")
+                    model = ChatterboxTTS.from_pretrained(device, language="English")
                 
                 # Cache the loaded model
                 self._model_cache[cache_key] = model

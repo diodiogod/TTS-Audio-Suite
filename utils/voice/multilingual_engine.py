@@ -94,6 +94,7 @@ class MultilingualEngine:
         # 6. Process each language group with smart model loading
         all_audio_segments = []
         base_model_loaded = False
+        loaded_models = set()  # Track which models have been loaded
         
         for lang_code, lang_segments in language_groups.items():
             # Get required model for this language
@@ -109,13 +110,18 @@ class MultilingualEngine:
                     engine_adapter.load_base_model(params.get("model", "default"), params.get("device", "auto"))
                     base_model_loaded = True
                 
-                print(f"🌍 Loading {self.engine_type.title()} model '{required_model}' for language '{lang_code}' ({len(lang_segments)} segments)")
-                try:
-                    engine_adapter.load_language_model(required_model, params.get("device", "auto"))
-                except Exception as e:
-                    print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
-                    print(f"🔄 Falling back to default model")
-                    engine_adapter.load_base_model(params.get("model", "default"), params.get("device", "auto"))
+                # Only load language model if we haven't loaded this specific model yet
+                if required_model not in loaded_models:
+                    print(f"🌍 Loading {self.engine_type.title()} model '{required_model}' for language '{lang_code}' ({len(lang_segments)} segments)")
+                    try:
+                        engine_adapter.load_language_model(required_model, params.get("device", "auto"))
+                        loaded_models.add(required_model)  # Track that this model is now loaded
+                    except Exception as e:
+                        print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
+                        print(f"🔄 Falling back to default model")
+                        engine_adapter.load_base_model(params.get("model", "default"), params.get("device", "auto"))
+                else:
+                    print(f"💾 Model '{required_model}' already loaded - reusing for language '{lang_code}' ({len(lang_segments)} segments)")
             
             # Process each segment in this language group
             for original_idx, character, segment_text, segment_lang in lang_segments:

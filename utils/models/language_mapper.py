@@ -76,6 +76,7 @@ class LanguageModelMapper:
                 "jp": "F5-JP",       # Japanese
                 "th": "F5-TH",       # Thai
                 "pt": "F5-PT-BR",    # Portuguese (Brazil)
+                "pt-br": "F5-PT-BR", # Portuguese (Brazil) - alternative format
             },
             "chatterbox": {
                 "en": "English",     # This will be overridden by default_model

@@ -241,11 +241,41 @@ class ChatterBoxF5TTS:
                         device=self.device
                     )
             else:
-                # Default fallback to HuggingFace
-                print(f"📦 Loading F5-TTS model 'F5TTS_Base' from HuggingFace (fallback)")
-                self.f5tts_model = F5TTS(
-                    model="F5TTS_Base",
-                    device=self.device
+                # Default fallback using generic utility
+                from utils.models.fallback_utils import try_local_first, get_models_dir
+                
+                # Build search paths for F5-TTS
+                search_paths = []
+                models_dir = get_models_dir()
+                if models_dir:
+                    search_paths.append(os.path.join(models_dir, "F5-TTS", "F5TTS_Base"))
+                
+                def load_local_f5tts(path: str):
+                    # Find model and vocab files in local path
+                    model_file = None
+                    vocab_file = None
+                    for file in os.listdir(path):
+                        if file.endswith((".safetensors", ".pt")):
+                            model_file = os.path.join(path, file)
+                        elif file.endswith(".txt") and "vocab" in file.lower():
+                            vocab_file = os.path.join(path, file)
+                    
+                    return F5TTS(
+                        model="F5TTS_Base",
+                        ckpt_file=model_file,
+                        vocab_file=vocab_file,
+                        device=self.device
+                    )
+                
+                def load_hf_f5tts():
+                    return F5TTS(model="F5TTS_Base", device=self.device)
+                
+                self.f5tts_model = try_local_first(
+                    search_paths=search_paths,
+                    local_loader=load_local_f5tts,
+                    fallback_loader=load_hf_f5tts,
+                    fallback_name="F5TTS_Base",
+                    original_request=self.model_name
                 )
                 
             print(f"✅ F5-TTS model '{self.model_name}' loaded successfully")

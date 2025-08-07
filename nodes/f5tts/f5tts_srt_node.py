@@ -431,16 +431,13 @@ Hello! This is F5-TTS SRT with character switching.
                 from utils.models.language_mapper import get_model_for_language
                 required_model = get_model_for_language("f5tts", lang_code, model)
                 
-                if has_multilingual_subtitles:
-                    print(f"📋 SRT: Processing {len(lang_subtitles)} subtitle(s) in '{lang_code}' (multilingual engine handles model loading)")
+                # Load model once per language group (for both simple and multilingual subtitles)
+                current_model = getattr(self, 'current_model_name', None)
+                if current_model != required_model:
+                    print(f"🎯 SRT: Loading {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}'")
+                    self.load_f5tts_model(required_model, device)
                 else:
-                    # Only load model for simple subtitles that don't use multilingual engine
-                    current_model = getattr(self, 'current_model_name', None)
-                    if current_model != required_model:
-                        print(f"🎯 SRT: Loading {required_model} model for {len(lang_subtitles)} simple subtitle(s) in '{lang_code}'")
-                        self.load_f5tts_model(required_model, device)
-                    else:
-                        print(f"✅ SRT: Using {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
+                    print(f"✅ SRT: Using {required_model} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
                 
                 # Process each subtitle in this language group
                 for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
@@ -448,7 +445,7 @@ Hello! This is F5-TTS SRT with character switching.
                     self.check_interruption(f"F5-TTS SRT generation segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})")
                     
                     if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
-                        # Use modular multilingual engine for character/language switching
+                        # Character switching subtitle - model already loaded for this language group
                         characters = list(set(char for char, _, _ in character_segments_with_lang))
                         languages = list(set(lang for _, _, lang in character_segments_with_lang))
                         
@@ -457,29 +454,18 @@ Hello! This is F5-TTS SRT with character switching.
                         if len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator"):
                             print(f"🎭 F5-TTS SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
                         
-                        print(f"🔧 Note: Multilingual engine may load additional models for character/language switching within this segment")
-                        
-                        # Lazy load modular components
-                        if self.multilingual_engine is None:
-                            from utils.voice.multilingual_engine import MultilingualEngine
-                            from engines.adapters.f5tts_adapter import F5TTSEngineAdapter
-                            self.multilingual_engine = MultilingualEngine("f5tts")
-                            self.f5tts_adapter = F5TTSEngineAdapter(self)
-                        
                         # Validate and clamp nfe_step to prevent ODE solver issues
                         safe_nfe_step = max(1, min(nfe_step, 71))
                         if safe_nfe_step != nfe_step:
                             print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
                         
-                        # Use modular multilingual engine
-                        result = self.multilingual_engine.process_multilingual_text(
+                        # Process character switching within this subtitle using already-loaded model
+                        wav = self.generate_f5tts_with_pause_tags(
                             text=subtitle.text,
-                            engine_adapter=self.f5tts_adapter,
-                            model=model,
-                            device=device,
-                            main_audio_reference=audio_prompt,
-                            main_text_reference=validated_ref_text,
-                            stable_audio_component=audio_prompt_component,
+                            ref_audio_path=audio_prompt,
+                            ref_text=validated_ref_text,
+                            enable_pause_tags=True,
+                            character="multilingual_subtitle",
                             temperature=temperature,
                             speed=speed,
                             target_rms=target_rms,
@@ -487,10 +473,10 @@ Hello! This is F5-TTS SRT with character switching.
                             nfe_step=safe_nfe_step,
                             cfg_strength=cfg_strength,
                             seed=seed,
-                            enable_audio_cache=enable_audio_cache
+                            enable_cache=enable_audio_cache,
+                            cache_fn=None  # Let internal caching handle this
                         )
                         
-                        wav = result.audio
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                         
                     else:  # subtitle_type == 'simple' 

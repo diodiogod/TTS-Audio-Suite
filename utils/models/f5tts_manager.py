@@ -156,6 +156,8 @@ class F5TTSModelManager:
                         raise RuntimeError(f"Model '{model_name}' exists locally but failed to load. Please check the model files or use a different model.")
                     
                     # Check if model is available on HuggingFace
+                    # This prevents calling from_pretrained with unsupported models, 
+                    # which would trigger engine fallback and potentially bypass cache
                     from engines.f5tts.f5tts import F5TTS_MODELS
                     if model_name not in F5TTS_MODELS:
                         print(f"❌ Model '{model_name}' not available on HuggingFace")

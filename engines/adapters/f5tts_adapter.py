@@ -49,6 +49,12 @@ class F5TTSEngineAdapter:
             model_name: Model name to load
             device: Device to load model on
         """
+        # Check if the model is already loaded to avoid redundant loading
+        current_model = getattr(self.node, 'current_model_name', None)
+        if current_model == model_name:
+            print(f"💾 F5-TTS adapter: Model '{model_name}' already loaded - skipping base model load")
+            return
+        
         self.node.load_f5tts_model(model_name, device)
     
     def load_language_model(self, model_name: str, device: str):
@@ -59,6 +65,12 @@ class F5TTSEngineAdapter:
             model_name: Language-specific model name
             device: Device to load model on
         """
+        # Check if the model is already loaded to avoid redundant loading
+        current_model = getattr(self.node, 'current_model_name', None)
+        if current_model == model_name:
+            print(f"💾 F5-TTS adapter: Model '{model_name}' already loaded - skipping language model load")
+            return
+        
         self.node.load_f5tts_model(model_name, device)
     
     def generate_segment_audio(self, text: str, char_audio: str, char_text: str, 

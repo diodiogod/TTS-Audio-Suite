@@ -482,7 +482,13 @@ Back to the main narrator voice for the conclusion.""",
                         except Exception as e:
                             print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
                             print(f"🔄 Falling back to default model '{inputs['model']}'")
-                            self.load_f5tts_model(inputs["model"], inputs["device"])
+                            
+                            # Check if default model is already loaded before reloading
+                            current_model = getattr(self, 'current_model_name', None)
+                            if current_model == inputs["model"]:
+                                print(f"💾 Default model '{inputs['model']}' already loaded - reusing for fallback")
+                            else:
+                                self.load_f5tts_model(inputs["model"], inputs["device"])
                     else:
                         print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
                     
