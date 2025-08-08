@@ -16,6 +16,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!engines/rvc/impl/lib/
 lib64/
 parts/
 sdist/

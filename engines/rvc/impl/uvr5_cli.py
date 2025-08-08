@@ -27,6 +27,13 @@ class Separator:
         if ("mdx" in model_path and "uvr-mdx-net" in model_name) or model_name.endswith('.onnx'):
             # MDX-Net models (like UVR-MDX-NET-vocal_FT.onnx)
             self.model = MDXNet(model_path=model_path,denoise=denoise,device=device,**kwargs)
+        elif "scnet" in model_name:
+            # SCNet models - new SOTA architecture from ZFTurbo
+            # Remove aggressiveness parameter as SCNet doesn't use it
+            kwargs_no_agg = {k: v for k, v in kwargs.items() if k != 'agg'}
+            from lib.scnet import SCNetSeparator
+            self.model = SCNetSeparator(model_path=model_path,device=device,**kwargs_no_agg)
+            print(f"🏆 Using SCNet SOTA architecture for: {os.path.basename(model_path)}")
         elif "roformer" in model_name or "bs_roformer" in model_name:
             # BS-RoFormer models - these are MDXC architecture, not VR
             # Remove aggressiveness parameter as it doesn't apply to RoFormer models

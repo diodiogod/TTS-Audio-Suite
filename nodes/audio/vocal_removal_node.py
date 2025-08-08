@@ -26,7 +26,7 @@ from rvc_audio import audio_to_bytes, save_input_audio, load_input_audio, get_au
 import folder_paths
 from rvc_utils import get_filenames, get_hash, get_optimal_torch_device
 from lib import karafan
-from rvc_downloader import KARAFAN_MODELS, MDX_MODELS, RVC_DOWNLOAD_LINK, VR_MODELS, download_file
+from rvc_downloader import KARAFAN_MODELS, MDX_MODELS, RVC_DOWNLOAD_LINK, VR_MODELS, ZFTURBO_MODELS, ZFTURBO_DOWNLOAD_LINK, download_file
 
 # Define paths
 BASE_CACHE_DIR = folder_paths.get_temp_directory()
@@ -49,7 +49,11 @@ class VocalRemovalNode:
     @classmethod
     def INPUT_TYPES(cls):
 
-        model_list = MDX_MODELS + VR_MODELS + KARAFAN_MODELS + get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan"])
+        # Add ZFTurbo SOTA models to the list
+        zfturbo_model_names = [model_path for _, model_path in ZFTURBO_MODELS]
+        
+        model_list = (MDX_MODELS + VR_MODELS + KARAFAN_MODELS + zfturbo_model_names + 
+                     get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"]))
         model_list = list(set(model_list)) # dedupe
         
         # Filter out non-model files (JSON configs, etc.)
@@ -62,18 +66,20 @@ class VocalRemovalNode:
                     "tooltip": "Input audio for vocal/instrumental separation. Standard ComfyUI AUDIO format."
                 }),
                 "model": (model_list,{
-                    "default": "UVR/HP5-vocals+instrumentals.pth",
+                    "default": "MDXNET/UVR-MDX-NET-vocal_FT.onnx",
                     "tooltip": """🎵 AI AUDIO SEPARATION & PROCESSING
 
 🏆 TOP MODELS (2024-2025):
-• model_bs_roformer_ep_317_sdr_12.9755.ckpt - ⭐ BEST OVERALL (Transformer SOTA)
-• MDX23C-8KFFT-InstVoc_HQ.ckpt - Highest quality, minimal artifacts
-• UVR-MDX-NET-vocal_FT.onnx - Professional vocal extraction
+• model_scnet_xl_ihf_sdr_10.08.ckpt - ⭐ NEW BEST OVERALL (10.08 SDR, Jul 2025)
+• denoise_mel_band_roformer_sdr_27.99.ckpt - 🥇 BEST DENOISING (27.99 SDR)
+• model_vocals_mdx23c_sdr_10.17.ckpt - 🎤 BEST VOCALS (10.17 SDR)
+• UVR-MDX-NET-vocal_FT.onnx - ⭐ DEFAULT (Reliable, Fast)
 
 🎯 QUICK START:
-• 🎤 Karaoke: model_bs_roformer (no aggressiveness - uses built-in optimization)
-• 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT (no aggressiveness - MDX architecture)
-• 🔧 Denoising: UVR-DeNoise + gentle aggressiveness (5-8)
+• 🏆 Best Overall: model_scnet_xl_ihf_sdr_10.08.ckpt (SOTA 2025)
+• 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT (reliable, fast)
+• 🔧 Heavy Denoising: denoise_mel_band_roformer_sdr_27.99.ckpt (SOTA)  
+• 🔧 Light Denoising: UVR-DeNoise + gentle aggressiveness (5-8)
 • 🏠 Beginner: HP5-vocals+instrumentals + moderate aggressiveness (10)
 
 ⚠️ SPECIAL MODELS:
@@ -158,9 +164,18 @@ Selects the audio format for separated stems:
         subfolder = os.path.dirname(model)
         model_path = os.path.join(BASE_MODELS_DIR,subfolder,filename)
         if not os.path.isfile(model_path):
-            download_link = f"{RVC_DOWNLOAD_LINK}{model}"
+            # Check if it's a ZFTurbo model
+            zfturbo_model = next((download_path for download_path, model_path_check in ZFTURBO_MODELS if model_path_check == model), None)
+            
+            if zfturbo_model:
+                download_link = f"{ZFTURBO_DOWNLOAD_LINK}{zfturbo_model}"
+                print(f"📥 Downloading SOTA model from ZFTurbo repository: {filename}")
+            else:
+                download_link = f"{RVC_DOWNLOAD_LINK}{model}"
+                print(f"📥 Downloading model from RVC Studio: {filename}")
+            
             params = model_path, download_link
-            if download_file(params): print(f"successfully downloaded: {model_path}")
+            if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
         
         input_audio = get_audio(audio)
         hash_name = get_hash(model, aggressiveness, format, audio_to_bytes(*input_audio))

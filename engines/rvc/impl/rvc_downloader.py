@@ -19,11 +19,29 @@ except ImportError:
     BASE_MODELS_DIR = os.path.expanduser("~/ComfyUI/models")
 
 RVC_DOWNLOAD_LINK = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
+# ZFTurbo SOTA models from Music-Source-Separation-Training (2024-2025)
+ZFTURBO_DOWNLOAD_LINK = 'https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/'
+
 MDX_MODELS = ["MDXNET/UVR-MDX-NET-vocal_FT.onnx", "MDXNET/model_data.json"]
 KARAFAN_MODELS = ["karafan/MDX23C-8KFFT-InstVoc_HQ.ckpt"]
+
+# Latest SOTA models from ZFTurbo (2024-2025) - NOW WITH SCNET IMPLEMENTATION!
+ZFTURBO_MODELS = [
+    # Best overall multistem models - SCNet SOTA architecture (NEW!)
+    ("v1.0.15/model_scnet_ep_36_sdr_10.0891.ckpt", "SCNET/model_scnet_xl_ihf_sdr_10.08.ckpt"),
+    ("v1.0.17/model_scnet_masked_ep_111_sdr_9.8286.ckpt", "SCNET/model_scnet_masked_xl_ihf_sdr_9.82.ckpt"),
+    
+    # Best vocal-only models (MDX23C architecture - compatible)  
+    ("v1.0.0/model_vocals_mdx23c_sdr_10.17.ckpt", "MDX23C/model_vocals_mdx23c_sdr_10.17.ckpt"),
+    
+    # Specialized denoising models (MelBand RoFormer - compatible with RoFormer architecture)
+    ("v.1.0.7/denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt", "MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt"),
+    ("v.1.0.7/denoise_mel_band_roformer_aufr33_aggr_sdr_27.9768.ckpt", "MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt"),
+]
+
 VR_MODELS = [
     "UVR/UVR-DeEcho-DeReverb.pth",
-    "UVR/HP5-vocals+instrumentals.pth",
+    "UVR/HP5-vocals+instrumentals.pth", 
     "UVR/5_HP-Karaoke-UVR.pth",
     "UVR/6_HP-Karaoke-UVR.pth",
     "UVR/model_bs_roformer_ep_317_sdr_12.9755.ckpt",
