@@ -8,9 +8,15 @@ import requests
 import os
 from zipfile import ZipFile
 
-# Define paths - we'll use our own folder_paths
-BASE_CACHE_DIR = "/tmp"
-BASE_MODELS_DIR = os.path.expanduser("~/ComfyUI/models")
+# Define paths - use ComfyUI's proper paths
+try:
+    import folder_paths
+    BASE_CACHE_DIR = folder_paths.get_temp_directory()
+    BASE_MODELS_DIR = folder_paths.models_dir
+except ImportError:
+    # Fallback for standalone usage
+    BASE_CACHE_DIR = "/tmp"
+    BASE_MODELS_DIR = os.path.expanduser("~/ComfyUI/models")
 
 RVC_DOWNLOAD_LINK = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
 MDX_MODELS = ["MDXNET/UVR-MDX-NET-vocal_FT.onnx"]
