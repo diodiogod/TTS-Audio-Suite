@@ -114,6 +114,28 @@ class MergeAudioNode(BaseTTSNode):
                 "output_format": (output_formats, {
                     "default": "wav",
                     "tooltip": "Output audio format"
+                }),
+                
+                # Instrumental Pitch Control (Replay parity feature)
+                "vocal_pitch_shift": ("FLOAT", {
+                    "default": 0.0,
+                    "min": -24.0,
+                    "max": 24.0,
+                    "step": 0.1,
+                    "display": "slider",
+                    "tooltip": "Pitch shift for vocal track (audio1) in semitones. For voice conversion results."
+                }),
+                "instrumental_pitch_shift": ("FLOAT", {
+                    "default": 0.0,
+                    "min": -24.0,
+                    "max": 24.0,
+                    "step": 0.1,
+                    "display": "slider",
+                    "tooltip": "Pitch shift for instrumental track (audio2) in semitones. Separate control for natural sound."
+                }),
+                "enable_pitch_control": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable separate pitch control for vocal and instrumental tracks (Replay parity feature)"
                 })
             }
         }
@@ -159,7 +181,10 @@ class MergeAudioNode(BaseTTSNode):
         normalize=True,
         crossfade_duration=0.1,
         volume_balance=0.5,
-        output_format="wav"
+        output_format="wav",
+        vocal_pitch_shift=0.0,
+        instrumental_pitch_shift=0.0,
+        enable_pitch_control=False
     ):
         """
         Merge multiple audio sources using specified algorithm.
@@ -201,6 +226,16 @@ class MergeAudioNode(BaseTTSNode):
                 audio_data, sr = self._convert_input_audio(audio)
                 processed_audios.append(audio_data)
                 sample_rates.append(sr)
+            
+            # Apply instrumental pitch control if enabled (Replay parity feature)
+            if enable_pitch_control and (vocal_pitch_shift != 0.0 or instrumental_pitch_shift != 0.0):
+                print(f"🎵 Applying pitch control: vocal={vocal_pitch_shift:.1f}, instrumental={instrumental_pitch_shift:.1f} semitones")
+                processed_audios = self._apply_pitch_shifting(
+                    processed_audios, 
+                    sample_rates, 
+                    vocal_pitch_shift, 
+                    instrumental_pitch_shift
+                )
             
             # Determine output sample rate
             if sample_rate == "auto":
@@ -500,6 +535,54 @@ class MergeAudioNode(BaseTTSNode):
             "waveform": waveform,
             "sample_rate": sample_rate
         }
+    
+    def _apply_pitch_shifting(self, processed_audios, sample_rates, vocal_pitch_shift, instrumental_pitch_shift):
+        """
+        Apply separate pitch shifting to vocal (audio1) and instrumental (audio2) tracks.
+        Implements Replay's Instrumental Pitch Control feature.
+        """
+        try:
+            import librosa
+            import numpy as np
+            
+            # Apply pitch shifts to the first two audio tracks
+            # audio1 = vocal (gets vocal_pitch_shift)
+            # audio2 = instrumental (gets instrumental_pitch_shift)
+            pitch_shifted_audios = []
+            
+            for i, (audio_data, sr) in enumerate(zip(processed_audios, sample_rates)):
+                if i == 0 and vocal_pitch_shift != 0.0:
+                    # Apply vocal pitch shift to first audio (typically the vocal track)
+                    print(f"🎤 Pitch shifting vocal track: {vocal_pitch_shift:.1f} semitones")
+                    shifted_audio = librosa.effects.pitch_shift(
+                        y=audio_data.astype(np.float32),
+                        sr=sr,
+                        n_steps=vocal_pitch_shift
+                    )
+                    pitch_shifted_audios.append(shifted_audio)
+                    
+                elif i == 1 and instrumental_pitch_shift != 0.0:
+                    # Apply instrumental pitch shift to second audio (typically the instrumental track)
+                    print(f"🎼 Pitch shifting instrumental track: {instrumental_pitch_shift:.1f} semitones")
+                    shifted_audio = librosa.effects.pitch_shift(
+                        y=audio_data.astype(np.float32),
+                        sr=sr,
+                        n_steps=instrumental_pitch_shift
+                    )
+                    pitch_shifted_audios.append(shifted_audio)
+                    
+                else:
+                    # No pitch shift for this track or additional tracks beyond audio1/audio2
+                    pitch_shifted_audios.append(audio_data)
+            
+            return pitch_shifted_audios
+            
+        except ImportError:
+            print("⚠️ Pitch shifting requires librosa - skipping pitch control")
+            return processed_audios
+        except Exception as e:
+            print(f"⚠️ Pitch shifting failed: {e} - using original audio")
+            return processed_audios
     
     @classmethod
     def VALIDATE_INPUTS(cls, **kwargs):
