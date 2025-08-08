@@ -514,27 +514,51 @@ class SCNetSeparator:
 
     def _load_model(self, model_path: str) -> SCNet:
         """Load SCNet model from checkpoint"""
-        # Default SCNet configuration for XL IHF model
-        model_config = {
-            'sources': ['drums', 'bass', 'other', 'vocals'],
-            'audio_channels': 2,
-            'dims': [4, 64, 128, 256],  # XL configuration
-            'nfft': 4096,
-            'hop_size': 1024,
-            'win_size': 4096,
-            'normalized': True,
-            'band_SR': [0.175, 0.392, 0.433],
-            'band_stride': [1, 4, 16], 
-            'band_kernel': [3, 4, 16],
-            'conv_depths': [3, 2, 1],
-            'compress': 4,
-            'conv_kernel': 3,
-            'num_dplayer': 6,
-            'expand': 1,
-        }
+        # Detect model configuration based on filename
+        model_name = os.path.basename(model_path).lower()
+        
+        if "xl" in model_name:
+            # XL IHF configuration - corrected based on actual checkpoint
+            model_config = {
+                'sources': ['drums', 'bass', 'other', 'vocals'],
+                'audio_channels': 2,
+                'dims': [4, 64, 128, 256],  # XL configuration
+                'nfft': 4096,
+                'hop_size': 1024,
+                'win_size': 4096,
+                'normalized': True,
+                'band_SR': [0.175, 0.392, 0.433],
+                'band_stride': [1, 4, 4],  # Fixed: was [1, 4, 16] 
+                'band_kernel': [3, 4, 4],  # Fixed: was [3, 4, 16]
+                'conv_depths': [3, 2, 1],
+                'compress': 4,
+                'conv_kernel': 3,
+                'num_dplayer': 6,
+                'expand': 1,
+            }
+        else:
+            # Default SCNet configuration
+            model_config = {
+                'sources': ['drums', 'bass', 'other', 'vocals'],
+                'audio_channels': 2,
+                'dims': [4, 32, 64, 128],  # Standard configuration
+                'nfft': 4096,
+                'hop_size': 1024,
+                'win_size': 4096,
+                'normalized': True,
+                'band_SR': [0.175, 0.392, 0.433],
+                'band_stride': [1, 4, 16],
+                'band_kernel': [3, 4, 16],
+                'conv_depths': [3, 2, 1],
+                'compress': 4,
+                'conv_kernel': 3,
+                'num_dplayer': 6,
+                'expand': 1,
+            }
         
         # Create model
         model = SCNet(**model_config)
+        print(f"🔧 SCNet config: dims={model_config['dims']}, band_kernel={model_config['band_kernel']}, band_stride={model_config['band_stride']}")
         
         # Load weights
         checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
