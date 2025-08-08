@@ -22,7 +22,7 @@ class AnyType(str):
     def __ne__(self, __value: object) -> bool:
         return False
 
-from rvc_audio import save_input_audio, load_input_audio, get_audio
+from rvc_audio import audio_to_bytes, save_input_audio, load_input_audio, get_audio
 import folder_paths
 from rvc_utils import get_filenames, get_hash, get_optimal_torch_device
 from lib import karafan
