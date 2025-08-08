@@ -16,7 +16,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from engines.rvc.rvc_engine import RVCEngine
-from engines.rvc.reference_wrapper import reference_wrapper
+from engines.rvc.minimal_reference_wrapper import minimal_wrapper
 
 
 class RVCEngineAdapter:
@@ -133,73 +133,48 @@ class RVCEngineAdapter:
             
             print(f"🔄 Loading RVC model: {model_name}")
             
-            # Import the actual RVC conversion function
+            # Use minimal reference wrapper for conversion
             try:
-                # Import from the reference implementation
-                from engines.rvc.rvc_inference import vc_single, get_vc, load_hubert
-                
-                print(f"🔄 Loading RVC models for conversion...")
-                
-                # Load RVC model
-                voice_model = get_vc(model_path, index_path)
-                if not voice_model:
-                    raise ValueError(f"Failed to load RVC model from {model_path}")
-                
-                # Load Hubert model (try to find it)
-                hubert_path = self._find_hubert_model()
-                if not hubert_path:
-                    raise ValueError("Hubert model not found")
-                
-                hubert_model = load_hubert(hubert_path)
-                if not hubert_model:
-                    raise ValueError("Failed to load Hubert model")
-                
-                print(f"✅ Models loaded successfully")
+                print(f"🔄 Using minimal RVC reference wrapper for conversion...")
                 
                 # Convert input audio to expected format
                 if isinstance(audio_input, tuple):
-                    input_audio = audio_input
+                    audio_data, sample_rate = audio_input
                 elif hasattr(audio_input, 'numpy'):
-                    audio_np = audio_input.detach().cpu().numpy()
-                    input_audio = (audio_np, 44100)  # Assume 44.1kHz
+                    audio_data = audio_input.detach().cpu().numpy()
+                    sample_rate = 44100  # Assume 44.1kHz
                 else:
-                    audio_np = np.array(audio_input)
-                    input_audio = (audio_np, 44100)
-                
-                # Prepare pitch extraction parameters
-                pitch_params = {
-                    'f0_method': f0_method,
-                    'f0_autotune': f0_autotune,
-                    'index_rate': index_rate,
-                    'resample_sr': resample_sr,
-                    'rms_mix_rate': rms_mix_rate,
-                    'protect': protect,
-                    'crepe_hop_length': crepe_hop_length
-                }
+                    audio_data = np.array(audio_input)
+                    sample_rate = 44100
                 
                 print(f"🎵 Starting RVC conversion with {f0_method} pitch extraction")
                 
-                # Perform actual RVC conversion using reference implementation
-                output_audio = vc_single(
-                    hubert_model=hubert_model,
-                    input_audio=input_audio,
+                # Perform conversion using minimal wrapper (handles all model loading internally)
+                result = minimal_wrapper.convert_voice(
+                    audio=audio_data,
+                    sample_rate=sample_rate,
+                    model_path=model_path,
+                    index_path=index_path,
                     f0_up_key=pitch_shift,
-                    **voice_model,
-                    **pitch_params
+                    f0_method=f0_method,
+                    index_rate=index_rate,
+                    protect=protect,
+                    rms_mix_rate=rms_mix_rate,
+                    resample_sr=resample_sr,
+                    f0_autotune=f0_autotune,
+                    crepe_hop_length=crepe_hop_length
                 )
+                
+                if result is None:
+                    raise ValueError("RVC conversion failed - no output from minimal wrapper")
+                
+                output_audio, output_sr = result
                 
                 if output_audio is None:
                     raise ValueError("RVC conversion failed - output_audio is None")
                 
-                # Extract audio and sample rate from result
-                if isinstance(output_audio, tuple) and len(output_audio) == 2:
-                    converted_audio, output_sr = output_audio
-                else:
-                    converted_audio = output_audio
-                    output_sr = 44100
-                
-                print(f"✅ RVC conversion completed successfully")
-                return converted_audio, output_sr
+                print(f"✅ RVC conversion completed successfully via reference wrapper")
+                return output_audio, output_sr
                 
             except ImportError as e:
                 print(f"❌ RVC inference modules not available: {e}")

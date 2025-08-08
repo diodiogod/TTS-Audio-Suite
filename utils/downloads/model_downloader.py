@@ -249,6 +249,60 @@ def extract_zip_flat(zip_path: str, extract_to: str, cleanup: bool = False) -> L
         return []
 
 
+def download_rmvpe_for_reference() -> Optional[str]:
+    """
+    Download RMVPE model specifically for reference implementation
+    
+    Returns:
+        Path to downloaded model or None if failed
+    """
+    try:
+        rmvpe_url = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt"
+        
+        # Get reference models directory
+        current_dir = os.path.dirname(__file__)
+        project_root = os.path.dirname(os.path.dirname(current_dir))
+        reference_models_dir = os.path.join(project_root, "docs", "RVC", "Comfy-RVC-For-Reference", "models")
+        
+        # Ensure directory exists
+        os.makedirs(reference_models_dir, exist_ok=True)
+        
+        rmvpe_path = os.path.join(reference_models_dir, "rmvpe.pt")
+        
+        if not os.path.exists(rmvpe_path):
+            print(f"📥 Downloading RMVPE model for reference implementation...")
+            try:
+                response = requests.get(rmvpe_url, stream=True)
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded_size = 0
+                
+                with open(rmvpe_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            
+                            if total_size > 0:
+                                progress = (downloaded_size / total_size) * 100
+                                print(f"\r📥 Downloading RMVPE: {progress:.1f}%", end='', flush=True)
+                
+                print(f"\n✅ Downloaded RMVPE model to: {rmvpe_path}")
+                return rmvpe_path
+                
+            except Exception as e:
+                print(f"❌ Failed to download RMVPE model: {e}")
+                return None
+        else:
+            print(f"✅ RMVPE model already exists: {rmvpe_path}")
+            return rmvpe_path
+            
+    except Exception as e:
+        print(f"❌ Error downloading RMVPE for reference: {e}")
+        return None
+
+
 def get_model_hash(file_path: str, hash_size: int = 1024*1024) -> str:
     """
     Get hash of model file for verification.

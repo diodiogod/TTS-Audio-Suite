@@ -9,10 +9,9 @@ import numpy as np
 import torch
 from typing import Tuple, Optional
 
-# Add reference path to sys.path
+# Add reference implementation path to sys.path
 current_dir = os.path.dirname(__file__)
-project_root = os.path.dirname(os.path.dirname(current_dir))
-reference_path = os.path.join(project_root, "docs", "RVC", "Comfy-RVC-For-Reference")
+reference_path = os.path.join(current_dir, "reference_impl")
 
 if reference_path not in sys.path:
     sys.path.insert(0, reference_path)
