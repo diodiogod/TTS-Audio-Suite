@@ -96,7 +96,7 @@ Enables intelligent caching of separation results for faster processing:
 🔄 Automatically invalidates when any parameter changes
 💾 Cached files stored in organized folder structure for easy management"""
                 }),
-                "agg":("INT",{
+                "aggressiveness":("INT",{
                     "default": 10, 
                     "min": 0, #Minimum value
                     "max": 20, #Maximum value
@@ -104,7 +104,7 @@ Enables intelligent caching of separation results for faster processing:
                     "display": "slider",
                     "tooltip": """🎚️ SEPARATION AGGRESSIVENESS (0-20)
 
-Controls how aggressively the model separates vocals from instrumentals:
+Controls separation strength for VR architecture models (HP5, DeNoise, DeEcho, etc.):
 
 📊 RECOMMENDED VALUES:
 • 0-5: Gentle separation, preserves more original audio quality
@@ -118,7 +118,7 @@ Controls how aggressively the model separates vocals from instrumentals:
 • 🎼 Preserve Music Quality: 5-8 (gentle)
 • 🔧 Problem Audio: 15-20 (maximum effort)
 
-⚙️ TECHNICAL: Applies exponential masking to frequency bins, with different coefficients for low/high frequencies
+⚠️ NOTE: Only affects VR models (.pth files). MDX (.onnx) and Karafan (.ckpt) models ignore this setting.
 💡 Higher values = stronger vocal/instrumental separation but may affect audio quality"""
                 }),
                 "format":(["wav", "flac", "mp3"],{
@@ -153,7 +153,7 @@ Selects the audio format for separated stems:
 
     CATEGORY = "🎵 TTS Audio Suite/Audio"
 
-    def split(self, audio, model, use_cache=True, agg=10, format='flac'):
+    def split(self, audio, model, use_cache=True, aggressiveness=10, format='flac'):
         filename = os.path.basename(model)
         subfolder = os.path.dirname(model)
         model_path = os.path.join(BASE_MODELS_DIR,subfolder,filename)
@@ -163,7 +163,7 @@ Selects the audio format for separated stems:
             if download_file(params): print(f"successfully downloaded: {model_path}")
         
         input_audio = get_audio(audio)
-        hash_name = get_hash(model, agg, format, audio_to_bytes(*input_audio))
+        hash_name = get_hash(model, aggressiveness, format, audio_to_bytes(*input_audio))
         audio_path = os.path.join(temp_path,"uvr",f"{hash_name}.wav")
         primary_path = os.path.join(cache_dir,hash_name,f"primary.{format}")
         secondary_path = os.path.join(cache_dir,hash_name,f"secondary.{format}")
@@ -187,7 +187,7 @@ Selects the audio format for separated stems:
                     print(f"🔧 Using Audio-Separator engine")
                     model_dir = os.path.dirname(model_path)
                     model_name = os.path.basename(model_path)
-                    vr_params={"batch_size": 4, "window_size": 512, "aggression": agg, "enable_tta": False, "enable_post_process": False, "post_process_threshold": 0.2, "high_end_process": "mirroring"}
+                    vr_params={"batch_size": 4, "window_size": 512, "aggression": aggressiveness, "enable_tta": False, "enable_post_process": False, "post_process_threshold": 0.2, "high_end_process": "mirroring"}
                     mdx_params={"hop_length": 1024, "segment_size": 256, "overlap": 0.25, "batch_size": 4}
                     model = uvr.Separator(model_file_dir=os.path.join(BASE_MODELS_DIR,model_dir),output_dir=temp_path,output_format=format,vr_params=vr_params,mdx_params=mdx_params)
                     model.load_model(model_name)
@@ -204,7 +204,7 @@ Selects the audio format for separated stems:
                     device=device,
                     is_half="cuda" in str(device),
                     cache_dir=cache_dir,
-                    agg=agg
+                    agg=aggressiveness
                     )
                 primary, secondary, _ = model.run_inference(audio_path,format=format)
                 print(f"✅ RVC fallback completed successfully!")
