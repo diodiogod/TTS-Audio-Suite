@@ -188,11 +188,11 @@ Hello! Welcome to our multilingual show.
 
 **NEW**: Intelligent pause insertion for natural speech timing control!
 
-* **Smart Pause Syntax**: Use `[pause:duration]` tags anywhere in your text
+* **Smart Pause Syntax**: Use pause tags anywhere in your text with multiple aliases
 * **Flexible Duration Formats**: 
-  - Seconds: `[pause:1.5]` or `[pause:2s]`
-  - Milliseconds: `[pause:500ms]` or `[pause:1200ms]`
-  - Numbers only: `[pause:2]` (defaults to seconds)
+  - Seconds: `[pause:1.5]`, `[wait:2s]`, `[stop:3]`
+  - Milliseconds: `[pause:500ms]`, `[wait:1200ms]`, `[stop:800ms]`
+  - Supported aliases: `pause`, `wait`, `stop` (all work identically)
 * **Character Integration**: Pause tags work seamlessly with character switching
 * **Intelligent Caching**: Changing pause durations won't regenerate unchanged text segments
 * **Universal Support**: Works across all TTS nodes (ChatterBox, F5-TTS, SRT)
@@ -201,8 +201,8 @@ Hello! Welcome to our multilingual show.
 Example usage:
 ```
 Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
-[Alice] I'm really excited! [pause:500ms] This will be great.
-[pause:2] Let's get started with the main content.
+[Alice] I'm really excited! [wait:500ms] This will be great.
+[stop:2] Let's get started with the main content.
 ```
 
 </details>

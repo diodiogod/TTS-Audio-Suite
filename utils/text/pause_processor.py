@@ -1,12 +1,16 @@
 """
 Pause Tag Processing Module
-Handles parsing and processing of [pause:xx] tags in text for TTS generation.
+Handles parsing and processing of pause tags in text for TTS generation.
 
 Supports formats:
 - [pause:2] - 2 seconds
 - [pause:1.5] - 1.5 seconds  
 - [pause:500ms] - 500 milliseconds
 - [pause:2s] - 2 seconds (explicit)
+
+Aliases supported:
+- [wait:2] - same as [pause:2]
+- [stop:1.5] - same as [pause:1.5]
 """
 
 import re
@@ -18,8 +22,8 @@ from utils.audio.processing import AudioProcessingUtils
 class PauseTagProcessor:
     """Handles pause tag parsing and audio generation with pauses"""
     
-    # Regex pattern for flexible pause tag matching
-    PAUSE_PATTERN = r'\[pause:(\d+(?:\.\d+)?)(s|ms)?\]'
+    # Regex pattern for flexible pause tag matching (supports pause, wait, stop aliases)
+    PAUSE_PATTERN = r'\[(pause|wait|stop):(\d+(?:\.\d+)?)(s|ms)?\]'
     
     @staticmethod
     def parse_pause_tags(text: str) -> Tuple[List[Tuple[str, Union[str, float]]], str]:
@@ -50,8 +54,8 @@ class PauseTagProcessor:
                 if text_content:
                     segments.append(('text', text_content))
             
-            # Add pause segment
-            duration = normalize_duration(match.group(1), match.group(2))
+            # Add pause segment (group 1 is pause/wait/stop, group 2 is duration, group 3 is unit)
+            duration = normalize_duration(match.group(2), match.group(3))
             segments.append(('pause', duration))
             last_end = match.end()
         

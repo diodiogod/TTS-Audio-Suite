@@ -7,14 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.2.1] - 2025-08-08
 
+### Added
+
+- Add comprehensive Hindi support with F5-Hindi-Small (632MB) and IndicF5-Hindi (1.4GB) models supporting 11 Indian languages
+- Add support for all 11 Indian languages (Hindi, Assamese, Bengali, Gujarati, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil, Telugu) through IndicF5 multilingual model
+- Add flexible Small vs Base architecture detection that works with any future Small model variants
+
 ### Fixed
 
-- Add support for F5-Hindi-Small and IndicF5-Hindi models with flexible Small vs Base architecture detection and improved language switching logic
-## [4.3.0] - 2025-08-08
-
-### Fixed
-
-- Add comprehensive Hindi support with F5-Hindi-Small (632MB) and IndicF5-Hindi (1.4GB) models supporting 11 Indian languages. Enhanced flexible model architecture detection, improved language switching logic, and fixed multiple model loading bugs.
+- Fix language switching logic to properly detect explicit language tags in original text
+- Fix model loading bugs with enhanced architecture detection for Small models (18 layers vs Base 22 layers)
+- Fix language mapping system using existing language_mapper integration instead of hardcoded mappings
 ## [4.2.0] - 2025-08-08
 
 ### Added
