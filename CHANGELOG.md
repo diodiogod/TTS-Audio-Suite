@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.2] - 2025-08-08
+
+### Fixed
+
+- Remove IndicF5-Hindi model support due to architecture incompatibility
+
+IndicF5 uses custom transformer layers that are incompatible with F5-TTS DiT architecture.
+Alternative: F5-Hindi-Small remains available for Hindi TTS.
+Other Indian languages now fall back to base F5TTS models.
+## [4.2.2] - 2025-08-08
+
+### Removed
+
+- **REMOVED: IndicF5-Hindi model support** due to fundamental architecture incompatibility
+  - IndicF5 uses custom transformer layers (time_embed.time_mlp, text_embed.text_blocks) that are incompatible with F5-TTS DiT architecture
+  - Model weights cannot be loaded into standard F5-TTS pipeline due to layer structure differences
+  - Attempting integration would require extensive custom DiT implementation beyond scope of F5-TTS integration
+  - **Alternative**: F5-Hindi-Small (SPRINGLab/F5-Hindi-24KHz) remains available for Hindi TTS (632MB, fully compatible)
+  - **Impact**: Indian languages (Assamese, Bengali, Gujarati, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil, Telugu) now fall back to base F5TTS models
+
+### Technical Notes
+
+- Removed IndicF5Engine, all related imports, and model configuration entries
+- Updated language mapping to use F5-Hindi-Small for Hindi, base models for other Indian languages
+- Cleaned up documentation and README references
+
 ## [4.2.1] - 2025-08-08
 
 ### Added

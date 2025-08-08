@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# TTS Audio Suite v4.2.1
+# TTS Audio Suite v4.2.2
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -603,7 +603,6 @@ ComfyUI/models/F5-TTS/
 | **F5-FR**           | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
 | **F5-JP**           | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
 | **F5-Hindi-Small**  | Hindi            | [HuggingFace](https://huggingface.co/SPRINGLab/F5-Hindi-24KHz)                   | ~632MB |
-| **IndicF5-Hindi**   | Hindi (Multi)    | [HuggingFace](https://huggingface.co/AI4Bharat/IndicF5)                          | ~1.4GB |
 
 **Vocoder (Optional but Recommended):**
 

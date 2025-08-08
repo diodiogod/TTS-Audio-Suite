@@ -29,7 +29,6 @@ F5TTS_MODELS = {
     "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI", "exp": "", "step": 1000000, "ext": "pt"},
     "F5-PT-BR": {"repo": "firstpixel/F5-TTS-pt-br", "exp": "pt-br", "step": 200000, "ext": "pt"},
     "F5-Hindi-Small": {"repo": "SPRINGLab/F5-Hindi-24KHz", "exp": "", "step": 2500000, "ext": "safetensors", "note": "Hindi Small model (151M params) from IIT Madras"},
-    "IndicF5-Hindi": {"repo": "AI4Bharat/IndicF5", "exp": "", "step": "", "ext": "safetensors", "note": "Polyglot Hindi model (351M params) supports 11 Indian languages"},
 }
 
 def get_f5tts_models():
@@ -79,9 +78,6 @@ class ChatterBoxF5TTS:
         self.vocoder = None
         self.mel_spec_type = "vocos"  # Default vocoder
         
-        # IndicF5 support
-        self.indicf5_engine = None
-        self.is_indicf5_model = False
         
         # Initialize F5-TTS
         self._load_f5tts()
@@ -107,16 +103,6 @@ class ChatterBoxF5TTS:
                     print(f"📁 Found local model: {model_file}")
                     print(f"📁 Found local vocab: {vocab_file}")
                     
-                    # Check if this is IndicF5 model - use separate engine
-                    if "indicf5" in self.model_name.lower():
-                        from .indicf5_engine import IndicF5Engine
-                        indicf5_engine = IndicF5Engine(self.device)
-                        indicf5_engine.load_model(self.ckpt_dir)
-                        # Store the IndicF5 engine for later use
-                        self.indicf5_engine = indicf5_engine
-                        self.is_indicf5_model = True
-                        print(f"🔍 Using IndicF5 multilingual engine for local model")
-                        return  # Exit early, don't load standard F5-TTS model
                     
                     # Load with explicit local files - determine correct config
                     model_config = "F5TTS_Base"  # Default config
@@ -171,16 +157,6 @@ class ChatterBoxF5TTS:
                       "155m" in local_name.lower()):
                     model_config = "F5TTS_Small"
                     print(f"🔍 Detected Small model architecture for local folder '{local_name}'")
-                elif "indicf5" in local_name.lower():
-                    # IndicF5 uses a custom architecture - delegate to separate engine
-                    from .indicf5_engine import IndicF5Engine
-                    indicf5_engine = IndicF5Engine(self.device)
-                    indicf5_engine.load_model(model_path)
-                    # Store the IndicF5 engine for later use
-                    self.indicf5_engine = indicf5_engine
-                    self.is_indicf5_model = True
-                    print(f"🔍 Using IndicF5 multilingual engine for local folder '{local_name}'")
-                    return  # Exit early, don't load standard F5-TTS model
                 # Language models use base configs - they don't have their own
                 
                 print(f"📁 Using model config: {model_config}")
@@ -197,23 +173,13 @@ class ChatterBoxF5TTS:
                 model_config = F5TTS_MODELS[self.model_name]
                 
                 # Language models need to use base configs but download from custom repos
-                if (self.model_name.startswith("F5-") and self.model_name not in ["F5TTS_Base", "F5TTS_v1_Base"]) or self.model_name == "IndicF5-Hindi":
+                if (self.model_name.startswith("F5-") and self.model_name not in ["F5TTS_Base", "F5TTS_v1_Base"]):
                     # Auto-detect model architecture based on name patterns
                     if ("small" in self.model_name.lower() or 
                         "155m" in self.model_name.lower() or
                         self.model_name in ["F5-Hindi-Small"]):  # Known Small models
                         config_name = "F5TTS_Small"  # 18 layers, 768 dim, 12 heads (155M params)
                         print(f"🔍 Detected Small model architecture for '{self.model_name}'")
-                    elif self.model_name == "IndicF5-Hindi":
-                        # IndicF5 uses a custom architecture - delegate to separate engine
-                        from .indicf5_engine import IndicF5Engine
-                        indicf5_engine = IndicF5Engine(self.device)
-                        indicf5_engine.load_model()  # No local path, will download from HF
-                        # Store the IndicF5 engine for later use
-                        self.indicf5_engine = indicf5_engine
-                        self.is_indicf5_model = True
-                        print(f"🔍 Using IndicF5 multilingual engine for HuggingFace model")
-                        return  # Exit early, don't load standard F5-TTS model
                     else:
                         config_name = "F5TTS_Base"   # 22 layers, 1024 dim, 16 heads (~1.2GB)
                         print(f"🔍 Using Base model architecture for '{self.model_name}'")
@@ -226,8 +192,6 @@ class ChatterBoxF5TTS:
                         print(f"📦 Loading F5-TTS model '{self.model_name}' from {repo_id} using config '{config_name}' (⚠️  Large download: ~5.4GB)")
                     elif self.model_name == "F5-PT-BR":
                         print(f"📦 Loading F5-TTS model '{self.model_name}' from {repo_id} using config '{config_name}' (⚠️  Uses English vocab - may have quality issues)")
-                    elif self.model_name == "IndicF5-Hindi":
-                        print(f"📦 Loading IndicF5 multilingual model from {repo_id} using config '{config_name}' (🌍 Supports 11 Indian languages)")
                     else:
                         print(f"📦 Loading F5-TTS model '{self.model_name}' from {repo_id} using config '{config_name}'")
                     
@@ -259,10 +223,6 @@ class ChatterBoxF5TTS:
                         # Hindi Small model from SPRINGLab - uses step 2500000
                         model_filename = f"model_{step}.{ext}"
                         vocab_filename = "vocab.txt"
-                    elif self.model_name == "IndicF5-Hindi":
-                        # IndicF5 model from AI4Bharat - uses generic filename
-                        model_filename = f"model.{ext}"
-                        vocab_filename = "checkpoints/vocab.txt"  # vocab is in checkpoints subfolder
                     else:
                         model_filename = f"model_{step}.{ext}"
                         vocab_filename = "vocab.txt"
@@ -270,24 +230,7 @@ class ChatterBoxF5TTS:
                     try:
                         model_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
                     except Exception as e:
-                        if "401" in str(e) and "gated" in str(e).lower() and self.model_name == "IndicF5-Hindi":
-                            raise RuntimeError(f"""🔒 IndicF5-Hindi model requires manual download (gated access):
-
-📋 Instructions:
-1. Visit: https://huggingface.co/AI4Bharat/IndicF5
-2. Request access to the model (requires HuggingFace account)
-3. Once approved, download these files:
-   - model.safetensors
-   - checkpoints/vocab.txt
-4. Place them in: {folder_paths.models_dir}/F5-TTS/IndicF5-Hindi/
-   Final structure:
-   📁 {folder_paths.models_dir}/F5-TTS/IndicF5-Hindi/
-   ├── model.safetensors
-   └── vocab.txt (from checkpoints folder)
-
-🔄 Alternative: Use F5-Hindi-Small (publicly available, 632MB)""")
-                        else:
-                            raise e
+                        raise e
                     
                     # Handle vocab file - some models don't have their own vocab
                     if vocab_filename is None:
@@ -304,11 +247,7 @@ class ChatterBoxF5TTS:
                         try:
                             vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
                         except Exception as e:
-                            if "401" in str(e) and "gated" in str(e).lower() and self.model_name == "IndicF5-Hindi":
-                                # This should not happen if model download succeeded, but just in case
-                                raise RuntimeError(f"🔒 IndicF5-Hindi vocab file also requires gated access. Please download checkpoints/vocab.txt manually from https://huggingface.co/AI4Bharat/IndicF5")
-                            else:
-                                raise e
+                            raise e
                     
                     print(f"📁 Downloaded model: {model_file}")
                     print(f"📁 Downloaded vocab: {vocab_file}")
@@ -401,12 +340,6 @@ class ChatterBoxF5TTS:
         Generate audio with F5-TTS specific parameters
         Following ChatterBox interface pattern
         """
-        # Check if using IndicF5 engine
-        if self.is_indicf5_model and self.indicf5_engine is not None:
-            audio, sample_rate = self.indicf5_engine.generate_speech(
-                text, ref_audio_path, ref_text, speed=speed, **kwargs
-            )
-            return audio
         
         if self.f5tts_model is None:
             raise RuntimeError("F5-TTS model not loaded")

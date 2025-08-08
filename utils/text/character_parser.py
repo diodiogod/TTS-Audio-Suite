@@ -103,7 +103,7 @@ class CharacterParser:
             # Korean variations
             'ko': 'ko', 'korean': 'ko', '한국어': 'ko', 'korea': 'ko', 'south korea': 'ko',
             
-            # Indian Languages (supported by IndicF5-Hindi multilingual model)
+            # Indian Languages (F5-Hindi-Small for Hindi, others use base F5TTS models)
             
             # Hindi variations
             'hi': 'hi', 'hindi': 'hi', 'हिन्दी': 'hi', 'hin': 'hi', 'देवनागरी': 'hi',
