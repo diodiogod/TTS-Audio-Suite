@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.2.0] - 2025-08-08
 
-### Fixed
+### Added
 
 - Add advanced RVC voice conversion and vocal separation capabilities
 
