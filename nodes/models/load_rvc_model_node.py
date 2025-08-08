@@ -61,7 +61,7 @@ class LoadRVCModelNode(BaseTTSNode):
             "optional": {
                 "index_file": (rvc_indexes, {
                     "default": "",
-                    "tooltip": "Optional FAISS index file (.index) for improved voice similarity. Leave empty if not available."
+                    "tooltip": "FAISS index file (.index) - Optional enhancement for better voice similarity. Leave empty if you don't have one."
                 }),
                 "auto_download": ("BOOLEAN", {
                     "default": True,

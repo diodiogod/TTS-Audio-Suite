@@ -81,7 +81,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "max": 0.5,
                     "step": 0.01,
                     "display": "slider",
-                    "tooltip": "Consonant protection level. Protects speech clarity, higher values preserve more consonants"
+                    "tooltip": "Consonant protection level - Protects speech clarity. Low=voice changes more, High=keeps original pronunciation clearer"
                 }),
                 "rms_mix_rate": ("FLOAT", {
                     "default": 0.25,
@@ -89,7 +89,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "max": 1.0,
                     "step": 0.01,
                     "display": "slider", 
-                    "tooltip": "Volume envelope mixing rate. Controls how much original volume envelope is preserved"
+                    "tooltip": "Volume envelope mixing rate - Controls volume patterns. Low=use target voice volume, High=keep original voice volume patterns"
                 }),
             },
             "optional": {

@@ -6,11 +6,12 @@
 
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
-- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and future engines like RVC
+- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and RVC voice conversion
 - **Multilingual Support**: German and Norwegian models for both ChatterBox TTS and Voice Conversion
 - **Smart Language Grouping**: SRT processing by language groups to minimize model switching
 - **Character Voice Management**: Centralized character voice system with flexible input types
-- **Comprehensive Audio Analysis**: Interactive waveform analyzer with timing extraction
+- **Comprehensive Audio Processing**: Interactive waveform analyzer, vocal separation, and audio mixing
+- **Professional Voice Conversion**: RVC implementation with UVR5 vocal separation and advanced pitch control
 
 ## Documentation Files
 
@@ -60,6 +61,22 @@ This extension features a **unified modular architecture** supporting multiple T
 - **f5tts_edit_engine.py** - Speech editing engine for targeted word replacement
 - **audio_compositing.py** - Audio compositing with crossfade and segment processing
 
+**engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
+- **__init__.py** - RVC engine initialization and ComfyUI integration
+- **impl/** - Complete RVC implementation with vocal separation and voice conversion
+  - **rvc_audio.py** - Audio processing utilities for RVC pipeline
+  - **rvc_downloader.py** - Model downloading system for RVC, UVR, and Karafan models
+  - **rvc_utils.py** - Utility functions for device detection and file management
+  - **uvr5_cli.py** - UVR5 vocal separation command-line interface
+  - **lib/** - Core RVC libraries and model implementations
+    - **separators.py** - Audio separation algorithms (MDX, VR, UVR5)
+    - **model_utils.py** - Model loading and hash utilities
+    - **audio.py** - Audio I/O and format conversion utilities
+    - **utils.py** - General utilities and merge functions
+    - **karafan/** - Karafan separation model implementation
+    - **infer_pack/** - RVC inference and model loading components
+    - **uvr5_pack/** - UVR5 vocal separation algorithms
+
 ### Engine Adapters
 
 **engines/adapters/chatterbox_adapter.py** - ChatterBox engine adapter providing standardized interface for unified nodes
@@ -73,6 +90,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/engines/chatterbox_engine_node.py** - ChatterBox engine configuration node for language, device, and generation parameters
 
 **nodes/engines/f5tts_engine_node.py** - F5-TTS engine configuration node with model selection and generation settings
+
+**nodes/engines/rvc_engine_node.py** - RVC voice conversion node with pitch control and quality settings
 
 ### Unified Interface Nodes
 
@@ -99,13 +118,23 @@ This extension features a **unified modular architecture** supporting multiple T
 - **f5tts_edit_node.py** - F5-TTS speech editor for word replacement
 - **f5tts_edit_options_node.py** - Advanced F5-TTS editing configuration
 
-### Audio Analysis System
+### Audio Processing System
 
 **nodes/audio/analyzer_node.py** - Interactive Audio Wave Analyzer with web interface and timing extraction
 
 **nodes/audio/analyzer_options_node.py** - Configuration options for audio analysis (silence detection, peak analysis)
 
 **nodes/audio/recorder_node.py** - Voice recording node with microphone input and silence detection
+
+**nodes/audio/vocal_removal_node.py** - Professional vocal/instrumental separation using UVR5, MDX, VR, and Karafan models
+
+**nodes/audio/merge_audio_node.py** - Advanced audio mixing with multiple algorithms and pitch control
+
+**nodes/audio/rvc_pitch_options_node.py** - Advanced pitch extraction settings for RVC voice conversion
+
+### RVC Model Management
+
+**nodes/models/load_rvc_model_node.py** - RVC model loader with FAISS index support and automatic downloading
 
 ## Base Classes and Foundation
 

@@ -9,6 +9,10 @@ import sys
 import importlib.util
 from typing import Dict, Any, Tuple, Optional, List
 import hashlib
+import numpy as np
+import torch
+import librosa
+import scipy.signal
 
 # Add project root directory to path for imports
 current_dir = os.path.dirname(__file__)
@@ -65,8 +69,6 @@ class MergeAudioNode(BaseTTSNode):
         # Sample rate options
         sample_rates = ["auto", 16000, 22050, 44100, 48000]
         
-        # Output formats
-        output_formats = ["wav", "flac", "mp3"]
         
         return {
             "required": {
@@ -78,7 +80,29 @@ class MergeAudioNode(BaseTTSNode):
                 }),
                 "merge_algorithm": (merge_options, {
                     "default": "mean",
-                    "tooltip": "Mixing algorithm. Mean=balanced mix, Median=outlier reduction, Max=prominence mixing"
+                    "tooltip": """🎚️ AUDIO MERGING ALGORITHMS
+
+Choose how to combine multiple audio sources:
+
+📊 MATHEMATICAL ALGORITHMS:
+• MEAN: ⭐ Average all inputs - smooth, balanced mix (recommended)
+• MEDIAN: Reduces outliers and noise - cleaner output, less distortion
+• MAX: Takes loudest signal at each point - preserves peaks, can be harsh
+• MIN: Takes quietest signal at each point - gentle, subdued mix
+• SUM: Simple addition - louder but may clip without normalization
+
+🎵 CREATIVE ALGORITHMS:
+• OVERLAY: Professional layering with gain compensation - natural mixing
+• WEIGHTED: Custom balance using volume_balance slider - precise control
+• CROSSFADE: Smooth transitions between sources - cinematic blending
+
+💡 USE CASES:
+🎤 Voice + Music: MEAN or OVERLAY
+🎼 Multiple instruments: MEDIAN (reduces conflicts)
+🔊 Emphasize loudest: MAX
+🎛️ Custom balance: WEIGHTED
+🎬 Smooth transitions: CROSSFADE
+🔧 Precise control: SUM + normalization"""
                 }),
             },
             "optional": {
@@ -90,18 +114,18 @@ class MergeAudioNode(BaseTTSNode):
                 }),
                 "sample_rate": (sample_rates, {
                     "default": "auto",
-                    "tooltip": "Output sample rate. Auto=use highest input rate"
+                    "tooltip": "Output sample rate - Auto=use highest input rate, Higher=better quality but larger files"
                 }),
                 "normalize": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Normalize output to prevent clipping"
+                    "tooltip": "Normalize output volume - ON=prevents distortion/clipping, OFF=preserves original levels"
                 }),
                 "crossfade_duration": ("FLOAT", {
                     "default": 0.1,
                     "min": 0.0,
                     "max": 2.0,
                     "step": 0.01,
-                    "tooltip": "Crossfade duration in seconds (for crossfade algorithm)"
+                    "tooltip": "Crossfade blend duration in seconds (for crossfade algorithm) - Low=quick transitions, High=smooth gradual blending"
                 }),
                 "volume_balance": ("FLOAT", {
                     "default": 0.5,
@@ -109,13 +133,8 @@ class MergeAudioNode(BaseTTSNode):
                     "max": 1.0,
                     "step": 0.01,
                     "display": "slider",
-                    "tooltip": "Volume balance between audio1 (0.0) and audio2 (1.0)"
+                    "tooltip": "Volume balance between audio1 (0.0) and audio2 (1.0) - ONLY used by 'weighted' algorithm"
                 }),
-                "output_format": (output_formats, {
-                    "default": "wav",
-                    "tooltip": "Output audio format"
-                }),
-                
                 # Instrumental Pitch Control (Replay parity feature)
                 "vocal_pitch_shift": ("FLOAT", {
                     "default": 0.0,
@@ -123,7 +142,7 @@ class MergeAudioNode(BaseTTSNode):
                     "max": 24.0,
                     "step": 0.1,
                     "display": "slider",
-                    "tooltip": "Pitch shift for vocal track (audio1) in semitones. For voice conversion results."
+                    "tooltip": "Change vocal pitch - Negative=deeper voice (like man), Positive=higher voice (like child), 12=twice as high"
                 }),
                 "instrumental_pitch_shift": ("FLOAT", {
                     "default": 0.0,
@@ -131,11 +150,11 @@ class MergeAudioNode(BaseTTSNode):
                     "max": 24.0,
                     "step": 0.1,
                     "display": "slider",
-                    "tooltip": "Pitch shift for instrumental track (audio2) in semitones. Separate control for natural sound."
+                    "tooltip": "Change music pitch - Negative=deeper/slower sound, Positive=higher/faster sound, 12=twice as high"
                 }),
                 "enable_pitch_control": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable separate pitch control for vocal and instrumental tracks (Replay parity feature)"
+                    "tooltip": "Enable pitch shifting - ON=allows separate pitch control for vocal/instrumental, OFF=no pitch changes"
                 })
             }
         }
@@ -181,7 +200,6 @@ class MergeAudioNode(BaseTTSNode):
         normalize=True,
         crossfade_duration=0.1,
         volume_balance=0.5,
-        output_format="wav",
         vocal_pitch_shift=0.0,
         instrumental_pitch_shift=0.0,
         enable_pitch_control=False
@@ -199,7 +217,6 @@ class MergeAudioNode(BaseTTSNode):
             normalize: Whether to normalize output
             crossfade_duration: Crossfade duration for crossfade algorithm
             volume_balance: Balance between audio1 and audio2
-            output_format: Output audio format
             
         Returns:
             Tuple of (merged_audio, merge_info)
@@ -265,8 +282,7 @@ class MergeAudioNode(BaseTTSNode):
                 f"Audio Merge: {merge_algorithm} algorithm | "
                 f"Sources: {len(audio_inputs)} | "
                 f"Sample Rate: {target_sr}Hz | "
-                f"Normalized: {normalize} | "
-                f"Format: {output_format}"
+                f"Normalized: {normalize}"
             )
             
             print(f"✅ Audio merge completed successfully")
@@ -287,8 +303,6 @@ class MergeAudioNode(BaseTTSNode):
     def _convert_input_audio(self, audio) -> Tuple:
         """Convert ComfyUI audio to processing format."""
         try:
-            import torch
-            import numpy as np
             
             waveform = audio["waveform"]
             sample_rate = audio.get("sample_rate", 44100)
@@ -307,8 +321,10 @@ class MergeAudioNode(BaseTTSNode):
                 if audio_np.shape[0] == 1:  # (1, samples) - mono
                     audio_np = audio_np[0]
                 elif audio_np.shape[0] == 2:  # (2, samples) - stereo
+                    print("⚠️ Converting stereo to mono for mixing - stereo information will be lost")
                     audio_np = audio_np.mean(axis=0)  # Convert to mono for mixing
                 else:  # (samples, channels)
+                    print(f"⚠️ Converting {audio_np.shape[0]}-channel audio to mono - spatial information will be lost")
                     audio_np = audio_np.mean(axis=1)
             
             return audio_np, sample_rate
@@ -318,14 +334,13 @@ class MergeAudioNode(BaseTTSNode):
     
     def _align_and_resample_audio(self, audio_list, sample_rates, target_sr):
         """Align audio lengths and resample to target sample rate."""
-        import numpy as np
-        import scipy.signal
         
         resampled_audios = []
         
         # Resample all audio to target sample rate
-        for audio, sr in zip(audio_list, sample_rates):
+        for i, (audio, sr) in enumerate(zip(audio_list, sample_rates)):
             if sr != target_sr:
+                print(f"⚠️ Resampling audio {i+1}: {sr}Hz → {target_sr}Hz - may introduce artifacts")
                 # Simple resampling (in production, would use librosa or similar)
                 resample_ratio = target_sr / sr
                 new_length = int(len(audio) * resample_ratio)
@@ -339,18 +354,25 @@ class MergeAudioNode(BaseTTSNode):
         max_length = max(len(audio) for audio in resampled_audios)
         
         aligned_audios = []
-        for audio in resampled_audios:
+        for i, audio in enumerate(resampled_audios):
             if len(audio) < max_length:
+                pad_seconds = (max_length - len(audio)) / target_sr
+                if pad_seconds > 0.1:  # Only warn for significant padding
+                    print(f"⚠️ Padding audio {i+1} with {pad_seconds:.2f}s of silence")
                 padded = np.pad(audio, (0, max_length - len(audio)), mode='constant')
                 aligned_audios.append(padded)
-            else:
+            elif len(audio) > max_length:
+                truncate_seconds = (len(audio) - max_length) / target_sr
+                if truncate_seconds > 0.1:  # Only warn for significant truncation
+                    print(f"⚠️ Truncating audio {i+1} by {truncate_seconds:.2f}s")
                 aligned_audios.append(audio[:max_length])  # Truncate if longer
+            else:
+                aligned_audios.append(audio)
         
         return aligned_audios
     
     def _apply_merge_algorithm(self, aligned_audios, algorithm, volume_balance, crossfade_duration):
         """Apply the specified merging algorithm using real implementations."""
-        import numpy as np
         
         try:
             # Use the same merge functions as the reference implementation
@@ -406,8 +428,6 @@ class MergeAudioNode(BaseTTSNode):
 
     def _pad_audio(self, *audios, axis=0):
         """Pad audio arrays to same length (from reference implementation)"""
-        import librosa
-        
         try:
             maxlen = max(len(a) if a is not None else 0 for a in audios)
             if maxlen > 0:
@@ -509,7 +529,6 @@ class MergeAudioNode(BaseTTSNode):
     
     def _normalize_audio(self, audio):
         """Normalize audio to prevent clipping."""
-        import numpy as np
         
         max_amp = np.max(np.abs(audio))
         if max_amp > 1.0:
@@ -518,8 +537,6 @@ class MergeAudioNode(BaseTTSNode):
     
     def _convert_output_audio(self, audio_np, sample_rate):
         """Convert processed audio back to ComfyUI format."""
-        import torch
-        import numpy as np
         
         # Ensure proper data type and range
         if audio_np.dtype != np.float32:
@@ -542,9 +559,6 @@ class MergeAudioNode(BaseTTSNode):
         Implements Replay's Instrumental Pitch Control feature.
         """
         try:
-            import librosa
-            import numpy as np
-            
             # Apply pitch shifts to the first two audio tracks
             # audio1 = vocal (gets vocal_pitch_shift)
             # audio2 = instrumental (gets instrumental_pitch_shift)
