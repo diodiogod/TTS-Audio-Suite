@@ -102,6 +102,43 @@ class CharacterParser:
             
             # Korean variations
             'ko': 'ko', 'korean': 'ko', '한국어': 'ko', 'korea': 'ko', 'south korea': 'ko',
+            
+            # Indian Languages (supported by IndicF5-Hindi multilingual model)
+            
+            # Hindi variations
+            'hi': 'hi', 'hindi': 'hi', 'हिन्दी': 'hi', 'hin': 'hi', 'देवनागरी': 'hi',
+            
+            # Assamese variations
+            'as': 'as', 'assamese': 'as', 'অসমীয়া': 'as', 'asom': 'as', 'axomiya': 'as',
+            
+            # Bengali variations  
+            'bn': 'bn', 'bengali': 'bn', 'বাংলা': 'bn', 'bangla': 'bn', 'west bengal': 'bn',
+            'bangladesh': 'bn', 'bengal': 'bn',
+            
+            # Gujarati variations
+            'gu': 'gu', 'gujarati': 'gu', 'ગુજરાતી': 'gu', 'gujarat': 'gu', 'gujrati': 'gu',
+            
+            # Kannada variations
+            'kn': 'kn', 'kannada': 'kn', 'ಕನ್ನಡ': 'kn', 'karnataka': 'kn', 'kanarese': 'kn',
+            
+            # Malayalam variations
+            'ml': 'ml', 'malayalam': 'ml', 'മലയാളം': 'ml', 'kerala': 'ml', 'malayali': 'ml',
+            
+            # Marathi variations
+            'mr': 'mr', 'marathi': 'mr', 'मराठी': 'mr', 'maharashtra': 'mr',
+            
+            # Odia variations
+            'or': 'or', 'odia': 'or', 'ଓଡ଼ିଆ': 'or', 'oriya': 'or', 'odisha': 'or', 'orissa': 'or',
+            
+            # Punjabi variations
+            'pa': 'pa', 'punjabi': 'pa', 'ਪੰਜਾਬੀ': 'pa', 'panjabi': 'pa', 'punjab': 'pa',
+            
+            # Tamil variations
+            'ta': 'ta', 'tamil': 'ta', 'தமிழ்': 'ta', 'tamil nadu': 'ta', 'tamilnadu': 'ta',
+            
+            # Telugu variations
+            'te': 'te', 'telugu': 'te', 'తెలుగు': 'te', 'andhra pradesh': 'te',
+            'andhra': 'te', 'telangana': 'te',
         }
     
     def resolve_language_alias(self, language_input: str) -> str:
@@ -237,36 +274,28 @@ class CharacterParser:
         Returns:
             Inferred language code or None if can't infer
         """
-        if engine_type == "f5tts":
-            # F5-TTS model to language mapping
-            model_lower = model_name.lower()
-            if any(x in model_lower for x in ['pt-br', 'ptbr', 'portuguese', 'brasil']):
-                return 'pt-br'
-            elif 'f5-de' in model_lower or 'german' in model_lower:
-                return 'de'
-            elif 'f5-es' in model_lower or 'spanish' in model_lower:
-                return 'es'
-            elif 'f5-fr' in model_lower or 'french' in model_lower:
-                return 'fr'
-            elif 'f5-it' in model_lower or 'italian' in model_lower:
-                return 'it'
-            elif 'f5-jp' in model_lower or 'japanese' in model_lower:
-                return 'jp'
-            elif 'f5-th' in model_lower or 'thai' in model_lower:
-                return 'th'
-            elif any(x in model_lower for x in ['f5tts_base', 'f5tts_v1_base', 'e2tts_base']):
-                return 'en'  # F5-TTS base models are English
+        try:
+            # Use the existing language mapper system - much cleaner and flexible!
+            from utils.models.language_mapper import get_language_mapper
             
-        elif engine_type == "chatterbox":
-            # ChatterBox model to language mapping  
-            model_lower = model_name.lower()
-            if 'german' in model_lower:
-                return 'de'
-            elif 'norwegian' in model_lower:
-                return 'no'
-            else:
-                return 'en'  # ChatterBox defaults to English
+            mapper = get_language_mapper(engine_type)
+            mappings = mapper.get_all_mappings().get(engine_type, {})
+            
+            # Reverse lookup: find language code that maps to this model
+            for lang_code, mapped_model in mappings.items():
+                if mapped_model == model_name:
+                    return lang_code
+            
+            # Fallback for base models that aren't in specific language mappings
+            if engine_type == "f5tts" and any(x in model_name.lower() for x in ['f5tts_base', 'f5tts_v1_base', 'e2tts_base']):
+                return 'en'
+            elif engine_type == "chatterbox" and 'english' in model_name.lower():
+                return 'en'
                 
+        except ImportError:
+            # Fallback if language mapper not available - shouldn't happen but just in case
+            pass
+        
         return None  # Can't infer language
     
     def normalize_character_name(self, character_name: str) -> str:

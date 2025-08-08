@@ -42,8 +42,9 @@ class F5TTSModelManager:
     def find_f5tts_models(self, model_name: str = None) -> List[Tuple[str, Optional[str]]]:
         """
         Find F5-TTS model files in order of priority:
-        1. ComfyUI models/F5-TTS/ directory (only matching model name if specified)
-        2. HuggingFace download
+        1. ComfyUI models/F5-TTS/ directory (primary location)
+        2. ComfyUI models/Checkpoints/F5-TTS/ directory (fallback for user convenience)
+        3. HuggingFace download
         
         Args:
             model_name: Optional specific model name to search for
@@ -53,27 +54,33 @@ class F5TTSModelManager:
         """
         model_paths = []
         
-        # 1. Check ComfyUI models folder - F5-TTS directory
-        comfyui_f5tts_path = os.path.join(folder_paths.models_dir, "F5-TTS")
-        if os.path.exists(comfyui_f5tts_path):
-            for item in os.listdir(comfyui_f5tts_path):
-                item_path = os.path.join(comfyui_f5tts_path, item)
-                if os.path.isdir(item_path):
-                    # If specific model name provided, only check matching folders
-                    if model_name and item.lower() != model_name.lower():
-                        continue
-                    
-                    # Check if it contains model files
-                    has_model = False
-                    for ext in [".safetensors", ".pt"]:
-                        model_files = [f for f in os.listdir(item_path) if f.endswith(ext)]
-                        if model_files:
-                            has_model = True
-                            break
-                    if has_model:
-                        model_paths.append(("comfyui", item_path))
+        # Search paths in order of priority
+        search_paths = [
+            os.path.join(folder_paths.models_dir, "F5-TTS"),
+            os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")
+        ]
         
-        # 2. HuggingFace download as fallback
+        # 1-2. Check ComfyUI models folders
+        for search_path in search_paths:
+            if os.path.exists(search_path):
+                for item in os.listdir(search_path):
+                    item_path = os.path.join(search_path, item)
+                    if os.path.isdir(item_path):
+                        # If specific model name provided, only check matching folders
+                        if model_name and item.lower() != model_name.lower():
+                            continue
+                        
+                        # Check if it contains model files
+                        has_model = False
+                        for ext in [".safetensors", ".pt"]:
+                            model_files = [f for f in os.listdir(item_path) if f.endswith(ext)]
+                            if model_files:
+                                has_model = True
+                                break
+                        if has_model:
+                            model_paths.append(("comfyui", item_path))
+        
+        # 3. HuggingFace download as fallback
         model_paths.append(("huggingface", None))
         
         return model_paths

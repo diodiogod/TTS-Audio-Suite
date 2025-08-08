@@ -77,6 +77,17 @@ class LanguageModelMapper:
                 "th": "F5-TH",       # Thai
                 "pt": "F5-PT-BR",    # Portuguese (Brazil)
                 "pt-br": "F5-PT-BR", # Portuguese (Brazil) - alternative format
+                "hi": "F5-Hindi-Small",  # Hindi - uses Small model from IIT Madras
+                "as": "IndicF5-Hindi",   # Assamese - uses IndicF5 multilingual model
+                "bn": "IndicF5-Hindi",   # Bengali - uses IndicF5 multilingual model  
+                "gu": "IndicF5-Hindi",   # Gujarati - uses IndicF5 multilingual model
+                "kn": "IndicF5-Hindi",   # Kannada - uses IndicF5 multilingual model
+                "ml": "IndicF5-Hindi",   # Malayalam - uses IndicF5 multilingual model
+                "mr": "IndicF5-Hindi",   # Marathi - uses IndicF5 multilingual model
+                "or": "IndicF5-Hindi",   # Odia - uses IndicF5 multilingual model
+                "pa": "IndicF5-Hindi",   # Punjabi - uses IndicF5 multilingual model
+                "ta": "IndicF5-Hindi",   # Tamil - uses IndicF5 multilingual model
+                "te": "IndicF5-Hindi",   # Telugu - uses IndicF5 multilingual model
             },
             "chatterbox": {
                 "en": "English",     # This will be overridden by default_model

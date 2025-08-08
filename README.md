@@ -122,7 +122,7 @@ Back to the narrator for the conclusion.
 * **Alias Support**: Language defaults work with character alias system
 
 **Supported Languages:**
-* **F5-TTS**: English (en), German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt)
+* **F5-TTS**: English (en), German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt), Hindi (hi)
 * **ChatterBox**: English (en), German (de), Norwegian (no/nb/nn)
 
 Example usage:
@@ -280,7 +280,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 🌍 **Language Switching** - Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
 - 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
-- 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
+- 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese, Hindi and more
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
@@ -593,15 +593,17 @@ ComfyUI/models/F5-TTS/
 
 **Available F5-TTS Models:**
 
-| Model             | Language         | Download                                                                         | Size   |
-| ----------------- | ---------------- | -------------------------------------------------------------------------------- | ------ |
-| **F5TTS_Base**    | English          | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base)         | ~1.2GB |
-| **F5TTS_v1_Base** | English (v1)     | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base)      | ~1.2GB |
-| **E2TTS_Base**    | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base)         | ~1.2GB |
-| **F5-DE**         | German           | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German)                        | ~1.2GB |
-| **F5-ES**         | Spanish          | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish)                     | ~1.2GB |
-| **F5-FR**         | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
-| **F5-JP**         | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
+| Model               | Language         | Download                                                                         | Size   |
+| ------------------- | ---------------- | -------------------------------------------------------------------------------- | ------ |
+| **F5TTS_Base**      | English          | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base)         | ~1.2GB |
+| **F5TTS_v1_Base**   | English (v1)     | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base)      | ~1.2GB |
+| **E2TTS_Base**      | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base)         | ~1.2GB |
+| **F5-DE**           | German           | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German)                        | ~1.2GB |
+| **F5-ES**           | Spanish          | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish)                     | ~1.2GB |
+| **F5-FR**           | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
+| **F5-JP**           | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
+| **F5-Hindi-Small**  | Hindi            | [HuggingFace](https://huggingface.co/SPRINGLab/F5-Hindi-24KHz)                   | ~632MB |
+| **IndicF5-Hindi**   | Hindi (Multi)    | [HuggingFace](https://huggingface.co/AI4Bharat/IndicF5)                          | ~1.4GB |
 
 **Vocoder (Optional but Recommended):**
 

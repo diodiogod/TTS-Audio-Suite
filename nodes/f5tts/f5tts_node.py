@@ -397,13 +397,33 @@ Back to the main narrator voice for the conclusion.""",
                         'pt': 'F5-PT-BR',      # Portuguese (Brazilian)
                         'pt-br': 'F5-PT-BR',   # Portuguese (Brazilian)
                         'pt-pt': 'F5-PT-BR',   # Portuguese (European - use Brazilian model for now)
+                        'hi': 'F5-Hindi-Small', # Hindi (uses Small model from IIT Madras)
+                        'as': 'IndicF5-Hindi',  # Assamese (uses IndicF5 multilingual model)
+                        'bn': 'IndicF5-Hindi',  # Bengali (uses IndicF5 multilingual model)
+                        'gu': 'IndicF5-Hindi',  # Gujarati (uses IndicF5 multilingual model)
+                        'kn': 'IndicF5-Hindi',  # Kannada (uses IndicF5 multilingual model)
+                        'ml': 'IndicF5-Hindi',  # Malayalam (uses IndicF5 multilingual model)
+                        'mr': 'IndicF5-Hindi',  # Marathi (uses IndicF5 multilingual model)
+                        'or': 'IndicF5-Hindi',  # Odia (uses IndicF5 multilingual model)
+                        'pa': 'IndicF5-Hindi',  # Punjabi (uses IndicF5 multilingual model)
+                        'ta': 'IndicF5-Hindi',  # Tamil (uses IndicF5 multilingual model)
+                        'te': 'IndicF5-Hindi',  # Telugu (uses IndicF5 multilingual model)
                     }
-                    # For the main model language, use the selected model; for others, use language-specific models
-                    selected_lang = inputs.get("language", "English").lower()
-                    if lang_code.lower() == selected_lang or (selected_lang == "portuguese" and lang_code.lower() in ["pt", "pt-br"]):
-                        return inputs["model"]  # Use selected model for main language
-                    else:
-                        return lang_model_map.get(lang_code.lower(), inputs["model"])
+                    # Simple logic: Only switch if explicit language tag found
+                    # If no language tag (default/auto-detected), use selected model
+                    # If explicit language tag like [en:character], use that language's default model
+                    
+                    # Check if this is an explicitly tagged language segment or auto-detected
+                    # Auto-detected segments should use the selected model
+                    # Only switch for explicit language tags like [en:], [de:], etc.
+                    
+                    # If no explicit language switching tags were found in the original text,
+                    # use the selected model for everything
+                    if not ('[' in inputs["text"] and ':' in inputs["text"]):
+                        return inputs["model"]
+                    
+                    # For explicit language tags, use appropriate model
+                    return lang_model_map.get(lang_code.lower(), inputs["model"])
                 
                 # Group segments by language with original order tracking
                 language_groups = {}

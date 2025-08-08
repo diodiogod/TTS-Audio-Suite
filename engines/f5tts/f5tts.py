@@ -28,6 +28,8 @@ F5TTS_MODELS = {
     "F5-IT": {"repo": "alien79/F5-TTS-italian", "exp": "", "step": 159600, "ext": "safetensors"},
     "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI", "exp": "", "step": 1000000, "ext": "pt"},
     "F5-PT-BR": {"repo": "firstpixel/F5-TTS-pt-br", "exp": "pt-br", "step": 200000, "ext": "pt"},
+    "F5-Hindi-Small": {"repo": "SPRINGLab/F5-Hindi-24KHz", "exp": "", "step": 2500000, "ext": "safetensors", "note": "Hindi Small model (151M params) from IIT Madras"},
+    "IndicF5-Hindi": {"repo": "AI4Bharat/IndicF5", "exp": "", "step": "", "ext": "safetensors", "note": "Polyglot Hindi model (351M params) supports 11 Indian languages"},
 }
 
 def get_f5tts_models():
@@ -35,21 +37,28 @@ def get_f5tts_models():
     models = list(F5TTS_MODELS.keys())
     
     # Check for local models in ComfyUI models directory
-    try:
-        models_dir = os.path.join(folder_paths.models_dir, "F5-TTS")
-        if os.path.exists(models_dir):
-            for item in os.listdir(models_dir):
-                item_path = os.path.join(models_dir, item)
-                if os.path.isdir(item_path):
-                    # Check if it contains model files
-                    for ext in [".safetensors", ".pt"]:
-                        if any(f.endswith(ext) for f in os.listdir(item_path)):
-                            local_model = f"local:{item}"
-                            if local_model not in models:
-                                models.append(local_model)
-                            break
-    except Exception:
-        pass  # Ignore errors in model discovery
+    # Primary location: models/F5-TTS/
+    # Fallback location: models/Checkpoints/F5-TTS/ (for user convenience)
+    search_paths = [
+        os.path.join(folder_paths.models_dir, "F5-TTS"),
+        os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")
+    ]
+    
+    for models_dir in search_paths:
+        try:
+            if os.path.exists(models_dir):
+                for item in os.listdir(models_dir):
+                    item_path = os.path.join(models_dir, item)
+                    if os.path.isdir(item_path):
+                        # Check if it contains model files
+                        for ext in [".safetensors", ".pt"]:
+                            if any(f.endswith(ext) for f in os.listdir(item_path)):
+                                local_model = f"local:{item}"
+                                if local_model not in models:
+                                    models.append(local_model)
+                                break
+        except Exception:
+            pass  # Ignore errors in model discovery
     
     return models
 
@@ -100,6 +109,10 @@ class ChatterBoxF5TTS:
                         model_config = "F5TTS_v1_Base"
                     elif "e2tts" in self.model_name.lower():
                         model_config = "E2TTS_Base"
+                    elif ("small" in self.model_name.lower() or 
+                          "155m" in self.model_name.lower()):
+                        model_config = "F5TTS_Small"
+                        print(f"🔍 Detected Small model architecture for local '{self.model_name}'")
                     # Language models use base configs
                     
                     print(f"📁 Using model config: {model_config}")
@@ -139,6 +152,10 @@ class ChatterBoxF5TTS:
                     model_config = "F5TTS_v1_Base"
                 elif "e2tts" in local_name.lower():
                     model_config = "E2TTS_Base"
+                elif ("small" in local_name.lower() or 
+                      "155m" in local_name.lower()):
+                    model_config = "F5TTS_Small"
+                    print(f"🔍 Detected Small model architecture for local folder '{local_name}'")
                 # Language models use base configs - they don't have their own
                 
                 print(f"📁 Using model config: {model_config}")
@@ -156,8 +173,15 @@ class ChatterBoxF5TTS:
                 
                 # Language models need to use base configs but download from custom repos
                 if self.model_name.startswith("F5-") and self.model_name not in ["F5TTS_Base", "F5TTS_v1_Base"]:
-                    # Use base config but download from language-specific repo
-                    config_name = "F5TTS_Base"
+                    # Auto-detect model architecture based on name patterns
+                    if ("small" in self.model_name.lower() or 
+                        "155m" in self.model_name.lower() or
+                        self.model_name in ["F5-Hindi-Small"]):  # Known Small models
+                        config_name = "F5TTS_Small"  # 18 layers, 768 dim, 12 heads (155M params)
+                        print(f"🔍 Detected Small model architecture for '{self.model_name}'")
+                    else:
+                        config_name = "F5TTS_Base"   # 22 layers, 1024 dim, 16 heads (~1.2GB)
+                        print(f"🔍 Using Base model architecture for '{self.model_name}'")
                     repo_id = model_config["repo"]
                     step = model_config["step"]
                     ext = model_config["ext"]
@@ -194,6 +218,14 @@ class ChatterBoxF5TTS:
                         model_filename = f"{exp_name}/model_last.safetensors"  # Use 1.35GB version instead of 5.39GB
                         # This model doesn't have its own vocab file, use original F5-TTS vocab
                         vocab_filename = None  # Will download from original F5-TTS repo
+                    elif self.model_name == "F5-Hindi-Small":
+                        # Hindi Small model from SPRINGLab - uses step 2500000
+                        model_filename = f"model_{step}.{ext}"
+                        vocab_filename = "vocab.txt"
+                    elif self.model_name == "IndicF5-Hindi":
+                        # IndicF5 model from AI4Bharat - uses generic filename
+                        model_filename = f"model.{ext}"
+                        vocab_filename = "checkpoints/vocab.txt"  # vocab is in checkpoints subfolder
                     else:
                         model_filename = f"model_{step}.{ext}"
                         vocab_filename = "vocab.txt"
