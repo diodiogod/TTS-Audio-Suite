@@ -450,17 +450,13 @@ class SCNet(nn.Module):
             padding += self.hop_length
         x = F.pad(x, (0, padding))
 
-        # STFT
+        # STFT - use rectangular window like reference
         L = x.shape[-1]
         x = x.reshape(-1, L)
         x = torch.stft(x, **self.stft_config, return_complex=True)
         x = torch.view_as_real(x)
-        # Fix tensor reshaping - ensure correct batch size calculation
-        batch_channels = x.shape[0] 
-        actual_batch = batch_channels // self.audio_channels
-        if actual_batch == 0:
-            actual_batch = 1  # Ensure at least batch size 1
-        x = x.permute(0, 3, 1, 2).reshape(actual_batch, x.shape[3] * self.audio_channels,
+        # Fix tensor reshaping - use reference implementation logic
+        x = x.permute(0, 3, 1, 2).reshape(x.shape[0] // self.audio_channels, x.shape[3] * self.audio_channels,
                                           x.shape[1], x.shape[2])
 
         B, C, Fr, T = x.shape
@@ -488,6 +484,7 @@ class SCNet(nn.Module):
         x = x.view(B, n, -1, Fr, T)
         x = x.reshape(-1, 2, Fr, T).permute(0, 2, 3, 1)
         x = torch.view_as_complex(x.contiguous())
+        # Use same STFT config for ISTFT  
         x = torch.istft(x, **self.stft_config)
         x = x.reshape(B, len(self.sources), self.audio_channels, -1)
 
@@ -524,7 +521,7 @@ class SCNetSeparator:
         model_name = os.path.basename(model_path).lower()
         
         if "xl" in model_name:
-            # XL IHF configuration - corrected based on actual checkpoint
+            # XL IHF configuration - corrected based on actual checkpoint structure
             model_config = {
                 'sources': ['drums', 'bass', 'other', 'vocals'],
                 'audio_channels': 2,
@@ -532,10 +529,10 @@ class SCNetSeparator:
                 'nfft': 4096,
                 'hop_size': 1024,
                 'win_size': 4096,
-                'normalized': True,
+                'normalized': True,  # Back to reference setting
                 'band_SR': [0.175, 0.392, 0.433],
-                'band_stride': [1, 4, 4],  # Fixed: was [1, 4, 16] 
-                'band_kernel': [3, 4, 4],  # Fixed: was [3, 4, 16]
+                'band_stride': [1, 4, 4],  # Corrected based on checkpoint error
+                'band_kernel': [3, 4, 4],  # Corrected based on checkpoint error  
                 'conv_depths': [3, 2, 1],
                 'compress': 4,
                 'conv_kernel': 3,
@@ -614,14 +611,12 @@ class SCNetSeparator:
         
         # Chunked processing for large audio files to avoid OOM
         chunk_size = sample_rate * 30  # 30 seconds chunks
-        overlap = sample_rate * 1      # 1 second overlap
         total_samples = audio_tensor.shape[2]
         
         if total_samples > chunk_size:
-            vocals_chunks = []
-            instrumentals_chunks = []
+            outputs = []
             
-            for start in range(0, total_samples, chunk_size - overlap):
+            for start in range(0, total_samples, chunk_size):
                 end = min(start + chunk_size, total_samples)
                 chunk = audio_tensor[:, :, start:end]
                 
@@ -632,37 +627,18 @@ class SCNetSeparator:
                 # Run separation on chunk
                 with torch.no_grad():
                     separated = self.model(chunk)
+                    outputs.append(separated.cpu())
                     
-                # Extract results and move to CPU
-                vocals_chunk = separated[0, 3].cpu().numpy()  # vocals
-                instrumentals_chunk = separated[0, 2].cpu().numpy()  # other (instrumentals)
-                
-                # Handle overlap blending for seamless chunks
-                if start > 0:
-                    # Blend overlap region
-                    blend_samples = overlap
-                    for i in range(blend_samples):
-                        weight = i / blend_samples
-                        if vocals_chunks:
-                            vocals_chunks[-1][:, -blend_samples + i] = (
-                                vocals_chunks[-1][:, -blend_samples + i] * (1 - weight) + 
-                                vocals_chunk[:, i] * weight
-                            )
-                            instrumentals_chunks[-1][:, -blend_samples + i] = (
-                                instrumentals_chunks[-1][:, -blend_samples + i] * (1 - weight) + 
-                                instrumentals_chunk[:, i] * weight
-                            )
-                    
-                    # Skip the overlapping part in the current chunk
-                    vocals_chunk = vocals_chunk[:, overlap:]
-                    instrumentals_chunk = instrumentals_chunk[:, overlap:]
-                
-                vocals_chunks.append(vocals_chunk)
-                instrumentals_chunks.append(instrumentals_chunk)
+                    # Clear CUDA cache 
+                    if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
+                        torch.cuda.empty_cache()
             
-            # Concatenate all chunks
-            vocals = np.concatenate(vocals_chunks, axis=1)
-            instrumentals = np.concatenate(instrumentals_chunks, axis=1)
+            # Concatenate all chunks along time dimension
+            full_output = torch.cat(outputs, dim=3)
+            
+            # Extract results
+            vocals = full_output[0, 3].numpy()  # vocals
+            instrumentals = full_output[0, 2].numpy()  # other (instrumentals)
             
         else:
             # Process entire audio if small enough

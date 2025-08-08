@@ -70,13 +70,15 @@ class VocalRemovalNode:
                     "tooltip": """🎵 AI AUDIO SEPARATION & PROCESSING
 
 🏆 TOP MODELS (2024-2025):
-• model_scnet_xl_ihf_sdr_10.08.ckpt - ⭐ NEW BEST OVERALL (10.08 SDR, Jul 2025)
 • denoise_mel_band_roformer_sdr_27.99.ckpt - 🥇 BEST DENOISING (27.99 SDR)
 • model_vocals_mdx23c_sdr_10.17.ckpt - 🎤 BEST VOCALS (10.17 SDR)
 • UVR-MDX-NET-vocal_FT.onnx - ⭐ DEFAULT (Reliable, Fast)
 
+⚠️ EXPERIMENTAL:
+• model_scnet_xl_ihf_sdr_10.08.ckpt - SCNet SOTA (10.08 SDR) - ⚠️ KNOWN QUALITY ISSUES
+
 🎯 QUICK START:
-• 🏆 Best Overall: model_scnet_xl_ihf_sdr_10.08.ckpt (SOTA 2025)
+• 🏆 Best Overall: UVR-MDX-NET-vocal_FT.onnx (Proven reliability)
 • 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT (reliable, fast)
 • 🔧 Heavy Denoising: denoise_mel_band_roformer_sdr_27.99.ckpt (SOTA)  
 • 🔧 Light Denoising: UVR-DeNoise + gentle aggressiveness (5-8)

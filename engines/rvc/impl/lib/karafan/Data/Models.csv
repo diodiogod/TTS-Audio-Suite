@@ -1,0 +1,16 @@
+Name,Use,Stem,Vol_Comp,Cut_OFF,N_FFT_scale,dim_F_set,dim_T_set,Date,Repo_FileName
+MDX23C 8K FFT,x,BOTH,1.0,0,8192,4096,256,2023-09-26,MDX23C-8KFFT-InstVoc_HQ.ckpt
+MDX23C 8K FFT - v2,x,BOTH,1.0,0,8192,4096,256,2023-09-26,MDX23C-8KFFT-InstVoc_HQ_2.ckpt
+Karaoke,,Choirs,1.035,14700,6144,2048,256,2022-07-21,UVR_MDXNET_KARA.onnx
+Karaoke 2,x,Choirs,1.065,17640,5120,2048,256,2023-03-20,UVR_MDXNET_KARA_2.onnx
+Instrum 3,x,Instrumental,1.028,17640,7680,3072,256,2022-10-31,UVR-MDX-NET-Inst_3.onnx
+Instrum HQ 1,x,Instrumental,1.035,0,6144,3072,256,2023-03-28,UVR-MDX-NET-Inst_HQ_1.onnx
+Instrum HQ 2,x,Instrumental,1.033,0,6144,3072,256,2023-04-10,UVR-MDX-NET-Inst_HQ_2.onnx
+Instrum HQ 3,x,Instrumental,1.022,0,6144,3072,256,2023-06-11,UVR-MDX-NET-Inst_HQ_3.onnx
+Instrum Main,x,Instrumental,1.025,17640,5120,2048,256,2022-12-19,UVR-MDX-NET-Inst_Main.onnx
+Kim Instrum,x,Instrumental,1.030,17640,7680,3072,256,2023-04-26,Kim_Inst.onnx
+(de-)Reverb HQ,,OTHER,1.035,0,6144,3072,512,2023-04-13,Reverb_HQ_By_FoxJoy.onnx
+Kim Vocal 1,x,Vocals,1.043,17640,7680,3072,256,2022-12-27,Kim_Vocal_1.onnx
+Kim Vocal 2,x,Vocals,1.009,17640,7680,3072,256,2023-05-19,Kim_Vocal_2.onnx
+Voc FT,x,Vocals,1.021,17640,7680,3072,256,2023-06-22,UVR-MDX-NET-Voc_FT.onnx
+Vocal Main,x,Vocals,1.043,17640,7680,3072,256,2022-07-21,UVR_MDXNET_Main.onnx
