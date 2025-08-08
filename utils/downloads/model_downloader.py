@@ -17,8 +17,17 @@ try:
 except ImportError:
     MODELS_DIR = os.path.expanduser("~/ComfyUI/models")
 
-# Download sources
+# Download sources - Updated to use official RVC sources
+# RVC character models - using community models as reference implementation uses them
 RVC_DOWNLOAD_BASE = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
+# Base model URLs - using official sources where available
+BASE_MODEL_URLS = {
+    'content-vec-best.safetensors': 'https://huggingface.co/lengyue233/content-vec-best/resolve/main/content-vec-best.safetensors',
+    'rmvpe.pt': 'https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt'
+}
+# UVR models - these should be downloaded via UVR's official download center
+# For compatibility, we keep the current source but recommend official UVR download
+UVR_DOWNLOAD_BASE = RVC_DOWNLOAD_BASE  # Temporary - should use official UVR sources
 
 # Available models for auto-download
 AVAILABLE_RVC_MODELS = [
@@ -51,6 +60,59 @@ AVAILABLE_UVR_MODELS = [
     "UVR/UVR-BVE-4B_SN-44100-1.pth",
     "UVR/UVR-DeNoise.pth"
 ]
+
+
+def download_model_from_url(model_name: str, target_path: str, download_url: str) -> Optional[str]:
+    """
+    Download a model file from a specific URL.
+    
+    Args:
+        model_name: Name/path of model to download (for display)
+        target_path: Local path where model should be saved
+        download_url: Full URL to download from
+        
+    Returns:
+        Path to downloaded model or None if failed
+    """
+    if os.path.exists(target_path):
+        print(f"📁 Model already exists: {os.path.basename(target_path)}")
+        return target_path
+        
+    try:
+        print(f"📥 Downloading {model_name} from official source: {download_url}")
+        
+        # Create directory structure
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        
+        # Download with progress
+        response = requests.get(download_url, stream=True)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded_size = 0
+        
+        with open(target_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded_size += len(chunk)
+                    
+                    if total_size > 0:
+                        progress = (downloaded_size / total_size) * 100
+                        print(f"\r📥 Downloading {os.path.basename(target_path)}: {progress:.1f}%", end='', flush=True)
+        
+        print(f"\n✅ Successfully downloaded: {os.path.basename(target_path)}")
+        return target_path
+        
+    except Exception as e:
+        print(f"\n❌ Download failed for {model_name}: {e}")
+        # Clean up partial download
+        if os.path.exists(target_path):
+            try:
+                os.remove(target_path)
+            except:
+                pass
+        return None
 
 
 def download_model(model_name: str, target_path: str, base_url: str = RVC_DOWNLOAD_BASE) -> bool:
@@ -163,7 +225,7 @@ def download_rvc_index(index_name: str) -> Optional[str]:
 
 def download_base_model(model_name: str) -> Optional[str]:
     """
-    Download base model (Hubert, RMVPE, etc.) if available.
+    Download base model (Hubert, RMVPE, etc.) from official sources.
     
     Args:
         model_name: Name of base model
@@ -177,8 +239,15 @@ def download_base_model(model_name: str) -> Optional[str]:
     
     target_path = os.path.join(MODELS_DIR, model_name)
     
-    if download_model(model_name, target_path):
-        return target_path
+    # Use official sources for base models when available
+    if model_name in BASE_MODEL_URLS:
+        official_url = BASE_MODEL_URLS[model_name]
+        print(f"📥 Using official source for {model_name}: {official_url}")
+        return download_model_from_url(model_name, target_path, official_url)
+    else:
+        # Fallback to default base URL
+        if download_model(model_name, target_path):
+            return target_path
     return None
 
 
