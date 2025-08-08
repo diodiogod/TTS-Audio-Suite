@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2025-08-08
+
+### Fixed
+
+- Add advanced RVC voice conversion and vocal separation capabilities
+
+🎵 Enhanced RVC Features:
+- Advanced RVC parameter controls matching Replay terminology (pitch, pitch_detection, index_ratio, etc.)
+- Comprehensive audio stem extraction for voice, echo, and noise isolation
+- New merge audio node for sophisticated audio blending
+- Clean separation of concerns between RVC Engine and RVC Pitch Options nodes
+
+🔧 Audio Processing Improvements:
+- Vocal removal with adjustable aggressiveness parameter
+- Enhanced model architecture detection and compatibility
+- Robust audio format handling and processing pipeline
+- Multiple new vocal separation models with performance ratings
+
+⚠️ Experimental Features:
+- SCNet SOTA architecture implementation (10.08 SDR) - **EXPERIMENTAL with audio buzzing artifacts**
+- MDX23C/RoFormer model handling - **Some models have tensor alignment issues**
+- Advanced chunked processing with overlap blending for large audio files
+
+📋 Technical Enhancements:
+- Fixed tensor reshaping and return type compatibility
+- Enhanced UVR5 model compatibility with warnings
+- Streamlined audio processing with standardized formats
+- Improved error handling and user feedback
 ## [4.1.0] - 2025-08-08
 
 ### Fixed
