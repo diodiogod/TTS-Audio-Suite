@@ -59,7 +59,7 @@ nodes/audio/
   - Separation type selection (vocals only, instrumentals only, both)
   - Caching for performance optimization
 
-### 4. Merge Audio Node (🎵 Merge Audio)
+### 4. Merge Audio Node (🥪 Merge Audio)
 **Advanced audio mixing and combining:**
 - **Features**:
   - Multiple mixing algorithms (mean, median, max, overlay, crossfade, weighted)
@@ -92,7 +92,7 @@ nodes/audio/
 - RVCEngineNode → "⚙️ RVC Engine"
 - RVCPitchOptionsNode → "🎛️ RVC Pitch Extraction Options"  
 - VocalRemovalNode → "🎤 Vocal Removal"
-- MergeAudioNode → "🎵 Merge Audio"
+- MergeAudioNode → "🥪 Merge Audio"
 ```
 
 ## 🎵 Workflow Integration
@@ -106,14 +106,14 @@ nodes/audio/
 
 ### Advanced RVC Workflow  
 ```
-🎛️ RVC Pitch Options → ⚙️ RVC Engine → 🔄 Voice Changer → 🎵 Merge Audio → Final Output
+🎛️ RVC Pitch Options → ⚙️ RVC Engine → 🔄 Voice Changer → 🥪 Merge Audio → Final Output
                                               ↑                    ↑
                                         Source Audio         Background Music
 ```
 
 ### Professional Audio Production Workflow
 ```
-Audio Input → 🎤 Vocal Removal → Separated Audio → ⚙️ RVC Engine → 🔄 Voice Changer → 🎵 Merge Audio → Professional Output
+Audio Input → 🎤 Vocal Removal → Separated Audio → ⚙️ RVC Engine → 🔄 Voice Changer → 🥪 Merge Audio → Professional Output
                       ↓                                                                        ↑
               Instrumental Track --------------------------------------------------------→ Background Layer
 ```
@@ -192,7 +192,7 @@ Audio Input → 🎤 Vocal Removal → Separated Audio → ⚙️ RVC Engine →
 2. **⚙️ RVC Engine**: Connect pitch options + configure models
 3. **🎤 Vocal Removal**: Pre-process audio to isolate vocals/instrumentals
 4. **🔄 Voice Changer**: Perform voice conversion
-5. **🎵 Merge Audio**: Combine with background music or effects
+5. **🥪 Merge Audio**: Combine with background music or effects
 
 ## ✨ Summary
 

@@ -336,7 +336,7 @@ if VOCAL_REMOVAL_AVAILABLE:
 
 if MERGE_AUDIO_AVAILABLE:
     NODE_CLASS_MAPPINGS["MergeAudioNode"] = MergeAudioNode
-    NODE_DISPLAY_NAME_MAPPINGS["MergeAudioNode"] = "🎵 Merge Audio"
+    NODE_DISPLAY_NAME_MAPPINGS["MergeAudioNode"] = "🥪 Merge Audio"
 
 if LOAD_RVC_MODEL_AVAILABLE:
     NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode

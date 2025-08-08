@@ -46,7 +46,7 @@ class MergeAudioNode(BaseTTSNode):
     
     @classmethod
     def NAME(cls):
-        return "🎵 Merge Audio"
+        return "🥪 Merge Audio"
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -180,7 +180,7 @@ class MergeAudioNode(BaseTTSNode):
             Tuple of (merged_audio, merge_info)
         """
         try:
-            print(f"🎵 Merge Audio: Starting {merge_algorithm} merge")
+            print(f"🥪 Merge Audio: Starting {merge_algorithm} merge")
             
             # Collect non-None audio inputs
             audio_inputs = [audio for audio in [audio1, audio2, audio3, audio4] if audio is not None]
