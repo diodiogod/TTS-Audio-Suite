@@ -320,7 +320,7 @@ def extract_zip_flat(zip_path: str, extract_to: str, cleanup: bool = False) -> L
 
 def download_rmvpe_for_reference() -> Optional[str]:
     """
-    Download RMVPE model specifically for reference implementation
+    Download RMVPE model to standard ComfyUI models directory
     
     Returns:
         Path to downloaded model or None if failed
@@ -328,18 +328,16 @@ def download_rmvpe_for_reference() -> Optional[str]:
     try:
         rmvpe_url = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt"
         
-        # Get reference models directory
-        current_dir = os.path.dirname(__file__)
-        project_root = os.path.dirname(os.path.dirname(current_dir))
-        reference_models_dir = os.path.join(project_root, "engines", "rvc", "impl", "models")
+        # Use standard ComfyUI models directory structure
+        rvc_models_dir = os.path.join(MODELS_DIR, "RVC")
         
         # Ensure directory exists
-        os.makedirs(reference_models_dir, exist_ok=True)
+        os.makedirs(rvc_models_dir, exist_ok=True)
         
-        rmvpe_path = os.path.join(reference_models_dir, "rmvpe.pt")
+        rmvpe_path = os.path.join(rvc_models_dir, "rmvpe.pt")
         
         if not os.path.exists(rmvpe_path):
-            print(f"📥 Downloading RMVPE model for reference implementation...")
+            print(f"📥 Downloading RMVPE model to standard models directory...")
             try:
                 response = requests.get(rmvpe_url, stream=True)
                 response.raise_for_status()
