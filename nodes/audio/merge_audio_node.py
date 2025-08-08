@@ -314,74 +314,163 @@ class MergeAudioNode(BaseTTSNode):
         return aligned_audios
     
     def _apply_merge_algorithm(self, aligned_audios, algorithm, volume_balance, crossfade_duration):
-        """Apply the specified merging algorithm."""
+        """Apply the specified merging algorithm using real implementations."""
         import numpy as np
         
-        audio_array = np.array(aligned_audios)
-        
-        if algorithm == "mean":
+        try:
+            # Use the same merge functions as the reference implementation
+            audio_array = np.array(aligned_audios)
+            
+            if algorithm == "mean":
+                return self._get_merge_func("mean")(audio_array, axis=0)
+            
+            elif algorithm == "median":
+                return self._get_merge_func("median")(audio_array, axis=0)
+            
+            elif algorithm == "max":
+                return self._get_merge_func("max")(audio_array, axis=0)
+            
+            elif algorithm == "min":
+                return self._get_merge_func("min")(audio_array, axis=0)
+            
+            elif algorithm == "sum":
+                return np.sum(audio_array, axis=0)
+            
+            elif algorithm == "overlay":
+                # Advanced overlay mixing with proper gain staging
+                return self._overlay_mix(aligned_audios)
+            
+            elif algorithm == "weighted":
+                # Weighted mixing based on volume_balance
+                return self._weighted_mix(aligned_audios, volume_balance)
+            
+            elif algorithm == "crossfade":
+                # Professional crossfade implementation
+                return self._crossfade_mix(aligned_audios, crossfade_duration)
+            
+            else:
+                # Default to mean if algorithm not recognized
+                print(f"⚠️ Unknown algorithm '{algorithm}', using mean")
+                return self._get_merge_func("mean")(audio_array, axis=0)
+                
+        except Exception as e:
+            print(f"Merge algorithm error: {e}, using fallback")
+            # Fallback to simple mean
             return np.mean(audio_array, axis=0)
-        
-        elif algorithm == "median":
-            return np.median(audio_array, axis=0)
-        
-        elif algorithm == "max":
-            return np.max(audio_array, axis=0)
-        
-        elif algorithm == "min":
-            return np.min(audio_array, axis=0)
-        
-        elif algorithm == "sum":
-            return np.sum(audio_array, axis=0)
-        
-        elif algorithm == "overlay":
-            # Simple overlay mixing
-            result = aligned_audios[0].copy()
-            for audio in aligned_audios[1:]:
-                result = result + audio * 0.5  # Reduce volume to prevent clipping
-            return result
-        
-        elif algorithm == "weighted":
-            # Weighted mixing based on volume_balance
-            if len(aligned_audios) == 2:
-                return (aligned_audios[0] * (1 - volume_balance) + 
-                       aligned_audios[1] * volume_balance)
-            else:
-                # For more than 2 sources, use mean with slight weighting
-                weights = [1.0] + [volume_balance] * (len(aligned_audios) - 1)
-                weights = np.array(weights) / np.sum(weights)  # Normalize weights
-                return np.average(audio_array, axis=0, weights=weights)
-        
-        elif algorithm == "crossfade":
-            # Simple crossfade between sources
-            if len(aligned_audios) >= 2:
-                result = aligned_audios[0].copy()
-                fade_samples = int(crossfade_duration * 44100)  # Assume 44.1kHz for fade calculation
-                
-                for audio in aligned_audios[1:]:
-                    # Apply crossfade in the middle section
-                    if len(result) > fade_samples * 2:
-                        mid_point = len(result) // 2
-                        start_fade = mid_point - fade_samples // 2
-                        end_fade = mid_point + fade_samples // 2
-                        
-                        fade_in = np.linspace(0, 1, fade_samples)
-                        fade_out = np.linspace(1, 0, fade_samples)
-                        
-                        result[start_fade:end_fade] *= fade_out
-                        result[start_fade:end_fade] += audio[start_fade:end_fade] * fade_in
-                    else:
-                        # If too short for crossfade, use simple overlay
-                        result = (result + audio) * 0.5
-                
-                return result
-            else:
-                return aligned_audios[0]
-        
+
+    def _get_merge_func(self, merge_type: str):
+        """Get merge function following reference implementation"""
+        if merge_type == "min":
+            return np.nanmin
+        elif merge_type == "max": 
+            return np.nanmax
+        elif merge_type == "median":
+            return np.nanmedian
         else:
-            # Default to mean if algorithm not recognized
-            print(f"⚠️ Unknown algorithm '{algorithm}', using mean")
-            return np.mean(audio_array, axis=0)
+            return np.nanmean
+
+    def _pad_audio(self, *audios, axis=0):
+        """Pad audio arrays to same length (from reference implementation)"""
+        import librosa
+        
+        try:
+            maxlen = max(len(a) if a is not None else 0 for a in audios)
+            if maxlen > 0:
+                stack = librosa.util.stack([
+                    librosa.util.fix_length(a, size=maxlen) 
+                    for a in audios if a is not None
+                ], axis=axis)
+                return stack
+            else:
+                return np.stack(audios, axis=axis)
+        except ImportError:
+            # Fallback without librosa
+            maxlen = max(len(a) for a in audios if a is not None)
+            padded_audios = []
+            for audio in audios:
+                if audio is not None:
+                    if len(audio) < maxlen:
+                        padded = np.pad(audio, (0, maxlen - len(audio)), mode='constant')
+                    else:
+                        padded = audio[:maxlen]
+                    padded_audios.append(padded)
+            return np.stack(padded_audios, axis=axis)
+
+    def _overlay_mix(self, aligned_audios):
+        """Professional overlay mixing with gain compensation"""
+        result = aligned_audios[0].copy()
+        
+        # Calculate gain compensation based on number of sources
+        gain_compensation = 1.0 / np.sqrt(len(aligned_audios))
+        
+        for i, audio in enumerate(aligned_audios[1:], 1):
+            # Progressive volume reduction to prevent clipping
+            mix_ratio = 1.0 / (i + 1)
+            result = result * (1 - mix_ratio) + audio * mix_ratio
+        
+        # Apply gain compensation
+        result *= gain_compensation
+        
+        return result
+
+    def _weighted_mix(self, aligned_audios, volume_balance):
+        """Weighted mixing with proper balance control"""
+        if len(aligned_audios) == 2:
+            # Simple two-source weighting
+            return (aligned_audios[0] * (1 - volume_balance) + 
+                   aligned_audios[1] * volume_balance)
+        else:
+            # Multi-source weighting
+            weights = [1.0] + [volume_balance] * (len(aligned_audios) - 1)
+            weights = np.array(weights)
+            weights = weights / np.sum(weights)  # Normalize weights
+            
+            result = np.zeros_like(aligned_audios[0])
+            for i, audio in enumerate(aligned_audios):
+                result += audio * weights[i]
+            
+            return result
+
+    def _crossfade_mix(self, aligned_audios, crossfade_duration):
+        """Professional crossfade implementation"""
+        if len(aligned_audios) < 2:
+            return aligned_audios[0]
+            
+        result = aligned_audios[0].copy()
+        
+        for audio in aligned_audios[1:]:
+            result = self._crossfade_two_sources(result, audio, crossfade_duration)
+        
+        return result
+
+    def _crossfade_two_sources(self, audio1, audio2, crossfade_duration):
+        """Crossfade between two audio sources"""
+        # Calculate crossfade samples (assume 44.1kHz sample rate)
+        fade_samples = int(crossfade_duration * 44100)
+        audio_length = min(len(audio1), len(audio2))
+        
+        if fade_samples >= audio_length // 2:
+            # If crossfade too long, use simple overlay
+            return (audio1 + audio2) * 0.5
+        
+        # Create crossfade in the middle of the audio
+        mid_point = audio_length // 2
+        start_fade = max(0, mid_point - fade_samples // 2)
+        end_fade = min(audio_length, mid_point + fade_samples // 2)
+        fade_length = end_fade - start_fade
+        
+        # Create fade curves
+        fade_out = np.linspace(1, 0, fade_length)
+        fade_in = np.linspace(0, 1, fade_length)
+        
+        # Apply crossfade
+        result = audio1.copy()
+        result[start_fade:end_fade] = (
+            audio1[start_fade:end_fade] * fade_out + 
+            audio2[start_fade:end_fade] * fade_in
+        )
+        
+        return result
     
     def _normalize_audio(self, audio):
         """Normalize audio to prevent clipping."""

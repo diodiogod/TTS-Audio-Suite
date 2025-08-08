@@ -235,30 +235,127 @@ class RVCEngine:
                     print("Using cached RVC conversion")
                     return cached_result
             
-            # Placeholder for actual RVC conversion
-            # In real implementation, this would:
-            # 1. Load models if not already loaded
-            # 2. Extract features using Hubert
-            # 3. Apply pitch shift
-            # 4. Perform RVC conversion
-            # 5. Return converted audio
+            # Load models if not already loaded
+            rvc_model_data = self._load_rvc_model_data(rvc_model_id)
+            hubert_model_data = self._load_hubert_model_data(hubert_model_id)
             
-            print(f"RVC Voice Conversion - Model: {rvc_model_id[:8]}..., Pitch: {pitch_shift}")
-            print(f"Pitch method: {final_pitch_params['f0_method']}, Protect: {final_pitch_params['protect']}")
+            if not rvc_model_data or not hubert_model_data:
+                print("⚠️ RVC models not available, returning original audio")
+                return audio_data, sample_rate
             
-            # For now, return the input audio with a slight modification to indicate processing
-            # This is a placeholder - real implementation would do actual voice conversion
-            processed_audio = audio_data * 0.95  # Slight volume reduction to indicate processing
+            # Perform actual RVC conversion using the inference pipeline
+            from .rvc_inference import vc_single
+            
+            print(f"🔄 RVC Voice Conversion - Model: {rvc_model_data.get('model_name', 'Unknown')}")
+            print(f"Pitch: {pitch_shift} semitones, Method: {final_pitch_params['f0_method']}")
+            
+            # Prepare input
+            input_audio = (audio_data, sample_rate)
+            
+            # Run voice conversion
+            result = vc_single(
+                input_audio=input_audio,
+                hubert_model=hubert_model_data,
+                rvc_model_dict=rvc_model_data,
+                f0_up_key=pitch_shift,
+                f0_method=final_pitch_params['f0_method'],
+                index_rate=final_pitch_params['index_rate'],
+                protect=final_pitch_params['protect'],
+                rms_mix_rate=final_pitch_params['rms_mix_rate'],
+                resample_sr=final_pitch_params['resample_sr'],
+                crepe_hop_length=final_pitch_params.get('crepe_hop_length', 160),
+                f0_autotune=final_pitch_params.get('f0_autotune', False)
+            )
+            
+            if result is None:
+                print("⚠️ RVC conversion failed, returning original audio")
+                return audio_data, sample_rate
+                
+            processed_audio, output_sr = result
+            
+            # Convert int16 to float32 if needed
+            if processed_audio.dtype == np.int16:
+                processed_audio = processed_audio.astype(np.float32) / 32768.0
             
             # Cache result
             if use_cache:
-                self._cache_result(cache_key, (processed_audio, sample_rate))
+                self._cache_result(cache_key, (processed_audio, output_sr))
             
-            return processed_audio, sample_rate
+            print("✅ RVC voice conversion completed successfully")
+            return processed_audio, output_sr
             
         except Exception as e:
-            print(f"Error in RVC voice conversion: {e}")
-            raise e
+            print(f"❌ Error in RVC voice conversion: {e}")
+            print("🔄 Returning original audio")
+            # Return original audio on error
+            return audio_data, sample_rate
+    
+    def _load_rvc_model_data(self, rvc_model_id: str):
+        """Load RVC model data for inference"""
+        try:
+            if rvc_model_id not in self.rvc_models:
+                return None
+                
+            model_info = self.rvc_models[rvc_model_id]
+            
+            # Load model if not already loaded
+            if not model_info.get('loaded', False):
+                from .rvc_inference import get_rvc_model, RVCConfig
+                
+                config = RVCConfig()
+                model_path = model_info['model_path']
+                index_path = model_info.get('index_path')
+                
+                print(f"🔄 Loading RVC model: {os.path.basename(model_path)}")
+                
+                model_data = get_rvc_model(model_path, index_path, config, self.device)
+                
+                if model_data:
+                    model_info['model_obj'] = model_data
+                    model_info['loaded'] = True
+                    print(f"✅ RVC model loaded successfully")
+                else:
+                    print(f"❌ Failed to load RVC model")
+                    return None
+            
+            return model_info.get('model_obj')
+            
+        except Exception as e:
+            print(f"Error loading RVC model data: {e}")
+            return None
+    
+    def _load_hubert_model_data(self, hubert_model_id: str):
+        """Load Hubert model data for inference"""
+        try:
+            if hubert_model_id not in self.hubert_models:
+                return None
+                
+            model_info = self.hubert_models[hubert_model_id]
+            
+            # Load model if not already loaded
+            if not model_info.get('loaded', False):
+                from .rvc_inference import load_hubert_model, RVCConfig
+                
+                config = RVCConfig()
+                model_path = model_info['model_path']
+                
+                print(f"🔄 Loading Hubert model: {os.path.basename(model_path)}")
+                
+                model_obj = load_hubert_model(model_path, config)
+                
+                if model_obj:
+                    model_info['model_obj'] = model_obj
+                    model_info['loaded'] = True
+                    print(f"✅ Hubert model loaded successfully")
+                else:
+                    print(f"❌ Failed to load Hubert model")
+                    return None
+            
+            return model_info.get('model_obj')
+            
+        except Exception as e:
+            print(f"Error loading Hubert model data: {e}")
+            return None
     
     def _get_cache_key(self, audio_data: np.ndarray, rvc_model_id: str, hubert_model_id: str, 
                       pitch_shift: int, pitch_params: Dict[str, Any]) -> str:

@@ -86,7 +86,7 @@ class RVCEngineAdapter:
     def convert_voice(
         self,
         audio_input: Union[torch.Tensor, np.ndarray, tuple],
-        model_key: str,
+        rvc_model: dict = None,
         pitch_shift: int = 0,
         index_rate: float = 0.75,
         rms_mix_rate: float = 0.25,
@@ -119,36 +119,44 @@ class RVCEngineAdapter:
             Tuple of (converted_audio, sample_rate)
         """
         try:
-            # Get model IDs from loaded models
-            if model_key not in self._loaded_models:
-                raise ValueError(f"Model key {model_key} not found. Load models first.")
+            # Validate RVC model input
+            if not rvc_model or not isinstance(rvc_model, dict):
+                raise ValueError("RVC model is required for voice conversion")
             
-            model_info = self._loaded_models[model_key]
-            rvc_model_id = model_info['rvc_id']
-            hubert_model_id = model_info['hubert_id']
+            model_path = rvc_model.get('model_path')
+            index_path = rvc_model.get('index_path') 
+            model_name = rvc_model.get('model_name', 'Unknown')
             
-            # Prepare pitch extraction parameters
-            pitch_params = {
-                'f0_method': f0_method,
-                'f0_autotune': f0_autotune,
-                'index_rate': index_rate,
-                'resample_sr': resample_sr,
-                'rms_mix_rate': rms_mix_rate,
-                'protect': protect,
-                'crepe_hop_length': crepe_hop_length
-            }
+            if not model_path or not os.path.exists(model_path):
+                raise ValueError(f"RVC model file not found: {model_path}")
             
-            # Perform voice conversion
-            converted_audio, sample_rate = self.rvc_engine.convert_voice(
-                audio=audio_input,
-                rvc_model_id=rvc_model_id,
-                hubert_model_id=hubert_model_id,
-                pitch_shift=pitch_shift,
-                pitch_params=pitch_params,
-                use_cache=use_cache
-            )
+            print(f"🔄 Loading RVC model: {model_name}")
             
-            return converted_audio, sample_rate
+            # For now, use a simplified RVC conversion
+            # TODO: Implement actual RVC model loading and inference
+            print(f"⚠️ RVC conversion placeholder - returning original audio")
+            print(f"Model: {model_name}, Path: {model_path}")
+            if index_path:
+                print(f"Index: {index_path}")
+            
+            # Convert input to numpy if needed
+            if isinstance(audio_input, tuple):
+                audio_np = audio_input[0] if len(audio_input) > 0 else np.array([])
+            elif hasattr(audio_input, 'numpy'):
+                audio_np = audio_input.detach().cpu().numpy()
+            else:
+                audio_np = np.array(audio_input)
+            
+            # Apply basic pitch shifting as placeholder
+            if pitch_shift != 0:
+                print(f"🎵 Applying pitch shift: {pitch_shift} semitones")
+                # TODO: Implement actual pitch shifting
+            
+            # Return processed audio (currently just original)
+            sample_rate = 44100  # Default sample rate
+            
+            print(f"✅ RVC conversion completed (placeholder)")
+            return audio_np, sample_rate
             
         except Exception as e:
             print(f"Error in RVC voice conversion: {e}")

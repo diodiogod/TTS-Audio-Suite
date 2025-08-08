@@ -63,17 +63,7 @@ class RVCEngineNode(BaseTTSNode):
         
         return {
             "required": {
-                # Model Selection (consolidates LoadRVCModel and LoadHubertModel)
-                "rvc_model": (rvc_models, {
-                    "default": rvc_models[0] if rvc_models else "No RVC models found",
-                    "tooltip": "RVC voice model (.pth file) for voice conversion. Place models in ComfyUI/models/RVC/ directory."
-                }),
-                "hubert_model": (hubert_models, {
-                    "default": hubert_models[0] if hubert_models else "content-vec-best.safetensors",
-                    "tooltip": "Hubert feature extraction model. content-vec-best is recommended for most use cases."
-                }),
-                
-                # Core Voice Conversion Parameters (from Voice Changer node)
+                # Core Voice Conversion Parameters
                 "pitch_shift": ("INT", {
                     "default": 0,
                     "min": -14,
@@ -143,7 +133,7 @@ class RVCEngineNode(BaseTTSNode):
             }
         }
     
-    RETURN_TYPES = ("RVC_ENGINE",)
+    RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("rvc_engine",)
     
     CATEGORY = "🎵 TTS Audio Suite/Engines"
@@ -166,8 +156,6 @@ class RVCEngineNode(BaseTTSNode):
     
     def create_engine(
         self,
-        rvc_model,
-        hubert_model, 
         pitch_shift=0,
         f0_method="rmvpe",
         index_rate=0.75,
@@ -181,7 +169,8 @@ class RVCEngineNode(BaseTTSNode):
         device="auto"
     ):
         """
-        Create RVC engine adapter with loaded models and parameters.
+        Create RVC engine adapter with conversion parameters.
+        Models are loaded separately via 🎭 Load RVC Character Model node.
         
         Returns:
             RVC engine adapter configured for voice conversion
@@ -214,91 +203,35 @@ class RVCEngineNode(BaseTTSNode):
                 import comfy.model_management as model_management
                 device = str(model_management.get_torch_device())
             
-            # Load models through adapter
-            try:
-                import folder_paths
-                models_dir = folder_paths.models_dir
-                
-                # Resolve model paths
-                if rvc_model.startswith("RVC/"):
-                    rvc_model_path = os.path.join(models_dir, rvc_model)
-                else:
-                    rvc_model_path = os.path.join(models_dir, "RVC", rvc_model)
-                
-                hubert_model_path = os.path.join(models_dir, hubert_model)
-                
-                # Handle optional index file
-                index_path = None
-                if index_file:
-                    if os.path.isabs(index_file):
-                        index_path = index_file
-                    else:
-                        # Look in RVC/.index directory
-                        index_path = os.path.join(models_dir, "RVC", ".index", index_file)
-                        if not os.path.exists(index_path):
-                            print(f"Warning: Index file not found: {index_path}")
-                            index_path = None
-                
-                # Load models
-                model_info = adapter.load_models(
-                    rvc_model_path=rvc_model_path,
-                    hubert_model_path=hubert_model_path,
-                    index_path=index_path
-                )
-                
-                # Store configuration in adapter
-                adapter.config = {
-                    'model_key': model_info['model_key'],
-                    'pitch_shift': pitch_shift,
-                    'device': device,
-                    'rvc_model': rvc_model,
-                    'hubert_model': hubert_model,
-                    **final_pitch_params  # Include all final pitch parameters
-                }
-                
-                print(f"RVC Engine created - Model: {os.path.basename(rvc_model)}, Hubert: {os.path.basename(hubert_model)}")
-                print(f"Pitch method: {final_pitch_params['f0_method']}, Pitch shift: {pitch_shift}, Device: {device}")
-                if rvc_pitch_options:
-                    print("🎛️ Advanced pitch options applied")
-                
-                return (adapter,)
-                
-            except ImportError:
-                print("Warning: folder_paths not available, using relative paths")
-                # Fallback without folder_paths
-                model_info = adapter.load_models(
-                    rvc_model_path=rvc_model,
-                    hubert_model_path=hubert_model,
-                    index_path=index_file if index_file else None
-                )
-                
-                adapter.config = {
-                    'model_key': model_info['model_key'],
-                    'pitch_shift': pitch_shift,
-                    'f0_method': f0_method,
-                    'index_rate': index_rate,
-                    'protect': protect,
-                    'rms_mix_rate': rms_mix_rate,
-                    'f0_autotune': f0_autotune,
-                    'resample_sr': resample_sr,
-                    'use_cache': use_cache,
-                    'device': device,
-                    'rvc_model': rvc_model,
-                    'hubert_model': hubert_model
-                }
-                
-                return (adapter,)
+            final_pitch_params['device'] = device
+            
+            # Store configuration in adapter (no models loaded here)
+            adapter.config = {
+                'type': 'rvc_engine',
+                'engine_type': 'rvc',
+                **final_pitch_params
+            }
+            
+            print(f"⚙️ RVC Engine created - Pitch method: {final_pitch_params['f0_method']}, Device: {device}")
+            if rvc_pitch_options:
+                print("🎛️ Advanced pitch options applied")
+            
+            return (adapter,)
         
         except Exception as e:
-            print(f"Error creating RVC engine: {e}")
-            # Return a basic adapter even on error for graceful degradation
-            adapter = RVCEngineAdapter()
-            adapter.config = {
-                'error': str(e),
-                'rvc_model': rvc_model,
-                'hubert_model': hubert_model
-            }
-            return (adapter,)
+            print(f"❌ RVC Engine creation failed: {e}")
+            # Return minimal adapter on failure
+            try:
+                adapter = RVCEngineAdapter()
+                adapter.config = {
+                    'type': 'rvc_engine',
+                    'engine_type': 'rvc',
+                    'error': str(e),
+                    'device': 'cpu'
+                }
+                return (adapter,)
+            except:
+                return (None,)
     
     @classmethod
     def VALIDATE_INPUTS(cls, **kwargs):

@@ -58,7 +58,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "TTS_engine": ((any_typ, "RVC_ENGINE"), {
+                "TTS_engine": ("TTS_ENGINE", {
                     "tooltip": "TTS/VC engine configuration. Supports ChatterBox TTS Engine and RVC Engine for voice conversion."
                 }),
                 "source_audio": (any_typ, {
@@ -136,24 +136,28 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             # Extract audio data from flexible inputs
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
             
-            # For RVC, narrator_target is not used - the target voice is the loaded RVC model
-            print("🔄 Voice Changer: RVC conversion - using loaded model as target voice")
-            print("ℹ️  Note: narrator_target input ignored in RVC - target voice is the loaded RVC model")
+            # For RVC, narrator_target should be RVC_MODEL from 🎭 Load RVC Character Model
+            print("🔄 Voice Changer: RVC conversion - using RVC Character Model as target voice")
             
-            # Get RVC configuration
+            # Check if narrator_target is an RVC_MODEL
+            rvc_model = None
+            if narrator_target and isinstance(narrator_target, dict) and narrator_target.get('type') == 'rvc_model':
+                rvc_model = narrator_target
+                print(f"📥 Using RVC Character Model: {rvc_model.get('model_name', 'Unknown')}")
+            else:
+                print("⚠️  Warning: narrator_target should be RVC Character Model for RVC conversion")
+                print("🔄 Attempting conversion without specific model...")
+            
+            # Get RVC configuration from engine
             config = getattr(rvc_engine, 'config', {})
-            model_key = config.get('model_key')
-            
-            if not model_key:
-                raise ValueError("RVC engine not properly configured - missing model_key")
             
             # Convert audio tensor to format expected by RVC
             audio_input = self._convert_audio_for_rvc(processed_source_audio)
             
-            # Perform RVC conversion using the adapter
+            # Perform RVC conversion using the adapter with RVC model
             converted_audio_np, sample_rate = rvc_engine.convert_voice(
                 audio_input=audio_input,
-                model_key=model_key,
+                rvc_model=rvc_model,  # Pass the RVC model from narrator_target
                 pitch_shift=config.get('pitch_shift', 0),
                 index_rate=config.get('index_rate', 0.75),
                 rms_mix_rate=config.get('rms_mix_rate', 0.25),
@@ -169,8 +173,9 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             converted_audio = self._convert_audio_from_rvc(converted_audio_np, sample_rate)
             
             # Create conversion info
+            model_name = rvc_model.get('model_name', 'Unknown') if rvc_model else 'No Model'
             conversion_info = (
-                f"RVC Conversion: {config.get('rvc_model', 'Unknown')} model | "
+                f"RVC Conversion: {model_name} model | "
                 f"Pitch: {config.get('pitch_shift', 0)} | "
                 f"Method: {config.get('f0_method', 'rmvpe')} | "
                 f"Index Rate: {config.get('index_rate', 0.75)} | "

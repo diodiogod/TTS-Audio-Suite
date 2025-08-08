@@ -166,6 +166,14 @@ except Exception as e:
     print(f"❌ Merge Audio failed: {e}")
     MERGE_AUDIO_AVAILABLE = False
 
+try:
+    load_rvc_model_module = load_node_module("load_rvc_model_node", "models/load_rvc_model_node.py")
+    LoadRVCModelNode = load_rvc_model_module.LoadRVCModelNode
+    LOAD_RVC_MODEL_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Load RVC Character Model failed: {e}")
+    LOAD_RVC_MODEL_AVAILABLE = False
+
 # Import foundation components for compatibility
 from utils.system.import_manager import import_manager
 
@@ -329,6 +337,10 @@ if VOCAL_REMOVAL_AVAILABLE:
 if MERGE_AUDIO_AVAILABLE:
     NODE_CLASS_MAPPINGS["MergeAudioNode"] = MergeAudioNode
     NODE_DISPLAY_NAME_MAPPINGS["MergeAudioNode"] = "🎵 Merge Audio"
+
+if LOAD_RVC_MODEL_AVAILABLE:
+    NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode
+    NODE_DISPLAY_NAME_MAPPINGS["LoadRVCModelNode"] = "🎭 Load RVC Character Model"
 
 # Print startup banner
 print(SEPARATOR)
