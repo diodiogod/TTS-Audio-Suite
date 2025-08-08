@@ -42,6 +42,9 @@ class AnyType(str):
 
 any_typ = AnyType("*")
 
+# Global cache for RVC iteration results (similar to ChatterBox)
+GLOBAL_RVC_ITERATION_CACHE = {}
+
 
 class UnifiedVoiceChangerNode(BaseVCNode):
     """
@@ -121,13 +124,13 @@ class UnifiedVoiceChangerNode(BaseVCNode):
 
     def _handle_rvc_conversion(self, rvc_engine, source_audio, narrator_target, refinement_passes):
         """
-        Handle RVC engine voice conversion.
+        Handle RVC engine voice conversion with iterative refinement support.
         
         Args:
             rvc_engine: RVCEngineAdapter instance
             source_audio: Source audio to convert
-            narrator_target: Target voice characteristics (not used in RVC - uses loaded model)
-            refinement_passes: Number of conversion passes (not used in RVC)
+            narrator_target: Target voice characteristics (RVC_MODEL from Load RVC Character Model)
+            refinement_passes: Number of conversion passes for iterative refinement
             
         Returns:
             Tuple of (converted_audio, conversion_info)
@@ -137,7 +140,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
             
             # For RVC, narrator_target should be RVC_MODEL from 🎭 Load RVC Character Model
-            print("🔄 Voice Changer: RVC conversion - using RVC Character Model as target voice")
+            print(f"🔄 Voice Changer: RVC conversion with {refinement_passes} refinement passes")
             
             # Check if narrator_target is an RVC_MODEL
             rvc_model = None
@@ -148,42 +151,88 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 print("⚠️  Warning: narrator_target should be RVC Character Model for RVC conversion")
                 print("🔄 Attempting conversion without specific model...")
             
+            # Generate cache key for this conversion
+            cache_key = self._generate_rvc_cache_key(processed_source_audio, rvc_model, rvc_engine)
+            
+            # Check for cached iterations
+            cached_iterations = self._get_cached_rvc_iterations(cache_key, refinement_passes)
+            
+            # If we have the exact number of passes cached, return it immediately
+            if refinement_passes in cached_iterations:
+                print(f"💾 CACHE HIT: Using cached RVC conversion result for {refinement_passes} passes")
+                return cached_iterations[refinement_passes]
+            
             # Get RVC configuration from engine
             config = getattr(rvc_engine, 'config', {})
             
-            # Convert audio tensor to format expected by RVC
-            audio_input = self._convert_audio_for_rvc(processed_source_audio)
+            # Start from the highest cached iteration or from beginning
+            start_iteration = 0
+            current_audio = processed_source_audio
             
-            # Perform RVC conversion using the adapter with RVC model
-            converted_audio_np, sample_rate = rvc_engine.convert_voice(
-                audio_input=audio_input,
-                rvc_model=rvc_model,  # Pass the RVC model from narrator_target
-                pitch_shift=config.get('pitch_shift', 0),
-                index_rate=config.get('index_rate', 0.75),
-                rms_mix_rate=config.get('rms_mix_rate', 0.25),
-                protect=config.get('protect', 0.25),
-                f0_method=config.get('f0_method', 'rmvpe'),
-                f0_autotune=config.get('f0_autotune', False),
-                resample_sr=config.get('resample_sr', 0),
-                crepe_hop_length=160,
-                use_cache=config.get('use_cache', True)
-            )
+            # Find the highest cached iteration we can start from
+            for i in range(refinement_passes, 0, -1):
+                if i in cached_iterations:
+                    print(f"💾 CACHE: Resuming RVC conversion from cached iteration {i}/{refinement_passes}")
+                    current_audio = cached_iterations[i][0]  # Get the audio from cached result
+                    start_iteration = i
+                    break
             
-            # Convert back to ComfyUI audio format
-            converted_audio = self._convert_audio_from_rvc(converted_audio_np, sample_rate)
+            # Perform iterative RVC conversion
+            for iteration in range(start_iteration, refinement_passes):
+                iteration_num = iteration + 1
+                print(f"🔄 RVC conversion pass {iteration_num}/{refinement_passes}...")
+                
+                # Convert audio tensor to format expected by RVC
+                audio_input = self._convert_audio_for_rvc(current_audio)
+                
+                # Perform RVC conversion using the adapter with RVC model
+                converted_audio_np, sample_rate = rvc_engine.convert_voice(
+                    audio_input=audio_input,
+                    rvc_model=rvc_model,  # Pass the RVC model from narrator_target
+                    pitch_shift=config.get('pitch_shift', 0),
+                    index_rate=config.get('index_rate', 0.75),
+                    rms_mix_rate=config.get('rms_mix_rate', 0.25),
+                    protect=config.get('protect', 0.25),
+                    f0_method=config.get('f0_method', 'rmvpe'),
+                    f0_autotune=config.get('f0_autotune', False),
+                    resample_sr=config.get('resample_sr', 0),
+                    crepe_hop_length=160,
+                    use_cache=config.get('use_cache', True)
+                )
+                
+                # Convert back to ComfyUI audio format for next iteration
+                converted_audio = self._convert_audio_from_rvc(converted_audio_np, sample_rate)
+                current_audio = converted_audio
+                
+                # Cache this iteration result
+                model_name = rvc_model.get('model_name', 'Unknown') if rvc_model else 'No Model'
+                conversion_info = (
+                    f"RVC Conversion: {model_name} model | "
+                    f"Pitch: {config.get('pitch_shift', 0)} | "
+                    f"Method: {config.get('f0_method', 'rmvpe')} | "
+                    f"Index Rate: {config.get('index_rate', 0.75)} | "
+                    f"Device: {config.get('device', 'auto')} | "
+                    f"Pass: {iteration_num}/{refinement_passes}"
+                )
+                
+                # Cache the result for this iteration
+                self._cache_rvc_result(cache_key, iteration_num, (converted_audio, conversion_info))
             
-            # Create conversion info
-            model_name = rvc_model.get('model_name', 'Unknown') if rvc_model else 'No Model'
-            conversion_info = (
+            # Determine if we used cache
+            cache_info = f"(resumed from cache at pass {start_iteration})" if start_iteration > 0 else "(no cache used)"
+            
+            # Final conversion info
+            final_conversion_info = (
                 f"RVC Conversion: {model_name} model | "
                 f"Pitch: {config.get('pitch_shift', 0)} | "
                 f"Method: {config.get('f0_method', 'rmvpe')} | "
                 f"Index Rate: {config.get('index_rate', 0.75)} | "
-                f"Device: {config.get('device', 'auto')}"
+                f"Device: {config.get('device', 'auto')} | "
+                f"Refinement passes: {refinement_passes} {cache_info}"
             )
             
-            print(f"✅ RVC voice conversion completed successfully")
-            return converted_audio, conversion_info
+            print(f"✅ RVC voice conversion completed with {refinement_passes} refinement passes {cache_info}")
+            return converted_audio, final_conversion_info
             
         except Exception as e:
             print(f"❌ RVC voice conversion failed: {e}")
@@ -421,6 +470,51 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             empty_comfy = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             
             return (empty_comfy, error_msg)
+    
+    def _generate_rvc_cache_key(self, source_audio: Dict[str, Any], rvc_model: Dict[str, Any], rvc_engine) -> str:
+        """Generate cache key for RVC voice conversion iterations"""
+        # Create hash from source audio characteristics and RVC model
+        source_hash = hashlib.md5(source_audio["waveform"].cpu().numpy().tobytes()).hexdigest()[:16]
+        
+        # Include RVC model information in cache key
+        model_info = {
+            'model_name': rvc_model.get('model_name', 'unknown') if rvc_model else 'no_model',
+            'model_path': rvc_model.get('model_path', '') if rvc_model else '',
+            'source_sr': source_audio["sample_rate"]
+        }
+        
+        # Include RVC engine config for cache differentiation
+        config = getattr(rvc_engine, 'config', {})
+        cache_data = {
+            'source_hash': source_hash,
+            'source_sr': source_audio["sample_rate"],
+            'pitch_shift': config.get('pitch_shift', 0),
+            'index_rate': config.get('index_rate', 0.75),
+            'rms_mix_rate': config.get('rms_mix_rate', 0.25),
+            'protect': config.get('protect', 0.25),
+            'f0_method': config.get('f0_method', 'rmvpe'),
+            'model_info': str(sorted(model_info.items()))
+        }
+        
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+    
+    def _get_cached_rvc_iterations(self, cache_key: str, max_iteration: int) -> Dict[int, Any]:
+        """Get cached RVC iterations up to max_iteration"""
+        if cache_key not in GLOBAL_RVC_ITERATION_CACHE:
+            return {}
+        
+        cached_data = GLOBAL_RVC_ITERATION_CACHE[cache_key]
+        return {i: cached_data[i] for i in cached_data if i <= max_iteration}
+    
+    def _cache_rvc_result(self, cache_key: str, iteration: int, result_tuple: tuple):
+        """Cache a single RVC iteration result (limit to 5 iterations max)"""
+        if cache_key not in GLOBAL_RVC_ITERATION_CACHE:
+            GLOBAL_RVC_ITERATION_CACHE[cache_key] = {}
+        
+        # Only cache up to 5 iterations to prevent memory issues
+        if iteration <= 5:
+            GLOBAL_RVC_ITERATION_CACHE[cache_key][iteration] = result_tuple
 
 
 # Register the node class

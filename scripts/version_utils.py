@@ -17,8 +17,8 @@ class VersionManager:
         self.project_root = project_root or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.version_files = {
             'README.md': {
-                'pattern': r'# ComfyUI ChatterBox SRT Voice \(diogod\) v(\d+\.\d+\.\d+)',
-                'template': '# ComfyUI ChatterBox SRT Voice (diogod) v{version}'
+                'pattern': r'# TTS Audio Suite v(\d+\.\d+\.\d+)',
+                'template': '# TTS Audio Suite v{version}'
             },
             'nodes.py': {
                 'pattern': r'VERSION = "(\d+\.\d+\.\d+)"',

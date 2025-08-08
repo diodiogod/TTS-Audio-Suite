@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-08-08
+
+### Fixed
+
+- Add comprehensive RVC (Real-time Voice Conversion) integration
+
+🎵 RVC Voice Conversion:
+- New Load RVC Character Model node for .pth model loading
+- RVC Engine support in unified Voice Changer
+- Iterative refinement passes with smart caching system
+- Official model download sources (RMVPE, content-vec-best)
+- Automatic Faiss index loading for enhanced quality
+- Integration with existing TTS workflow
+
+🔧 Technical Improvements:
+- Minimal reference wrapper for compatibility
+- Cache system prevents recomputation of refinement passes
+- Official download sources from lj1995 and lengyue233
+- Added required dependencies: faiss-cpu, onnxruntime, torchcrepe
+
+📋 Requirements:
+- Updated requirements.txt with RVC dependencies
+- Compatible with existing ChatterBox and F5-TTS workflows
 ## [4.0.0] - 2025-08-06
 
 ### 🚨 BREAKING CHANGES

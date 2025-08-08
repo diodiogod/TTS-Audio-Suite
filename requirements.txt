@@ -44,3 +44,12 @@ sounddevice
 # git clone https://github.com/SWivid/F5-TTS.git && cd F5-TTS && pip install -e .
 f5-tts>=0.0.1
 cached-path>=1.3.0
+
+# RVC (Real-time Voice Conversion) dependencies - NEW for v4
+# Required for RVC Voice Changer functionality and character model loading
+faiss-cpu>=1.7.4          # Vector similarity search for voice matching (CPU version for compatibility)
+# faiss-gpu>=1.7.4        # Uncomment for GPU acceleration (requires CUDA compatibility)
+onnxruntime               # ONNX model inference for pitch extraction
+torchcrepe                # CREPE pitch extraction algorithm
+monotonic-alignment-search # Audio alignment utilities
+requests                  # Model downloading functionality
