@@ -47,7 +47,7 @@ class VocalRemovalNode(BaseTTSNode):
     
     @classmethod
     def NAME(cls):
-        return "🎤 Vocal Removal"
+        return "🤐 Vocal Removal"
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -167,7 +167,7 @@ class VocalRemovalNode(BaseTTSNode):
             Tuple of (vocals_audio, instrumentals_audio, separation_info)
         """
         try:
-            print(f"🎤 Vocal Removal: Starting {separation_type} separation")
+            print(f"🤐 Vocal Removal: Starting {separation_type} separation")
             print(f"Model: {model}, Quality: {quality_preset}, Aggression: {aggression}")
             
             # Validate audio input

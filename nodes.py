@@ -332,7 +332,7 @@ if RVC_PITCH_OPTIONS_AVAILABLE:
 
 if VOCAL_REMOVAL_AVAILABLE:
     NODE_CLASS_MAPPINGS["VocalRemovalNode"] = VocalRemovalNode
-    NODE_DISPLAY_NAME_MAPPINGS["VocalRemovalNode"] = "🎤 Vocal Removal"
+    NODE_DISPLAY_NAME_MAPPINGS["VocalRemovalNode"] = "🤐 Vocal Removal"
 
 if MERGE_AUDIO_AVAILABLE:
     NODE_CLASS_MAPPINGS["MergeAudioNode"] = MergeAudioNode
