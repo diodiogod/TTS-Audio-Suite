@@ -4,6 +4,7 @@ Refactored from ChatterBox VC to support multiple engines (ChatterBox now, RVC i
 """
 
 import torch
+import numpy as np
 import tempfile
 import os
 import hashlib
@@ -57,8 +58,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "TTS_engine": ("TTS_ENGINE", {
-                    "tooltip": "TTS/VC engine configuration. For now, only ChatterBox supports voice conversion. Future engines like RVC will be supported."
+                "TTS_engine": ((any_typ, "RVC_ENGINE"), {
+                    "tooltip": "TTS/VC engine configuration. Supports ChatterBox TTS Engine and RVC Engine for voice conversion."
                 }),
                 "source_audio": (any_typ, {
                     "tooltip": "The original voice audio you want to convert to sound like the target voice. Accepts AUDIO input or Character Voices node output."
@@ -117,6 +118,138 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 
         except Exception as e:
             raise ValueError(f"Failed to process {input_name}: {e}")
+
+    def _handle_rvc_conversion(self, rvc_engine, source_audio, narrator_target, refinement_passes):
+        """
+        Handle RVC engine voice conversion.
+        
+        Args:
+            rvc_engine: RVCEngineAdapter instance
+            source_audio: Source audio to convert
+            narrator_target: Target voice characteristics (not used in RVC - uses loaded model)
+            refinement_passes: Number of conversion passes (not used in RVC)
+            
+        Returns:
+            Tuple of (converted_audio, conversion_info)
+        """
+        try:
+            # Extract audio data from flexible inputs
+            processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
+            
+            # For RVC, narrator_target is not used - the target voice is the loaded RVC model
+            print("🔄 Voice Changer: RVC conversion - using loaded model as target voice")
+            print("ℹ️  Note: narrator_target input ignored in RVC - target voice is the loaded RVC model")
+            
+            # Get RVC configuration
+            config = getattr(rvc_engine, 'config', {})
+            model_key = config.get('model_key')
+            
+            if not model_key:
+                raise ValueError("RVC engine not properly configured - missing model_key")
+            
+            # Convert audio tensor to format expected by RVC
+            audio_input = self._convert_audio_for_rvc(processed_source_audio)
+            
+            # Perform RVC conversion using the adapter
+            converted_audio_np, sample_rate = rvc_engine.convert_voice(
+                audio_input=audio_input,
+                model_key=model_key,
+                pitch_shift=config.get('pitch_shift', 0),
+                index_rate=config.get('index_rate', 0.75),
+                rms_mix_rate=config.get('rms_mix_rate', 0.25),
+                protect=config.get('protect', 0.25),
+                f0_method=config.get('f0_method', 'rmvpe'),
+                f0_autotune=config.get('f0_autotune', False),
+                resample_sr=config.get('resample_sr', 0),
+                crepe_hop_length=160,
+                use_cache=config.get('use_cache', True)
+            )
+            
+            # Convert back to ComfyUI audio format
+            converted_audio = self._convert_audio_from_rvc(converted_audio_np, sample_rate)
+            
+            # Create conversion info
+            conversion_info = (
+                f"RVC Conversion: {config.get('rvc_model', 'Unknown')} model | "
+                f"Pitch: {config.get('pitch_shift', 0)} | "
+                f"Method: {config.get('f0_method', 'rmvpe')} | "
+                f"Index Rate: {config.get('index_rate', 0.75)} | "
+                f"Device: {config.get('device', 'auto')}"
+            )
+            
+            print(f"✅ RVC voice conversion completed successfully")
+            return converted_audio, conversion_info
+            
+        except Exception as e:
+            print(f"❌ RVC voice conversion failed: {e}")
+            raise RuntimeError(f"RVC voice conversion failed: {e}")
+
+    def _convert_audio_for_rvc(self, audio_dict):
+        """Convert ComfyUI audio format to RVC-compatible format."""
+        try:
+            if not isinstance(audio_dict, dict) or "waveform" not in audio_dict:
+                raise ValueError("Invalid audio format for RVC conversion")
+            
+            waveform = audio_dict["waveform"]
+            sample_rate = audio_dict.get("sample_rate", 22050)
+            
+            # Convert tensor to numpy if needed
+            if hasattr(waveform, 'numpy'):
+                audio_np = waveform.numpy()
+            elif isinstance(waveform, torch.Tensor):
+                audio_np = waveform.detach().cpu().numpy()
+            else:
+                audio_np = waveform
+            
+            # Ensure mono audio - RVC expects 1D audio
+            if audio_np.ndim > 1:
+                if audio_np.shape[0] == 1:  # (1, samples)
+                    audio_np = audio_np[0]
+                elif audio_np.shape[1] == 1:  # (samples, 1)
+                    audio_np = audio_np[:, 0]
+                else:  # Multiple channels
+                    audio_np = audio_np.mean(axis=0 if audio_np.shape[0] < audio_np.shape[1] else 1)
+            
+            return (audio_np, sample_rate)
+            
+        except Exception as e:
+            raise ValueError(f"Failed to convert audio for RVC: {e}")
+
+    def _convert_audio_from_rvc(self, audio_np, sample_rate):
+        """Convert RVC output back to ComfyUI audio format."""
+        try:
+            # Ensure numpy array
+            if not isinstance(audio_np, np.ndarray):
+                audio_np = np.array(audio_np)
+            
+            # Ensure float32 in range [-1, 1]
+            if audio_np.dtype != np.float32:
+                if audio_np.dtype == np.int16:
+                    audio_np = audio_np.astype(np.float32) / 32768.0
+                else:
+                    audio_np = audio_np.astype(np.float32)
+            
+            # Ensure audio is in proper range
+            if np.max(np.abs(audio_np)) > 1.0:
+                audio_np = audio_np / np.max(np.abs(audio_np))
+            
+            # Convert to tensor in ComfyUI format (batch, channels, samples)
+            if audio_np.ndim == 1:
+                # Mono: (samples,) -> (1, 1, samples)
+                waveform = torch.from_numpy(audio_np).unsqueeze(0).unsqueeze(0)
+            else:
+                # Multi-channel: ensure proper shape
+                if audio_np.shape[0] > audio_np.shape[1]:
+                    audio_np = audio_np.T
+                waveform = torch.from_numpy(audio_np).unsqueeze(0)
+            
+            return {
+                "waveform": waveform,
+                "sample_rate": sample_rate
+            }
+            
+        except Exception as e:
+            raise ValueError(f"Failed to convert RVC output to ComfyUI format: {e}")
 
     def _create_proper_engine_node_instance(self, engine_data: Dict[str, Any]):
         """
@@ -189,9 +322,14 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             Tuple of (converted_audio, conversion_info)
         """
         try:
-            # Validate engine input
+            # Check if this is an RVC_ENGINE (RVCEngineAdapter) or TTS_ENGINE (dict)
+            if hasattr(TTS_engine, 'engine_type') and TTS_engine.engine_type == "rvc":
+                # This is an RVC_ENGINE adapter
+                return self._handle_rvc_conversion(TTS_engine, source_audio, narrator_target, refinement_passes)
+            
+            # Validate TTS_ENGINE input (traditional dict format)
             if not TTS_engine or not isinstance(TTS_engine, dict):
-                raise ValueError("Invalid TTS_engine input - connect a TTS engine node")
+                raise ValueError("Invalid TTS_engine input - connect a TTS engine node or RVC Engine node")
             
             engine_type = TTS_engine.get("engine_type")
             config = TTS_engine.get("config", {})
@@ -202,8 +340,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             print(f"🔄 Voice Changer: Starting {engine_type} voice conversion")
             
             # Validate engine supports voice conversion
-            if engine_type not in ["chatterbox"]:
-                raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox")
+            if engine_type not in ["chatterbox", "rvc"]:
+                raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox, RVC")
             
             # Extract audio data from flexible inputs (support both AUDIO and NARRATOR_VOICE types)
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")

@@ -133,6 +133,39 @@ except Exception as e:
     print(f"❌ F5-TTS Edit Options failed: {e}")
     F5TTS_EDIT_OPTIONS_AVAILABLE = False
 
+# Load RVC nodes
+try:
+    rvc_engine_module = load_node_module("rvc_engine_node", "engines/rvc_engine_node.py")
+    RVCEngineNode = rvc_engine_module.RVCEngineNode
+    RVC_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ RVC Engine failed: {e}")
+    RVC_ENGINE_AVAILABLE = False
+
+try:
+    rvc_pitch_options_module = load_node_module("rvc_pitch_options_node", "audio/rvc_pitch_options_node.py")
+    RVCPitchOptionsNode = rvc_pitch_options_module.RVCPitchOptionsNode
+    RVC_PITCH_OPTIONS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ RVC Pitch Options failed: {e}")
+    RVC_PITCH_OPTIONS_AVAILABLE = False
+
+try:
+    vocal_removal_module = load_node_module("vocal_removal_node", "audio/vocal_removal_node.py")
+    VocalRemovalNode = vocal_removal_module.VocalRemovalNode
+    VOCAL_REMOVAL_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Vocal Removal failed: {e}")
+    VOCAL_REMOVAL_AVAILABLE = False
+
+try:
+    merge_audio_module = load_node_module("merge_audio_node", "audio/merge_audio_node.py")
+    MergeAudioNode = merge_audio_module.MergeAudioNode
+    MERGE_AUDIO_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Merge Audio failed: {e}")
+    MERGE_AUDIO_AVAILABLE = False
+
 # Import foundation components for compatibility
 from utils.system.import_manager import import_manager
 
@@ -279,6 +312,23 @@ if F5TTS_EDIT_AVAILABLE:
 if F5TTS_EDIT_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditOptions"] = F5TTSEditOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditOptions"] = "🔧 F5-TTS Edit Options"
+
+# Register RVC nodes
+if RVC_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["RVCEngineNode"] = RVCEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["RVCEngineNode"] = "⚙️ RVC Engine"
+
+if RVC_PITCH_OPTIONS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["RVCPitchOptionsNode"] = RVCPitchOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["RVCPitchOptionsNode"] = "🎛️ RVC Pitch Extraction Options"
+
+if VOCAL_REMOVAL_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VocalRemovalNode"] = VocalRemovalNode
+    NODE_DISPLAY_NAME_MAPPINGS["VocalRemovalNode"] = "🎤 Vocal Removal"
+
+if MERGE_AUDIO_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MergeAudioNode"] = MergeAudioNode
+    NODE_DISPLAY_NAME_MAPPINGS["MergeAudioNode"] = "🎵 Merge Audio"
 
 # Print startup banner
 print(SEPARATOR)
