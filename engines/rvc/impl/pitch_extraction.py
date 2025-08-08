@@ -49,6 +49,7 @@ class FeatureExtractor:
             "crepe-tiny": partial(self.get_f0_official_crepe_computation, model='model'),
             "mangio-crepe": self.get_f0_crepe_computation,
             "mangio-crepe-tiny": partial(self.get_f0_crepe_computation, model='model'),
+            "fcpe": self.get_fcpe,
         }
         
     def __del__(self):
@@ -207,6 +208,66 @@ class FeatureExtractor:
 
         return self.model_rmvpe.infer_from_audio_with_pitch(x, thred=0.03, f0_min=f0_min, f0_max=f0_max)
 
+    def get_fcpe(self, x, f0_min=80, f0_max=880, *args, **kwargs):
+        """
+        Fast Context-based Pitch Estimation using torchfcpe
+        Official FCPE implementation designed for real-time voice conversion
+        """
+        try:
+            from torchfcpe import spawn_bundled_infer_model
+            
+            # Initialize FCPE model if not already loaded
+            if not hasattr(self, "model_fcpe"):
+                print("Loading FCPE model...")
+                self.model_fcpe = spawn_bundled_infer_model(device=self.device)
+            
+            # Preprocess audio for FCPE
+            audio = x.astype(np.float32)
+            audio = audio / np.max(np.abs(audio))  # Normalize
+            audio_length = len(audio)
+            
+            # Convert to tensor format expected by FCPE
+            audio_tensor = torch.from_numpy(audio).float().unsqueeze(0).unsqueeze(-1)
+            if str(self.device) != 'cpu':
+                audio_tensor = audio_tensor.to(self.device)
+            
+            # Calculate target length for F0 output
+            hop_size = 160  # Standard hop size for RVC
+            f0_target_length = (audio_length // hop_size) + 1
+            
+            # Perform FCPE inference
+            with torch.no_grad():
+                f0 = self.model_fcpe.infer(
+                    audio_tensor,
+                    sr=self.sr,
+                    decoder_mode='local_argmax',  # Recommended by torchfcpe
+                    threshold=0.006,              # V/UV decision threshold
+                    f0_min=f0_min,               # Minimum pitch (Hz)
+                    f0_max=f0_max,               # Maximum pitch (Hz)
+                    interp_uv=False,             # Don't interpolate unvoiced frames
+                    output_interp_target_length=f0_target_length
+                )
+            
+            # Convert back to numpy array
+            if isinstance(f0, torch.Tensor):
+                f0 = f0.squeeze().cpu().numpy()
+            
+            # Ensure correct length for RVC pipeline
+            p_len = x.shape[0] // self.window + 1
+            if len(f0) != p_len:
+                # Interpolate to correct length if needed
+                target_indices = np.linspace(0, len(f0) - 1, p_len)
+                f0 = np.interp(target_indices, np.arange(len(f0)), f0)
+            
+            return f0
+            
+        except ImportError:
+            print("⚠️ FCPE requires torchfcpe library: pip install torchfcpe")
+            print("Falling back to RMVPE...")
+            return self.get_rmvpe(x, *args, **kwargs)
+        except Exception as e:
+            print(f"⚠️ FCPE failed ({e}) - falling back to RMVPE")
+            return self.get_rmvpe(x, *args, **kwargs)
 
     # Fork Feature: Acquire median hybrid f0 estimation calculation
     def get_f0_hybrid_computation(
