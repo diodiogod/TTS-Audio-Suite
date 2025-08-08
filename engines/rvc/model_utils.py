@@ -69,13 +69,25 @@ def load_hubert(hubert_path: str, config=None) -> Optional[torch.nn.Module]:
                 if device != "cpu":
                     self.to(device)
                 if is_half:
+                    # Convert to half precision properly, including bias terms
+                    for module in self.modules():
+                        if hasattr(module, 'bias') and module.bias is not None:
+                            module.bias.data = module.bias.data.half()
                     self.half()
                     
-            def extract_features(self, audio, version="v2", **kwargs):
-                """Extract features from audio"""
+            def extract_features(self, version="v2", source=None, padding_mask=None, output_layer=None, **kwargs):
+                """Extract features from audio with RVC-compatible interface"""
                 with torch.no_grad():
+                    # Use source from kwargs if provided
+                    audio = source
                     if isinstance(audio, np.ndarray):
-                        audio = torch.from_numpy(audio).float()
+                        audio = torch.from_numpy(audio)
+                    
+                    # Ensure proper tensor type
+                    if self.is_half:
+                        audio = audio.half()
+                    else:
+                        audio = audio.float()
                     
                     if audio.dim() == 1:
                         audio = audio.unsqueeze(0).unsqueeze(0)  # [1, 1, T]
@@ -84,11 +96,20 @@ def load_hubert(hubert_path: str, config=None) -> Optional[torch.nn.Module]:
                     
                     # Move to device
                     audio = audio.to(self.device)
-                    if self.is_half:
-                        audio = audio.half()
                     
                     # Extract features
-                    features = self.feature_extractor(audio)
+                    try:
+                        features = self.feature_extractor(audio)
+                    except RuntimeError as e:
+                        if "type" in str(e):
+                            # Try with float32 if half precision fails
+                            print(f"⚠️ Half precision failed, trying float32: {e}")
+                            audio = audio.float()
+                            # Also ensure model is in float32
+                            self.feature_extractor = self.feature_extractor.float()
+                            features = self.feature_extractor(audio)
+                        else:
+                            raise e
                     
                     # Reshape to expected format [1, T, C]
                     features = features.transpose(1, 2)

@@ -16,6 +16,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from engines.rvc.rvc_engine import RVCEngine
+from engines.rvc.reference_wrapper import reference_wrapper
 
 
 class RVCEngineAdapter:
@@ -132,35 +133,133 @@ class RVCEngineAdapter:
             
             print(f"🔄 Loading RVC model: {model_name}")
             
-            # For now, use a simplified RVC conversion
-            # TODO: Implement actual RVC model loading and inference
-            print(f"⚠️ RVC conversion placeholder - returning original audio")
-            print(f"Model: {model_name}, Path: {model_path}")
-            if index_path:
-                print(f"Index: {index_path}")
+            # Import the actual RVC conversion function
+            try:
+                # Import from the reference implementation
+                from engines.rvc.rvc_inference import vc_single, get_vc, load_hubert
+                
+                print(f"🔄 Loading RVC models for conversion...")
+                
+                # Load RVC model
+                voice_model = get_vc(model_path, index_path)
+                if not voice_model:
+                    raise ValueError(f"Failed to load RVC model from {model_path}")
+                
+                # Load Hubert model (try to find it)
+                hubert_path = self._find_hubert_model()
+                if not hubert_path:
+                    raise ValueError("Hubert model not found")
+                
+                hubert_model = load_hubert(hubert_path)
+                if not hubert_model:
+                    raise ValueError("Failed to load Hubert model")
+                
+                print(f"✅ Models loaded successfully")
+                
+                # Convert input audio to expected format
+                if isinstance(audio_input, tuple):
+                    input_audio = audio_input
+                elif hasattr(audio_input, 'numpy'):
+                    audio_np = audio_input.detach().cpu().numpy()
+                    input_audio = (audio_np, 44100)  # Assume 44.1kHz
+                else:
+                    audio_np = np.array(audio_input)
+                    input_audio = (audio_np, 44100)
+                
+                # Prepare pitch extraction parameters
+                pitch_params = {
+                    'f0_method': f0_method,
+                    'f0_autotune': f0_autotune,
+                    'index_rate': index_rate,
+                    'resample_sr': resample_sr,
+                    'rms_mix_rate': rms_mix_rate,
+                    'protect': protect,
+                    'crepe_hop_length': crepe_hop_length
+                }
+                
+                print(f"🎵 Starting RVC conversion with {f0_method} pitch extraction")
+                
+                # Perform actual RVC conversion using reference implementation
+                output_audio = vc_single(
+                    hubert_model=hubert_model,
+                    input_audio=input_audio,
+                    f0_up_key=pitch_shift,
+                    **voice_model,
+                    **pitch_params
+                )
+                
+                if output_audio is None:
+                    raise ValueError("RVC conversion failed - output_audio is None")
+                
+                # Extract audio and sample rate from result
+                if isinstance(output_audio, tuple) and len(output_audio) == 2:
+                    converted_audio, output_sr = output_audio
+                else:
+                    converted_audio = output_audio
+                    output_sr = 44100
+                
+                print(f"✅ RVC conversion completed successfully")
+                return converted_audio, output_sr
+                
+            except ImportError as e:
+                print(f"❌ RVC inference modules not available: {e}")
+                return self._fallback_conversion(audio_input)
             
-            # Convert input to numpy if needed
-            if isinstance(audio_input, tuple):
-                audio_np = audio_input[0] if len(audio_input) > 0 else np.array([])
-            elif hasattr(audio_input, 'numpy'):
-                audio_np = audio_input.detach().cpu().numpy()
-            else:
-                audio_np = np.array(audio_input)
-            
-            # Apply basic pitch shifting as placeholder
-            if pitch_shift != 0:
-                print(f"🎵 Applying pitch shift: {pitch_shift} semitones")
-                # TODO: Implement actual pitch shifting
-            
-            # Return processed audio (currently just original)
-            sample_rate = 44100  # Default sample rate
-            
-            print(f"✅ RVC conversion completed (placeholder)")
-            return audio_np, sample_rate
+            except Exception as e:
+                print(f"❌ RVC conversion failed: {e}")
+                return self._fallback_conversion(audio_input)
             
         except Exception as e:
             print(f"Error in RVC voice conversion: {e}")
             raise e
+    
+    def _find_hubert_model(self) -> Optional[str]:
+        """Find available Hubert model."""
+        try:
+            import folder_paths
+            models_dir = folder_paths.models_dir
+            
+            # Common Hubert model names and locations
+            hubert_candidates = [
+                "content-vec-best.safetensors",
+                "hubert_base.pt",
+                "chinese-hubert-base.pt",
+                "chinese-wav2vec2-base.pt"
+            ]
+            
+            for model_name in hubert_candidates:
+                model_path = os.path.join(models_dir, model_name)
+                if os.path.exists(model_path):
+                    print(f"📄 Found Hubert model: {model_name}")
+                    return model_path
+            
+            # Try downloading content-vec-best.safetensors if not found
+            from utils.downloads.model_downloader import download_base_model
+            print("📥 Hubert model not found locally, attempting download...")
+            downloaded_path = download_base_model("content-vec-best.safetensors")
+            if downloaded_path:
+                return downloaded_path
+            
+            print("❌ No Hubert model found and download failed")
+            return None
+            
+        except Exception as e:
+            print(f"Error finding Hubert model: {e}")
+            return None
+    
+    def _fallback_conversion(self, audio_input):
+        """Fallback conversion when RVC fails."""
+        print("🔄 Using fallback conversion (returning original audio)")
+        
+        # Convert input to numpy if needed
+        if isinstance(audio_input, tuple):
+            audio_np = audio_input[0] if len(audio_input) > 0 else np.array([])
+        elif hasattr(audio_input, 'numpy'):
+            audio_np = audio_input.detach().cpu().numpy()
+        else:
+            audio_np = np.array(audio_input)
+        
+        return audio_np, 44100
     
     def get_model_info(self, model_key: str) -> Dict[str, Any]:
         """

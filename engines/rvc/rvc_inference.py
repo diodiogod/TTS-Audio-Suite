@@ -107,13 +107,18 @@ class FeatureExtractor:
             if filter_radius > 2:
                 f0 = signal.medfilt(f0, filter_radius)
                 
-            return f0.astype(np.float32), f0.astype(np.float32)
+            # Return both pitch and pitchf as expected
+            pitch = f0.astype(np.float32)
+            pitchf = f0.astype(np.float32)
+            return pitch, pitchf
             
         except ImportError:
             print("PyWorld not available, using fallback pitch extraction")
             # Simple fallback
             f0 = np.zeros(len(audio_pad) // self.window)
-            return f0.astype(np.float32), f0.astype(np.float32)
+            pitch = f0.astype(np.float32)
+            pitchf = f0.astype(np.float32)
+            return pitch, pitchf
 
     def _extract_f0_harvest(self, audio_pad, f0_up_key, filter_radius):
         """Harvest pitch extraction"""
@@ -134,7 +139,10 @@ class FeatureExtractor:
             if filter_radius > 2:
                 f0 = signal.medfilt(f0, filter_radius)
                 
-            return f0.astype(np.float32), f0.astype(np.float32)
+            # Return both pitch and pitchf as expected
+            pitch = f0.astype(np.float32)
+            pitchf = f0.astype(np.float32)
+            return pitch, pitchf
             
         except ImportError:
             print("PyWorld not available for Harvest, using PM fallback")
@@ -167,7 +175,10 @@ class FeatureExtractor:
             if f0_autotune:
                 f0 = self._apply_autotune(f0)
                 
-            return f0.astype(np.float32), f0.astype(np.float32)
+            # Return both pitch and pitchf as expected  
+            pitch = f0.astype(np.float32)
+            pitchf = f0.astype(np.float32)
+            return pitch, pitchf
             
         except ImportError:
             print("TorchCrepe not available, using PM fallback")
@@ -237,7 +248,10 @@ class FeatureExtractor:
                 f0_filtered = f0_shifted
                 
             print(f"RMVPE extraction completed: {len(f0_filtered)} frames")
-            return f0_filtered
+            # Return both pitch (quantized) and pitchf (continuous) as expected
+            pitch = f0_filtered.copy()
+            pitchf = f0_filtered.copy()
+            return pitch, pitchf
             
         except Exception as e:
             print(f"RMVPE failed: {e}, using PM fallback")
@@ -304,9 +318,10 @@ class VC(FeatureExtractor):
         
         # Extract features using Hubert model
         feats = model.extract_features(version=version, **inputs)
+        feats = feats.to(self.device)  # Ensure features are on correct device
         
         if protect < 0.5 and pitch is not None and pitchf is not None:
-            feats0 = feats.clone()
+            feats0 = feats.clone().to(self.device)
             
         # Apply index if available
         if index is not None and big_npy is not None and index_rate > 0:
@@ -330,6 +345,7 @@ class VC(FeatureExtractor):
         feats = F.interpolate(feats.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
         if protect < 0.5 and pitch is not None and pitchf is not None:
             feats0 = F.interpolate(feats0.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
+            feats0 = feats0.to(self.device)  # Ensure interpolated features are on correct device
         
         p_len = min(audio0.shape[0] // self.window, feats.shape[1])
         
@@ -342,6 +358,9 @@ class VC(FeatureExtractor):
                 pitchff[pitchf > 0] = 1
                 pitchff[pitchf < 1] = protect
                 pitchff = pitchff.unsqueeze(-1)
+                # Ensure all tensors are on the same device
+                pitchff = pitchff.to(feats.device)
+                feats0 = feats0.to(feats.device)
                 feats = feats * pitchff + feats0 * (1 - pitchff)
                 feats = feats.to(feats0.dtype)
                 
@@ -418,7 +437,7 @@ class VC(FeatureExtractor):
                 audio_pad, f0_up_key, f0_method, merge_type,
                 filter_radius, crepe_hop_length, f0_autotune, rmvpe_onnx, inp_f0, f0_min, f0_max)
             p_len = min(pitch.shape[0], pitchf.shape[0])
-            pitch = pitch[:p_len].astype(np.int64 if self.device != 'mps' else np.float32)
+            pitch = pitch[:p_len].astype(np.float32)  # Use float32 for neural network compatibility
             pitchf = pitchf[:p_len].astype(np.float32)
             pitch = torch.from_numpy(pitch).to(self.device).unsqueeze(0)
             pitchf = torch.from_numpy(pitchf).to(self.device).unsqueeze(0)

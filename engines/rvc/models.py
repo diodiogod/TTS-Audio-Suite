@@ -217,9 +217,12 @@ class SineGen(torch.nn.Module):
         output uv: tensor(batchsize=1, length, 1)
         """
         with torch.no_grad():
+            # Ensure f0 is float for interpolation operations
+            if f0.dtype != torch.float32:
+                f0 = f0.float()
             f0 = f0[:, None].transpose(1, 2)  # B x 1 x T
             f0_buf = torch.zeros(f0.shape[0], f0.shape[1], f0.shape[2] * upp, 
-                                device=f0.device, dtype=f0.dtype)
+                                device=f0.device, dtype=torch.float32)
             # fundamental component
             f0_buf[:, :, ::upp] = f0
 
@@ -332,6 +335,25 @@ class SynthesizerTrnMs256NSFsid(nn.Module):
         # Generate audio
         o = self.dec(har_source, g=g)
         return o
+    
+    def infer(self, c, f0_lengths, pitch=None, pitchf=None, sid=None):
+        """Inference method for RVC voice conversion"""
+        with torch.no_grad():
+            # Get speaker embedding
+            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
+            
+            if pitch is not None and pitchf is not None:
+                # F0 conditioning - use the first upsample rate for F0 upsampling
+                upsample_rate = np.prod(self.upsample_rates)
+                har_source, _, _ = self.m_source(pitch, upsample_rate)
+                har_source = har_source.transpose(1, 2)  # [b, t, h]
+                
+                # Combine with input features
+                c = c + har_source[:, :c.shape[1], :]
+                
+            # Generate audio using decoder
+            o = self.dec(c.transpose(1, 2), g=g)  # [b, 1, t]
+            return o, None
 
 
 class SynthesizerTrnMs768NSFsid(SynthesizerTrnMs256NSFsid):
@@ -352,6 +374,13 @@ class SynthesizerTrnMs256NSFsid_nono(nn.Module):
     def forward(self, *args, **kwargs):
         # Very basic implementation
         return torch.randn(1, 1, 16000)  # Return dummy audio
+    
+    def infer(self, c, f0_lengths, sid=None):
+        """Non-F0 inference method"""
+        with torch.no_grad():
+            # Basic audio generation without F0
+            o = self.dec(c.transpose(1, 2))
+            return o, None
 
 
 class SynthesizerTrnMs768NSFsid_nono(SynthesizerTrnMs256NSFsid_nono):
