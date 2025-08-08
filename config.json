@@ -1,0 +1,16 @@
+{
+  "architectures": [
+    "INF5Model"
+  ],
+  "auto_map": {
+    "AutoConfig": "model.INF5Config",
+    "AutoModel": "model.INF5Model"
+  },
+  "ckpt_path": "checkpoints/model_best.pt",
+  "model_type": "inf5",
+  "remove_sil": true,
+  "speed": 1.0,
+  "torch_dtype": "float32",
+  "transformers_version": "4.49.0",
+  "vocab_path": "checkpoints/vocab.txt"
+}
