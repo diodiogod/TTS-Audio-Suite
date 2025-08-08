@@ -74,9 +74,16 @@ class Separator:
             return vocals, instrumental, input_audio
         
         return_dict = self.model.run_inference(audio_path)
-        instrumental = return_dict["instrumentals"]
-        vocals = return_dict["vocals"]
-        input_audio = return_dict["input_audio"]
+        
+        # Handle different return formats - SCNet returns tuple, others return dict
+        if isinstance(return_dict, tuple):
+            # SCNet returns (vocals, instrumentals, input_audio)
+            vocals, instrumental, input_audio = return_dict
+        else:
+            # Other models return dict
+            instrumental = return_dict["instrumentals"]
+            vocals = return_dict["vocals"] 
+            input_audio = return_dict["input_audio"]
         
 
         if self.use_cache:

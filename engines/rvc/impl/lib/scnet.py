@@ -7,6 +7,7 @@ MIT License - Copyright (c) 2024 Roman Solovyev (ZFTurbo)
 Adapted for ComfyUI TTS Audio Suite
 """
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -454,7 +455,12 @@ class SCNet(nn.Module):
         x = x.reshape(-1, L)
         x = torch.stft(x, **self.stft_config, return_complex=True)
         x = torch.view_as_real(x)
-        x = x.permute(0, 3, 1, 2).reshape(x.shape[0] // self.audio_channels, x.shape[3] * self.audio_channels,
+        # Fix tensor reshaping - ensure correct batch size calculation
+        batch_channels = x.shape[0] 
+        actual_batch = batch_channels // self.audio_channels
+        if actual_batch == 0:
+            actual_batch = 1  # Ensure at least batch size 1
+        x = x.permute(0, 3, 1, 2).reshape(actual_batch, x.shape[3] * self.audio_channels,
                                           x.shape[1], x.shape[2])
 
         B, C, Fr, T = x.shape
@@ -558,7 +564,6 @@ class SCNetSeparator:
         
         # Create model
         model = SCNet(**model_config)
-        print(f"🔧 SCNet config: dims={model_config['dims']}, band_kernel={model_config['band_kernel']}, band_stride={model_config['band_stride']}")
         
         # Load weights
         checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
@@ -583,7 +588,7 @@ class SCNetSeparator:
         return model
 
     def run_inference(self, audio_path: str, format: str = "mp3"):
-        """Run inference on audio file"""
+        """Run inference on audio file with chunked processing"""
         from rvc_audio import load_input_audio, save_input_audio
         import tempfile
         import os
@@ -597,24 +602,81 @@ class SCNetSeparator:
         else:
             audio_tensor = audio_data.clone().detach().float()
             
-        # Ensure correct shape [batch, channels, samples]
+        # Ensure correct shape [batch, channels, samples] 
         if audio_tensor.dim() == 2:
+            # Shape is [channels, samples] - add batch dimension
             audio_tensor = audio_tensor.unsqueeze(0)
         elif audio_tensor.dim() == 1:
+            # Shape is [samples] - assume mono, add batch and channel dimensions
             audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+            # Duplicate for stereo
+            audio_tensor = audio_tensor.repeat(1, 2, 1)
+        
+        # Chunked processing for large audio files to avoid OOM
+        chunk_size = sample_rate * 30  # 30 seconds chunks
+        overlap = sample_rate * 1      # 1 second overlap
+        total_samples = audio_tensor.shape[2]
+        
+        if total_samples > chunk_size:
+            vocals_chunks = []
+            instrumentals_chunks = []
             
-        # Move to device
-        if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
-            audio_tensor = audio_tensor.cuda()
+            for start in range(0, total_samples, chunk_size - overlap):
+                end = min(start + chunk_size, total_samples)
+                chunk = audio_tensor[:, :, start:end]
+                
+                # Move to device
+                if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
+                    chunk = chunk.cuda()
+                    
+                # Run separation on chunk
+                with torch.no_grad():
+                    separated = self.model(chunk)
+                    
+                # Extract results and move to CPU
+                vocals_chunk = separated[0, 3].cpu().numpy()  # vocals
+                instrumentals_chunk = separated[0, 2].cpu().numpy()  # other (instrumentals)
+                
+                # Handle overlap blending for seamless chunks
+                if start > 0:
+                    # Blend overlap region
+                    blend_samples = overlap
+                    for i in range(blend_samples):
+                        weight = i / blend_samples
+                        if vocals_chunks:
+                            vocals_chunks[-1][:, -blend_samples + i] = (
+                                vocals_chunks[-1][:, -blend_samples + i] * (1 - weight) + 
+                                vocals_chunk[:, i] * weight
+                            )
+                            instrumentals_chunks[-1][:, -blend_samples + i] = (
+                                instrumentals_chunks[-1][:, -blend_samples + i] * (1 - weight) + 
+                                instrumentals_chunk[:, i] * weight
+                            )
+                    
+                    # Skip the overlapping part in the current chunk
+                    vocals_chunk = vocals_chunk[:, overlap:]
+                    instrumentals_chunk = instrumentals_chunk[:, overlap:]
+                
+                vocals_chunks.append(vocals_chunk)
+                instrumentals_chunks.append(instrumentals_chunk)
             
-        # Run separation
-        with torch.no_grad():
-            separated = self.model(audio_tensor)
+            # Concatenate all chunks
+            vocals = np.concatenate(vocals_chunks, axis=1)
+            instrumentals = np.concatenate(instrumentals_chunks, axis=1)
             
-        # separated shape: [batch, sources, channels, samples]
-        # Extract vocals (index 3) and other (index 2) as instrumentals
-        vocals = separated[0, 3].cpu().numpy()  # vocals
-        instrumentals = separated[0, 2].cpu().numpy()  # other (instrumentals)
+        else:
+            # Process entire audio if small enough
+            # Move to device
+            if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
+                audio_tensor = audio_tensor.cuda()
+                
+            # Run separation
+            with torch.no_grad():
+                separated = self.model(audio_tensor)
+                
+            # Extract results
+            vocals = separated[0, 3].cpu().numpy()  # vocals
+            instrumentals = separated[0, 2].cpu().numpy()  # other (instrumentals)
         
         # Convert back to expected format
         input_audio = (audio_data, sample_rate)
