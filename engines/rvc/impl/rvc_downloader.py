@@ -19,7 +19,7 @@ except ImportError:
     BASE_MODELS_DIR = os.path.expanduser("~/ComfyUI/models")
 
 RVC_DOWNLOAD_LINK = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
-MDX_MODELS = ["MDXNET/UVR-MDX-NET-vocal_FT.onnx"]
+MDX_MODELS = ["MDXNET/UVR-MDX-NET-vocal_FT.onnx", "MDXNET/model_data.json"]
 KARAFAN_MODELS = ["karafan/MDX23C-8KFFT-InstVoc_HQ.ckpt"]
 VR_MODELS = [
     "UVR/UVR-DeEcho-DeReverb.pth",

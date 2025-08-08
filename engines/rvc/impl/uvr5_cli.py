@@ -57,6 +57,7 @@ class Separator:
         instrumental = return_dict["instrumentals"]
         vocals = return_dict["vocals"]
         input_audio = return_dict["input_audio"]
+        
 
         if self.use_cache:
             os.makedirs(vocals_path,exist_ok=True)

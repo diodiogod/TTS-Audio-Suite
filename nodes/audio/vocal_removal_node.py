@@ -41,7 +41,7 @@ class VocalRemovalNode:
     
     @classmethod
     def NAME(cls):
-        return "🤐 Vocal Removal"
+        return "🤐 Noise or Vocal Removal"
  
     def __init__(self):
         pass
@@ -51,6 +51,10 @@ class VocalRemovalNode:
 
         model_list = MDX_MODELS + VR_MODELS + KARAFAN_MODELS + get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan"])
         model_list = list(set(model_list)) # dedupe
+        
+        # Filter out non-model files (JSON configs, etc.)
+        model_extensions = ['.pth', '.ckpt', '.onnx', '.pt', '.safetensors']
+        model_list = [model for model in model_list if any(model.lower().endswith(ext) for ext in model_extensions)]
 
         return {
             "required": {
@@ -59,53 +63,24 @@ class VocalRemovalNode:
                 }),
                 "model": (model_list,{
                     "default": "UVR/HP5-vocals+instrumentals.pth",
-                    "tooltip": """🎵 VOCAL SEPARATION MODELS GUIDE 🎵
+                    "tooltip": """🎵 AI AUDIO SEPARATION & PROCESSING
 
-🏆 BEST MODELS (2024-2025):
-★★★ model_bs_roformer_ep_317_sdr_12.9755.ckpt - BEST OVERALL (12.97 dB SDR, Transformer-based SOTA)
-★★★ MDX23C-8KFFT-InstVoc_HQ.ckpt - Highest quality, minimal artifacts (Karafan architecture)
-★★☆ UVR-MDX-NET-vocal_FT.onnx - Professional vocal extraction (MDX architecture)
+🏆 TOP MODELS (2024-2025):
+• model_bs_roformer_ep_317_sdr_12.9755.ckpt - ⭐ BEST OVERALL (Transformer SOTA)
+• MDX23C-8KFFT-InstVoc_HQ.ckpt - Highest quality, minimal artifacts
+• UVR-MDX-NET-vocal_FT.onnx - Professional vocal extraction
 
-📂 VR MODELS (Convolutional Neural Networks):
-• UVR-DeEcho-DeReverb.pth - Post-processing: removes echo/reverb artifacts
-• HP5-vocals+instrumentals.pth - Balanced vocal/instrumental separation
-• 5_HP-Karaoke-UVR.pth - Optimized for karaoke creation (aggressive vocal removal)
-• 6_HP-Karaoke-UVR.pth - Alternative karaoke model (different tuning)
-• model_bs_roformer_ep_317_sdr_12.9755.ckpt - ⭐ TRANSFORMER ARCHITECTURE (BEST)
-• UVR-BVE-4B_SN-44100-1.pth - 4-band processing with spectral normalization
-• UVR-DeNoise.pth - Noise reduction specialist
+🎯 QUICK START:
+• 🎤 Karaoke: model_bs_roformer + aggressive (12-15)
+• 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT + balanced (8-12)
+• 🔧 Denoising: UVR-DeNoise + gentle (5-8)
+• 🏠 Beginner: HP5-vocals+instrumentals + moderate (10)
 
-📂 MDX MODELS (Multi-Dimensional eXtraction):
-• UVR-MDX-NET-vocal_FT.onnx - Fine-tuned vocal extraction, full-band processing
+⚠️ SPECIAL MODELS:
+• UVR-DeNoise - NOISE REMOVAL: "remaining" = clean audio ✅
+• UVR-DeEcho-DeReverb - ECHO REMOVAL: "remaining" = dry audio ✅
 
-📂 KARAFAN MODELS (Advanced Hybrid):
-• MDX23C-8KFFT-InstVoc_HQ.ckpt - ⭐ HIGHEST QUALITY (8K FFT, minimal artifacts)
-
-🎯 USE CASE RECOMMENDATIONS:
-🎤 Vocal Removal (Karaoke): model_bs_roformer_ep_317_sdr_12.9755.ckpt → UVR-DeEcho-DeReverb.pth
-🎵 Clean Vocal Extraction: UVR-MDX-NET-vocal_FT.onnx or MDX23C-8KFFT-InstVoc_HQ.ckpt
-🔧 Denoising: UVR-DeNoise.pth
-🏠 Beginner-Friendly: HP5-vocals+instrumentals.pth
-💼 Professional: model_bs_roformer_ep_317_sdr_12.9755.ckpt + post-process with UVR-DeEcho-DeReverb.pth
-
-⚡ ARCHITECTURE DIFFERENCES:
-• VR: Fast, magnitude-only processing, good for basic separation
-• MDX: Hybrid spectrogram/waveform, better quality preservation
-• Karafan: Multi-stage ensemble, state-of-the-art quality (highest CPU usage)
-• RoFormer: Transformer with rotary embeddings, current SOTA
-
-🚀 NEWER MODELS NOT IN LIST (Consider adding):
-• Mel-RoFormer - Next-gen transformer architecture
-• SCNet-XL - Large-scale separation network
-• VitLarge23 - Vision transformer adaptation
-• Demucs v4 (htdemucs_ft) - Hybrid transformer fine-tuned
-• Kim Vocal models - Highly regarded community favorites
-
-💡 PRO TIPS:
-- Use ensemble combinations for best results
-- Apply post-processing models (DeEcho, DeNoise) after primary separation
-- RoFormer models are current state-of-the-art (2024-2025)
-- Higher quality models require more processing time and memory"""
+📖 Complete guide with all models & workflows: docs/VOCAL_REMOVAL_GUIDE.md"""
                 }),
             },
             "optional": {
@@ -138,7 +113,7 @@ Controls how aggressively the model separates vocals from instrumentals:
 • 16-20: Maximum aggression, highest separation but potential quality loss
 
 🎯 USE CASES:
-• 🎤 Karaoke/Vocal Removal: 12-15 (more aggressive)
+• 🎤 Karaoke Creation: 12-15 (more aggressive)
 • 🎵 Vocal Extraction: 8-12 (balanced)
 • 🎼 Preserve Music Quality: 5-8 (gentle)
 • 🔧 Problem Audio: 15-20 (maximum effort)
@@ -172,7 +147,7 @@ Selects the audio format for separated stems:
         }
 
     RETURN_TYPES = ("AUDIO", "AUDIO")
-    RETURN_NAMES = ("vocals", "instrumentals")
+    RETURN_NAMES = ("extracted voice/noise/echo", "remaining")
 
     FUNCTION = "split"
 
@@ -259,4 +234,16 @@ Selects the audio format for separated stems:
                 "sample_rate": sample_rate
             }
         
-        return (to_audio_dict(*primary), to_audio_dict(*secondary))
+        # Some models return vocals/instrumentals in opposite order
+        model_name = filename.lower()  # Use original filename, not the reassigned model object
+        
+        # Models that typically return inverted outputs 
+        if ("roformer" in model_name or "bs_roformer" in model_name or 
+            ("karaoke" in model_name and "hp" in model_name) or
+            "deecho" in model_name or "dereverb" in model_name):
+            # Swap outputs for these models
+            print(f"🔄 Model with inverted outputs detected - swapping (primary=instrumentals, secondary=vocals)")
+            return (to_audio_dict(secondary[0], secondary[1]), to_audio_dict(primary[0], primary[1]))  # extracted=vocals, remaining=instrumentals
+        else:
+            # Standard order for most models
+            return (to_audio_dict(primary[0], primary[1]), to_audio_dict(secondary[0], secondary[1]))  # extracted=vocals, remaining=instrumentals

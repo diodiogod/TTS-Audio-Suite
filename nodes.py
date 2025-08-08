@@ -155,7 +155,7 @@ try:
     VocalRemovalNode = vocal_removal_module.VocalRemovalNode
     VOCAL_REMOVAL_AVAILABLE = True
 except Exception as e:
-    print(f"❌ Vocal Removal failed: {e}")
+    print(f"❌ Vocal/Noise Removal failed: {e}")
     VOCAL_REMOVAL_AVAILABLE = False
 
 try:
@@ -332,7 +332,7 @@ if RVC_PITCH_OPTIONS_AVAILABLE:
 
 if VOCAL_REMOVAL_AVAILABLE:
     NODE_CLASS_MAPPINGS["VocalRemovalNode"] = VocalRemovalNode
-    NODE_DISPLAY_NAME_MAPPINGS["VocalRemovalNode"] = "🤐 Vocal Removal"
+    NODE_DISPLAY_NAME_MAPPINGS["VocalRemovalNode"] = "🤐 Noise or Vocal Removal"
 
 if MERGE_AUDIO_AVAILABLE:
     NODE_CLASS_MAPPINGS["MergeAudioNode"] = MergeAudioNode

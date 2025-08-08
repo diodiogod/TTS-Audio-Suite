@@ -49,8 +49,10 @@ cached-path>=1.3.0
 # Required for RVC Voice Changer functionality and character model loading
 faiss-cpu>=1.7.4          # Vector similarity search for voice matching (CPU version for compatibility)
 # faiss-gpu>=1.7.4        # Uncomment for GPU acceleration (requires CUDA compatibility)
-onnxruntime               # ONNX model inference for pitch extraction
+onnxruntime-gpu           # ONNX model inference with CUDA acceleration for vocal separation
+# onnxruntime             # CPU fallback if GPU version fails: pip uninstall onnxruntime-gpu && pip install onnxruntime
 torchcrepe                # CREPE pitch extraction algorithm
 torchfcpe                 # Fast Context-based Pitch Estimation (FCPE) for real-time RVC
 monotonic-alignment-search # Audio alignment utilities
+audio-separator           # Ultimate Vocal Remover compatibility layer for vocal separation
 requests                  # Model downloading functionality

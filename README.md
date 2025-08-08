@@ -283,6 +283,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese and more
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
+- 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
 - 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>

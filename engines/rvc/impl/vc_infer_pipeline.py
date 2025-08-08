@@ -196,7 +196,7 @@ class VC(FeatureExtractor):
         return audio_opt
 
 def get_vc(model_path,file_index=None,config=config,device=None):
-    cpt = torch.load(model_path, map_location="cpu")
+    cpt = torch.load(model_path, map_location="cpu", weights_only=False)
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
     if_f0 = cpt.get("f0", 1)
