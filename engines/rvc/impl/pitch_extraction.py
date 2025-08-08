@@ -262,8 +262,8 @@ class FeatureExtractor:
             return f0
             
         except ImportError:
-            print("⚠️ FCPE requires torchfcpe library: pip install torchfcpe")
-            print("Falling back to RMVPE...")
+            print("⚠️ FCPE requires torchfcpe library (should be installed with requirements)")
+            print("🔄 Falling back to RMVPE...")
             return self.get_rmvpe(x, *args, **kwargs)
         except Exception as e:
             print(f"⚠️ FCPE failed ({e}) - falling back to RMVPE")

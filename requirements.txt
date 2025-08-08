@@ -51,5 +51,6 @@ faiss-cpu>=1.7.4          # Vector similarity search for voice matching (CPU ver
 # faiss-gpu>=1.7.4        # Uncomment for GPU acceleration (requires CUDA compatibility)
 onnxruntime               # ONNX model inference for pitch extraction
 torchcrepe                # CREPE pitch extraction algorithm
+torchfcpe                 # Fast Context-based Pitch Estimation (FCPE) for real-time RVC
 monotonic-alignment-search # Audio alignment utilities
 requests                  # Model downloading functionality
