@@ -21,9 +21,22 @@ class Separator:
         bve = "BVE" in model_path.lower()
         denoise = dereverb or deecho or bve
 
-        if "MDX" in model_path:
+        # Proper architecture detection based on actual model types
+        model_name = os.path.basename(model_path).lower()
+        
+        if ("mdx" in model_path and "uvr-mdx-net" in model_name) or model_name.endswith('.onnx'):
+            # MDX-Net models (like UVR-MDX-NET-vocal_FT.onnx)
             self.model = MDXNet(model_path=model_path,denoise=denoise,device=device,**kwargs)
-        elif "UVR" in model_path:
+        elif "roformer" in model_name or "bs_roformer" in model_name:
+            # BS-RoFormer models - these are MDXC architecture, not VR
+            # Remove aggressiveness parameter as it doesn't apply to RoFormer models
+            kwargs_no_agg = {k: v for k, v in kwargs.items() if k != 'agg'}
+            self.model = UVR5Base(model_path=model_path,device=device,**kwargs_no_agg)
+        elif any(x in model_name for x in ['hp5', 'denoise', 'deecho', 'dereverb', 'bve', 'karaoke']):
+            # True VR Architecture models - these DO use aggressiveness
+            self.model = UVR5New(model_path=model_path,device=device,dereverb=dereverb,**kwargs) if denoise else UVR5Base(model_path=model_path,device=device,**kwargs)
+        else:
+            # Default fallback for unknown models - assume VR architecture for backward compatibility
             self.model = UVR5New(model_path=model_path,device=device,dereverb=dereverb,**kwargs) if denoise else UVR5Base(model_path=model_path,device=device,**kwargs)
             
         self.use_cache = use_cache

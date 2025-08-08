@@ -71,10 +71,10 @@ class VocalRemovalNode:
 • UVR-MDX-NET-vocal_FT.onnx - Professional vocal extraction
 
 🎯 QUICK START:
-• 🎤 Karaoke: model_bs_roformer + aggressive (12-15)
-• 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT + balanced (8-12)
-• 🔧 Denoising: UVR-DeNoise + gentle (5-8)
-• 🏠 Beginner: HP5-vocals+instrumentals + moderate (10)
+• 🎤 Karaoke: model_bs_roformer (no aggressiveness - uses built-in optimization)
+• 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT (no aggressiveness - MDX architecture)
+• 🔧 Denoising: UVR-DeNoise + gentle aggressiveness (5-8)
+• 🏠 Beginner: HP5-vocals+instrumentals + moderate aggressiveness (10)
 
 ⚠️ SPECIAL MODELS:
 • UVR-DeNoise - NOISE REMOVAL: "remaining" = clean audio ✅
@@ -92,7 +92,7 @@ Enables intelligent caching of separation results for faster processing:
 • ✅ ON (Recommended): Saves results to disk, dramatically speeds up repeated processing of same audio/model combinations
 • ❌ OFF: Always processes from scratch, uses more time but ensures fresh results
 
-💡 Cache includes model, aggression, format, and audio content in hash
+💡 Cache includes model, aggressiveness, format, and audio content in hash
 🔄 Automatically invalidates when any parameter changes
 💾 Cached files stored in organized folder structure for easy management"""
                 }),
@@ -118,7 +118,7 @@ Controls separation strength for VR architecture models (HP5, DeNoise, DeEcho, e
 • 🎼 Preserve Music Quality: 5-8 (gentle)
 • 🔧 Problem Audio: 15-20 (maximum effort)
 
-⚠️ NOTE: Only affects VR models (.pth files). MDX (.onnx) and Karafan (.ckpt) models ignore this setting.
+⚠️ NOTE: Only affects VR Architecture models (HP5, DeNoise, DeEcho). Advanced models (UVR-MDX-NET, bs_roformer, MDX23C) ignore this setting.
 💡 Higher values = stronger vocal/instrumental separation but may affect audio quality"""
                 }),
                 "format":(["wav", "flac", "mp3"],{
