@@ -21,10 +21,9 @@ class MinimalRVCWrapper:
         self._setup_reference_path()
         
     def _setup_reference_path(self):
-        """Setup path to reference implementation"""
+        """Setup path to implementation (moved from docs to proper engine location)"""
         current_dir = os.path.dirname(__file__)
-        project_root = os.path.dirname(os.path.dirname(current_dir))
-        self.reference_path = os.path.join(project_root, "docs", "RVC", "Comfy-RVC-For-Reference")
+        self.reference_path = os.path.join(current_dir, "impl")
         self.lib_path = os.path.join(self.reference_path, "lib")
         
         # Add all necessary paths for reference implementation

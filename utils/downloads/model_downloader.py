@@ -331,7 +331,7 @@ def download_rmvpe_for_reference() -> Optional[str]:
         # Get reference models directory
         current_dir = os.path.dirname(__file__)
         project_root = os.path.dirname(os.path.dirname(current_dir))
-        reference_models_dir = os.path.join(project_root, "docs", "RVC", "Comfy-RVC-For-Reference", "models")
+        reference_models_dir = os.path.join(project_root, "engines", "rvc", "impl", "models")
         
         # Ensure directory exists
         os.makedirs(reference_models_dir, exist_ok=True)
