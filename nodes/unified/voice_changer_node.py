@@ -151,8 +151,11 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 print("⚠️  Warning: narrator_target should be RVC Character Model for RVC conversion")
                 print("🔄 Attempting conversion without specific model...")
             
+            # Get RVC configuration from engine
+            config = getattr(rvc_engine, 'config', {})
+            
             # Generate cache key for this conversion
-            cache_key = self._generate_rvc_cache_key(processed_source_audio, rvc_model, rvc_engine)
+            cache_key = self._generate_rvc_cache_key(processed_source_audio, rvc_model, config)
             
             # Check for cached iterations
             cached_iterations = self._get_cached_rvc_iterations(cache_key, refinement_passes)
@@ -161,9 +164,6 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             if refinement_passes in cached_iterations:
                 print(f"💾 CACHE HIT: Using cached RVC conversion result for {refinement_passes} passes")
                 return cached_iterations[refinement_passes]
-            
-            # Get RVC configuration from engine
-            config = getattr(rvc_engine, 'config', {})
             
             # Start from the highest cached iteration or from beginning
             start_iteration = 0
@@ -194,10 +194,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     rms_mix_rate=config.get('rms_mix_rate', 0.25),
                     protect=config.get('protect', 0.25),
                     f0_method=config.get('f0_method', 'rmvpe'),
-                    f0_autotune=config.get('f0_autotune', False),
                     resample_sr=config.get('resample_sr', 0),
                     crepe_hop_length=160,
-                    use_cache=config.get('use_cache', True)
                 )
                 
                 # Convert back to ComfyUI audio format for next iteration
@@ -471,7 +469,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             
             return (empty_comfy, error_msg)
     
-    def _generate_rvc_cache_key(self, source_audio: Dict[str, Any], rvc_model: Dict[str, Any], rvc_engine) -> str:
+    def _generate_rvc_cache_key(self, source_audio: Dict[str, Any], rvc_model: Dict[str, Any], config: Dict[str, Any]) -> str:
         """Generate cache key for RVC voice conversion iterations"""
         # Create hash from source audio characteristics and RVC model
         source_hash = hashlib.md5(source_audio["waveform"].cpu().numpy().tobytes()).hexdigest()[:16]
@@ -484,7 +482,6 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         }
         
         # Include RVC engine config for cache differentiation
-        config = getattr(rvc_engine, 'config', {})
         cache_data = {
             'source_hash': source_hash,
             'source_sr': source_audio["sample_rate"],
@@ -493,6 +490,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             'rms_mix_rate': config.get('rms_mix_rate', 0.25),
             'protect': config.get('protect', 0.25),
             'f0_method': config.get('f0_method', 'rmvpe'),
+            'resample_sr': config.get('resample_sr', 0),
             'model_info': str(sorted(model_info.items()))
         }
         

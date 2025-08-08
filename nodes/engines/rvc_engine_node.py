@@ -107,25 +107,11 @@ class RVCEngineNode(BaseTTSNode):
                     "tooltip": "Optional advanced pitch extraction settings from RVC Pitch Options node. Overrides basic parameters."
                 }),
                 
-                # Optional advanced parameters
-                "index_file": ("STRING", {
-                    "default": "",
-                    "tooltip": "Optional .index file path for enhanced voice matching. Leave empty for auto-detection."
-                }),
-                "f0_autotune": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Enable automatic pitch correction/tuning"
-                }),
                 "resample_sr": (sample_rates, {
                     "default": 0,
                     "tooltip": "Output sample rate (0=use input rate). 44100/48000 recommended for high quality"
                 }),
                 
-                # Model Quality Settings
-                "use_cache": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "Cache conversions for faster repeated processing"
-                }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
                     "tooltip": "Processing device. Auto=optimal device detection"
@@ -162,10 +148,7 @@ class RVCEngineNode(BaseTTSNode):
         protect=0.25,
         rms_mix_rate=0.25,
         rvc_pitch_options=None,
-        index_file="",
-        f0_autotune=False,
         resample_sr=0,
-        use_cache=True,
         device="auto"
     ):
         """
@@ -181,20 +164,19 @@ class RVCEngineNode(BaseTTSNode):
             
             # Merge pitch options if provided (advanced options override basic parameters)
             final_pitch_params = {
+                'pitch_shift': pitch_shift,
                 'f0_method': f0_method,
-                'f0_autotune': f0_autotune,
                 'index_rate': index_rate,
                 'protect': protect,
                 'rms_mix_rate': rms_mix_rate,
-                'resample_sr': resample_sr,
-                'use_cache': use_cache
+                'resample_sr': resample_sr
             }
             
             if rvc_pitch_options:
                 # Advanced pitch options override basic parameters
                 if isinstance(rvc_pitch_options, dict):
                     final_pitch_params.update(rvc_pitch_options)
-                    print("🎛️ Using advanced pitch options from RVC Pitch Options node")
+                    print("🔧 Using advanced pitch options from RVC Pitch Options node")
                 else:
                     print("⚠️  Invalid pitch options format, using basic parameters")
             
@@ -214,7 +196,7 @@ class RVCEngineNode(BaseTTSNode):
             
             print(f"⚙️ RVC Engine created - Pitch method: {final_pitch_params['f0_method']}, Device: {device}")
             if rvc_pitch_options:
-                print("🎛️ Advanced pitch options applied")
+                print("🔧 Advanced pitch options applied")
             
             return (adapter,)
         

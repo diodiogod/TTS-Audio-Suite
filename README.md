@@ -14,7 +14,7 @@
   <img src="images/AllNodesShowcase.png" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
-A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS and F5-TTS, with modular architecture designed for extensibility and future engine integrations like RVC.
+A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS, F5-TTS, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
 
 <details>
 <summary><h2>📋 Table of Contents</h2></summary>
@@ -25,6 +25,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
   - [🎭 Character & Narrator Switching](#-character--narrator-switching)
   - [🌍 Language Switching with Bracket Syntax](#-language-switching-with-bracket-syntax)
   - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
+  - [🎵 RVC Voice Conversion Integration](#-rvc-voice-conversion-integration)
   - [⏸️ Pause Tags System](#️-pause-tags-system)
   - [🌍 Multi-language ChatterBox Support](#-multi-language-chatterbox-support)
 - [🎥 Demo Videos](#-demo-videos)
@@ -162,6 +163,27 @@ Hello! Welcome to our multilingual show.
 </details>
 
 <details>
+<summary><h3>🎵 RVC Voice Conversion Integration</h3></summary>
+
+**NEW in v4.1.0**: Professional-grade Real-time Voice Conversion with .pth character models!
+
+* **RVC Character Models**: Load .pth voice models with 🎭 Load RVC Character Model node
+* **Unified Voice Changer**: Full RVC integration in the Voice Changer node
+* **Iterative Refinement**: 1-30 passes with smart caching (like ChatterBox)
+* **Enhanced Quality**: Automatic .index file loading for improved voice similarity
+* **Official Downloads**: Required models download from official sources automatically
+* **Cache Intelligence**: Skip recomputation - change 5→3→4 passes instantly
+* **Neural Network Quality**: High-quality voice conversion using trained RVC models
+
+**How it works:**
+1. Load your .pth RVC model with 🎭 Load RVC Character Model
+2. Connect to 🔄 Voice Changer, select "RVC" engine
+3. Process with iterative refinement for progressive quality improvement
+4. Results cached for instant experimentation with different pass counts
+
+</details>
+
+<details>
 <summary><h3>⏸️ Pause Tags System</h3></summary>
 
 **NEW**: Intelligent pause insertion for natural speech timing control!
@@ -251,6 +273,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 - 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
 - 🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
 - 🔄 **ChatterBox VC** - Convert voice from one speaker to another with iterative refinement
+- 🎵 **RVC Voice Conversion** - Real-time voice conversion using .pth character models
 - 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
 - ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
 - 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system

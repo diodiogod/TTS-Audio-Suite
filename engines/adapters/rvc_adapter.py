@@ -96,7 +96,6 @@ class RVCEngineAdapter:
         f0_autotune: bool = False,
         resample_sr: int = 0,
         crepe_hop_length: int = 160,
-        use_cache: bool = True,
         **kwargs
     ) -> Tuple[np.ndarray, int]:
         """
@@ -113,7 +112,6 @@ class RVCEngineAdapter:
             f0_autotune: Enable autotune
             resample_sr: Resample rate (0 for no resampling)
             crepe_hop_length: Crepe hop length (16-512)
-            use_cache: Whether to use caching
             **kwargs: Additional parameters
             
         Returns:

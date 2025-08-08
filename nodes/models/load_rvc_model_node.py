@@ -113,7 +113,7 @@ class LoadRVCModelNode(BaseTTSNode):
             Tuple of (rvc_model_dict, model_info)
         """
         try:
-            print(f"🌺 Loading RVC Model: {model}")
+            print(f"🎵 Loading RVC Model: {model}")
             
             # Get model path
             model_path = self._get_model_path(model, auto_download)

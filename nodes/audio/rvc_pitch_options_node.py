@@ -35,7 +35,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
     
     @classmethod
     def NAME(cls):
-        return "🎛️ RVC Pitch Extraction Options"
+        return "🔧 RVC Pitch Extraction Options"
     
     @classmethod
     def INPUT_TYPES(cls):
@@ -120,6 +120,10 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "max": 2.0,
                     "step": 0.1,
                     "tooltip": "Pitch guidance strength. Higher=more pitch influence, lower=more timbre focus"
+                }),
+                "f0_autotune": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable automatic pitch correction to musical notes (custom enhancement, not native RVC)"
                 }),
                 
                 # Performance Settings
@@ -211,7 +215,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
             if 'crepe' in f0_method.lower():
                 validated_options['crepe_hop_length'] = crepe_hop_length
             
-            print(f"🎛️ RVC Pitch Options: {f0_method} method, Index rate: {index_rate}, Protect: {protect}")
+            print(f"🔧 RVC Pitch Options: {f0_method} method, Index rate: {index_rate}, Protect: {protect}")
             if f0_autotune:
                 print("🎵 Autotune enabled")
             if resample_sr > 0:

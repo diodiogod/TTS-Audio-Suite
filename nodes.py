@@ -328,7 +328,7 @@ if RVC_ENGINE_AVAILABLE:
 
 if RVC_PITCH_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["RVCPitchOptionsNode"] = RVCPitchOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["RVCPitchOptionsNode"] = "🎛️ RVC Pitch Extraction Options"
+    NODE_DISPLAY_NAME_MAPPINGS["RVCPitchOptionsNode"] = "🔧 RVC Pitch Extraction Options"
 
 if VOCAL_REMOVAL_AVAILABLE:
     NODE_CLASS_MAPPINGS["VocalRemovalNode"] = VocalRemovalNode
