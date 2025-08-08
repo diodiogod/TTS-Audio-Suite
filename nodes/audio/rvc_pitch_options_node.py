@@ -57,47 +57,13 @@ class RVCPitchOptionsNode(BaseTTSNode):
         return {
             "required": {
                 # Core Pitch Extraction
-                "f0_method": (pitch_methods, {
+                "pitch_detection": (pitch_methods, {
                     "default": "rmvpe",
                     "tooltip": "Pitch extraction algorithm. RMVPE=best balance, Crepe=highest quality, PM=fastest"
-                }),
-                "f0_autotune": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Apply automatic pitch correction/tuning to the extracted pitch"
-                }),
-                
-                # Quality Controls
-                "index_rate": ("FLOAT", {
-                    "default": 0.75,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01,
-                    "display": "slider",
-                    "tooltip": "Index file influence rate. Higher=more like training voice, lower=more like input voice"
-                }),
-                "protect": ("FLOAT", {
-                    "default": 0.25,
-                    "min": 0.0,
-                    "max": 0.5,
-                    "step": 0.01,
-                    "display": "slider",
-                    "tooltip": "Consonant protection level - Protects speech clarity. Low=voice changes more, High=keeps original pronunciation clearer"
-                }),
-                "rms_mix_rate": ("FLOAT", {
-                    "default": 0.25,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.01,
-                    "display": "slider", 
-                    "tooltip": "Volume envelope mixing rate - Controls volume patterns. Low=use target voice volume, High=keep original voice volume patterns"
                 }),
             },
             "optional": {
                 # Advanced Parameters
-                "resample_sr": (sample_rates, {
-                    "default": 0,
-                    "tooltip": "Resample rate for processing (0=use input rate). Higher rates=better quality but slower"
-                }),
                 "crepe_hop_length": ("INT", {
                     "default": 160,
                     "min": 16,
@@ -123,7 +89,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                 }),
                 "f0_autotune": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable automatic pitch correction to musical notes (custom enhancement, not native RVC)"
+                    "tooltip": "Apply automatic pitch correction/tuning to the extracted pitch"
                 }),
                 
                 # Performance Settings
@@ -151,14 +117,16 @@ class RVCPitchOptionsNode(BaseTTSNode):
     DESCRIPTION = """
     RVC Pitch Extraction Options - Advanced pitch control for RVC voice conversion
     
-    Provides detailed configuration of pitch extraction algorithms and quality controls.
+    Provides detailed configuration of pitch extraction algorithms and advanced processing options.
     Connect to RVC Engine node for enhanced voice conversion control.
+    
+    Voice conversion quality parameters (index_rate, protect, rms_mix_rate) are configured in the RVC Engine node.
     
     Key Features:
     • Multiple pitch extraction algorithms (RMVPE, Crepe, PM, Harvest, etc.)
-    • Quality controls (index rate, consonant protection, RMS mixing)
-    • Advanced processing options (filtering, guidance, batch processing)
-    • Performance optimization (caching, batch size)
+    • Advanced processing options (filtering, guidance, autotune)
+    • Performance optimization (caching, batch processing, resampling)
+    • Method-specific parameters (Crepe hop length, etc.)
     
     Pitch Methods Guide:
     • RMVPE: Best overall balance of quality and speed (recommended)
@@ -170,15 +138,11 @@ class RVCPitchOptionsNode(BaseTTSNode):
     
     def create_pitch_options(
         self,
-        f0_method="rmvpe",
-        f0_autotune=False,
-        index_rate=0.75,
-        protect=0.25,
-        rms_mix_rate=0.25,
-        resample_sr=0,
+        pitch_detection="rmvpe",
         crepe_hop_length=160,
         filter_radius=3,
         pitch_guidance=1.0,
+        f0_autotune=False,
         use_cache=True,
         batch_size=1
     ):
@@ -192,16 +156,10 @@ class RVCPitchOptionsNode(BaseTTSNode):
             # Validate parameters
             validated_options = {
                 # Core pitch settings
-                'f0_method': str(f0_method),
+                'f0_method': str(pitch_detection),
                 'f0_autotune': bool(f0_autotune),
                 
-                # Quality controls
-                'index_rate': max(0.0, min(1.0, float(index_rate))),
-                'protect': max(0.0, min(0.5, float(protect))),
-                'rms_mix_rate': max(0.0, min(1.0, float(rms_mix_rate))),
-                
                 # Advanced parameters
-                'resample_sr': max(0, int(resample_sr)) if resample_sr else 0,
                 'crepe_hop_length': max(16, min(512, int(crepe_hop_length))),
                 'filter_radius': max(0, min(7, int(filter_radius))),
                 'pitch_guidance': max(0.1, min(2.0, float(pitch_guidance))),
@@ -212,14 +170,12 @@ class RVCPitchOptionsNode(BaseTTSNode):
             }
             
             # Add method-specific parameters
-            if 'crepe' in f0_method.lower():
+            if 'crepe' in pitch_detection.lower():
                 validated_options['crepe_hop_length'] = crepe_hop_length
             
-            print(f"🔧 RVC Pitch Options: {f0_method} method, Index rate: {index_rate}, Protect: {protect}")
+            print(f"🔧 RVC Pitch Options: {pitch_detection} method")
             if f0_autotune:
                 print("🎵 Autotune enabled")
-            if resample_sr > 0:
-                print(f"🔄 Resampling to {resample_sr}Hz")
                 
             return (validated_options,)
             
@@ -229,10 +185,6 @@ class RVCPitchOptionsNode(BaseTTSNode):
             default_options = {
                 'f0_method': 'rmvpe',
                 'f0_autotune': False,
-                'index_rate': 0.75,
-                'protect': 0.25,
-                'rms_mix_rate': 0.25,
-                'resample_sr': 0,
                 'crepe_hop_length': 160,
                 'filter_radius': 3,
                 'pitch_guidance': 1.0,

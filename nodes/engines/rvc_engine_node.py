@@ -64,7 +64,7 @@ class RVCEngineNode(BaseTTSNode):
         return {
             "required": {
                 # Core Voice Conversion Parameters
-                "pitch_shift": ("INT", {
+                "pitch": ("INT", {
                     "default": 0,
                     "min": -14,
                     "max": 14,
@@ -72,11 +72,11 @@ class RVCEngineNode(BaseTTSNode):
                     "display": "slider",
                     "tooltip": "Pitch shift in semitones. 0=no change, +12=octave up (male→female), -12=octave down (female→male)"
                 }),
-                "f0_method": (pitch_methods, {
+                "pitch_detection": (pitch_methods, {
                     "default": "rmvpe",
                     "tooltip": "Pitch extraction algorithm. RMVPE=balanced quality/speed, Crepe=highest quality, Mangio-Crepe=optimized"
                 }),
-                "index_rate": ("FLOAT", {
+                "index_ratio": ("FLOAT", {
                     "default": 0.75,
                     "min": 0.0,
                     "max": 1.0,
@@ -84,7 +84,7 @@ class RVCEngineNode(BaseTTSNode):
                     "display": "slider",
                     "tooltip": "Index file influence (0.0-1.0). Higher=more like training voice, lower=more like input voice"
                 }),
-                "protect": ("FLOAT", {
+                "consonant_protection": ("FLOAT", {
                     "default": 0.25,
                     "min": 0.0,
                     "max": 0.5,
@@ -92,7 +92,7 @@ class RVCEngineNode(BaseTTSNode):
                     "display": "slider", 
                     "tooltip": "Consonant protection - Protects speech clarity. Low=voice changes more, High=keeps original pronunciation clearer"
                 }),
-                "rms_mix_rate": ("FLOAT", {
+                "volume_envelope": ("FLOAT", {
                     "default": 0.25,
                     "min": 0.0,
                     "max": 1.0,
@@ -107,7 +107,7 @@ class RVCEngineNode(BaseTTSNode):
                     "tooltip": "Optional advanced pitch extraction settings from RVC Pitch Options node. Overrides basic parameters."
                 }),
                 
-                "resample_sr": (sample_rates, {
+                "output_sample_rate": (sample_rates, {
                     "default": 0,
                     "tooltip": "Output sample rate (0=use input rate). 44100/48000 recommended for high quality"
                 }),
@@ -142,13 +142,13 @@ class RVCEngineNode(BaseTTSNode):
     
     def create_engine(
         self,
-        pitch_shift=0,
-        f0_method="rmvpe",
-        index_rate=0.75,
-        protect=0.25,
-        rms_mix_rate=0.25,
+        pitch=0,
+        pitch_detection="rmvpe",
+        index_ratio=0.75,
+        consonant_protection=0.25,
+        volume_envelope=0.25,
         rvc_pitch_options=None,
-        resample_sr=0,
+        output_sample_rate=0,
         device="auto"
     ):
         """
@@ -164,12 +164,12 @@ class RVCEngineNode(BaseTTSNode):
             
             # Merge pitch options if provided (advanced options override basic parameters)
             final_pitch_params = {
-                'pitch_shift': pitch_shift,
-                'f0_method': f0_method,
-                'index_rate': index_rate,
-                'protect': protect,
-                'rms_mix_rate': rms_mix_rate,
-                'resample_sr': resample_sr
+                'pitch_shift': pitch,
+                'f0_method': pitch_detection,
+                'index_rate': index_ratio,
+                'protect': consonant_protection,
+                'rms_mix_rate': volume_envelope,
+                'resample_sr': output_sample_rate
             }
             
             if rvc_pitch_options:

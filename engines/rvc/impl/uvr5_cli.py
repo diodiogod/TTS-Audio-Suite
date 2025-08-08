@@ -35,11 +35,19 @@ class Separator:
             self.model = SCNetSeparator(model_path=model_path,device=device,**kwargs_no_agg)
             print(f"⚠️ Using SCNet EXPERIMENTAL architecture for: {os.path.basename(model_path)}")
             print(f"⚠️ WARNING: SCNet may produce audio artifacts (buzzing) - quality issues under investigation")
+        elif "mdx23c" in model_name:
+            # MDX23C models - new SOTA architecture from ZFTurbo
+            # Remove aggressiveness parameter as MDX23C doesn't use it
+            print(f"⚠️ MDX23C model detected: {os.path.basename(model_path)}")
+            print(f"❌ ERROR: MDX23C has encoder-decoder tensor dimension mismatches")
+            print(f"🔬 TECHNICAL: Skip connection concatenation fails due to off-by-one STFT frame alignment")
+            print(f"💡 WORKAROUND: Use UVR-MDX-NET-vocal_FT.onnx or MelBand RoFormer models instead")
+            # Fall through to default - will fail but with clear error message
         elif "roformer" in model_name or "bs_roformer" in model_name:
             # BS-RoFormer models - these are MDXC architecture, not VR
-            # Remove aggressiveness parameter as it doesn't apply to RoFormer models
-            kwargs_no_agg = {k: v for k, v in kwargs.items() if k != 'agg'}
-            self.model = UVR5Base(model_path=model_path,device=device,**kwargs_no_agg)
+            # RoFormer models still need agg parameter but ignore it internally
+            self.model = UVR5Base(model_path=model_path,device=device,**kwargs)
+            print(f"🎵 Using RoFormer architecture for: {os.path.basename(model_path)}")
         elif any(x in model_name for x in ['hp5', 'denoise', 'deecho', 'dereverb', 'bve', 'karaoke']):
             # True VR Architecture models - these DO use aggressiveness
             self.model = UVR5New(model_path=model_path,device=device,dereverb=dereverb,**kwargs) if denoise else UVR5Base(model_path=model_path,device=device,**kwargs)
