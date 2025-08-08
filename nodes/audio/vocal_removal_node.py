@@ -22,9 +22,7 @@ class AnyType(str):
     def __ne__(self, __value: object) -> bool:
         return False
 
-MultipleTypeProxy = lambda x: AnyType("*")
-
-from rvc_audio import audio_to_bytes, save_input_audio, load_input_audio, get_audio
+from rvc_audio import save_input_audio, load_input_audio, get_audio
 import folder_paths
 from rvc_utils import get_filenames, get_hash, get_optimal_torch_device
 from lib import karafan
@@ -56,7 +54,9 @@ class VocalRemovalNode:
 
         return {
             "required": {
-                "audio": (MultipleTypeProxy('AUDIO,VHS_AUDIO'),),
+                "audio": ("AUDIO", {
+                    "tooltip": "Input audio for vocal/instrumental separation. Standard ComfyUI AUDIO format."
+                }),
                 "model": (model_list,{
                     "default": "UVR/HP5-vocals+instrumentals.pth",
                     "tooltip": """🎵 VOCAL SEPARATION MODELS GUIDE 🎵
@@ -171,8 +171,8 @@ Selects the audio format for separated stems:
             }
         }
 
-    RETURN_TYPES = ("VHS_AUDIO","VHS_AUDIO","AUDIO","AUDIO")
-    RETURN_NAMES = ("primary_stem","secondary_stem","primary_audio","secondary_audio")
+    RETURN_TYPES = ("AUDIO", "AUDIO")
+    RETURN_NAMES = ("vocals", "instrumentals")
 
     FUNCTION = "split"
 
@@ -259,4 +259,4 @@ Selects the audio format for separated stems:
                 "sample_rate": sample_rate
             }
         
-        return (lambda:audio_to_bytes(*primary), lambda:audio_to_bytes(*secondary), to_audio_dict(*primary), to_audio_dict(*secondary))
+        return (to_audio_dict(*primary), to_audio_dict(*secondary))
