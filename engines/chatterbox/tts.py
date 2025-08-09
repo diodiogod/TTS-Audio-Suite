@@ -37,6 +37,10 @@ except ImportError:
     def get_model_config(language):
         return CHATTERBOX_MODELS.get(language, CHATTERBOX_MODELS["English"])
 
+# Import modular processors
+from .overlapping_processor import OverlappingBatchProcessor, BatchingStrategy
+from .adaptive_processor import AdaptiveBatchProcessor
+
 REPO_ID = "ResembleAI/chatterbox"  # Default for backward compatibility
 
 
@@ -147,6 +151,10 @@ class ChatterboxTTS:
             warnings.simplefilter("ignore")
             self.watermarker = perth.PerthImplicitWatermarker()
         self.enable_watermarking = False  # Disabled by default for maximum compatibility
+        
+        # Initialize modular processors
+        self.overlapping_processor = OverlappingBatchProcessor(self)
+        self.adaptive_processor = AdaptiveBatchProcessor(self)
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
@@ -389,6 +397,8 @@ class ChatterboxTTS:
         cfg_weight=0.5,
         temperature=0.8,
         batch_size=4,
+        max_workers=None,  # Allow configurable max_workers
+        enable_adaptive_batching=False,  # NEW: Enable adaptive processing
     ):
         """
         Generate audio for multiple text inputs using TRUE batched processing.
@@ -423,143 +433,103 @@ class ChatterboxTTS:
         
         print(f"🚀 ChatterBox TRUE BATCH processing: {len(texts)} texts")
         
-        results = []
+        effective_max_workers = max_workers or batch_size
         
-        # Process texts in true batches
-        for i in range(0, len(texts), batch_size):
-            batch_texts = texts[i:i + batch_size]
-            print(f"⚡ Processing batch {i//batch_size + 1}: {len(batch_texts)} texts")
-            
+        # NEW: CHOOSE PROCESSING STRATEGY
+        if enable_adaptive_batching:
+            # Use adaptive processor that starts with user preference and adapts
+            print(f"🤖 Using ADAPTIVE processing (starts with {effective_max_workers} workers)")
+            results = self.adaptive_processor.process_texts_adaptively(
+                texts, temperature, cfg_weight, exaggeration, effective_max_workers
+            )
+        elif len(texts) <= effective_max_workers:
+            # All texts fit in one batch - process simultaneously  
+            print(f"🚀 SINGLE BATCH: Processing all {len(texts)} texts simultaneously")
             try:
-                # NEW: True batch processing with simultaneous inference
-                batch_audio = self._batch_inference_simultaneous(
-                    batch_texts, temperature, cfg_weight
+                results = self._batch_inference_simultaneous(
+                    texts, temperature, cfg_weight, effective_max_workers
                 )
-                results.extend(batch_audio)
-                print(f"✅ Batch {i//batch_size + 1} completed successfully")
-                
+                print(f"✅ All texts completed successfully")
             except Exception as e:
                 print(f"⚠️ Batch inference failed: {e}")
-                print(f"🔄 Falling back to individual processing for this batch")
-                
-                # Fallback to individual processing for this batch only
-                for text in batch_texts:
+                print(f"🔄 Falling back to individual processing")
+                results = []
+                for text in texts:
                     try:
                         individual_audio = self.generate(
                             text=text,
-                            audio_prompt_path=None,  # Use already loaded conditionals
+                            audio_prompt_path=None,
                             exaggeration=exaggeration,
                             cfg_weight=cfg_weight,
                             temperature=temperature,
-                            apply_watermark=self.enable_watermarking,
                         )
                         results.append(individual_audio)
                     except Exception as individual_error:
-                        print(f"❌ Individual generation also failed for text: {text[:50]}...")
-                        print(f"Error: {individual_error}")
-                        # Return empty tensor as placeholder
+                        print(f"❌ Individual generation failed for text: {text[:50]}...")
                         results.append(torch.zeros(1, 1000))
+        else:
+            # Use modular overlapping processor for fixed throughput
+            strategy = BatchingStrategy.choose_strategy(len(texts), effective_max_workers)
+            print(f"🔥 STRATEGY: {BatchingStrategy.get_strategy_description(strategy)}")
+            
+            results = self.overlapping_processor.process_texts_with_overlap(
+                texts, temperature, cfg_weight, exaggeration, effective_max_workers
+            )
         
         return results
     
-    def _batch_inference_simultaneous(self, texts, temperature=0.8, cfg_weight=0.5):
+    def _batch_inference_simultaneous(self, texts, temperature=0.8, cfg_weight=0.5, max_workers=4):
         """
-        NEW METHOD: Perform true simultaneous batch inference.
-        This is the core improvement that enables real batch processing.
+        TRUE PARALLEL PROCESSING: Like Chatterbox-TTS-Extended does it!
+        
+        Uses ThreadPoolExecutor to process multiple texts in parallel threads.
+        Each thread uses the standard generate() method with full CFG support.
+        This is the CORRECT way to do batch processing with ChatterBox.
         """
-        # Prepare all text tokens at once
-        all_text_tokens = []
-        for text in texts:
-            normed_text = punc_norm(text)
-            text_tokens = self.tokenizer.text_to_tokens(normed_text).to(self.device)
-            
-            if cfg_weight > 0.0:
-                text_tokens = torch.cat([text_tokens, text_tokens], dim=0)  # CFG duplication
-            
-            sot = self.t3.hp.start_text_token
-            eot = self.t3.hp.stop_text_token
-            text_tokens = F.pad(text_tokens, (1, 0), value=sot)
-            text_tokens = F.pad(text_tokens, (0, 1), value=eot)
-            all_text_tokens.append(text_tokens)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         
-        # Find max length and pad all sequences
-        max_len = max(tokens.shape[-1] for tokens in all_text_tokens)
-        padded_tokens = []
+        print(f"🔥 TRUE PARALLEL PROCESSING: {len(texts)} texts in parallel threads")
         
-        for tokens in all_text_tokens:
-            if tokens.shape[-1] < max_len:
-                pad_amount = max_len - tokens.shape[-1]
-                tokens = F.pad(tokens, (0, pad_amount), value=self.t3.hp.stop_text_token)
-            padded_tokens.append(tokens)
-        
-        # Stack into true batch tensor
-        batch_text_tokens = torch.stack(padded_tokens, dim=0)  # [batch_size, seq_len] or [batch_size*2, seq_len] for CFG
-        
-        # Replicate T3 conditioning for batch
-        batch_t3_cond = self._replicate_conditioning_for_batch(len(texts), cfg_weight > 0.0)
-        
-        print(f"🔥 T3 batch inference: {batch_text_tokens.shape[0]} sequences")
-        
-        with torch.inference_mode():
-            # TRUE BATCH INFERENCE: All texts processed simultaneously
-            batch_speech_tokens = self.t3.batch_inference(
-                t3_cond=batch_t3_cond,
-                text_tokens=batch_text_tokens,
-                max_new_tokens=1000,
-                temperature=temperature,
-                cfg_weight=cfg_weight,
-            )
-            
-            # Extract results and generate audio
-            batch_results = []
-            effective_batch_size = len(texts)
-            
-            for i in range(effective_batch_size):
-                if cfg_weight > 0.0:
-                    # Extract conditional result (first half)
-                    speech_tokens = batch_speech_tokens[i]
-                else:
-                    speech_tokens = batch_speech_tokens[i]
+        def _process_single_text(text_index, text):
+            """Process a single text in a separate thread."""
+            try:
+                print(f"  🧵 Thread {text_index+1}: Starting generation for: {text[:30]}...")
                 
-                # Process tokens
-                speech_tokens = drop_invalid_tokens(speech_tokens)
-                speech_tokens = speech_tokens.to(self.device)
-                
-                # Generate audio
-                wav, _ = self.s3gen.inference(
-                    speech_tokens=speech_tokens,
-                    ref_dict=self.conds.gen,
+                # Use the existing, working generate method with FULL CFG support
+                audio = self.generate(
+                    text=text,
+                    audio_prompt_path=None,  # Use pre-loaded conditioning
+                    exaggeration=self.conds.t3.emotion_adv[0, 0, 0].item(),
+                    cfg_weight=cfg_weight,  # KEEP CFG for quality!
+                    temperature=temperature,
                 )
-                wav = wav.squeeze(0).detach().cpu().numpy()
                 
-                if self.enable_watermarking:
-                    watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
-                    batch_results.append(torch.from_numpy(watermarked_wav).unsqueeze(0))
-                else:
-                    batch_results.append(torch.from_numpy(wav).unsqueeze(0))
+                print(f"  ✅ Thread {text_index+1}: Completed successfully")
+                return text_index, audio
+                
+            except Exception as e:
+                print(f"  ❌ Thread {text_index+1}: Failed with error: {e}")
+                return text_index, torch.zeros(1, 1000)  # Return empty audio on failure
+        
+        # Process all texts in parallel using ThreadPoolExecutor
+        batch_results = [None] * len(texts)  # Pre-allocate results array
+        
+        with ThreadPoolExecutor(max_workers=min(len(texts), max_workers)) as executor:
+            # Submit all texts for parallel processing
+            futures = [
+                executor.submit(_process_single_text, i, text)
+                for i, text in enumerate(texts)
+            ]
             
-            return batch_results
+            # Collect results as they complete
+            completed_count = 0
+            for future in as_completed(futures):
+                text_index, audio = future.result()
+                batch_results[text_index] = audio
+                completed_count += 1
+                progress_percent = int(100 * completed_count / len(texts))
+                print(f"  📊 Progress: {completed_count}/{len(texts)} completed ({progress_percent}%)")
+        
+        print(f"✅ PARALLEL PROCESSING COMPLETED: {len(batch_results)} audio segments with FULL quality (CFG enabled)")
+        return batch_results
     
-    def _replicate_conditioning_for_batch(self, batch_size, use_cfg):
-        """
-        Replicate T3 conditioning for batch processing.
-        """
-        original_cond = self.conds.t3
-        
-        # Determine effective batch size (doubled for CFG)
-        effective_batch_size = batch_size * 2 if use_cfg else batch_size
-        
-        # Replicate conditioning tensors
-        speaker_emb = original_cond.speaker_emb.repeat(effective_batch_size, 1)
-        
-        cond_prompt_speech_tokens = None
-        if original_cond.cond_prompt_speech_tokens is not None:
-            cond_prompt_speech_tokens = original_cond.cond_prompt_speech_tokens.repeat(effective_batch_size, 1)
-        
-        emotion_adv = original_cond.emotion_adv.repeat(effective_batch_size, 1, 1)
-        
-        return T3Cond(
-            speaker_emb=speaker_emb,
-            cond_prompt_speech_tokens=cond_prompt_speech_tokens,
-            emotion_adv=emotion_adv,
-        ).to(device=self.device)

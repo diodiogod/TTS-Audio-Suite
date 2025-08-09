@@ -120,12 +120,12 @@ Back to the main narrator voice for the conclusion.""",
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
                 "enable_batch_processing": ("BOOLEAN", {
-                    "default": False,
+                    "default": True,
                     "tooltip": "Enable batch processing for faster generation when processing multiple text chunks."
                 }),
                 "batch_size": ("INT", {
-                    "default": 4, "min": 1, "max": 8, "step": 1,
-                    "tooltip": "Number of chunks to process in parallel when batch processing is enabled."
+                    "default": 4, "min": 1, "max": 32, "step": 1,
+                    "tooltip": "Number of chunks to process in parallel when batch processing is enabled (max_workers for ThreadPoolExecutor)."
                 }),
             }
         }
@@ -556,7 +556,7 @@ Back to the main narrator voice for the conclusion.""",
                        enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
                        crash_protection_template="hmm ,, {seg} hmm ,,", enable_audio_cache=True,
-                       enable_batch_processing=False, batch_size=4):
+                       enable_batch_processing=True, batch_size=4, enable_adaptive_batching=False):
         
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
@@ -571,7 +571,10 @@ Back to the main narrator voice for the conclusion.""",
                 chunk_combination_method=chunk_combination_method,
                 silence_between_chunks_ms=silence_between_chunks_ms,
                 crash_protection_template=crash_protection_template,
-                enable_audio_cache=enable_audio_cache
+                enable_audio_cache=enable_audio_cache,
+                enable_batch_processing=enable_batch_processing,
+                batch_size=batch_size,
+                enable_adaptive_batching=enable_adaptive_batching
             )
             
             # Set seed for reproducibility (can be done without loading model)
@@ -775,9 +778,17 @@ Back to the main narrator voice for the conclusion.""",
                         # Check for interruption
                         self.check_interruption(f"Processing character '{character}' in {lang_code}")
                         
-                        if (inputs.get("enable_batch_processing", False) and 
-                            character_group.can_batch() and
-                            hasattr(self.tts_model, 'generate_batch')):
+                        # Debug batch processing condition
+                        batch_enabled = inputs.get("enable_batch_processing", False)
+                        can_batch = character_group.can_batch()
+                        has_method = hasattr(self.tts_model, 'generate_batch')
+                        
+                        # TEMPORARY: Force enable for testing
+                        batch_enabled = True
+                        
+                        print(f"🔍 BATCH DEBUG {character}: enabled={batch_enabled}, can_batch={can_batch}, has_method={has_method}")
+                        
+                        if (batch_enabled and can_batch and has_method):
                             
                             # TRY BATCH PROCESSING
                             try:

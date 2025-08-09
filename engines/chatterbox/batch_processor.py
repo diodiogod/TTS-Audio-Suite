@@ -76,6 +76,7 @@ class BatchProcessor:
         
         # THE ACTUAL BATCH PROCESSING - this is the key improvement
         print(f"⚡ Batch generating {len(batch_texts)} chunks for {character}")
+        print(f"🔧 DEBUG: batch_size from inputs = {inputs.get('batch_size', 4)}")
         try:
             batch_audio = self.tts_model.generate_batch(
                 texts=batch_texts,
@@ -83,7 +84,9 @@ class BatchProcessor:
                 exaggeration=inputs["exaggeration"],
                 cfg_weight=inputs["cfg_weight"],
                 temperature=inputs["temperature"],
-                batch_size=inputs.get("batch_size", 4)
+                batch_size=inputs.get("batch_size", 4),
+                max_workers=inputs.get("batch_size", 4),  # Use batch_size as max_workers
+                enable_adaptive_batching=inputs.get("enable_adaptive_batching", False)  # NEW: Pass adaptive setting
             )
             
             print(f"✅ BATCH SUCCESS: Generated {len(batch_audio)} audio chunks")

@@ -102,6 +102,18 @@ Hello! This is unified SRT TTS with character switching.
                     "default": True,
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
+                "enable_batch_processing": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Enable batch processing for ChatterBox engine. Processes multiple SRT text segments in parallel for faster generation."
+                }),
+                "batch_size": ("INT", {
+                    "default": 4, "min": 1, "max": 32, "step": 1,
+                    "tooltip": "Number of SRT segments to process in parallel when batch processing is enabled. Higher values = faster but more memory usage. Uses overlapping parallel processing."
+                }),
+                "enable_adaptive_batching": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable dynamic worker adjustment. Starts with your batch_size and adapts based on real-time performance. Disable to use exact batch_size."
+                }),
                 "fade_for_StretchToFit": ("FLOAT", {
                     "default": 0.01,
                     "min": 0.0,
@@ -273,10 +285,11 @@ Hello! This is unified SRT TTS with character switching.
             print(f"❌ Voice reference error: {e}")
             return None, None, "", "narrator"
 
-    def generate_srt_speech(self, TTS_engine: Dict[str, Any], srt_content: str, narrator_voice: str, 
+    def generate_srt_speech(self, TTS_engine: Dict[str, Any], srt_content: str, narrator_voice: str,
                            seed: int, timing_mode: str, opt_narrator=None, enable_audio_cache: bool = True,
-                           fade_for_StretchToFit: float = 0.01, max_stretch_ratio: float = 1.0, 
-                           min_stretch_ratio: float = 0.5, timing_tolerance: float = 2.0):
+                           fade_for_StretchToFit: float = 0.01, max_stretch_ratio: float = 1.0,
+                           min_stretch_ratio: float = 0.5, timing_tolerance: float = 2.0,
+                           enable_batch_processing: bool = True, batch_size: int = 4):
         """
         Generate SRT-timed speech using the selected TTS engine.
         This is a DELEGATION WRAPPER that preserves all original SRT functionality.
@@ -284,7 +297,7 @@ Hello! This is unified SRT TTS with character switching.
         Args:
             TTS_engine: Engine configuration from engine nodes
             srt_content: SRT subtitle content
-            narrator_voice: Fallback narrator voice 
+            narrator_voice: Fallback narrator voice
             seed: Random seed
             timing_mode: How to align audio with SRT timings
             opt_narrator: Voice reference from Character Voices node
@@ -293,6 +306,8 @@ Hello! This is unified SRT TTS with character switching.
             max_stretch_ratio: Maximum stretch ratio for smart_natural mode
             min_stretch_ratio: Minimum stretch ratio for smart_natural mode
             timing_tolerance: Timing tolerance for smart_natural mode
+            enable_batch_processing: Enable batch processing for ChatterBox
+            batch_size: Number of SRT segments to process in parallel
             
         Returns:
             Tuple of (audio_tensor, generation_info, timing_report, adjusted_srt)
@@ -325,9 +340,16 @@ Hello! This is unified SRT TTS with character switching.
             if not engine_instance:
                 raise RuntimeError("Failed to create engine SRT node instance")
             
+            # Configure batch processing for ChatterBox if applicable
+            if engine_type == "chatterbox" and hasattr(engine_instance, 'adapter'):
+                # Configure the adapter's batch processing settings
+                if hasattr(engine_instance.adapter, 'set_batch_processing'):
+                    engine_instance.adapter.set_batch_processing(enable_batch_processing, batch_size)
+                    print(f"🔧 ChatterBox SRT batch processing configured: enabled={enable_batch_processing}, batch_size={batch_size}")
+            
             # Prepare parameters for the original SRT node's generate_srt_speech method
             if engine_type == "chatterbox":
-                # ChatterBox SRT parameters
+                # ChatterBox SRT parameters with batch processing support
                 result = engine_instance.generate_srt_speech(
                     srt_content=srt_content,
                     language=config.get("language", "English"),
@@ -344,7 +366,9 @@ Hello! This is unified SRT TTS with character switching.
                     max_stretch_ratio=max_stretch_ratio,
                     min_stretch_ratio=min_stretch_ratio,
                     timing_tolerance=timing_tolerance,
-                    crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,")
+                    crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                    enable_batch_processing=enable_batch_processing,
+                    batch_size=batch_size
                 )
                 
             elif engine_type == "f5tts":
