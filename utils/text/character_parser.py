@@ -37,7 +37,7 @@ class CharacterParser:
     """
     
     # Regex pattern for character tags: [CharacterName] or [language:CharacterName] (excludes pause tags)
-    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!pause:)([^\]]+)\]')
+    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)([^\]]+)\]')
     
     # Regex to parse language:character format (supports flexible language names)
     LANGUAGE_CHARACTER_PATTERN = re.compile(r'^([a-zA-Z0-9\-_À-ÿ\s]+):(.*)$')
@@ -55,6 +55,11 @@ class CharacterParser:
         self.available_characters = set()
         self.character_fallbacks = {}
         self.character_language_defaults = {}
+        
+        # Cache for character language resolution to prevent duplicate logging
+        self._character_language_cache = {}
+        self._logged_characters = set()
+        self._logged_character_warnings = set()
         
         # Language alias system for flexible language switching
         self.language_aliases = {
@@ -218,7 +223,7 @@ class CharacterParser:
     
     def resolve_character_language(self, character: str, explicit_language: Optional[str] = None) -> str:
         """
-        Resolve the language to use for a character.
+        Resolve the language to use for a character with caching to prevent log spam.
         
         Priority:
         1. Explicitly provided language (from [lang:character] tag)
@@ -236,19 +241,77 @@ class CharacterParser:
             return explicit_language
         
         character_lower = character.lower()
+        
+        # Check cache first to avoid repeated lookups and logging
+        cache_key = character_lower
+        if cache_key in self._character_language_cache:
+            return self._character_language_cache[cache_key]
+        
+        resolved_language = None
+        
+        # Priority 1: Character language defaults (internal cache)
         if character_lower in self.character_language_defaults:
-            return self.character_language_defaults[character_lower]
+            resolved_language = self.character_language_defaults[character_lower]
+            # Only log once per character
+            if character_lower not in self._logged_characters:
+                print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
+                self._logged_characters.add(character_lower)
         
-        # Check voice discovery system for language defaults
-        try:
-            from utils.voice.discovery import voice_discovery
-            alias_language = voice_discovery.get_character_default_language(character_lower)
-            if alias_language:
-                return alias_language
-        except Exception:
-            pass
+        # Priority 2: Check voice discovery system for language defaults
+        if not resolved_language:
+            try:
+                from utils.voice.discovery import voice_discovery
+                alias_language = voice_discovery.get_character_default_language(character_lower)
+                if alias_language:
+                    resolved_language = alias_language
+                    # Only log once per character
+                    if character_lower not in self._logged_characters:
+                        print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{alias_language}'")
+                        self._logged_characters.add(character_lower)
+                # Remove spam: don't log "has no language default" for every character
+            except Exception:
+                pass  # Silently handle voice discovery errors
         
-        return self.default_language
+        # Priority 3: Fall back to global default
+        if not resolved_language:
+            resolved_language = self.default_language
+        
+        # Cache the result
+        self._character_language_cache[cache_key] = resolved_language
+        return resolved_language
+    
+    def reset_session_cache(self):
+        """Reset caches for a new parsing session to allow fresh logging."""
+        self._character_language_cache.clear()
+        self._logged_characters.clear()
+        self._logged_character_warnings.clear()
+    
+    def get_character_language_summary(self) -> str:
+        """
+        Get a consolidated summary of character language mappings for logging.
+        
+        Returns:
+            Formatted summary string of character→language mappings
+        """
+        if not self._character_language_cache:
+            return ""
+        
+        # Group characters by language
+        lang_groups = {}
+        for char, lang in self._character_language_cache.items():
+            if lang not in lang_groups:
+                lang_groups[lang] = []
+            lang_groups[lang].append(char)
+        
+        # Format as: Alice(de), Bob(fr→en fallback), Others(en)
+        summary_parts = []
+        for lang, chars in sorted(lang_groups.items()):
+            if len(chars) == 1:
+                summary_parts.append(f"{chars[0]}({lang})")
+            else:
+                summary_parts.append(f"{', '.join(chars)}({lang})")
+        
+        return ', '.join(summary_parts)
     
     def set_engine_aware_default_language(self, engine_model: str, engine_type: str):
         """
@@ -335,8 +398,10 @@ class CharacterParser:
             print(f"🔄 Character Parser: '{character_name}' → '{fallback}' (fallback)")
             return fallback
         
-        # Default fallback
-        print(f"⚠️ Character Parser: Character '{character_name}' not found, using '{self.default_character}'")
+        # Default fallback - only log once per character per session
+        if character_name not in self._logged_character_warnings:
+            print(f"⚠️ Character Parser: Character '{character_name}' not found, using '{self.default_character}'")
+            self._logged_character_warnings.add(character_name)
         return self.default_character
     
     def parse_text_segments(self, text: str) -> List[CharacterSegment]:
@@ -431,8 +496,9 @@ class CharacterParser:
             explicit_language, raw_character = self.parse_language_character_tag(raw_tag_content)
             
             # Update current character for text after this tag
+            # IMPORTANT: Resolve language using original alias name before character normalization
+            current_language = self.resolve_character_language(raw_character, explicit_language)
             current_character = self.normalize_character_name(raw_character)
-            current_language = self.resolve_character_language(current_character, explicit_language)
             current_pos = match.end()
         
         # Add remaining text after last tag (or entire line if no tags)

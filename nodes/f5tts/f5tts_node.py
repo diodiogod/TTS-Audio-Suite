@@ -340,6 +340,9 @@ Back to the main narrator voice for the conclusion.""",
             available_chars = get_available_characters()
             character_parser.set_available_characters(list(available_chars))
             
+            # Reset session cache to allow fresh logging for new generation
+            character_parser.reset_session_cache()
+            
             # Set engine-aware default language to prevent unnecessary model switching
             character_parser.set_engine_aware_default_language(inputs["model"], "f5tts")
             
@@ -373,14 +376,27 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Build voice references with fallback to main voice
                 voice_refs = {}
+                character_voices = []
+                main_voices = []
+                
                 for character in characters:
                     audio_path, ref_text = character_mapping.get(character, (None, None))
                     if audio_path and ref_text:
                         voice_refs[character] = (audio_path, ref_text)
-                        print(f"🎭 Using character voice for '{character}'")
+                        character_voices.append(character)
                     else:
                         voice_refs[character] = (main_audio_prompt, main_ref_text)
-                        print(f"🔄 Using main voice for character '{character}' (not found in voice folders)")
+                        main_voices.append(character)
+                
+                # Consolidated voice summary logging
+                voice_summary = []
+                if character_voices:
+                    voice_summary.append(f"character voices: {', '.join(character_voices)}")
+                if main_voices:
+                    voice_summary.append(f"main voice: {', '.join(main_voices)}")
+                
+                if voice_summary:
+                    print(f"🎭 Voice mapping - {' | '.join(voice_summary)}")
                 
                 # Map language codes to F5-TTS model names
                 def get_f5tts_model_for_language(lang_code: str) -> str:

@@ -153,6 +153,17 @@ Back to the main narrator voice for the conclusion.""",
             Original text or text with custom padding template if too short
         """
         stripped_text = text.strip()
+        
+        # BUGFIX: Don't pad text that contains only pause tags - they should be processed by PauseTagProcessor
+        import re
+        pause_pattern = r'\[(pause|wait|stop):(\d+(?:\.\d+)?)(s|ms)?\]'
+        if re.search(pause_pattern, stripped_text):
+            # Check if text contains ONLY pause tags and whitespace
+            text_without_pauses = re.sub(pause_pattern, '', stripped_text).strip()
+            if not text_without_pauses:
+                # print(f"🚫 Skipping crash protection padding for pause-only content: '{stripped_text}'")
+                return text
+        
         if len(stripped_text) < min_length:
             # If template is empty, disable padding
             if not padding_template.strip():
@@ -577,6 +588,9 @@ Back to the main narrator voice for the conclusion.""",
             available_chars = get_available_characters()
             character_parser.set_available_characters(list(available_chars))
             
+            # Reset session cache to allow fresh logging for new generation
+            character_parser.reset_session_cache()
+            
             # Set engine-aware default language to prevent unnecessary model switching
             character_parser.set_engine_aware_default_language(inputs["language"], "chatterbox")
             
@@ -607,14 +621,27 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Build voice references with fallback to main voice
                 voice_refs = {}
+                character_voices = []
+                main_voices = []
+                
                 for character in characters:
                     audio_path, _ = character_mapping.get(character, (None, None))
                     if audio_path:
                         voice_refs[character] = audio_path
-                        print(f"🎭 Using character voice for '{character}'")
+                        character_voices.append(character)
                     else:
                         voice_refs[character] = main_audio_prompt
-                        print(f"🔄 Using main voice for character '{character}' (not found in voice folders)")
+                        main_voices.append(character)
+                
+                # Consolidated voice summary logging
+                voice_summary = []
+                if character_voices:
+                    voice_summary.append(f"character voices: {', '.join(character_voices)}")
+                if main_voices:
+                    voice_summary.append(f"main voice: {', '.join(main_voices)}")
+                
+                if voice_summary:
+                    print(f"🎭 Voice mapping - {' | '.join(voice_summary)}")
                 
                 # Map language codes to ChatterBox model names
                 def get_chatterbox_model_for_language(lang_code: str) -> str:
@@ -747,8 +774,8 @@ Back to the main narrator voice for the conclusion.""",
                             processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text, inputs["crash_protection_template"])
                             
                             # DEBUG: Show actual text being sent to ChatterBox when padding might occur
-                            if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
-                                print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
+                            # if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
+                            #     print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
                             
                             # Generate audio with caching support for character segments
                             chunk_audio = self._generate_tts_with_pause_tags(

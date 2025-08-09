@@ -308,6 +308,10 @@ Back to the main narrator voice for the conclusion.""",
             if not engine_instance:
                 raise RuntimeError("Failed to create engine node instance")
             
+            # IMPORTANT: Add crash protection template to config if missing (for ChatterBox)
+            if engine_type == "chatterbox" and "crash_protection_template" not in config:
+                config["crash_protection_template"] = "hmm ,, {seg} hmm ,,"
+            
             # Prepare parameters for the original node's generate_speech method
             if engine_type == "chatterbox":
                 # ChatterBox TTS parameters

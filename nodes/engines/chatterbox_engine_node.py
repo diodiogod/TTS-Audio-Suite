@@ -76,6 +76,10 @@ class ChatterBoxEngineNode(BaseTTSNode):
                     "step": 0.05,
                     "tooltip": "Classifier-Free Guidance weight for ChatterBox. Controls how strongly the model follows the text prompt."
                 }),
+                "crash_protection_template": ("STRING", {
+                    "default": "hmm ,, {seg} hmm ,,",
+                    "tooltip": "Custom padding template for short text segments to prevent ChatterBox crashes. ChatterBox has a bug where text shorter than ~21 characters causes CUDA tensor errors. Use {seg} as placeholder for the original text. Examples: '...ummmmm {seg}' (default hesitation), '{seg}... yes... {seg}' (repetition), 'Well, {seg}' (natural prefix), or empty string to disable padding."
+                }),
             }
         }
 
@@ -85,7 +89,7 @@ class ChatterBoxEngineNode(BaseTTSNode):
     CATEGORY = "TTS Audio Suite/Engines"
 
     def create_engine_adapter(self, language: str, device: str, exaggeration: float, 
-                            temperature: float, cfg_weight: float):
+                            temperature: float, cfg_weight: float, crash_protection_template: str):
         """
         Create ChatterBox engine adapter with configuration.
         
@@ -95,6 +99,7 @@ class ChatterBoxEngineNode(BaseTTSNode):
             exaggeration: Speech exaggeration level
             temperature: Generation randomness
             cfg_weight: Classifier-Free Guidance weight
+            crash_protection_template: Template for padding short text segments
             
         Returns:
             Tuple containing ChatterBox engine adapter
@@ -110,11 +115,13 @@ class ChatterBoxEngineNode(BaseTTSNode):
                 "exaggeration": exaggeration,
                 "temperature": temperature,
                 "cfg_weight": cfg_weight,
+                "crash_protection_template": crash_protection_template,
                 "engine_type": "chatterbox"
             }
             
             print(f"⚙️ ChatterBox Engine: Configured for {language} on {device}")
             print(f"   Settings: exaggeration={exaggeration}, temperature={temperature}, cfg_weight={cfg_weight}")
+            print(f"   Crash protection: {crash_protection_template or 'disabled'}")
             
             # For now, return the config dict. The actual adapter creation will happen 
             # in the consumer nodes when they have access to the node instance
@@ -140,6 +147,7 @@ class ChatterBoxEngineNode(BaseTTSNode):
                     "exaggeration": 0.5,
                     "temperature": 0.8,
                     "cfg_weight": 0.5,
+                    "crash_protection_template": crash_protection_template,
                     "error": str(e)
                 },
                 "adapter_class": "ChatterBoxEngineAdapter"

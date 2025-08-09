@@ -11,12 +11,12 @@
 # Main Characters:
 Alice		female_01		de
 Bob		male_01			fr
-Narrator	david_attenborough_cc3
+Narrator	david_attenborough cc3
 
 # Supporting Cast with language defaults:
 Girl = female_01, en
 Woman = female_02, en
-Cowboy = clint_eastwood_cc3_enhanced2, en
+Cowboy = clint_eastwood cc3 (enhanced2), en
 
 # Background Voices:
 Old Man		male_01
