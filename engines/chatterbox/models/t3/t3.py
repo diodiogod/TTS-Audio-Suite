@@ -402,3 +402,168 @@ class T3(nn.Module):
         # Concatenate all predicted tokens along the sequence dimension.
         predicted_tokens = torch.cat(predicted, dim=1)  # shape: (B, num_tokens)
         return predicted_tokens
+
+    @torch.inference_mode()
+    def batch_inference(
+        self,
+        *,
+        t3_cond: T3Cond,
+        text_tokens: Tensor,
+        max_new_tokens=None,
+        temperature=0.8,
+        cfg_weight=0,
+        **kwargs
+    ):
+        """
+        NEW METHOD: True batch inference for multiple sequences simultaneously.
+        
+        This method is the key to enabling real batch processing in ChatterBox.
+        It processes all text sequences in a single forward pass, unlike the original
+        inference method which processes them sequentially.
+        
+        Args:
+            t3_cond: T3Cond with batch-replicated conditioning
+            text_tokens: Batched text tokens [batch_size, seq_len] or [batch_size*2, seq_len] for CFG
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            cfg_weight: CFG weight (0 = no CFG)
+            
+        Returns:
+            Tensor: Generated speech tokens [batch_size, generated_seq_len]
+        """
+        print(f"🔥 T3.batch_inference: Processing {text_tokens.shape[0]} sequences")
+        
+        # Validate inputs
+        _ensure_BOT_EOT(text_tokens, self.hp)
+        text_tokens = text_tokens.to(dtype=torch.long, device=self.device)
+        
+        # For CFG, we expect batch_size*2 sequences
+        if cfg_weight > 0.0:
+            batch_size = text_tokens.shape[0] // 2
+        else:
+            batch_size = text_tokens.shape[0]
+        
+        # Initialize speech tokens for all sequences
+        initial_speech_tokens = self.hp.start_speech_token * torch.ones_like(text_tokens[:, :1])
+        
+        # Prepare batch input embeddings
+        embeds, len_cond = self.prepare_input_embeds(
+            t3_cond=t3_cond,
+            text_tokens=text_tokens,
+            speech_tokens=initial_speech_tokens,
+        )
+        
+        print(f"🔥 Prepared batch embeddings: {embeds.shape}")
+        
+        # Batch generation logic (simplified from original inference)
+        device = embeds.device
+        
+        # Prepare BOS tokens for all sequences
+        bos_tokens = torch.full((text_tokens.shape[0], 1), self.hp.start_speech_token, 
+                               dtype=torch.long, device=device)
+        bos_embeds = self.speech_emb(bos_tokens)
+        bos_embeds = bos_embeds + self.speech_pos_emb.get_fixed_embedding(0)
+        
+        # Combine conditioning and BOS tokens
+        inputs_embeds = torch.cat([embeds, bos_embeds], dim=1)
+        
+        # Track generated tokens for all sequences
+        all_generated_ids = [bos_tokens]
+        predicted = []
+        
+        # Import necessary processors
+        from transformers.generation.logits_process import TopPLogitsWarper, RepetitionPenaltyLogitsProcessor
+        
+        # Initialize processors
+        top_p_warper = TopPLogitsWarper(top_p=kwargs.get('top_p', 0.8))
+        repetition_penalty_processor = RepetitionPenaltyLogitsProcessor(
+            penalty=kwargs.get('repetition_penalty', 2.0)
+        )
+        
+        # Initial forward pass
+        output = self.patched_model(
+            inputs_embeds=inputs_embeds,
+            use_cache=True,
+            output_attentions=False,
+            output_hidden_states=True,
+            return_dict=True,
+            past_key_values=None
+        )
+        
+        cache = output.past_key_values
+        hidden_states = output.hidden_states[-1][:, -1:, :]
+        
+        # Generation loop
+        max_tokens = max_new_tokens or self.hp.max_speech_tokens
+        
+        for step in range(max_tokens):
+            # Get logits from the last hidden state
+            logits = self.speech_head(hidden_states).squeeze(1)  # [batch_size, vocab_size]
+            
+            # Apply CFG if enabled
+            if cfg_weight > 0.0:
+                cond_logits = logits[:batch_size]
+                uncond_logits = logits[batch_size:]
+                logits = cond_logits + cfg_weight * (cond_logits - uncond_logits)
+                # Only use conditional logits for next token prediction
+                logits = logits  # [batch_size, vocab_size]
+                effective_batch_size = batch_size
+            else:
+                effective_batch_size = text_tokens.shape[0]
+            
+            # Apply logits processing
+            all_input_ids = torch.cat(all_generated_ids, dim=1)
+            logits = repetition_penalty_processor(all_input_ids, logits)
+            logits = top_p_warper(all_input_ids, logits)
+            
+            # Apply temperature
+            if temperature != 1.0:
+                logits = logits / temperature
+            
+            # Sample next tokens
+            probs = torch.softmax(logits, dim=-1)
+            next_tokens = torch.multinomial(probs, num_samples=1)  # [batch_size, 1]
+            
+            # Check for EOS tokens
+            eos_mask = (next_tokens.squeeze(-1) == self.hp.stop_speech_token)
+            if eos_mask.all():
+                print(f"🔥 All sequences finished at step {step}")
+                break
+            
+            predicted.append(next_tokens)
+            
+            # For CFG, we need to duplicate the next tokens
+            if cfg_weight > 0.0:
+                next_tokens_for_cache = torch.cat([next_tokens, next_tokens], dim=0)
+            else:
+                next_tokens_for_cache = next_tokens
+            
+            all_generated_ids.append(next_tokens_for_cache)
+            
+            # Prepare embeddings for next step
+            next_embeds = self.speech_emb(next_tokens_for_cache)
+            next_embeds = next_embeds + self.speech_pos_emb.get_fixed_embedding(len_cond + step + 1)
+            
+            # Forward pass for next step
+            output = self.patched_model(
+                inputs_embeds=next_embeds,
+                use_cache=True,
+                output_attentions=False,
+                output_hidden_states=True,
+                return_dict=True,
+                past_key_values=cache
+            )
+            
+            cache = output.past_key_values
+            hidden_states = output.hidden_states[-1]
+        
+        # Concatenate all predicted tokens
+        if predicted:
+            predicted_tokens = torch.cat(predicted, dim=1)  # [batch_size, seq_len]
+        else:
+            # No tokens generated, return empty sequences
+            predicted_tokens = torch.empty((effective_batch_size, 0), 
+                                         dtype=torch.long, device=device)
+        
+        print(f"🔥 Batch generation completed: {predicted_tokens.shape}")
+        return predicted_tokens

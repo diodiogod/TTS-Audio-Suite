@@ -119,6 +119,14 @@ Back to the main narrator voice for the conclusion.""",
                     "default": True,
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
+                "enable_batch_processing": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable batch processing for faster generation when processing multiple text chunks."
+                }),
+                "batch_size": ("INT", {
+                    "default": 4, "min": 1, "max": 8, "step": 1,
+                    "tooltip": "Number of chunks to process in parallel when batch processing is enabled."
+                }),
             }
         }
 
@@ -543,11 +551,12 @@ Back to the main narrator voice for the conclusion.""",
             stable_audio_component=stable_audio_component
         )
 
-    def generate_speech(self, text, language, device, exaggeration, temperature, cfg_weight, seed, 
-                       reference_audio=None, audio_prompt_path="", 
-                       enable_chunking=True, max_chars_per_chunk=400, 
+    def generate_speech(self, text, language, device, exaggeration, temperature, cfg_weight, seed,
+                       reference_audio=None, audio_prompt_path="",
+                       enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
-                       crash_protection_template="hmm ,, {seg} hmm ,,", enable_audio_cache=True):
+                       crash_protection_template="hmm ,, {seg} hmm ,,", enable_audio_cache=True,
+                       enable_batch_processing=False, batch_size=4):
         
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
@@ -748,53 +757,79 @@ Back to the main narrator voice for the conclusion.""",
                     else:
                         print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
                     
-                    # Process each segment in this language group
-                    for original_idx, character, segment_text, segment_lang in lang_segments:
-                        segment_display_idx = original_idx + 1  # For display (1-based)
-                        
+                    # MODULAR CHARACTER GROUPING AND BATCH PROCESSING
+                    from engines.chatterbox.character_grouper import CharacterGrouper
+                    from engines.chatterbox.batch_processor import BatchProcessor
+                    
+                    # Step 1: Group segments by character within this language
+                    character_groups = CharacterGrouper.group_by_character(lang_segments)
+                    
+                    # Step 2: Print grouping analysis
+                    CharacterGrouper.print_character_grouping_summary(lang_code, character_groups)
+                    CharacterGrouper.validate_character_grouping(lang_segments, character_groups)
+                    
+                    # Step 3: Process each character group
+                    batch_processor = BatchProcessor(self.tts_model)
+                    
+                    for character, character_group in character_groups.items():
                         # Check for interruption
-                        self.check_interruption(f"ChatterBox generation segment {segment_display_idx}/{total_segments} (lang: {lang_code})")
+                        self.check_interruption(f"Processing character '{character}' in {lang_code}")
                         
-                        # Apply chunking to long segments if enabled (PRESERVE EXISTING CHUNKING)
-                        if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
-                            segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                        if (inputs.get("enable_batch_processing", False) and 
+                            character_group.can_batch() and
+                            hasattr(self.tts_model, 'generate_batch')):
+                            
+                            # TRY BATCH PROCESSING
+                            try:
+                                batch_results = batch_processor.process_character_group_batch(
+                                    character_group=character_group,
+                                    inputs=inputs,
+                                    voice_refs=voice_refs,
+                                    chunker=self.chunker,
+                                    language=lang_code
+                                )
+                                
+                                # Add batch results to final results
+                                for original_idx, audio in batch_results.items():
+                                    audio_segments_with_order.append((original_idx, audio))
+                                
+                            except Exception as batch_error:
+                                print(f"⚠️ BATCH FAILED for {character}: {batch_error}")
+                                print(f"🔄 Falling back to sequential processing")
+                                
+                                # Fallback to sequential
+                                sequential_results = batch_processor.process_character_group_sequential(
+                                    character_group=character_group,
+                                    inputs=inputs,
+                                    voice_refs=voice_refs,
+                                    required_language=required_language,
+                                    total_segments=total_segments,
+                                    language=lang_code,
+                                    stable_audio_component=stable_audio_component,
+                                    chunker=self.chunker,
+                                    generate_tts_method=self._generate_tts_with_pause_tags
+                                )
+                                
+                                # Add sequential results to final results
+                                for original_idx, audio in sequential_results.items():
+                                    audio_segments_with_order.append((original_idx, audio))
                         else:
-                            segment_chunks = [segment_text]
-                        
-                        # Get voice reference for this character
-                        char_audio_prompt = voice_refs[character]
-                        
-                        # Generate audio for each chunk of this character segment (PRESERVE EXISTING TTS GENERATION)
-                        segment_audio_chunks = []
-                        for chunk_i, chunk_text in enumerate(segment_chunks):
-                            print(f"🎤 Generating ChatterBox segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
-                            
-                            # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
-                            # Only for ChatterBox (not F5TTS) and only when text is very short
-                            processed_chunk_text = self._pad_short_text_for_chatterbox(chunk_text, inputs["crash_protection_template"])
-                            
-                            # DEBUG: Show actual text being sent to ChatterBox when padding might occur
-                            # if len(chunk_text.strip()) < 21:  # Show for all segments at or below padding threshold (matches min_length in _pad_short_text_for_chatterbox)
-                            #     print(f"🔍 DEBUG: Original text: '{chunk_text}' → Processed: '{processed_chunk_text}' (len: {len(processed_chunk_text)})")
-                            
-                            # Generate audio with caching support for character segments
-                            chunk_audio = self._generate_tts_with_pause_tags(
-                                chunk_text, char_audio_prompt, inputs["exaggeration"], 
-                                inputs["temperature"], inputs["cfg_weight"], required_language,
-                                True, character=character, seed=inputs["seed"], 
-                                enable_cache=inputs.get("enable_audio_cache", True),
-                                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                                stable_audio_component=stable_audio_component
+                            # SEQUENTIAL PROCESSING (single segments or batch disabled)
+                            sequential_results = batch_processor.process_character_group_sequential(
+                                character_group=character_group,
+                                inputs=inputs,
+                                voice_refs=voice_refs,
+                                required_language=required_language,
+                                total_segments=total_segments,
+                                language=lang_code,
+                                stable_audio_component=stable_audio_component,
+                                chunker=self.chunker,
+                                generate_tts_method=self._generate_tts_with_pause_tags
                             )
-                            segment_audio_chunks.append(chunk_audio)
-                        
-                        # Combine chunks for this segment and store with original order
-                        if segment_audio_chunks:
-                            if len(segment_audio_chunks) == 1:
-                                segment_audio = segment_audio_chunks[0]
-                            else:
-                                segment_audio = torch.cat(segment_audio_chunks, dim=-1)
-                            audio_segments_with_order.append((original_idx, segment_audio))
+                            
+                            # Add sequential results to final results  
+                            for original_idx, audio in sequential_results.items():
+                                audio_segments_with_order.append((original_idx, audio))
                 
                 # Sort audio segments back to original order
                 audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
@@ -973,3 +1008,47 @@ Back to the main narrator voice for the conclusion.""",
             )
         
         return self.process_with_error_handling(_process)
+    
+    def _process_segment_sequential(self, original_idx, character, segment_text, segment_lang, 
+                                   inputs, voice_refs, required_language, total_segments, 
+                                   lang_code, stable_audio_component, audio_segments_with_order):
+        """
+        Helper method: Process a single segment sequentially (fallback from batch processing)
+        """
+        segment_display_idx = original_idx + 1  # For display (1-based)
+        
+        # Check for interruption
+        self.check_interruption(f"ChatterBox generation segment {segment_display_idx}/{total_segments} (lang: {lang_code})")
+        
+        # Apply chunking to long segments if enabled
+        if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
+            segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+        else:
+            segment_chunks = [segment_text]
+        
+        # Get voice reference for this character
+        char_audio_prompt = voice_refs[character]
+        
+        # Sequential processing for all chunks
+        segment_audio_chunks = []
+        for chunk_i, chunk_text in enumerate(segment_chunks):
+            print(f"🎤 Generating ChatterBox segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
+            
+            # Generate audio with caching support for character segments
+            chunk_audio = self._generate_tts_with_pause_tags(
+                chunk_text, char_audio_prompt, inputs["exaggeration"],
+                inputs["temperature"], inputs["cfg_weight"], required_language,
+                True, character=character, seed=inputs["seed"],
+                enable_cache=inputs.get("enable_audio_cache", True),
+                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=stable_audio_component
+            )
+            segment_audio_chunks.append(chunk_audio)
+        
+        # Combine chunks for this segment and store with original order
+        if segment_audio_chunks:
+            if len(segment_audio_chunks) == 1:
+                segment_audio = segment_audio_chunks[0]
+            else:
+                segment_audio = torch.cat(segment_audio_chunks, dim=-1)
+            audio_segments_with_order.append((original_idx, segment_audio))

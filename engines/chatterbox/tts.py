@@ -330,6 +330,7 @@ class ChatterboxTTS:
         cfg_weight=0.5,
         temperature=0.8,
     ):
+        """Generate audio for a single text input."""
         if audio_prompt_path:
             self.prepare_conditionals(audio_prompt_path, exaggeration=exaggeration)
         else:
@@ -379,3 +380,186 @@ class ChatterboxTTS:
                 return torch.from_numpy(watermarked_wav).unsqueeze(0)
             else:
                 return torch.from_numpy(wav).unsqueeze(0)
+    
+    def generate_batch(
+        self,
+        texts,
+        audio_prompt_path=None,
+        exaggeration=0.5,
+        cfg_weight=0.5,
+        temperature=0.8,
+        batch_size=4,
+    ):
+        """
+        Generate audio for multiple text inputs using TRUE batched processing.
+        
+        FIXED: Now processes multiple texts simultaneously using batch inference,
+        not sequential loops like before.
+        
+        Args:
+            texts: List of text strings to generate audio for
+            audio_prompt_path: Path to reference audio
+            exaggeration: Emotion exaggeration factor
+            cfg_weight: Classifier-free guidance weight
+            temperature: Sampling temperature
+            batch_size: Number of texts to process in parallel
+            
+        Returns:
+            List of audio tensors
+        """
+        if audio_prompt_path:
+            self.prepare_conditionals(audio_prompt_path, exaggeration=exaggeration)
+        else:
+            assert self.conds is not None, "Please `prepare_conditionals` first or specify `audio_prompt_path`"
+        
+        # Update exaggeration if needed
+        if exaggeration != self.conds.t3.emotion_adv[0, 0, 0]:
+            _cond: T3Cond = self.conds.t3
+            self.conds.t3 = T3Cond(
+                speaker_emb=_cond.speaker_emb,
+                cond_prompt_speech_tokens=_cond.cond_prompt_speech_tokens,
+                emotion_adv=exaggeration * torch.ones(1, 1, 1),
+            ).to(device=self.device)
+        
+        print(f"🚀 ChatterBox TRUE BATCH processing: {len(texts)} texts")
+        
+        results = []
+        
+        # Process texts in true batches
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            print(f"⚡ Processing batch {i//batch_size + 1}: {len(batch_texts)} texts")
+            
+            try:
+                # NEW: True batch processing with simultaneous inference
+                batch_audio = self._batch_inference_simultaneous(
+                    batch_texts, temperature, cfg_weight
+                )
+                results.extend(batch_audio)
+                print(f"✅ Batch {i//batch_size + 1} completed successfully")
+                
+            except Exception as e:
+                print(f"⚠️ Batch inference failed: {e}")
+                print(f"🔄 Falling back to individual processing for this batch")
+                
+                # Fallback to individual processing for this batch only
+                for text in batch_texts:
+                    try:
+                        individual_audio = self.generate(
+                            text=text,
+                            audio_prompt_path=None,  # Use already loaded conditionals
+                            exaggeration=exaggeration,
+                            cfg_weight=cfg_weight,
+                            temperature=temperature,
+                            apply_watermark=self.enable_watermarking,
+                        )
+                        results.append(individual_audio)
+                    except Exception as individual_error:
+                        print(f"❌ Individual generation also failed for text: {text[:50]}...")
+                        print(f"Error: {individual_error}")
+                        # Return empty tensor as placeholder
+                        results.append(torch.zeros(1, 1000))
+        
+        return results
+    
+    def _batch_inference_simultaneous(self, texts, temperature=0.8, cfg_weight=0.5):
+        """
+        NEW METHOD: Perform true simultaneous batch inference.
+        This is the core improvement that enables real batch processing.
+        """
+        # Prepare all text tokens at once
+        all_text_tokens = []
+        for text in texts:
+            normed_text = punc_norm(text)
+            text_tokens = self.tokenizer.text_to_tokens(normed_text).to(self.device)
+            
+            if cfg_weight > 0.0:
+                text_tokens = torch.cat([text_tokens, text_tokens], dim=0)  # CFG duplication
+            
+            sot = self.t3.hp.start_text_token
+            eot = self.t3.hp.stop_text_token
+            text_tokens = F.pad(text_tokens, (1, 0), value=sot)
+            text_tokens = F.pad(text_tokens, (0, 1), value=eot)
+            all_text_tokens.append(text_tokens)
+        
+        # Find max length and pad all sequences
+        max_len = max(tokens.shape[-1] for tokens in all_text_tokens)
+        padded_tokens = []
+        
+        for tokens in all_text_tokens:
+            if tokens.shape[-1] < max_len:
+                pad_amount = max_len - tokens.shape[-1]
+                tokens = F.pad(tokens, (0, pad_amount), value=self.t3.hp.stop_text_token)
+            padded_tokens.append(tokens)
+        
+        # Stack into true batch tensor
+        batch_text_tokens = torch.stack(padded_tokens, dim=0)  # [batch_size, seq_len] or [batch_size*2, seq_len] for CFG
+        
+        # Replicate T3 conditioning for batch
+        batch_t3_cond = self._replicate_conditioning_for_batch(len(texts), cfg_weight > 0.0)
+        
+        print(f"🔥 T3 batch inference: {batch_text_tokens.shape[0]} sequences")
+        
+        with torch.inference_mode():
+            # TRUE BATCH INFERENCE: All texts processed simultaneously
+            batch_speech_tokens = self.t3.batch_inference(
+                t3_cond=batch_t3_cond,
+                text_tokens=batch_text_tokens,
+                max_new_tokens=1000,
+                temperature=temperature,
+                cfg_weight=cfg_weight,
+            )
+            
+            # Extract results and generate audio
+            batch_results = []
+            effective_batch_size = len(texts)
+            
+            for i in range(effective_batch_size):
+                if cfg_weight > 0.0:
+                    # Extract conditional result (first half)
+                    speech_tokens = batch_speech_tokens[i]
+                else:
+                    speech_tokens = batch_speech_tokens[i]
+                
+                # Process tokens
+                speech_tokens = drop_invalid_tokens(speech_tokens)
+                speech_tokens = speech_tokens.to(self.device)
+                
+                # Generate audio
+                wav, _ = self.s3gen.inference(
+                    speech_tokens=speech_tokens,
+                    ref_dict=self.conds.gen,
+                )
+                wav = wav.squeeze(0).detach().cpu().numpy()
+                
+                if self.enable_watermarking:
+                    watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
+                    batch_results.append(torch.from_numpy(watermarked_wav).unsqueeze(0))
+                else:
+                    batch_results.append(torch.from_numpy(wav).unsqueeze(0))
+            
+            return batch_results
+    
+    def _replicate_conditioning_for_batch(self, batch_size, use_cfg):
+        """
+        Replicate T3 conditioning for batch processing.
+        """
+        original_cond = self.conds.t3
+        
+        # Determine effective batch size (doubled for CFG)
+        effective_batch_size = batch_size * 2 if use_cfg else batch_size
+        
+        # Replicate conditioning tensors
+        speaker_emb = original_cond.speaker_emb.repeat(effective_batch_size, 1)
+        
+        cond_prompt_speech_tokens = None
+        if original_cond.cond_prompt_speech_tokens is not None:
+            cond_prompt_speech_tokens = original_cond.cond_prompt_speech_tokens.repeat(effective_batch_size, 1)
+        
+        emotion_adv = original_cond.emotion_adv.repeat(effective_batch_size, 1, 1)
+        
+        return T3Cond(
+            speaker_emb=speaker_emb,
+            cond_prompt_speech_tokens=cond_prompt_speech_tokens,
+            emotion_adv=emotion_adv,
+        ).to(device=self.device)
