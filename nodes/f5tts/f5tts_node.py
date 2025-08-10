@@ -797,4 +797,131 @@ Back to the main narrator voice for the conclusion.""",
                 info
             )
         
+        return _process()
+    
+    def _process_single_segment_for_streaming(self, original_idx, character, segment_text, 
+                                               language, voice_path, inputs):
+        """
+        Process a single segment for the streaming processor.
+        
+        This method enables F5-TTS to work with the universal streaming system,
+        preserving all existing functionality including pause tags, chunking, and caching.
+        
+        Args:
+            original_idx: Original segment index for result ordering
+            character: Character name for this segment
+            segment_text: Text to generate
+            language: Language code for this segment
+            voice_path: Path to voice reference file
+            inputs: Processing parameters dict
+            
+        Returns:
+            Generated audio tensor
+        """
+        try:
+            from utils.text.pause_processor import PauseTagProcessor
+            
+            # Extract parameters from inputs
+            model = inputs.get('model', 'F5TTS_Base')
+            device = inputs.get('device', 'auto')
+            temperature = inputs.get('temperature', 0.8)
+            speed = inputs.get('speed', 1.0)
+            target_rms = inputs.get('target_rms', 0.1)
+            cross_fade_duration = inputs.get('cross_fade_duration', 0.15)
+            nfe_step = inputs.get('nfe_step', 32)
+            cfg_strength = inputs.get('cfg_strength', 2.0)
+            seed = inputs.get('seed', 1)
+            enable_cache = inputs.get('enable_audio_cache', True)
+            enable_chunking = inputs.get('enable_chunking', True)
+            max_chars_per_chunk = inputs.get('max_chars_per_chunk', 400)
+            
+            # Get the F5-TTS model for this language using language mapper
+            from utils.models.language_mapper import get_model_for_language
+            required_model = get_model_for_language('f5tts', language, model)
+            
+            # Ensure correct model is loaded (streaming coordinator should pre-load)
+            if not hasattr(self, 'f5tts') or self.current_model != required_model:
+                self.load_f5tts_model(required_model, device)
+            
+            # Load reference audio and text for this character
+            if voice_path and voice_path != 'none' and os.path.exists(voice_path):
+                # Load reference from file
+                ref_audio_path = voice_path
+                ref_text = None
+                
+                # Check for companion text file
+                text_file = voice_path.replace('.wav', '.txt').replace('.mp3', '.txt')
+                if os.path.exists(text_file):
+                    with open(text_file, 'r', encoding='utf-8') as f:
+                        ref_text = f.read().strip()
+                
+                if not ref_text:
+                    ref_text = "This is a reference voice for synthesis."
+            else:
+                # Use default reference if no voice path
+                ref_audio_path = inputs.get('audio_prompt_path', '')
+                ref_text = inputs.get('ref_text', "This is a reference voice for synthesis.")
+            
+            # Generate stable audio component for caching
+            stable_audio_component = f"streaming_{character}_{language}_{original_idx}"
+            
+            # Apply chunking if needed
+            if enable_chunking and len(segment_text) > max_chars_per_chunk:
+                from utils.text.chunking import ImprovedChatterBoxChunker
+                if not hasattr(self, 'chunker'):
+                    self.chunker = ImprovedChatterBoxChunker()
+                chunks = self.chunker.split_into_chunks(segment_text, max_chars_per_chunk)
+            else:
+                chunks = [segment_text]
+            
+            # Process each chunk with pause tag support
+            chunk_audios = []
+            for chunk in chunks:
+                # Check cache if enabled
+                if enable_cache:
+                    cache_key = self._generate_segment_cache_key(
+                        f"{character}:{chunk}", required_model, device,
+                        stable_audio_component, ref_text, temperature, speed,
+                        target_rms, cross_fade_duration, nfe_step, cfg_strength, seed, character
+                    )
+                    cached_audio = self._get_cached_segment_audio(cache_key)
+                    if cached_audio:
+                        chunk_audios.append(cached_audio[0])
+                        continue
+                
+                # Generate audio for this chunk with pause tag processing
+                chunk_audio = self.generate_f5tts_with_pause_tags(
+                    chunk, ref_audio_path, ref_text, temperature, speed,
+                    target_rms, cross_fade_duration, nfe_step, cfg_strength, seed
+                )
+                
+                # Cache the result if enabled
+                if enable_cache and chunk_audio is not None:
+                    GLOBAL_AUDIO_CACHE[cache_key] = (chunk_audio, chunk_audio.shape[-1] / 24000.0)
+                
+                chunk_audios.append(chunk_audio)
+            
+            # Combine chunks if multiple
+            if len(chunk_audios) == 1:
+                return chunk_audios[0]
+            else:
+                # Add silence between chunks if configured
+                silence_ms = inputs.get('silence_between_chunks_ms', 100)
+                if silence_ms > 0:
+                    silence_samples = int((silence_ms / 1000.0) * 24000)  # F5-TTS uses 24kHz
+                    silence = torch.zeros((1, silence_samples))
+                    
+                    combined = []
+                    for i, audio in enumerate(chunk_audios):
+                        combined.append(audio)
+                        if i < len(chunk_audios) - 1:
+                            combined.append(silence)
+                    return torch.cat(combined, dim=-1)
+                else:
+                    return torch.cat(chunk_audios, dim=-1)
+                    
+        except Exception as e:
+            print(f"❌ F5-TTS streaming segment {original_idx} failed: {e}")
+            # Return silence as fallback
+            return torch.zeros((1, 24000))  # 1 second of silence at 24kHz
         return self.process_with_error_handling(_process)

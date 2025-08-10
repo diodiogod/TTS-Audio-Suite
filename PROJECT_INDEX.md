@@ -36,6 +36,10 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **docs/Dev reports/F5TTS_INTEGRATION_SPECIFICATION.md** - Technical specification for F5-TTS integration architecture
 
+**docs/Dev reports/F5TTS_STREAMING_INTEGRATION_PLAN.md** - Universal streaming architecture plan to eliminate spaghetti code and enable F5-TTS streaming
+
+**docs/Dev reports/STREAMING_ARCHITECTURE.md** - Streaming parallel processing architecture documentation with feasibility analysis for multiple engines
+
 **docs/PAUSE_TAGS_IMPLEMENTATION_REPORT.md** - Implementation details for pause tag system with timing control syntax
 
 **docs/REFACTORING_PLAN.md** - Architectural refactoring plan and migration strategy documentation
@@ -88,6 +92,10 @@ This extension features a **unified modular architecture** supporting multiple T
 **engines/adapters/chatterbox_adapter.py** - ChatterBox engine adapter providing standardized interface for unified nodes
 
 **engines/adapters/f5tts_adapter.py** - F5-TTS engine adapter with parameter mapping and cache integration
+
+**engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
+
+**engines/adapters/f5tts_streaming_adapter.py** - F5-TTS streaming adapter enabling parallel processing with language model switching
 
 ## Node Implementations
 
@@ -197,6 +205,18 @@ This extension features a **unified modular architecture** supporting multiple T
 **utils/timing/parser.py** - SRT subtitle parsing with timestamp extraction and validation
 
 **utils/timing/reporting.py** - Timing analysis and report generation
+
+### Streaming System
+
+**utils/streaming/__init__.py** - Universal streaming system initialization
+
+**utils/streaming/streaming_types.py** - Universal data structures (StreamingSegment, StreamingResult) eliminating format conversions
+
+**utils/streaming/streaming_interface.py** - Abstract streaming interface for engine adapters
+
+**utils/streaming/streaming_coordinator.py** - Universal coordinator replacing all format-specific routers
+
+**utils/streaming/work_queue_processor.py** - Engine-agnostic parallel processing system
 
 ## Web Interface Components
 
