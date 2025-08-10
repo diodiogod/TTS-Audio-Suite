@@ -993,7 +993,7 @@ Back to the main narrator voice for the conclusion.""",
             required_model = get_model_for_language("chatterbox", lang, "English")
             
             if current_loaded_language != required_model:
-                print(f"🔄 Traditional mode: Loading {required_model} model for {lang}")
+                # print(f"🔄 Traditional mode: Loading {required_model} model for {lang}")  # Commented - too verbose
                 self.load_tts_model(inputs["device"], required_model)
                 current_loaded_language = required_model
             
@@ -1010,7 +1010,11 @@ Back to the main narrator voice for the conclusion.""",
             )
             
             audio_segments_with_order.append((original_idx, segment_audio))
-            print(f"🎤 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (traditional mode)")
+            # Use the original better format with proper emoji based on character type
+            if char == "narrator":
+                print(f"🎤 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (lang: {lang})")
+            else:
+                print(f"🎭 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (lang: {lang})")
             
         return audio_segments_with_order
 
