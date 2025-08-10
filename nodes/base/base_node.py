@@ -334,13 +334,23 @@ class BaseTTSNode(BaseChatterBoxNode):
         if self.tts_model is None:
             raise RuntimeError("TTS model not loaded. Call load_tts_model() first.")
         
-        return self.tts_model.generate(
-            text,
-            audio_prompt_path=audio_prompt,
-            exaggeration=exaggeration,
-            temperature=temperature,
-            cfg_weight=cfg_weight
-        )
+        # Use torch.no_grad() to ensure no gradients are tracked during inference
+        with torch.no_grad():
+            audio = self.tts_model.generate(
+                text,
+                audio_prompt_path=audio_prompt,
+                exaggeration=exaggeration,
+                temperature=temperature,
+                cfg_weight=cfg_weight
+            )
+        
+        # Ensure tensor is completely detached from computation graph
+        if hasattr(audio, 'detach'):
+            audio = audio.detach()
+        if hasattr(audio, 'clone'):
+            audio = audio.clone()
+            
+        return audio
 
 
 class BaseVCNode(BaseChatterBoxNode):

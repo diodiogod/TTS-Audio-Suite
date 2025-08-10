@@ -85,8 +85,8 @@ class BatchProcessor:
                 cfg_weight=inputs["cfg_weight"],
                 temperature=inputs["temperature"],
                 batch_size=inputs.get("batch_size", 4),
-                max_workers=inputs.get("batch_size", 4),  # Use batch_size as max_workers
-                enable_adaptive_batching=inputs.get("enable_adaptive_batching", False)  # NEW: Pass adaptive setting
+                max_workers=inputs.get("batch_size", 4),  # Use batch_size as max_workers  
+                enable_adaptive_batching=(inputs.get("batch_size", 1) > 1)  # Auto-enable based on batch_size
             )
             
             print(f"✅ BATCH SUCCESS: Generated {len(batch_audio)} audio chunks")

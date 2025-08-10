@@ -274,7 +274,9 @@ class VoiceDiscovery:
         if not self._character_cache_valid:
             self._refresh_character_cache()
         
-        character_info = self._character_cache.get(character_name.lower())
+        # CRITICAL FIX: Resolve character aliases first before cache lookup
+        resolved_character = self.resolve_character_alias(character_name)
+        character_info = self._character_cache.get(resolved_character.lower())
         if not character_info:
             return None
         

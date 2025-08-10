@@ -119,13 +119,9 @@ Back to the main narrator voice for the conclusion.""",
                     "default": True,
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
-                "enable_batch_processing": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "Enable batch processing for faster generation when processing multiple text chunks."
-                }),
                 "batch_size": ("INT", {
-                    "default": 4, "min": 1, "max": 32, "step": 1,
-                    "tooltip": "Number of chunks to process in parallel when batch processing is enabled (max_workers for ThreadPoolExecutor)."
+                    "default": 4, "min": 0, "max": 32, "step": 1,
+                    "tooltip": "Number of workers for parallel processing. 0-1 = Sequential processing, 2+ = Continuous parallel streaming. Higher values = faster generation but more memory usage."
                 }),
             }
         }
@@ -380,15 +376,17 @@ Back to the main narrator voice for the conclusion.""",
         
         elif method == "silence_padding":
             silence_duration = silence_ms / 1000.0  # Convert to seconds
+            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
             return AudioProcessingUtils.concatenate_audio_segments(
                 audio_segments, "silence", silence_duration=silence_duration, 
-                sample_rate=self.tts_model.sr
+                sample_rate=sr
             )
         
         elif method == "crossfade":
+            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
             return AudioProcessingUtils.concatenate_audio_segments(
                 audio_segments, "crossfade", crossfade_duration=0.1, 
-                sample_rate=self.tts_model.sr
+                sample_rate=sr
             )
         
         else:
@@ -487,11 +485,15 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Generate and cache
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
-                self._cache_segment_audio(cache_key, audio, 0.0)  # Duration not needed for basic caching
-                return audio
+                # Clone tensor to avoid autograd issues in streaming mode
+                audio_clone = audio.detach().clone() if audio.requires_grad else audio
+                self._cache_segment_audio(cache_key, audio_clone, 0.0)  # Duration not needed for basic caching
+                return audio_clone
             else:
                 protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
-                return self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                # Clone tensor to avoid autograd issues in streaming mode
+                return audio.detach().clone() if audio.requires_grad else audio
         
         # Generate audio with pause tags, caching individual text segments
         def tts_generate_func(text_content: str) -> torch.Tensor:
@@ -518,15 +520,19 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Generate and cache
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
-                self._cache_segment_audio(cache_key, audio, 0.0)  # Duration not needed for basic caching
-                return audio
+                # Clone tensor to avoid autograd issues in streaming mode
+                audio_clone = audio.detach().clone() if audio.requires_grad else audio
+                self._cache_segment_audio(cache_key, audio_clone, 0.0)  # Duration not needed for basic caching
+                return audio_clone
             else:
                 # Apply crash protection
                 protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
                 
-                return self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                # Clone tensor to avoid autograd issues in streaming mode
+                return audio.detach().clone() if audio.requires_grad else audio
         
         return PauseTagProcessor.generate_audio_with_pauses(
             pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
@@ -556,11 +562,14 @@ Back to the main narrator voice for the conclusion.""",
                        enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
                        crash_protection_template="hmm ,, {seg} hmm ,,", enable_audio_cache=True,
-                       enable_batch_processing=True, batch_size=4, enable_adaptive_batching=False):
+                       batch_size=4):
         
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
             from utils.text.pause_processor import PauseTagProcessor
+            
+            # Capture batch_size from outer scope to avoid UnboundLocalError
+            current_batch_size = batch_size
             
             # Validate inputs
             inputs = self.validate_inputs(
@@ -572,9 +581,7 @@ Back to the main narrator voice for the conclusion.""",
                 silence_between_chunks_ms=silence_between_chunks_ms,
                 crash_protection_template=crash_protection_template,
                 enable_audio_cache=enable_audio_cache,
-                enable_batch_processing=enable_batch_processing,
-                batch_size=batch_size,
-                enable_adaptive_batching=enable_adaptive_batching
+                batch_size=current_batch_size
             )
             
             # Set seed for reproducibility (can be done without loading model)
@@ -641,6 +648,14 @@ Back to the main narrator voice for the conclusion.""",
                     if audio_path:
                         voice_refs[character] = audio_path
                         character_voices.append(character)
+                        
+                        # CRITICAL FIX: Also map resolved character name to same audio path
+                        # This ensures streaming workers can find voices using resolved names
+                        from utils.voice.discovery import voice_discovery
+                        resolved_name = voice_discovery.resolve_character_alias(character)
+                        if resolved_name != character:
+                            voice_refs[resolved_name] = audio_path
+                            
                     else:
                         voice_refs[character] = main_audio_prompt
                         main_voices.append(character)
@@ -689,160 +704,24 @@ Back to the main narrator voice for the conclusion.""",
                 audio_segments_with_order = []  # Will store (original_index, audio_tensor)
                 total_segments = len(character_segments_with_lang)
                 
-                # Track if base model has been loaded
-                base_model_loaded = False
+                # Choose processing method based on batch_size: 0-1 = sequential, 2+ = streaming
+                current_batch_size = inputs.get("batch_size", 1)
+                use_streaming = (current_batch_size > 1 and total_segments > current_batch_size)
                 
-                # Process each language group with appropriate model
-                for lang_code, lang_segments in language_groups.items():
-                    required_language = get_chatterbox_model_for_language(lang_code)
+                if use_streaming:
+                    # Pre-load ALL language models for streaming efficiency (prevents worker conflicts)
+                    print(f"🚀 STREAMING: Pre-loading models for {len(language_groups)} languages")
+                    self._preload_language_models(language_groups.keys(), inputs["device"])
                     
-                    # Check if ALL segments in this language group are cached
-                    all_segments_cached = True
-                    if inputs.get("enable_audio_cache", True):
-                        for original_idx, character, segment_text, segment_lang in lang_segments:
-                            # Get voice reference for this character (ChatterBox only needs audio)
-                            char_audio = voice_refs[character]
-                            
-                            # Apply chunking to check cache for each chunk
-                            if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
-                                segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
-                            else:
-                                segment_chunks = [segment_text]
-                            
-                            # Check cache for each chunk, accounting for pause tag processing
-                            for chunk_text in segment_chunks:
-                                # Apply pause tag processing to see what text segments will actually be generated
-                                processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(chunk_text, True)
-                                
-                                if pause_segments is None:
-                                    # No pause tags, check cache for the full processed text
-                                    cache_texts = [processed_text]
-                                else:
-                                    # Extract only text segments (not pause segments) 
-                                    cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
-                                
-                                # Check cache for each text segment that will be generated
-                                char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
-                                for cache_text in cache_texts:
-                                    # Get model source safely
-                                    model_source = inputs.get("model_source") or self.model_manager.get_model_source("tts")
-                                    cache_key = self._generate_segment_cache_key(
-                                        f"{character}:{cache_text}", inputs["exaggeration"], inputs["temperature"],
-                                        inputs["cfg_weight"], inputs["seed"], char_audio_component,
-                                        model_source, inputs["device"], required_language, character
-                                    )
-                                    cached_data = self._get_cached_segment_audio(cache_key)
-                                    if not cached_data:
-                                        all_segments_cached = False
-                                        break
-                                if not all_segments_cached:
-                                    break
-                            if not all_segments_cached:
-                                break
-                    else:
-                        all_segments_cached = False
-                    
-                    # Only load model if we need to generate new audio
-                    if not all_segments_cached:
-                        # Load base model if this is the first time we need to generate anything
-                        if not base_model_loaded:
-                            print(f"🔄 Loading base ChatterBox model '{inputs['language']}' for generation")
-                            self.load_tts_model(inputs["device"], inputs["language"])
-                            base_model_loaded = True
-                        
-                        print(f"🌍 Loading ChatterBox model '{required_language}' for language '{lang_code}' ({len(lang_segments)} segments)")
-                        try:
-                            self.load_tts_model(inputs["device"], required_language)
-                        except Exception as e:
-                            print(f"⚠️ Failed to load model '{required_language}' for language '{lang_code}': {e}")
-                            print(f"🔄 Falling back to default model '{inputs['language']}'")
-                            self.load_tts_model(inputs["device"], inputs["language"])
-                    else:
-                        print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
-                    
-                    # MODULAR CHARACTER GROUPING AND BATCH PROCESSING
-                    from engines.chatterbox.character_grouper import CharacterGrouper
-                    from engines.chatterbox.batch_processor import BatchProcessor
-                    
-                    # Step 1: Group segments by character within this language
-                    character_groups = CharacterGrouper.group_by_character(lang_segments)
-                    
-                    # Step 2: Print grouping analysis
-                    CharacterGrouper.print_character_grouping_summary(lang_code, character_groups)
-                    CharacterGrouper.validate_character_grouping(lang_segments, character_groups)
-                    
-                    # Step 3: Process each character group
-                    batch_processor = BatchProcessor(self.tts_model)
-                    
-                    for character, character_group in character_groups.items():
-                        # Check for interruption
-                        self.check_interruption(f"Processing character '{character}' in {lang_code}")
-                        
-                        # Debug batch processing condition
-                        batch_enabled = inputs.get("enable_batch_processing", False)
-                        can_batch = character_group.can_batch()
-                        has_method = hasattr(self.tts_model, 'generate_batch')
-                        
-                        # TEMPORARY: Force enable for testing
-                        batch_enabled = True
-                        
-                        print(f"🔍 BATCH DEBUG {character}: enabled={batch_enabled}, can_batch={can_batch}, has_method={has_method}")
-                        
-                        if (batch_enabled and can_batch and has_method):
-                            
-                            # TRY BATCH PROCESSING
-                            try:
-                                batch_results = batch_processor.process_character_group_batch(
-                                    character_group=character_group,
-                                    inputs=inputs,
-                                    voice_refs=voice_refs,
-                                    chunker=self.chunker,
-                                    language=lang_code
-                                )
-                                
-                                # Add batch results to final results
-                                for original_idx, audio in batch_results.items():
-                                    audio_segments_with_order.append((original_idx, audio))
-                                
-                            except Exception as batch_error:
-                                print(f"⚠️ BATCH FAILED for {character}: {batch_error}")
-                                print(f"🔄 Falling back to sequential processing")
-                                
-                                # Fallback to sequential
-                                sequential_results = batch_processor.process_character_group_sequential(
-                                    character_group=character_group,
-                                    inputs=inputs,
-                                    voice_refs=voice_refs,
-                                    required_language=required_language,
-                                    total_segments=total_segments,
-                                    language=lang_code,
-                                    stable_audio_component=stable_audio_component,
-                                    chunker=self.chunker,
-                                    generate_tts_method=self._generate_tts_with_pause_tags
-                                )
-                                
-                                # Add sequential results to final results
-                                for original_idx, audio in sequential_results.items():
-                                    audio_segments_with_order.append((original_idx, audio))
-                        else:
-                            # SEQUENTIAL PROCESSING (single segments or batch disabled)
-                            sequential_results = batch_processor.process_character_group_sequential(
-                                character_group=character_group,
-                                inputs=inputs,
-                                voice_refs=voice_refs,
-                                required_language=required_language,
-                                total_segments=total_segments,
-                                language=lang_code,
-                                stable_audio_component=stable_audio_component,
-                                chunker=self.chunker,
-                                generate_tts_method=self._generate_tts_with_pause_tags
-                            )
-                            
-                            # Add sequential results to final results  
-                            for original_idx, audio in sequential_results.items():
-                                audio_segments_with_order.append((original_idx, audio))
+                    audio_segments_with_order = self._process_languages_streaming(
+                        language_groups, voice_refs, inputs, character_segments_with_lang
+                    )
+                else:
+                    audio_segments_with_order = self._process_languages_traditional(
+                        language_groups, voice_refs, inputs, character_segments_with_lang
+                    )
                 
-                # Sort audio segments back to original order
+                # Continue to sorting and combining...
                 audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
@@ -1013,8 +892,9 @@ Back to the main narrator voice for the conclusion.""",
                     info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, {model_source} models)"
             
             # Return audio in ComfyUI format
+            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
             return (
-                self.format_audio_output(wav, self.tts_model.sr),
+                self.format_audio_output(wav, sr),
                 info
             )
         
@@ -1063,3 +943,149 @@ Back to the main narrator voice for the conclusion.""",
             else:
                 segment_audio = torch.cat(segment_audio_chunks, dim=-1)
             audio_segments_with_order.append((original_idx, segment_audio))
+
+    def _process_languages_streaming(self, language_groups, voice_refs, inputs, character_segments_with_lang):
+        """Process all languages using streaming continuous workers (truly cross-character)."""
+        print(f"🌊 STREAMING MODE: Processing all {len(character_segments_with_lang)} segments with continuous workers")
+        
+        # Import streaming processor
+        from engines.chatterbox.character_grouper import CharacterGrouper
+        from engines.chatterbox.streaming_work_queue import StreamingWorkQueueProcessor
+        
+        # Build character groups for all languages
+        character_groups_by_lang = {}
+        for lang_code, lang_segments in language_groups.items():
+            character_groups_by_lang[lang_code] = CharacterGrouper.group_by_character(lang_segments)
+        
+        # Initialize streaming processor  
+        max_workers = inputs.get("batch_size", 4)
+        streaming_processor = StreamingWorkQueueProcessor(max_workers=max_workers, tts_node=self)
+        
+        # Process all segments with streaming
+        streaming_results = streaming_processor.process_streaming(
+            language_groups=language_groups,
+            character_groups_by_lang=character_groups_by_lang,
+            voice_refs=voice_refs,
+            inputs=inputs
+        )
+        
+        # Convert streaming results to expected format
+        audio_segments_with_order = []
+        for original_idx, audio_tensor in streaming_results.items():
+            audio_segments_with_order.append((original_idx, audio_tensor))
+            
+        return audio_segments_with_order
+
+    def _process_languages_traditional(self, language_groups, voice_refs, inputs, character_segments_with_lang):
+        """Process languages using traditional character-by-character method."""
+        print(f"🎯 TRADITIONAL MODE: Processing {len(language_groups)} language groups sequentially")
+        
+        audio_segments_with_order = []
+        current_loaded_language = None
+        
+        for original_idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+            # Load TTS model for this language if not already loaded
+            from utils.models.language_mapper import get_model_for_language
+            required_model = get_model_for_language("chatterbox", lang, "English")
+            
+            if current_loaded_language != required_model:
+                print(f"🔄 Traditional mode: Loading {required_model} model for {lang}")
+                self.load_tts_model(inputs["device"], required_model)
+                current_loaded_language = required_model
+            
+            # Process each segment individually
+            char_audio_prompt = voice_refs.get(char, voice_refs.get("narrator", "none"))
+            
+            segment_audio = self._generate_tts_with_pause_tags(
+                segment_text, char_audio_prompt, inputs["exaggeration"],
+                inputs["temperature"], inputs["cfg_weight"], required_model,
+                True, character=char, seed=inputs["seed"],
+                enable_cache=inputs.get("enable_audio_cache", True),
+                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=""
+            )
+            
+            audio_segments_with_order.append((original_idx, segment_audio))
+            print(f"🎤 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (traditional mode)")
+            
+        return audio_segments_with_order
+
+    def _process_single_segment_for_streaming(self, original_idx, character, segment_text, language, voice_path, inputs):
+        """Process a single segment for the streaming processor using pre-loaded models."""
+        # This method is called by the streaming worker
+        try:
+            # Get the pre-loaded model for this language (thread-safe)
+            if hasattr(self, '_streaming_model_manager'):
+                preloaded_model = self._streaming_model_manager.get_model_for_language(language)
+                if preloaded_model:
+                    # print(f"🧵 Worker using pre-loaded {language} model")  # Debug output - commented for cleaner console
+                    # Temporarily switch to the pre-loaded model for this segment
+                    original_model = self.tts_model
+                    self.tts_model = preloaded_model
+                    
+                    try:
+                        # Don't apply crash protection here - let _generate_tts_with_pause_tags handle it
+                        # This preserves pause tag processing
+                        segment_audio = self._generate_tts_with_pause_tags(
+                            segment_text, voice_path, inputs.get("exaggeration", 0.5),
+                            inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
+                            True, character=character, seed=inputs.get("seed", 0),
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                            stable_audio_component=""
+                        )
+                        return segment_audio
+                    finally:
+                        # Restore original model
+                        self.tts_model = original_model
+            
+            # Fallback to original method if no pre-loaded model
+            print(f"⚠️ No pre-loaded model for {language}, using fallback")
+            from utils.models.language_mapper import get_model_for_language
+            required_model = get_model_for_language("chatterbox", language, "English")
+            
+            # Don't apply crash protection here - let _generate_tts_with_pause_tags handle it
+            # This preserves pause tag processing
+            segment_audio = self._generate_tts_with_pause_tags(
+                segment_text, voice_path, inputs.get("exaggeration", 0.5),
+                inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), required_model,
+                True, character=character, seed=inputs.get("seed", 0),
+                enable_cache=inputs.get("enable_audio_cache", True),
+                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=""
+            )
+            return segment_audio
+            
+        except Exception as e:
+            print(f"❌ Streaming segment failed: {e}")
+            # Return silence instead of crashing
+            if hasattr(self, 'tts_model') and self.tts_model:
+                sr = self.tts_model.sr
+            else:
+                sr = 22050  # Default sample rate
+            return torch.zeros(1, int(sr * 1.0))  # 1 second of silence
+
+    def _preload_language_models(self, language_codes, device):
+        """Pre-load all required language models for streaming to prevent worker conflicts."""
+        from engines.chatterbox.streaming_model_manager import StreamingModelManager
+        
+        # Create streaming model manager if not exists
+        if not hasattr(self, '_streaming_model_manager'):
+            self._streaming_model_manager = StreamingModelManager()
+        
+        # Pre-load models using the streaming model manager
+        self._streaming_model_manager.preload_models(
+            language_codes=list(language_codes),
+            model_manager=self,  # Pass self as model_manager (has load_tts_model method)
+            device=device
+        )
+        
+        print(f"🚀 Pre-loading complete: {len(self._streaming_model_manager.preloaded_models)} models ready")
+
+    def _pad_short_text_for_chatterbox(self, text: str, crash_protection_template: str, min_length: int = 15) -> str:
+        """Apply crash protection padding to short texts to prevent GPU crashes."""
+        if len(text.strip()) < min_length:
+            protected_text = crash_protection_template.format(seg=text)
+            print(f"🛡️ Crash protection applied: '{text}' -> '{protected_text}'")
+            return protected_text
+        return text

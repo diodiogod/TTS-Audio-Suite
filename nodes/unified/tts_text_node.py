@@ -112,17 +112,9 @@ Back to the main narrator voice for the conclusion.""",
                     "default": True,
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
-                "enable_batch_processing": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "Enable batch processing for ChatterBox engine. Processes multiple text chunks in parallel for faster generation."
-                }),
                 "batch_size": ("INT", {
-                    "default": 4, "min": 1, "max": 32, "step": 1,
-                    "tooltip": "Number of text chunks to process in parallel when batch processing is enabled. Higher values = faster but more memory usage. Uses overlapping parallel processing."
-                }),
-                "enable_adaptive_batching": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Enable dynamic worker adjustment. Starts with your batch_size and adapts based on real-time performance. Disable to use exact batch_size."
+                    "default": 4, "min": 0, "max": 32, "step": 1,
+                    "tooltip": "Batch size for parallel processing. 0-1 = sequential processing, 2+ = streaming parallelization with that many workers. ChatterBox uses this for automatic batch/streaming control."
                 }),
             }
         }
@@ -272,8 +264,7 @@ Back to the main narrator voice for the conclusion.""",
     def generate_speech(self, TTS_engine: Dict[str, Any], text: str, narrator_voice: str, seed: int,
                        opt_narrator=None, enable_chunking: bool = True, max_chars_per_chunk: int = 400,
                        chunk_combination_method: str = "auto", silence_between_chunks_ms: int = 100,
-                       enable_audio_cache: bool = True, enable_batch_processing: bool = True,
-                       batch_size: int = 4, enable_adaptive_batching: bool = False):
+                       enable_audio_cache: bool = True, batch_size: int = 4):
         """
         Generate speech using the selected TTS engine.
         This is a DELEGATION WRAPPER that preserves all original functionality.
@@ -289,8 +280,7 @@ Back to the main narrator voice for the conclusion.""",
             chunk_combination_method: Method to combine chunks
             silence_between_chunks_ms: Silence between chunks
             enable_audio_cache: Enable audio caching
-            enable_batch_processing: Enable batch processing for ChatterBox
-            batch_size: Number of chunks to process in parallel
+            batch_size: Batch size (0-1=sequential, 2+=streaming parallelization)
             
         Returns:
             Tuple of (audio_tensor, generation_info)
@@ -327,16 +317,11 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "chatterbox" and "crash_protection_template" not in config:
                 config["crash_protection_template"] = "hmm ,, {seg} hmm ,,"
             
-            # Configure batch processing for ChatterBox if applicable
-            if engine_type == "chatterbox" and hasattr(engine_instance, 'adapter'):
-                # Configure the adapter's batch processing settings
-                if hasattr(engine_instance.adapter, 'set_batch_processing'):
-                    engine_instance.adapter.set_batch_processing(enable_batch_processing, batch_size)
-                    print(f"🔧 ChatterBox batch processing configured: enabled={enable_batch_processing}, batch_size={batch_size}")
+            # ChatterBox will automatically determine streaming vs sequential based on batch_size
             
             # Prepare parameters for the original node's generate_speech method
             if engine_type == "chatterbox":
-                # ChatterBox TTS parameters with batch processing support
+                # ChatterBox TTS parameters - batch_size controls everything
                 result = engine_instance.generate_speech(
                     text=text,
                     language=config.get("language", "English"),
@@ -353,9 +338,7 @@ Back to the main narrator voice for the conclusion.""",
                     silence_between_chunks_ms=silence_between_chunks_ms,
                     crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                     enable_audio_cache=enable_audio_cache,
-                    enable_batch_processing=enable_batch_processing,
-                    batch_size=batch_size,
-                    enable_adaptive_batching=enable_adaptive_batching
+                    batch_size=batch_size
                 )
                 
             elif engine_type == "f5tts":

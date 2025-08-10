@@ -298,8 +298,7 @@ class ChatterBoxEngineAdapter:
                 seed=voice_settings.get('seed', 0),
                 reference_audio=voice_settings.get('reference_audio'),
                 audio_prompt_path=voice_settings.get('audio_prompt_path', ''),
-                enable_batch_processing=False,
-                batch_size=batch_size
+                batch_size=1 if not enable_batch_processing else batch_size
             )
             
             return {

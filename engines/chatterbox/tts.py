@@ -25,6 +25,7 @@ from .models.t3 import T3
 from .models.s3tokenizer import S3_SR, drop_invalid_tokens
 from .models.s3gen import S3GEN_SR, S3Gen
 from .models.tokenizers import EnTokenizer
+from .continuous_worker_processor import ContinuousWorkerProcessor
 from .models.voice_encoder import VoiceEncoder
 from .models.t3.modules.cond_enc import T3Cond
 
@@ -155,6 +156,7 @@ class ChatterboxTTS:
         # Initialize modular processors
         self.overlapping_processor = OverlappingBatchProcessor(self)
         self.adaptive_processor = AdaptiveBatchProcessor(self)
+        self.continuous_processor = ContinuousWorkerProcessor(self)
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
@@ -436,10 +438,29 @@ class ChatterboxTTS:
         effective_max_workers = max_workers or batch_size
         
         # NEW: CHOOSE PROCESSING STRATEGY
-        if enable_adaptive_batching:
-            # Use adaptive processor that starts with user preference and adapts
-            print(f"🤖 Using ADAPTIVE processing (starts with {effective_max_workers} workers)")
-            results = self.adaptive_processor.process_texts_adaptively(
+        if effective_max_workers <= 1:
+            # Force sequential processing for 0-1 workers (no threading overhead)
+            print(f"→ SEQUENTIAL PROCESSING: {len(texts)} texts (workers={effective_max_workers})")
+            results = []
+            for i, text in enumerate(texts):
+                print(f"  🎤 Sequential {i+1}/{len(texts)}: {text[:40]}...")
+                try:
+                    individual_audio = self.generate(
+                        text=text,
+                        audio_prompt_path=None,
+                        exaggeration=exaggeration,
+                        cfg_weight=cfg_weight,
+                        temperature=temperature,
+                    )
+                    results.append(individual_audio)
+                    print(f"  ✅ Sequential {i+1}: Completed")
+                except Exception as individual_error:
+                    print(f"  ❌ Sequential {i+1}: Failed - {individual_error}")
+                    results.append(torch.zeros(1, 1000))
+        elif enable_adaptive_batching:
+            # Use NEW continuous processor for true non-stop parallelization
+            print(f"🌊 Using CONTINUOUS processing (workers never idle)")
+            results = self.continuous_processor.process_texts_continuously(
                 texts, temperature, cfg_weight, exaggeration, effective_max_workers
             )
         elif len(texts) <= effective_max_workers:
