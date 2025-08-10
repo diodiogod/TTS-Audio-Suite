@@ -955,34 +955,53 @@ Back to the main narrator voice for the conclusion.""",
             audio_segments_with_order.append((original_idx, segment_audio))
 
     def _process_languages_streaming(self, language_groups, voice_refs, inputs, character_segments_with_lang):
-        """Process all languages using streaming continuous workers (truly cross-character)."""
-        print(f"🌊 STREAMING MODE: Processing all {len(character_segments_with_lang)} segments with continuous workers")
+        """Process all languages using universal streaming system."""
+        print(f"🌊 STREAMING MODE: Processing all {len(character_segments_with_lang)} segments with universal streaming")
         
-        # Import streaming processor
-        from engines.chatterbox.character_grouper import CharacterGrouper
-        from engines.chatterbox.streaming_work_queue import StreamingWorkQueueProcessor
+        # Import universal streaming components
+        from utils.streaming import StreamingCoordinator, StreamingConfig
+        from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
         
-        # Build character groups for all languages
-        character_groups_by_lang = {}
-        for lang_code, lang_segments in language_groups.items():
-            character_groups_by_lang[lang_code] = CharacterGrouper.group_by_character(lang_segments)
-        
-        # Initialize streaming processor  
-        max_workers = inputs.get("batch_size", 4)
-        streaming_processor = StreamingWorkQueueProcessor(max_workers=max_workers, tts_node=self)
-        
-        # Process all segments with streaming
-        streaming_results = streaming_processor.process_streaming(
-            language_groups=language_groups,
-            character_groups_by_lang=character_groups_by_lang,
-            voice_refs=voice_refs,
-            inputs=inputs
+        # Convert to universal streaming segments
+        segments = StreamingCoordinator.convert_node_data_to_segments(
+            node_type='tts',
+            data=character_segments_with_lang,  # List of (idx, char, text, lang) tuples
+            voice_refs=voice_refs
         )
         
-        # Convert streaming results to expected format
+        # Create streaming configuration
+        config = StreamingConfig(
+            batch_size=inputs.get("batch_size", 4),
+            enable_model_preloading=True,
+            fallback_to_traditional=True,
+            streaming_threshold=1,
+            engine_config={
+                'device': inputs.get('device', 'auto'),
+                'enable_audio_cache': inputs.get('enable_audio_cache', True)
+            }
+        )
+        
+        # Create ChatterBox streaming adapter
+        adapter = ChatterBoxStreamingAdapter(self)
+        
+        # Process with universal streaming coordinator
+        results, metrics, success = StreamingCoordinator.process(
+            segments=segments,
+            adapter=adapter,
+            config=config,
+            **inputs
+        )
+        
+        # Convert results to expected format (maintain compatibility)
         audio_segments_with_order = []
-        for original_idx, audio_tensor in streaming_results.items():
-            audio_segments_with_order.append((original_idx, audio_tensor))
+        for original_idx in sorted(results.keys()):
+            audio_segments_with_order.append((original_idx, results[original_idx]))
+        
+        # Print performance summary
+        if success:
+            summary = metrics.get_summary()
+            print(f"✅ Streaming complete: {summary['completed_segments']}/{summary['total_segments']} segments, "
+                  f"{summary['throughput']:.2f} segments/sec")
             
         return audio_segments_with_order
 

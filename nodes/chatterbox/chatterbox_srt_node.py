@@ -460,19 +460,82 @@ The audio will match these exact timings.""",
             self.load_tts_model(device, required_language)
             self.current_language = required_language
             
-            # Route to streaming or traditional processing
+            # Route to streaming or traditional processing using universal system
             if batch_size > 0:
-                from engines.chatterbox.srt_batch_processing_router import SRTBatchProcessingRouter
-                router = SRTBatchProcessingRouter(self)
-                audio_segments, natural_durations, any_segment_cached = router.process_subtitles(
-                    subtitles, subtitle_language_groups, batch_size,
-                    language=language, device=device, exaggeration=exaggeration, temperature=temperature,
-                    cfg_weight=cfg_weight, seed=seed, reference_audio=reference_audio, 
-                    audio_prompt_path=audio_prompt_path, enable_audio_cache=enable_audio_cache,
-                    crash_protection_template=crash_protection_template,
-                    stable_audio_prompt_component=stable_audio_prompt_component,
-                    all_subtitle_segments=all_subtitle_segments, audio_prompt=audio_prompt
+                # Use universal streaming system
+                from utils.streaming import StreamingCoordinator, StreamingConfig
+                from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
+                
+                # Convert SRT data to universal segments
+                srt_segments_data = []
+                for lang_code, lang_subtitles in subtitle_language_groups.items():
+                    for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
+                        if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
+                            # Handle complex subtitles with character switching
+                            for char, text, seg_lang in character_segments_with_lang:
+                                srt_segments_data.append((i, subtitle, [(char, text, seg_lang)]))
+                        else:
+                            # Simple subtitle - single narrator
+                            srt_segments_data.append((i, subtitle, [('narrator', subtitle.text, lang_code)]))
+                
+                # Build voice references for characters
+                voice_refs = {'narrator': audio_prompt_path or 'none'}
+                try:
+                    from utils.voice.discovery import get_available_characters, get_character_mapping
+                    available_chars = get_available_characters()
+                    char_mapping = get_character_mapping(list(available_chars), "chatterbox")
+                    for char in available_chars:
+                        char_audio_path, _ = char_mapping.get(char, (audio_prompt_path or 'none', None))
+                        voice_refs[char] = char_audio_path
+                except ImportError:
+                    pass
+                
+                # Convert to universal segments
+                segments = StreamingCoordinator.convert_node_data_to_segments(
+                    node_type='srt',
+                    data=srt_segments_data,
+                    voice_refs=voice_refs
                 )
+                
+                # Create streaming configuration
+                config = StreamingConfig(
+                    batch_size=batch_size,
+                    enable_model_preloading=True,
+                    fallback_to_traditional=True,
+                    streaming_threshold=1,
+                    engine_config={'device': device}
+                )
+                
+                # Create adapter and process
+                adapter = ChatterBoxStreamingAdapter(self)
+                
+                # Pre-load models for efficiency (same as before)
+                print(f"🚀 SRT STREAMING: Pre-loading models for {len(subtitle_language_groups)} languages")
+                self._preload_language_models(subtitle_language_groups.keys(), device)
+                
+                # Process with universal coordinator
+                results, metrics, success = StreamingCoordinator.process(
+                    segments=segments,
+                    adapter=adapter,
+                    config=config,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight,
+                    seed=seed,
+                    enable_audio_cache=enable_audio_cache,
+                    crash_protection_template=crash_protection_template
+                )
+                
+                # Convert results to SRT format
+                audio_segments, natural_durations, any_segment_cached = StreamingCoordinator.convert_results_to_node_format(
+                    node_type='srt',
+                    results=results,
+                    original_data=subtitles,
+                    sample_rate=22050,
+                    enable_audio_cache=enable_audio_cache
+                )
+                
+                print(f"✅ SRT streaming complete: {metrics.get_summary()['completed_segments']} segments processed")
             else:
                 # Traditional sequential processing (existing logic)
                 audio_segments, natural_durations, any_segment_cached = self._process_traditional_srt_logic(
