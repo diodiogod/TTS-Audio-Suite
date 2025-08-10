@@ -746,3 +746,50 @@ The audio will match these exact timings.""",
                     any_segment_cached = True
         
         return audio_segments, natural_durations, any_segment_cached
+    
+    def _process_single_segment_for_streaming(self, original_idx, character, segment_text, language, voice_path, inputs):
+        """Process a single segment for the streaming processor using pre-loaded models."""
+        # This method is called by the streaming worker
+        try:
+            # Get the pre-loaded model for this language (thread-safe)
+            if hasattr(self, '_streaming_model_manager'):
+                preloaded_model = self._streaming_model_manager.get_model_for_language(language)
+                if preloaded_model:
+                    # Temporarily switch to the pre-loaded model for this segment
+                    original_model = self.tts_model
+                    self.tts_model = preloaded_model
+                    
+                    try:
+                        # Generate audio using the same method as traditional processing
+                        segment_audio = self._generate_tts_with_pause_tags(
+                            segment_text, voice_path, inputs.get("exaggeration", 0.5),
+                            inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
+                            True, character=character, seed=inputs.get("seed", 42),
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                            stable_audio_component=""
+                        )
+                        return segment_audio
+                    finally:
+                        # Restore original model
+                        self.tts_model = original_model
+            
+            # Fallback to original method if no pre-loaded model
+            print(f"⚠️ No pre-loaded model for {language}, using fallback")
+            from utils.models.language_mapper import get_model_for_language
+            required_model = get_model_for_language("chatterbox", language, "English")
+            
+            # Generate audio using the same method as traditional processing
+            segment_audio = self._generate_tts_with_pause_tags(
+                segment_text, voice_path, inputs.get("exaggeration", 0.5),
+                inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
+                True, character=character, seed=inputs.get("seed", 42),
+                enable_cache=inputs.get("enable_audio_cache", True),
+                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=""
+            )
+            return segment_audio
+            
+        except Exception as e:
+            print(f"❌ Streaming segment processing failed: {e}")
+            raise

@@ -96,55 +96,44 @@ class SRTBatchProcessingRouter:
         try:
             from utils.voice.discovery import get_available_characters, get_character_mapping
             available_chars = get_available_characters()
-            char_mapping = get_character_mapping()
+            
+            # Get character mapping for all available characters
+            char_mapping = get_character_mapping(list(available_chars), "chatterbox")
             
             # Build voice references for all characters
             for char in available_chars:
-                char_path = char_mapping.get(char, audio_prompt_path or 'none')
-                voice_refs[char] = char_path
+                char_audio_path, char_text = char_mapping.get(char, (audio_prompt_path or 'none', None))
+                voice_refs[char] = char_audio_path
         except ImportError:
             pass
         
-        # Convert subtitle groups to streaming format with proper character handling
+        # Convert subtitle groups to streaming format following TTS Text node pattern
+        # Build language_groups first using TUPLES like TTS Text node does
         for lang_code, lang_subtitles in subtitle_language_groups.items():
             language_groups[lang_code] = []
-            character_groups_by_lang[lang_code] = {}
             
             for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
                 if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
                     # Handle complex subtitles with character switching
                     for char, text, seg_lang in character_segments_with_lang:
-                        if char not in character_groups_by_lang[lang_code]:
-                            character_groups_by_lang[lang_code][char] = type('obj', (object,), {'segments': []})()
-                        
-                        # Create segment with character-specific text
-                        segment = type('obj', (object,), {
-                            'original_idx': i,
-                            'segment_text': text,  # Use character-specific text, not full subtitle
-                            'character': char,
-                            'language': seg_lang
-                        })()
-                        
-                        character_groups_by_lang[lang_code][char].segments.append(segment)
-                        language_groups[lang_code].append(segment)
+                        # Use same tuple format as TTS Text node: (idx, char, segment_text, lang)
+                        segment_tuple = (i, char, text, seg_lang)
+                        language_groups[lang_code].append(segment_tuple)
                         
                         # Ensure voice reference exists for this character
                         if char not in voice_refs:
                             voice_refs[char] = audio_prompt_path or 'none'
                 else:
                     # Simple subtitle - single narrator
-                    if 'narrator' not in character_groups_by_lang[lang_code]:
-                        character_groups_by_lang[lang_code]['narrator'] = type('obj', (object,), {'segments': []})()
-                    
-                    segment = type('obj', (object,), {
-                        'original_idx': i, 
-                        'segment_text': subtitle.text,
-                        'character': 'narrator',
-                        'language': lang_code
-                    })()
-                    
-                    character_groups_by_lang[lang_code]['narrator'].segments.append(segment)
-                    language_groups[lang_code].append(segment)
+                    # Use same tuple format as TTS Text node: (idx, char, segment_text, lang)
+                    segment_tuple = (i, 'narrator', subtitle.text, lang_code)
+                    language_groups[lang_code].append(segment_tuple)
+        
+        # Now group characters within each language using the same pattern as TTS Text node
+        from engines.chatterbox.character_grouper import CharacterGrouper
+        character_groups_by_lang = {}
+        for lang_code, lang_segments in language_groups.items():
+            character_groups_by_lang[lang_code] = CharacterGrouper.group_by_character(lang_segments)
         
         return language_groups, character_groups_by_lang, voice_refs
     
