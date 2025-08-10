@@ -472,9 +472,11 @@ Back to the main narrator voice for the conclusion.""",
                 # Apply crash protection first for consistency
                 protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
                 
+                # Use language-based model source for consistent cache keys across streaming/traditional
+                model_source = f"chatterbox_{language.lower()}"
                 cache_key = self._generate_segment_cache_key(
                     protected_text, exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device, language, character
+                    audio_component, model_source, self.device, language, character
                 )
                 
                 # Try cache first
@@ -507,9 +509,11 @@ Back to the main narrator voice for the conclusion.""",
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
                 
+                # Use language-based model source for consistent cache keys across streaming/traditional
+                model_source = f"chatterbox_{language.lower()}"
                 cache_key = self._generate_segment_cache_key(
                     protected_text, exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device, language, character
+                    audio_component, model_source, self.device, language, character
                 )
                 
                 # Try cache first  
