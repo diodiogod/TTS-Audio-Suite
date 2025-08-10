@@ -31,10 +31,13 @@ class SRTBatchProcessingRouter:
             (audio_segments, natural_durations, any_segment_cached)
         """
         total_segments = len(subtitles)
-        use_streaming = (batch_size > 1 and total_segments > batch_size)
+        use_streaming = (batch_size > 1)  # Let user decide: batch_size > 1 = streaming, regardless of segment count
         
         if use_streaming:
             print(f"🌊 ChatterBox SRT: Using streaming parallel processing with {batch_size} workers")
+            # Pre-load models for streaming efficiency (same as TTS Text node)
+            print(f"🚀 SRT STREAMING: Pre-loading models for {len(subtitle_language_groups)} languages")
+            self.srt_node._preload_language_models(subtitle_language_groups.keys(), kwargs.get('device', 'auto'))
             return self._process_streaming(subtitles, subtitle_language_groups, batch_size, **kwargs)
         else:
             print(f"📖 ChatterBox SRT: Using traditional sequential processing")  

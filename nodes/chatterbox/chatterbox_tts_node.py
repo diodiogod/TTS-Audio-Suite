@@ -716,7 +716,7 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Choose processing method based on batch_size: 0-1 = sequential, 2+ = streaming
                 current_batch_size = inputs.get("batch_size", 1)
-                use_streaming = (current_batch_size > 1 and total_segments > current_batch_size)
+                use_streaming = (current_batch_size > 1)  # Let user decide: batch_size > 1 = streaming, regardless of segment count
                 
                 if use_streaming:
                     # Pre-load ALL language models for streaming efficiency (prevents worker conflicts)

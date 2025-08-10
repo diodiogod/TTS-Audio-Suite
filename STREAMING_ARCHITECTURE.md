@@ -59,9 +59,9 @@ else:
 
 ## Real-World Performance
 
-**Before**: 26 subtitles = ~2-3 minutes (sequential)  
-**After**: 26 subtitles = ~10-15 seconds (9 parallel workers)  
-**Speedup**: ~10x faster with automatic fallback safety
+**Before**: 26 subtitles = sequential processing  
+**After**: 26 subtitles = parallel processing with 9 workers  
+**Speedup**: ~10-15% improvement due to model loading overhead in parallel workers
 
 ## User Experience
 

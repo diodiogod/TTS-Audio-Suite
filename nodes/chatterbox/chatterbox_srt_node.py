@@ -793,3 +793,20 @@ The audio will match these exact timings.""",
         except Exception as e:
             print(f"❌ Streaming segment processing failed: {e}")
             raise
+    
+    def _preload_language_models(self, language_codes, device):
+        """Pre-load all required language models for streaming to prevent worker conflicts."""
+        from engines.chatterbox.streaming_model_manager import StreamingModelManager
+        
+        # Create streaming model manager if not exists
+        if not hasattr(self, '_streaming_model_manager'):
+            self._streaming_model_manager = StreamingModelManager()
+        
+        # Pre-load models using the streaming model manager
+        self._streaming_model_manager.preload_models(
+            language_codes=list(language_codes),
+            model_manager=self,  # Pass self as model_manager (has load_tts_model method)
+            device=device
+        )
+        
+        print(f"🚀 SRT Pre-loading complete: {len(self._streaming_model_manager.preloaded_models)} models ready")
