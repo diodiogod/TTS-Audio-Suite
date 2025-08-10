@@ -59,7 +59,6 @@ This extension features a **unified modular architecture** supporting multiple T
 - **streaming_work_queue.py** - Streaming work queue processor for parallel TTS generation
 - **batch_processor.py** - Batch processor for character group processing with true parallel inference
 - **character_grouper.py** - Character grouping utilities for batch processing optimization
-- **dynamic_worker_manager.py** - Dynamic worker management for adaptive batch processing
 - **streaming_processor.py** - Streaming processor core implementation for parallel TTS workflows
 - **models/** - Complete ChatterBox model architecture (S3Gen, T3, tokenizers, voice encoder)
 
