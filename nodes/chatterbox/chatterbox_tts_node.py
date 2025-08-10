@@ -993,7 +993,7 @@ Back to the main narrator voice for the conclusion.""",
             required_model = get_model_for_language("chatterbox", lang, "English")
             
             if current_loaded_language != required_model:
-                # print(f"🔄 Traditional mode: Loading {required_model} model for {lang}")  # Commented - too verbose
+                print(f"🔄 Loading ChatterBox model '{required_model}' for {lang} language")
                 self.load_tts_model(inputs["device"], required_model)
                 current_loaded_language = required_model
             

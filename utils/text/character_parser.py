@@ -313,18 +313,27 @@ class CharacterParser:
         
         return ', '.join(summary_parts)
     
-    def set_engine_aware_default_language(self, engine_model: str, engine_type: str):
+    def set_engine_aware_default_language(self, model_or_language: str, engine_type: str):
         """
-        Set default language based on engine model to prevent unnecessary model switching.
+        Set default language based on engine model or language code.
         
         Args:
-            engine_model: Engine's configured model name
+            model_or_language: Either a model name (F5-TTS) or language code (ChatterBox)
             engine_type: Engine type ("f5tts" or "chatterbox")
         """
-        inferred_language = self._infer_language_from_engine_model(engine_model, engine_type)
-        if inferred_language:
-            self.default_language = inferred_language
-            # print(f"🔧 Character Parser: Default language set to '{inferred_language}' based on {engine_type} model '{engine_model}'")
+        # ChatterBox passes language codes directly, F5-TTS passes model names
+        if engine_type == "chatterbox":
+            # ChatterBox gives us language names (with possible local: prefix)
+            # Need to normalize to language codes
+            normalized_language = self._normalize_chatterbox_language(model_or_language)
+            self.default_language = normalized_language
+            # print(f"🔧 Character Parser: Default language set to '{normalized_language}' for ChatterBox (from '{model_or_language}')")
+        else:
+            # F5-TTS gives us model names, need to infer language
+            inferred_language = self._infer_language_from_engine_model(model_or_language, engine_type)
+            if inferred_language:
+                self.default_language = inferred_language
+                # print(f"🔧 Character Parser: Default language set to '{inferred_language}' based on F5-TTS model '{model_or_language}'")
     
     def _infer_language_from_engine_model(self, model_name: str, engine_type: str) -> Optional[str]:
         """

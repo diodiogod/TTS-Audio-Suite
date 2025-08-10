@@ -24,12 +24,16 @@ class LanguageModelMapper:
         Map language code to engine-specific model name.
         
         Args:
-            lang_code: Language code (e.g., 'en', 'de', 'fr')
+            lang_code: Language code (e.g., 'en', 'de', 'fr') or local model (e.g., 'local:German')
             default_model: Default model to use for base language
             
         Returns:
             Model name for the specified language
         """
+        # Handle local models - pass them through directly
+        if lang_code.startswith('local:'):
+            return lang_code  # Local models are used as-is
+        
         engine_mappings = self.mappings.get(self.engine_type, {})
         
         # Check if we should use the default model for this language
