@@ -259,7 +259,7 @@ class StreamingCoordinator:
                     text=text,
                     character=character,
                     language=language,
-                    voice_path=voice_refs.get(character, 'none'),
+                    voice_path=voice_refs.get(character, None),  # Use None for default voice
                     metadata={'source': 'tts'}
                 ))
                 
@@ -273,7 +273,7 @@ class StreamingCoordinator:
                         text=text,
                         character=character,
                         language=language,
-                        voice_path=voice_refs.get(character, 'none'),
+                        voice_path=voice_refs.get(character, None),  # Use None for default voice
                         metadata={
                             'source': 'srt',
                             'start_time': subtitle.start_time if hasattr(subtitle, 'start_time') else None,

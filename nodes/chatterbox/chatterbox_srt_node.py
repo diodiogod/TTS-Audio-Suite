@@ -452,14 +452,6 @@ The audio will match these exact timings.""",
                         subtitle_language_groups[single_lang] = []
                     subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
             
-            # SMART INITIALIZATION: Load the first language model we'll actually need
-            first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
-            from utils.models.language_mapper import get_model_for_language
-            required_language = get_model_for_language("chatterbox", first_language_code, language)
-            print(f"🚀 SRT: Smart initialization - loading {required_language} model for first language '{first_language_code}'")
-            self.load_tts_model(device, required_language)
-            self.current_language = required_language
-            
             # Route to streaming or traditional processing using universal system
             if batch_size > 0:
                 # Use universal streaming system
@@ -479,13 +471,14 @@ The audio will match these exact timings.""",
                             srt_segments_data.append((i, subtitle, [('narrator', subtitle.text, lang_code)]))
                 
                 # Build voice references for characters
-                voice_refs = {'narrator': audio_prompt_path or 'none'}
+                # Convert 'none' string to None for ChatterBox default voice handling
+                voice_refs = {'narrator': audio_prompt_path or None}
                 try:
-                    from utils.voice.discovery import get_available_characters, get_character_mapping
+                    # Use already imported functions (imported at module level)
                     available_chars = get_available_characters()
                     char_mapping = get_character_mapping(list(available_chars), "chatterbox")
                     for char in available_chars:
-                        char_audio_path, _ = char_mapping.get(char, (audio_prompt_path or 'none', None))
+                        char_audio_path, _ = char_mapping.get(char, (audio_prompt_path or None, None))
                         voice_refs[char] = char_audio_path
                 except ImportError:
                     pass
@@ -538,6 +531,13 @@ The audio will match these exact timings.""",
                 print(f"✅ SRT streaming complete: {metrics.get_summary()['completed_segments']} segments processed")
             else:
                 # Traditional sequential processing (existing logic)
+                # SMART INITIALIZATION: Load the first language model we'll actually need
+                first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
+                from utils.models.language_mapper import get_model_for_language
+                required_language = get_model_for_language("chatterbox", first_language_code, language)
+                print(f"🚀 SRT: Smart initialization - loading {required_language} model for first language '{first_language_code}'")
+                self.load_tts_model(device, required_language)
+                self.current_language = required_language
                 audio_segments, natural_durations, any_segment_cached = self._process_traditional_srt_logic(
                     subtitles, subtitle_language_groups, language, device, exaggeration, temperature,
                     cfg_weight, seed, reference_audio, audio_prompt_path, enable_audio_cache,

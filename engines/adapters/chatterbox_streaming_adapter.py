@@ -281,7 +281,7 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
             # Direct model generation
             return self.node.tts_model.generate(
                 text=text,
-                audio_prompt_path=voice_path if voice_path != 'none' else None,
+                audio_prompt_path=voice_path,  # voice_path is already None for default voice
                 exaggeration=exaggeration,
                 cfg_weight=cfg_weight,
                 temperature=temperature,
