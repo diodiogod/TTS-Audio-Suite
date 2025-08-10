@@ -962,10 +962,14 @@ Back to the main narrator voice for the conclusion.""",
         from utils.streaming import StreamingCoordinator, StreamingConfig
         from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
         
+        # Convert character_segments_with_lang to indexed format for streaming
+        # character_segments_with_lang is (char, text, lang) but we need (idx, char, text, lang)
+        indexed_segments = [(idx, char, text, lang) for idx, (char, text, lang) in enumerate(character_segments_with_lang)]
+        
         # Convert to universal streaming segments
         segments = StreamingCoordinator.convert_node_data_to_segments(
             node_type='tts',
-            data=character_segments_with_lang,  # List of (idx, char, text, lang) tuples
+            data=indexed_segments,  # List of (idx, char, text, lang) tuples
             voice_refs=voice_refs
         )
         

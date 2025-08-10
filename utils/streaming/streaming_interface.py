@@ -127,10 +127,11 @@ class StreamingEngineAdapter(ABC):
             if segment.language not in groups:
                 groups[segment.language] = LanguageGroup(
                     language=segment.language,
-                    segments=[],
+                    segments=[segment],  # Initialize with first segment to avoid empty validation error
                     model_name=self.get_model_for_language(segment.language)
                 )
-            groups[segment.language].segments.append(segment)
+            else:
+                groups[segment.language].segments.append(segment)
         return groups
     
     def group_segments_by_character(self, segments: List[StreamingSegment]) -> Dict[str, Dict[str, CharacterGroup]]:
@@ -156,10 +157,11 @@ class StreamingEngineAdapter(ABC):
                     result[language][char] = CharacterGroup(
                         character=char,
                         language=language,
-                        segments=[],
+                        segments=[segment],  # Initialize with first segment to avoid empty validation error
                         voice_path=segment.voice_path
                     )
-                result[language][char].segments.append(segment)
+                else:
+                    result[language][char].segments.append(segment)
                 
         return result
     
