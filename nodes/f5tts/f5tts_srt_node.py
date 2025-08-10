@@ -730,4 +730,116 @@ Hello! This is F5-TTS SRT with character switching.
         from utils.timing.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
         return reporter.generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
+    
+    def _process_single_segment_for_streaming(self, original_idx, character, segment_text, 
+                                               language, voice_path, inputs):
+        """
+        Process a single SRT segment for the streaming processor.
+        
+        This method enables F5-TTS SRT to work with the universal streaming system,
+        preserving all existing SRT-specific functionality including timing,
+        reference audio handling, and caching.
+        
+        Args:
+            original_idx: Original segment index for result ordering
+            character: Character name for this segment
+            segment_text: Text to generate
+            language: Language code for this segment
+            voice_path: Path to voice reference file
+            inputs: Processing parameters dict including SRT-specific params
+            
+        Returns:
+            Generated audio tensor
+        """
+        try:
+            # Extract F5-TTS parameters from inputs
+            model = inputs.get('model', 'F5TTS_Base')
+            device = inputs.get('device', 'auto')
+            temperature = inputs.get('temperature', 0.8)
+            speed = inputs.get('speed', 1.0)
+            target_rms = inputs.get('target_rms', 0.1)
+            cross_fade_duration = inputs.get('cross_fade_duration', 0.15)
+            nfe_step = inputs.get('nfe_step', 32)
+            cfg_strength = inputs.get('cfg_strength', 2.0)
+            seed = inputs.get('seed', 1)
+            enable_cache = inputs.get('enable_audio_cache', True)
+            
+            # Get the F5-TTS model for this language using language mapper
+            from utils.models.language_mapper import get_model_for_language
+            required_model = get_model_for_language('f5tts', language, model)
+            
+            # Ensure correct model is loaded (streaming coordinator should pre-load)
+            current_model = getattr(self, 'current_model_name', None)
+            if current_model != required_model:
+                self.load_f5tts_model(required_model, device)
+            
+            # Handle reference audio and text for this character
+            ref_audio_path = None
+            ref_text = None
+            
+            if voice_path and voice_path != 'none' and os.path.exists(voice_path):
+                # Load reference from character voice file
+                ref_audio_path = voice_path
+                
+                # Check for companion text file
+                text_file = voice_path.replace('.wav', '.txt').replace('.mp3', '.txt')
+                if os.path.exists(text_file):
+                    with open(text_file, 'r', encoding='utf-8') as f:
+                        ref_text = f.read().strip()
+                
+                if not ref_text:
+                    # Try .reference.txt pattern
+                    ref_text_file = voice_path.replace('.wav', '.reference.txt').replace('.mp3', '.reference.txt')
+                    if os.path.exists(ref_text_file):
+                        with open(ref_text_file, 'r', encoding='utf-8') as f:
+                            ref_text = f.read().strip()
+                
+                if not ref_text:
+                    ref_text = "This is a reference voice for synthesis."
+            else:
+                # Use main reference from inputs
+                ref_audio_path = inputs.get('audio_prompt_path', '')
+                ref_text = inputs.get('ref_text', "This is a reference voice for synthesis.")
+            
+            # Generate stable audio component for caching
+            if character != "narrator":
+                stable_audio_component = f"srt_streaming_char_{character}_{language}_{original_idx}"
+            else:
+                stable_audio_component = f"srt_streaming_{language}_{original_idx}"
+            
+            # Validate and clamp nfe_step (F5-TTS specific range)
+            safe_nfe_step = max(1, min(nfe_step, 71))
+            
+            # Check cache if enabled
+            if enable_cache:
+                cache_key = self._generate_segment_cache_key(
+                    f"{character}:{segment_text}", required_model, device,
+                    stable_audio_component, ref_text, temperature, speed,
+                    target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed
+                )
+                cached_audio = self._get_cached_segment_audio(cache_key)
+                if cached_audio:
+                    print(f"💾 F5-TTS SRT streaming: Cache hit for {character} segment {original_idx}")
+                    return cached_audio[0]
+            
+            # Generate audio for this segment
+            print(f"🔄 F5-TTS SRT streaming: Generating {character} segment {original_idx} in {language}")
+            
+            # Generate with F5-TTS (using base class method)
+            wav = self.generate_f5tts_with_pause_tags(
+                segment_text, ref_audio_path, ref_text, temperature, speed,
+                target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed
+            )
+            
+            # Cache the result if enabled and generation succeeded
+            if enable_cache and wav is not None:
+                natural_duration = wav.shape[-1] / self.f5tts_sample_rate
+                GLOBAL_AUDIO_CACHE[cache_key] = (wav, natural_duration)
+            
+            return wav
+            
+        except Exception as e:
+            print(f"❌ F5-TTS SRT streaming segment {original_idx} failed: {e}")
+            # Return silence as fallback (1 second at F5-TTS sample rate)
+            return torch.zeros((1, self.f5tts_sample_rate))
 
