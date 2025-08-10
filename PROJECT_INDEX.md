@@ -7,6 +7,7 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and RVC voice conversion
+- **Streaming Parallel Processing**: ChatterBox nodes support batch processing with configurable workers for faster generation
 - **Multilingual Support**: German and Norwegian models for both ChatterBox TTS and Voice Conversion
 - **Smart Language Grouping**: SRT processing by language groups to minimize model switching
 - **Character Voice Management**: Centralized character voice system with flexible input types
@@ -54,6 +55,12 @@ This extension features a **unified modular architecture** supporting multiple T
 - **vc.py** - ChatterBox Voice Conversion with multilingual model loading
 - **language_models.py** - Language model registry for English, German, and Norwegian models
 - **audio_timing.py** - Audio timing utilities and time-stretching functionality
+- **srt_batch_processing_router.py** - SRT batch processing router for streaming vs traditional processing decision
+- **streaming_work_queue.py** - Streaming work queue processor for parallel TTS generation
+- **batch_processor.py** - Batch processor for character group processing with true parallel inference
+- **character_grouper.py** - Character grouping utilities for batch processing optimization
+- **dynamic_worker_manager.py** - Dynamic worker management for adaptive batch processing
+- **streaming_processor.py** - Streaming processor core implementation for parallel TTS workflows
 - **models/** - Complete ChatterBox model architecture (S3Gen, T3, tokenizers, voice encoder)
 
 **engines/f5tts/** - F5-TTS engine implementation and editing capabilities
@@ -107,10 +114,10 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ### Engine-Specific Nodes
 
-**nodes/chatterbox/** - ChatterBox-specific legacy nodes
-- **chatterbox_tts_node.py** - Direct ChatterBox TTS node
-- **chatterbox_srt_node.py** - ChatterBox SRT processing node
-- **chatterbox_vc_node.py** - ChatterBox voice conversion with iterative refinement
+**nodes/chatterbox/** - ChatterBox engine implementation nodes (called by Unified nodes)
+- **chatterbox_tts_node.py** - ChatterBox TTS engine node with streaming batch processing and character switching
+- **chatterbox_srt_node.py** - ChatterBox SRT engine node with streaming parallel processing and timing modes  
+- **chatterbox_vc_node.py** - ChatterBox voice conversion engine with iterative refinement
 
 **nodes/f5tts/** - F5-TTS specific nodes
 - **f5tts_node.py** - Direct F5-TTS generation node
