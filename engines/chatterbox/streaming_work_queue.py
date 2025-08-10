@@ -32,6 +32,10 @@ class WorkItem:
     exaggeration: float
     temperature: float
     cfg_weight: float
+    seed: int
+    enable_audio_cache: bool
+    crash_protection_template: str
+    device: str
 
 @dataclass
 class WorkResult:
@@ -141,10 +145,11 @@ class StreamingWorker:
                     "exaggeration": work_item.exaggeration,
                     "temperature": work_item.temperature,
                     "cfg_weight": work_item.cfg_weight,
+                    "seed": work_item.seed,
                     "enable_chunking": False,  # Don't chunk in streaming - already handled
-                    "enable_audio_cache": True,
-                    "crash_protection_template": "hmm ,, {seg} hmm ,,",
-                    "device": "auto"
+                    "enable_audio_cache": work_item.enable_audio_cache,
+                    "crash_protection_template": work_item.crash_protection_template,
+                    "device": work_item.device
                 }
             )
             
@@ -252,7 +257,11 @@ class StreamingWorkQueueProcessor:
                         original_index=segment.original_idx,
                         exaggeration=inputs.get("exaggeration", 0.5),
                         temperature=inputs.get("temperature", 0.8),
-                        cfg_weight=inputs.get("cfg_weight", 0.5)
+                        cfg_weight=inputs.get("cfg_weight", 0.5),
+                        seed=inputs.get("seed", 0),
+                        enable_audio_cache=inputs.get("enable_audio_cache", True),
+                        crash_protection_template=inputs.get("crash_protection_template", ""),
+                        device=inputs.get("device", "auto")
                     )
                     
                     self.work_queue.put(work_item)

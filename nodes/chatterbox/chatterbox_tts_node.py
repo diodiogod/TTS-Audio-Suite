@@ -480,10 +480,13 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
                 # Try cache first
+                # print(f"🔍 STREAMING cache: text='{protected_text}', char='{character}', lang='{language}', model='{model_source}', seed={seed}, exag={exaggeration}, temp={temperature}, cfg={cfg_weight}, device='{self.device}', audio='{audio_component}'")
                 cached_data = self._get_cached_segment_audio(cache_key)
                 if cached_data:
                     print(f"💾 CACHE HIT for {character}: '{processed_text[:30]}...'")
                     return cached_data[0]
+                # else:
+                #     print(f"❌ CACHE MISS for {character}: '{processed_text[:30]}...'")
                 
                 # Generate and cache
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
@@ -517,10 +520,13 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
                 # Try cache first  
+                # print(f"🔍 TRADITIONAL cache: text='{protected_text}', char='{character}', lang='{language}', model='{model_source}', seed={seed}, exag={exaggeration}, temp={temperature}, cfg={cfg_weight}, device='{self.device}', audio='{audio_component}'")
                 cached_data = self._get_cached_segment_audio(cache_key)
                 if cached_data:
                     print(f"💾 CACHE HIT for {character}: '{text_content[:30]}...'")
                     return cached_data[0]
+                # else:
+                #     print(f"❌ CACHE MISS for {character}: '{text_content[:30]}...'")
                 
                 # Generate and cache
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
@@ -737,7 +743,7 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Generate info
                 total_duration = wav.size(-1) / self.tts_model.sr
-                model_source = self.model_manager.get_model_source("tts")
+                model_source = f"chatterbox_{language.lower()}"
                 
                 language_info = ""
                 if has_multiple_languages:
@@ -755,8 +761,8 @@ Back to the main narrator voice for the conclusion.""",
                     pause_content_cached = True
                     for segment_type, content in pause_segments:
                         if segment_type == 'text':  # Only check text segments, not pause segments
-                            # Get model source safely
-                            model_source = inputs.get("model_source") or self.model_manager.get_model_source("tts")
+                            # Use language-based model source for consistent cache keys across streaming/traditional
+                            model_source = f"chatterbox_{language.lower()}"
                             cache_key = self._generate_segment_cache_key(
                                 f"narrator:{content}", inputs["exaggeration"], inputs["temperature"],
                                 inputs["cfg_weight"], inputs["seed"], stable_audio_component,
@@ -776,7 +782,7 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Generate audio with pause tags using special processor
                 wav = self._generate_with_pause_tags(pause_segments, inputs, main_audio_prompt)
-                model_source = self.model_manager.get_model_source("tts")
+                model_source = f"chatterbox_{language.lower()}"
                 
                 info = f"Generated audio with pause tags (narrator voice, {model_source} models)"
                 
@@ -798,8 +804,8 @@ Back to the main narrator voice for the conclusion.""",
                         
                         single_content_cached = True
                         for cache_text in cache_texts:
-                            # Get model source safely
-                            model_source = inputs.get("model_source") or self.model_manager.get_model_source("tts")
+                            # Use language-based model source for consistent cache keys across streaming/traditional
+                            model_source = f"chatterbox_{language.lower()}"
                             cache_key = self._generate_segment_cache_key(
                                 f"narrator:{cache_text}", inputs["exaggeration"], inputs["temperature"],
                                 inputs["cfg_weight"], inputs["seed"], stable_audio_component,
@@ -823,7 +829,7 @@ Back to the main narrator voice for the conclusion.""",
                             
                             for cache_text in cache_texts:
                                 # Get model source safely
-                                model_source = inputs.get("model_source") or self.model_manager.get_model_source("tts")
+                                model_source = f"chatterbox_{language.lower()}"
                                 cache_key = self._generate_segment_cache_key(
                                     f"narrator:{cache_text}", inputs["exaggeration"], inputs["temperature"],
                                     inputs["cfg_weight"], inputs["seed"], stable_audio_component,
@@ -855,7 +861,7 @@ Back to the main narrator voice for the conclusion.""",
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=stable_audio_component
                     )
-                    model_source = self.model_manager.get_model_source("tts")
+                    model_source = f"chatterbox_{language.lower()}"
                     info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
                 else:
                     # Split into chunks using improved chunker (UNCHANGED)
@@ -892,7 +898,7 @@ Back to the main narrator voice for the conclusion.""",
                     # Generate info (UNCHANGED)
                     total_duration = wav.size(-1) / self.tts_model.sr
                     avg_chunk_size = text_length // len(chunks)
-                    model_source = self.model_manager.get_model_source("tts")
+                    model_source = f"chatterbox_{language.lower()}"
                     info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, {model_source} models)"
             
             # Return audio in ComfyUI format
@@ -933,7 +939,7 @@ Back to the main narrator voice for the conclusion.""",
             chunk_audio = self._generate_tts_with_pause_tags(
                 chunk_text, char_audio_prompt, inputs["exaggeration"],
                 inputs["temperature"], inputs["cfg_weight"], required_language,
-                True, character=character, seed=inputs["seed"],
+                True, character=character, seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=stable_audio_component
@@ -1002,7 +1008,7 @@ Back to the main narrator voice for the conclusion.""",
             
             segment_audio = self._generate_tts_with_pause_tags(
                 segment_text, char_audio_prompt, inputs["exaggeration"],
-                inputs["temperature"], inputs["cfg_weight"], required_model,
+                inputs["temperature"], inputs["cfg_weight"], lang,
                 True, character=char, seed=inputs["seed"],
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
@@ -1037,7 +1043,7 @@ Back to the main narrator voice for the conclusion.""",
                         segment_audio = self._generate_tts_with_pause_tags(
                             segment_text, voice_path, inputs.get("exaggeration", 0.5),
                             inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
-                            True, character=character, seed=inputs.get("seed", 0),
+                            True, character=character, seed=inputs.get("seed", 42),
                             enable_cache=inputs.get("enable_audio_cache", True),
                             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                             stable_audio_component=""
@@ -1056,8 +1062,8 @@ Back to the main narrator voice for the conclusion.""",
             # This preserves pause tag processing
             segment_audio = self._generate_tts_with_pause_tags(
                 segment_text, voice_path, inputs.get("exaggeration", 0.5),
-                inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), required_model,
-                True, character=character, seed=inputs.get("seed", 0),
+                inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
+                True, character=character, seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=""

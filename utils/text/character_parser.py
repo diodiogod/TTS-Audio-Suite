@@ -235,9 +235,12 @@ class CharacterParser:
             explicit_language: Language explicitly specified in tag
             
         Returns:
-            Language code to use
+            Language code to use (normalized, no local: prefix)
         """
         if explicit_language:
+            # Normalize explicit language immediately
+            if explicit_language.startswith("local:"):
+                explicit_language = explicit_language[6:]
             return explicit_language
         
         character_lower = character.lower()
@@ -252,6 +255,9 @@ class CharacterParser:
         # Priority 1: Character language defaults (internal cache)
         if character_lower in self.character_language_defaults:
             resolved_language = self.character_language_defaults[character_lower]
+            # Normalize alias language
+            if resolved_language and resolved_language.startswith("local:"):
+                resolved_language = resolved_language[6:]
             # Only log once per character
             if character_lower not in self._logged_characters:
                 print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
@@ -264,9 +270,12 @@ class CharacterParser:
                 alias_language = voice_discovery.get_character_default_language(character_lower)
                 if alias_language:
                     resolved_language = alias_language
+                    # Normalize alias language from voice discovery
+                    if resolved_language and resolved_language.startswith("local:"):
+                        resolved_language = resolved_language[6:]
                     # Only log once per character
                     if character_lower not in self._logged_characters:
-                        print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{alias_language}'")
+                        print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
                         self._logged_characters.add(character_lower)
                 # Remove spam: don't log "has no language default" for every character
             except Exception:
@@ -275,6 +284,10 @@ class CharacterParser:
         # Priority 3: Fall back to global default
         if not resolved_language:
             resolved_language = self.default_language
+        
+        # Normalize local: prefix for consistency
+        if resolved_language and resolved_language.startswith("local:"):
+            resolved_language = resolved_language[6:]
         
         # Cache the result
         self._character_language_cache[cache_key] = resolved_language
@@ -369,6 +382,35 @@ class CharacterParser:
             pass
         
         return None  # Can't infer language
+    
+    def _normalize_chatterbox_language(self, language_input: str) -> str:
+        """
+        Normalize ChatterBox language input to canonical language code.
+        
+        Args:
+            language_input: ChatterBox language (e.g., "German", "local:German", "de")
+            
+        Returns:
+            Normalized language code (local: prefix removed for consistency)
+        """
+        # Remove local: prefix for consistency - model loading will still use local models
+        if language_input.startswith("local:"):
+            language_input = language_input[6:]
+        
+        # Map ChatterBox model names to language codes
+        chatterbox_language_map = {
+            "english": "en",
+            "german": "de", 
+            "norwegian": "no"
+        }
+        
+        # Check if it's a ChatterBox model name
+        normalized = language_input.lower()
+        if normalized in chatterbox_language_map:
+            return chatterbox_language_map[normalized]
+        
+        # If it's already a language code or unknown, return as-is
+        return normalized
     
     def normalize_character_name(self, character_name: str) -> str:
         """

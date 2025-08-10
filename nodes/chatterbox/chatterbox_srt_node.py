@@ -607,7 +607,7 @@ The audio will match these exact timings.""",
             # Generate info with cache status and stretching method - ORIGINAL LOGIC FROM LINES 1141-1168
             total_duration = self.AudioTimingUtils.get_audio_duration(final_audio, self.tts_model.sr)
             cache_status = "cached" if any_segment_cached else "generated"
-            model_source = self.model_manager.get_model_source("tts")
+            model_source = f"chatterbox_{language.lower()}"
             stretch_info = ""
             
             # Get stretching method info - ORIGINAL LOGIC

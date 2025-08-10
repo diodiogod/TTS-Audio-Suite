@@ -30,9 +30,9 @@ class LanguageModelMapper:
         Returns:
             Model name for the specified language
         """
-        # Handle local models - pass them through directly
+        # Handle local models - normalize to base model name
         if lang_code.startswith('local:'):
-            return lang_code  # Local models are used as-is
+            return lang_code[6:]  # Remove "local:" prefix - they use same model as base language
         
         engine_mappings = self.mappings.get(self.engine_type, {})
         
