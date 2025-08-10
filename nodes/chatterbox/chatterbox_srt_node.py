@@ -532,12 +532,14 @@ The audio will match these exact timings.""",
             else:
                 # Traditional sequential processing (existing logic)
                 # SMART INITIALIZATION: Load the first language model we'll actually need
+                # Use first language group (alphabetical order) since that's the processing order
                 first_language_code = sorted(subtitle_language_groups.keys())[0] if subtitle_language_groups else 'en'
                 from utils.models.language_mapper import get_model_for_language
                 required_language = get_model_for_language("chatterbox", first_language_code, language)
-                print(f"🚀 SRT: Smart initialization - loading {required_language} model for first language '{first_language_code}'")
+                print(f"🚀 SRT: Smart initialization - loading {required_language} model for first language group '{first_language_code}'")
                 self.load_tts_model(device, required_language)
                 self.current_language = required_language
+                self.current_model_name = required_language  # For multilingual engine compatibility
                 audio_segments, natural_durations, any_segment_cached = self._process_traditional_srt_logic(
                     subtitles, subtitle_language_groups, language, device, exaggeration, temperature,
                     cfg_weight, seed, reference_audio, audio_prompt_path, enable_audio_cache,
@@ -731,6 +733,7 @@ The audio will match these exact timings.""",
                 print(f"🎯 SRT: Switching to {required_language} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}'")
                 self.load_tts_model(device, required_language)
                 self.current_language = required_language
+                self.current_model_name = required_language  # For multilingual engine compatibility
             else:
                 print(f"✅ SRT: Using {required_language} model for {len(lang_subtitles)} subtitle(s) in '{lang_code}' (already loaded)")
             

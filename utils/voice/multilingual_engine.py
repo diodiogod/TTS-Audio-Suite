@@ -142,11 +142,24 @@ class MultilingualEngine:
                         char_audio = params.get("main_audio_reference")
                         char_text = params.get("main_text_reference") 
                 else:  # chatterbox
-                    char_audio_tuple = character_mapping.get(character, (None, None))
-                    if char_audio_tuple[0]:
-                        char_audio = char_audio_tuple[0]  # Only get the audio path
+                    # Check if we should prioritize main_audio_reference over character mapping
+                    main_ref = params.get("main_audio_reference")
+                    
+                    # If character is "narrator" or an alias for narrator (like david_attenborough cc3),
+                    # and we have a main reference, use the main reference for language-only tags
+                    narrator_aliases = ["narrator", "david_attenborough cc3"]
+                    should_use_main_ref = (character in narrator_aliases and main_ref)
+                    
+                    if should_use_main_ref:
+                        # Language-only tag like [de:] - use main narrator voice (Tony)
+                        char_audio = main_ref
                     else:
-                        char_audio = params.get("main_audio_reference")
+                        # Explicit character tag like [de:Alice] - use character voice
+                        char_audio_tuple = character_mapping.get(character, (None, None))
+                        if char_audio_tuple[0]:
+                            char_audio = char_audio_tuple[0]  # Only get the audio path
+                        else:
+                            char_audio = main_ref
                 
                 # Show generation message with character and language info
                 if character == "narrator":
