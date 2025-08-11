@@ -414,7 +414,7 @@ The audio will match these exact timings.""",
         # Set seed for reproducibility
         self.set_seed(seed)
         
-        # Generate audio using the pre-loaded model directly
+        # Generate audio using the pre-loaded model directly with caching
         print(f"🔄 Generating {language} audio with preloaded model (ID: {id(model)})")
         
         # Apply crash protection to text if needed
@@ -422,6 +422,33 @@ The audio will match these exact timings.""",
             protected_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
             print(f"🛡️ Applied crash protection: '{text}' → '{protected_text}'")
             text = protected_text
+        
+        # Handle caching for streaming generation - use same unified cache system as traditional
+        if enable_cache:
+            from utils.audio.cache import create_cache_function
+            
+            # Use stable audio component for consistent caching
+            audio_component = stable_audio_component if stable_audio_component else str(voice_path or "main_reference")
+            
+            # Create cache function using same parameters as traditional method for consistency
+            cache_fn = create_cache_function(
+                engine_type="chatterbox",
+                character=character,
+                exaggeration=exaggeration,
+                temperature=temperature,
+                cfg_weight=cfg_weight,
+                seed=seed,
+                audio_component=audio_component,
+                model_source="streaming_preloaded",  # Distinguish streaming cache from traditional
+                device=self.device if hasattr(self, 'device') else "auto",
+                language=language
+            )
+            
+            # Try cache first
+            cached_audio = cache_fn(text)
+            if cached_audio is not None:
+                print(f"💾 CACHE HIT for streaming segment: '{text[:30]}...'")
+                return cached_audio
         
         # Generate audio using the pre-loaded model
         try:
@@ -439,6 +466,11 @@ The audio will match these exact timings.""",
                     audio = audio.detach()
                 
                 print(f"✅ Generated {language} audio using preloaded model (shape: {audio.shape})")
+                
+                # Cache the result if caching is enabled
+                if enable_cache:
+                    cache_fn(text, audio_result=audio)
+                
                 return audio
         except Exception as e:
             print(f"❌ Failed to generate {language} audio: {e}")

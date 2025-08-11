@@ -28,7 +28,7 @@ class StreamingModelManager:
         return models
     
     def preload_models(self, language_codes: List[str], model_manager, device: str) -> None:
-        """Pre-load all required models for the given languages."""
+        """Pre-load all required models for the given languages, reusing existing models when possible."""
         required_models = self.get_required_models(language_codes)
         available_languages = get_available_languages()
         
@@ -36,41 +36,48 @@ class StreamingModelManager:
         
         for model_name in required_models:
             if model_name in self.preloaded_models:
-                print(f"♻️ {model_name} already loaded")
+                print(f"♻️ {model_name} already loaded in streaming cache")
                 continue
                 
             if model_name not in available_languages:
                 print(f"⚠️ {model_name} model not available, using English fallback")
                 model_name = 'English'
-                
-            print(f"📦 Loading {model_name} model...")
-            try:
-                # CRITICAL FIX: Create completely separate model instances
-                # Bypass model manager caching to ensure each language has its own instance
-                
-                # Create a temporary ModelManager with fresh cache for this specific model
-                from utils.models.manager import ModelManager
-                temp_manager = ModelManager()
-                # Clear any cached models to ensure fresh loading
-                temp_manager._model_cache.clear()
-                
-                # Load with force_reload to bypass any shared state
-                model_instance = temp_manager.load_tts_model(device, model_name, force_reload=True)
-                
-                # Store the model with debugging
-                self.preloaded_models[model_name] = model_instance
-                print(f"✅ {model_name} model loaded with separate instance")
-                print(f"🔍 DEBUG: Stored model ID for {model_name}: {id(model_instance)}")
-                
-                # Verify all stored models are different
-                if len(self.preloaded_models) > 1:
-                    print(f"🔍 DEBUG: All stored model IDs: {[(k, id(v)) for k, v in self.preloaded_models.items()]}")
-            except Exception as e:
-                print(f"❌ Failed to load {model_name}: {e}")
-                # Fallback to using node's method (will overwrite but at least works)
-                model_instance = model_manager.load_tts_model(device, model_name, force_reload=True)
-                self.preloaded_models[model_name] = model_instance
-                print(f"⚠️ Used fallback loading for {model_name}")
+            
+            # SMART REUSE: Check if main ModelManager already has this model loaded
+            model_found_in_cache = False
+            for cache_key, cached_model in model_manager._model_cache.items():
+                # Check if cache key contains our model name and device
+                if (model_name.lower() in cache_key.lower() and 
+                    device in cache_key and 
+                    cached_model is not None):
+                    print(f"♻️ Reusing {model_name} from main ModelManager cache (ID: {id(cached_model)})")
+                    self.preloaded_models[model_name] = cached_model
+                    model_found_in_cache = True
+                    break
+            
+            # Only load if not found in existing cache
+            if not model_found_in_cache:
+                print(f"📦 Loading {model_name} model...")
+                try:
+                    # Use the main model manager to load (this will cache it properly)
+                    model_instance = model_manager.load_tts_model(device, model_name)
+                    
+                    # Store reference in our streaming cache
+                    self.preloaded_models[model_name] = model_instance
+                    print(f"✅ {model_name} model loaded and cached (ID: {id(model_instance)})")
+                    
+                except Exception as e:
+                    print(f"❌ Failed to load {model_name}: {e}")
+                    # Try fallback to English if not already English
+                    if model_name != 'English' and 'English' in self.preloaded_models:
+                        print(f"🔄 Using English model as fallback for {model_name}")
+                        self.preloaded_models[model_name] = self.preloaded_models['English']
+                    else:
+                        print(f"❌ No fallback available for {model_name}")
+            
+            # Debug: Show all current model IDs
+            if len(self.preloaded_models) > 1:
+                print(f"🔍 DEBUG: All stored model IDs: {[(k, id(v)) for k, v in self.preloaded_models.items()]}")
         
         print(f"🚀 Model pre-loading complete! {len(self.preloaded_models)} models ready")
     
