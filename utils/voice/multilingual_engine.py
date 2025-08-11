@@ -71,6 +71,9 @@ class MultilingualEngine:
         # 1. Parse character segments with languages from original text
         character_segments_with_lang = character_parser.split_by_character_with_language(text)
         
+        # Get detailed segments to access original character information
+        detailed_segments = character_parser.parse_text_segments(text)
+        
         # 2. Analyze segments
         characters = list(set(char for char, _, _ in character_segments_with_lang))
         languages = list(set(lang for _, _, lang in character_segments_with_lang))
@@ -84,7 +87,7 @@ class MultilingualEngine:
             print(f"🎭 {self.engine_type.title()}: Character switching mode - found characters: {', '.join(characters)}")
         
         # 3. Group segments by language to optimize model loading
-        language_groups = self._group_segments_by_language(character_segments_with_lang)
+        language_groups = self._group_segments_by_language_with_original(detailed_segments)
         
         # 4. Get character mapping for all characters
         character_mapping = get_character_mapping(characters, engine_type=self.engine_type)
@@ -114,8 +117,10 @@ class MultilingualEngine:
             else:
                 # Load base model if this is the first time we need to generate anything
                 if not base_model_loaded:
-                    print(f"🔄 Loading base {self.engine_type.title()} model for generation")
-                    engine_adapter.load_base_model(params.get("model", "default"), params.get("device", "auto"))
+                    # CRITICAL FIX: Load the required model for this language, not the default model
+                    # This ensures the correct tokenizer is loaded
+                    print(f"🔄 Loading base {self.engine_type.title()} model for generation ({required_model})")
+                    engine_adapter.load_base_model(required_model, params.get("device", "auto"))
                     base_model_loaded = True
                 
                 # Only load language model if we haven't loaded this specific model yet
@@ -124,15 +129,24 @@ class MultilingualEngine:
                     try:
                         engine_adapter.load_language_model(required_model, params.get("device", "auto"))
                         self.loaded_models.add(required_model)  # Track that this model is now loaded
+                        # Update node's current language state
+                        engine_adapter.node.current_language = required_model
+                        engine_adapter.node.current_model_name = required_model
+                        print(f"🔄 Updated current_language to '{required_model}'")
                     except Exception as e:
                         print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
-                        print(f"🔄 Falling back to default model")
-                        engine_adapter.load_base_model(params.get("model", "default"), params.get("device", "auto"))
+                        print(f"🔄 Falling back to English model")
+                        engine_adapter.load_base_model("English", params.get("device", "auto"))
                 else:
                     print(f"💾 Model '{required_model}' already loaded - reusing for language '{lang_code}' ({len(lang_segments)} segments)")
+                    # Still need to update current language state even if model is cached
+                    engine_adapter.node.current_language = required_model
+                    engine_adapter.node.current_model_name = required_model
+                    print(f"🔄 Updated current_language to '{required_model}' (cached)")
             
             # Process each segment in this language group
-            for original_idx, character, segment_text, segment_lang in lang_segments:
+            for segment_data in lang_segments:
+                original_idx, character, segment_text, segment_lang, original_character = segment_data
                 segment_display_idx = original_idx + 1  # For display (1-based)
                 
                 # Get character voice or fallback to main
@@ -142,16 +156,17 @@ class MultilingualEngine:
                         char_audio = params.get("main_audio_reference")
                         char_text = params.get("main_text_reference") 
                 else:  # chatterbox
-                    # Check if we should prioritize main_audio_reference over character mapping
+                    # CRITICAL FIX: Check if original character (before alias resolution) was "narrator"
+                    # to detect language-only tags like [de:] that should use main voice
                     main_ref = params.get("main_audio_reference")
                     
-                    # If character is "narrator" or an alias for narrator (like david_attenborough cc3),
-                    # and we have a main reference, use the main reference for language-only tags
-                    narrator_aliases = ["narrator", "david_attenborough cc3"]
-                    should_use_main_ref = (character in narrator_aliases and main_ref)
+                    # If the original tag was language-only (defaulted to "narrator") and we have main ref,
+                    # prioritize main reference over any character alias mapping
+                    should_use_main_ref = (original_character == "narrator" and main_ref)
                     
                     if should_use_main_ref:
-                        # Language-only tag like [de:] - use main narrator voice (Tony)
+                        # Language-only tag like [de:] - use main narrator voice (user's selected voice)
+                        print(f"✅ Using main narrator voice (user-selected) for language-only tag in {segment_lang}")
                         char_audio = main_ref
                     else:
                         # Explicit character tag like [de:Alice] - use character voice
@@ -162,7 +177,18 @@ class MultilingualEngine:
                             char_audio = main_ref
                 
                 # Show generation message with character and language info
-                if character == "narrator":
+                # Check if we're using main voice for narrator (language-only tags)
+                is_using_main_voice = (self.engine_type == "chatterbox" and 
+                                     original_character == "narrator" and 
+                                     params.get("main_audio_reference"))
+                
+                if is_using_main_voice:
+                    # Language-only tag using main voice
+                    if segment_lang != 'en':
+                        print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} using main voice in {segment_lang}...")
+                    else:
+                        print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} using main voice...")
+                elif character == "narrator":
                     if segment_lang != 'en':
                         print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} in {segment_lang}...")
                     else:
@@ -172,6 +198,10 @@ class MultilingualEngine:
                         print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{character}' in {segment_lang}")
                     else:
                         print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{character}'")
+                
+                # Show what model is actually being used for generation (for verification)
+                current_model = getattr(engine_adapter.node, 'current_language', 'unknown')
+                print(f"🔧 ACTUAL MODEL: Generating segment {segment_display_idx} using '{current_model}' model")
                 
                 # Generate audio using engine adapter
                 if self.engine_type == "f5tts":
@@ -233,6 +263,22 @@ class MultilingualEngine:
             language_groups[segment_lang].append((original_idx, character, segment_text, segment_lang))
         return language_groups
     
+    def _group_segments_by_language_with_original(self, segments: List) -> Dict[str, List[Tuple[int, str, str, str, str]]]:
+        """Group segments by language for efficient processing, preserving original character info."""
+        language_groups = {}
+        for original_idx, segment in enumerate(segments):
+            segment_lang = segment.language
+            if segment_lang not in language_groups:
+                language_groups[segment_lang] = []
+            language_groups[segment_lang].append((
+                original_idx, 
+                segment.character, 
+                segment.text, 
+                segment_lang, 
+                segment.original_character or segment.character
+            ))
+        return language_groups
+    
     def _analyze_cache_coverage(self, language_groups: Dict, character_mapping: Dict, 
                                engine_adapter, **params) -> Dict[str, Dict[str, Any]]:
         """Analyze cache coverage for each language group to optimize model loading."""
@@ -252,7 +298,8 @@ class MultilingualEngine:
             cached_segments = 0
             total_segments = len(lang_segments)
             
-            for original_idx, character, segment_text, segment_lang in lang_segments:
+            for segment_data in lang_segments:
+                original_idx, character, segment_text, segment_lang = segment_data[:4]  # Take only first 4 elements
                 # Check if this specific segment is cached
                 if self._is_segment_cached(character, segment_text, segment_lang, character_mapping, **params):
                     cached_segments += 1

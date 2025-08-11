@@ -780,6 +780,14 @@ The audio will match these exact timings.""",
                         crash_protection_template=crash_protection_template
                     )
                     
+                    # CRITICAL FIX: Restore the language model for this language group 
+                    # The multilingual engine may have switched to other models during processing
+                    if self.current_language != required_language:
+                        print(f"🔄 Restoring {required_language} model after multilingual processing")
+                        self.load_tts_model(device, required_language)
+                        self.current_language = required_language
+                        self.current_model_name = required_language
+                    
                     wav = result.audio
                     natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
                     
@@ -793,6 +801,11 @@ The audio will match these exact timings.""",
                     # DEBUG: Show actual text being sent to ChatterBox when padding might occur
                     if len(single_text.strip()) < 21:
                         print(f"🔍 DEBUG: Original text: '{single_text}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
+                    
+                    # Show what model is actually being used for generation
+                    model_path = getattr(self.tts_model, 'model_dir', 'unknown') if hasattr(self, 'tts_model') else 'no_model'
+                    print(f"🔧 TRADITIONAL SRT: Generating subtitle {i+1} using '{self.current_language}' model")
+                    print(f"📁 MODEL PATH: {model_path}")
                     
                     # Generate new audio with pause tag support (includes internal caching)
                     wav = self._generate_tts_with_pause_tags(

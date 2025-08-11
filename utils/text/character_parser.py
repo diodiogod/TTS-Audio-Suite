@@ -17,10 +17,12 @@ class CharacterSegment:
     start_pos: int
     end_pos: int
     language: Optional[str] = None
+    original_character: Optional[str] = None  # Original character before alias resolution
     
     def __str__(self) -> str:
         lang_info = f", lang='{self.language}'" if self.language else ""
-        return f"CharacterSegment(character='{self.character}'{lang_info}, text='{self.text[:50]}...', pos={self.start_pos}-{self.end_pos})"
+        orig_info = f", orig='{self.original_character}'" if self.original_character and self.original_character != self.character else ""
+        return f"CharacterSegment(character='{self.character}'{orig_info}{lang_info}, text='{self.text[:50]}...', pos={self.start_pos}-{self.end_pos})"
 
 
 class CharacterParser:
@@ -493,7 +495,8 @@ class CharacterParser:
                 text=text.strip(),
                 start_pos=0,
                 end_pos=len(text),
-                language=self.resolve_character_language(self.default_character)
+                language=self.resolve_character_language(self.default_character),
+                original_character=self.default_character
             ))
         
         return segments
@@ -525,7 +528,8 @@ class CharacterParser:
                     text=line.strip(),
                     start_pos=line_start_pos,
                     end_pos=line_start_pos + len(line),
-                    language=self.resolve_character_language(self.default_character)
+                    language=self.resolve_character_language(self.default_character),
+                    original_character=self.default_character
                 ))
             return segments
         
@@ -539,7 +543,8 @@ class CharacterParser:
                     text=before_tag,
                     start_pos=line_start_pos + current_pos,
                     end_pos=line_start_pos + match.start(),
-                    language=current_language
+                    language=current_language,
+                    original_character=current_character  # Before this tag, it's already resolved
                 ))
             
             # Parse language and character from the tag
@@ -549,6 +554,7 @@ class CharacterParser:
             # Update current character for text after this tag
             # IMPORTANT: Resolve language using original alias name before character normalization
             current_language = self.resolve_character_language(raw_character, explicit_language)
+            original_character = raw_character  # Store original before normalization
             current_character = self.normalize_character_name(raw_character)
             current_pos = match.end()
         
@@ -560,7 +566,8 @@ class CharacterParser:
                 text=remaining_text,
                 start_pos=line_start_pos + current_pos,
                 end_pos=line_start_pos + len(line),
-                language=current_language
+                language=current_language,
+                original_character=original_character
             ))
         elif not segments and line.strip():
             # Line with only tags and no text after - still need a segment for the line
@@ -570,7 +577,8 @@ class CharacterParser:
                 text="",
                 start_pos=line_start_pos,
                 end_pos=line_start_pos + len(line),
-                language=current_language
+                language=current_language,
+                original_character=original_character if 'original_character' in locals() else current_character
             ))
         
         return segments
