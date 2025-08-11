@@ -85,7 +85,7 @@ class BaseF5TTSNode(BaseChatterBoxNode):
     
     def load_f5tts_model(self, model_name: str = "F5TTS_Base", device: str = "auto", force_reload: bool = False):
         """
-        Load F5-TTS model using enhanced model manager
+        Load F5-TTS model using universal smart model loader
         """
         if not self.f5tts_available:
             raise ImportError(F5TTS_ERROR_MESSAGES["import_error"])
@@ -96,15 +96,15 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         # Normalize model name for caching consistency
         normalized_model_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
         
-        # Check if we need to reload (use normalized name for cache consistency)
-        if not force_reload and self.f5tts_model is not None and getattr(self, 'current_model_name', None) == normalized_model_name:
-            return self.f5tts_model
+        # Use universal smart model loader
+        from utils.models.smart_loader import smart_model_loader
         
-        try:
+        def f5tts_load_callback(device: str, model: str) -> Any:
+            """Callback for F5-TTS model loading"""
             from engines.f5tts import ChatterBoxF5TTS
             
             # Try to find local models first
-            model_paths = self._find_f5tts_models(model_name)
+            model_paths = self._find_f5tts_models(model)
             
             model_loaded = False
             last_error = None
@@ -113,38 +113,44 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                 try:
                     if source == "comfyui" and path:
                         # Load from local ComfyUI models directory
-                        # Normalize model name (remove local: prefix if present)
-                        normalized_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
-                        self.f5tts_model = ChatterBoxF5TTS.from_local(path, device, normalized_name)
+                        normalized_name = model.replace("local:", "") if model.startswith("local:") else model
+                        return ChatterBoxF5TTS.from_local(path, device, normalized_name)
                     else:
                         # Load from HuggingFace - but check if we have local files first
                         local_path = None
-                        if model_name in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]:
+                        if model in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]:
                             import folder_paths
-                            potential_path = os.path.join(folder_paths.models_dir, "F5-TTS", model_name)
+                            potential_path = os.path.join(folder_paths.models_dir, "F5-TTS", model)
                             if os.path.exists(potential_path):
                                 local_path = potential_path
                         
                         if local_path:
                             # Use local files even for non-local model names for consistency
-                            self.f5tts_model = ChatterBoxF5TTS.from_local(local_path, device, model_name)
+                            return ChatterBoxF5TTS.from_local(local_path, device, model)
                         else:
                             # True HuggingFace download
-                            self.f5tts_model = ChatterBoxF5TTS.from_pretrained(device, model_name)
-                    
-                    model_loaded = True
-                    break
-                    
+                            return ChatterBoxF5TTS.from_pretrained(device, model)
+                        
                 except Exception as e:
                     print(f"⚠️ Failed to load F5-TTS model from {source}: {str(e)}")
                     last_error = e
                     continue
             
-            if not model_loaded:
-                error_msg = f"Failed to load F5-TTS model '{model_name}' from any source"
-                if last_error:
-                    error_msg += f". Last error: {last_error}"
-                raise RuntimeError(error_msg)
+            # If we get here, all sources failed
+            error_msg = f"Failed to load F5-TTS model '{model}' from any source"
+            if last_error:
+                error_msg += f". Last error: {last_error}"
+            raise RuntimeError(error_msg)
+        
+        try:
+            self.f5tts_model, was_cached = smart_model_loader.load_model_if_needed(
+                engine_type="f5tts",
+                model_name=normalized_model_name,
+                current_model=getattr(self, 'f5tts_model', None),
+                device=device,
+                load_callback=f5tts_load_callback,
+                force_reload=force_reload
+            )
             
             # Store normalized model name for cache validation
             self.current_model_name = normalized_model_name

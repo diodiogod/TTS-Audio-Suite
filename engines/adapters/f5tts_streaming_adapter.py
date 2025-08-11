@@ -159,43 +159,49 @@ class F5TTSStreamingAdapter(StreamingEngineAdapter):
             if self._current_model == model_name and self._current_language == language:
                 return True
             
-            # Check if model is in cache
-            if model_name in self._loaded_models:
-                self._current_model = model_name
-                self._current_language = language
-                if hasattr(self.node, 'f5tts'):
-                    self.node.f5tts = self._loaded_models[model_name]
-                return True
+            # Use universal smart model loader
+            from utils.models.smart_loader import smart_model_loader
             
-            # Load new model using node's method
-            if hasattr(self.node, 'load_f5tts_model'):
-                # Use node's existing model loading
-                self.node.load_f5tts_model(device, model_name)
-                self._current_model = model_name
-                self._current_language = language
-                
-                # Cache the model for reuse
-                if hasattr(self.node, 'f5tts'):
-                    self._loaded_models[model_name] = self.node.f5tts
-                
-                return True
-            else:
-                # Fallback: try to load directly
-                from engines.f5tts.f5tts import F5TTSEngine
-                
-                engine = F5TTSEngine()
-                engine.load_model(model_name, device)
-                
-                if hasattr(self.node, 'f5tts'):
-                    self.node.f5tts = engine
+            def f5tts_load_callback(device: str, model: str):
+                """Callback for F5-TTS model loading"""
+                if hasattr(self.node, 'load_f5tts_model'):
+                    # Use node's existing model loading (which now uses smart loader internally)
+                    return self.node.load_f5tts_model(model, device)
                 else:
-                    self.node.f5tts = engine
-                
-                self._loaded_models[model_name] = engine
-                self._current_model = model_name
-                self._current_language = language
-                
-                return True
+                    # Fallback: try to load directly
+                    from engines.f5tts.f5tts import F5TTSEngine
+                    engine = F5TTSEngine()
+                    engine.load_model(model, device)
+                    return engine
+            
+            # Use smart loader to get or load the model
+            model_instance, was_cached = smart_model_loader.load_model_if_needed(
+                engine_type="f5tts",
+                model_name=model_name,
+                current_model=getattr(self.node, 'f5tts_model', None),
+                device=device,
+                load_callback=f5tts_load_callback
+            )
+            
+            # Update node's model reference and our tracking
+            if hasattr(self.node, 'f5tts_model'):
+                self.node.f5tts_model = model_instance
+            elif hasattr(self.node, 'f5tts'):
+                self.node.f5tts = model_instance
+            else:
+                self.node.f5tts = model_instance
+            
+            # Cache the model for local reuse and update tracking
+            self._loaded_models[model_name] = model_instance
+            self._current_model = model_name
+            self._current_language = language
+            
+            if was_cached:
+                print(f"♻️ F5TTS STREAMING: Reused {model_name} from smart loader")
+            else:
+                print(f"✅ F5TTS STREAMING: Loaded {model_name} via smart loader")
+            
+            return True
                 
         except Exception as e:
             print(f"❌ Failed to load F5-TTS model for {language}: {e}")
