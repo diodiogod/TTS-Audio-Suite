@@ -262,22 +262,36 @@ The audio will match these exact timings.""",
         if pause_segments is None:
             # No pause tags, use regular generation with caching
             if enable_cache:
-                # Use stable audio component if provided, otherwise fallback to temp path
-                audio_component = stable_audio_component if stable_audio_component else (getattr(audio_prompt, 'name', str(audio_prompt)) if audio_prompt else "")
-                cache_key = self._generate_segment_cache_key(
-                    f"{character}:{processed_text}", exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device, language
+                # CRITICAL FIX: Use unified cache system to match streaming method
+                from utils.audio.cache import create_cache_function
+                
+                # Use stable audio component if provided, otherwise use audio prompt path
+                audio_component = stable_audio_component if stable_audio_component else str(audio_prompt or "main_reference")
+                
+                # Create cache function using same parameters as streaming method
+                cache_fn = create_cache_function(
+                    engine_type="chatterbox",
+                    character=character,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight,
+                    seed=seed,
+                    audio_component=audio_component,
+                    model_source=self.model_manager.get_model_source("tts") or "unknown",
+                    device=self.device,
+                    language=language
                 )
                 
                 # Try cache first
-                cached_data = self._get_cached_segment_audio(cache_key)
-                if cached_data:
-                    return cached_data[0]
+                cached_audio = cache_fn(processed_text)
+                if cached_audio is not None:
+                    return cached_audio
                 
                 # Generate and cache
                 audio = self._safe_generate_tts_audio(processed_text, audio_prompt, exaggeration, temperature, cfg_weight)
-                duration = self.AudioTimingUtils.get_audio_duration(audio, self.tts_model.sr)
-                self._cache_segment_audio(cache_key, audio, duration)
+                
+                # Cache the result using the unified cache system
+                cache_fn(processed_text, audio_result=audio)
                 return audio
             else:
                 return self._safe_generate_tts_audio(processed_text, audio_prompt, exaggeration, temperature, cfg_weight)
@@ -286,30 +300,42 @@ The audio will match these exact timings.""",
         def tts_generate_func(text_content: str) -> torch.Tensor:
             """TTS generation function for pause tag processor with caching"""
             if enable_cache:
-                # Use stable audio component if provided, otherwise fallback to temp path
-                audio_component = stable_audio_component if stable_audio_component else (getattr(audio_prompt, 'name', str(audio_prompt)) if audio_prompt else "")
+                # CRITICAL FIX: Use unified cache system for pause segments too
+                from utils.audio.cache import create_cache_function
                 
                 # Apply crash protection to individual text segment FIRST
                 protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
                 
-                # Use protected text for BOTH lookup and caching to ensure consistency
-                cache_key = self._generate_segment_cache_key(
-                    f"{character}:{protected_text}", exaggeration, temperature, cfg_weight, seed,
-                    audio_component, self.model_manager.get_model_source("tts"), self.device, language
+                # Use stable audio component if provided, otherwise use audio prompt path
+                audio_component = stable_audio_component if stable_audio_component else str(audio_prompt or "main_reference")
+                
+                # Create cache function using same parameters as streaming method
+                cache_fn = create_cache_function(
+                    engine_type="chatterbox",
+                    character=character,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight,
+                    seed=seed,
+                    audio_component=audio_component,
+                    model_source=self.model_manager.get_model_source("tts") or "unknown",
+                    device=self.device,
+                    language=language
                 )
                 
-                # Try cache first  
-                cached_data = self._get_cached_segment_audio(cache_key)
-                if cached_data:
-                    print(f"💾 CACHE HIT for text: '{text_content[:30]}...'")
-                    return cached_data[0]
+                # Try cache first with protected text
+                cached_audio = cache_fn(protected_text)
+                if cached_audio is not None:
+                    print(f"💾 CACHE HIT for pause segment: '{text_content[:30]}...'")
+                    return cached_audio
                 
                 # Generate and cache
                 audio = self._safe_generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
-                duration = self.AudioTimingUtils.get_audio_duration(audio, self.tts_model.sr)
-                self._cache_segment_audio(cache_key, audio, duration)
+                
+                # Cache the result using the unified cache system
+                cache_fn(protected_text, audio_result=audio)
                 return audio
             else:
                 # Apply crash protection to individual text segment
@@ -458,27 +484,36 @@ The audio will match these exact timings.""",
                 from utils.streaming import StreamingCoordinator, StreamingConfig
                 from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
                 
-                # Convert SRT data to universal segments
+                # Convert SRT data to universal segments with original character info
                 srt_segments_data = []
                 for lang_code, lang_subtitles in subtitle_language_groups.items():
                     for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
                         if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
                             # Handle complex subtitles with character switching
-                            for char, text, seg_lang in character_segments_with_lang:
-                                srt_segments_data.append((i, subtitle, [(char, text, seg_lang)]))
+                            # Need to get original character info before alias resolution
+                            detailed_segments = character_parser.parse_text_segments(subtitle.text)
+                            
+                            # Build segment data with original character info
+                            segment_data = []
+                            for seg_idx, (char, text, seg_lang) in enumerate(character_segments_with_lang):
+                                # Get original character from detailed segments if available
+                                original_char = detailed_segments[seg_idx].original_character if seg_idx < len(detailed_segments) else char
+                                segment_data.append((char, text, seg_lang, original_char or char))
+                            
+                            srt_segments_data.append((i, subtitle, segment_data))
                         else:
                             # Simple subtitle - single narrator
-                            srt_segments_data.append((i, subtitle, [('narrator', subtitle.text, lang_code)]))
+                            srt_segments_data.append((i, subtitle, [('narrator', subtitle.text, lang_code, 'narrator')]))
                 
                 # Build voice references for characters
-                # Convert 'none' string to None for ChatterBox default voice handling
-                voice_refs = {'narrator': audio_prompt_path or None}
+                # CRITICAL FIX: Use audio_prompt (processed result) instead of audio_prompt_path (input parameter)
+                voice_refs = {'narrator': audio_prompt or None}
                 try:
                     # Use already imported functions (imported at module level)
                     available_chars = get_available_characters()
                     char_mapping = get_character_mapping(list(available_chars), "chatterbox")
                     for char in available_chars:
-                        char_audio_path, _ = char_mapping.get(char, (audio_prompt_path or None, None))
+                        char_audio_path, _ = char_mapping.get(char, (audio_prompt or None, None))
                         voice_refs[char] = char_audio_path
                 except ImportError:
                     pass
@@ -525,7 +560,8 @@ The audio will match these exact timings.""",
                     results=results,
                     original_data=subtitles,
                     sample_rate=22050,
-                    enable_audio_cache=enable_audio_cache
+                    enable_audio_cache=enable_audio_cache,
+                    segments=segments  # Pass segments for proper subtitle ordering
                 )
                 
                 print(f"✅ SRT streaming complete: {metrics.get_summary()['completed_segments']} segments processed")
@@ -806,6 +842,10 @@ The audio will match these exact timings.""",
                     model_path = getattr(self.tts_model, 'model_dir', 'unknown') if hasattr(self, 'tts_model') else 'no_model'
                     print(f"🔧 TRADITIONAL SRT: Generating subtitle {i+1} using '{self.current_language}' model")
                     print(f"📁 MODEL PATH: {model_path}")
+                    
+                    # DEBUG: Show actual model state like multilingual engine does
+                    actual_current_model = getattr(self, 'current_model_name', 'unknown')
+                    print(f"🔧 ACTUAL MODEL: Traditional SRT subtitle {i+1} using '{actual_current_model}' model")
                     
                     # Generate new audio with pause tag support (includes internal caching)
                     wav = self._generate_tts_with_pause_tags(

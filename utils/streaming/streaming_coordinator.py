@@ -266,21 +266,41 @@ class StreamingCoordinator:
         elif node_type == 'srt':
             # Convert SRT subtitles to segments
             # Data is list of (idx, subtitle, character_segments) tuples
+            segment_counter = 0  # Global counter for unique segment indices
             for idx, subtitle, character_segments in data:
-                for character, text, language in character_segments:
+                for segment_data in character_segments:
+                    # Handle both old 3-tuple and new 4-tuple formats
+                    if len(segment_data) >= 4:
+                        character, text, language, original_character = segment_data[:4]
+                    else:
+                        character, text, language = segment_data
+                        original_character = character
+                    
+                    # CRITICAL FIX: Check if original character was "narrator" for language-only tags
+                    # If so, use narrator voice instead of character alias voice
+                    main_narrator_voice = voice_refs.get('narrator')
+                    if original_character == "narrator" and main_narrator_voice:
+                        voice_path = main_narrator_voice
+                        print(f"✅ Using main narrator voice for language-only tag: '{character}' → main voice")
+                    else:
+                        voice_path = voice_refs.get(character, None)  # Use character-specific voice
+                    
                     segments.append(StreamingSegment(
-                        index=idx,
+                        index=segment_counter,  # Use unique segment counter instead of subtitle index
                         text=text,
                         character=character,
                         language=language,
-                        voice_path=voice_refs.get(character, None),  # Use None for default voice
+                        voice_path=voice_path,
                         metadata={
                             'source': 'srt',
+                            'subtitle_index': idx,  # Preserve original subtitle index in metadata
+                            'original_character': original_character,
                             'start_time': subtitle.start_time if hasattr(subtitle, 'start_time') else None,
                             'end_time': subtitle.end_time if hasattr(subtitle, 'end_time') else None,
                             'duration': subtitle.duration if hasattr(subtitle, 'duration') else None
                         }
                     ))
+                    segment_counter += 1  # Increment counter for next segment
                     
         elif node_type == 'vc':
             # Convert voice conversion data to segments
@@ -320,17 +340,51 @@ class StreamingCoordinator:
             audio_segments = []
             natural_durations = []
             
-            for i in sorted(results.keys()):
-                audio = results.get(i)
-                if audio is not None:
-                    audio_segments.append(audio)
-                    # Calculate duration from audio tensor
-                    sample_rate = kwargs.get('sample_rate', 22050)
-                    duration = float(audio.shape[-1]) / sample_rate
-                    natural_durations.append(duration)
-                else:
-                    audio_segments.append(None)
-                    natural_durations.append(0.0)
+            # CRITICAL FIX: Sort by original subtitle order, not by segment processing order
+            # We need to access the segments to get their metadata with subtitle_index
+            segments = kwargs.get('segments', [])
+            if segments:
+                # Create mapping from segment index to original subtitle order info
+                segment_to_subtitle = {}
+                for segment in segments:
+                    segment_to_subtitle[segment.index] = {
+                        'subtitle_index': segment.metadata.get('subtitle_index', 0),
+                        'start_time': segment.metadata.get('start_time', 0)
+                    }
+                
+                # Sort segment indices by original subtitle order, then by start time
+                sorted_indices = sorted(results.keys(), key=lambda idx: (
+                    segment_to_subtitle.get(idx, {}).get('subtitle_index', 0),
+                    segment_to_subtitle.get(idx, {}).get('start_time', 0),
+                    idx  # Final fallback to segment index
+                ))
+                
+                print(f"🔄 Sorting audio segments by subtitle order: {sorted_indices}")
+                
+                for i in sorted_indices:
+                    audio = results.get(i)
+                    if audio is not None:
+                        audio_segments.append(audio)
+                        # Calculate duration from audio tensor
+                        sample_rate = kwargs.get('sample_rate', 22050)
+                        duration = float(audio.shape[-1]) / sample_rate
+                        natural_durations.append(duration)
+                    else:
+                        audio_segments.append(None)
+                        natural_durations.append(0.0)
+            else:
+                # Fallback to original segment index sorting if no segment metadata available
+                for i in sorted(results.keys()):
+                    audio = results.get(i)
+                    if audio is not None:
+                        audio_segments.append(audio)
+                        # Calculate duration from audio tensor
+                        sample_rate = kwargs.get('sample_rate', 22050)
+                        duration = float(audio.shape[-1]) / sample_rate
+                        natural_durations.append(duration)
+                    else:
+                        audio_segments.append(None)
+                        natural_durations.append(0.0)
                     
             any_cached = kwargs.get('enable_audio_cache', False) and len(results) > 0
             return audio_segments, natural_durations, any_cached
