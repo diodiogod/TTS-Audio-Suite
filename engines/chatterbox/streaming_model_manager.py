@@ -28,11 +28,14 @@ class StreamingModelManager:
         return models
     
     def preload_models(self, language_codes: List[str], model_manager, device: str) -> None:
-        """Pre-load all required models for the given languages, reusing existing models when possible."""
+        """Pre-load all required models for the given languages using universal smart loader."""
         required_models = self.get_required_models(language_codes)
         available_languages = get_available_languages()
         
         print(f"🚀 STREAMING: Pre-loading {len(required_models)} models for {len(language_codes)} languages")
+        
+        # Use universal smart model loader for consistency
+        from utils.models.smart_loader import smart_model_loader
         
         for model_name in required_models:
             if model_name in self.preloaded_models:
@@ -43,37 +46,32 @@ class StreamingModelManager:
                 print(f"⚠️ {model_name} model not available, using English fallback")
                 model_name = 'English'
             
-            # SMART REUSE: Check if main ModelManager already has this model loaded
-            model_found_in_cache = False
-            for cache_key, cached_model in model_manager._model_cache.items():
-                # Check if cache key contains our model name and device
-                if (model_name.lower() in cache_key.lower() and 
-                    device in cache_key and 
-                    cached_model is not None):
-                    print(f"♻️ Reusing {model_name} from main ModelManager cache (ID: {id(cached_model)})")
-                    self.preloaded_models[model_name] = cached_model
-                    model_found_in_cache = True
-                    break
-            
-            # Only load if not found in existing cache
-            if not model_found_in_cache:
-                print(f"📦 Loading {model_name} model...")
-                try:
-                    # Use the main model manager to load (this will cache it properly)
-                    model_instance = model_manager.load_tts_model(device, model_name)
+            # Use smart loader to get or load the model
+            try:
+                model_instance, was_cached = smart_model_loader.load_model_if_needed(
+                    engine_type="chatterbox",
+                    model_name=model_name,
+                    current_model=self.preloaded_models.get(model_name),
+                    device=device,
+                    load_callback=lambda d, m: model_manager.load_tts_model(d, m)
+                )
+                
+                # Store reference in our streaming cache
+                self.preloaded_models[model_name] = model_instance
+                
+                if was_cached:
+                    print(f"♻️ STREAMING: Reused {model_name} from smart loader (ID: {id(model_instance)})")
+                else:
+                    print(f"✅ STREAMING: Loaded {model_name} via smart loader (ID: {id(model_instance)})")
                     
-                    # Store reference in our streaming cache
-                    self.preloaded_models[model_name] = model_instance
-                    print(f"✅ {model_name} model loaded and cached (ID: {id(model_instance)})")
-                    
-                except Exception as e:
-                    print(f"❌ Failed to load {model_name}: {e}")
-                    # Try fallback to English if not already English
-                    if model_name != 'English' and 'English' in self.preloaded_models:
-                        print(f"🔄 Using English model as fallback for {model_name}")
-                        self.preloaded_models[model_name] = self.preloaded_models['English']
-                    else:
-                        print(f"❌ No fallback available for {model_name}")
+            except Exception as e:
+                print(f"❌ Failed to load {model_name}: {e}")
+                # Try fallback to English if not already English
+                if model_name != 'English' and 'English' in self.preloaded_models:
+                    print(f"🔄 Using English model as fallback for {model_name}")
+                    self.preloaded_models[model_name] = self.preloaded_models['English']
+                else:
+                    print(f"❌ No fallback available for {model_name}")
             
             # Debug: Show all current model IDs
             if len(self.preloaded_models) > 1:

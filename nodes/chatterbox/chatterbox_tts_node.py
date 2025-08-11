@@ -775,8 +775,19 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Only load model if we need to generate something
                 if not pause_content_cached:
-                    print(f"🔄 Loading ChatterBox model '{inputs['language']}' for pause tag generation")
-                    self.load_tts_model(inputs["device"], inputs["language"])
+                    # Use universal smart model loader
+                    from utils.models.smart_loader import smart_model_loader
+                    
+                    self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
+                        engine_type="chatterbox",
+                        model_name=inputs["language"], 
+                        current_model=getattr(self, 'tts_model', None),
+                        device=inputs["device"],
+                        load_callback=lambda device, model: self.model_manager.load_tts_model(device, model)
+                    )
+                    
+                    if not was_cached:
+                        self.device = inputs["device"]  # Update device tracking
                 else:
                     print(f"💾 All pause tag content cached - skipping model loading")
                 
@@ -844,8 +855,19 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Only load model if we need to generate something
                 if not single_content_cached:
-                    print(f"🔄 Loading ChatterBox model '{inputs['language']}' for single character generation")
-                    self.load_tts_model(inputs["device"], inputs["language"])
+                    # Use universal smart model loader
+                    from utils.models.smart_loader import smart_model_loader
+                    
+                    self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
+                        engine_type="chatterbox",
+                        model_name=inputs["language"], 
+                        current_model=getattr(self, 'tts_model', None),
+                        device=inputs["device"],
+                        load_callback=lambda device, model: self.model_manager.load_tts_model(device, model)
+                    )
+                    
+                    if not was_cached:
+                        self.device = inputs["device"]  # Update device tracking
                 else:
                     print(f"💾 All single character content cached - skipping model loading")
                 
@@ -1022,8 +1044,20 @@ Back to the main narrator voice for the conclusion.""",
             required_model = get_model_for_language("chatterbox", lang, "English")
             
             if current_loaded_language != required_model:
-                print(f"🔄 Loading ChatterBox model '{required_model}' for {lang} language")
-                self.load_tts_model(inputs["device"], required_model)
+                # Use universal smart model loader
+                from utils.models.smart_loader import smart_model_loader
+                
+                self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
+                    engine_type="chatterbox",
+                    model_name=required_model,
+                    current_model=getattr(self, 'tts_model', None),
+                    device=inputs["device"],
+                    load_callback=lambda device, model: self.model_manager.load_tts_model(device, model)
+                )
+                
+                if not was_cached:
+                    self.device = inputs["device"]  # Update device tracking
+                    
                 current_loaded_language = required_model
             
             # Process each segment individually
