@@ -385,6 +385,108 @@ The audio will match these exact timings.""",
             if current.end_time > next_sub.start_time:
                 return True
         return False
+    
+    def _generate_with_preloaded_model(self, model, text: str, voice_path: str, language: str, 
+                                     character: str, exaggeration: float, temperature: float, 
+                                     cfg_weight: float, seed: int, enable_cache: bool, 
+                                     crash_protection_template: str, stable_audio_component: str) -> torch.Tensor:
+        """
+        Generate audio using a specific pre-loaded model without affecting shared node state.
+        Thread-safe method for streaming workers.
+        
+        Args:
+            model: Pre-loaded ChatterBox TTS model instance
+            text: Text to generate
+            voice_path: Voice reference path
+            language: Language code
+            character: Character name
+            exaggeration: ChatterBox exaggeration parameter  
+            temperature: ChatterBox temperature parameter
+            cfg_weight: ChatterBox CFG weight parameter
+            seed: Seed for reproducibility
+            enable_cache: Whether to use caching
+            crash_protection_template: Crash protection template
+            stable_audio_component: Stable audio component identifier
+            
+        Returns:
+            Generated audio tensor
+        """
+        # Set seed for reproducibility
+        self.set_seed(seed)
+        
+        # Generate audio using the pre-loaded model directly
+        print(f"🔄 Generating {language} audio with preloaded model (ID: {id(model)})")
+        
+        # Apply crash protection to text if needed
+        if len(text.strip()) < 21:
+            protected_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+            print(f"🛡️ Applied crash protection: '{text}' → '{protected_text}'")
+            text = protected_text
+        
+        # Generate audio using the pre-loaded model
+        try:
+            with torch.no_grad():
+                audio = model.generate(
+                    text=text,
+                    audio_prompt_path=voice_path if voice_path != "none" else None,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight
+                )
+                
+                # Ensure tensor is completely detached
+                if hasattr(audio, 'detach'):
+                    audio = audio.detach()
+                
+                print(f"✅ Generated {language} audio using preloaded model (shape: {audio.shape})")
+                return audio
+        except Exception as e:
+            print(f"❌ Failed to generate {language} audio: {e}")
+            return torch.zeros(1, 1000)
+
+    def _process_single_segment_for_streaming(self, original_idx, character, segment_text, language, voice_path, inputs):
+        """Process a single segment for the streaming processor using pre-loaded models."""
+        # This method is called by the streaming worker
+        try:
+            # CRITICAL FIX: Use pre-loaded model directly without changing shared node state
+            if hasattr(self, '_streaming_model_manager'):
+                preloaded_model = self._streaming_model_manager.get_model_for_language(language)
+                if preloaded_model:
+                    # Generate audio using the pre-loaded model directly (thread-safe)
+                    segment_audio = self._generate_with_preloaded_model(
+                        model=preloaded_model,
+                        text=segment_text,
+                        voice_path=voice_path,
+                        language=language,
+                        character=character,
+                        exaggeration=inputs.get("exaggeration", 0.5),
+                        temperature=inputs.get("temperature", 0.8),
+                        cfg_weight=inputs.get("cfg_weight", 0.5),
+                        seed=inputs.get("seed", 42),
+                        enable_cache=inputs.get("enable_audio_cache", True),
+                        crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                        stable_audio_component=""
+                    )
+                    return segment_audio
+            
+            # Fallback to original method if no pre-loaded model
+            print(f"⚠️ No pre-loaded model for {language}, using fallback generation")
+            from utils.models.language_mapper import get_model_for_language
+            required_model = get_model_for_language("chatterbox", language, "English")
+            
+            # Generate audio using the same method as traditional processing
+            return self._generate_tts_with_pause_tags(
+                segment_text, voice_path, inputs.get("exaggeration", 0.5),
+                inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
+                True, character=character, seed=inputs.get("seed", 42),
+                enable_cache=inputs.get("enable_audio_cache", True),
+                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=""
+            )
+            
+        except Exception as e:
+            print(f"❌ Failed to process streaming segment: {e}")
+            return torch.zeros(1, 1000)
 
     def generate_srt_speech(self, srt_content, language, device, exaggeration, temperature, cfg_weight, seed,
                             timing_mode, reference_audio=None, audio_prompt_path="",
@@ -537,9 +639,17 @@ The audio will match these exact timings.""",
                 # Create adapter and process
                 adapter = ChatterBoxStreamingAdapter(self)
                 
-                # Pre-load models for efficiency (same as before)
+                # Pre-load models using streaming model manager for thread safety
                 print(f"🚀 SRT STREAMING: Pre-loading models for {len(subtitle_language_groups)} languages")
-                self._preload_language_models(subtitle_language_groups.keys(), device)
+                from engines.chatterbox.streaming_model_manager import StreamingModelManager
+                
+                # Initialize streaming model manager
+                self._streaming_model_manager = StreamingModelManager(language)
+                self._streaming_model_manager.preload_models(
+                    language_codes=list(subtitle_language_groups.keys()),
+                    model_manager=self.model_manager,
+                    device=device
+                )
                 
                 # Process with universal coordinator
                 results, metrics, success = StreamingCoordinator.process(
@@ -565,6 +675,11 @@ The audio will match these exact timings.""",
                 )
                 
                 print(f"✅ SRT streaming complete: {metrics.get_summary()['completed_segments']} segments processed")
+                
+                # Keep streaming models for post-processing (only needs .sr sample rate)
+                if hasattr(self, '_streaming_model_manager') and self._streaming_model_manager.preloaded_models:
+                    # Set tts_model to any preloaded model for sample rate access
+                    self.tts_model = next(iter(self._streaming_model_manager.preloaded_models.values()))
             else:
                 # Traditional sequential processing (existing logic)
                 # SMART INITIALIZATION: Load the first language model we'll actually need
@@ -870,31 +985,29 @@ The audio will match these exact timings.""",
         """Process a single segment for the streaming processor using pre-loaded models."""
         # This method is called by the streaming worker
         try:
-            # Get the pre-loaded model for this language (thread-safe)
+            # CRITICAL FIX: Use pre-loaded model directly without changing shared node state
             if hasattr(self, '_streaming_model_manager'):
                 preloaded_model = self._streaming_model_manager.get_model_for_language(language)
                 if preloaded_model:
-                    # Temporarily switch to the pre-loaded model for this segment
-                    original_model = self.tts_model
-                    self.tts_model = preloaded_model
-                    
-                    try:
-                        # Generate audio using the same method as traditional processing
-                        segment_audio = self._generate_tts_with_pause_tags(
-                            segment_text, voice_path, inputs.get("exaggeration", 0.5),
-                            inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
-                            True, character=character, seed=inputs.get("seed", 42),
-                            enable_cache=inputs.get("enable_audio_cache", True),
-                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                            stable_audio_component=""
-                        )
-                        return segment_audio
-                    finally:
-                        # Restore original model
-                        self.tts_model = original_model
+                    # Generate audio using the pre-loaded model directly (thread-safe)
+                    segment_audio = self._generate_with_preloaded_model(
+                        model=preloaded_model,
+                        text=segment_text,
+                        voice_path=voice_path,
+                        language=language,
+                        character=character,
+                        exaggeration=inputs.get("exaggeration", 0.5),
+                        temperature=inputs.get("temperature", 0.8),
+                        cfg_weight=inputs.get("cfg_weight", 0.5),
+                        seed=inputs.get("seed", 42),
+                        enable_cache=inputs.get("enable_audio_cache", True),
+                        crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                        stable_audio_component=""
+                    )
+                    return segment_audio
             
             # Fallback to original method if no pre-loaded model
-            print(f"⚠️ No pre-loaded model for {language}, using fallback")
+            print(f"⚠️ No pre-loaded model for {language}, using fallback generation")
             from utils.models.language_mapper import get_model_for_language
             required_model = get_model_for_language("chatterbox", language, "English")
             

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(cp:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(huggingface-cli download:*)",
+      "Bash(git add:*)",
+      "Bash(true)"
+    ],
+    "deny": []
+  }
+}

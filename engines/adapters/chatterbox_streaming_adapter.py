@@ -7,8 +7,10 @@ Preserves all existing ChatterBox functionality while enabling universal streami
 
 import torch
 import os
+import threading
 from typing import Dict, Any, List, Optional
 import sys
+import time
 
 # Add project root to path for imports
 current_dir = os.path.dirname(__file__)
@@ -29,6 +31,9 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
     preserving all existing features including language switching, character voices,
     pause tags, crash protection, and audio caching.
     """
+    
+    # Class-level lock for thread-safe model swapping
+    _model_swap_lock = threading.Lock()
     
     def __init__(self, node_instance):
         """
@@ -89,23 +94,34 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
         start_time = self._get_current_time()
         
         try:
-            # Ensure we have the correct model loaded for this language
-            if self._current_model_language != segment.language:
-                self.load_model_for_language(segment.language, kwargs.get('device', 'auto'))
-            
-            # Check if node has the streaming processing method
+            # Use the same approach as the old working system
+            # Call the node's _process_single_segment_for_streaming method
             if hasattr(self.node, '_process_single_segment_for_streaming'):
-                # Use existing streaming method (preserves all ChatterBox features)
+                # Build inputs dict like the old system
+                inputs = {
+                    "exaggeration": kwargs.get("exaggeration", 0.5),
+                    "temperature": kwargs.get("temperature", 0.8),
+                    "cfg_weight": kwargs.get("cfg_weight", 0.5),
+                    "seed": kwargs.get("seed", 42),
+                    "enable_chunking": False,  # Don't chunk in streaming - already handled
+                    "enable_audio_cache": kwargs.get("enable_audio_cache", True),
+                    "crash_protection_template": kwargs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                    "device": kwargs.get("device", "auto")
+                }
+                
+                # Call exactly like the old working system
                 audio = self.node._process_single_segment_for_streaming(
                     original_idx=segment.index,
                     character=segment.character,
                     segment_text=segment.text,
                     language=segment.language,
                     voice_path=segment.voice_path,
-                    inputs=kwargs
+                    inputs=inputs
                 )
+                print(f"✅ STREAMING: Generated {segment.language} audio using old system method")
             else:
-                # Fallback to standard generation method
+                # Fallback to standard generation method if no streaming manager
+                print(f"⚠️ No streaming model manager available, using fallback")
                 audio = self._generate_with_chatterbox(
                     text=segment.text,
                     voice_path=segment.voice_path,
@@ -146,6 +162,7 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
                 metadata=segment.metadata
             )
     
+    
     def load_model_for_language(self, language: str, device: str = "auto") -> bool:
         """
         Load or switch to the ChatterBox model for specified language.
@@ -163,12 +180,15 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
             
             # Check if we already have this model loaded
             if self._current_model_language == language and hasattr(self.node, 'tts_model'):
+                print(f"💾 STREAMING: Model '{model_name}' for '{language}' already loaded in adapter")
                 return True
             
             # Load the model using node's existing method
             if hasattr(self.node, 'load_tts_model'):
+                print(f"🔄 STREAMING: Loading '{model_name}' model for language '{language}'")
                 self.node.load_tts_model(device, model_name)
                 self._current_model_language = language
+                print(f"✅ STREAMING: Model '{model_name}' loaded successfully, adapter language set to '{language}'")
                 return True
             else:
                 print(f"❌ Node doesn't have load_tts_model method")
