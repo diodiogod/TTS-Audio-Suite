@@ -135,7 +135,7 @@ Back to the main narrator voice for the conclusion.""",
         super().__init__()
         self.chunker = ImprovedChatterBoxChunker()
     
-    def _pad_short_text_for_chatterbox(self, text: str, padding_template: str = "hmm ,, {seg} hmm ,,", min_length: int = 15) -> str:
+    def _pad_short_text_for_chatterbox(self, text: str, crash_protection_template: str = "hmm ,, {seg} hmm ,,", min_length: int = 15) -> str:
         """
         Add custom padding to short text to prevent ChatterBox crashes.
         
@@ -150,7 +150,7 @@ Back to the main narrator voice for the conclusion.""",
         
         Args:
             text: Input text to check and pad if needed
-            padding_template: Custom template with {seg} placeholder for original text
+            crash_protection_template: Custom template with {seg} placeholder for original text
             min_length: Minimum text length threshold (default: 21 characters)
             
         Returns:
@@ -170,10 +170,12 @@ Back to the main narrator voice for the conclusion.""",
         
         if len(stripped_text) < min_length:
             # If template is empty, disable padding
-            if not padding_template.strip():
+            if not crash_protection_template.strip():
                 return text
             # Replace {seg} placeholder with original text
-            return padding_template.replace("{seg}", stripped_text)
+            protected_text = crash_protection_template.replace("{seg}", stripped_text)
+            print(f"🛡️ Crash protection applied: '{text}' -> '{protected_text}'")
+            return protected_text
         return text
 
     def _is_problematic_text(self, text: str, is_already_padded: bool = False) -> tuple[bool, str]:
@@ -1153,10 +1155,3 @@ Back to the main narrator voice for the conclusion.""",
         
         print(f"🚀 Pre-loading complete: {len(self._streaming_model_manager.preloaded_models)} models ready")
 
-    def _pad_short_text_for_chatterbox(self, text: str, crash_protection_template: str, min_length: int = 15) -> str:
-        """Apply crash protection padding to short texts to prevent GPU crashes."""
-        if len(text.strip()) < min_length:
-            protected_text = crash_protection_template.format(seg=text)
-            print(f"🛡️ Crash protection applied: '{text}' -> '{protected_text}'")
-            return protected_text
-        return text
