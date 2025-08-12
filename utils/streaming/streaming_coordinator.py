@@ -276,14 +276,16 @@ class StreamingCoordinator:
                         character, text, language = segment_data
                         original_character = character
                     
-                    # CRITICAL FIX: Check if original character was "narrator" for language-only tags
-                    # If so, use narrator voice instead of character alias voice
+                    # CRITICAL FIX: For language-only tags like [de:], force use of narrator voice for proper cache behavior
+                    # Language-only tags should always use the main narrator voice, not character aliases
                     main_narrator_voice = voice_refs.get('narrator')
                     if original_character == "narrator" and main_narrator_voice:
                         voice_path = main_narrator_voice
-                        print(f"✅ Using main narrator voice for language-only tag: '{character}' → main voice")
+                        print(f"🎯 Language-only tag using main narrator voice: [{language}:] → narrator voice")
                     else:
                         voice_path = voice_refs.get(character, None)  # Use character-specific voice
+                        if voice_path:
+                            print(f"🎭 Character-specific tag using character voice: [{language}:{original_character}] → {character} voice")
                     
                     segments.append(StreamingSegment(
                         index=segment_counter,  # Use unique segment counter instead of subtitle index

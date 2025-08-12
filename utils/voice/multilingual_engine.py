@@ -203,20 +203,25 @@ class MultilingualEngine:
                 current_model = getattr(engine_adapter.node, 'current_language', 'unknown')
                 print(f"🔧 ACTUAL MODEL: Generating segment {segment_display_idx} using '{current_model}' model")
                 
+                # CRITICAL FIX: For language-only tags, use "narrator" as character for cache consistency
+                cache_character = character
+                if self.engine_type == "chatterbox" and original_character == "narrator":
+                    cache_character = "narrator"
+                
                 # Generate audio using engine adapter
                 if self.engine_type == "f5tts":
                     segment_audio = engine_adapter.generate_segment_audio(
                         text=segment_text,
                         char_audio=char_audio,
                         char_text=char_text,
-                        character=character,
+                        character=cache_character,
                         **params
                     )
                 else:  # chatterbox
                     segment_audio = engine_adapter.generate_segment_audio(
                         text=segment_text,
                         char_audio=char_audio,
-                        character=character,
+                        character=cache_character,
                         **params
                     )
                 
@@ -328,20 +333,31 @@ class MultilingualEngine:
                 if not char_audio or not char_text:
                     char_audio = params.get("main_audio_reference")
                     char_text = params.get("main_text_reference", "")
-                audio_component = char_audio or "main_reference"
+                # CRITICAL FIX: Use main narrator's stable component instead of generic fallback
+                main_stable_component = params.get("stable_audio_component", "main_reference")
+                audio_component = char_audio or main_stable_component
                 ref_text_component = char_text or ""
             else:  # chatterbox
                 char_audio_tuple = character_mapping.get(character, (None, None))
                 char_audio = char_audio_tuple[0] if char_audio_tuple[0] else params.get("main_audio_reference")
-                audio_component = char_audio or "main_reference"
+                # CRITICAL FIX: Use main narrator's stable component instead of generic fallback
+                main_stable_component = params.get("stable_audio_component", "main_reference")
+                audio_component = char_audio or main_stable_component
                 ref_text_component = ""
+            
+            # CRITICAL FIX: For language-only tags using main narrator voice, cache as "narrator"
+            # This prevents cache pollution when narrator voice changes
+            cache_character = character
+            if audio_component == main_stable_component:
+                # This character is using main narrator voice (language-only tag)
+                cache_character = "narrator"
             
             # Create cache function to check if segment exists
             cache_fn = create_cache_function(
                 text_content=text,
                 audio_component=str(audio_component),
                 ref_text_component=ref_text_component,
-                character=character,
+                character=cache_character,
                 language=language,
                 model_name=params.get("model", "default"),
                 temperature=params.get("temperature", 0.8),
