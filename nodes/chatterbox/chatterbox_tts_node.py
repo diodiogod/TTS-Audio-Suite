@@ -727,8 +727,9 @@ Back to the main narrator voice for the conclusion.""",
                     inputs["silence_between_chunks_ms"], len(inputs["text"])
                 )
                 
-                # Generate info
-                total_duration = wav.size(-1) / self.tts_model.sr
+                # Generate info - handle case where streaming was used and tts_model is None
+                sample_rate = self.tts_model.sr if self.tts_model else 22050  # ChatterBox default
+                total_duration = wav.size(-1) / sample_rate
                 model_source = f"chatterbox_{language.lower()}"
                 
                 language_info = ""
