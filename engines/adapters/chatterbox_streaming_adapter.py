@@ -92,11 +92,15 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
             StreamingResult with generated audio
         """
         start_time = self._get_current_time()
+        print(f"🚀 ADAPTER DEBUG: Processing segment '{segment.text[:30]}...' for {segment.character} in {segment.language}")
         
         try:
             # Use the same approach as the old working system
             # Call the node's _process_single_segment_for_streaming method
-            if hasattr(self.node, '_process_single_segment_for_streaming'):
+            has_streaming_method = hasattr(self.node, '_process_single_segment_for_streaming')
+            print(f"🔍 ADAPTER: Node has _process_single_segment_for_streaming: {has_streaming_method}")
+            print(f"🔍 ADAPTER: Node type: {type(self.node).__name__}")
+            if has_streaming_method:
                 # Build inputs dict like the old system
                 inputs = {
                     "exaggeration": kwargs.get("exaggeration", 0.5),
@@ -106,7 +110,8 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
                     "enable_chunking": False,  # Don't chunk in streaming - already handled
                     "enable_audio_cache": kwargs.get("enable_audio_cache", True),
                     "crash_protection_template": kwargs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                    "device": kwargs.get("device", "auto")
+                    "device": kwargs.get("device", "auto"),
+                    "reference_audio": kwargs.get("reference_audio", None)
                 }
                 
                 # Call exactly like the old working system
@@ -290,14 +295,29 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
         # Check if node has generation method
         if hasattr(self.node, '_generate_tts_with_pause_tags'):
             print(f"🏷️ ADAPTER: Calling _generate_tts_with_pause_tags for '{text[:30]}...'")
-            # Use pause tag-aware generation
-            return self.node._generate_tts_with_pause_tags(
-                text, voice_path, exaggeration, temperature, cfg_weight,
-                language, True, character=character, seed=seed,
-                enable_cache=enable_cache,
-                crash_protection_template=crash_protection,
-                stable_audio_component=""
-            )
+            
+            # Temporarily replace stateless wrapper with underlying model for pause tag processing
+            original_model = getattr(self.node, 'tts_model', None)
+            try:
+                # Load the correct model for this language and extract underlying model if needed
+                self.load_model_for_language(language, kwargs.get('device', 'auto'))
+                
+                if hasattr(self.node, 'tts_model') and hasattr(self.node.tts_model, 'model'):
+                    self.node.tts_model = self.node.tts_model.model
+                    print(f"🔓 ADAPTER: Extracted underlying model for pause tag processing")
+                
+                # Use pause tag-aware generation
+                return self.node._generate_tts_with_pause_tags(
+                    text, voice_path, exaggeration, temperature, cfg_weight,
+                    language, True, character=character, seed=seed,
+                    enable_cache=enable_cache,
+                    crash_protection_template=crash_protection,
+                    stable_audio_component=""
+                )
+            finally:
+                # Restore original model
+                if original_model is not None:
+                    self.node.tts_model = original_model
         elif hasattr(self.node, 'tts_model') and self.node.tts_model:
             # Direct model generation
             return self.node.tts_model.generate(

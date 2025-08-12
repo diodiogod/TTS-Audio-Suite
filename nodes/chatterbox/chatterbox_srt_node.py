@@ -209,6 +209,19 @@ The audio will match these exact timings.""",
             # Replace {seg} placeholder with original text
             return padding_template.replace("{seg}", stripped_text)
         return text
+    
+    def _get_stable_audio_component(self, voice_path, reference_audio=None):
+        """Generate stable audio component identifier for cache consistency."""
+        if reference_audio is not None:
+            # For direct audio input (opt_narrator), use content-based hash
+            waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
+            return f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
+        elif voice_path and voice_path != "none":
+            # For dropdown selections, use the stable path
+            return str(voice_path)
+        else:
+            # No voice file (default voice)
+            return "default_voice"
 
     def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight):
         """
@@ -505,6 +518,9 @@ The audio will match these exact timings.""",
                                 enable_cache = inputs.get("enable_audio_cache", True)
                                 cached_audio = None
                                 
+                                # Debug cache parameters
+                                print(f"🐛 CACHE DEBUG: voice_path='{voice_path}', reference_audio={inputs.get('reference_audio') is not None}")
+                                
                                 # Try cache first for this individual segment
                                 if enable_cache:
                                     from utils.audio.cache import create_cache_function
@@ -516,16 +532,13 @@ The audio will match these exact timings.""",
                                         'temperature': inputs.get("temperature", 0.8),
                                         'cfg_weight': inputs.get("cfg_weight", 0.5),
                                         'seed': inputs.get("seed", 42),
-                                        'audio_component': "narrator_voice" if character == "narrator" else str(voice_path or "main_reference"),
+                                        'audio_component': self._get_stable_audio_component(voice_path, inputs.get("reference_audio")),
                                         'model_source': "streaming_stateless",
                                         'device': "auto",
                                         'language': language
                                     }
-                                    print(f"🔑 Cache params for '{text_for_generation[:15]}...': {cache_params}")
-                                    
                                     cache_fn = create_cache_function("chatterbox", **cache_params)
                                     cached_audio = cache_fn(text_for_generation)
-                                    print(f"🔍 Cache lookup result for '{text_for_generation[:15]}...': {cached_audio is not None}")
                                 
                                 if cached_audio is not None:
                                     print(f"💾 CACHE HIT for segment: '{text_for_generation[:20]}...'")
@@ -572,6 +585,9 @@ The audio will match these exact timings.""",
                         enable_cache = inputs.get("enable_audio_cache", True)
                         cached_audio = None
                         
+                        # Debug cache parameters  
+                        print(f"🐛 CACHE DEBUG: voice_path='{voice_path}', reference_audio={inputs.get('reference_audio') is not None}")
+                        
                         # Try cache first
                         if enable_cache:
                             from utils.audio.cache import create_cache_function
@@ -582,7 +598,7 @@ The audio will match these exact timings.""",
                                 temperature=inputs.get("temperature", 0.8),
                                 cfg_weight=inputs.get("cfg_weight", 0.5),
                                 seed=inputs.get("seed", 42),
-                                audio_component="narrator_voice" if character == "narrator" else str(voice_path or "main_reference"),
+                                audio_component=self._get_stable_audio_component(voice_path, inputs.get("reference_audio")),
                                 model_source="streaming_stateless",
                                 device="auto",
                                 language=language
