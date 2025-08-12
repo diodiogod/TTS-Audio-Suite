@@ -208,6 +208,11 @@ class MultilingualEngine:
                 if self.engine_type == "chatterbox" and original_character == "narrator":
                     cache_character = "narrator"
                 
+                # CRITICAL FIX: Update current_language in params to match loaded model
+                # The multilingual engine loads models but the adapter needs the updated language
+                updated_params = params.copy()
+                updated_params['current_language'] = getattr(engine_adapter.node, 'current_language', segment_lang)
+                
                 # Generate audio using engine adapter
                 if self.engine_type == "f5tts":
                     segment_audio = engine_adapter.generate_segment_audio(
@@ -215,14 +220,14 @@ class MultilingualEngine:
                         char_audio=char_audio,
                         char_text=char_text,
                         character=cache_character,
-                        **params
+                        **updated_params
                     )
                 else:  # chatterbox
                     segment_audio = engine_adapter.generate_segment_audio(
                         text=segment_text,
                         char_audio=char_audio,
                         character=cache_character,
-                        **params
+                        **updated_params
                     )
                 
                 # Calculate duration
