@@ -394,13 +394,8 @@ Back to the main narrator voice for the conclusion.""",
     
     def _generate_stable_audio_component(self, reference_audio, audio_prompt_path: str) -> str:
         """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
-        if reference_audio is not None:
-            waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
-            return f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
-        elif audio_prompt_path:
-            return audio_prompt_path
-        else:
-            return ""
+        from utils.audio.audio_hash import generate_stable_audio_component
+        return generate_stable_audio_component(reference_audio, audio_prompt_path)
 
 
     def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 

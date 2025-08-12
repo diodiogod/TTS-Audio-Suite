@@ -212,16 +212,8 @@ The audio will match these exact timings.""",
     
     def _get_stable_audio_component(self, voice_path, reference_audio=None):
         """Generate stable audio component identifier for cache consistency."""
-        if reference_audio is not None:
-            # For direct audio input (opt_narrator), use content-based hash
-            waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
-            return f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
-        elif voice_path and voice_path != "none":
-            # For dropdown selections, use the stable path
-            return str(voice_path)
-        else:
-            # No voice file (default voice)
-            return "default_voice"
+        from utils.audio.audio_hash import generate_stable_audio_component
+        return generate_stable_audio_component(reference_audio, voice_path)
 
     def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight):
         """
@@ -518,9 +510,6 @@ The audio will match these exact timings.""",
                                 enable_cache = inputs.get("enable_audio_cache", True)
                                 cached_audio = None
                                 
-                                # Debug cache parameters
-                                print(f"🐛 CACHE DEBUG: voice_path='{voice_path}', reference_audio={inputs.get('reference_audio') is not None}")
-                                
                                 # Try cache first for this individual segment
                                 if enable_cache:
                                     from utils.audio.cache import create_cache_function
@@ -584,9 +573,6 @@ The audio will match these exact timings.""",
                         # No pause tags, use stateless generation with caching
                         enable_cache = inputs.get("enable_audio_cache", True)
                         cached_audio = None
-                        
-                        # Debug cache parameters  
-                        print(f"🐛 CACHE DEBUG: voice_path='{voice_path}', reference_audio={inputs.get('reference_audio') is not None}")
                         
                         # Try cache first
                         if enable_cache:
@@ -668,19 +654,8 @@ The audio will match these exact timings.""",
             
             # Determine audio prompt component for cache key generation (stable identifier)
             # This must be done BEFORE handle_reference_audio to avoid using temporary file paths
-            stable_audio_prompt_component = ""
-            # print(f"🔍 Stable Cache DEBUG: reference_audio is None: {reference_audio is None}")
-            # print(f"🔍 Stable Cache DEBUG: audio_prompt_path: {repr(audio_prompt_path)}")
-            if reference_audio is not None:
-                waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
-                stable_audio_prompt_component = f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
-                # print(f"🔍 Stable Cache DEBUG: Using reference_audio hash: {stable_audio_prompt_component}")
-            elif audio_prompt_path:
-                stable_audio_prompt_component = audio_prompt_path
-                # print(f"🔍 Stable Cache DEBUG: Using audio_prompt_path: {stable_audio_prompt_component}")
-            else:
-                # print(f"🔍 Stable Cache DEBUG: No reference audio or path provided")
-                pass
+            from utils.audio.audio_hash import generate_stable_audio_component
+            stable_audio_prompt_component = generate_stable_audio_component(reference_audio, audio_prompt_path)
             
             # Handle reference audio (this may create temporary files, but we don't use them in cache key)
             audio_prompt = self.handle_reference_audio(reference_audio, audio_prompt_path)
