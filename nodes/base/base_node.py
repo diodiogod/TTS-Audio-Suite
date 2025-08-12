@@ -334,6 +334,11 @@ class BaseTTSNode(BaseChatterBoxNode):
         if self.tts_model is None:
             raise RuntimeError("TTS model not loaded. Call load_tts_model() first.")
         
+        # CRITICAL DEBUG: Verify which model is actually being used for generation
+        model_path = getattr(self.tts_model, 'model_dir', 'unknown') if hasattr(self.tts_model, 'model_dir') else 'no_model_dir'
+        model_language = getattr(self, 'current_language', 'unknown_language')
+        print(f"🔍 GENERATION DEBUG: Using model at '{model_path}' for language '{model_language}'")
+        
         # Use torch.no_grad() to ensure no gradients are tracked during inference
         with torch.no_grad():
             audio = self.tts_model.generate(

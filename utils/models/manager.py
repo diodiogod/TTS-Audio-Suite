@@ -228,7 +228,12 @@ class ModelManager:
                 
                 # Check class-level cache first
                 if not force_reload and cache_key in self._model_cache:
-                    self.tts_model = self._model_cache[cache_key]
+                    cached_model = self._model_cache[cache_key]
+                    print(f"🔄 CACHE DEBUG: Using cached {language} model (key: {cache_key})")
+                    print(f"🔍 CACHE DEBUG: Model type: {type(cached_model)}, has model_dir: {hasattr(cached_model, 'model_dir')}")
+                    if hasattr(cached_model, 'model_dir'):
+                        print(f"🔍 CACHE DEBUG: Model dir: {cached_model.model_dir}")
+                    self.tts_model = cached_model
                     self.current_device = device
                     self._current_tts_cache_key = cache_key
                     return self.tts_model
