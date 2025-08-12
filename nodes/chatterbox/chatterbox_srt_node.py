@@ -480,26 +480,56 @@ The audio will match these exact timings.""",
         """Process a single segment for the streaming processor using pre-loaded models."""
         # This method is called by the streaming worker
         try:
-            # CRITICAL FIX: Use pre-loaded model directly without changing shared node state
+            # CRITICAL FIX: Use stateless wrapper for thread-safe generation
             if hasattr(self, '_streaming_model_manager'):
-                preloaded_model = self._streaming_model_manager.get_model_for_language(language)
-                if preloaded_model:
-                    # Generate audio using the pre-loaded model directly (thread-safe)
-                    segment_audio = self._generate_with_preloaded_model(
-                        model=preloaded_model,
-                        text=segment_text,
-                        voice_path=voice_path,
-                        language=language,
-                        character=character,
-                        exaggeration=inputs.get("exaggeration", 0.5),
-                        temperature=inputs.get("temperature", 0.8),
-                        cfg_weight=inputs.get("cfg_weight", 0.5),
-                        seed=inputs.get("seed", 42),
-                        enable_cache=inputs.get("enable_audio_cache", True),
+                # Get stateless wrapper for true thread safety
+                stateless_model = self._streaming_model_manager.get_stateless_model_for_language(language)
+                if stateless_model:
+                    # Check if it's a StatelessChatterBoxWrapper
+                    from engines.chatterbox.stateless_wrapper import StatelessChatterBoxWrapper
+                    if isinstance(stateless_model, StatelessChatterBoxWrapper):
+                        # Apply crash protection if needed
+                        crash_protection_template = inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,")
+                        if len(segment_text.strip()) < 21 and crash_protection_template:
+                            protected_text = self._pad_short_text_for_chatterbox(segment_text, crash_protection_template)
+                            print(f"🛡️ Applied crash protection: '{segment_text}' → '{protected_text}'")
+                            segment_text = protected_text
+                        
+                        # Use stateless generation (thread-safe)
+                        segment_audio = stateless_model.generate_stateless(
+                            text=segment_text,
+                            audio_prompt_path=voice_path if voice_path != "none" else None,
+                            exaggeration=inputs.get("exaggeration", 0.5),
+                            temperature=inputs.get("temperature", 0.8),
+                            cfg_weight=inputs.get("cfg_weight", 0.5),
+                            seed=inputs.get("seed", 42)
+                        )
+                        
+                        # Ensure the audio is a proper tensor without autograd tracking
+                        if hasattr(segment_audio, 'detach'):
+                            segment_audio = segment_audio.detach().clone()
+                    else:
+                        # Fallback to old method if not stateless wrapper
+                        segment_audio = self._generate_with_preloaded_model(
+                            model=stateless_model,
+                            text=segment_text,
+                            voice_path=voice_path,
+                            language=language,
+                            character=character,
+                            exaggeration=inputs.get("exaggeration", 0.5),
+                            temperature=inputs.get("temperature", 0.8),
+                            cfg_weight=inputs.get("cfg_weight", 0.5),
+                            seed=inputs.get("seed", 42),
+                            enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=""
                     )
-                    return segment_audio
+                    
+                # Ensure return value is a proper tensor
+                if hasattr(segment_audio, 'detach'):
+                    segment_audio = segment_audio.detach().clone()
+                    
+                return segment_audio
             
             # Fallback to original method if no pre-loaded model
             print(f"⚠️ No pre-loaded model for {language}, using fallback generation")
@@ -1017,26 +1047,56 @@ The audio will match these exact timings.""",
         """Process a single segment for the streaming processor using pre-loaded models."""
         # This method is called by the streaming worker
         try:
-            # CRITICAL FIX: Use pre-loaded model directly without changing shared node state
+            # CRITICAL FIX: Use stateless wrapper for thread-safe generation
             if hasattr(self, '_streaming_model_manager'):
-                preloaded_model = self._streaming_model_manager.get_model_for_language(language)
-                if preloaded_model:
-                    # Generate audio using the pre-loaded model directly (thread-safe)
-                    segment_audio = self._generate_with_preloaded_model(
-                        model=preloaded_model,
-                        text=segment_text,
-                        voice_path=voice_path,
-                        language=language,
-                        character=character,
-                        exaggeration=inputs.get("exaggeration", 0.5),
-                        temperature=inputs.get("temperature", 0.8),
-                        cfg_weight=inputs.get("cfg_weight", 0.5),
-                        seed=inputs.get("seed", 42),
-                        enable_cache=inputs.get("enable_audio_cache", True),
+                # Get stateless wrapper for true thread safety
+                stateless_model = self._streaming_model_manager.get_stateless_model_for_language(language)
+                if stateless_model:
+                    # Check if it's a StatelessChatterBoxWrapper
+                    from engines.chatterbox.stateless_wrapper import StatelessChatterBoxWrapper
+                    if isinstance(stateless_model, StatelessChatterBoxWrapper):
+                        # Apply crash protection if needed
+                        crash_protection_template = inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,")
+                        if len(segment_text.strip()) < 21 and crash_protection_template:
+                            protected_text = self._pad_short_text_for_chatterbox(segment_text, crash_protection_template)
+                            print(f"🛡️ Applied crash protection: '{segment_text}' → '{protected_text}'")
+                            segment_text = protected_text
+                        
+                        # Use stateless generation (thread-safe)
+                        segment_audio = stateless_model.generate_stateless(
+                            text=segment_text,
+                            audio_prompt_path=voice_path if voice_path != "none" else None,
+                            exaggeration=inputs.get("exaggeration", 0.5),
+                            temperature=inputs.get("temperature", 0.8),
+                            cfg_weight=inputs.get("cfg_weight", 0.5),
+                            seed=inputs.get("seed", 42)
+                        )
+                        
+                        # Ensure the audio is a proper tensor without autograd tracking
+                        if hasattr(segment_audio, 'detach'):
+                            segment_audio = segment_audio.detach().clone()
+                    else:
+                        # Fallback to old method if not stateless wrapper
+                        segment_audio = self._generate_with_preloaded_model(
+                            model=stateless_model,
+                            text=segment_text,
+                            voice_path=voice_path,
+                            language=language,
+                            character=character,
+                            exaggeration=inputs.get("exaggeration", 0.5),
+                            temperature=inputs.get("temperature", 0.8),
+                            cfg_weight=inputs.get("cfg_weight", 0.5),
+                            seed=inputs.get("seed", 42),
+                            enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=""
                     )
-                    return segment_audio
+                    
+                # Ensure return value is a proper tensor
+                if hasattr(segment_audio, 'detach'):
+                    segment_audio = segment_audio.detach().clone()
+                    
+                return segment_audio
             
             # Fallback to original method if no pre-loaded model
             print(f"⚠️ No pre-loaded model for {language}, using fallback generation")

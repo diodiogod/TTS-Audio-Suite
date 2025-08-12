@@ -1,11 +1,13 @@
 """
 Streaming Model Manager for ChatterBox
 Handles pre-loading and efficient switching of multiple language models for streaming workers.
+Now provides stateless wrappers for thread-safe parallel generation.
 """
 
 from typing import Dict, Set, List, Optional
 from engines.chatterbox.language_models import get_available_languages, get_model_config
 from utils.models.language_mapper import get_language_mapper
+from engines.chatterbox.stateless_wrapper import StatelessChatterBoxWrapper
 
 class StreamingModelManager:
     """
@@ -93,6 +95,26 @@ class StreamingModelManager:
         else:
             print(f"❌ No model found for language '{language_code}', using fallback")
             return fallback_model  # Use provided fallback
+    
+    def get_stateless_model_for_language(self, language_code: str, fallback_model=None):
+        """
+        Get a stateless wrapper for the appropriate pre-loaded model.
+        This ensures thread-safe parallel generation without state corruption.
+        
+        Args:
+            language_code: Language code (e.g., 'en', 'de', 'fr')
+            fallback_model: Fallback model if language not found
+            
+        Returns:
+            StatelessChatterBoxWrapper instance or None
+        """
+        base_model = self.get_model_for_language(language_code, fallback_model)
+        if base_model:
+            # Return a stateless wrapper for thread-safe generation
+            stateless_wrapper = StatelessChatterBoxWrapper(base_model)
+            print(f"🔒 Providing stateless wrapper for '{language_code}' (thread-safe)")
+            return stateless_wrapper
+        return None
     
     def cleanup(self):
         """Clean up pre-loaded models to free memory."""

@@ -20,6 +20,9 @@ from dataclasses import dataclass
 from collections import deque
 import gc
 
+# Import the stateless wrapper for thread-safe generation
+from .stateless_wrapper import StatelessChatterBoxWrapper
+
 @dataclass
 class StreamingWorkItem:
     """Single text generation work item for streaming processing."""
@@ -164,18 +167,27 @@ class StreamingWorker:
     """
     Individual streaming worker that continuously processes work from shared queue.
     Can be dynamically started/stopped without disrupting other workers.
+    Now uses StatelessChatterBoxWrapper for thread-safe parallel generation.
     """
     
     def __init__(self, worker_id: int, work_queue: Queue, result_queue: Queue, 
-                 tts_model, shutdown_event: threading.Event):
+                 tts_model, shutdown_event: threading.Event, use_stateless: bool = True):
         self.worker_id = worker_id
         self.work_queue = work_queue
-        self.result_queue = result_queue  
-        self.tts_model = tts_model
+        self.result_queue = result_queue
+        
+        # Use stateless wrapper for thread-safe generation
+        if use_stateless and not isinstance(tts_model, StatelessChatterBoxWrapper):
+            self.tts_model = StatelessChatterBoxWrapper(tts_model)
+            print(f"🔒 Worker {worker_id}: Using stateless wrapper for thread-safe generation")
+        else:
+            self.tts_model = tts_model
+            
         self.shutdown_event = shutdown_event
         self.thread = None
         self.is_active = False
         self.should_stop = False
+        self.use_stateless = use_stateless
         
     def start(self):
         """Start the worker thread."""
@@ -214,13 +226,24 @@ class StreamingWorker:
                 
                 start_time = time.time()
                 try:
-                    audio = self.tts_model.generate(
-                        text=work_item.text,
-                        audio_prompt_path=None,
-                        exaggeration=work_item.exaggeration,
-                        cfg_weight=work_item.cfg_weight,
-                        temperature=work_item.temperature,
-                    )
+                    # Use stateless generation for thread safety
+                    if self.use_stateless and isinstance(self.tts_model, StatelessChatterBoxWrapper):
+                        audio = self.tts_model.generate_stateless(
+                            text=work_item.text,
+                            audio_prompt_path=None,  # TODO: Add audio prompt support
+                            exaggeration=work_item.exaggeration,
+                            cfg_weight=work_item.cfg_weight,
+                            temperature=work_item.temperature,
+                        )
+                    else:
+                        # Fallback to regular generation (not thread-safe with multiple workers!)
+                        audio = self.tts_model.generate(
+                            text=work_item.text,
+                            audio_prompt_path=None,
+                            exaggeration=work_item.exaggeration,
+                            cfg_weight=work_item.cfg_weight,
+                            temperature=work_item.temperature,
+                        )
                     
                     completion_time = time.time() - start_time
                     result = StreamingResult(
@@ -269,12 +292,16 @@ class TrueStreamingProcessor:
     Workers continuously pull from shared work queue - no batch waiting.
     Can dynamically add/remove workers based on performance and memory.
     This provides true parallel efficiency and resource utilization.
+    
+    Now uses StatelessChatterBoxWrapper for thread-safe parallel generation.
     """
     
-    def __init__(self, tts_model, initial_workers: int = 4, max_workers: int = 12):
+    def __init__(self, tts_model, batch_size: int = 4, use_stateless: bool = True):
         self.tts_model = tts_model
-        self.initial_workers = initial_workers
-        self.max_workers = max_workers
+        self.batch_size = batch_size  # User's batch_size directly controls worker count
+        self.initial_workers = max(1, batch_size)  # At least 1 worker
+        self.max_workers = max(1, batch_size)  # No arbitrary cap - trust user's batch_size
+        self.use_stateless = use_stateless
         
         # Streaming infrastructure
         self.work_queue = Queue()
@@ -397,7 +424,8 @@ class TrueStreamingProcessor:
             work_queue=self.work_queue,
             result_queue=self.result_queue,
             tts_model=self.tts_model,
-            shutdown_event=self.shutdown_event
+            shutdown_event=self.shutdown_event,
+            use_stateless=self.use_stateless
         )
         
         self.workers[worker_id] = worker
