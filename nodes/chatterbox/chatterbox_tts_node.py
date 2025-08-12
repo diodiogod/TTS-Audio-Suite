@@ -630,11 +630,16 @@ Back to the main narrator voice for the conclusion.""",
                 character_mapping = get_character_mapping(characters, engine_type="chatterbox")
                 
                 # Build voice references with fallback to main voice
-                voice_refs = {}
+                # CRITICAL FIX: Explicitly map narrator to selected voice (matches SRT node logic)
+                voice_refs = {'narrator': main_audio_prompt or None}
                 character_voices = []
                 main_voices = []
                 
                 for character in characters:
+                    # CRITICAL FIX: Skip narrator - it should use selected input/dropdown voice, not character voice files
+                    if character == 'narrator':
+                        continue
+                        
                     audio_path, _ = character_mapping.get(character, (None, None))
                     if audio_path:
                         voice_refs[character] = audio_path
@@ -1068,13 +1073,16 @@ Back to the main narrator voice for the conclusion.""",
             # Process each segment individually
             char_audio_prompt = voice_refs.get(char, voice_refs.get("narrator", "none"))
             
+            # Generate stable audio component for cache consistency
+            stable_audio_component = self._generate_stable_audio_component(inputs.get("reference_audio"), char_audio_prompt)
+            
             segment_audio = self._generate_tts_with_pause_tags(
                 segment_text, char_audio_prompt, inputs["exaggeration"],
                 inputs["temperature"], inputs["cfg_weight"], lang,
                 True, character=char, seed=inputs["seed"],
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                stable_audio_component=""
+                stable_audio_component=stable_audio_component
             )
             
             audio_segments_with_order.append((original_idx, segment_audio))
@@ -1090,15 +1098,40 @@ Back to the main narrator voice for the conclusion.""",
         """Process a single segment for the streaming processor using pre-loaded models."""
         # This method is called by the streaming worker
         try:
+            # Get the stateless wrapper for thread safety (same as SRT node)
+            if hasattr(self, '_streaming_model_manager'):
+                stateless_model = self._streaming_model_manager.get_stateless_model_for_language(language)
+                if stateless_model:
+                    # Process text for generation
+                    processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))
+                    
+                    print(f"🔒 Using stateless wrapper for thread-safe generation")
+                    
+                    # Generate using stateless wrapper (thread-safe)
+                    segment_audio = stateless_model.generate_stateless(
+                        text=processed_text,
+                        audio_prompt_path=voice_path if voice_path != "none" else None,
+                        exaggeration=inputs.get("exaggeration", 0.5),
+                        temperature=inputs.get("temperature", 0.8),
+                        cfg_weight=inputs.get("cfg_weight", 0.5),
+                        seed=inputs.get("seed", 42)
+                    )
+                    return segment_audio
+            
+            # Fallback to old method if no streaming model manager
+            print(f"⚠️ No stateless wrapper available, using fallback method")
+            
+            # Generate stable audio component for cache consistency
+            stable_audio_component = self._generate_stable_audio_component(inputs.get("reference_audio"), voice_path)
+            
             # Directly call the pause-aware generation method
-            # This bypasses the stateless wrapper issues and uses the existing pause processing system
             segment_audio = self._generate_tts_with_pause_tags(
                 segment_text, voice_path, inputs.get("exaggeration", 0.5),
                 inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
                 True, character=character, seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                stable_audio_component=""
+                stable_audio_component=stable_audio_component
             )
             return segment_audio
             

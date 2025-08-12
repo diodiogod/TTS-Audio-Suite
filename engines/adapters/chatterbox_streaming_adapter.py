@@ -306,13 +306,19 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
                     self.node.tts_model = self.node.tts_model.model
                     print(f"🔓 ADAPTER: Extracted underlying model for pause tag processing")
                 
+                # Generate stable audio component for cache consistency
+                from utils.audio.audio_hash import generate_stable_audio_component
+                stable_audio_component = generate_stable_audio_component(
+                    kwargs.get("reference_audio"), voice_path
+                )
+                
                 # Use pause tag-aware generation
                 return self.node._generate_tts_with_pause_tags(
                     text, voice_path, exaggeration, temperature, cfg_weight,
                     language, True, character=character, seed=seed,
                     enable_cache=enable_cache,
                     crash_protection_template=crash_protection,
-                    stable_audio_component=""
+                    stable_audio_component=stable_audio_component
                 )
             finally:
                 # Restore original model

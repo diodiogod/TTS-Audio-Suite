@@ -612,24 +612,30 @@ The audio will match these exact timings.""",
                 else:
                     # Fallback: load model and use pause-aware generation
                     self.load_tts_model(inputs.get("device", "auto"), language)
+                    # Generate stable audio component for cache consistency
+                    stable_audio_component = self._get_stable_audio_component(voice_path, inputs.get("reference_audio"))
+                    
                     segment_audio = self._generate_tts_with_pause_tags(
                         segment_text, voice_path, inputs.get("exaggeration", 0.5),
                         inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
                         True, character=character, seed=inputs.get("seed", 42),
                         enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                        stable_audio_component=""
+                        stable_audio_component=stable_audio_component
                     )
             else:
                 # No streaming model manager, fallback to direct model loading
                 self.load_tts_model(inputs.get("device", "auto"), language)
+                # Generate stable audio component for cache consistency
+                stable_audio_component = self._get_stable_audio_component(voice_path, inputs.get("reference_audio"))
+                
                 segment_audio = self._generate_tts_with_pause_tags(
                     segment_text, voice_path, inputs.get("exaggeration", 0.5),
                     inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
                     True, character=character, seed=inputs.get("seed", 42),
                     enable_cache=inputs.get("enable_audio_cache", True),
                     crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                    stable_audio_component=""
+                    stable_audio_component=stable_audio_component
                 )
             
             return segment_audio
@@ -677,7 +683,8 @@ The audio will match these exact timings.""",
             available_chars = get_available_characters()
             character_parser.set_available_characters(list(available_chars))
             
-            # Set engine-aware default language to prevent unnecessary model switching
+            # CRITICAL FIX: Reset character parser session to prevent language contamination from previous executions
+            character_parser.reset_session_cache()
             character_parser.set_engine_aware_default_language(language, "chatterbox")
             
             # SMART OPTIMIZATION: Group subtitles by language to minimize model switching
@@ -713,6 +720,7 @@ The audio will match these exact timings.""",
                 else:
                     # Simple subtitle - group by language
                     single_char, single_text, single_lang = character_segments_with_lang[0]
+                    print(f"🔍 SRT DEBUG: Subtitle {i+1} '{subtitle.text[:30]}...' detected as language '{single_lang}' (expected: '{language}')")
                     all_subtitle_segments.append((i, subtitle, 'simple', single_lang, character_segments_with_lang))
                     
                     if single_lang not in subtitle_language_groups:
