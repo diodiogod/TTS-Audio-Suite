@@ -7,7 +7,8 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and RVC voice conversion
-- **Streaming Parallel Processing**: ChatterBox nodes support batch processing with configurable workers for faster generation
+- **Thread-Safe Parallel Processing**: Stateless ChatterBox wrapper enables true parallel generation without state corruption
+- **Streaming Parallel Processing**: ChatterBox nodes support batch processing with configurable workers (batch_size parameter)
 - **Multilingual Support**: German and Norwegian models for both ChatterBox TTS and Voice Conversion
 - **Smart Language Grouping**: SRT processing by language groups to minimize model switching
 - **Character Voice Management**: Centralized character voice system with flexible input types
@@ -40,6 +41,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **docs/Dev reports/STREAMING_ARCHITECTURE.md** - Streaming parallel processing architecture documentation with feasibility analysis for multiple engines
 
+**docs/Dev reports/STATELESS_WRAPPER_IMPLEMENTATION_PLAN.md** - Stateless ChatterBox wrapper implementation solving shared model state corruption in parallel processing
+
 **docs/PAUSE_TAGS_IMPLEMENTATION_REPORT.md** - Implementation details for pause tag system with timing control syntax
 
 **docs/REFACTORING_PLAN.md** - Architectural refactoring plan and migration strategy documentation
@@ -61,9 +64,11 @@ This extension features a **unified modular architecture** supporting multiple T
 - **audio_timing.py** - Audio timing utilities and time-stretching functionality
 - **srt_batch_processing_router.py** - SRT batch processing router for streaming vs traditional processing decision
 - **streaming_work_queue.py** - Streaming work queue processor for parallel TTS generation
+- **streaming_model_manager.py** - Pre-loading and management of multiple language models for streaming workers
 - **batch_processor.py** - Batch processor for character group processing with true parallel inference
 - **character_grouper.py** - Character grouping utilities for batch processing optimization
-- **streaming_processor.py** - Streaming processor core implementation for parallel TTS workflows
+- **streaming_processor.py** - True streaming processor with dynamic worker scaling and stateless wrapper support
+- **stateless_wrapper.py** - Thread-safe stateless wrapper eliminating shared state corruption in parallel generation
 - **models/** - Complete ChatterBox model architecture (S3Gen, T3, tokenizers, voice encoder)
 
 **engines/f5tts/** - F5-TTS engine implementation and editing capabilities
