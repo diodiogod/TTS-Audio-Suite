@@ -215,22 +215,45 @@ class MultilingualEngine:
                 updated_params = params.copy()
                 updated_params['current_language'] = getattr(engine_adapter.node, 'current_language', segment_lang)
                 
-                # Generate audio using engine adapter
-                if self.engine_type == "f5tts":
-                    segment_audio = engine_adapter.generate_segment_audio(
-                        text=segment_text,
-                        char_audio=char_audio,
-                        char_text=char_text,
-                        character=cache_character,
-                        **updated_params
-                    )
-                else:  # chatterbox
-                    segment_audio = engine_adapter.generate_segment_audio(
-                        text=segment_text,
-                        char_audio=char_audio,
-                        character=cache_character,
-                        **updated_params
-                    )
+                # CRITICAL FIX: Handle pause tags within character segments
+                # This ensures pause changes don't invalidate cache for text content
+                from utils.text.pause_processor import PauseTagProcessor
+                if PauseTagProcessor.has_pause_tags(segment_text):
+                    # Process pause tags for this character segment
+                    if self.engine_type == "f5tts":
+                        segment_audio = engine_adapter.generate_segment_audio(
+                            text=segment_text,  # Let adapter handle pause tags internally
+                            char_audio=char_audio,
+                            char_text=char_text,
+                            character=cache_character,
+                            enable_pause_tags=True,  # Enable pause processing in adapter
+                            **updated_params
+                        )
+                    else:  # chatterbox
+                        segment_audio = engine_adapter.generate_segment_audio(
+                            text=segment_text,  # Let adapter handle pause tags internally
+                            char_audio=char_audio,
+                            character=cache_character,
+                            enable_pause_tags=True,  # Enable pause processing in adapter
+                            **updated_params
+                        )
+                else:
+                    # No pause tags, standard generation
+                    if self.engine_type == "f5tts":
+                        segment_audio = engine_adapter.generate_segment_audio(
+                            text=segment_text,
+                            char_audio=char_audio,
+                            char_text=char_text,
+                            character=cache_character,
+                            **updated_params
+                        )
+                    else:  # chatterbox
+                        segment_audio = engine_adapter.generate_segment_audio(
+                            text=segment_text,
+                            char_audio=char_audio,
+                            character=cache_character,
+                            **updated_params
+                        )
                 
                 # Calculate duration
                 duration = self._get_audio_duration(segment_audio)

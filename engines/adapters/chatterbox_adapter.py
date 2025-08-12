@@ -124,25 +124,49 @@ class ChatterBoxEngineAdapter:
             if cached_audio is not None:
                 return cached_audio
         
-        # Generate audio using ChatterBox with pause tag support
-        audio_result = self.node._generate_tts_with_pause_tags(
-            text=text,
-            audio_prompt=char_audio,
-            exaggeration=exaggeration,
-            temperature=temperature,
-            cfg_weight=cfg_weight,
-            language=params.get("current_language", params.get("model", "English")),
-            enable_pause_tags=True,
-            character=character,
-            seed=seed,
-            enable_cache=False,  # Disable internal caching since we handle it externally
-            crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-            stable_audio_component=params.get("stable_audio_component", "main_reference")
-        )
+        # CRITICAL FIX: Handle caching based on pause tag presence
+        # If pause tags detected, let internal pause processor handle caching of text segments
+        # If no pause tags, use external caching as normal
+        enable_pause_tags = params.get("enable_pause_tags", True)
+        has_pause_tags = enable_pause_tags and "[pause:" in text
         
-        # Cache the result if caching is enabled
-        if cache_fn:
-            cache_fn(text, audio_result)
+        if has_pause_tags:
+            # Let internal pause processor handle caching of individual text segments
+            audio_result = self.node._generate_tts_with_pause_tags(
+                text=text,
+                audio_prompt=char_audio,
+                exaggeration=exaggeration,
+                temperature=temperature,
+                cfg_weight=cfg_weight,
+                language=params.get("current_language", params.get("model", "English")),
+                enable_pause_tags=True,
+                character=character,
+                seed=seed,
+                enable_cache=True,  # Enable internal caching for pause tag processing
+                crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=params.get("stable_audio_component", "main_reference")
+            )
+            # Don't use external cache for pause tag segments
+        else:
+            # No pause tags, use external caching as normal
+            audio_result = self.node._generate_tts_with_pause_tags(
+                text=text,
+                audio_prompt=char_audio,
+                exaggeration=exaggeration,
+                temperature=temperature,
+                cfg_weight=cfg_weight,
+                language=params.get("current_language", params.get("model", "English")),
+                enable_pause_tags=False,
+                character=character,
+                seed=seed,
+                enable_cache=False,  # Disable internal caching since we handle it externally
+                crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                stable_audio_component=params.get("stable_audio_component", "main_reference")
+            )
+            
+            # Cache the result if external caching is enabled
+            if cache_fn:
+                cache_fn(text, audio_result)
         
         return audio_result
     
