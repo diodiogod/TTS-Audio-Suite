@@ -289,6 +289,7 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
         
         # Check if node has generation method
         if hasattr(self.node, '_generate_tts_with_pause_tags'):
+            print(f"🏷️ ADAPTER: Calling _generate_tts_with_pause_tags for '{text[:30]}...'")
             # Use pause tag-aware generation
             return self.node._generate_tts_with_pause_tags(
                 text, voice_path, exaggeration, temperature, cfg_weight,

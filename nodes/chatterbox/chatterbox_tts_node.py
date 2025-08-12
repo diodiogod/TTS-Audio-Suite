@@ -1092,10 +1092,20 @@ Back to the main narrator voice for the conclusion.""",
     def _process_single_segment_for_streaming(self, original_idx, character, segment_text, language, voice_path, inputs):
         """Process a single segment for the streaming processor using pre-loaded models."""
         # This method is called by the streaming worker
+        print(f"🔧 STREAMING DEBUG: Processing segment '{segment_text[:50]}...' with pause tags enabled")
         try:
             # Get the pre-loaded model for this language (thread-safe)
             if hasattr(self, '_streaming_model_manager'):
                 preloaded_model = self._streaming_model_manager.get_model_for_language(language)
+                print(f"🔍 STREAMING DEBUG: Got model type: {type(preloaded_model).__name__}")
+                
+                # If we get a stateless wrapper, extract the underlying model for pause tag processing
+                if hasattr(preloaded_model, 'model'):
+                    print(f"🔓 STREAMING: Extracting underlying model from {type(preloaded_model).__name__}")
+                    preloaded_model = preloaded_model.model
+                    print(f"🔓 STREAMING: Using underlying model type: {type(preloaded_model).__name__}")
+                else:
+                    print(f"⚠️ STREAMING: Model has no .model attribute, using as-is")
                 if preloaded_model:
                     # print(f"🧵 Worker using pre-loaded {language} model")  # Debug output - commented for cleaner console
                     # Temporarily switch to the pre-loaded model for this segment
@@ -1105,6 +1115,7 @@ Back to the main narrator voice for the conclusion.""",
                     try:
                         # Don't apply crash protection here - let _generate_tts_with_pause_tags handle it
                         # This preserves pause tag processing
+                        print(f"🏷️ STREAMING: Calling _generate_tts_with_pause_tags with model type: {type(self.tts_model).__name__}")
                         segment_audio = self._generate_tts_with_pause_tags(
                             segment_text, voice_path, inputs.get("exaggeration", 0.5),
                             inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
