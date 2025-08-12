@@ -139,7 +139,9 @@ class MultilingualEngine:
                         engine_adapter.load_base_model("English", params.get("device", "auto"))
                 else:
                     print(f"💾 Model '{required_model}' already loaded - reusing for language '{lang_code}' ({len(lang_segments)} segments)")
-                    # Still need to update current language state even if model is cached
+                    # CRITICAL FIX: Force model manager to switch to the correct cached model instance
+                    # The model is cached but self.tts_model needs to point to the right instance
+                    engine_adapter.node.load_tts_model(params.get("device", "auto"), required_model)
                     engine_adapter.node.current_language = required_model
                     engine_adapter.node.current_model_name = required_model
                     print(f"🔄 Updated current_language to '{required_model}' (cached)")
