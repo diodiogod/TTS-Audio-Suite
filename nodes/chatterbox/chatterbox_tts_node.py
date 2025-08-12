@@ -10,7 +10,6 @@ import gc
 import subprocess
 import json
 import tempfile
-import hashlib
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
@@ -44,8 +43,6 @@ from utils.text.pause_processor import PauseTagProcessor
 from utils.text.character_parser import parse_character_text, character_parser
 import comfy.model_management as model_management
 
-# Global audio cache for ChatterBox TTS segments
-GLOBAL_AUDIO_CACHE = {}
 
 
 class ChatterboxTTSNode(BaseTTSNode):
@@ -405,35 +402,6 @@ Back to the main narrator voice for the conclusion.""",
         else:
             return ""
 
-    def _generate_segment_cache_key(self, text: str, exaggeration: float, temperature: float, 
-                                   cfg_weight: float, seed: int, audio_component: str, 
-                                   model_source: str, device: str, language: str = "English", 
-                                   character: str = "narrator") -> str:
-        """Generate cache key for a single audio segment based on generation parameters."""
-        cache_data = {
-            'text': text,
-            'exaggeration': exaggeration,
-            'temperature': temperature,
-            'cfg_weight': cfg_weight,
-            'seed': seed,
-            'audio_component': audio_component,
-            'model_source': model_source,
-            'device': device,
-            'language': language,
-            'character': character,
-            'engine': 'chatterbox'
-        }
-        cache_string = str(sorted(cache_data.items()))
-        cache_key = hashlib.md5(cache_string.encode()).hexdigest()
-        return cache_key
-
-    def _get_cached_segment_audio(self, segment_cache_key: str) -> Optional[Tuple[torch.Tensor, float]]:
-        """Retrieve cached audio for a single segment if available from global cache."""
-        return GLOBAL_AUDIO_CACHE.get(segment_cache_key)
-
-    def _cache_segment_audio(self, segment_cache_key: str, audio_tensor: torch.Tensor, natural_duration: float):
-        """Cache generated audio for a single segment in global cache."""
-        GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
 
     def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 
                                     temperature: float, cfg_weight: float, language: str = "English",
@@ -469,7 +437,7 @@ Back to the main narrator voice for the conclusion.""",
         if pause_segments is not None:
             print(f"🏷️ PAUSE TAGS: Found in '{text[:50]}...' -> {len(pause_segments)} segments")
         else:
-            print(f"🏷️ PAUSE TAGS: None found in '{text[:50]}...'"
+            print(f"🏷️ PAUSE TAGS: None found in '{text[:50]}...'")
         
         if pause_segments is None:
             # No pause tags, use regular generation with caching
@@ -480,27 +448,32 @@ Back to the main narrator voice for the conclusion.""",
                 # Apply crash protection first for consistency
                 protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
                 
-                # Use language-based model source for consistent cache keys across streaming/traditional
-                model_source = f"chatterbox_{language.lower()}"
-                cache_key = self._generate_segment_cache_key(
-                    protected_text, exaggeration, temperature, cfg_weight, seed,
-                    audio_component, model_source, self.device, language, character
+                # Use centralized cache system
+                from utils.audio.cache import create_cache_function
+                cache_fn = create_cache_function(
+                    "chatterbox",
+                    character=character,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight,
+                    seed=seed,
+                    audio_component=audio_component,
+                    model_source=f"chatterbox_{language.lower()}",
+                    device=self.device,
+                    language=language
                 )
                 
                 # Try cache first
-                # print(f"🔍 STREAMING cache: text='{protected_text}', char='{character}', lang='{language}', model='{model_source}', seed={seed}, exag={exaggeration}, temp={temperature}, cfg={cfg_weight}, device='{self.device}', audio='{audio_component}'")
-                cached_data = self._get_cached_segment_audio(cache_key)
-                if cached_data:
+                cached_audio = cache_fn(protected_text)
+                if cached_audio is not None:
                     print(f"💾 CACHE HIT for {character}: '{processed_text[:30]}...'")
-                    return cached_data[0]
-                # else:
-                #     print(f"❌ CACHE MISS for {character}: '{processed_text[:30]}...'")
+                    return cached_audio
                 
                 # Generate and cache
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 audio_clone = audio.detach().clone() if audio.requires_grad else audio
-                self._cache_segment_audio(cache_key, audio_clone, 0.0)  # Duration not needed for basic caching
+                cache_fn(protected_text, audio_result=audio_clone)
                 return audio_clone
             else:
                 protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
@@ -520,27 +493,32 @@ Back to the main narrator voice for the conclusion.""",
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
                 
-                # Use language-based model source for consistent cache keys across streaming/traditional
-                model_source = f"chatterbox_{language.lower()}"
-                cache_key = self._generate_segment_cache_key(
-                    protected_text, exaggeration, temperature, cfg_weight, seed,
-                    audio_component, model_source, self.device, language, character
+                # Use centralized cache system
+                from utils.audio.cache import create_cache_function
+                cache_fn = create_cache_function(
+                    "chatterbox",
+                    character=character,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight,
+                    seed=seed,
+                    audio_component=audio_component,
+                    model_source=f"chatterbox_{language.lower()}",
+                    device=self.device,
+                    language=language
                 )
                 
-                # Try cache first  
-                # print(f"🔍 TRADITIONAL cache: text='{protected_text}', char='{character}', lang='{language}', model='{model_source}', seed={seed}, exag={exaggeration}, temp={temperature}, cfg={cfg_weight}, device='{self.device}', audio='{audio_component}'")
-                cached_data = self._get_cached_segment_audio(cache_key)
-                if cached_data:
+                # Try cache first
+                cached_audio = cache_fn(protected_text)
+                if cached_audio is not None:
                     print(f"💾 CACHE HIT for {character}: '{text_content[:30]}...'")
-                    return cached_data[0]
-                # else:
-                #     print(f"❌ CACHE MISS for {character}: '{text_content[:30]}...'")
+                    return cached_audio
                 
                 # Generate and cache
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 audio_clone = audio.detach().clone() if audio.requires_grad else audio
-                self._cache_segment_audio(cache_key, audio_clone, 0.0)  # Duration not needed for basic caching
+                cache_fn(protected_text, audio_result=audio_clone)
                 return audio_clone
             else:
                 # Apply crash protection
@@ -769,14 +747,22 @@ Back to the main narrator voice for the conclusion.""",
                     pause_content_cached = True
                     for segment_type, content in pause_segments:
                         if segment_type == 'text':  # Only check text segments, not pause segments
-                            # Use language-based model source for consistent cache keys across streaming/traditional
-                            model_source = f"chatterbox_{language.lower()}"
-                            cache_key = self._generate_segment_cache_key(
-                                f"narrator:{content}", inputs["exaggeration"], inputs["temperature"],
-                                inputs["cfg_weight"], inputs["seed"], stable_audio_component,
-                                model_source, inputs["device"], inputs["language"], "narrator"
+                            # Check centralized cache system
+                            from utils.audio.cache import create_cache_function
+                            cache_fn = create_cache_function(
+                                "chatterbox",
+                                character="narrator",
+                                exaggeration=inputs["exaggeration"],
+                                temperature=inputs["temperature"],
+                                cfg_weight=inputs["cfg_weight"],
+                                seed=inputs["seed"],
+                                audio_component=stable_audio_component,
+                                model_source=f"chatterbox_{inputs['language'].lower()}",
+                                device=inputs["device"],
+                                language=inputs["language"]
                             )
-                            cached_data = self._get_cached_segment_audio(cache_key)
+                            cached_data = cache_fn(f"narrator:{content}")
+                            cached_data = None if cached_data is None else (cached_data, 0.0)  # Convert to tuple format
                             if not cached_data:
                                 pause_content_cached = False
                                 break
@@ -823,14 +809,22 @@ Back to the main narrator voice for the conclusion.""",
                         
                         single_content_cached = True
                         for cache_text in cache_texts:
-                            # Use language-based model source for consistent cache keys across streaming/traditional
-                            model_source = f"chatterbox_{language.lower()}"
-                            cache_key = self._generate_segment_cache_key(
-                                f"narrator:{cache_text}", inputs["exaggeration"], inputs["temperature"],
-                                inputs["cfg_weight"], inputs["seed"], stable_audio_component,
-                                model_source, inputs["device"], inputs["language"], "narrator"
+                            # Check centralized cache system
+                            from utils.audio.cache import create_cache_function
+                            cache_fn = create_cache_function(
+                                "chatterbox",
+                                character="narrator",
+                                exaggeration=inputs["exaggeration"],
+                                temperature=inputs["temperature"],
+                                cfg_weight=inputs["cfg_weight"],
+                                seed=inputs["seed"],
+                                audio_component=stable_audio_component,
+                                model_source=f"chatterbox_{language.lower()}",
+                                device=inputs["device"],
+                                language=inputs["language"]
                             )
-                            cached_data = self._get_cached_segment_audio(cache_key)
+                            cached_data = cache_fn(f"narrator:{cache_text}")
+                            cached_data = None if cached_data is None else (cached_data, 0.0)  # Convert to tuple format
                             if not cached_data:
                                 single_content_cached = False
                                 break
@@ -847,14 +841,22 @@ Back to the main narrator voice for the conclusion.""",
                                 cache_texts = [content for segment_type, content in pause_segments if segment_type == 'text']
                             
                             for cache_text in cache_texts:
-                                # Get model source safely
-                                model_source = f"chatterbox_{language.lower()}"
-                                cache_key = self._generate_segment_cache_key(
-                                    f"narrator:{cache_text}", inputs["exaggeration"], inputs["temperature"],
-                                    inputs["cfg_weight"], inputs["seed"], stable_audio_component,
-                                    model_source, inputs["device"], inputs["language"], "narrator"
+                                # Check centralized cache system
+                                from utils.audio.cache import create_cache_function
+                                cache_fn = create_cache_function(
+                                    "chatterbox",
+                                    character="narrator",
+                                    exaggeration=inputs["exaggeration"],
+                                    temperature=inputs["temperature"],
+                                    cfg_weight=inputs["cfg_weight"],
+                                    seed=inputs["seed"],
+                                    audio_component=stable_audio_component,
+                                    model_source=f"chatterbox_{language.lower()}",
+                                    device=inputs["device"],
+                                    language=inputs["language"]
                                 )
-                                cached_data = self._get_cached_segment_audio(cache_key)
+                                cached_data = cache_fn(f"narrator:{cache_text}")
+                                cached_data = None if cached_data is None else (cached_data, 0.0)  # Convert to tuple format
                                 if not cached_data:
                                     single_content_cached = False
                                     break
@@ -1092,50 +1094,9 @@ Back to the main narrator voice for the conclusion.""",
     def _process_single_segment_for_streaming(self, original_idx, character, segment_text, language, voice_path, inputs):
         """Process a single segment for the streaming processor using pre-loaded models."""
         # This method is called by the streaming worker
-        print(f"🔧 STREAMING DEBUG: Processing segment '{segment_text[:50]}...' with pause tags enabled")
         try:
-            # Get the pre-loaded model for this language (thread-safe)
-            if hasattr(self, '_streaming_model_manager'):
-                preloaded_model = self._streaming_model_manager.get_model_for_language(language)
-                print(f"🔍 STREAMING DEBUG: Got model type: {type(preloaded_model).__name__}")
-                
-                # If we get a stateless wrapper, extract the underlying model for pause tag processing
-                if hasattr(preloaded_model, 'model'):
-                    print(f"🔓 STREAMING: Extracting underlying model from {type(preloaded_model).__name__}")
-                    preloaded_model = preloaded_model.model
-                    print(f"🔓 STREAMING: Using underlying model type: {type(preloaded_model).__name__}")
-                else:
-                    print(f"⚠️ STREAMING: Model has no .model attribute, using as-is")
-                if preloaded_model:
-                    # print(f"🧵 Worker using pre-loaded {language} model")  # Debug output - commented for cleaner console
-                    # Temporarily switch to the pre-loaded model for this segment
-                    original_model = self.tts_model
-                    self.tts_model = preloaded_model
-                    
-                    try:
-                        # Don't apply crash protection here - let _generate_tts_with_pause_tags handle it
-                        # This preserves pause tag processing
-                        print(f"🏷️ STREAMING: Calling _generate_tts_with_pause_tags with model type: {type(self.tts_model).__name__}")
-                        segment_audio = self._generate_tts_with_pause_tags(
-                            segment_text, voice_path, inputs.get("exaggeration", 0.5),
-                            inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
-                            True, character=character, seed=inputs.get("seed", 42),
-                            enable_cache=inputs.get("enable_audio_cache", True),
-                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                            stable_audio_component=""
-                        )
-                        return segment_audio
-                    finally:
-                        # Restore original model
-                        self.tts_model = original_model
-            
-            # Fallback to original method if no pre-loaded model
-            print(f"⚠️ No pre-loaded model for {language}, using fallback")
-            from utils.models.language_mapper import get_model_for_language
-            required_model = get_model_for_language("chatterbox", language, "English")
-            
-            # Don't apply crash protection here - let _generate_tts_with_pause_tags handle it
-            # This preserves pause tag processing
+            # Directly call the pause-aware generation method
+            # This bypasses the stateless wrapper issues and uses the existing pause processing system
             segment_audio = self._generate_tts_with_pause_tags(
                 segment_text, voice_path, inputs.get("exaggeration", 0.5),
                 inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
