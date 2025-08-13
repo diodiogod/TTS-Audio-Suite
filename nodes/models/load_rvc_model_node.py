@@ -163,8 +163,22 @@ class LoadRVCModelNode(BaseTTSNode):
     @classmethod
     def _get_available_rvc_models(cls):
         """Get list of available RVC model files."""
-        models = []
+        # Start with downloadable models (like F5-TTS pattern)
+        try:
+            from utils.downloads.model_downloader import AVAILABLE_RVC_MODELS
+            # Extract just the model names from the full paths
+            models = [os.path.basename(model_path) for model_path in AVAILABLE_RVC_MODELS]
+        except ImportError:
+            # Fallback if downloader not available
+            models = [
+                "Claire.pth",
+                "Sayano.pth", 
+                "Mae_v2.pth",
+                "Fuji.pth",
+                "Monika.pth"
+            ]
         
+        # Add local models (like F5-TTS pattern)
         try:
             if folder_paths:
                 models_dir = folder_paths.models_dir
@@ -172,26 +186,11 @@ class LoadRVCModelNode(BaseTTSNode):
                 
                 if os.path.exists(rvc_models_dir):
                     for file in os.listdir(rvc_models_dir):
-                        if file.endswith('.pth'):
-                            models.append(file)
+                        if file.endswith('.pth') and file not in models:
+                            # Add local: prefix to distinguish from downloadable ones
+                            models.append(f"local:{file}")
         except:
             pass
-        
-        # Add downloadable models from model downloader
-        if not models:
-            try:
-                from utils.downloads.model_downloader import AVAILABLE_RVC_MODELS
-                # Extract just the model names from the full paths
-                models = [os.path.basename(model_path) for model_path in AVAILABLE_RVC_MODELS]
-            except ImportError:
-                # Fallback if downloader not available
-                models = [
-                    "Claire.pth",
-                    "Sayano.pth", 
-                    "Mae_v2.pth",
-                    "Fuji.pth",
-                    "Monika.pth"
-                ]
         
         return sorted(models)
     
@@ -200,6 +199,23 @@ class LoadRVCModelNode(BaseTTSNode):
         """Get list of available RVC index files."""
         indexes = [""]  # Empty option first
         
+        # Add downloadable index files (like F5-TTS pattern)
+        try:
+            from utils.downloads.model_downloader import AVAILABLE_RVC_INDEXES
+            # Extract just the index names from the full paths
+            for index_path in AVAILABLE_RVC_INDEXES:
+                index_name = os.path.basename(index_path)
+                indexes.append(index_name)
+        except ImportError:
+            # Fallback if downloader not available
+            indexes.extend([
+                "added_IVF1063_Flat_nprobe_1_Sayano_v2.index",
+                "added_IVF985_Flat_nprobe_1_Fuji_v2.index", 
+                "Monika_v2_40k.index",
+                "Sayano_v2_40k.index"
+            ])
+        
+        # Add local index files (like F5-TTS pattern)
         try:
             if folder_paths:
                 models_dir = folder_paths.models_dir
@@ -207,8 +223,9 @@ class LoadRVCModelNode(BaseTTSNode):
                 
                 if os.path.exists(rvc_index_dir):
                     for file in os.listdir(rvc_index_dir):
-                        if file.endswith('.index'):
-                            indexes.append(file)
+                        if file.endswith('.index') and file not in indexes:
+                            # Add local: prefix to distinguish from downloadable ones
+                            indexes.append(f"local:{file}")
         except:
             pass
         
@@ -217,6 +234,17 @@ class LoadRVCModelNode(BaseTTSNode):
     def _get_model_path(self, model_name, auto_download=True):
         """Get full path to RVC model file."""
         try:
+            # Handle local: prefix (like F5-TTS pattern)
+            if model_name.startswith("local:"):
+                actual_model_name = model_name.replace("local:", "")
+                if folder_paths:
+                    models_dir = folder_paths.models_dir
+                    model_path = os.path.join(models_dir, "RVC", actual_model_name)
+                    if os.path.exists(model_path):
+                        return model_path
+                return None
+            
+            # Regular downloadable model
             if folder_paths:
                 models_dir = folder_paths.models_dir
                 model_path = os.path.join(models_dir, "RVC", model_name)
@@ -238,6 +266,17 @@ class LoadRVCModelNode(BaseTTSNode):
     def _get_index_path(self, index_name, auto_download=True):
         """Get full path to RVC index file."""
         try:
+            # Handle local: prefix (like F5-TTS pattern)
+            if index_name.startswith("local:"):
+                actual_index_name = index_name.replace("local:", "")
+                if folder_paths:
+                    models_dir = folder_paths.models_dir
+                    index_path = os.path.join(models_dir, "RVC", ".index", actual_index_name)
+                    if os.path.exists(index_path):
+                        return index_path
+                return None
+            
+            # Regular downloadable index
             if folder_paths:
                 models_dir = folder_paths.models_dir
                 index_path = os.path.join(models_dir, "RVC", ".index", index_name)
