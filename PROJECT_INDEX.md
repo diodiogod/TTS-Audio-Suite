@@ -7,8 +7,8 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and RVC voice conversion
-- **Thread-Safe Parallel Processing**: Stateless ChatterBox wrapper enables true parallel generation without state corruption
-- **Streaming Parallel Processing**: ChatterBox nodes support batch processing with configurable workers (batch_size parameter)
+- **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
+- **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
 - **Multilingual Support**: German and Norwegian models for both ChatterBox TTS and Voice Conversion
 - **Smart Language Grouping**: SRT processing by language groups to minimize model switching
 - **Character Voice Management**: Centralized character voice system with flexible input types
@@ -43,6 +43,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **docs/Dev reports/STATELESS_WRAPPER_IMPLEMENTATION_PLAN.md** - Stateless ChatterBox wrapper implementation solving shared model state corruption in parallel processing
 
+**docs/Dev reports/POST_V4.2.3_DEVELOPMENT_REVIEW.md** - Comprehensive analysis of 45 commits implementing universal streaming architecture and performance insights
+
 **docs/PAUSE_TAGS_IMPLEMENTATION_REPORT.md** - Implementation details for pause tag system with timing control syntax
 
 **docs/REFACTORING_PLAN.md** - Architectural refactoring plan and migration strategy documentation
@@ -62,12 +64,9 @@ This extension features a **unified modular architecture** supporting multiple T
 - **vc.py** - ChatterBox Voice Conversion with multilingual model loading
 - **language_models.py** - Language model registry for English, German, and Norwegian models
 - **audio_timing.py** - Audio timing utilities and time-stretching functionality
-- **srt_batch_processing_router.py** - SRT batch processing router for streaming vs traditional processing decision
-- **streaming_work_queue.py** - Streaming work queue processor for parallel TTS generation
 - **streaming_model_manager.py** - Pre-loading and management of multiple language models for streaming workers
 - **batch_processor.py** - Batch processor for character group processing with true parallel inference
 - **character_grouper.py** - Character grouping utilities for batch processing optimization
-- **streaming_processor.py** - True streaming processor with dynamic worker scaling and stateless wrapper support
 - **stateless_wrapper.py** - Thread-safe stateless wrapper eliminating shared state corruption in parallel generation
 - **models/** - Complete ChatterBox model architecture (S3Gen, T3, tokenizers, voice encoder)
 
@@ -167,6 +166,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/models/manager.py** - Intelligent model discovery and caching with multilingual support for both TTS and VC models
 
+**utils/models/smart_loader.py** - Universal smart model loader preventing duplicate model loading across all engines and modes
+
 **utils/models/f5tts_manager.py** - F5-TTS specific model management extending base manager functionality
 
 **utils/models/language_mapper.py** - Language-to-model mapping system with fallback support
@@ -178,6 +179,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **utils/audio/processing.py** - Comprehensive audio utilities for tensor manipulation, normalization, and format conversion
 
 **utils/audio/analysis.py** - Advanced audio analysis including waveform processing, silence detection, and timing extraction
+
+**utils/audio/audio_hash.py** - Centralized content-based hashing for consistent cache keys across all processing modes
 
 **utils/audio/cache.py** - Unified caching system for TTS engines with engine-specific cache management
 

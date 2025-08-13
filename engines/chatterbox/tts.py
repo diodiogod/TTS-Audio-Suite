@@ -25,7 +25,6 @@ from .models.t3 import T3
 from .models.s3tokenizer import S3_SR, drop_invalid_tokens
 from .models.s3gen import S3GEN_SR, S3Gen
 from .models.tokenizers import EnTokenizer
-from .continuous_worker_processor import ContinuousWorkerProcessor
 from .models.voice_encoder import VoiceEncoder
 from .models.t3.modules.cond_enc import T3Cond
 
@@ -40,7 +39,6 @@ except ImportError:
 
 # Import modular processors
 from .overlapping_processor import OverlappingBatchProcessor, BatchingStrategy
-from .adaptive_processor import AdaptiveBatchProcessor
 
 REPO_ID = "ResembleAI/chatterbox"  # Default for backward compatibility
 
@@ -155,8 +153,6 @@ class ChatterboxTTS:
         
         # Initialize modular processors
         self.overlapping_processor = OverlappingBatchProcessor(self)
-        self.adaptive_processor = AdaptiveBatchProcessor(self)
-        self.continuous_processor = ContinuousWorkerProcessor(self)
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
