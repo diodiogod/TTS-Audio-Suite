@@ -49,15 +49,18 @@ class RVCEngineNode(BaseTTSNode):
             pitch_methods = adapter.get_pitch_extraction_methods()
             
             rvc_models = available_models.get('rvc_models', ["No RVC models found"])
-            hubert_models = available_models.get('hubert_models', ["content-vec-best.safetensors"])
+            
+            # Get HuBERT models from our registry
+            from engines.rvc.hubert_models import get_hubert_model_descriptions
+            hubert_models = get_hubert_model_descriptions()
             
             # Add sample rates for resampling
             sample_rates = [0, 16000, 32000, 40000, 44100, 48000]
             
         except ImportError as e:
-            print(f"Warning: Could not load RVC adapter: {e}")
+            print(f"Warning: Could not load RVC components: {e}")
             rvc_models = ["No RVC models found"]
-            hubert_models = ["content-vec-best.safetensors"]
+            hubert_models = ["auto: Automatically select best available model", "content-vec-best: Content Vec 768 (Recommended)"]
             pitch_methods = ['rmvpe', 'crepe', 'mangio-crepe', 'rmvpe+']
             sample_rates = [0, 16000, 32000, 40000, 44100, 48000]
         
@@ -98,6 +101,24 @@ class RVCEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
+                # HuBERT Model Selection
+                "hubert_model": (hubert_models, {
+                    "default": hubert_models[0] if hubert_models else "auto: Automatically select best available model",
+                    "tooltip": """HuBERT Model for feature extraction:
+
+• Auto: Automatically select the best available model based on your language
+• Content Vec 768: Best overall quality, recommended for most use cases
+• HuBERT Base: Standard English model, good balance of speed and quality  
+• HuBERT Japanese: Optimized for Japanese voices and phonetics
+• HuBERT Korean: Specialized for Korean speech patterns
+• Chinese HuBERT: Fine-tuned for Mandarin Chinese tonal patterns
+• HuBERT Soft: Enhanced for soft/whispered voices and emotional preservation
+• Wav2Vec2 XLSR: Multilingual model for less common languages (53 languages)
+• HuBERT Large: Highest quality but slower processing
+
+Models will auto-download if not present. Choose language-specific models for best results."""
+                }),
+                
                 # Advanced Pitch Options
                 "rvc_pitch_options": ("RVC_PITCH_OPTIONS", {
                     "tooltip": "Optional advanced pitch extraction settings from RVC Pitch Options node. Overrides basic parameters."
@@ -142,6 +163,7 @@ class RVCEngineNode(BaseTTSNode):
         index_ratio=0.75,
         consonant_protection=0.25,
         volume_envelope=0.25,
+        hubert_model="auto: Automatically select best available model",
         rvc_pitch_options=None,
         output_sample_rate=0,
         device="auto"
@@ -157,6 +179,18 @@ class RVCEngineNode(BaseTTSNode):
             # Create RVC adapter
             adapter = RVCEngineAdapter()
             
+            # Parse HuBERT model selection (format: "key: description")
+            hubert_key = hubert_model.split(": ")[0] if ": " in hubert_model else hubert_model
+            
+            # Ensure HuBERT model is available (download if needed)
+            from engines.rvc.hubert_downloader import ensure_hubert_model
+            hubert_path = ensure_hubert_model(hubert_key)
+            
+            if hubert_path:
+                print(f"✅ HuBERT model ready: {hubert_key}")
+            else:
+                print(f"⚠️ Could not load HuBERT model {hubert_key}, RVC may use fallback")
+            
             # Set up pitch parameters with sensible defaults
             final_pitch_params = {
                 'pitch_shift': pitch,
@@ -164,7 +198,9 @@ class RVCEngineNode(BaseTTSNode):
                 'index_rate': index_ratio,
                 'protect': consonant_protection,
                 'rms_mix_rate': volume_envelope,
-                'resample_sr': output_sample_rate
+                'resample_sr': output_sample_rate,
+                'hubert_model': hubert_key,
+                'hubert_path': hubert_path
             }
             
             if rvc_pitch_options:
@@ -191,7 +227,7 @@ class RVCEngineNode(BaseTTSNode):
                 **final_pitch_params
             }
             
-            print(f"⚙️ RVC Engine created - Pitch method: {final_pitch_params['f0_method']}, Device: {device}")
+            print(f"⚙️ RVC Engine created - HuBERT: {hubert_key}, Pitch method: {final_pitch_params['f0_method']}, Device: {device}")
             if rvc_pitch_options:
                 print("🔧 Advanced pitch options applied")
             
