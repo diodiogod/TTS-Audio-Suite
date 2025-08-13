@@ -147,13 +147,10 @@ def find_best_available_hubert(models_dir: str) -> Optional[str]:
     
     # Priority order for auto-selection
     priority_order = [
-        'content-vec-best',
-        'hubert-base',
+        'hubert-base-rvc',
         'chinese-hubert-base',
         'hubert-base-japanese',
         'hubert-base-korean',
-        'hubert-soft',
-        'wav2vec2-xlsr-53',
         'hubert-large'
     ]
     
@@ -175,9 +172,9 @@ def find_best_available_hubert(models_dir: str) -> Optional[str]:
                 print(f"✅ Found HuBERT model: {file}")
                 return model_path
     
-    # Try to download content-vec-best as fallback
+    # Try to download hubert-base-rvc as fallback
     print("📥 No HuBERT model found, downloading recommended model...")
-    return download_hubert_model('content-vec-best', models_dir)
+    return download_hubert_model('hubert-base-rvc', models_dir)
 
 def ensure_hubert_model(model_key: str = "auto") -> Optional[str]:
     """

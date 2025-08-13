@@ -16,27 +16,14 @@ HUBERT_MODELS = {
         "filename": None
     },
     
-    "content-vec-best": {
-        "description": "Content Vec 768 (Recommended)",
-        "tooltip": """Content Vec 768 - Best overall quality (recommended)
-• Best voice similarity and quality
-• 768-dimensional features for rich voice representation
-• Trained on diverse multilingual data
-• Size: ~200MB
-• Works well with all languages""",
-        "url": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
-        "size": "200MB",
-        "filename": "content-vec-best.pt"
-    },
-    
-    "hubert-base": {
-        "description": "HuBERT Base (English)",
-        "tooltip": """HuBERT Base - Standard English model
-• Original Facebook HuBERT base model
-• Optimized for English speakers
+    "hubert-base-rvc": {
+        "description": "HuBERT Base RVC (Recommended)",
+        "tooltip": """HuBERT Base for RVC - Standard model for voice conversion
+• Standard HuBERT base model optimized for RVC
 • Good balance of speed and quality
+• Works well with all languages
 • Size: ~190MB
-• Best for English content""",
+• Most commonly used for RVC applications""",
         "url": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
         "size": "190MB",
         "filename": "hubert_base.pt"
@@ -81,31 +68,6 @@ HUBERT_MODELS = {
         "filename": "chinese-hubert-base.pt"
     },
     
-    "hubert-soft": {
-        "description": "HuBERT Soft (Speech Enhancement)",
-        "tooltip": """HuBERT Soft - Enhanced speech features
-• Soft speech unit extraction
-• Better for whisper and soft voices
-• Enhanced emotional preservation
-• Size: ~190MB
-• Good for gentle/soft voice styles""",
-        "url": "https://huggingface.co/microsoft/hubert-base-ls960/resolve/main/pytorch_model.bin",
-        "size": "190MB",
-        "filename": "hubert-soft.pt"
-    },
-    
-    "wav2vec2-xlsr-53": {
-        "description": "Wav2Vec2 XLSR (Multilingual)",
-        "tooltip": """Wav2Vec2 XLSR-53 - Universal multilingual model
-• Trained on 53 languages
-• Good for less common languages
-• Broader language coverage
-• Size: ~315MB
-• Use when language-specific model unavailable""",
-        "url": "https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-english/resolve/main/pytorch_model.bin",
-        "size": "315MB",
-        "filename": "wav2vec2-xlsr-53.pt"
-    },
     
     "hubert-large": {
         "description": "HuBERT Large (Highest Quality)",
