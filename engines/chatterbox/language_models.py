@@ -35,8 +35,15 @@ def get_chatterbox_models() -> List[str]:
     
     # Check for local models in ComfyUI models directory
     try:
-        models_dir = os.path.join(folder_paths.models_dir, "chatterbox")
-        if os.path.exists(models_dir):
+        # Check both new TTS organization and legacy path
+        tts_models_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox")
+        legacy_models_dir = os.path.join(folder_paths.models_dir, "chatterbox")
+        
+        # Try TTS path first, then legacy
+        for models_dir in [tts_models_dir, legacy_models_dir]:
+            if not os.path.exists(models_dir):
+                continue
+                
             for item in os.listdir(models_dir):
                 item_path = os.path.join(models_dir, item)
                 if os.path.isdir(item_path):
@@ -69,7 +76,7 @@ def get_model_config(language: str) -> Optional[Dict]:
         return {
             "repo": None,
             "format": "auto",  # Auto-detect format
-            "local_path": os.path.join(folder_paths.models_dir, "chatterbox", local_name),
+            "local_path": os.path.join(folder_paths.models_dir, "TTS", "chatterbox", local_name),
             "description": f"Local ChatterBox model: {local_name}"
         }
     
@@ -91,14 +98,24 @@ def find_local_model_path(language: str) -> Optional[str]:
     """Find local model path for a given language"""
     if language.startswith("local:"):
         local_name = language[6:]
-        model_path = os.path.join(folder_paths.models_dir, "chatterbox", local_name)
-        if os.path.exists(model_path):
-            return model_path
+        # Try TTS path first, then legacy
+        for base_dir in ["TTS", ""]:
+            if base_dir:
+                model_path = os.path.join(folder_paths.models_dir, base_dir, "chatterbox", local_name)
+            else:
+                model_path = os.path.join(folder_paths.models_dir, "chatterbox", local_name)
+            if os.path.exists(model_path):
+                return model_path
     else:
         # Check if we have a local version of a predefined language
-        model_path = os.path.join(folder_paths.models_dir, "chatterbox", language)
-        if os.path.exists(model_path):
-            return model_path
+        # Try TTS path first, then legacy
+        for base_dir in ["TTS", ""]:
+            if base_dir:
+                model_path = os.path.join(folder_paths.models_dir, base_dir, "chatterbox", language)
+            else:
+                model_path = os.path.join(folder_paths.models_dir, "chatterbox", language)
+            if os.path.exists(model_path):
+                return model_path
     
     return None
 

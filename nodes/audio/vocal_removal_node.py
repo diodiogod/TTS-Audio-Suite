@@ -52,8 +52,11 @@ class VocalRemovalNode:
         # Add ZFTurbo SOTA models to the list
         zfturbo_model_names = [model_path for _, model_path in ZFTURBO_MODELS]
         
-        model_list = (MDX_MODELS + VR_MODELS + KARAFAN_MODELS + zfturbo_model_names + 
-                     get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"]))
+        # Search both TTS and legacy paths for models
+        tts_models = get_filenames(root=os.path.join(BASE_MODELS_DIR, "TTS"),format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"])
+        legacy_models = get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"])
+        
+        model_list = (MDX_MODELS + VR_MODELS + KARAFAN_MODELS + zfturbo_model_names + tts_models + legacy_models)
         model_list = list(set(model_list)) # dedupe
         
         # Filter out non-model files (JSON configs, etc.)
@@ -164,7 +167,19 @@ Selects the audio format for separated stems:
     def split(self, audio, model, use_cache=True, aggressiveness=10, format='flac'):
         filename = os.path.basename(model)
         subfolder = os.path.dirname(model)
-        model_path = os.path.join(BASE_MODELS_DIR,subfolder,filename)
+        
+        # Try TTS organization first, then legacy
+        tts_model_path = os.path.join(BASE_MODELS_DIR, "TTS", subfolder, filename)
+        legacy_model_path = os.path.join(BASE_MODELS_DIR, subfolder, filename)
+        
+        if os.path.isfile(tts_model_path):
+            model_path = tts_model_path
+        elif os.path.isfile(legacy_model_path):
+            model_path = legacy_model_path
+        else:
+            # Model not found, will download to TTS path
+            model_path = tts_model_path
+        
         if not os.path.isfile(model_path):
             # Check if it's a ZFTurbo model
             zfturbo_model = next((download_path for download_path, model_path_check in ZFTURBO_MODELS if model_path_check == model), None)

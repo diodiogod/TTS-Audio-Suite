@@ -87,9 +87,20 @@ class F5TTSEditEngine:
                 # Try to use the local vocab file that we already have
                 try:
                     import folder_paths
-                    local_vocab_path = os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt")
+                    # Try TTS path first, then legacy paths
+                    vocab_search_paths = [
+                        os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "F5TTS_Base", "vocab.txt"),
+                        os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt"),  # Legacy
+                        os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", "F5TTS_Base", "vocab.txt")  # Legacy
+                    ]
                     
-                    if os.path.exists(local_vocab_path):
+                    local_vocab_path = None
+                    for path in vocab_search_paths:
+                        if os.path.exists(path):
+                            local_vocab_path = path
+                            break
+                    
+                    if local_vocab_path:
                         print(f"✅ Found local vocab file: {local_vocab_path}")
                         
                         # Load vocab manually from local file

@@ -37,17 +37,28 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
         print(f"❌ No download information for {model_key}")
         return None
     
-    # Create hubert directory if needed
-    hubert_dir = os.path.join(models_dir, "hubert")
+    # Create TTS/hubert directory if needed (new organization)
+    hubert_dir = os.path.join(models_dir, "TTS", "hubert")
     os.makedirs(hubert_dir, exist_ok=True)
     
-    # Full path for the model
+    # Full path for the model (new TTS organization)
     model_path = os.path.join(hubert_dir, filename)
     
-    # Check if already exists
+    # Check if already exists in new location
     if os.path.exists(model_path):
         print(f"✅ HuBERT model already exists: {filename}")
         return model_path
+        
+    # Check if exists in legacy locations
+    legacy_paths = [
+        os.path.join(models_dir, "hubert", filename),
+        os.path.join(models_dir, filename)  # Direct in models/
+    ]
+    
+    for legacy_path in legacy_paths:
+        if os.path.exists(legacy_path):
+            print(f"✅ HuBERT model found in legacy location: {legacy_path}")
+            return legacy_path
     
     # Download the model
     print(f"📥 Downloading HuBERT model: {info['description']}")

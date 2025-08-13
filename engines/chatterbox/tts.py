@@ -277,26 +277,67 @@ class ChatterboxTTS:
             print("🔍 Auto-detecting model format...")
             file_extensions = ["ve.safetensors", "t3_cfg.safetensors", "s3gen.safetensors", "tokenizer.json", "conds.pt"]
         
-        # Download files
+        # Download files to local models directory
         local_paths = []
         for fpath in file_extensions:
+            # Define local path in TTS organization
+            local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, os.path.basename(fpath))
+            
+            if os.path.exists(local_model_path):
+                print(f"📁 Using local Chatterbox model: {local_model_path}")
+                local_paths.append(local_model_path)
+                continue
+            
+            # Check HuggingFace cache first
             try:
-                local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
-                local_paths.append(local_path)
+                hf_cached_file = hf_hub_download(repo_id=repo_id, filename=fpath, local_files_only=True)
+                print(f"📁 Using cached Chatterbox model: {hf_cached_file}")
+                local_paths.append(hf_cached_file)
+                continue
+            except Exception:
+                pass
+            
+            # Download to local directory
+            print(f"📥 Downloading Chatterbox model to local directory: {fpath}")
+            os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
+            
+            try:
+                temp_file = hf_hub_download(repo_id=repo_id, filename=fpath)
+                import shutil
+                shutil.copy2(temp_file, local_model_path)
+                local_paths.append(local_model_path)
+                print(f"✅ Downloaded Chatterbox model to: {local_model_path}")
             except Exception as e:
                 # If safetensors fails, try .pt format
                 if fpath.endswith('.safetensors'):
                     fallback_fpath = fpath.replace('.safetensors', '.pt')
+                    fallback_local_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, os.path.basename(fallback_fpath))
+                    
                     print(f"⚠️ {fpath} not found, trying {fallback_fpath}")
                     try:
-                        local_path = hf_hub_download(repo_id=repo_id, filename=fallback_fpath)
+                        temp_fallback = hf_hub_download(repo_id=repo_id, filename=fallback_fpath)
+                        import shutil
+                        shutil.copy2(temp_fallback, fallback_local_path)
+                        local_paths.append(fallback_local_path)
+                        print(f"✅ Downloaded Chatterbox fallback model to: {fallback_local_path}")
+                    except Exception as e2:
+                        # Final fallback to HuggingFace cache
+                        print(f"⚠️ Failed to download to local directory, using HF cache: {e2}")
+                        try:
+                            local_path = hf_hub_download(repo_id=repo_id, filename=fallback_fpath)
+                            local_paths.append(local_path)
+                        except Exception as e3:
+                            print(f"❌ Failed to download both {fpath} and {fallback_fpath}: {e3}")
+                            raise e3
+                else:
+                    # Final fallback to HuggingFace cache
+                    print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
+                    try:
+                        local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
                         local_paths.append(local_path)
                     except Exception as e2:
-                        print(f"❌ Failed to download both {fpath} and {fallback_fpath}: {e2}")
+                        print(f"❌ Failed to download {fpath}: {e2}")
                         raise e2
-                else:
-                    print(f"❌ Failed to download {fpath}: {e}")
-                    raise e
 
         # Use the directory of the first downloaded file
         model_dir = Path(local_paths[0]).parent

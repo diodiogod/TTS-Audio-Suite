@@ -148,21 +148,45 @@ class MinimalRVCWrapper:
             import folder_paths
             models_dir = folder_paths.models_dir
             
-            # Common Hubert model names and locations
+            # Common Hubert model names and locations - RVC compatible first
             hubert_candidates = [
-                "content-vec-best.safetensors",
+                "content-vec-best.safetensors",  # RVC library expects this specifically
                 "hubert_base.pt",
                 "chinese-hubert-base.pt",
+                "hubert_base_jp.pt",
+                "hubert_base_kr.pt",
                 "chinese-wav2vec2-base.pt"
             ]
             
             for model_name in hubert_candidates:
-                model_path = os.path.join(models_dir, model_name)
-                if os.path.exists(model_path):
-                    print(f"📄 Found Hubert model: {model_name}")
-                    return model_path
+                # Try TTS path first, then legacy locations
+                search_paths = [
+                    os.path.join(models_dir, "TTS", "hubert", model_name),
+                    os.path.join(models_dir, "TTS", model_name),
+                    os.path.join(models_dir, "hubert", model_name),  # Legacy
+                    os.path.join(models_dir, model_name)  # Legacy - direct in models/
+                ]
+                
+                for model_path in search_paths:
+                    if os.path.exists(model_path):
+                        print(f"📄 Found Hubert model: {model_name} at {model_path}")
+                        return model_path
             
-            print("❌ No Hubert model found")
+            # If no model found, try to download content-vec-best as fallback
+            print("❌ No compatible Hubert model found locally")
+            print("📥 Attempting to download RVC-compatible model as fallback...")
+            
+            try:
+                from engines.rvc.hubert_downloader import download_hubert_model
+                fallback_path = download_hubert_model("content-vec-best", models_dir)
+                if fallback_path:
+                    print(f"✅ Downloaded RVC-compatible fallback: {fallback_path}")
+                    return fallback_path
+                else:
+                    print("❌ Failed to download fallback model")
+            except Exception as e:
+                print(f"❌ Fallback download failed: {e}")
+            
             return None
             
         except Exception as e:

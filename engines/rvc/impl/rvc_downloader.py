@@ -109,8 +109,12 @@ def download_file(params: Tuple[str, str]):
 
 def download_link_generator(download_link: str,model_list: List[str]):
     for model in model_list:
-        model_path = os.path.join(BASE_MODELS_DIR,model)
-        yield (model_path, f"{download_link}{model}")
+        # Use TTS organization for new downloads
+        if model.startswith(("UVR/", "RVC/", "MDX", "SCNET/", "karafan/")):
+            tts_model_path = os.path.join(BASE_MODELS_DIR, "TTS", model)
+        else:
+            tts_model_path = os.path.join(BASE_MODELS_DIR, "TTS", model)
+        yield (tts_model_path, f"{download_link}{model}")
 
 def save_file(params: Tuple[str, any]):
     (data_path, datum) = params

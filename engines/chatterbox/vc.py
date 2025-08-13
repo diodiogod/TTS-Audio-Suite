@@ -1,9 +1,16 @@
 from pathlib import Path
+import os
 
 import librosa
 import torch
 import warnings
 from huggingface_hub import hf_hub_download
+
+# Import folder_paths for model directory detection
+try:
+    import folder_paths
+except ImportError:
+    folder_paths = None
 
 # Import perth with warnings disabled
 with warnings.catch_warnings():
@@ -102,10 +109,45 @@ class ChatterboxVC:
         
         print(f"📦 Loading ChatterBox VC model for {language} from {repo_id}")
         
+        # Download VC models to local directory
+        local_paths = []
         for fpath in ["s3gen.pt", "conds.pt"]:
-            local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
+            # Define local path in TTS organization
+            local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, fpath)
+            
+            if os.path.exists(local_model_path):
+                print(f"📁 Using local Chatterbox VC model: {local_model_path}")
+                local_paths.append(local_model_path)
+                continue
+            
+            # Check HuggingFace cache first
+            try:
+                hf_cached_file = hf_hub_download(repo_id=repo_id, filename=fpath, local_files_only=True)
+                print(f"📁 Using cached Chatterbox VC model: {hf_cached_file}")
+                local_paths.append(hf_cached_file)
+                continue
+            except Exception:
+                pass
+            
+            # Download to local directory
+            print(f"📥 Downloading Chatterbox VC model to local directory: {fpath}")
+            os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
+            
+            try:
+                temp_file = hf_hub_download(repo_id=repo_id, filename=fpath)
+                import shutil
+                shutil.copy2(temp_file, local_model_path)
+                local_paths.append(local_model_path)
+                print(f"✅ Downloaded Chatterbox VC model to: {local_model_path}")
+            except Exception as e:
+                # Fallback to HuggingFace cache
+                print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
+                local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
+                local_paths.append(local_path)
 
-        return cls.from_local(Path(local_path).parent, device)
+        # Use the directory of the first downloaded file
+        model_dir = Path(local_paths[0]).parent
+        return cls.from_local(model_dir, device)
 
     def set_target_voice(self, wav_fpath):
         ## Load reference wav

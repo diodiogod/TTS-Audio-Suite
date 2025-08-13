@@ -107,13 +107,10 @@ class RVCEngineNode(BaseTTSNode):
                     "tooltip": """HuBERT Model for feature extraction:
 
 • Auto: Automatically select the best available model based on your language
-• Content Vec 768: Best overall quality, recommended for most use cases
-• HuBERT Base: Standard English model, good balance of speed and quality  
-• HuBERT Japanese: Optimized for Japanese voices and phonetics
+• Content Vec 768: RECOMMENDED - Best for RVC voice conversion, fastest loading
+• HuBERT Japanese: Optimized for Japanese voices and phonetics  
 • HuBERT Korean: Specialized for Korean speech patterns
 • Chinese HuBERT: Fine-tuned for Mandarin Chinese tonal patterns
-• HuBERT Soft: Enhanced for soft/whispered voices and emotional preservation
-• Wav2Vec2 XLSR: Multilingual model for less common languages (53 languages)
 • HuBERT Large: Highest quality but slower processing
 
 Models will auto-download if not present. Choose language-specific models for best results."""

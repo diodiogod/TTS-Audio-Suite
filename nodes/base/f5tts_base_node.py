@@ -120,8 +120,19 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                         local_path = None
                         if model in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]:
                             import folder_paths
-                            potential_path = os.path.join(folder_paths.models_dir, "F5-TTS", model)
-                            if os.path.exists(potential_path):
+                            # Try TTS path first, then legacy
+                            search_paths = [
+                                os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", model),
+                                os.path.join(folder_paths.models_dir, "F5-TTS", model),  # Legacy
+                                os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", model)  # Legacy
+                            ]
+                            
+                            potential_path = None
+                            for path in search_paths:
+                                if os.path.exists(path):
+                                    potential_path = path
+                                    break
+                            if potential_path:
                                 local_path = potential_path
                         
                         if local_path:

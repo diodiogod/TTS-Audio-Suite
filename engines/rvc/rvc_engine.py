@@ -70,23 +70,38 @@ class RVCEngine:
             rvc_models = []
             hubert_models = []
             
-            # Look for RVC models in models/RVC directory
-            rvc_dir = os.path.join(models_dir, "RVC")
-            if os.path.exists(rvc_dir):
-                for file in os.listdir(rvc_dir):
-                    if file.endswith('.pth'):
-                        rvc_models.append(f"RVC/{file}")
+            # Look for RVC models - try TTS path first, then legacy
+            rvc_search_paths = [
+                os.path.join(models_dir, "TTS", "RVC"),
+                os.path.join(models_dir, "RVC")  # Legacy
+            ]
             
-            # Look for Hubert models (common names)
+            for rvc_dir in rvc_search_paths:
+                if os.path.exists(rvc_dir):
+                    for file in os.listdir(rvc_dir):
+                        if file.endswith('.pth'):
+                            relative_path = os.path.relpath(os.path.join(rvc_dir, file), models_dir)
+                            rvc_models.append(relative_path)
+            
+            # Look for Hubert models (common names) - try TTS path first, then legacy
             common_hubert_models = [
                 "content-vec-best.safetensors",
                 "hubert-base.pt", 
                 "chinese-hubert-base.pt"
             ]
             
-            for model_file in common_hubert_models:
-                if os.path.exists(os.path.join(models_dir, model_file)):
-                    hubert_models.append(model_file)
+            hubert_search_paths = [
+                os.path.join(models_dir, "TTS"),
+                os.path.join(models_dir)  # Legacy - direct in models/
+            ]
+            
+            for search_dir in hubert_search_paths:
+                for model_file in common_hubert_models:
+                    full_path = os.path.join(search_dir, model_file)
+                    if os.path.exists(full_path):
+                        relative_path = os.path.relpath(full_path, models_dir)
+                        if relative_path not in hubert_models:
+                            hubert_models.append(relative_path)
             
             # Look for any .pt or .safetensors files that might be Hubert models
             for file in os.listdir(models_dir):

@@ -16,17 +16,19 @@ HUBERT_MODELS = {
         "filename": None
     },
     
-    "hubert-base-rvc": {
-        "description": "HuBERT Base RVC (Recommended)",
-        "tooltip": """HuBERT Base for RVC - Standard model for voice conversion
-• Standard HuBERT base model optimized for RVC
-• Good balance of speed and quality
-• Works well with all languages
-• Size: ~190MB
-• Most commonly used for RVC applications""",
-        "url": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
-        "size": "190MB",
-        "filename": "hubert_base.pt"
+    "content-vec-best": {
+        "description": "Content Vec 768 (Recommended)",
+        "tooltip": """Content Vec 768 - Best for RVC voice conversion
+• Optimized specifically for RVC applications
+• Better than standard HuBERT for voice similarity
+• Excellent balance of speed and quality
+• Works perfectly with all languages
+• Native safetensors format (fastest loading)
+• Size: 378MB
+• Most reliable choice for RVC""",
+        "url": "https://huggingface.co/SayanoAI/RVC-models/resolve/main/content-vec-best.safetensors",
+        "size": "378MB",
+        "filename": "content-vec-best.safetensors"
     },
     
     "hubert-base-japanese": {
@@ -35,11 +37,11 @@ HUBERT_MODELS = {
 • Fine-tuned on Japanese speech data
 • Better phoneme recognition for Japanese
 • Improved pitch extraction for tonal patterns
-• Size: ~190MB
+• Size: 378MB
 • Recommended for Japanese voices""",
-        "url": "https://huggingface.co/rinna/japanese-hubert-base/resolve/main/pytorch_model.bin",
-        "size": "190MB", 
-        "filename": "hubert_base_jp.pt"
+        "url": "https://huggingface.co/rinna/japanese-hubert-base/resolve/main/model.safetensors",
+        "size": "378MB", 
+        "filename": "hubert_base_jp.safetensors"
     },
     
     "hubert-base-korean": {
@@ -48,11 +50,11 @@ HUBERT_MODELS = {
 • Trained on Korean speech corpus
 • Better handling of Korean phonetics
 • Improved consonant clustering recognition
-• Size: ~190MB
+• Size: 1.26GB
 • Recommended for Korean voices""",
-        "url": "https://huggingface.co/team-lucid/hubert-base-korean/resolve/main/pytorch_model.bin",
-        "size": "190MB",
-        "filename": "hubert_base_kr.pt"
+        "url": "https://huggingface.co/team-lucid/hubert-base-korean/resolve/main/model.safetensors",
+        "size": "1.26GB",
+        "filename": "hubert_base_kr.safetensors"
     },
     
     "chinese-hubert-base": {
@@ -116,7 +118,7 @@ def get_best_hubert_for_language(language_code: str) -> str:
         Recommended HuBERT model key
     """
     language_map = {
-        'en': 'hubert-base',
+        'en': 'content-vec-best',  # Use RVC compatible version
         'ja': 'hubert-base-japanese',
         'jp': 'hubert-base-japanese',
         'ko': 'hubert-base-korean',
@@ -147,8 +149,12 @@ def should_download_hubert(model_key: str, models_dir: str) -> bool:
     if not info or not info.get("filename"):
         return False
         
-    model_path = os.path.join(models_dir, "hubert", info["filename"])
-    return not os.path.exists(model_path)
+    # Check both TTS and legacy paths
+    tts_path = os.path.join(models_dir, "TTS", "hubert", info["filename"])
+    legacy_path = os.path.join(models_dir, "hubert", info["filename"])
+    direct_path = os.path.join(models_dir, info["filename"])  # Some models might be directly in models/
+    
+    return not (os.path.exists(tts_path) or os.path.exists(legacy_path) or os.path.exists(direct_path))
 
 def get_hubert_download_url(model_key: str) -> Optional[str]:
     """Get the download URL for a HuBERT model."""

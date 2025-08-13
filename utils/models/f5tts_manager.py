@@ -54,10 +54,11 @@ class F5TTSModelManager:
         """
         model_paths = []
         
-        # Search paths in order of priority
+        # Search paths in order of priority: TTS first, then legacy
         search_paths = [
-            os.path.join(folder_paths.models_dir, "F5-TTS"),
-            os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")
+            os.path.join(folder_paths.models_dir, "TTS", "F5-TTS"),
+            os.path.join(folder_paths.models_dir, "F5-TTS"),  # Legacy
+            os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")  # Legacy
         ]
         
         # 1-2. Check ComfyUI models folders
@@ -133,11 +134,19 @@ class F5TTSModelManager:
         
         # Check if this model should be available locally
         local_model_expected = False
-        comfyui_f5tts_path = os.path.join(folder_paths.models_dir, "F5-TTS")
-        if os.path.exists(comfyui_f5tts_path):
-            for item in os.listdir(comfyui_f5tts_path):
-                if item.lower() == model_name.lower() or model_name.lower() in item.lower():
-                    local_model_expected = True
+        f5tts_search_paths = [
+            os.path.join(folder_paths.models_dir, "TTS", "F5-TTS"),
+            os.path.join(folder_paths.models_dir, "F5-TTS"),  # Legacy
+            os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")  # Legacy
+        ]
+        
+        for f5tts_path in f5tts_search_paths:
+            if os.path.exists(f5tts_path):
+                for item in os.listdir(f5tts_path):
+                    if item.lower() == model_name.lower() or model_name.lower() in item.lower():
+                        local_model_expected = True
+                        break
+                if local_model_expected:
                     break
         
         for source, path in model_paths:

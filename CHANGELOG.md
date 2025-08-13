@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.7] - 2025-08-13
+
+### Added
+
+- Fix cluttered model folder organization by implementing TTS/ structure with legacy support
+Fix RVC Hubert model compatibility issues with automatic .pt to .safetensors conversion
+Fix misleading hubert-base-rvc model that failed but claimed to be recommended
+Update all engines (Chatterbox, F5-TTS, RVC, UVR) to use organized TTS/ paths
+Add native safetensors support for Japanese and Korean Hubert models
+Ensure models download to clean TTS/ folder structure instead of cluttered root
 ## [4.3.6] - 2025-08-13
 
 ### Fixed

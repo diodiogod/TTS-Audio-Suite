@@ -1,5 +1,5 @@
 # Version and constants
-VERSION = "4.3.6"
+VERSION = "4.3.7"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -200,14 +200,14 @@ def find_chatterbox_models():
         model_paths.append(("bundled", BUNDLED_MODELS_DIR))
         return model_paths  # Return immediately if bundled models found
     
-    # 2. Check ComfyUI models folder - first check the standard location
-    comfyui_model_path_standard = os.path.join(folder_paths.models_dir, "chatterbox", "s3gen.pt")
-    if os.path.exists(comfyui_model_path_standard):
-        model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_standard)))
+    # 2. Check ComfyUI models folder - first check the new TTS organization
+    comfyui_model_path_tts = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", "s3gen.pt")
+    if os.path.exists(comfyui_model_path_tts):
+        model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_tts)))
         return model_paths
     
-    # 3. Check legacy location (TTS/chatterbox) for backward compatibility
-    comfyui_model_path_legacy = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", "s3gen.pt")
+    # 3. Check legacy location (direct chatterbox) for backward compatibility
+    comfyui_model_path_legacy = os.path.join(folder_paths.models_dir, "chatterbox", "s3gen.pt")
     if os.path.exists(comfyui_model_path_legacy):
         model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_legacy)))
         return model_paths

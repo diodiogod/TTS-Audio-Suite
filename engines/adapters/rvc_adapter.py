@@ -201,10 +201,18 @@ class RVCEngineAdapter:
             ]
             
             for model_name in hubert_candidates:
-                model_path = os.path.join(models_dir, model_name)
-                if os.path.exists(model_path):
-                    print(f"📄 Found Hubert model: {model_name}")
-                    return model_path
+                # Try TTS path first, then legacy locations
+                search_paths = [
+                    os.path.join(models_dir, "TTS", "hubert", model_name),
+                    os.path.join(models_dir, "TTS", model_name),
+                    os.path.join(models_dir, "hubert", model_name),  # Legacy
+                    os.path.join(models_dir, model_name)  # Legacy - direct in models/
+                ]
+                
+                for model_path in search_paths:
+                    if os.path.exists(model_path):
+                        print(f"📄 Found Hubert model: {model_name}")
+                        return model_path
             
             # Try downloading content-vec-best.safetensors if not found
             from utils.downloads.model_downloader import download_base_model

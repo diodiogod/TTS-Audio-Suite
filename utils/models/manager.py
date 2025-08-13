@@ -67,14 +67,14 @@ class ModelManager:
             model_paths.append(("bundled", self.bundled_models_dir))
             return model_paths  # Return immediately if bundled models found
         
-        # 2. Check ComfyUI models folder - standard location
-        comfyui_model_path_standard = os.path.join(folder_paths.models_dir, "chatterbox", "s3gen.pt")
-        if os.path.exists(comfyui_model_path_standard):
-            model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_standard)))
+        # 2. Check ComfyUI models folder - new TTS organization
+        comfyui_model_path_tts = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", "s3gen.pt")
+        if os.path.exists(comfyui_model_path_tts):
+            model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_tts)))
             return model_paths
         
-        # 3. Check legacy location (TTS/chatterbox) for backward compatibility
-        comfyui_model_path_legacy = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", "s3gen.pt")
+        # 3. Check legacy location (direct chatterbox) for backward compatibility
+        comfyui_model_path_legacy = os.path.join(folder_paths.models_dir, "chatterbox", "s3gen.pt")
         if os.path.exists(comfyui_model_path_legacy):
             model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_legacy)))
             return model_paths
@@ -101,8 +101,10 @@ class ModelManager:
         except ImportError:
             # Fallback: check standard locations manually
             language_paths = [
-                os.path.join(folder_paths.models_dir, "chatterbox", language),
-                os.path.join(folder_paths.models_dir, "chatterbox", language.lower()),
+                os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language),
+                os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language.lower()),
+                os.path.join(folder_paths.models_dir, "chatterbox", language),  # Legacy
+                os.path.join(folder_paths.models_dir, "chatterbox", language.lower()),  # Legacy
                 os.path.join(self.bundled_models_dir, language),
                 os.path.join(self.bundled_models_dir, language.lower())
             ]

@@ -271,7 +271,9 @@ def download_uvr_model(model_name: str) -> Optional[str]:
         print(f"⚠️  UVR model {model_name} not available for auto-download")
         return None
     
-    target_path = os.path.join(MODELS_DIR, uvr_path)
+    # Save to TTS organization: models/TTS/UVR/ instead of models/UVR/
+    tts_uvr_path = uvr_path.replace("UVR/", "TTS/UVR/")
+    target_path = os.path.join(MODELS_DIR, tts_uvr_path)
     
     if download_model(uvr_path, target_path):
         return target_path
@@ -328,8 +330,8 @@ def download_rmvpe_for_reference() -> Optional[str]:
     try:
         rmvpe_url = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt"
         
-        # Use standard ComfyUI models directory structure
-        rvc_models_dir = os.path.join(MODELS_DIR, "RVC")
+        # Use TTS organization for consistency
+        rvc_models_dir = os.path.join(MODELS_DIR, "TTS", "RVC")
         
         # Ensure directory exists
         os.makedirs(rvc_models_dir, exist_ok=True)

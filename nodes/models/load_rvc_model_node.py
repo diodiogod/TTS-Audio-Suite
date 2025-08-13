@@ -182,13 +182,18 @@ class LoadRVCModelNode(BaseTTSNode):
         try:
             if folder_paths:
                 models_dir = folder_paths.models_dir
-                rvc_models_dir = os.path.join(models_dir, "RVC")
+                # Try TTS path first, then legacy
+                rvc_search_paths = [
+                    os.path.join(models_dir, "TTS", "RVC"),
+                    os.path.join(models_dir, "RVC")  # Legacy
+                ]
                 
-                if os.path.exists(rvc_models_dir):
-                    for file in os.listdir(rvc_models_dir):
-                        if file.endswith('.pth') and file not in models:
-                            # Add local: prefix to distinguish from downloadable ones
-                            models.append(f"local:{file}")
+                for rvc_models_dir in rvc_search_paths:
+                    if os.path.exists(rvc_models_dir):
+                        for file in os.listdir(rvc_models_dir):
+                            if file.endswith('.pth') and f"local:{file}" not in models:
+                                # Add local: prefix to distinguish from downloadable ones
+                                models.append(f"local:{file}")
         except:
             pass
         
@@ -219,13 +224,18 @@ class LoadRVCModelNode(BaseTTSNode):
         try:
             if folder_paths:
                 models_dir = folder_paths.models_dir
-                rvc_index_dir = os.path.join(models_dir, "RVC", ".index")
+                # Try TTS path first, then legacy
+                index_search_paths = [
+                    os.path.join(models_dir, "TTS", "RVC", ".index"),
+                    os.path.join(models_dir, "RVC", ".index")  # Legacy
+                ]
                 
-                if os.path.exists(rvc_index_dir):
-                    for file in os.listdir(rvc_index_dir):
-                        if file.endswith('.index') and file not in indexes:
-                            # Add local: prefix to distinguish from downloadable ones
-                            indexes.append(f"local:{file}")
+                for rvc_index_dir in index_search_paths:
+                    if os.path.exists(rvc_index_dir):
+                        for file in os.listdir(rvc_index_dir):
+                            if file.endswith('.index') and f"local:{file}" not in indexes:
+                                # Add local: prefix to distinguish from downloadable ones
+                                indexes.append(f"local:{file}")
         except:
             pass
         
@@ -239,22 +249,32 @@ class LoadRVCModelNode(BaseTTSNode):
                 actual_model_name = model_name.replace("local:", "")
                 if folder_paths:
                     models_dir = folder_paths.models_dir
-                    model_path = os.path.join(models_dir, "RVC", actual_model_name)
-                    if os.path.exists(model_path):
-                        return model_path
+                    # Try TTS path first, then legacy
+                    search_paths = [
+                        os.path.join(models_dir, "TTS", "RVC", actual_model_name),
+                        os.path.join(models_dir, "RVC", actual_model_name)  # Legacy
+                    ]
+                    
+                    for model_path in search_paths:
+                        if os.path.exists(model_path):
+                            return model_path
                 return None
             
             # Regular downloadable model
             if folder_paths:
                 models_dir = folder_paths.models_dir
-                model_path = os.path.join(models_dir, "RVC", model_name)
+                # Try TTS path first, then legacy
+                tts_path = os.path.join(models_dir, "TTS", "RVC", model_name)
+                legacy_path = os.path.join(models_dir, "RVC", model_name)
                 
-                if os.path.exists(model_path):
-                    return model_path
+                if os.path.exists(tts_path):
+                    return tts_path
+                elif os.path.exists(legacy_path):
+                    return legacy_path
                     
-                # Auto-download if enabled
+                # Auto-download if enabled - download to TTS path
                 if auto_download:
-                    downloaded_path = self._download_rvc_model(model_name, model_path)
+                    downloaded_path = self._download_rvc_model(model_name, tts_path)
                     if downloaded_path:
                         return downloaded_path
             
@@ -271,22 +291,32 @@ class LoadRVCModelNode(BaseTTSNode):
                 actual_index_name = index_name.replace("local:", "")
                 if folder_paths:
                     models_dir = folder_paths.models_dir
-                    index_path = os.path.join(models_dir, "RVC", ".index", actual_index_name)
-                    if os.path.exists(index_path):
-                        return index_path
+                    # Try TTS path first, then legacy
+                    search_paths = [
+                        os.path.join(models_dir, "TTS", "RVC", ".index", actual_index_name),
+                        os.path.join(models_dir, "RVC", ".index", actual_index_name)  # Legacy
+                    ]
+                    
+                    for index_path in search_paths:
+                        if os.path.exists(index_path):
+                            return index_path
                 return None
             
             # Regular downloadable index
             if folder_paths:
                 models_dir = folder_paths.models_dir
-                index_path = os.path.join(models_dir, "RVC", ".index", index_name)
+                # Try TTS path first, then legacy
+                tts_path = os.path.join(models_dir, "TTS", "RVC", ".index", index_name)
+                legacy_path = os.path.join(models_dir, "RVC", ".index", index_name)
                 
-                if os.path.exists(index_path):
-                    return index_path
+                if os.path.exists(tts_path):
+                    return tts_path
+                elif os.path.exists(legacy_path):
+                    return legacy_path
                     
-                # Auto-download if enabled  
+                # Auto-download if enabled - download to TTS path
                 if auto_download:
-                    downloaded_path = self._download_rvc_index(index_name, index_path)
+                    downloaded_path = self._download_rvc_index(index_name, tts_path)
                     if downloaded_path:
                         return downloaded_path
             

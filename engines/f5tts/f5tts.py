@@ -37,10 +37,11 @@ def get_f5tts_models():
     
     # Check for local models in ComfyUI models directory
     # Primary location: models/F5-TTS/
-    # Fallback location: models/Checkpoints/F5-TTS/ (for user convenience)
+    # Search paths: TTS/F5-TTS first, then legacy paths for compatibility
     search_paths = [
-        os.path.join(folder_paths.models_dir, "F5-TTS"),
-        os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")
+        os.path.join(folder_paths.models_dir, "TTS", "F5-TTS"),
+        os.path.join(folder_paths.models_dir, "F5-TTS"),  # Legacy
+        os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")  # Legacy fallback
     ]
     
     for models_dir in search_paths:
@@ -130,7 +131,21 @@ class ChatterBoxF5TTS:
             if self.model_name.startswith("local:"):
                 # Local model
                 local_name = self.model_name[6:]  # Remove "local:" prefix
-                model_path = os.path.join(folder_paths.models_dir, "F5-TTS", local_name)
+                # Try TTS path first, then legacy paths
+                search_paths = [
+                    os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", local_name),
+                    os.path.join(folder_paths.models_dir, "F5-TTS", local_name),  # Legacy
+                    os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", local_name)  # Legacy
+                ]
+                
+                model_path = None
+                for path in search_paths:
+                    if os.path.exists(path):
+                        model_path = path
+                        break
+                
+                if not model_path:
+                    raise ValueError(f"Local model not found: {local_name}")
                 
                 # Find model file
                 model_file = None
@@ -227,27 +242,107 @@ class ChatterBoxF5TTS:
                         model_filename = f"model_{step}.{ext}"
                         vocab_filename = "vocab.txt"
                     
-                    try:
-                        model_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
-                    except Exception as e:
-                        raise e
+                    # Check if model exists locally first
+                    local_model_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, model_filename)
+                    
+                    if os.path.exists(local_model_path):
+                        print(f"📁 Using local F5-TTS model: {local_model_path}")
+                        model_file = local_model_path
+                    else:
+                        # Check legacy HuggingFace cache location
+                        try:
+                            hf_cached_file = hf_hub_download(repo_id=repo_id, filename=model_filename, local_files_only=True)
+                            print(f"📁 Using cached F5-TTS model: {hf_cached_file}")
+                            model_file = hf_cached_file
+                        except Exception:
+                            # Download to local models directory
+                            print(f"📥 Downloading F5-TTS model to local directory: {model_filename}")
+                            os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
+                            
+                            try:
+                                # Download from HuggingFace and save locally
+                                temp_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
+                                import shutil
+                                shutil.copy2(temp_file, local_model_path)
+                                model_file = local_model_path
+                                print(f"✅ Downloaded F5-TTS model to: {local_model_path}")
+                            except Exception as e:
+                                # Fallback to HuggingFace cache
+                                print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
+                                model_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
                     
                     # Handle vocab file - some models don't have their own vocab
                     if vocab_filename is None:
                         # Use original F5-TTS vocab for models that don't have their own
                         # First check if we have F5TTS_Base locally
-                        local_f5tts_base = os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt")
-                        if os.path.exists(local_f5tts_base):
+                        # Try TTS path first, then legacy
+                        vocab_search_paths = [
+                            os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "F5TTS_Base", "vocab.txt"),
+                            os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt"),  # Legacy
+                            os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", "F5TTS_Base", "vocab.txt")  # Legacy
+                        ]
+                        
+                        local_f5tts_base = None
+                        for path in vocab_search_paths:
+                            if os.path.exists(path):
+                                local_f5tts_base = path
+                                break
+                        if local_f5tts_base:
                             vocab_file = local_f5tts_base
                             print(f"📁 Using local F5TTS_Base vocab: {vocab_file}")
                         else:
-                            # Download from original F5-TTS repo
-                            vocab_file = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
+                            # Download F5TTS_Base vocab to local directory
+                            local_vocab_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "F5TTS_Base", "vocab.txt")
+                            
+                            if os.path.exists(local_vocab_path):
+                                vocab_file = local_vocab_path
+                            else:
+                                # Check HuggingFace cache first
+                                try:
+                                    hf_vocab_file = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt", local_files_only=True)
+                                    vocab_file = hf_vocab_file
+                                    print(f"📁 Using cached F5TTS_Base vocab: {vocab_file}")
+                                except Exception:
+                                    # Download to local directory
+                                    print(f"📥 Downloading F5TTS_Base vocab to local directory")
+                                    os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
+                                    
+                                    try:
+                                        temp_vocab = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
+                                        import shutil
+                                        shutil.copy2(temp_vocab, local_vocab_path)
+                                        vocab_file = local_vocab_path
+                                        print(f"✅ Downloaded F5TTS_Base vocab to: {local_vocab_path}")
+                                    except Exception as e:
+                                        print(f"⚠️ Failed to download vocab to local directory, using HF cache: {e}")
+                                        vocab_file = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
                     else:
-                        try:
-                            vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
-                        except Exception as e:
-                            raise e
+                        # Model has its own vocab file
+                        local_vocab_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, vocab_filename)
+                        
+                        if os.path.exists(local_vocab_path):
+                            vocab_file = local_vocab_path
+                            print(f"📁 Using local vocab: {vocab_file}")
+                        else:
+                            # Check HuggingFace cache first
+                            try:
+                                hf_vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename, local_files_only=True)
+                                vocab_file = hf_vocab_file
+                                print(f"📁 Using cached vocab: {vocab_file}")
+                            except Exception:
+                                # Download to local directory
+                                print(f"📥 Downloading vocab to local directory: {vocab_filename}")
+                                os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
+                                
+                                try:
+                                    temp_vocab = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
+                                    import shutil
+                                    shutil.copy2(temp_vocab, local_vocab_path)
+                                    vocab_file = local_vocab_path
+                                    print(f"✅ Downloaded vocab to: {local_vocab_path}")
+                                except Exception as e:
+                                    print(f"⚠️ Failed to download vocab to local directory, using HF cache: {e}")
+                                    vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
                     
                     print(f"📁 Downloaded model: {model_file}")
                     print(f"📁 Downloaded vocab: {vocab_file}")
