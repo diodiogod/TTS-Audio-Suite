@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2025-08-12
+
+### Fixed
+
+- ## Version 4.3.0 - Architecture Modernization
+
+🏗️ Core Architecture
+- Universal Streaming Infrastructure: Complete architectural overhaul creating extensible framework for future engines
+- Smart Model Loading: Prevents duplicate model instances, eliminating memory exhaustion when switching between processing modes
+- Thread-Safe Design: Stateless wrapper architecture eliminates shared state corruption risks
+
+⚙️ Engine Extensibility
+- Universal Adapter System: Standardized framework ready for future TTS engines
+- Modular Design: Clean separation between engine logic and processing coordination
+
+📝 Performance Notes
+- Sequential Processing Recommended: Despite parallel processing infrastructure, batch_size=0 (sequential) remains optimal for performance
+- Memory Efficiency: Improved model sharing between traditional and streaming modes
+
+🔧 Technical Improvements
+- Centralized Caching: Content-based hashing system for reliable cache consistency
+- Code Cleanup: Removed unused experimental processor code
+
+⚠️ Known Issues
+- Console Logging: Needs further cleanup (more verbose than previous versions)
+- Parallel Processing: Available but slower than sequential - use batch_size=0 for best performance
+
+This version focuses on architectural foundation and extensibility rather than immediate performance gains. The streaming infrastructure provides a robust base for future development while maintaining compatibility with existing workflows.
 ## [4.2.3] - 2025-08-08
 
 ### Fixed
