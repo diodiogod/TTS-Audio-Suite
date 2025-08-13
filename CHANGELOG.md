@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.3.4] - 2025-08-13
 
-### Fixed
+### Changed
 
 - Improve RVC Engine UI and add new unified workflow documentation
 
@@ -25,7 +25,7 @@ Downloadable models appear without prefix, local models appear with 'local:' pre
 This matches the F5-TTS dropdown behavior for consistent user experience across all engines.
 ## [4.3.2] - 2025-08-13
 
-### Fixed
+### Added
 
 - Update README documentation with comprehensive RVC models setup guide
 
@@ -43,7 +43,7 @@ Replaced ffmpeg-python package usage with direct subprocess calls to system ffmp
 This approach matches the existing SRT timing implementation and eliminates the dependency requirement.
 ## [4.3.0] - 2025-08-12
 
-### Fixed
+### Added
 
 - ## Version 4.3.0 - Architecture Modernization
 

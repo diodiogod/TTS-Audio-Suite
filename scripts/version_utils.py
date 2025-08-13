@@ -97,6 +97,34 @@ class VersionManager:
         
         return success
     
+    def _categorize_simple_description(self, description: str) -> str:
+        """Categorize a simple description for changelog (legacy fallback)"""
+        desc_lower = description.lower()
+        
+        # Check Added first (for new features/documentation)
+        if any(word in desc_lower for word in [
+            'add', 'new', 'implement', 'feature', 'create', 'introduce', 'support',
+            'documentation', 'readme', 'guide', 'section', 'workflow', 'example'
+        ]):
+            return "### Added"
+        # Check Changed second (for improvements/UI)
+        elif any(word in desc_lower for word in [
+            'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
+            'ui', 'interface', 'slider', 'tooltip', 'dropdown', 'better', 'cleaner'
+        ]):
+            return "### Changed"
+        # Check Fixed last (for actual bug fixes)
+        elif any(word in desc_lower for word in [
+            'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
+            'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
+        ]):
+            return "### Fixed"
+        # Check Removed
+        elif any(word in desc_lower for word in ['remove', 'delete', 'deprecate', 'drop']):
+            return "### Removed"
+        else:
+            return "### Added"  # Default to Added for new features
+    
     def add_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> bool:
         """Add entry to CHANGELOG.md with support for multiline descriptions"""
         try:
@@ -110,9 +138,11 @@ class VersionManager:
             
             # Simple mode - use exact text without categorization
             if simple_mode:
+                # Smart categorization for simple mode
+                change_type = self._categorize_simple_description(description)
                 new_entry = f"""## [{version}] - {today}
 
-### Fixed
+{change_type}
 
 - {description}
 """
@@ -157,24 +187,26 @@ class VersionManager:
                     # Enhanced categorization based on keywords and context
                     line_lower = clean_line.lower()
                     
-                    # More comprehensive keyword matching for Fixed (check first for bug fixes)
-                    if any(word in line_lower for word in [
-                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch', 
-                        'crash', 'problem', 'fail', 'broken'
-                    ]):
-                        fixed_items.append(clean_line)
-                    # More comprehensive keyword matching for Added
-                    elif line_lower.startswith('add') or any(word in line_lower for word in [
+                    # Check Added first (for new features/documentation)
+                    if line_lower.startswith('add') or any(word in line_lower for word in [
                         'new', 'implement', 'feature', 'create', 'introduce', 'support',
-                        'language switching', 'syntax', 'integration'
+                        'language switching', 'syntax', 'integration', 'documentation', 
+                        'readme', 'guide', 'section', 'workflow', 'example'
                     ]):
                         added_items.append(clean_line)
-                    # More comprehensive keyword matching for Changed
+                    # Check Changed second (for improvements/UI)
                     elif any(word in line_lower for word in [
                         'update', 'enhance', 'improve', 'change', 'modify', 'optimize', 'performance',
-                        'smart', 'efficient', 'reduced', 'eliminated', 'loading'
+                        'smart', 'efficient', 'reduced', 'eliminated', 'loading', 'ui', 'interface',
+                        'slider', 'tooltip', 'dropdown', 'better', 'cleaner', 'reorganize'
                     ]):
                         changed_items.append(clean_line)
+                    # Check Fixed last (for actual bug fixes)
+                    elif any(word in line_lower for word in [
+                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch', 
+                        'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
+                    ]):
+                        fixed_items.append(clean_line)
                     # More comprehensive keyword matching for Removed
                     elif any(word in line_lower for word in [
                         'remove', 'delete', 'deprecate', 'drop'
@@ -226,22 +258,46 @@ class VersionManager:
                 
                 new_entry = "\n".join(entry_parts)
             else:
-                # Single line description - use simple format
-                change_type = "### Fixed"
-                if any(word in description.lower() for word in ['add', 'new', 'implement', 'feature']):
-                    change_type = "### Added"
-                elif any(word in description.lower() for word in ['update', 'enhance', 'improve', 'change']):
-                    change_type = "### Changed"
-                elif any(word in description.lower() for word in ['remove', 'delete', 'deprecate']):
-                    change_type = "### Removed"
-                
-                new_entry = f"""## [{version}] - {today}
+                # Single line description - FAIL and provide instructions
+                error_msg = f"""
+❌ ERROR: Single-line descriptions are no longer supported for better changelog quality.
 
-{change_type}
+Please use the proper two-parameter format with multiline descriptions:
 
-- {description}
+CORRECT USAGE:
+python3 scripts/bump_version_enhanced.py {version} "Detailed commit message
 
+Explain what was changed and why.
+Include technical details for git history.
+
+- List specific changes made
+- Include file modifications
+- Mention any breaking changes" "User-friendly changelog description
+
+Explain what users will experience.
+Focus on benefits and improvements.
+Keep it concise but informative."
+
+EXAMPLE:
+python3 scripts/bump_version_enhanced.py patch "Fix RVC dropdown display issue
+
+Updated Load RVC Character Model node to show both downloadable and local models.
+Applied F5-TTS dropdown pattern for consistent user experience.
+
+- Updated _get_available_rvc_models() method
+- Added local: prefix handling  
+- Fixed model path resolution" "Fix RVC model dropdown to show both downloadable and local models
+
+The Load RVC Character Model node now properly displays both downloadable character models and local models in the same dropdown.
+This matches the F5-TTS dropdown behavior for consistent user experience across all engines."
+
+This format ensures:
+✓ Detailed git commit messages for development history
+✓ User-friendly changelog entries for end users  
+✓ Proper categorization (Added/Changed/Fixed/Removed)
 """
+                print(error_msg)
+                return False
             
             # Insert after the header (find first ## line)
             lines = content.split('\n')
