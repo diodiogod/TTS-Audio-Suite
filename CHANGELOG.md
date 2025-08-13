@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.1] - 2025-08-13
+
+### Fixed
+
+- Fix RVC vocal removal node failing to load due to missing ffmpeg-python dependency
+
+The vocal removal node was failing during ComfyUI startup with 'No module named ffmpeg' error.
+Replaced ffmpeg-python package usage with direct subprocess calls to system ffmpeg binary.
+This approach matches the existing SRT timing implementation and eliminates the dependency requirement.
 ## [4.3.0] - 2025-08-12
 
 ### Fixed

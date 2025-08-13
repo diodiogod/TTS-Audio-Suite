@@ -2,11 +2,11 @@ import base64
 import io
 import os
 import zlib
+import subprocess
 from lib.utils import get_hash, get_merge_func
 import numpy as np
 import librosa
 import soundfile as sf
-import ffmpeg
 from scipy.ndimage import uniform_filter1d, median_filter
 from scipy.interpolate import interp1d
 from collections.abc import Mapping
@@ -131,15 +131,17 @@ def load_audio(file, sr, **kwargs):
     try:
         # https://github.com/openai/whisper/blob/main/whisper/audio.py#L26
         # This launches a subprocess to decode audio while down-mixing and resampling as necessary.
-        # Requires the ffmpeg CLI and `ffmpeg-python` package to be installed.
+        # Requires the ffmpeg CLI to be installed.
         file = (
             file.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
-        )  # 防止小白拷路径头尾带了空格和"和回车
-        out, _ = (
-            ffmpeg.input(file, threads=0)
-            .output("-", format="f32le", acodec="pcm_f32le", ac=1, ar=sr)
-            .run(cmd=["ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True)
-        )
+        )  # Clean file path
+        # Direct subprocess call to ffmpeg instead of ffmpeg-python
+        cmd = [
+            "ffmpeg", "-nostdin", "-threads", "0", "-i", file,
+            "-f", "f32le", "-acodec", "pcm_f32le", "-ac", "1", "-ar", str(sr), "-"
+        ]
+        result = subprocess.run(cmd, capture_output=True, check=True)
+        out = result.stdout
     except Exception as error:
         raise RuntimeError(f"Failed to load audio: {error=} {file=}")
 
