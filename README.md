@@ -19,6 +19,8 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 <details>
 <summary><h2>📋 Table of Contents</h2></summary>
 
+- [🎥 Demo Videos](#-demo-videos)
+- [Features](#features)
 - [🆕 What's New in my Project?](#-whats-new-in-my-project)
   - [SRT Timing and TTS Node](#srt-timing-and-tts-node)
   - [🆕 F5-TTS Integration and 🆕 Audio Analyzer](#-f5-tts-integration-and--audio-analyzer)
@@ -28,8 +30,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
   - [🎵 RVC Voice Conversion Integration](#-rvc-voice-conversion-integration)
   - [⏸️ Pause Tags System](#️-pause-tags-system)
   - [🌍 Multi-language ChatterBox Support](#-multi-language-chatterbox-support)
-- [🎥 Demo Videos](#-demo-videos)
-- [Features](#features)
+  - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -51,7 +52,68 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 
 </details>
 
-## 🆕 What's New in my Project?
+
+## 🎥 Demo Videos
+
+<div align="center">
+  <a href="https://youtu.be/aHz1mQ2bvEY">
+    <img src="https://img.youtube.com/vi/aHz1mQ2bvEY/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice v3.2 - F5-TTS Integration & Features Overview">
+  </a>
+  <br>
+  <strong><a href="https://youtu.be/aHz1mQ2bvEY">▶️ v3.2 Features Overview (20min) - F5-TTS Integration, Speech Editor & More!</a></strong>
+</div>
+
+<br>
+
+<div align="center">
+  <a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">
+    <img src="https://img.youtube.com/vi/VyOawMrCB1g/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice Demo">
+  </a>
+  <br>
+  <strong><a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">▶️ Original Demo - SRT Timing & Basic Features</a></strong>
+</div>
+
+<details>
+<summary><h3>📜 Original ShmuelRonen ChatterBox TTS Nodes</h3></summary>
+
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c" width="45%" alt="ChatterBox TTS Nodes" />
+  <img src="https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe" width="45%" alt="ChatterBox Voice Capture" />
+</div>
+
+* **Voice Recording**: Smart silence detection for voice capture
+* **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
+* **Unlimited Text Length**: No character limits with smart processing
+
+**Original creator:** [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice)
+
+</details>
+
+<div align="right"><a href="#-table-of-contents">Back to top</a></div>
+
+## Features
+
+- 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
+- 🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
+- 🔄 **ChatterBox VC** - Convert voice from one speaker to another with iterative refinement
+- 🎵 **RVC Voice Conversion** - Real-time voice conversion using .pth character models
+- 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
+- ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
+- 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
+- 🌍 **Language Switching** - Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
+- 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
+- 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
+- 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese, Hindi and more
+- 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
+- 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
+- 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
+- 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
+- ⚙️ **Parallel Processing** - Configurable worker-based processing via `batch_size` parameter (Note: sequential processing with `batch_size=0` remains optimal for performance)
+
+<div align="right"><a href="#-table-of-contents">Back to top</a></div>
+
+<details>
+<summary><h2>🆕 What's New in my Project?</h2></summary>
 
 <details>
 <summary><h3>📺 SRT Timing and TTS Node</h3></summary>
@@ -228,65 +290,27 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 
 </details>
 
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
-## 🎥 Demo Videos
-
-<div align="center">
-  <a href="https://youtu.be/aHz1mQ2bvEY">
-    <img src="https://img.youtube.com/vi/aHz1mQ2bvEY/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice v3.2 - F5-TTS Integration & Features Overview">
-  </a>
-  <br>
-  <strong><a href="https://youtu.be/aHz1mQ2bvEY">▶️ v3.2 Features Overview (20min) - F5-TTS Integration, Speech Editor & More!</a></strong>
-</div>
-
-<br>
-
-<div align="center">
-  <a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">
-    <img src="https://img.youtube.com/vi/VyOawMrCB1g/maxresdefault.jpg" width="400" alt="ChatterBox SRT Voice Demo">
-  </a>
-  <br>
-  <strong><a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">▶️ Original Demo - SRT Timing & Basic Features</a></strong>
-</div>
-
 <details>
-<summary><h3>📜 Original ShmuelRonen ChatterBox TTS Nodes</h3></summary>
+<summary><h3>⚙️ Universal Streaming Architecture</h3></summary>
 
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c" width="45%" alt="ChatterBox TTS Nodes" />
-  <img src="https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe" width="45%" alt="ChatterBox Voice Capture" />
-</div>
+**NEW in v4.3.0**: Complete architectural overhaul implementing universal streaming system with parallel processing capabilities!
 
-* **Voice Recording**: Smart silence detection for voice capture
-* **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
-* **Unlimited Text Length**: No character limits with smart processing
+**Key Features:**
+* **Universal Streaming Infrastructure**: Unified processing system eliminating engine-specific code complexity
+* **Parallel Processing**: Configurable worker-based processing via `batch_size` parameter
+* **Thread-Safe Design**: Stateless wrapper architecture eliminates shared state corruption
+* **Future-Proof**: New engines require only adapter implementation
 
-**Original creator:** [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice)
+**Performance Notes:**
+* **Sequential Recommended**: Use `batch_size=0` for optimal performance (sequential processing)
+* **Parallel Available**: `batch_size > 1` enables parallel workers but typically slower due to GPU inference characteristics
+* **Memory Efficiency**: Improved model sharing prevents memory exhaustion when switching modes
+
+→ **[📖 Read Technical Details](docs/Dev%20reports/POST_V4.2.3_DEVELOPMENT_REVIEW.md)**
 
 </details>
 
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
-## Features
-
-- 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
-- 🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
-- 🔄 **ChatterBox VC** - Convert voice from one speaker to another with iterative refinement
-- 🎵 **RVC Voice Conversion** - Real-time voice conversion using .pth character models
-- 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
-- ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
-- 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
-- 🌍 **Language Switching** - Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
-- 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
-- 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
-- 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese, Hindi and more
-- 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
-- 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
-- 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
-- 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
-
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
+</details>
 
 ## 🚀 Quick Start
 
