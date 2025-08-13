@@ -72,10 +72,6 @@ class RVCEngineNode(BaseTTSNode):
                     "display": "slider",
                     "tooltip": "Pitch shift in semitones. 0=no change, +12=octave up (male→female), -12=octave down (female→male)"
                 }),
-                "pitch_detection": (pitch_methods, {
-                    "default": "rmvpe",
-                    "tooltip": "Pitch extraction algorithm. RMVPE=balanced quality/speed, Crepe=highest quality, Mangio-Crepe=optimized"
-                }),
                 "index_ratio": ("FLOAT", {
                     "default": 0.75,
                     "min": 0.0,
@@ -143,7 +139,6 @@ class RVCEngineNode(BaseTTSNode):
     def create_engine(
         self,
         pitch=0,
-        pitch_detection="rmvpe",
         index_ratio=0.75,
         consonant_protection=0.25,
         volume_envelope=0.25,
@@ -162,10 +157,10 @@ class RVCEngineNode(BaseTTSNode):
             # Create RVC adapter
             adapter = RVCEngineAdapter()
             
-            # Merge pitch options if provided (advanced options override basic parameters)
+            # Set up pitch parameters with sensible defaults
             final_pitch_params = {
                 'pitch_shift': pitch,
-                'f0_method': pitch_detection,
+                'f0_method': 'rmvpe',  # Default pitch detection method
                 'index_rate': index_ratio,
                 'protect': consonant_protection,
                 'rms_mix_rate': volume_envelope,
@@ -178,7 +173,9 @@ class RVCEngineNode(BaseTTSNode):
                     final_pitch_params.update(rvc_pitch_options)
                     print("🔧 Using advanced pitch options from RVC Pitch Options node")
                 else:
-                    print("⚠️  Invalid pitch options format, using basic parameters")
+                    print("⚠️  Invalid pitch options format, using default rmvpe")
+            else:
+                print("🔧 Using default pitch detection: rmvpe")
             
             # Resolve device
             if device == "auto":

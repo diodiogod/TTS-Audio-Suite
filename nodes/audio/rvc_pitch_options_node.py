@@ -59,7 +59,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                 # Core Pitch Extraction
                 "pitch_detection": (pitch_methods, {
                     "default": "rmvpe",
-                    "tooltip": "Pitch extraction algorithm. RMVPE=best balance, Crepe=highest quality, PM=fastest"
+                    "tooltip": "Pitch extraction algorithm:\n• RMVPE: Best balance of quality & speed (recommended)\n• RMVPE+: Enhanced RMVPE with better accuracy\n• Mangio-Crepe: Optimized Crepe, faster than standard\n• Crepe: Highest quality but slower processing\n• PM: Fast Praat-based extraction, basic quality\n• Harvest: Traditional method, good for speech\n• DIO: Fast algorithm, lower quality\n• FCPE: Very fast extraction for real-time use"
                 }),
             },
             "optional": {
@@ -69,6 +69,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "min": 16,
                     "max": 512,
                     "step": 16,
+                    "display": "slider",
                     "tooltip": "Crepe hop length (only for Crepe-based methods). Lower=more accurate but slower"
                 }),
                 
@@ -78,6 +79,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "min": 0,
                     "max": 7,
                     "step": 1,
+                    "display": "slider",
                     "tooltip": "Median filter radius for noise reduction. 0=no filtering, higher=more smoothing"
                 }),
                 "pitch_guidance": ("FLOAT", {
@@ -85,6 +87,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "min": 0.1,
                     "max": 2.0,
                     "step": 0.1,
+                    "display": "slider",
                     "tooltip": "Pitch guidance strength. Higher=more pitch influence, lower=more timbre focus"
                 }),
                 "f0_autotune": ("BOOLEAN", {

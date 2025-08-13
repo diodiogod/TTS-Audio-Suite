@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# TTS Audio Suite v4.3.3
+# TTS Audio Suite v4.3.4
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -888,7 +888,13 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 
 **Ready-to-use ComfyUI workflows** - Download and drag into ComfyUI:
 
-### Chatterbox Workflows
+### Unified Workflows
+
+| Workflow                   | Description                                 | Status | Files                                                      |
+| -------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------- |
+| **Unified Voice Changer - RVC X ChatterBox** | Modern unified voice conversion with RVC and ChatterBox engines | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
+
+### ChatterBox Workflows
 
 | Workflow                   | Description                                 | Status | Files                                                      |
 | -------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------- |
