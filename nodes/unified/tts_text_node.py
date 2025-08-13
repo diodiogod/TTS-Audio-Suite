@@ -113,8 +113,8 @@ Back to the main narrator voice for the conclusion.""",
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
                 "batch_size": ("INT", {
-                    "default": 4, "min": 0, "max": 32, "step": 1,
-                    "tooltip": "Batch size for parallel processing. 0-1 = sequential processing, 2+ = streaming parallelization with that many workers. ChatterBox uses this for automatic batch/streaming control."
+                    "default": 0, "min": 0, "max": 32, "step": 1,
+                    "tooltip": "Parallel processing workers. 0-1 = sequential (recommended for most cases), 2+ = streaming mode. Note: Streaming may be slower than sequential for small texts. F5-TTS doesn't support streaming yet."
                 }),
             }
         }
@@ -342,6 +342,11 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
             elif engine_type == "f5tts":
+                # F5-TTS streaming warning and fallback
+                if batch_size > 1:
+                    print(f"⚠️ F5-TTS doesn't support streaming mode yet. Falling back to sequential processing (batch_size=0)")
+                    batch_size = 0
+                
                 # F5-TTS parameters
                 # For F5-TTS we need to handle reference_audio_file vs opt_reference_audio differently
                 if opt_narrator:

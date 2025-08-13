@@ -132,7 +132,7 @@ Hello! This is unified SRT TTS with character switching.
                 }),
                 "batch_size": ("INT", {
                     "default": 0, "min": 0, "max": 32, "step": 1,
-                    "tooltip": "Parallel processing: 0=traditional mode (sequential), 1+=streaming parallel workers. Higher values = faster generation but more memory usage."
+                    "tooltip": "Parallel processing workers. 0 = sequential (recommended), 2+ = streaming mode. Note: Streaming often slower than sequential mode. F5-TTS doesn't support streaming yet."
                 }),
             }
         }
@@ -361,6 +361,11 @@ Hello! This is unified SRT TTS with character switching.
                 )
                 
             elif engine_type == "f5tts":
+                # F5-TTS streaming warning and fallback
+                if batch_size > 1:
+                    print(f"⚠️ F5-TTS doesn't support streaming mode yet. Falling back to sequential processing (batch_size=0)")
+                    batch_size = 0
+                
                 # F5-TTS SRT parameters
                 # For F5-TTS we need to handle reference_audio_file vs opt_reference_audio differently
                 if opt_narrator:
