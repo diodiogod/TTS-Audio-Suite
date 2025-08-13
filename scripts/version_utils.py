@@ -126,7 +126,7 @@ class VersionManager:
             return "### Added"  # Default to Added for new features
     
     def add_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> bool:
-        """Add entry to CHANGELOG.md with support for multiline descriptions"""
+        """Add entry to CHANGELOG.md with proper formatting"""
         try:
             changelog_path = os.path.join(self.project_root, 'CHANGELOG.md')
             
@@ -136,19 +136,34 @@ class VersionManager:
             # Generate changelog entry
             today = datetime.now().strftime('%Y-%m-%d')
             
-            # Simple mode - use exact text without categorization
+            # Simple mode - use exact text with proper formatting
             if simple_mode:
                 # Smart categorization for simple mode
                 change_type = self._categorize_simple_description(description)
+                
+                # Split multi-sentence descriptions into proper bullet points
+                if '. ' in description and len(description) > 100:
+                    # Break long descriptions into bullet points
+                    sentences = [s.strip() for s in description.split('. ') if s.strip()]
+                    items = []
+                    for sentence in sentences:
+                        if not sentence.endswith('.') and sentence != sentences[-1]:
+                            sentence += '.'
+                        items.append(f"- {sentence}")
+                    item_text = '\n'.join(items)
+                else:
+                    # Single item
+                    item_text = f"- {description}"
+                
                 new_entry = f"""## [{version}] - {today}
 
 {change_type}
 
-- {description}
+{item_text}
 """
             # Parse description for structured changelog
             elif '\n' in description or (details and len(details) > 0):
-                # Multiline description - create detailed changelog
+                # Multiline description - create detailed changelog with better parsing
                 lines = description.split('\n') if '\n' in description else [description]
                 if details:
                     lines.extend(details)
@@ -159,142 +174,91 @@ class VersionManager:
                 changed_items = []
                 removed_items = []
                 
-                # Track if we're in a specific section (🌍, 📋, 🚀, 🔧, etc.)
-                current_section = "added"  # Default to added for new features
-                
-                for i, line in enumerate(lines):
+                # Process each line with better formatting
+                for line in lines:
                     line = line.strip()
                     if not line or line.startswith('#'):
                         continue
                     
-                    # Skip the main title (first non-empty line)
-                    if i == 0 and not line.startswith('-') and not line.startswith('•'):
-                        continue
-                    
-                    # Remove leading bullet points or dashes
+                    # Clean up the line - remove existing bullet points for consistent formatting
                     clean_line = re.sub(r'^[-*•]\s*', '', line)
-                    
-                    # Check for section headers (emoji-based sections)
-                    if any(emoji in line for emoji in ['🌍', '📋', '🚀', '⚡', '🎯']):
-                        if any(word in line.lower() for word in ['new', 'feature', 'added', 'support', 'language']):
-                            current_section = "added"
-                        elif any(word in line.lower() for word in ['performance', 'optimization', 'smart', 'improve']):
-                            current_section = "changed"
-                        elif any(word in line.lower() for word in ['technical', 'architecture', 'engine']):
-                            current_section = "changed"
+                    if not clean_line:
                         continue
                     
-                    # Enhanced categorization based on keywords and context
+                    # Skip section headers or emoji-only lines
+                    if re.match(r'^[🌍📋🚀⚡🎯🔧🎭🎙️📺🎵🏗️]+\s*[\w\s]*:?\s*$', line):
+                        continue
+                    
+                    # Enhanced categorization based on keywords
                     line_lower = clean_line.lower()
                     
-                    # Check Added first (for new features/documentation)
-                    if line_lower.startswith('add') or any(word in line_lower for word in [
-                        'new', 'implement', 'feature', 'create', 'introduce', 'support',
-                        'language switching', 'syntax', 'integration', 'documentation', 
-                        'readme', 'guide', 'section', 'workflow', 'example'
-                    ]):
-                        added_items.append(clean_line)
-                    # Check Changed second (for improvements/UI)
-                    elif any(word in line_lower for word in [
-                        'update', 'enhance', 'improve', 'change', 'modify', 'optimize', 'performance',
-                        'smart', 'efficient', 'reduced', 'eliminated', 'loading', 'ui', 'interface',
-                        'slider', 'tooltip', 'dropdown', 'better', 'cleaner', 'reorganize'
-                    ]):
-                        changed_items.append(clean_line)
-                    # Check Fixed last (for actual bug fixes)
-                    elif any(word in line_lower for word in [
-                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch', 
-                        'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
+                    # Check for specific patterns first
+                    if any(word in line_lower for word in [
+                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
+                        'crash', 'problem', 'fail', 'broken', 'dependency', 'missing',
+                        'compatibility', 'mismatch'
                     ]):
                         fixed_items.append(clean_line)
-                    # More comprehensive keyword matching for Removed
                     elif any(word in line_lower for word in [
-                        'remove', 'delete', 'deprecate', 'drop'
+                        'remove', 'delete', 'deprecate', 'drop', 'eliminate'
                     ]):
                         removed_items.append(clean_line)
+                    elif any(word in line_lower for word in [
+                        'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
+                        'performance', 'smart', 'efficient', 'better', 'cleaner',
+                        'reorganize', 'refactor', 'streamline'
+                    ]):
+                        changed_items.append(clean_line)
                     else:
-                        # Use current section context instead of defaulting to Fixed
-                        if current_section == "added":
-                            added_items.append(clean_line)
-                        elif current_section == "changed":
-                            changed_items.append(clean_line)
-                        else:
-                            # Only default to fixed if it's clearly not a feature
-                            if any(word in line_lower for word in ['processing', 'group', 'model', 'cache']):
-                                changed_items.append(clean_line)
-                            else:
-                                added_items.append(clean_line)  # Default to added for new features
+                        # Default to Added for new features, documentation, etc.
+                        added_items.append(clean_line)
                 
-                # Build changelog entry
-                entry_parts = [f"## [{version}] - {today}", ""]
+                # Build changelog entry with proper spacing
+                entry_parts = [f"## [{version}] - {today}"]
                 
+                # Add sections in conventional order: Added, Changed, Fixed, Removed
                 if added_items:
-                    entry_parts.append("### Added")
-                    entry_parts.append("")
+                    entry_parts.extend(["", "### Added", ""])
                     for item in added_items:
                         entry_parts.append(f"- {item}")
-                    entry_parts.append("")
-                
-                if fixed_items:
-                    entry_parts.append("### Fixed")
-                    entry_parts.append("")
-                    for item in fixed_items:
-                        entry_parts.append(f"- {item}")
-                    entry_parts.append("")
                 
                 if changed_items:
-                    entry_parts.append("### Changed")
-                    entry_parts.append("")
+                    entry_parts.extend(["", "### Changed", ""])
                     for item in changed_items:
                         entry_parts.append(f"- {item}")
-                    entry_parts.append("")
+                
+                if fixed_items:
+                    entry_parts.extend(["", "### Fixed", ""])
+                    for item in fixed_items:
+                        entry_parts.append(f"- {item}")
                 
                 if removed_items:
-                    entry_parts.append("### Removed")
-                    entry_parts.append("")
+                    entry_parts.extend(["", "### Removed", ""])
                     for item in removed_items:
                         entry_parts.append(f"- {item}")
-                    entry_parts.append("")
                 
+                # Ensure proper ending
+                entry_parts.append("")
                 new_entry = "\n".join(entry_parts)
             else:
-                # Single line description - FAIL and provide instructions
+                # Single line description - provide helpful error message
                 error_msg = f"""
 ❌ ERROR: Single-line descriptions are no longer supported for better changelog quality.
 
-Please use the proper two-parameter format with multiline descriptions:
+Please use the proper format with detailed descriptions:
 
 CORRECT USAGE:
-python3 scripts/bump_version_enhanced.py {version} "Detailed commit message
-
-Explain what was changed and why.
-Include technical details for git history.
-
-- List specific changes made
-- Include file modifications
-- Mention any breaking changes" "User-friendly changelog description
+python3 scripts/bump_version_enhanced.py {version} "commit message" "changelog description
 
 Explain what users will experience.
 Focus on benefits and improvements.
-Keep it concise but informative."
+Use bullet points for multiple changes."
 
 EXAMPLE:
-python3 scripts/bump_version_enhanced.py patch "Fix RVC dropdown display issue
-
-Updated Load RVC Character Model node to show both downloadable and local models.
-Applied F5-TTS dropdown pattern for consistent user experience.
-
-- Updated _get_available_rvc_models() method
-- Added local: prefix handling  
-- Fixed model path resolution" "Fix RVC model dropdown to show both downloadable and local models
+python3 scripts/bump_version_enhanced.py patch "Fix RVC dropdown" "Fix RVC model dropdown to show both downloadable and local models
 
 The Load RVC Character Model node now properly displays both downloadable character models and local models in the same dropdown.
 This matches the F5-TTS dropdown behavior for consistent user experience across all engines."
-
-This format ensures:
-✓ Detailed git commit messages for development history
-✓ User-friendly changelog entries for end users  
-✓ Proper categorization (Added/Changed/Fixed/Removed)
 """
                 print(error_msg)
                 return False
@@ -307,6 +271,7 @@ This format ensures:
                     insert_index = i
                     break
             
+            # Insert the new entry with proper spacing
             lines.insert(insert_index, new_entry.rstrip())
             
             with open(changelog_path, 'w') as f:

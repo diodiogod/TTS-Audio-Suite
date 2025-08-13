@@ -9,58 +9,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Fix cluttered model folder organization by implementing TTS/ structure with legacy support
-Fix RVC Hubert model compatibility issues with automatic .pt to .safetensors conversion
-Fix misleading hubert-base-rvc model that failed but claimed to be recommended
-Update all engines (Chatterbox, F5-TTS, RVC, UVR) to use organized TTS/ paths
-Add native safetensors support for Japanese and Korean Hubert models
-Ensure models download to clean TTS/ folder structure instead of cluttered root
+- Implement TTS/ structure with legacy support for cleaner model folder organization
+- Add native safetensors support for Japanese and Korean Hubert models
+- Update all engines (Chatterbox, F5-TTS, RVC, UVR) to use organized TTS/ paths
+
+### Fixed
+
+- Fix RVC Hubert model compatibility issues with automatic .pt to .safetensors conversion
+- Fix misleading hubert-base-rvc model that failed but claimed to be recommended
+- Ensure models download to clean TTS/ folder structure instead of cluttered root
 ## [4.3.6] - 2025-08-13
 
 ### Fixed
 
-- Remove duplicate models (hubert-base, hubert-soft), remove invalid wav2vec2 model, fix failing download URLs. Consolidate to 5 authentic HuBERT variants from verified sources.
+- Remove duplicate models (hubert-base, hubert-soft) and invalid wav2vec2 model
+- Fix failing download URLs for HuBERT models
+- Consolidate to 5 authentic HuBERT variants from verified sources
 ## [4.3.5] - 2025-08-13
 
 ### Added
 
-- Add HuBERT model selection to RVC Engine - Users can now select from 8 different HuBERT models with auto-download support and language-specific recommendations. Fixed broken URLs and added comprehensive tooltips explaining each model.
+- Add HuBERT model selection to RVC Engine with 8 different model options
+- Add auto-download support and language-specific recommendations for HuBERT models
+- Add comprehensive tooltips explaining each HuBERT model
+
+### Fixed
+
+- Fix broken URLs for HuBERT model downloads
 ## [4.3.4] - 2025-08-13
+
+### Added
+
+- Add comprehensive workflow documentation including new unified RVC+ChatterBox workflow
 
 ### Changed
 
-- Improve RVC Engine UI and add new unified workflow documentation
-
-Cleaned up RVC Engine node by removing duplicate pitch_detection parameter and improved RVC Pitch Options with sliders.
-Added comprehensive workflow documentation including new unified RVC+ChatterBox workflow.
-Better separation of concerns between engine configuration and detailed pitch extraction options.
+- Improve RVC Engine UI by removing duplicate pitch_detection parameter
+- Improve RVC Pitch Options with enhanced sliders
+- Better separation of concerns between engine configuration and detailed pitch extraction options
 ## [4.3.3] - 2025-08-13
 
 ### Fixed
 
 - Fix RVC model dropdown to show both downloadable and local models like F5-TTS
-
-The Load RVC Character Model node now properly displays both downloadable character models and local models in the same dropdown.
-Downloadable models appear without prefix, local models appear with 'local:' prefix for clear distinction.
-This matches the F5-TTS dropdown behavior for consistent user experience across all engines.
+- Load RVC Character Model node now properly displays both model types in same dropdown
+- Add 'local:' prefix for local models to distinguish from downloadable models
+- Match F5-TTS dropdown behavior for consistent user experience across engines
 ## [4.3.2] - 2025-08-13
 
 ### Added
 
-- Update README documentation with comprehensive RVC models setup guide
+- Add comprehensive RVC models setup guide to README documentation
+- Add detailed section explaining RVC model auto-download system and folder structure
+- Add guidance on available character models and download locations
 
-Added detailed section explaining RVC model auto-download system, folder structure, and available character models.
-Users now have clear guidance on where models download and how the auto-download process works.
-Also fixed the Load RVC Character Model node to show the correct downloadable models instead of generic fallbacks.
+### Fixed
+
+- Fix Load RVC Character Model node to show correct downloadable models instead of generic fallbacks
 ## [4.3.1] - 2025-08-13
 
 ### Fixed
 
 - Fix RVC vocal removal node failing to load due to missing ffmpeg-python dependency
-
-The vocal removal node was failing during ComfyUI startup with 'No module named ffmpeg' error.
-Replaced ffmpeg-python package usage with direct subprocess calls to system ffmpeg binary.
-This approach matches the existing SRT timing implementation and eliminates the dependency requirement.
+- Replace ffmpeg-python package usage with direct subprocess calls to system ffmpeg binary
+- Eliminate dependency requirement by matching existing SRT timing implementation approach
 ## [4.3.0] - 2025-08-12
 
 ### Added
