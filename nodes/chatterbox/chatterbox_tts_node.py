@@ -604,8 +604,7 @@ Back to the main narrator voice for the conclusion.""",
             # Set engine-aware default language to prevent unnecessary model switching
             character_parser.set_engine_aware_default_language(inputs["language"], "chatterbox")
             
-            # Parse character segments from text with language awareness (use ORIGINAL text to preserve line structure)
-            # NOTE: We parse characters and languages from original text, then handle pause tags within each segment
+            # Parse character segments from original text for all modes
             character_segments_with_lang = character_parser.split_by_character_with_language(inputs["text"])
             
             # Check if we have pause tags, character switching, or language switching
@@ -689,16 +688,48 @@ Back to the main narrator voice for the conclusion.""",
                     else:
                         return lang_model_map.get(lang_code.lower(), inputs["language"])
                 
-                # Group segments by language with original order tracking
+                # Preprocess pause tags in character segments before streaming
+                expanded_segments_with_lang = []
+                pause_info = {}  # Track pause information for reconstruction
+                segment_mapping = {}  # Map streaming indices to original indices
+                streaming_idx = 0
+                
+                for original_idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+                    from utils.text.pause_processor import PauseTagProcessor
+                    processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(segment_text, True)
+                    
+                    if pause_segments is not None:
+                        # Segment has pause tags - expand into multiple sub-segments
+                        print(f"⏸️ Expanding segment {original_idx} with pause tags: {len(pause_segments)} parts")
+                        sub_idx = 0
+                        for segment_type, content in pause_segments:
+                            if segment_type == 'text' and content.strip():
+                                # Text segment - add to streaming queue with integer index
+                                expanded_segments_with_lang.append((streaming_idx, char, content, lang))
+                                segment_mapping[streaming_idx] = f"{original_idx}_{sub_idx}"
+                                streaming_idx += 1
+                                sub_idx += 1
+                            elif segment_type == 'pause':
+                                # Store pause info for later reconstruction
+                                pause_key = f"{original_idx}_{sub_idx}"
+                                pause_info[pause_key] = content  # pause duration
+                                sub_idx += 1
+                    else:
+                        # No pause tags - add as single segment
+                        expanded_segments_with_lang.append((streaming_idx, char, segment_text, lang))
+                        segment_mapping[streaming_idx] = original_idx
+                        streaming_idx += 1
+                
+                # Group expanded segments by language with original order tracking
                 language_groups = {}
-                for idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+                for idx, char, segment_text, lang in expanded_segments_with_lang:
                     if lang not in language_groups:
                         language_groups[lang] = []
                     language_groups[lang].append((idx, char, segment_text, lang))  # Include original index
                 
                 # Generate audio for each language group, tracking original positions
                 audio_segments_with_order = []  # Will store (original_index, audio_tensor)
-                total_segments = len(character_segments_with_lang)
+                total_segments = len(expanded_segments_with_lang)
                 
                 # Choose processing method based on batch_size: 0-1 = sequential, 2+ = streaming
                 current_batch_size = inputs.get("batch_size", 1)
@@ -710,7 +741,7 @@ Back to the main narrator voice for the conclusion.""",
                     self._preload_language_models(language_groups.keys(), inputs["device"])
                     
                     audio_segments_with_order = self._process_languages_streaming(
-                        language_groups, voice_refs, inputs, character_segments_with_lang
+                        language_groups, voice_refs, inputs, expanded_segments_with_lang, pause_info, segment_mapping
                     )
                 else:
                     audio_segments_with_order = self._process_languages_traditional(
@@ -737,60 +768,6 @@ Back to the main narrator voice for the conclusion.""",
                     language_info = f" across {len(languages)} languages ({', '.join(languages)})"
                 
                 info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} ({model_source} models)"
-                
-            elif has_pause_tags:
-                # PAUSE TAG MODE - handle pause tags without character/language switching
-                print(f"⏸️ ChatterBox: Pause tag mode detected")
-                
-                # Check if pause tag segments are cached before loading model
-                pause_content_cached = False
-                if inputs.get("enable_audio_cache", True):
-                    pause_content_cached = True
-                    for segment_type, content in pause_segments:
-                        if segment_type == 'text':  # Only check text segments, not pause segments
-                            # Check centralized cache system
-                            from utils.audio.cache import create_cache_function
-                            cache_fn = create_cache_function(
-                                "chatterbox",
-                                character="narrator",
-                                exaggeration=inputs["exaggeration"],
-                                temperature=inputs["temperature"],
-                                cfg_weight=inputs["cfg_weight"],
-                                seed=inputs["seed"],
-                                audio_component=stable_audio_component,
-                                model_source=f"chatterbox_{inputs['language'].lower()}",
-                                device=inputs["device"],
-                                language=inputs["language"]
-                            )
-                            cached_data = cache_fn(f"narrator:{content}")
-                            cached_data = None if cached_data is None else (cached_data, 0.0)  # Convert to tuple format
-                            if not cached_data:
-                                pause_content_cached = False
-                                break
-                
-                # Only load model if we need to generate something
-                if not pause_content_cached:
-                    # Use universal smart model loader
-                    from utils.models.smart_loader import smart_model_loader
-                    
-                    self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
-                        engine_type="chatterbox",
-                        model_name=inputs["language"], 
-                        current_model=getattr(self, 'tts_model', None),
-                        device=inputs["device"],
-                        load_callback=lambda device, model: self.model_manager.load_tts_model(device, model)
-                    )
-                    
-                    if not was_cached:
-                        self.device = inputs["device"]  # Update device tracking
-                else:
-                    print(f"💾 All pause tag content cached - skipping model loading")
-                
-                # Generate audio with pause tags using special processor
-                wav = self._generate_with_pause_tags(pause_segments, inputs, main_audio_prompt)
-                model_source = f"chatterbox_{language.lower()}"
-                
-                info = f"Generated audio with pause tags (narrator voice, {model_source} models)"
                 
             else:
                 # SINGLE CHARACTER MODE (PRESERVE ORIGINAL BEHAVIOR)
@@ -987,17 +964,17 @@ Back to the main narrator voice for the conclusion.""",
                 segment_audio = torch.cat(segment_audio_chunks, dim=-1)
             audio_segments_with_order.append((original_idx, segment_audio))
 
-    def _process_languages_streaming(self, language_groups, voice_refs, inputs, character_segments_with_lang):
+    def _process_languages_streaming(self, language_groups, voice_refs, inputs, expanded_segments_with_lang, pause_info=None, segment_mapping=None):
         """Process all languages using universal streaming system."""
-        print(f"🌊 STREAMING MODE: Processing all {len(character_segments_with_lang)} segments with universal streaming")
+        print(f"🌊 STREAMING MODE: Processing all {len(expanded_segments_with_lang)} segments with universal streaming")
         
         # Import universal streaming components
         from utils.streaming import StreamingCoordinator, StreamingConfig
         from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
         
-        # Convert character_segments_with_lang to indexed format for streaming
-        # character_segments_with_lang is (char, text, lang) but we need (idx, char, text, lang)
-        indexed_segments = [(idx, char, text, lang) for idx, (char, text, lang) in enumerate(character_segments_with_lang)]
+        # Convert expanded_segments_with_lang to indexed format for streaming
+        # expanded_segments_with_lang is (idx, char, text, lang) but we need (idx, char, text, lang)
+        indexed_segments = [(idx, char, text, lang) for idx, char, text, lang in expanded_segments_with_lang]
         
         # Convert to universal streaming segments
         segments = StreamingCoordinator.convert_node_data_to_segments(
@@ -1039,8 +1016,78 @@ Back to the main narrator voice for the conclusion.""",
             summary = metrics.get_summary()
             print(f"✅ Streaming complete: {summary['completed_segments']}/{summary['total_segments']} segments, "
                   f"{summary['throughput']:.2f} segments/sec")
+        
+        # Reconstruct pauses if we have pause information
+        if pause_info and success and segment_mapping:
+            print(f"⏸️ Reconstructing {len(pause_info)} pauses in streaming results")
+            audio_segments_with_order = self._reconstruct_pauses_in_streaming_results(
+                audio_segments_with_order, pause_info, segment_mapping
+            )
             
         return audio_segments_with_order
+
+    def _reconstruct_pauses_in_streaming_results(self, audio_segments_with_order, pause_info, segment_mapping):
+        """Reconstruct pause segments in streaming results."""
+        from utils.audio.processing import AudioProcessingUtils
+        
+        # Create a mapping of streaming indices to their original segment identifiers
+        # audio_segments_with_order contains (streaming_idx, audio)
+        # segment_mapping maps streaming_idx -> original_segment_id
+        
+        # Group segments by original segment (before pause expansion)
+        segment_groups = {}
+        for streaming_idx, audio in audio_segments_with_order:
+            original_segment_id = segment_mapping.get(streaming_idx, streaming_idx)
+            
+            if '_' in str(original_segment_id):
+                # Expanded segment like "0_0", "0_1"
+                original_idx = str(original_segment_id).split('_')[0]
+            else:
+                # Regular segment
+                original_idx = str(original_segment_id)
+            
+            if original_idx not in segment_groups:
+                segment_groups[original_idx] = []
+            segment_groups[original_idx].append((original_segment_id, audio))
+        
+        # Reconstruct each original segment with pauses
+        reconstructed_segments = []
+        for original_idx in sorted(segment_groups.keys(), key=int):
+            segment_parts = segment_groups[original_idx]
+            
+            if len(segment_parts) == 1 and '_' not in str(segment_parts[0][0]):
+                # Single segment without pause expansion - no reconstruction needed
+                reconstructed_segments.append((int(original_idx), segment_parts[0][1]))
+            else:
+                # Reconstruct with pauses
+                combined_audio_parts = []
+                
+                # Sort parts by sub-index (parts are identified as "0_0", "0_1", etc.)
+                segment_parts.sort(key=lambda x: int(str(x[0]).split('_')[1]) if '_' in str(x[0]) else 0)
+                
+                for i, (part_id, audio) in enumerate(segment_parts):
+                    combined_audio_parts.append(audio)
+                    
+                    # Check if there's a pause after this part
+                    # For expanded segments like "0_0", the next pause would be "0_1" 
+                    if '_' in str(part_id):
+                        current_sub_idx = int(str(part_id).split('_')[1])
+                        pause_key = f"{original_idx}_{current_sub_idx + 1}"
+                    else:
+                        pause_key = f"{original_idx}_1"
+                    
+                    if pause_key in pause_info:
+                        pause_duration = pause_info[pause_key]
+                        sample_rate = 22050  # ChatterBox default
+                        silence = AudioProcessingUtils.create_silence(pause_duration, sample_rate)
+                        combined_audio_parts.append(silence)
+                        print(f"⏸️ Added {pause_duration}s pause after segment {part_id}")
+                
+                # Combine all parts
+                combined_audio = AudioProcessingUtils.concatenate_audio_segments(combined_audio_parts, "simple")
+                reconstructed_segments.append((int(original_idx), combined_audio))
+        
+        return reconstructed_segments
 
     def _process_languages_traditional(self, language_groups, voice_refs, inputs, character_segments_with_lang):
         """Process languages using traditional character-by-character method."""
@@ -1106,18 +1153,49 @@ Back to the main narrator voice for the conclusion.""",
                     # Process text for generation
                     processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))
                     
-                    print(f"🔒 Using stateless wrapper for thread-safe generation")
+                    # Add caching logic like SRT streaming does
+                    enable_cache = inputs.get("enable_audio_cache", True)
+                    cached_audio = None
                     
-                    # Generate using stateless wrapper (thread-safe)
-                    segment_audio = stateless_model.generate_stateless(
-                        text=processed_text,
-                        audio_prompt_path=voice_path if voice_path != "none" else None,
-                        exaggeration=inputs.get("exaggeration", 0.5),
-                        temperature=inputs.get("temperature", 0.8),
-                        cfg_weight=inputs.get("cfg_weight", 0.5),
-                        seed=inputs.get("seed", 42)
-                    )
-                    return segment_audio
+                    # Try cache first
+                    if enable_cache:
+                        from utils.audio.cache import create_cache_function
+                        cache_fn = create_cache_function(
+                            "chatterbox",
+                            character=character,
+                            exaggeration=inputs.get("exaggeration", 0.5),
+                            temperature=inputs.get("temperature", 0.8),
+                            cfg_weight=inputs.get("cfg_weight", 0.5),
+                            seed=inputs.get("seed", 42),
+                            audio_component=self._generate_stable_audio_component(inputs.get("reference_audio"), voice_path),
+                            model_source="streaming_stateless",
+                            device="auto",
+                            language=language
+                        )
+                        cached_audio = cache_fn(processed_text)
+                    
+                    if cached_audio is not None:
+                        print(f"💾 CACHE HIT for segment: '{processed_text[:20]}...'")
+                        return cached_audio
+                    else:
+                        print(f"🔒 Using stateless wrapper for thread-safe generation")
+                        
+                        # Generate using stateless wrapper (thread-safe)
+                        segment_audio = stateless_model.generate_stateless(
+                            text=processed_text,
+                            audio_prompt_path=voice_path if voice_path != "none" else None,
+                            exaggeration=inputs.get("exaggeration", 0.5),
+                            temperature=inputs.get("temperature", 0.8),
+                            cfg_weight=inputs.get("cfg_weight", 0.5),
+                            seed=inputs.get("seed", 42)
+                        )
+                        
+                        # Cache the result
+                        if enable_cache:
+                            cache_fn(processed_text, audio_result=segment_audio)
+                            print(f"💾 CACHED segment: '{processed_text[:20]}...'")
+                        
+                        return segment_audio
             
             # Fallback to old method if no streaming model manager
             print(f"⚠️ No stateless wrapper available, using fallback method")
