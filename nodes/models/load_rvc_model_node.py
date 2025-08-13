@@ -177,14 +177,21 @@ class LoadRVCModelNode(BaseTTSNode):
         except:
             pass
         
-        # Add some common model names as fallback
+        # Add downloadable models from model downloader
         if not models:
-            models = [
-                "Claire.pth",
-                "Alice.pth", 
-                "Bob.pth",
-                "model.pth"
-            ]
+            try:
+                from utils.downloads.model_downloader import AVAILABLE_RVC_MODELS
+                # Extract just the model names from the full paths
+                models = [os.path.basename(model_path) for model_path in AVAILABLE_RVC_MODELS]
+            except ImportError:
+                # Fallback if downloader not available
+                models = [
+                    "Claire.pth",
+                    "Sayano.pth", 
+                    "Mae_v2.pth",
+                    "Fuji.pth",
+                    "Monika.pth"
+                ]
         
         return sorted(models)
     

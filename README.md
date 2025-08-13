@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# TTS Audio Suite v4.3.1
+# TTS Audio Suite v4.3.2
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -233,9 +233,11 @@ Hello! Welcome to our multilingual show.
 * **Unified Voice Changer**: Full RVC integration in the Voice Changer node
 * **Iterative Refinement**: 1-30 passes with smart caching (like ChatterBox)
 * **Enhanced Quality**: Automatic .index file loading for improved voice similarity
-* **Official Downloads**: Required models download from official sources automatically
+* **Auto-Download**: Required models download from official sources automatically
 * **Cache Intelligence**: Skip recomputation - change 5→3→4 passes instantly
 * **Neural Network Quality**: High-quality voice conversion using trained RVC models
+
+📖 **See [RVC Models Setup](#7-rvc-models-optional---new-in-v400) for detailed installation guide**
 
 **How it works:**
 1. Load your .pth RVC model with 🎭 Load RVC Character Model
@@ -706,7 +708,58 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 
 </details>
 
-### 7. Restart ComfyUI
+### 7. RVC Models (Optional - NEW in v4.0.0+)
+
+**For Real-time Voice Conversion capabilities**, RVC models are automatically downloaded when needed:
+
+```
+ComfyUI/models/RVC/
+├── Claire.pth              ← Character voice models
+├── Sayano.pth
+├── Mae_v2.pth
+├── Fuji.pth
+├── Monika.pth
+├── content-vec-best.safetensors  ← Base models (auto-download)
+├── rmvpe.pt
+└── .index/                 ← Index files for better similarity
+    ├── added_IVF1063_Flat_nprobe_1_Sayano_v2.index
+    ├── added_IVF985_Flat_nprobe_1_Fuji_v2.index
+    ├── Monika_v2_40k.index
+    └── Sayano_v2_40k.index
+```
+
+**Available RVC Character Models (Auto-Download):**
+
+| Model      | Type        | Source                                           | Auto-Download |
+| ---------- | ----------- | ------------------------------------------------ | ------------- |
+| Claire.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
+| Sayano.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
+| Mae_v2.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
+| Fuji.pth   | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
+| Monika.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
+
+**Required Base Models (Auto-Download):**
+
+| Model                    | Purpose           | Source                                           | Size   |
+| ------------------------ | ----------------- | ------------------------------------------------ | ------ |
+| content-vec-best.safetensors | Voice features    | [lengyue233/content-vec-best](https://huggingface.co/lengyue233/content-vec-best) | ~300MB |
+| rmvpe.pt                 | Pitch extraction  | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | ~55MB  |
+
+**How RVC Auto-Download Works:**
+
+1. **Select Character Model**: Choose from available models in 🎭 Load RVC Character Model node
+2. **Auto-Download**: Models download automatically when first selected (with auto_download=True)
+3. **Base Models**: Required base models download automatically when RVC engine first runs
+4. **Index Files**: Optional FAISS index files download for improved voice similarity
+5. **Local Cache**: Once downloaded, models are used from local cache for fast loading
+
+**UVR Models for Vocal Separation (Auto-Download):**
+
+Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/models/UVR/` as needed.
+
+**Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
+
+### 8. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
