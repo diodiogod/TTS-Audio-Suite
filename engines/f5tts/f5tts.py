@@ -116,6 +116,12 @@ class ChatterBoxF5TTS:
     def _load_f5tts(self):
         """Load F5-TTS model and vocoder"""
         try:
+            # Download and setup Vocos redirect BEFORE any F5-TTS operations
+            from utils.downloads.unified_downloader import unified_downloader
+            vocos_dir = unified_downloader.download_vocos_model()
+            if vocos_dir:
+                self._setup_vocos_redirect(vocos_dir)
+            
             # Try to import F5-TTS
             from f5_tts.api import F5TTS
             
@@ -418,12 +424,7 @@ class ChatterBoxF5TTS:
                     print(f"📁 Downloaded model: {model_file}")
                     print(f"📁 Downloaded vocab: {vocab_file}")
                     
-                    # Download Vocos to organized location to avoid cache
-                    from utils.downloads.unified_downloader import unified_downloader
-                    vocos_dir = unified_downloader.download_vocos_model()
-                    if vocos_dir:
-                        # Monkey patch to redirect Vocos to use our organized version
-                        self._setup_vocos_redirect(vocos_dir)
+                    # Vocos redirect already setup in _load_f5tts()
                     
                     # Load with base config but custom files
                     self.f5tts_model = F5TTS(
@@ -513,13 +514,8 @@ class ChatterBoxF5TTS:
                         print(f"📁 Downloaded model: {model_file}")
                         print(f"📁 Downloaded vocab: {vocab_file}")
                         
-                        # Download Vocos to organized location to avoid cache
-                        vocos_dir = unified_downloader.download_vocos_model()
-                        
+                        # Vocos redirect already setup in _load_f5tts()
                         config_name = self.model_name
-                        if vocos_dir:
-                            # Monkey patch to redirect Vocos to use our organized version
-                            self._setup_vocos_redirect(vocos_dir)
                         
                         self.f5tts_model = F5TTS(
                             model=config_name,
