@@ -198,13 +198,45 @@ class FeatureExtractor:
 
     def get_rmvpe(self, x, *args, **kwargs):
         if not hasattr(self,"model_rmvpe"):
-            self.model_rmvpe = RMVPE(os.path.join(BASE_MODELS_DIR,f"rmvpe.{'onnx' if self.onnx else 'pt'}"), is_half=self.is_half, device=self.device, onnx=self.onnx)
+            # Check organized TTS/ location first, then legacy
+            rmvpe_file = f"rmvpe.{'onnx' if self.onnx else 'pt'}"
+            rmvpe_paths = [
+                os.path.join(BASE_MODELS_DIR, "TTS", "RVC", rmvpe_file),  # Organized
+                os.path.join(BASE_MODELS_DIR, rmvpe_file)  # Legacy
+            ]
+            
+            rmvpe_path = None
+            for path in rmvpe_paths:
+                if os.path.exists(path):
+                    rmvpe_path = path
+                    break
+            
+            if not rmvpe_path:
+                rmvpe_path = rmvpe_paths[0]  # Use organized path as default
+            
+            self.model_rmvpe = RMVPE(rmvpe_path, is_half=self.is_half, device=self.device, onnx=self.onnx)
 
         return self.model_rmvpe.infer_from_audio(x, thred=0.03)
 
     def get_pitch_dependant_rmvpe(self, x, f0_min=0, f0_max=40000, *args, **kwargs):
         if not hasattr(self,"model_rmvpe"):
-            self.model_rmvpe = RMVPE(os.path.join(BASE_MODELS_DIR,f"rmvpe.{'onnx' if self.onnx else 'pt'}"), is_half=self.is_half, device=self.device, onnx=self.onnx)
+            # Check organized TTS/ location first, then legacy
+            rmvpe_file = f"rmvpe.{'onnx' if self.onnx else 'pt'}"
+            rmvpe_paths = [
+                os.path.join(BASE_MODELS_DIR, "TTS", "RVC", rmvpe_file),  # Organized
+                os.path.join(BASE_MODELS_DIR, rmvpe_file)  # Legacy
+            ]
+            
+            rmvpe_path = None
+            for path in rmvpe_paths:
+                if os.path.exists(path):
+                    rmvpe_path = path
+                    break
+            
+            if not rmvpe_path:
+                rmvpe_path = rmvpe_paths[0]  # Use organized path as default
+            
+            self.model_rmvpe = RMVPE(rmvpe_path, is_half=self.is_half, device=self.device, onnx=self.onnx)
 
         return self.model_rmvpe.infer_from_audio_with_pitch(x, thred=0.03, f0_min=f0_min, f0_max=f0_max)
 
