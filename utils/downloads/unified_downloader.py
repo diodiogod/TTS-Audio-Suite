@@ -73,7 +73,7 @@ class UnifiedDownloader:
             return False
     
     def download_huggingface_model(self, repo_id: str, model_name: str, files: List[Dict[str, str]], 
-                                 engine_type: str) -> Optional[str]:
+                                 engine_type: str, subfolder: str = None) -> Optional[str]:
         """
         Download HuggingFace model files to organized TTS/ structure.
         
@@ -82,12 +82,16 @@ class UnifiedDownloader:
             model_name: Model name for folder organization (e.g., "F5TTS_v1_Base")
             files: List of files to download, each dict with 'remote' and 'local' keys
             engine_type: Engine type for organization ("F5-TTS", "chatterbox", etc.)
+            subfolder: Optional subfolder for organization (e.g., "vocos")
             
         Returns:
             Path to model directory if successful, None otherwise
         """
-        # Create organized path
-        model_dir = os.path.join(self.tts_dir, engine_type, model_name)
+        # Create organized path with optional subfolder
+        if subfolder:
+            model_dir = os.path.join(self.tts_dir, engine_type, model_name, subfolder)
+        else:
+            model_dir = os.path.join(self.tts_dir, engine_type, model_name)
         
         success = True
         for file_info in files:
@@ -173,6 +177,38 @@ class UnifiedDownloader:
                 return path
         
         return None
+    
+    def download_vocos_model(self) -> Optional[str]:
+        """
+        Download Vocos vocoder model to organized TTS/ structure.
+        
+        Returns:
+            Path to vocos directory if successful, None otherwise
+        """
+        # Check if vocos already exists in organized location
+        vocos_dir = os.path.join(self.tts_dir, "F5-TTS", "vocos")
+        config_path = os.path.join(vocos_dir, "config.yaml")
+        model_path = os.path.join(vocos_dir, "pytorch_model.bin")
+        
+        if os.path.exists(config_path) and os.path.exists(model_path):
+            print(f"📁 Vocos already exists: {vocos_dir}")
+            return vocos_dir
+        
+        # Download Vocos files
+        vocos_files = [
+            {'remote': 'config.yaml', 'local': 'config.yaml'},
+            {'remote': 'pytorch_model.bin', 'local': 'pytorch_model.bin'}
+        ]
+        
+        print("📥 Downloading Vocos vocoder to organized directory (no cache)")
+        downloaded_dir = self.download_huggingface_model(
+            repo_id="charactr/vocos-mel-24khz",
+            model_name="vocos",
+            files=vocos_files,
+            engine_type="F5-TTS"
+        )
+        
+        return downloaded_dir
 
 # Global instance for easy access
 unified_downloader = UnifiedDownloader()

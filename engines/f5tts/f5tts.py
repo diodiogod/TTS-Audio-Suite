@@ -83,6 +83,36 @@ class ChatterBoxF5TTS:
         # Initialize F5-TTS
         self._load_f5tts()
     
+    def _setup_vocos_redirect(self, vocos_dir: str):
+        """
+        Monkey patch HuggingFace downloads to use our organized Vocos location.
+        This prevents F5-TTS from downloading Vocos to cache when it's already organized.
+        """
+        try:
+            import huggingface_hub
+            
+            # Store original download function
+            original_hf_hub_download = huggingface_hub.hf_hub_download
+            
+            def patched_hf_hub_download(repo_id, filename, **kwargs):
+                # Intercept Vocos downloads and redirect to our organized location
+                if repo_id == "charactr/vocos-mel-24khz":
+                    local_file = os.path.join(vocos_dir, filename)
+                    if os.path.exists(local_file):
+                        print(f"📁 Using organized Vocos file: {local_file}")
+                        return local_file
+                
+                # For all other downloads, use original function
+                return original_hf_hub_download(repo_id, filename, **kwargs)
+            
+            # Apply the monkey patch
+            huggingface_hub.hf_hub_download = patched_hf_hub_download
+            print(f"📁 Redirecting Vocos downloads to: {vocos_dir}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to setup Vocos redirect: {e}")
+            print("🔄 F5-TTS will download Vocos to cache as fallback")
+    
     def _load_f5tts(self):
         """Load F5-TTS model and vocoder"""
         try:
@@ -388,6 +418,13 @@ class ChatterBoxF5TTS:
                     print(f"📁 Downloaded model: {model_file}")
                     print(f"📁 Downloaded vocab: {vocab_file}")
                     
+                    # Download Vocos to organized location to avoid cache
+                    from utils.downloads.unified_downloader import unified_downloader
+                    vocos_dir = unified_downloader.download_vocos_model()
+                    if vocos_dir:
+                        # Monkey patch to redirect Vocos to use our organized version
+                        self._setup_vocos_redirect(vocos_dir)
+                    
                     # Load with base config but custom files
                     self.f5tts_model = F5TTS(
                         model=config_name,
@@ -476,7 +513,14 @@ class ChatterBoxF5TTS:
                         print(f"📁 Downloaded model: {model_file}")
                         print(f"📁 Downloaded vocab: {vocab_file}")
                         
+                        # Download Vocos to organized location to avoid cache
+                        vocos_dir = unified_downloader.download_vocos_model()
+                        
                         config_name = self.model_name
+                        if vocos_dir:
+                            # Monkey patch to redirect Vocos to use our organized version
+                            self._setup_vocos_redirect(vocos_dir)
+                        
                         self.f5tts_model = F5TTS(
                             model=config_name,
                             ckpt_file=model_file,
