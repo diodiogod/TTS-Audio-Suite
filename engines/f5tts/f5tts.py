@@ -364,12 +364,72 @@ class ChatterBoxF5TTS:
                         device=self.device
                     )
                 else:
-                    # Standard models (F5TTS_Base, F5TTS_v1_Base, E2TTS_Base)
+                    # Standard models (F5TTS_Base, F5TTS_v1_Base, E2TTS_Base) - also organize to TTS/ folder
                     print(f"📦 Loading F5-TTS model '{self.model_name}' from HuggingFace")
-                    self.f5tts_model = F5TTS(
-                        model=self.model_name,
-                        device=self.device
-                    )
+                    
+                    # Get model config for standard models
+                    from huggingface_hub import hf_hub_download
+                    model_config = F5TTS_MODELS.get(self.model_name, F5TTS_MODELS["F5TTS_Base"])
+                    repo_id = model_config["repo"]
+                    step = model_config["step"]
+                    ext = model_config["ext"]
+                    
+                    model_filename = f"model_{step}.{ext}"
+                    vocab_filename = "vocab.txt"
+                    
+                    # Check if model exists locally first
+                    local_model_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, model_filename)
+                    local_vocab_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, vocab_filename)
+                    
+                    if os.path.exists(local_model_path) and os.path.exists(local_vocab_path):
+                        print(f"📁 Using local F5-TTS model: {local_model_path}")
+                        model_file = local_model_path
+                        vocab_file = local_vocab_path
+                    else:
+                        # Download to local models directory for organization
+                        print(f"📥 Downloading F5-TTS model to organized directory: {model_filename}")
+                        os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
+                        os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
+                        
+                        try:
+                            # Download model file
+                            if not os.path.exists(local_model_path):
+                                temp_model = hf_hub_download(repo_id=repo_id, filename=f"{self.model_name}/{model_filename}")
+                                import shutil
+                                shutil.copy2(temp_model, local_model_path)
+                                print(f"✅ Downloaded F5-TTS model to: {local_model_path}")
+                            
+                            # Download vocab file
+                            if not os.path.exists(local_vocab_path):
+                                temp_vocab = hf_hub_download(repo_id=repo_id, filename=f"{self.model_name}/{vocab_filename}")
+                                import shutil
+                                shutil.copy2(temp_vocab, local_vocab_path)
+                                print(f"✅ Downloaded F5-TTS vocab to: {local_vocab_path}")
+                            
+                            model_file = local_model_path
+                            vocab_file = local_vocab_path
+                        except Exception as e:
+                            # Fallback to direct F5TTS loading (old behavior)
+                            print(f"⚠️ Failed to download to organized directory, using HF cache: {e}")
+                            self.f5tts_model = F5TTS(
+                                model=self.model_name,
+                                device=self.device
+                            )
+                            model_file = None
+                            vocab_file = None
+                    
+                    # Load using local files if we have them
+                    if model_file and vocab_file:
+                        print(f"📁 Downloaded model: {model_file}")
+                        print(f"📁 Downloaded vocab: {vocab_file}")
+                        
+                        config_name = self.model_name
+                        self.f5tts_model = F5TTS(
+                            model=config_name,
+                            ckpt_file=model_file,
+                            vocab_file=vocab_file,
+                            device=self.device
+                        )
             else:
                 # Default fallback using generic utility
                 from utils.models.fallback_utils import try_local_first, get_models_dir
