@@ -353,7 +353,7 @@ Use ComfyUI Manager to install "TTS Audio Suite" - it handles dependencies autom
 3. **Download Models** (Required)
 
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
-   - Place in `ComfyUI/models/chatterbox/`
+   - Place in `ComfyUI/models/TTS/chatterbox/` (recommended) or `ComfyUI/models/chatterbox/` (legacy)
 
 3. **Try a Workflow**
 
@@ -555,10 +555,15 @@ If FFmpeg is not available, ChatterBox will automatically fall back to using the
 
 ### 4. Download Models
 
-**Download the ChatterboxTTS models** and place them in:
+**Download the ChatterboxTTS models** and place them in the new organized structure:
 
 ```
-ComfyUI/models/chatterbox/
+ComfyUI/models/TTS/chatterbox/    ← Recommended (new structure)
+```
+
+Or use the legacy location (still supported):
+```
+ComfyUI/models/chatterbox/        ← Legacy (still works)
 ```
 
 **Required files:**
@@ -575,10 +580,10 @@ ComfyUI/models/chatterbox/
 
 **NEW in v3.3.0**: ChatterBox now supports multiple languages! Models will auto-download on first use, or you can manually install them for offline use.
 
-**For manual installation**, create language-specific folders and download models:
+**For manual installation**, create language-specific folders in the organized structure:
 
 ```
-ComfyUI/models/chatterbox/
+ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 ├── English/          # Optional - for explicit English organization
 │   ├── conds.pt
 │   ├── s3gen.pt
@@ -599,6 +604,8 @@ ComfyUI/models/chatterbox/
     └── ve.safetensors
 ```
 
+> **Note**: Legacy location `ComfyUI/models/chatterbox/` still works for backward compatibility.
+
 **Available ChatterBox Language Models:**
 
 | Language   | HuggingFace Repository                                              | Format       | Auto-Download |
@@ -611,10 +618,15 @@ ComfyUI/models/chatterbox/
 
 ### 5. F5-TTS Models (Optional)
 
-**For F5-TTS voice synthesis capabilities**, download F5-TTS models and place them in:
+**For F5-TTS voice synthesis capabilities**, download F5-TTS models and place them in the organized structure:
 
 ```
-ComfyUI/models/F5-TTS/
+ComfyUI/models/TTS/F5-TTS/       ← Recommended (new structure)
+```
+
+Or use the legacy location (still supported):
+```
+ComfyUI/models/F5-TTS/           ← Legacy (still works)
 ```
 
 **Available F5-TTS Models:**
@@ -633,18 +645,20 @@ ComfyUI/models/F5-TTS/
 **Vocoder (Optional but Recommended):**
 
 ```
-ComfyUI/models/F5-TTS/vocos/
+ComfyUI/models/TTS/F5-TTS/vocos/     ← Recommended
 ├── config.yaml
 ├── pytorch_model.bin
 └── vocab.txt
 ```
 
+Legacy location also supported: `ComfyUI/models/F5-TTS/vocos/`
+
 Download from: [Vocos Mel-24kHz](https://huggingface.co/charactr/vocos-mel-24khz)
 
-**Complete Folder Structure:**
+**Complete Folder Structure (Recommended):**
 
 ```
-ComfyUI/models/F5-TTS/
+ComfyUI/models/TTS/F5-TTS/
 ├── F5TTS_Base/
 │   ├── model_1200000.safetensors    ← Main model file
 │   └── vocab.txt                    ← Vocabulary file
@@ -710,23 +724,29 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 
 ### 7. RVC Models (Optional - NEW in v4.0.0+)
 
-**For Real-time Voice Conversion capabilities**, RVC models are automatically downloaded when needed:
+**For Real-time Voice Conversion capabilities**, RVC models are automatically downloaded to the organized structure:
 
 ```
-ComfyUI/models/RVC/
-├── Claire.pth              ← Character voice models
+ComfyUI/models/TTS/RVC/          ← Recommended (new structure)
+├── Claire.pth                   ← Character voice models
 ├── Sayano.pth
 ├── Mae_v2.pth
 ├── Fuji.pth
 ├── Monika.pth
-├── content-vec-best.safetensors  ← Base models (auto-download)
+├── content-vec-best.safetensors ← Base models (auto-download)
 ├── rmvpe.pt
-└── .index/                 ← Index files for better similarity
+├── hubert/                      ← HuBERT models (auto-organized)
+│   ├── hubert-base-rvc.safetensors
+│   ├── hubert-soft-japanese.safetensors
+│   └── hubert-soft-korean.safetensors
+└── .index/                      ← Index files for better similarity
     ├── added_IVF1063_Flat_nprobe_1_Sayano_v2.index
     ├── added_IVF985_Flat_nprobe_1_Fuji_v2.index
     ├── Monika_v2_40k.index
     └── Sayano_v2_40k.index
 ```
+
+> **Note**: Legacy location `ComfyUI/models/RVC/` still works for backward compatibility.
 
 **Available RVC Character Models (Auto-Download):**
 
@@ -755,7 +775,7 @@ ComfyUI/models/RVC/
 
 **UVR Models for Vocal Separation (Auto-Download):**
 
-Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/models/UVR/` as needed.
+Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/models/TTS/UVR/` (recommended) or `ComfyUI/models/UVR/` (legacy) as needed.
 
 **Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
 

@@ -77,6 +77,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
+- **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
 - **impl/** - Complete RVC implementation with vocal separation and voice conversion
   - **rvc_audio.py** - Audio processing utilities for RVC pipeline
   - **rvc_downloader.py** - Model downloading system for RVC, UVR, and Karafan models
@@ -203,6 +204,10 @@ This extension features a **unified modular architecture** supporting multiple T
 **utils/system/import_manager.py** - Smart dependency resolution managing bundled vs system installations
 
 **utils/system/subprocess.py** - Safe subprocess execution with error handling and process isolation
+
+### Downloads
+
+**utils/downloads/model_downloader.py** - Universal model auto-download system for RVC models with Hugging Face integration
 
 ### Timing and SRT
 

@@ -555,51 +555,6 @@
       "widgets_values": []
     },
     {
-      "id": 20,
-      "type": "RVCEngineNode",
-      "pos": [
-        -1540,
-        1340
-      ],
-      "size": [
-        278.75,
-        178
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "rvc_pitch_options",
-          "shape": 7,
-          "type": "RVC_PITCH_OPTIONS",
-          "link": 19
-        }
-      ],
-      "outputs": [
-        {
-          "name": "rvc_engine",
-          "type": "TTS_ENGINE",
-          "links": [
-            18
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RVCEngineNode"
-      },
-      "widgets_values": [
-        8,
-        0.75,
-        0.25,
-        0.25,
-        0,
-        "auto"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
       "id": 13,
       "type": "MarkdownNote",
       "pos": [
@@ -644,6 +599,52 @@
       ],
       "color": "#223",
       "bgcolor": "#335"
+    },
+    {
+      "id": 20,
+      "type": "RVCEngineNode",
+      "pos": [
+        -1540,
+        1340
+      ],
+      "size": [
+        278.75,
+        202
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "rvc_pitch_options",
+          "shape": 7,
+          "type": "RVC_PITCH_OPTIONS",
+          "link": 19
+        }
+      ],
+      "outputs": [
+        {
+          "name": "rvc_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            18
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RVCEngineNode"
+      },
+      "widgets_values": [
+        8,
+        0.75,
+        0.25,
+        0.25,
+        "hubert-base-rvc: HuBERT Base RVC (Recommended)",
+        0,
+        "auto"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
     }
   ],
   "links": [
