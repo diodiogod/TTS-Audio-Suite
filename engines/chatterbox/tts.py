@@ -302,11 +302,27 @@ class ChatterboxTTS:
             os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
             
             try:
-                temp_file = hf_hub_download(repo_id=repo_id, filename=fpath)
-                import shutil
-                shutil.copy2(temp_file, local_model_path)
-                local_paths.append(local_model_path)
-                print(f"✅ Downloaded Chatterbox model to: {local_model_path}")
+                # Use unified downloader
+                from utils.downloads.unified_downloader import unified_downloader
+                
+                files_to_download = [{
+                    'remote': fpath,
+                    'local': os.path.basename(fpath)
+                }]
+                
+                downloaded_dir = unified_downloader.download_huggingface_model(
+                    repo_id=repo_id,
+                    model_name=language,
+                    files=files_to_download,
+                    engine_type="chatterbox"
+                )
+                
+                if downloaded_dir:
+                    local_model_path = os.path.join(downloaded_dir, os.path.basename(fpath))
+                    local_paths.append(local_model_path)
+                    print(f"✅ Downloaded Chatterbox model to: {local_model_path}")
+                else:
+                    raise Exception("Unified download failed")
             except Exception as e:
                 # If safetensors fails, try .pt format
                 if fpath.endswith('.safetensors'):
@@ -315,11 +331,25 @@ class ChatterboxTTS:
                     
                     print(f"⚠️ {fpath} not found, trying {fallback_fpath}")
                     try:
-                        temp_fallback = hf_hub_download(repo_id=repo_id, filename=fallback_fpath)
-                        import shutil
-                        shutil.copy2(temp_fallback, fallback_local_path)
-                        local_paths.append(fallback_local_path)
-                        print(f"✅ Downloaded Chatterbox fallback model to: {fallback_local_path}")
+                        # Use unified downloader for fallback
+                        files_to_download = [{
+                            'remote': fallback_fpath,
+                            'local': os.path.basename(fallback_fpath)
+                        }]
+                        
+                        downloaded_dir = unified_downloader.download_huggingface_model(
+                            repo_id=repo_id,
+                            model_name=language,
+                            files=files_to_download,
+                            engine_type="chatterbox"
+                        )
+                        
+                        if downloaded_dir:
+                            fallback_local_path = os.path.join(downloaded_dir, os.path.basename(fallback_fpath))
+                            local_paths.append(fallback_local_path)
+                            print(f"✅ Downloaded Chatterbox fallback model to: {fallback_local_path}")
+                        else:
+                            raise Exception("Unified fallback download failed")
                     except Exception as e2:
                         # Final fallback to HuggingFace cache
                         print(f"⚠️ Failed to download to local directory, using HF cache: {e2}")

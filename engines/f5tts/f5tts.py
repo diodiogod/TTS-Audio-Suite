@@ -260,12 +260,25 @@ class ChatterBoxF5TTS:
                             os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
                             
                             try:
-                                # Download from HuggingFace and save locally
-                                temp_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
-                                import shutil
-                                shutil.copy2(temp_file, local_model_path)
-                                model_file = local_model_path
-                                print(f"✅ Downloaded F5-TTS model to: {local_model_path}")
+                                # Use unified downloader
+                                from utils.downloads.unified_downloader import unified_downloader
+                                
+                                files_to_download = [{
+                                    'remote': model_filename,
+                                    'local': os.path.basename(model_filename)
+                                }]
+                                
+                                downloaded_dir = unified_downloader.download_huggingface_model(
+                                    repo_id=repo_id,
+                                    model_name=self.model_name,
+                                    files=files_to_download,
+                                    engine_type="F5-TTS"
+                                )
+                                
+                                if downloaded_dir:
+                                    model_file = os.path.join(downloaded_dir, os.path.basename(model_filename))
+                                else:
+                                    raise Exception("Unified download failed")
                             except Exception as e:
                                 # Fallback to HuggingFace cache
                                 print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
@@ -308,11 +321,25 @@ class ChatterBoxF5TTS:
                                     os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
                                     
                                     try:
-                                        temp_vocab = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
-                                        import shutil
-                                        shutil.copy2(temp_vocab, local_vocab_path)
-                                        vocab_file = local_vocab_path
-                                        print(f"✅ Downloaded F5TTS_Base vocab to: {local_vocab_path}")
+                                        # Use unified downloader for F5TTS_Base vocab
+                                        from utils.downloads.unified_downloader import unified_downloader
+                                        
+                                        files_to_download = [{
+                                            'remote': "F5TTS_Base/vocab.txt",
+                                            'local': "vocab.txt"
+                                        }]
+                                        
+                                        downloaded_dir = unified_downloader.download_huggingface_model(
+                                            repo_id="SWivid/F5-TTS",
+                                            model_name="F5TTS_Base",
+                                            files=files_to_download,
+                                            engine_type="F5-TTS"
+                                        )
+                                        
+                                        if downloaded_dir:
+                                            vocab_file = os.path.join(downloaded_dir, "vocab.txt")
+                                        else:
+                                            raise Exception("Unified vocab download failed")
                                     except Exception as e:
                                         print(f"⚠️ Failed to download vocab to local directory, using HF cache: {e}")
                                         vocab_file = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
@@ -335,11 +362,25 @@ class ChatterBoxF5TTS:
                                 os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
                                 
                                 try:
-                                    temp_vocab = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
-                                    import shutil
-                                    shutil.copy2(temp_vocab, local_vocab_path)
-                                    vocab_file = local_vocab_path
-                                    print(f"✅ Downloaded vocab to: {local_vocab_path}")
+                                    # Use unified downloader for model-specific vocab
+                                    from utils.downloads.unified_downloader import unified_downloader
+                                    
+                                    files_to_download = [{
+                                        'remote': vocab_filename,
+                                        'local': os.path.basename(vocab_filename)
+                                    }]
+                                    
+                                    downloaded_dir = unified_downloader.download_huggingface_model(
+                                        repo_id=repo_id,
+                                        model_name=self.model_name,
+                                        files=files_to_download,
+                                        engine_type="F5-TTS"
+                                    )
+                                    
+                                    if downloaded_dir:
+                                        vocab_file = os.path.join(downloaded_dir, os.path.basename(vocab_filename))
+                                    else:
+                                        raise Exception("Unified vocab download failed")
                                 except Exception as e:
                                     print(f"⚠️ Failed to download vocab to local directory, using HF cache: {e}")
                                     vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
@@ -392,22 +433,34 @@ class ChatterBoxF5TTS:
                         os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
                         
                         try:
-                            # Download model file
-                            if not os.path.exists(local_model_path):
-                                temp_model = hf_hub_download(repo_id=repo_id, filename=f"{self.model_name}/{model_filename}")
-                                import shutil
-                                shutil.copy2(temp_model, local_model_path)
-                                print(f"✅ Downloaded F5-TTS model to: {local_model_path}")
+                            # Use unified downloader to avoid cache duplication
+                            from utils.downloads.unified_downloader import unified_downloader
                             
-                            # Download vocab file
-                            if not os.path.exists(local_vocab_path):
-                                temp_vocab = hf_hub_download(repo_id=repo_id, filename=f"{self.model_name}/{vocab_filename}")
-                                import shutil
-                                shutil.copy2(temp_vocab, local_vocab_path)
-                                print(f"✅ Downloaded F5-TTS vocab to: {local_vocab_path}")
+                            # Prepare files to download
+                            files_to_download = [
+                                {
+                                    'remote': f"{self.model_name}/{model_filename}",
+                                    'local': model_filename
+                                },
+                                {
+                                    'remote': f"{self.model_name}/{vocab_filename}",
+                                    'local': vocab_filename
+                                }
+                            ]
                             
-                            model_file = local_model_path
-                            vocab_file = local_vocab_path
+                            # Download using unified system
+                            downloaded_dir = unified_downloader.download_huggingface_model(
+                                repo_id=repo_id,
+                                model_name=self.model_name,
+                                files=files_to_download,
+                                engine_type="F5-TTS"
+                            )
+                            
+                            if downloaded_dir:
+                                model_file = os.path.join(downloaded_dir, model_filename)
+                                vocab_file = os.path.join(downloaded_dir, vocab_filename)
+                            else:
+                                raise Exception("Unified download failed")
                         except Exception as e:
                             # Fallback to direct F5TTS loading (old behavior)
                             print(f"⚠️ Failed to download to organized directory, using HF cache: {e}")
