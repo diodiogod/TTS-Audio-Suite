@@ -189,7 +189,7 @@ def download_rvc_model(model_name: str) -> Optional[str]:
         print(f"⚠️  Model {model_name} not available for auto-download")
         return None
     
-    target_path = os.path.join(MODELS_DIR, "RVC", model_name)
+    target_path = os.path.join(MODELS_DIR, "TTS", "RVC", model_name)
     
     if download_model(rvc_path, target_path):
         return target_path
@@ -216,7 +216,7 @@ def download_rvc_index(index_name: str) -> Optional[str]:
         print(f"⚠️  Index {index_name} not available for auto-download")
         return None
     
-    target_path = os.path.join(MODELS_DIR, "RVC", ".index", index_name)
+    target_path = os.path.join(MODELS_DIR, "TTS", "RVC", ".index", index_name)
     
     if download_model(index_path, target_path):
         return target_path
@@ -237,7 +237,7 @@ def download_base_model(model_name: str) -> Optional[str]:
         print(f"⚠️  Base model {model_name} not available for auto-download")
         return None
     
-    target_path = os.path.join(MODELS_DIR, model_name)
+    target_path = os.path.join(MODELS_DIR, "TTS", "RVC", model_name)
     
     # Use official sources for base models when available
     if model_name in BASE_MODEL_URLS:
