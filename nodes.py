@@ -321,6 +321,15 @@ if F5TTS_EDIT_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditOptions"] = F5TTSEditOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditOptions"] = "🔧 F5-TTS Edit Options"
 
+# Load video analysis nodes
+try:
+    mouth_movement_module = load_node_module("mouth_movement_analyzer_node", "video/mouth_movement_analyzer_node.py")
+    MouthMovementAnalyzerNode = mouth_movement_module.MouthMovementAnalyzerNode
+    MOUTH_MOVEMENT_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Mouth Movement Analyzer failed: {e}")
+    MOUTH_MOVEMENT_AVAILABLE = False
+
 # Register RVC nodes
 if RVC_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["RVCEngineNode"] = RVCEngineNode
@@ -341,6 +350,11 @@ if MERGE_AUDIO_AVAILABLE:
 if LOAD_RVC_MODEL_AVAILABLE:
     NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode
     NODE_DISPLAY_NAME_MAPPINGS["LoadRVCModelNode"] = "🎭 Load RVC Character Model"
+
+# Register video analysis nodes
+if MOUTH_MOVEMENT_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MouthMovementAnalyzer"] = MouthMovementAnalyzerNode
+    NODE_DISPLAY_NAME_MAPPINGS["MouthMovementAnalyzer"] = "🎥 Mouth Movement Analyzer"
 
 # Print startup banner
 print(SEPARATOR)

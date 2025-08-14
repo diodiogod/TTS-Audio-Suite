@@ -32,7 +32,7 @@ diffusers
 conformer>=0.3.2
 torch
 torchaudio
-numpy
+numpy>=2.0.0,<2.3.0  # Balance compatibility: >=2.0 for audio-separator, <2.3 for Numba
 einops
 
 # Audio processing and timing dependencies
@@ -56,3 +56,8 @@ torchfcpe                 # Fast Context-based Pitch Estimation (FCPE) for real-
 monotonic-alignment-search # Audio alignment utilities
 audio-separator           # Ultimate Vocal Remover compatibility layer for vocal separation
 requests                  # Model downloading functionality
+
+# Video analysis dependencies for Mouth Movement Analyzer
+mediapipe>=0.10.0         # Google's MediaPipe for facial landmark detection
+opencv-python>=4.8.0      # Computer vision library for video processing
+protobuf>=4.21.0,<5.0.0   # Protocol buffers compatibility for MediaPipe
