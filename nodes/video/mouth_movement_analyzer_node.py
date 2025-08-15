@@ -502,15 +502,17 @@ class MouthMovementAnalyzerNode(BaseNode):
                 info = f"({estimated_chars} chars max)"
                 
             elif placeholder_format == SRTPlaceholderFormat.VISEME_SEQUENCE.value:
-                # Show detected viseme sequence if available
+                # Show detected viseme sequence if available, otherwise fallback to syllables
                 if hasattr(segment, 'viseme_sequence') and segment.viseme_sequence:
                     # Display raw ungrouped sequence for easy word conversion
                     placeholder = segment.viseme_sequence
                     avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
                     info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
-                    placeholder = "[viseme detection not enabled]"
-                    info = f"({duration:.1f}s)"
+                    # Fallback to syllables when viseme detection is disabled
+                    estimated_syllables = max(1, int(duration * 4.5))
+                    placeholder = " ".join(["syl-la-ble"] * (estimated_syllables // 3 + 1))[:estimated_syllables * 4]  # Approximate syllable representation
+                    info = f"({estimated_syllables} syllable{'s' if estimated_syllables != 1 else ''}, {duration:.1f}s)"
                 
             else:
                 # Fallback to words format
