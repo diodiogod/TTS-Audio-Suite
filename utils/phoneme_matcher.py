@@ -33,6 +33,7 @@ class PhonemeWordMatcher:
             'acc', 'adsl', 'api', 'cpu', 'dns', 'ftp', 'html', 'http', 'isp', 'lan', 
             'pdf', 'ram', 'sql', 'ssl', 'tcp', 'udp', 'url', 'usb', 'wan', 'xml',
             'php', 'css', 'js', 'cdn', 'cms', 'crm', 'erp', 'gui', 'ide', 'sdk',
+            'cgi', 'asp', 'jsp', 'json', 'ajax', 'cors', 'csrf', 'oauth', 'jwt',
             
             # Business/Legal  
             'llc', 'ltd', 'inc', 'corp', 'plc', 'gmbh', 'sa', 'bv', 'ab', 'ag',
@@ -59,6 +60,24 @@ class PhonemeWordMatcher:
         if len(word) <= 3 and not any(c in 'aeiou' for c in word_lower):
             return True
             
+        # Short words that are clearly abbreviations/acronyms
+        if len(word) <= 3:
+            # Common abbreviation patterns
+            if word_lower in ['dui', 'amd', 'ibm', 'gmc', 'nyc', 'fbi', 'cia', 'nsa', 
+                             'atf', 'dea', 'dot', 'dmv', 'irs', 'sec', 'fcc', 'fda',
+                             'cdc', 'epa', 'dod', 'gps', 'ups', 'fedex', 'ups', 'usps',
+                             'abc', 'cbs', 'nbc', 'fox', 'cnn', 'espn', 'hbo', 'mtv',
+                             'dvr', 'hdtv', 'lcd', 'led', 'cpu', 'gpu', 'ram', 'ssd',
+                             'wifi', 'lan', 'wan', 'vpn', 'isp', 'dns', 'ip', 'tcp',
+                             'usb', 'hdmi', 'blu', 'cd', 'dvd', 'mp3', 'mp4', 'avi']:
+                return True
+                
+        # Patterns that look like model numbers, codes, or technical terms
+        if len(word) >= 2:
+            # Mix of letters and implied numbers (like amd, ibm)
+            if any(word_lower.startswith(prefix) for prefix in ['amd', 'ibm', 'hp', 'lg', 'lg']):
+                return True
+                
         # Words with unusual consonant clusters (tech terms)
         if len(word) >= 3:
             consonant_clusters = ['css', 'ftp', 'tcp', 'udp', 'xml', 'html', 'php']
@@ -66,6 +85,7 @@ class PhonemeWordMatcher:
                 return True
         
         return False
+    
     
     def _get_default_dictionary_path(self) -> str:
         """Get path to default dictionary file"""
@@ -340,8 +360,8 @@ class PhonemeWordMatcher:
         
         suggestions = []
         
-        # Exact pattern matches (no wildcards)
-        if clean_sequence in self.phoneme_patterns:
+        # Exact pattern matches (only for patterns without wildcards)
+        if '_' not in wildcard_sequence and clean_sequence in self.phoneme_patterns:
             for word in self.phoneme_patterns[clean_sequence][:max_suggestions]:
                 suggestions.append((word, 0.9))
         
@@ -374,19 +394,27 @@ class PhonemeWordMatcher:
                     if len(suggestions) >= max_suggestions:
                         break
         
-        # Partial matches (subsequence matching)
+        # Partial matches (subsequence matching) - more restrictive
         if len(suggestions) < max_suggestions:
             for pattern, words in self.phoneme_patterns.items():
-                if len(pattern) >= 2:  # Only consider patterns of reasonable length
-                    # Check if clean_sequence is a subsequence of pattern or vice versa
-                    if self._is_subsequence(clean_sequence, pattern) or self._is_subsequence(pattern, clean_sequence):
-                        confidence = self._calculate_similarity(clean_sequence, pattern)
-                        if confidence > 0.3:  # Minimum similarity threshold
-                            for word in words[:2]:  # Limit per pattern
-                                if not any(w == word for w, _ in suggestions):
-                                    suggestions.append((word, confidence))
-                                    if len(suggestions) >= max_suggestions:
-                                        break
+                if len(pattern) >= 2:
+                    # Only allow subsequence matching if lengths are reasonably similar
+                    length_ratio = min(len(clean_sequence), len(pattern)) / max(len(clean_sequence), len(pattern))
+                    
+                    if length_ratio >= 0.5:  # Patterns must be within 50% of each other's length
+                        # Check if clean_sequence is a subsequence of pattern or vice versa  
+                        if self._is_subsequence(clean_sequence, pattern) or self._is_subsequence(pattern, clean_sequence):
+                            confidence = self._calculate_similarity(clean_sequence, pattern)
+                            
+                            # Lower confidence for subsequence matches (they're less reliable)
+                            confidence *= 0.7
+                            
+                            if confidence > 0.2:  # Lower threshold since we reduced confidence
+                                for word in words[:2]:  # Limit per pattern
+                                    if not any(w == word for w, _ in suggestions):
+                                        suggestions.append((word, confidence))
+                                        if len(suggestions) >= max_suggestions:
+                                            break
                     if len(suggestions) >= max_suggestions:
                         break
         
@@ -454,7 +482,22 @@ class PhonemeWordMatcher:
         exact_ratio = exact_matches / total_chars
         wildcard_penalty = wildcards / total_chars
         
-        return max(0.0, exact_ratio - (wildcard_penalty * 0.3))
+        # Bonus for patterns that make phonetic sense (consecutive matching chars)
+        phonetic_bonus = 0.0
+        consecutive_matches = 0
+        max_consecutive = 0
+        
+        for w, t in zip(wildcard_pattern, target):
+            if w != '_' and w == t:
+                consecutive_matches += 1
+                max_consecutive = max(max_consecutive, consecutive_matches)
+            else:
+                consecutive_matches = 0
+                
+        if max_consecutive >= 2:  # Consecutive matching characters are more phonetically coherent
+            phonetic_bonus = 0.1 * max_consecutive
+        
+        return max(0.0, exact_ratio - (wildcard_penalty * 0.2) + phonetic_bonus)
     
     def _flexible_wildcard_match(self, wildcard_pattern: str, target: str) -> bool:
         """
@@ -598,6 +641,10 @@ class PhonemeWordMatcher:
                 # Common word bonus (small boost for super common words)
                 if word in super_common:
                     word_score += 0.1  # Small boost for common words
+                
+                # Natural word bonus - boost common English words
+                if len(word) >= 3 and any(c in 'aeiou' for c in word.lower()):
+                    word_score += 0.15  # Boost words with vowels (more natural)
                 
                 good_matches.append((word, word_score))
         
