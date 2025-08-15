@@ -353,11 +353,17 @@ class OpenSeeFaceProvider(AbstractProvider):
                     logger.warning(f"Failed to download {required_model}, falling back to bundled model")
                     model_type = 0  # Use bundled basic model
             
-            # Download RetinaFace detection model if not available
+            # Download RetinaFace detection model and config if not available
             retinaface_model = 'retinaface_640x640_opt.onnx'
+            priorbox_config = 'priorbox_640x640.json'
+            
             if not openseeface_downloader.get_model_path(retinaface_model):
                 logger.info(f"Downloading required detection model: {retinaface_model}")
                 openseeface_downloader.download_model(retinaface_model)
+            
+            if not openseeface_downloader.get_model_path(priorbox_config):
+                logger.info(f"Downloading required config file: {priorbox_config}")
+                openseeface_downloader.download_model(priorbox_config)
             
             # Ensure basic models are available
             if not openseeface_downloader.ensure_basic_models():
@@ -375,6 +381,13 @@ class OpenSeeFaceProvider(AbstractProvider):
             # Use bundled model directory
             model_dir = os.path.join(current_dir, "..", "openseeface", "models")
         
+        # Check if we have RetinaFace model available
+        has_retinaface = False
+        if model_dir:
+            retinaface_path = os.path.join(model_dir, 'retinaface_640x640_opt.onnx')
+            priorbox_path = os.path.join(model_dir, 'priorbox_640x640.json')
+            has_retinaface = os.path.exists(retinaface_path) and os.path.exists(priorbox_path)
+        
         try:
             self.tracker = Tracker(
                 width=original_width,
@@ -388,6 +401,7 @@ class OpenSeeFaceProvider(AbstractProvider):
                 max_threads=4,
                 silent=True,  # Reduce console output
                 no_gaze=True,  # Disable gaze for mouth-only analysis
+                use_retinaface=has_retinaface,  # Only use RetinaFace if models are available
                 model_dir=model_dir  # Use our organized model directory
             )
         except Exception as e:
@@ -396,6 +410,7 @@ class OpenSeeFaceProvider(AbstractProvider):
             if model_type != 0:
                 logger.info("Retrying with bundled basic model...")
                 try:
+                    bundled_model_dir = os.path.join(current_dir, "..", "openseeface", "models")
                     self.tracker = Tracker(
                         width=original_width,
                         height=original_height,
@@ -408,7 +423,8 @@ class OpenSeeFaceProvider(AbstractProvider):
                         max_threads=4,
                         silent=True,
                         no_gaze=True,
-                        model_dir=os.path.join(current_dir, "..", "openseeface", "models")  # Use bundled directory
+                        use_retinaface=False,  # Disable RetinaFace for bundled basic model
+                        model_dir=bundled_model_dir  # Use bundled directory
                     )
                     logger.info("Successfully initialized with basic bundled model")
                 except Exception as e2:
