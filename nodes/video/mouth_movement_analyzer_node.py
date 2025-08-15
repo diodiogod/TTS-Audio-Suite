@@ -527,15 +527,23 @@ class MouthMovementAnalyzerNode(BaseNode):
                     # Apply word prediction if enabled
                     if enable_word_prediction and phoneme_matcher:
                         predicted_words = []
+                        prediction_used = False
+                        
                         for chunk in word_chunks:
                             suggestions = phoneme_matcher.get_word_suggestions_for_segment(chunk)
-                            if suggestions:
-                                predicted_words.append(suggestions[0])  # Use best suggestion
+                            if suggestions and suggestions[0] != chunk:  # Only use if different from phonemes
+                                predicted_words.append(suggestions[0])
+                                prediction_used = True
                             else:
                                 predicted_words.append(chunk)  # Fallback to phonemes
+                        
                         placeholder = " ".join(predicted_words)
                         avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
-                        info = f"(predicted, confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                        
+                        if prediction_used:
+                            info = f"(predicted, confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                        else:
+                            info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                     else:
                         placeholder = " ".join(word_chunks)
                         avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
@@ -623,10 +631,9 @@ class MouthMovementAnalyzerNode(BaseNode):
                     if enable_word_prediction and phoneme_matcher:
                         # Try to predict from entire sequence
                         suggestions = phoneme_matcher.get_word_suggestions_for_segment(segment.viseme_sequence)
-                        if suggestions:
-                            # Show suggested words with original phonemes
-                            word_suggestions = " | ".join(suggestions[:3])  # Top 3 suggestions
-                            placeholder = f"{segment.viseme_sequence} → {word_suggestions}"
+                        if suggestions and suggestions[0] != segment.viseme_sequence:
+                            # Show best suggestion only
+                            placeholder = f"{suggestions[0]} ({segment.viseme_sequence})"
                         else:
                             placeholder = segment.viseme_sequence
                         avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0

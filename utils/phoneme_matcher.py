@@ -308,24 +308,30 @@ class PhonemeWordMatcher:
             viseme_sequence: String like "AEIOU" or "B_A_T_"
             
         Returns:
-            List of suggested words
+            List of suggested words (max 1, only high confidence)
         """
         matches = self.match_phonemes_to_words(viseme_sequence, max_suggestions=3)
         
-        if not matches:
-            return [viseme_sequence]  # Fallback to raw phonemes
-        
-        # Format suggestions with confidence indicators
-        suggestions = []
+        # Only use high confidence matches (>0.7) and prefer shorter, common words
+        good_matches = []
         for word, confidence in matches:
-            if confidence > 0.7:
-                suggestions.append(word)  # High confidence, no marker
-            elif confidence > 0.5:
-                suggestions.append(f"{word}?")  # Medium confidence, question mark
-            else:
-                suggestions.append(f"({word})")  # Low confidence, parentheses
+            if confidence > 0.7 and len(word) <= 8 and word.isalpha():
+                # Prefer shorter words and common words
+                word_score = confidence + (0.1 if len(word) <= 4 else 0)
+                good_matches.append((word, word_score))
         
-        return suggestions
+        if good_matches:
+            # Sort by score and return only the best match
+            good_matches.sort(key=lambda x: x[1], reverse=True)
+            best_word = good_matches[0][0]
+            return [best_word]
+        
+        # If no good matches, return the raw phonemes (but cleaned up)
+        clean_sequence = viseme_sequence.replace('_', '').strip()
+        if len(clean_sequence) <= 2:
+            return [clean_sequence]  # Very short sequences
+        else:
+            return [viseme_sequence]  # Show original with underscores
 
 
 # Global instance for reuse
