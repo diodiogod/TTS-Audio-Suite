@@ -112,7 +112,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                 }),
                 "srt_placeholder_format": ([f.value for f in SRTPlaceholderFormat], {
                     "default": SRTPlaceholderFormat.WORDS.value,
-                    "tooltip": "SRT placeholder format to show timing capacity:\n\n• Words: [word word word] - intuitive for content creators\n• Syllables: [syl-la-ble syl-la-ble] - accurate for TTS timing\n• Characters: [••••••••••••••••••••] - precise character count\n• Underscores: [_ _ _ _ _] - clean visual length indicator\n• Duration + Length: [1.2s: ________] - shows both time and space\n• Viseme Sequence: [AAEEIIOOUUA] - detected vowel patterns\n\nRecommended: Words for general use, Viseme Sequence for lip-sync"
+                    "tooltip": "SRT placeholder format to show timing capacity:\n\n• Words: [word word word] - intuitive for content creators\n• Syllables: [syl-la-ble syl-la-ble] - accurate for TTS timing\n• Characters: [••••••••••••••••••••] - precise character count\n• Underscores: [_ _ _ _ _] - clean visual length indicator\n• Duration + Length: [1.2s: ________] - shows both time and space\n• Viseme Sequence: [AIIIOUU] - raw vowel patterns for easy word conversion\n\nRecommended: Words for general use, Viseme Sequence for lip-sync"
                 }),
             },
             "optional": {
@@ -504,31 +504,8 @@ class MouthMovementAnalyzerNode(BaseNode):
             elif placeholder_format == SRTPlaceholderFormat.VISEME_SEQUENCE.value:
                 # Show detected viseme sequence if available
                 if hasattr(segment, 'viseme_sequence') and segment.viseme_sequence:
-                    # Group consecutive identical visemes for readability
-                    grouped_visemes = []
-                    current_viseme = ''
-                    count = 0
-                    
-                    for v in segment.viseme_sequence:
-                        if v == current_viseme:
-                            count += 1
-                        else:
-                            if current_viseme:
-                                if count > 1:
-                                    grouped_visemes.append(f"{current_viseme}{count}")
-                                else:
-                                    grouped_visemes.append(current_viseme)
-                            current_viseme = v
-                            count = 1
-                    
-                    # Add last group
-                    if current_viseme:
-                        if count > 1:
-                            grouped_visemes.append(f"{current_viseme}{count}")
-                        else:
-                            grouped_visemes.append(current_viseme)
-                    
-                    placeholder = '-'.join(grouped_visemes) if grouped_visemes else "[no vowels detected]"
+                    # Display raw ungrouped sequence for easy word conversion
+                    placeholder = segment.viseme_sequence
                     avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
                     info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
