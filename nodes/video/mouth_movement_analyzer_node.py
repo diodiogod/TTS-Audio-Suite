@@ -149,7 +149,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "max": 2.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "Viseme detection sensitivity (geometric thresholds):\n\n• 0.1-0.5: Very strict, only obvious vowel shapes\n• 0.8-1.2: Balanced detection (recommended)\n• 1.5-2.0: Lenient, detects subtle vowel variations\n\nHigher = more detections, may include false positives\nLower = fewer detections, higher accuracy\n\nOnly affects viseme classification, not movement detection."
+                    "tooltip": "How hard should I look for vowels?\n\nControls geometric thresholds for mouth shape classification:\n\n• 0.1-0.5: Very strict, only obvious vowel shapes\n• 0.8-1.2: Balanced detection (recommended)\n• 1.5-2.0: Lenient, detects subtle vowel variations\n\nHigher = more detections, may include false positives\nLower = fewer detections, higher accuracy"
                 }),
                 "viseme_confidence_threshold": ("FLOAT", {
                     "default": 0.4,
@@ -157,7 +157,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "max": 1.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "Minimum confidence for valid viseme classification:\n\n• 0.0-0.2: Show all viseme attempts (noisy)\n• 0.3-0.5: Balanced filtering (recommended)\n• 0.6-0.8: Conservative, only clear vowels\n• 0.9-1.0: Ultra-strict, only perfect detections\n\nBelow threshold shows as 'neutral' instead of uncertain vowel.\nHelps reduce flickering between different vowel classifications."
+                    "tooltip": "How sure should I be before showing a vowel?\n\nMinimum confidence for valid viseme classification:\n\n• 0.0-0.2: Show all viseme attempts (noisy)\n• 0.3-0.5: Balanced filtering (recommended)\n• 0.6-0.8: Conservative, only clear vowels\n• 0.9-1.0: Ultra-strict, only perfect detections\n\nBelow threshold shows as 'neutral' instead of uncertain vowel."
                 }),
                 "viseme_smoothing": ("FLOAT", {
                     "default": 0.3,
