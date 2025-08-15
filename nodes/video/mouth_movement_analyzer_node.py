@@ -540,6 +540,9 @@ class MouthMovementAnalyzerNode(BaseNode):
                             else:
                                 predicted_words.append(chunk)  # Fallback to phonemes
                         
+                        # Apply repetition penalty to avoid "it is it is it is"
+                        predicted_words = self._reduce_word_repetition(predicted_words)
+                        
                         placeholder = " ".join(predicted_words)
                         avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
                         
@@ -716,6 +719,58 @@ class MouthMovementAnalyzerNode(BaseNode):
         millis = int((seconds % 1) * 1000)
         
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+    
+    def _reduce_word_repetition(self, words: List[str]) -> List[str]:
+        """
+        Reduce repetitive words in predictions to avoid "it is it is it is"
+        
+        Args:
+            words: List of predicted words
+            
+        Returns:
+            List with reduced repetition
+        """
+        if len(words) <= 1:
+            return words
+        
+        result = []
+        for i, word in enumerate(words):
+            # Check if this word appeared recently (within last 2 positions)
+            recent_positions = max(0, len(result) - 2)
+            recent_words = result[recent_positions:]
+            
+            if word in recent_words:
+                # Word is repetitive, try alternatives
+                if len(word) <= 3:  # Short words - use alternatives
+                    alternatives = {
+                        'it': ['is', 'in', 'if'],
+                        'is': ['it', 'in', 'as'], 
+                        'at': ['an', 'as', 'ah'],
+                        'to': ['so', 'do', 'go'],
+                        'he': ['we', 'me', 'be'],
+                        'oh': ['uh', 'ah', 'eh'],
+                        'eh': ['oh', 'uh', 'ah']
+                    }
+                    
+                    if word in alternatives:
+                        # Try each alternative
+                        for alt in alternatives[word]:
+                            if alt not in recent_words:
+                                result.append(alt)
+                                break
+                        else:
+                            # No good alternative, use original phonemes or simplified
+                            result.append('_')
+                    else:
+                        result.append('_')  # Unknown word, use placeholder
+                else:
+                    # Longer words - just use placeholder to avoid repetition
+                    result.append('_')
+            else:
+                # Word is not repetitive, use as-is
+                result.append(word)
+        
+        return result
 
 
 NODE_CLASS_MAPPINGS = {

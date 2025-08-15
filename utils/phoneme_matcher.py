@@ -248,15 +248,30 @@ class PhonemeWordMatcher:
         if not phoneme_sequence or phoneme_sequence.replace('_', '') == '':
             return []
         
-        # Clean sequence (remove underscores for matching)
-        clean_sequence = phoneme_sequence.replace('_', '')
+        # Keep underscores for wildcard matching, but also create clean version
+        wildcard_sequence = phoneme_sequence  # Keep _ as wildcards
+        clean_sequence = phoneme_sequence.replace('_', '')  # Remove for exact matching
         
         suggestions = []
         
-        # Exact pattern matches
+        # Exact pattern matches (no wildcards)
         if clean_sequence in self.phoneme_patterns:
             for word in self.phoneme_patterns[clean_sequence][:max_suggestions]:
                 suggestions.append((word, 0.9))
+        
+        # Wildcard matching (if sequence contains underscores)
+        if '_' in wildcard_sequence and len(suggestions) < max_suggestions:
+            for pattern, words in self.phoneme_patterns.items():
+                if self._wildcard_match(wildcard_sequence, pattern):
+                    confidence = self._calculate_wildcard_similarity(wildcard_sequence, pattern)
+                    if confidence > 0.4:  # Higher threshold for wildcard matches
+                        for word in words[:2]:
+                            if not any(w == word for w, _ in suggestions):
+                                suggestions.append((word, confidence))
+                                if len(suggestions) >= max_suggestions:
+                                    break
+                if len(suggestions) >= max_suggestions:
+                    break
         
         # Partial matches (subsequence matching)
         if len(suggestions) < max_suggestions:
@@ -299,6 +314,46 @@ class PhonemeWordMatcher:
         subseq_bonus = 0.2 if (self._is_subsequence(seq1, seq2) or self._is_subsequence(seq2, seq1)) else 0
         
         return (common / max_len) + subseq_bonus
+    
+    def _wildcard_match(self, wildcard_pattern: str, target: str) -> bool:
+        """
+        Check if wildcard pattern matches target, where _ matches any single character
+        
+        Args:
+            wildcard_pattern: Pattern with _ as wildcards (e.g., "A_E_O")
+            target: Target string to match (e.g., "ABEIO")
+            
+        Returns:
+            True if pattern matches
+        """
+        if len(wildcard_pattern) != len(target):
+            return False
+        
+        for i, (w_char, t_char) in enumerate(zip(wildcard_pattern, target)):
+            if w_char != '_' and w_char != t_char:
+                return False
+        
+        return True
+    
+    def _calculate_wildcard_similarity(self, wildcard_pattern: str, target: str) -> float:
+        """Calculate similarity score for wildcard matches"""
+        if not self._wildcard_match(wildcard_pattern, target):
+            return 0.0
+        
+        # Count non-wildcard matches
+        exact_matches = sum(1 for w, t in zip(wildcard_pattern, target) if w != '_' and w == t)
+        total_chars = len(wildcard_pattern)
+        wildcards = wildcard_pattern.count('_')
+        
+        # Score based on exact matches vs wildcards
+        if total_chars == 0:
+            return 0.0
+        
+        # Prefer patterns with more exact matches and fewer wildcards
+        exact_ratio = exact_matches / total_chars
+        wildcard_penalty = wildcards / total_chars
+        
+        return max(0.0, exact_ratio - (wildcard_penalty * 0.3))
     
     def get_word_suggestions_for_segment(self, viseme_sequence: str) -> List[str]:
         """
