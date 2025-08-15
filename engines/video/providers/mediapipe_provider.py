@@ -220,7 +220,18 @@ class MediaPipeProvider(AbstractProvider):
             
             # Generate preview frame if requested (using processed frame for consistency)
             if preview_mode:
-                annotated = self.annotate_frame(frame, landmarks, is_moving, confidence)
+                # Get current viseme if available
+                current_viseme = None
+                viseme_confidence = 0.0
+                if enable_viseme and viseme_frames and frame_count < len(viseme_frames):
+                    current_viseme = viseme_frames[-1].viseme  # Last added viseme
+                    viseme_confidence = viseme_frames[-1].confidence
+                
+                annotated = self.annotate_frame(
+                    frame, landmarks, is_moving, confidence,
+                    current_viseme=current_viseme, 
+                    viseme_confidence=viseme_confidence
+                )
                 preview_frames.append(annotated)
             
             frame_count += 1
@@ -430,28 +441,29 @@ class MediaPipeProvider(AbstractProvider):
         }
         
         # Check if mouth is open enough for vowel
-        if mar < self.mar_threshold:
+        if mar < self.mar_threshold * 0.5:  # Half threshold for complete closure
             return 'neutral', 0.8
         
+        # More sensitive thresholds for better detection
         # A: Wide open mouth, high aperture
-        if mar > 0.4 and lip_ratio < 3.0:
-            viseme_scores['A'] = (mar - 0.4) * 2.0 + normalized_area
+        if mar > 0.25 and lip_ratio < 3.5:
+            viseme_scores['A'] = (mar / 0.5) * (1.0 + normalized_area)
         
         # E: Spread lips, moderate opening
-        if 0.15 < mar < 0.35 and lip_ratio > 3.5:
-            viseme_scores['E'] = (1.0 - abs(mar - 0.25) * 4.0) * (lip_ratio / 5.0)
+        if 0.1 < mar < 0.3 and lip_ratio > 2.5:
+            viseme_scores['E'] = (1.0 - abs(mar - 0.2) * 5.0) * min(1.0, lip_ratio / 3.5)
         
-        # I: Narrow vertical, wide horizontal
-        if mar < 0.2 and lip_ratio > 4.0:
-            viseme_scores['I'] = (1.0 - mar * 5.0) * (lip_ratio / 6.0)
+        # I: Narrow vertical, wide horizontal (smile-like)
+        if mar < 0.15 and lip_ratio > 3.0:
+            viseme_scores['I'] = (1.0 - mar * 6.0) * min(1.0, lip_ratio / 4.0)
         
         # O: Rounded, moderate opening
-        if 0.2 < mar < 0.4 and roundedness > 0.6:
-            viseme_scores['O'] = roundedness + (1.0 - abs(mar - 0.3) * 5.0)
+        if 0.15 < mar < 0.35 and roundedness > 0.5:
+            viseme_scores['O'] = roundedness * (1.0 - abs(mar - 0.25) * 4.0)
         
         # U: Small rounded opening
-        if mar < 0.25 and roundedness > 0.7:
-            viseme_scores['U'] = roundedness + (1.0 - mar * 4.0)
+        if mar < 0.2 and roundedness > 0.6:
+            viseme_scores['U'] = roundedness * (1.0 - mar * 5.0)
         
         # Find best match
         best_viseme = max(viseme_scores.items(), key=lambda x: x[1])
@@ -630,10 +642,12 @@ class MediaPipeProvider(AbstractProvider):
         frame: np.ndarray,
         landmarks: Optional[np.ndarray],
         is_moving: bool,
-        confidence: float
+        confidence: float,
+        current_viseme: Optional[str] = None,
+        viseme_confidence: float = 0.0
     ) -> np.ndarray:
         """
-        Enhanced frame annotation with MediaPipe landmarks
+        Enhanced frame annotation with MediaPipe landmarks and viseme display
         """
         annotated = frame.copy()
         
@@ -642,7 +656,7 @@ class MediaPipeProvider(AbstractProvider):
         status_text = f"SPEAKING: {confidence:.2f}" if is_moving else f"SILENT: {confidence:.2f}"
         
         # Add background rectangle for better text visibility
-        cv2.rectangle(annotated, (5, 5), (250, 35), (0, 0, 0), -1)
+        cv2.rectangle(annotated, (5, 5), (300, 105), (0, 0, 0), -1)
         cv2.putText(
             annotated,
             status_text,
@@ -655,14 +669,28 @@ class MediaPipeProvider(AbstractProvider):
         
         # Draw mouth landmarks if available
         if landmarks is not None and len(landmarks) >= 468:
-            # Draw mouth contour
+            # Draw mouth contour with viseme-based coloring
             mouth_indices = self.INNER_MOUTH_INDICES
+            
+            # Color coding for visemes
+            viseme_colors = {
+                'A': (255, 100, 100),  # Red-ish
+                'E': (100, 255, 100),  # Green-ish
+                'I': (100, 100, 255),  # Blue-ish
+                'O': (255, 255, 100),  # Yellow-ish
+                'U': (255, 100, 255),  # Magenta-ish
+                'neutral': (128, 128, 128)  # Gray
+            }
+            
+            # Get viseme color or default
+            if current_viseme and current_viseme in viseme_colors:
+                point_color = viseme_colors[current_viseme]
+            else:
+                point_color = (0, 255, 0) if is_moving else (0, 0, 255)
             
             for i in mouth_indices:
                 if i < len(landmarks):
                     x, y = int(landmarks[i][0]), int(landmarks[i][1])
-                    # Color based on movement
-                    point_color = (0, 255, 0) if is_moving else (0, 0, 255)
                     cv2.circle(annotated, (x, y), 2, point_color, -1)
             
             # Draw MAR value
@@ -671,12 +699,73 @@ class MediaPipeProvider(AbstractProvider):
             cv2.putText(
                 annotated,
                 mar_text,
-                (10, 55),
+                (10, 50),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
                 (255, 255, 255),
                 2
             )
+            
+            # Draw Viseme detection if available
+            if current_viseme:
+                # Draw large viseme character
+                viseme_display = current_viseme if current_viseme != 'neutral' else '-'
+                viseme_color = viseme_colors.get(current_viseme, (255, 255, 255))
+                
+                # Large viseme character display
+                cv2.putText(
+                    annotated,
+                    viseme_display,
+                    (250, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    2.0,  # Large font
+                    viseme_color,
+                    3
+                )
+                
+                # Viseme label and confidence
+                viseme_text = f"Viseme: {current_viseme}"
+                cv2.putText(
+                    annotated,
+                    viseme_text,
+                    (10, 75),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    viseme_color,
+                    2
+                )
+                
+                conf_text = f"Conf: {viseme_confidence:.1%}"
+                cv2.putText(
+                    annotated,
+                    conf_text,
+                    (10, 95),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (255, 255, 255),
+                    1
+                )
+                
+                # Draw viseme legend at bottom
+                legend_y = frame.shape[0] - 20
+                legend_x = 10
+                
+                # Background for legend
+                cv2.rectangle(annotated, (5, legend_y - 20), (300, legend_y + 5), (0, 0, 0), -1)
+                
+                # Draw each viseme with its color
+                for idx, (v, color) in enumerate(viseme_colors.items()):
+                    if v != 'neutral':
+                        x_offset = legend_x + (idx * 50)
+                        cv2.putText(
+                            annotated,
+                            v,
+                            (x_offset, legend_y),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            color,
+                            2
+                        )
         
         return annotated
     
