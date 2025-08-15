@@ -120,7 +120,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "tooltip": "Connect Viseme Mouth Shape Options node for vowel detection (A, E, I, O, U):\n\n• When connected: Enables precise vowel classification\n• When not connected: Basic speech/no-speech detection only\n\nViseme detection adds ~20% processing time but provides detailed mouth shape analysis for lip-sync."
                 }),
                 "preview_mode": ("BOOLEAN", {
-                    "default": False,
+                    "default": True,
                     "label": "Show preview with movement markers",
                     "tooltip": "Generate annotated video preview with movement markers:\n\nShows green/red overlays for detected/undetected movements with confidence scores and facial landmarks.\n\nPerformance: Uses 540p resolution, increases processing time by ~40%\n\nUse for: Debugging detection accuracy and tuning parameters"
                 }),
