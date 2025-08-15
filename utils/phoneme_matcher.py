@@ -658,8 +658,8 @@ class PhonemeWordMatcher:
         clean_sequence = viseme_sequence.replace('_', '').strip()
         
         # Special handling for common repeated patterns and long sequences
-        # Simplify very long repeated patterns
-        if len(clean_sequence) >= 4:
+        # Count characters for pattern analysis
+        if len(clean_sequence) >= 3:
             # Count dominant characters
             char_counts = {}
             for char in clean_sequence:
@@ -668,9 +668,10 @@ class PhonemeWordMatcher:
             # Find most common character
             dominant_char = max(char_counts.items(), key=lambda x: x[1])[0]
             dominant_ratio = char_counts[dominant_char] / len(clean_sequence)
+            dominant_count = char_counts[dominant_char]
             
-            # If one character dominates (>60%), treat as that sound
-            if dominant_ratio > 0.6:
+            # For very long sequences (4+), if one character dominates (>60%), treat as that sound
+            if len(clean_sequence) >= 4 and dominant_ratio > 0.6:
                 vowel_words = {
                     'I': 'it', 'A': 'at', 'E': 'eh', 'O': 'oh', 'U': 'uh'
                 }
@@ -683,10 +684,7 @@ class PhonemeWordMatcher:
                 elif dominant_char in consonant_words:
                     return [consonant_words[dominant_char]]
         
-        # Handle repeated patterns systematically - find phonetically coherent words
-        if len(clean_sequence) >= 3:
-            dominant_char = max(char_counts.items(), key=lambda x: x[1])[0]
-            dominant_count = char_counts[dominant_char]
+            # Handle repeated patterns systematically - find phonetically coherent words
             
             # For patterns like EEEE or IIIII - prioritize words that phonetically make sense
             if dominant_count >= 3:  # Strong pattern (3+ of same character)
