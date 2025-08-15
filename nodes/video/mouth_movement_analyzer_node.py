@@ -774,14 +774,47 @@ class MouthMovementAnalyzerNode(BaseNode):
             recent_words = result[recent_positions:]
             
             if word in recent_words:
-                # Word is repetitive, try alternatives
-                if len(word) <= 3:  # Short words - use alternatives
+                # Word is repetitive, try to find phonetically similar alternatives
+                found_alternative = False
+                
+                # Try phonetic alternatives using the phoneme matcher
+                try:
+                    from utils.phoneme_matcher import get_phoneme_matcher
+                    matcher = get_phoneme_matcher()
+                    
+                    # Create a simple pattern from the word (approximate reverse mapping)
+                    if len(word) <= 4:
+                        # For short words, try to find phonetic alternatives
+                        # Use word's first/dominant characters as pattern
+                        dominant_chars = []
+                        for char in word.lower():
+                            if char in 'aeiou':
+                                dominant_chars.append(char.upper())
+                            elif char in 'bpmfvtdnkgrlw':
+                                dominant_chars.append(char.upper())
+                        
+                        if dominant_chars:
+                            # Try pattern matching for alternatives
+                            pattern = ''.join(dominant_chars[:3])  # Use first 3 chars as pattern
+                            alternatives = matcher.match_phonemes_to_words(pattern, max_suggestions=5)
+                            
+                            for alt_word, confidence in alternatives:
+                                if alt_word != word and alt_word not in recent_words and len(alt_word) <= 6:
+                                    result.append(alt_word)
+                                    found_alternative = True
+                                    break
+                except Exception:
+                    pass  # Fall back to hardcoded alternatives if phoneme matcher fails
+                
+                # Fallback to hardcoded alternatives for common short words
+                if not found_alternative and len(word) <= 3:
                     alternatives = {
                         'it': ['is', 'in', 'if'],
                         'is': ['it', 'in', 'as'], 
                         'at': ['an', 'as', 'ah'],
                         'to': ['so', 'do', 'go'],
-                        'he': ['we', 'me', 'be'],
+                        'he': ['we', 'me', 'by'],
+                        'be': ['by', 'me', 'we', 'boy', 'big', 'bay'],  # More B alternatives
                         'oh': ['uh', 'ah', 'eh'],
                         'eh': ['oh', 'uh', 'ah']
                     }
@@ -791,12 +824,12 @@ class MouthMovementAnalyzerNode(BaseNode):
                         for alt in alternatives[word]:
                             if alt not in recent_words:
                                 result.append(alt)
+                                found_alternative = True
                                 break
-                        else:
-                            # No good alternative, use original phonemes or simplified
-                            result.append('_')
-                    else:
-                        result.append('_')  # Unknown word, use placeholder
+                
+                # Last resort: keep original word rather than blank it out
+                if not found_alternative:
+                    result.append(word)  # Keep original rather than losing phonetic info
                 else:
                     # Longer words - just use placeholder to avoid repetition
                     result.append('_')

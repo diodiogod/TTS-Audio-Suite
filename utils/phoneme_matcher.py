@@ -23,6 +23,50 @@ class PhonemeWordMatcher:
         self._load_dictionary()
         self._build_phoneme_patterns()
     
+    def _is_technical_acronym(self, word: str) -> bool:
+        """Filter out technical acronyms and abbreviations that aren't natural speech"""
+        word_lower = word.lower()
+        
+        # Explicit exclusion list based on problematic terms we've seen
+        technical_terms = {
+            # Tech/Internet
+            'acc', 'adsl', 'api', 'cpu', 'dns', 'ftp', 'html', 'http', 'isp', 'lan', 
+            'pdf', 'ram', 'sql', 'ssl', 'tcp', 'udp', 'url', 'usb', 'wan', 'xml',
+            'php', 'css', 'js', 'cdn', 'cms', 'crm', 'erp', 'gui', 'ide', 'sdk',
+            
+            # Business/Legal  
+            'llc', 'ltd', 'inc', 'corp', 'plc', 'gmbh', 'sa', 'bv', 'ab', 'ag',
+            'ceo', 'cfo', 'cto', 'hr', 'pr', 'qa', 'rd', 'roi', 'kpi', 'crm',
+            
+            # Media/Broadcasting
+            'bbc', 'cnn', 'espn', 'hbo', 'mtv', 'pbs', 'rss', 'tv', 'dvd', 'cd',
+            'fm', 'am', 'hd', 'lcd', 'led', 'oled', 'uhd', 'vhs', 'mp3', 'mp4',
+            
+            # Finance/Units
+            'atm', 'gdp', 'ipo', 'nasdaq', 'nyse', 'sec', 'irs', 'llp', 'reit',
+            'etf', 'eft', 'apr', 'apy', 'ppm', 'bps', 'fps', 'rpm', 'mph', 'psi',
+            
+            # General abbreviations that sound unnatural
+            'etc', 'aka', 'fyi', 'asap', 'rsvp', 'tbd', 'tba', 'diy', 'faq',
+            'lol', 'omg', 'wtf', 'btw', 'imo', 'imho', 'brb', 'ttyl', 'jk',
+        }
+        
+        if word_lower in technical_terms:
+            return True
+            
+        # Pattern-based filtering
+        # Very short all-consonant words (likely abbreviations)
+        if len(word) <= 3 and not any(c in 'aeiou' for c in word_lower):
+            return True
+            
+        # Words with unusual consonant clusters (tech terms)
+        if len(word) >= 3:
+            consonant_clusters = ['css', 'ftp', 'tcp', 'udp', 'xml', 'html', 'php']
+            if any(cluster in word_lower for cluster in consonant_clusters):
+                return True
+        
+        return False
+    
     def _get_default_dictionary_path(self) -> str:
         """Get path to default dictionary file"""
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,8 +82,20 @@ class PhonemeWordMatcher:
         return os.path.join(current_dir, "data", "dictionaries", "common_words.txt")
     
     def _load_dictionary(self):
-        """Load word list from dictionary file"""
+        """Load word list from dictionary file using hybrid approach"""
         try:
+            # Load common words as vocabulary filter (avoid acronyms)
+            common_words_path = os.path.join(os.path.dirname(self.dictionary_path), "common_words.txt")
+            allowed_words = set()
+            
+            if os.path.exists(common_words_path):
+                with open(common_words_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        word = line.strip().lower()
+                        if word and word.isalpha():
+                            allowed_words.add(word)
+                logger.info(f"Loaded {len(allowed_words)} common words as vocabulary filter")
+            
             if os.path.exists(self.dictionary_path):
                 self.word_list = []
                 self.cmu_phonemes = {}  # word -> phoneme sequence
@@ -59,14 +115,19 @@ class PhonemeWordMatcher:
                                 if '(' in word:
                                     word = word.split('(')[0]
                                 
-                                phonemes = parts[1:]
-                                self.word_list.append(word)
-                                self.cmu_phonemes[word] = phonemes
+                                # Only include words that are in common vocabulary (filter acronyms)
+                                if not allowed_words or word in allowed_words:
+                                    # Additional filter: skip technical acronyms and abbreviations
+                                    if not self._is_technical_acronym(word):
+                                        phonemes = parts[1:]
+                                        self.word_list.append(word)
+                                        self.cmu_phonemes[word] = phonemes
                         else:
                             # Simple word list format
                             word = line.lower()
-                            if word and word.isalpha():  # Only alphabetic words
-                                self.word_list.append(word)
+                            if word and word.isalpha():
+                                if not allowed_words or word in allowed_words:
+                                    self.word_list.append(word)
                 
                 # Remove duplicates while preserving order
                 seen = set()
@@ -77,18 +138,24 @@ class PhonemeWordMatcher:
                         unique_words.append(word)
                 self.word_list = unique_words
                 
-                logger.info(f"Loaded {len(self.word_list)} words from dictionary")
+                logger.info(f"Loaded {len(self.word_list)} filtered words from dictionary")
                 if self.cmu_phonemes:
                     logger.info(f"Found CMU phoneme data for {len(self.cmu_phonemes)} words")
             else:
                 logger.warning(f"Dictionary not found: {self.dictionary_path}")
-                # Fallback to basic words
-                self.word_list = [
-                    "the", "and", "you", "that", "was", "for", "are", "with", "his", "they",
-                    "have", "this", "from", "had", "she", "but", "not", "what", "all", "can"
-                ]
-                self.cmu_phonemes = {}
-                logger.info(f"Using fallback dictionary with {len(self.word_list)} words")
+                # Use common words as fallback if available
+                if allowed_words:
+                    self.word_list = list(allowed_words)[:1000]  # Use first 1000 common words
+                    self.cmu_phonemes = {}
+                    logger.info(f"Using common words fallback with {len(self.word_list)} words")
+                else:
+                    # Final fallback to basic words
+                    self.word_list = [
+                        "the", "and", "you", "that", "was", "for", "are", "with", "his", "they",
+                        "have", "this", "from", "had", "she", "but", "not", "what", "all", "can"
+                    ]
+                    self.cmu_phonemes = {}
+                    logger.info(f"Using minimal fallback dictionary with {len(self.word_list)} words")
         except Exception as e:
             logger.error(f"Error loading dictionary: {e}")
             self.word_list = ["the", "and", "you"]  # Minimal fallback
@@ -569,23 +636,62 @@ class PhonemeWordMatcher:
                 elif dominant_char in consonant_words:
                     return [consonant_words[dominant_char]]
         
-        # Handle shorter repeated patterns
-        if clean_sequence == 'I' or clean_sequence in ['II', 'III', 'IIII']:
-            return ['it']  # Common "I" sound words
-        elif clean_sequence == 'A' or clean_sequence in ['AA', 'AAA', 'AAAA']:
-            return ['at']  # Common "A" sound words  
-        elif clean_sequence == 'E' or clean_sequence in ['EE', 'EEE', 'EEEE']:
-            return ['eh']  # Common "E" sound
-        elif clean_sequence == 'O' or clean_sequence in ['OO', 'OOO', 'OOOO']:
-            return ['oh']  # Common "O" sound
-        elif clean_sequence == 'U' or clean_sequence in ['UU', 'UUU', 'UUUU']:
-            return ['uh']  # Common "U" sound
-        elif clean_sequence == 'B' or clean_sequence in ['BB', 'BBB', 'BBBB', 'BBBBB']:
-            return ['be']  # Common "B" sound words
-        elif clean_sequence == 'P' or clean_sequence in ['PP', 'PPP', 'PPPP']:
-            return ['pah']  # Common "P" sound
-        elif clean_sequence == 'M' or clean_sequence in ['MM', 'MMM', 'MMMM']:
-            return ['mmm']  # Common "M" sound
+        # Handle repeated patterns systematically - find phonetically coherent words
+        if len(clean_sequence) >= 3:
+            dominant_char = max(char_counts.items(), key=lambda x: x[1])[0]
+            dominant_count = char_counts[dominant_char]
+            
+            # For patterns like EEEE or IIIII - prioritize words that phonetically make sense
+            if dominant_count >= 3:  # Strong pattern (3+ of same character)
+                # Find words where the dominant character is actually prominent in pronunciation
+                phonetically_coherent_words = []
+                
+                for pattern, words in self.phoneme_patterns.items():
+                    if dominant_char in pattern:
+                        char_density = pattern.count(dominant_char) / len(pattern)
+                        # Look for patterns where this character is prominent (>40% of pattern)
+                        if char_density >= 0.4:
+                            # Filter words that make phonetic sense
+                            for word in words[:3]:  # Top 3 from each pattern
+                                word_char_count = word.lower().count(dominant_char.lower())
+                                word_char_density = word_char_count / len(word)
+                                
+                                # Word should have decent occurrence of the character
+                                if word_char_count >= 2 and word_char_density >= 0.25:
+                                    phonetically_coherent_words.append((word, char_density, word_char_density))
+                
+                if phonetically_coherent_words:
+                    # Sort by phonetic coherence (pattern density + word density)
+                    phonetically_coherent_words.sort(key=lambda x: x[1] + x[2], reverse=True)
+                    # Use sequence properties to pick variety
+                    word_index = (len(clean_sequence) * ord(dominant_char)) % len(phonetically_coherent_words)
+                    chosen_word = phonetically_coherent_words[word_index][0]
+                    return [chosen_word]
+            
+            # Fallback: improved character alternatives with better phonetic choices
+            char_alternatives = {
+                'I': ['it', 'if', 'is', 'in', 'ice', 'ivy', 'idea'],
+                'A': ['at', 'as', 'an', 'ah', 'apple', 'army', 'angry'], 
+                'E': ['eh', 'every', 'energy', 'eleven', 'exit', 'empty'],
+                'O': ['oh', 'on', 'or', 'ox', 'open', 'only', 'often'],
+                'U': ['uh', 'up', 'us', 'um', 'under', 'until', 'ugly'],
+                'B': ['be', 'by', 'but', 'big', 'baby', 'maybe', 'about'],
+                'P': ['pah', 'pop', 'put', 'pay', 'paper', 'happy', 'apple'],
+                'M': ['mm', 'me', 'my', 'may', 'maybe', 'more', 'many'],
+                'F': ['ff', 'of', 'if', 'for', 'family', 'forty', 'coffee'],
+                'V': ['vv', 'very', 'have', 'every', 'seven', 'never'],
+                'T': ['tt', 'to', 'the', 'try', 'water', 'little', 'better'],
+                'D': ['dd', 'do', 'day', 'dig', 'today', 'under', 'order'],
+                'K': ['kay', 'key', 'can', 'back', 'take', 'like', 'work'],
+                'G': ['go', 'got', 'big', 'give', 'good', 'again', 'right'],
+                'N': ['no', 'new', 'now', 'can', 'than', 'when', 'then']
+            }
+            
+            if dominant_char in char_alternatives:
+                alternatives = char_alternatives[dominant_char]
+                # Use pattern characteristics to pick different alternatives
+                alt_index = (len(clean_sequence) + dominant_count) % len(alternatives)
+                return [alternatives[alt_index]]
         
         # For very short sequences, just return cleaned
         if len(clean_sequence) <= 2:
