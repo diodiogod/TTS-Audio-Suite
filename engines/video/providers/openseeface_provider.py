@@ -353,29 +353,69 @@ class OpenSeeFaceProvider(AbstractProvider):
                     logger.warning(f"Failed to download {required_model}, falling back to bundled model")
                     model_type = 0  # Use bundled basic model
             
+            # Download RetinaFace detection model if not available
+            retinaface_model = 'retinaface_640x640_opt.onnx'
+            if not openseeface_downloader.get_model_path(retinaface_model):
+                logger.info(f"Downloading required detection model: {retinaface_model}")
+                openseeface_downloader.download_model(retinaface_model)
+            
             # Ensure basic models are available
             if not openseeface_downloader.ensure_basic_models():
                 raise RuntimeError("OpenSeeFace basic models not available")
             
             # Use custom model directory
             model_dir = openseeface_downloader.organized_models_dir
+            
+            # For bundled models, use the bundled directory
+            if model_type == 0:
+                bundled_dir = os.path.join(current_dir, "..", "openseeface", "models")
+                if os.path.exists(bundled_dir):
+                    model_dir = bundled_dir
         else:
-            model_dir = None  # Use default model directory
+            # Use bundled model directory
+            model_dir = os.path.join(current_dir, "..", "openseeface", "models")
         
-        self.tracker = Tracker(
-            width=original_width,
-            height=original_height,
-            model_type=model_type,
-            detection_threshold=detection_threshold,
-            threshold=tracking_threshold,
-            max_faces=1,  # Single face tracking for mouth analysis
-            discard_after=10,  # Keep tracking longer for stability
-            scan_every=5,  # Less frequent scanning for performance
-            max_threads=4,
-            silent=True,  # Reduce console output
-            no_gaze=True,  # Disable gaze for mouth-only analysis
-            model_dir=model_dir  # Use our organized model directory
-        )
+        try:
+            self.tracker = Tracker(
+                width=original_width,
+                height=original_height,
+                model_type=model_type,
+                detection_threshold=detection_threshold,
+                threshold=tracking_threshold,
+                max_faces=1,  # Single face tracking for mouth analysis
+                discard_after=10,  # Keep tracking longer for stability
+                scan_every=5,  # Less frequent scanning for performance
+                max_threads=4,
+                silent=True,  # Reduce console output
+                no_gaze=True,  # Disable gaze for mouth-only analysis
+                model_dir=model_dir  # Use our organized model directory
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenSeeFace tracker: {e}")
+            # If we have model issues, try with basic bundled model
+            if model_type != 0:
+                logger.info("Retrying with bundled basic model...")
+                try:
+                    self.tracker = Tracker(
+                        width=original_width,
+                        height=original_height,
+                        model_type=0,  # Use bundled basic model
+                        detection_threshold=detection_threshold,
+                        threshold=tracking_threshold,
+                        max_faces=1,
+                        discard_after=10,
+                        scan_every=5,
+                        max_threads=4,
+                        silent=True,
+                        no_gaze=True,
+                        model_dir=os.path.join(current_dir, "..", "openseeface", "models")  # Use bundled directory
+                    )
+                    logger.info("Successfully initialized with basic bundled model")
+                except Exception as e2:
+                    logger.error(f"Failed to initialize even with basic model: {e2}")
+                    raise RuntimeError(f"OpenSeeFace initialization failed: {e2}")
+            else:
+                raise RuntimeError(f"OpenSeeFace initialization failed: {e}")
         
         # Process video frames
         mar_values = []
