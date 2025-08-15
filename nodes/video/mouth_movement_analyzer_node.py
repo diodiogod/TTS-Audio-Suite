@@ -509,23 +509,32 @@ class MouthMovementAnalyzerNode(BaseNode):
                     words_per_second = 3.5  # Standard speech rate
                     estimated_words = max(1, round(duration * words_per_second))
                     
-                    # Split visemes into estimated word chunks
+                    # Split visemes into estimated word chunks, but limit chunk size
                     if len(visemes) <= estimated_words:
                         # Each vowel is a separate word
                         word_chunks = list(visemes)
                     else:
-                        # Distribute vowels across estimated words
+                        # Distribute vowels across estimated words, but cap chunk size
                         chunk_size = len(visemes) // estimated_words
                         remainder = len(visemes) % estimated_words
+                        
+                        # Limit chunk size to avoid very long phoneme sequences
+                        max_chunk_size = 8  # Reasonable limit for readability
+                        if chunk_size > max_chunk_size:
+                            # Recalculate with more words to keep chunks smaller
+                            estimated_words = max(estimated_words, len(visemes) // max_chunk_size)
+                            chunk_size = len(visemes) // estimated_words
+                            remainder = len(visemes) % estimated_words
                         
                         word_chunks = []
                         i = 0
                         for w in range(estimated_words):
                             # Add extra vowel to some words if remainder
                             size = chunk_size + (1 if w < remainder else 0)
-                            size = max(1, size)  # Ensure at least 1 vowel per word
-                            word_chunks.append(visemes[i:i+size])
-                            i += size
+                            size = max(1, min(size, max_chunk_size))  # Ensure reasonable size
+                            if i < len(visemes):
+                                word_chunks.append(visemes[i:i+size])
+                                i += size
                     
                     # Apply word prediction if enabled
                     if enable_word_prediction and phoneme_matcher:

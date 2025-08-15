@@ -385,16 +385,36 @@ class PhonemeWordMatcher:
         # If no good matches, try simplified patterns for common words
         clean_sequence = viseme_sequence.replace('_', '').strip()
         
-        # Special handling for common repeated patterns
-        if clean_sequence == 'I' or 'III' in clean_sequence:
+        # Special handling for common repeated patterns and long sequences
+        # Simplify very long repeated patterns
+        if len(clean_sequence) >= 4:
+            # Count dominant characters
+            char_counts = {}
+            for char in clean_sequence:
+                char_counts[char] = char_counts.get(char, 0) + 1
+            
+            # Find most common character
+            dominant_char = max(char_counts.items(), key=lambda x: x[1])[0]
+            dominant_ratio = char_counts[dominant_char] / len(clean_sequence)
+            
+            # If one character dominates (>60%), treat as that vowel
+            if dominant_ratio > 0.6:
+                vowel_words = {
+                    'I': 'it', 'A': 'at', 'E': 'eh', 'O': 'oh', 'U': 'uh'
+                }
+                if dominant_char in vowel_words:
+                    return [vowel_words[dominant_char]]
+        
+        # Handle shorter repeated patterns
+        if clean_sequence == 'I' or clean_sequence in ['II', 'III', 'IIII']:
             return ['it']  # Common "I" sound words
-        elif clean_sequence == 'A' or 'AAA' in clean_sequence:
+        elif clean_sequence == 'A' or clean_sequence in ['AA', 'AAA', 'AAAA']:
             return ['at']  # Common "A" sound words  
-        elif clean_sequence == 'E' or 'EEE' in clean_sequence:
+        elif clean_sequence == 'E' or clean_sequence in ['EE', 'EEE', 'EEEE']:
             return ['eh']  # Common "E" sound
-        elif clean_sequence == 'O' or 'OOO' in clean_sequence:
+        elif clean_sequence == 'O' or clean_sequence in ['OO', 'OOO', 'OOOO']:
             return ['oh']  # Common "O" sound
-        elif clean_sequence == 'U' or 'UUU' in clean_sequence:
+        elif clean_sequence == 'U' or clean_sequence in ['UU', 'UUU', 'UUUU']:
             return ['uh']  # Common "U" sound
         
         # For very short sequences, just return cleaned
