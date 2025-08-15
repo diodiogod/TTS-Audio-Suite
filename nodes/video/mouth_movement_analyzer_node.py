@@ -72,7 +72,6 @@ class SRTPlaceholderFormat(Enum):
     CHARACTERS = "Characters"
     UNDERSCORES = "Underscores"
     DURATION_INFO = "Duration + Length"
-    VISEME_SEQUENCE = "Viseme Sequence"  # New: Show detected vowels
 
 
 class MouthMovementAnalyzerNode(BaseNode):
@@ -112,7 +111,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                 }),
                 "srt_placeholder_format": ([f.value for f in SRTPlaceholderFormat], {
                     "default": SRTPlaceholderFormat.WORDS.value,
-                    "tooltip": "SRT placeholder format to show timing capacity:\n\n• Words: [word word word] - intuitive for content creators\n• Syllables: [syl-la-ble syl-la-ble] - accurate for TTS timing\n• Characters: [••••••••••••••••••••] - precise character count\n• Underscores: [_ _ _ _ _] - clean visual length indicator\n• Duration + Length: [1.2s: ________] - shows both time and space\n• Viseme Sequence: [AIIIOUU] - raw vowel patterns for easy word conversion\n\nRecommended: Words for general use, Viseme Sequence for lip-sync"
+                    "tooltip": "SRT placeholder format - adapts to viseme detection:\n\n🔌 WITHOUT Viseme Options:\n• Words: [word word word] - estimated word placeholders\n• Syllables: [syl-la-ble syl-la-ble] - estimated syllable patterns\n• Characters: [••••••••••••••••••••] - character count\n\n🔗 WITH Viseme Options connected:\n• Words: [A EI OU] - vowels grouped as words\n• Syllables: [AE-I-OU] - vowels grouped as syllables\n• Characters: [AEIOU] - raw vowel sequence\n\nFormat = presentation style, visemes = actual vowel content!"
                 }),
             },
             "optional": {
@@ -465,24 +464,71 @@ class MouthMovementAnalyzerNode(BaseNode):
             # Calculate segment duration
             duration = segment.end_time - segment.start_time
             
+            # Check if we have viseme data for this segment
+            has_visemes = (hasattr(segment, 'viseme_sequence') and 
+                          segment.viseme_sequence and 
+                          len(segment.viseme_sequence.strip()) > 0)
+            
             # Generate placeholder based on selected format
             if placeholder_format == SRTPlaceholderFormat.WORDS.value:
-                # 3.5 words per second for normal speech
-                estimated_words = max(1, int(duration * 3.5))
-                placeholder = " ".join(["word"] * estimated_words)
-                info = f"({estimated_words} word{'s' if estimated_words != 1 else ''}, {duration:.1f}s)"
+                if has_visemes:
+                    # Group visemes as word-like chunks (every 2-4 vowels)
+                    visemes = segment.viseme_sequence
+                    word_chunks = []
+                    i = 0
+                    while i < len(visemes):
+                        chunk_size = min(4, len(visemes) - i)  # 1-4 vowels per "word"
+                        if chunk_size >= 3:
+                            chunk_size = 3  # Prefer 3-vowel chunks
+                        elif chunk_size == 1 and i > 0:
+                            # Attach single vowel to previous chunk if possible
+                            word_chunks[-1] += visemes[i]
+                            i += 1
+                            continue
+                        
+                        word_chunks.append(visemes[i:i+chunk_size])
+                        i += chunk_size
+                    
+                    placeholder = " ".join(word_chunks)
+                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                else:
+                    # Fallback to estimated words
+                    estimated_words = max(1, int(duration * 3.5))
+                    placeholder = " ".join(["word"] * estimated_words)
+                    info = f"({estimated_words} word{'s' if estimated_words != 1 else ''}, {duration:.1f}s)"
                 
             elif placeholder_format == SRTPlaceholderFormat.SYLLABLES.value:
-                # 4.5 syllables per second for normal speech
-                estimated_syllables = max(1, int(duration * 4.5))
-                placeholder = " ".join(["syl-la-ble"] * (estimated_syllables // 3 + 1))[:estimated_syllables * 4]  # Approximate syllable representation
-                info = f"({estimated_syllables} syllable{'s' if estimated_syllables != 1 else ''}, {duration:.1f}s)"
+                if has_visemes:
+                    # Group visemes as syllable-like chunks (every 1-2 vowels)
+                    visemes = segment.viseme_sequence
+                    syllable_chunks = []
+                    i = 0
+                    while i < len(visemes):
+                        chunk_size = min(2, len(visemes) - i)  # 1-2 vowels per syllable
+                        syllable_chunks.append(visemes[i:i+chunk_size])
+                        i += chunk_size
+                    
+                    placeholder = "-".join(syllable_chunks)
+                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                else:
+                    # Fallback to estimated syllables
+                    estimated_syllables = max(1, int(duration * 4.5))
+                    placeholder = " ".join(["syl-la-ble"] * (estimated_syllables // 3 + 1))[:estimated_syllables * 4]
+                    info = f"({estimated_syllables} syllable{'s' if estimated_syllables != 1 else ''}, {duration:.1f}s)"
                 
             elif placeholder_format == SRTPlaceholderFormat.CHARACTERS.value:
-                # 20 characters per second for normal speech
-                estimated_chars = max(1, int(duration * 20))
-                placeholder = "•" * estimated_chars
-                info = f"({estimated_chars} char{'s' if estimated_chars != 1 else ''}, {duration:.1f}s)"
+                if has_visemes:
+                    # Show raw viseme sequence as characters
+                    placeholder = segment.viseme_sequence
+                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                else:
+                    # Fallback to estimated characters
+                    estimated_chars = max(1, int(duration * 20))
+                    placeholder = "•" * estimated_chars
+                    info = f"({estimated_chars} char{'s' if estimated_chars != 1 else ''}, {duration:.1f}s)"
                 
             elif placeholder_format == SRTPlaceholderFormat.UNDERSCORES.value:
                 # Visual word slots with underscores
@@ -495,19 +541,6 @@ class MouthMovementAnalyzerNode(BaseNode):
                 estimated_chars = max(1, int(duration * 20))
                 placeholder = f"{duration:.1f}s: " + "_" * min(estimated_chars, 40)  # Cap at 40 chars for readability
                 info = f"({estimated_chars} chars max)"
-                
-            elif placeholder_format == SRTPlaceholderFormat.VISEME_SEQUENCE.value:
-                # Show detected viseme sequence if available, otherwise fallback to syllables
-                if hasattr(segment, 'viseme_sequence') and segment.viseme_sequence:
-                    # Display raw ungrouped sequence for easy word conversion
-                    placeholder = segment.viseme_sequence
-                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
-                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
-                else:
-                    # Fallback to syllables when viseme detection is disabled
-                    estimated_syllables = max(1, int(duration * 4.5))
-                    placeholder = " ".join(["syl-la-ble"] * (estimated_syllables // 3 + 1))[:estimated_syllables * 4]  # Approximate syllable representation
-                    info = f"({estimated_syllables} syllable{'s' if estimated_syllables != 1 else ''}, {duration:.1f}s)"
                 
             else:
                 # Fallback to words format
