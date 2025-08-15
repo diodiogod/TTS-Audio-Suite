@@ -116,8 +116,27 @@ class PhonemeWordMatcher:
             'K': ['k', 'c'], 'G': ['g']
         }
         
-        # Build patterns for each word
-        words_to_process = self.word_list[:5000] if len(self.word_list) > 5000 else self.word_list  # Use more words now
+        # Build patterns prioritizing common words first
+        # Use Google's common words first, then CMU dictionary
+        if hasattr(self, 'cmu_phonemes') and len(self.cmu_phonemes) > 1000:
+            # If we have CMU data, prioritize common English words
+            common_words = [
+                'the', 'and', 'you', 'that', 'was', 'for', 'are', 'with', 'his', 'they',
+                'have', 'this', 'from', 'had', 'she', 'but', 'not', 'what', 'all', 'can',
+                'he', 'we', 'me', 'be', 'it', 'is', 'at', 'to', 'so', 'do', 'go', 'no',
+                'my', 'by', 'up', 'if', 'an', 'as', 'or', 'on', 'in', 'of', 'a', 'i',
+                'hello', 'world', 'yes', 'way', 'day', 'say', 'may', 'see', 'get', 'let'
+            ]
+            # Filter common words that exist in our dictionary
+            priority_words = [w for w in common_words if w in self.word_list]
+            # Add short words (3-5 chars) as high priority since they're often important
+            remaining_words = [w for w in self.word_list if w not in priority_words]
+            short_words = [w for w in remaining_words if 3 <= len(w) <= 5]
+            longer_words = [w for w in remaining_words if len(w) > 5 or len(w) < 3]
+            # Process: common words + short words + first 1500 longer words
+            words_to_process = priority_words + short_words + longer_words[:1500]
+        else:
+            words_to_process = self.word_list[:3000] if len(self.word_list) > 3000 else self.word_list
         
         for word in words_to_process:
             # Use CMU phoneme data if available, otherwise fall back to spelling approximation
@@ -261,6 +280,7 @@ class PhonemeWordMatcher:
         
         # Wildcard matching (if sequence contains underscores)
         if '_' in wildcard_sequence and len(suggestions) < max_suggestions:
+            # Standard wildcard matching (exact length)
             for pattern, words in self.phoneme_patterns.items():
                 if self._wildcard_match(wildcard_sequence, pattern):
                     confidence = self._calculate_wildcard_similarity(wildcard_sequence, pattern)
@@ -272,6 +292,20 @@ class PhonemeWordMatcher:
                                     break
                 if len(suggestions) >= max_suggestions:
                     break
+            
+            # Flexible wildcard matching (for patterns like B_B_B -> BABA)
+            if len(suggestions) < max_suggestions:
+                for pattern, words in self.phoneme_patterns.items():
+                    if self._flexible_wildcard_match(wildcard_sequence, pattern):
+                        confidence = self._calculate_flexible_similarity(wildcard_sequence, pattern)
+                        if confidence > 0.4:
+                            for word in words[:2]:
+                                if not any(w == word for w, _ in suggestions):
+                                    suggestions.append((word, confidence))
+                                    if len(suggestions) >= max_suggestions:
+                                        break
+                    if len(suggestions) >= max_suggestions:
+                        break
         
         # Partial matches (subsequence matching)
         if len(suggestions) < max_suggestions:
@@ -355,6 +389,100 @@ class PhonemeWordMatcher:
         
         return max(0.0, exact_ratio - (wildcard_penalty * 0.3))
     
+    def _flexible_wildcard_match(self, wildcard_pattern: str, target: str) -> bool:
+        """
+        Flexible wildcard matching where B_B_B can match BABA, etc.
+        Uses phonetic similarity rather than strict character counting.
+        """
+        # Extract non-wildcard characters from pattern
+        pattern_chars = [c for c in wildcard_pattern if c != '_']
+        
+        if not pattern_chars:
+            return False
+        
+        # Count character frequencies
+        from collections import Counter
+        pattern_count = Counter(pattern_chars)
+        target_count = Counter(target)
+        
+        # For patterns with single repeated character (like B_B_B)
+        if len(set(pattern_chars)) == 1:
+            char = pattern_chars[0]
+            target_char_count = target_count[char]
+            pattern_char_count = len(pattern_chars)
+            
+            # Flexible matching for repeated patterns:
+            # B_B_B (3 Bs) can match BABA (2 Bs) if B is dominant in target
+            # But target must have at least half the pattern count, and be the dominant char
+            min_required = max(1, pattern_char_count // 2)  # At least half
+            
+            if target_char_count >= min_required:
+                # Check if this character is dominant in target (>= 40% of target)
+                dominance_ratio = target_char_count / len(target)
+                if dominance_ratio >= 0.4:  # Character is prominent in target
+                    return True
+            
+            # Fallback: exact count matching
+            return target_char_count >= pattern_char_count
+        
+        # For mixed patterns, use stricter matching
+        # Check if target has at least as many of each character as pattern
+        for char, count in pattern_count.items():
+            if target_count[char] < count:
+                return False
+        
+        # Check character order for mixed patterns
+        char_positions = {}
+        for char in set(pattern_chars):
+            char_positions[char] = [i for i, c in enumerate(target) if c == char]
+        
+        # Try to match characters in order
+        used_positions = set()
+        last_pos = -1
+        
+        for char in pattern_chars:
+            available_positions = [pos for pos in char_positions[char] 
+                                 if pos not in used_positions and pos > last_pos]
+            
+            if not available_positions:
+                # Allow some flexibility for mixed patterns
+                available_positions = [pos for pos in char_positions[char] 
+                                     if pos not in used_positions]
+                
+            if available_positions:
+                chosen_pos = min(available_positions)
+                used_positions.add(chosen_pos)
+                last_pos = chosen_pos
+            else:
+                return False
+        
+        return True
+    
+    def _calculate_flexible_similarity(self, wildcard_pattern: str, target: str) -> float:
+        """Calculate similarity score for flexible wildcard matches"""
+        if not self._flexible_wildcard_match(wildcard_pattern, target):
+            return 0.0
+        
+        # Count matching characters
+        pattern_chars = [c for c in wildcard_pattern if c != '_']
+        target_chars = list(target)
+        
+        # Count how many pattern chars appear in target
+        matches = 0
+        target_remaining = target_chars[:]
+        for char in pattern_chars:
+            if char in target_remaining:
+                target_remaining.remove(char)
+                matches += 1
+        
+        # Base similarity on character matches
+        char_similarity = matches / len(wildcard_pattern)
+        
+        # Bonus for length similarity (prefer similar length matches)
+        length_similarity = 1.0 - abs(len(wildcard_pattern) - len(target)) / max(len(wildcard_pattern), len(target))
+        
+        return (char_similarity * 0.7) + (length_similarity * 0.3)
+    
     def get_word_suggestions_for_segment(self, viseme_sequence: str) -> List[str]:
         """
         Get word suggestions for a viseme sequence, formatted for SRT display
@@ -365,15 +493,45 @@ class PhonemeWordMatcher:
         Returns:
             List of suggested words (max 1, only high confidence)
         """
-        matches = self.match_phonemes_to_words(viseme_sequence, max_suggestions=3)
+        matches = self.match_phonemes_to_words(viseme_sequence, max_suggestions=5)
         
-        # Use more lenient confidence for common patterns and prefer shorter, common words
+        # Use more lenient confidence and prioritize phonetic accuracy
         good_matches = []
+        # Define most common words for boosting
+        super_common = {'the', 'and', 'you', 'it', 'is', 'at', 'to', 'he', 'we', 'me', 'be', 'my', 'by', 'up', 'if', 'an', 'as', 'or', 'on', 'in', 'of', 'a', 'i'}
+        
+        # Count phonemes in input sequence for phonetic accuracy scoring
+        input_phonemes = len(viseme_sequence.replace('_', ''))
+        
         for word, confidence in matches:
-            min_confidence = 0.4 if len(word) <= 4 else 0.6  # Lower threshold for short words
-            if confidence > min_confidence and len(word) <= 8 and word.isalpha():
-                # Strongly prefer shorter words and common words
-                word_score = confidence + (0.3 if len(word) <= 3 else 0.1 if len(word) <= 4 else 0)
+            # More lenient confidence thresholds
+            min_confidence = 0.3 if len(word) <= 6 else 0.4
+            if confidence > min_confidence and len(word) <= 10 and word.isalpha():
+                # Calculate word score prioritizing phonetic accuracy over brevity
+                word_score = confidence
+                
+                # MAJOR BONUS: Phonetic accuracy (prioritize words that match input phoneme count)
+                word_phonemes = len(word)  # Approximate phoneme count
+                phoneme_accuracy = 1.0 - abs(input_phonemes - word_phonemes) / max(input_phonemes, word_phonemes, 1)
+                
+                # Give massive bonus for phonetic accuracy - this should dominate scoring
+                if phoneme_accuracy > 0.8:  # Very close match
+                    word_score += 1.0  # Huge bonus for phonetically accurate words
+                elif phoneme_accuracy > 0.6:  # Good match
+                    word_score += 0.7  # Large bonus
+                elif phoneme_accuracy > 0.4:  # Reasonable match  
+                    word_score += 0.4  # Moderate bonus
+                
+                # Reduce length bias - only tiny preference for shorter words
+                if len(word) <= 3:
+                    word_score += 0.05  # Very small bonus
+                elif len(word) <= 4:
+                    word_score += 0.02  # Minimal bonus
+                
+                # Common word bonus (small boost for super common words)
+                if word in super_common:
+                    word_score += 0.1  # Small boost for common words
+                
                 good_matches.append((word, word_score))
         
         if good_matches:
@@ -397,13 +555,19 @@ class PhonemeWordMatcher:
             dominant_char = max(char_counts.items(), key=lambda x: x[1])[0]
             dominant_ratio = char_counts[dominant_char] / len(clean_sequence)
             
-            # If one character dominates (>60%), treat as that vowel
+            # If one character dominates (>60%), treat as that sound
             if dominant_ratio > 0.6:
                 vowel_words = {
                     'I': 'it', 'A': 'at', 'E': 'eh', 'O': 'oh', 'U': 'uh'
                 }
+                consonant_words = {
+                    'B': 'be', 'P': 'pah', 'M': 'mmm', 'F': 'fff', 'V': 'vvv',
+                    'T': 'ttt', 'D': 'ddd', 'K': 'kay', 'G': 'ggg', 'N': 'nnn'
+                }
                 if dominant_char in vowel_words:
                     return [vowel_words[dominant_char]]
+                elif dominant_char in consonant_words:
+                    return [consonant_words[dominant_char]]
         
         # Handle shorter repeated patterns
         if clean_sequence == 'I' or clean_sequence in ['II', 'III', 'IIII']:
@@ -416,6 +580,12 @@ class PhonemeWordMatcher:
             return ['oh']  # Common "O" sound
         elif clean_sequence == 'U' or clean_sequence in ['UU', 'UUU', 'UUUU']:
             return ['uh']  # Common "U" sound
+        elif clean_sequence == 'B' or clean_sequence in ['BB', 'BBB', 'BBBB', 'BBBBB']:
+            return ['be']  # Common "B" sound words
+        elif clean_sequence == 'P' or clean_sequence in ['PP', 'PPP', 'PPPP']:
+            return ['pah']  # Common "P" sound
+        elif clean_sequence == 'M' or clean_sequence in ['MM', 'MMM', 'MMMM']:
+            return ['mmm']  # Common "M" sound
         
         # For very short sequences, just return cleaned
         if len(clean_sequence) <= 2:

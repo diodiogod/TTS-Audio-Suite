@@ -62,7 +62,7 @@ class OutputFormat(Enum):
     SRT = "SRT"
     JSON = "JSON"
     CSV = "CSV"
-    TIMING_DATA = "TIMING_DATA"
+    AUDIO_REGIONS = "AUDIO_REGIONS"
 
 
 class SRTPlaceholderFormat(Enum):
@@ -107,7 +107,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                 }),
                 "output_format": ([f.value for f in OutputFormat], {
                     "default": OutputFormat.SRT.value,
-                    "tooltip": "Output format for timing data:\n\n• SRT: Standard subtitle format, best for TTS synchronization\n• JSON: Detailed data with confidence scores for analysis\n• CSV: Spreadsheet format for data processing\n• TIMING_DATA: Internal format for connecting to other nodes\n\nRecommended: SRT for TTS workflows, JSON for debugging"
+                    "tooltip": "Output format for timing data:\n\n• SRT: Standard subtitle format, best for TTS synchronization\n• JSON: Detailed data with confidence scores for analysis\n• CSV: Spreadsheet format for data processing\n• AUDIO_REGIONS: start,end format compatible with Audio Analyzer\n\nRecommended: SRT for TTS workflows, AUDIO_REGIONS for audio analysis"
                 }),
                 "srt_placeholder_format": ([f.value for f in SRTPlaceholderFormat], {
                     "default": SRTPlaceholderFormat.WORDS.value,
@@ -122,6 +122,11 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "default": True,
                     "label": "Show preview with movement markers",
                     "tooltip": "Generate annotated video preview with movement markers:\n\nShows green/red overlays for detected/undetected movements with confidence scores and facial landmarks.\n\nPerformance: Uses 540p resolution, increases processing time by ~40%\n\nUse for: Debugging detection accuracy and tuning parameters"
+                }),
+                "clean_subtitle_output": ("BOOLEAN", {
+                    "default": False,
+                    "label": "Clean Subtitle Output",
+                    "tooltip": "Remove all brackets, confidence scores, and metadata from output:\n\n• OFF: [hello world] (confidence: 74.2%, 1.1s)\n• ON: hello world\n\nUse when you want clean subtitles ready for direct use without technical information."
                 }),
                 "merge_threshold": ("FLOAT", {
                     "default": 0.2,
@@ -143,8 +148,8 @@ class MouthMovementAnalyzerNode(BaseNode):
             }
         }
     
-    RETURN_TYPES = ("VIDEO", "TIMING_DATA", "STRING", "LIST", "LIST")
-    RETURN_NAMES = ("video", "timing_data", "srt_output", "movement_frames", "confidence_scores")
+    RETURN_TYPES = ("VIDEO", "TIMING_DATA", "STRING", "LIST", "LIST") 
+    RETURN_NAMES = ("video", "timing_data", "formatted_output", "movement_frames", "confidence_scores")
     
     FUNCTION = "analyze_mouth_movement"
     CATEGORY = "image/video"
@@ -305,6 +310,7 @@ class MouthMovementAnalyzerNode(BaseNode):
         srt_placeholder_format: str,
         viseme_options=None,
         preview_mode: bool = False,
+        clean_subtitle_output: bool = False,
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
         **kwargs
@@ -402,12 +408,14 @@ class MouthMovementAnalyzerNode(BaseNode):
             self._cache_analysis(cache_key, timing_data, movement_frames, confidence_scores, preview_path)
         
         # Format outputs based on selected format
-        srt_output = self._format_as_srt(timing_data, srt_placeholder_format, enable_word_prediction) if output_format in [OutputFormat.SRT.value, OutputFormat.TIMING_DATA.value] else ""
+        srt_output = self._format_as_srt(timing_data, srt_placeholder_format, enable_word_prediction, clean_subtitle_output) if output_format == OutputFormat.SRT.value else ""
         
         if output_format == OutputFormat.JSON.value:
             srt_output = self._format_as_json(timing_data)
         elif output_format == OutputFormat.CSV.value:
             srt_output = self._format_as_csv(timing_data)
+        elif output_format == OutputFormat.AUDIO_REGIONS.value:
+            srt_output = self._format_as_audio_regions(timing_data)
         
         logger.info(f"Analysis complete: {len(timing_data.segments)} segments detected")
         
@@ -464,7 +472,7 @@ class MouthMovementAnalyzerNode(BaseNode):
             "result": (output_video, timing_data, srt_output, movement_frames, confidence_scores)
         }
     
-    def _format_as_srt(self, timing_data, placeholder_format: str, enable_word_prediction: bool = False) -> str:
+    def _format_as_srt(self, timing_data, placeholder_format: str, enable_word_prediction: bool = False, clean_subtitle_output: bool = False) -> str:
         """Convert timing data to SRT format with user-selected placeholder format"""
         srt_lines = []
         
@@ -527,14 +535,14 @@ class MouthMovementAnalyzerNode(BaseNode):
                             remainder = len(visemes) % estimated_words
                         
                         word_chunks = []
-                        i = 0
+                        chunk_start = 0
                         for w in range(estimated_words):
                             # Add extra vowel to some words if remainder
                             size = chunk_size + (1 if w < remainder else 0)
                             size = max(1, min(size, max_chunk_size))  # Ensure reasonable size
-                            if i < len(visemes):
-                                word_chunks.append(visemes[i:i+size])
-                                i += size
+                            if chunk_start < len(visemes):
+                                word_chunks.append(visemes[chunk_start:chunk_start+size])
+                                chunk_start += size
                     
                     # Apply word prediction if enabled
                     if enable_word_prediction and phoneme_matcher:
@@ -586,12 +594,12 @@ class MouthMovementAnalyzerNode(BaseNode):
                         remainder = len(visemes) % estimated_words
                         
                         word_groups = []
-                        i = 0
+                        group_start = 0
                         for w in range(estimated_words):
                             size = chunk_size + (1 if w < remainder else 0)
                             size = max(1, size)
-                            word_groups.append(list(visemes[i:i+size]))
-                            i += size
+                            word_groups.append(list(visemes[group_start:group_start+size]))
+                            group_start += size
                     
                     # Convert each word group to syllable format (split into 1-2 vowel chunks)
                     word_syllables = []
@@ -602,11 +610,11 @@ class MouthMovementAnalyzerNode(BaseNode):
                         else:
                             # Split into syllables of 1-2 vowels
                             syllables = []
-                            i = 0
-                            while i < len(word_vowels):
-                                syl_size = min(2, len(word_vowels) - i)
-                                syllables.append("".join(word_vowels[i:i+syl_size]))
-                                i += syl_size
+                            syl_idx = 0
+                            while syl_idx < len(word_vowels):
+                                syl_size = min(2, len(word_vowels) - syl_idx)
+                                syllables.append("".join(word_vowels[syl_idx:syl_idx+syl_size]))
+                                syl_idx += syl_size
                             word_syllables.append("-".join(syllables))
                     
                     # Apply word prediction for syllables if enabled
@@ -682,9 +690,17 @@ class MouthMovementAnalyzerNode(BaseNode):
                 placeholder = " ".join(["word"] * estimated_words)
                 info = f"({estimated_words} word{'s' if estimated_words != 1 else ''}, {duration:.1f}s)"
             
+            # Debug: Log what number we're assigning
+            if i <= 3:  # Only log first few
+                logger.debug(f"SRT segment {i}: {start_time} -> {end_time}")
+            
             srt_lines.append(f"{i}")
             srt_lines.append(f"{start_time} --> {end_time}")
-            srt_lines.append(f"[{placeholder}] {info}")
+            # Apply clean subtitle output toggle
+            if clean_subtitle_output:
+                srt_lines.append(placeholder)  # Clean output - no brackets or metadata
+            else:
+                srt_lines.append(f"[{placeholder}] {info}")  # Standard output with metadata
             srt_lines.append("")
         
         return "\n".join(srt_lines)
@@ -728,6 +744,15 @@ class MouthMovementAnalyzerNode(BaseNode):
         millis = int((seconds % 1) * 1000)
         
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+    
+    def _format_as_audio_regions(self, timing_data) -> str:
+        """Convert timing data to Audio Analyzer compatible format (start,end)"""
+        lines = []
+        
+        for seg in timing_data.segments:
+            lines.append(f"{seg.start_time:.3f},{seg.end_time:.3f}")
+        
+        return "\n".join(lines)
     
     def _reduce_word_repetition(self, words: List[str]) -> List[str]:
         """
