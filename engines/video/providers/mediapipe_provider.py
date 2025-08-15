@@ -104,12 +104,39 @@ class MediaPipeProvider(AbstractProvider):
         if not cap.isOpened():
             raise ValueError(f"Cannot open video file: {video_path}")
         
-        # Get video properties
+        # Get original video properties
         fps = cap.get(cv2.CAP_PROP_FPS)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_duration = total_frames / fps if fps > 0 else 0
+        
+        # Calculate optimal processing dimensions for MediaPipe
+        # Target: 720p max for analysis, 540p for preview (good balance of speed vs quality)
+        max_dimension = 720
+        preview_max_dimension = 540 if preview_mode else 720  # Good balance for preview
+        # Use smaller dimensions for preview mode to speed up processing
+        target_dimension = preview_max_dimension if preview_mode else max_dimension
+        
+        if max(original_width, original_height) > target_dimension:
+            if original_width > original_height:
+                width = target_dimension
+                height = int((original_height / original_width) * target_dimension)
+            else:
+                height = target_dimension
+                width = int((original_width / original_height) * target_dimension)
+            
+            # Ensure dimensions are even (required for some video codecs)
+            width = width - (width % 2)
+            height = height - (height % 2)
+            
+            if preview_mode:
+                logger.info(f"Resizing video from {original_width}x{original_height} to {width}x{height} for fast preview generation")
+            else:
+                logger.info(f"Resizing video from {original_width}x{original_height} to {width}x{height} for optimal MediaPipe performance")
+        else:
+            width, height = original_width, original_height
+            logger.info(f"Video resolution {width}x{height} is optimal, no resizing needed")
         
         logger.info(f"Video properties: {width}x{height}, {fps:.2f} FPS, {total_frames} frames, {total_duration:.2f}s")
         
@@ -119,11 +146,20 @@ class MediaPipeProvider(AbstractProvider):
         mar_values = []
         preview_frames = [] if preview_mode else None
         
+        # Store scaling factors for later coordinate conversion
+        scale_x = original_width / width
+        scale_y = original_height / height
+        needs_scaling = scale_x != 1.0 or scale_y != 1.0
+        
         frame_count = 0
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
+            
+            # Resize frame for optimal MediaPipe processing
+            if needs_scaling:
+                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
             
             # Detect movement in frame
             is_moving, confidence, landmarks = self.detect_movement(frame)
@@ -131,14 +167,14 @@ class MediaPipeProvider(AbstractProvider):
             movement_frames.append(is_moving)
             confidence_scores.append(confidence)
             
-            # Calculate MAR if landmarks detected
+            # Calculate MAR if landmarks detected (using processed frame coordinates)
             if landmarks is not None:
                 mar = self.calculate_mar(landmarks)
                 mar_values.append(mar)
             else:
                 mar_values.append(0.0)
             
-            # Generate preview frame if requested
+            # Generate preview frame if requested (using processed frame for consistency)
             if preview_mode:
                 annotated = self.annotate_frame(frame, landmarks, is_moving, confidence)
                 preview_frames.append(annotated)
@@ -163,7 +199,10 @@ class MediaPipeProvider(AbstractProvider):
         
         # Create preview video if requested
         if preview_mode and preview_frames:
+            self.preview_frames = preview_frames
             self._create_preview_video(preview_frames, fps, width, height)
+        else:
+            self.preview_frames = None
         
         # Create timing data
         timing_data = TimingData(
@@ -267,27 +306,86 @@ class MediaPipeProvider(AbstractProvider):
             logger.warning(f"Error calculating MAR: {e}")
             return 0.0
     
+    def get_preview_video(self) -> Optional[str]:
+        """Get the preview video file path if generated"""
+        return getattr(self, 'preview_video', None)
+    
     def _create_preview_video(self, frames: List[np.ndarray], fps: float, width: int, height: int):
-        """Create preview video with movement annotations"""
+        """Create preview video with movement annotations - create both MP4 and WebP for compatibility"""
         if not frames:
             return
         
-        # Create temporary output path
-        import tempfile
-        output_path = tempfile.mktemp(suffix='.mp4')
+        # Create output path in ComfyUI output directory like Save Video does
+        import folder_paths
+        import os
         
-        # Setup video writer
+        output_dir = folder_paths.get_output_directory()
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate unique filename
+        import time
+        timestamp = int(time.time())
+        filename_mp4 = f"mouth_preview_{timestamp}.mp4"
+        filename_webp = f"mouth_preview_{timestamp}.webp"
+        output_path_mp4 = os.path.join(output_dir, filename_mp4)
+        output_path_webp = os.path.join(output_dir, filename_webp)
+        
+        # Create MP4 video
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(output_path_mp4, fourcc, fps, (width, height))
+        
+        if not out.isOpened():
+            logger.error(f"Failed to open video writer for {output_path_mp4}")
+            return
         
         for frame in frames:
             out.write(frame)
         
         out.release()
         
-        # Store path for retrieval
-        self.preview_video = output_path
-        logger.info(f"Preview video created: {output_path}")
+        # Create WEBM video for native ComfyUI display (like SaveWEBM - better performance)
+        try:
+            import av
+            from fractions import Fraction
+            
+            # Convert BGR frames to RGB
+            rgb_frames = []
+            for frame in frames:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                rgb_frames.append(rgb_frame)
+            
+            # Create WEBM using av library like SaveWEBM does - optimized for fast preview
+            container = av.open(output_path_webp.replace('.webp', '.webm'), mode="w")
+            stream = container.add_stream("libvpx-vp9", rate=Fraction(round(fps * 1000), 1000))
+            stream.width = width
+            stream.height = height
+            stream.pix_fmt = "yuv420p"
+            # Fast encoding options for preview (lower quality but much faster)
+            stream.options = {
+                "crf": "45",  # Higher CRF = lower quality but faster encoding
+                "speed": "8",  # Fastest encoding speed
+                "cpu-used": "8"  # Maximum CPU efficiency mode
+            }
+            
+            for rgb_frame in rgb_frames:
+                av_frame = av.VideoFrame.from_ndarray(rgb_frame, format="rgb24")
+                for packet in stream.encode(av_frame):
+                    container.mux(packet)
+            
+            # Flush encoder
+            for packet in stream.encode():
+                container.mux(packet)
+            
+            container.close()
+            
+            webm_path = output_path_webp.replace('.webp', '.webm')
+            self.preview_video = webm_path
+            logger.info(f"Preview WEBM created: {webm_path}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to create WEBM, falling back to MP4: {e}")
+            self.preview_video = output_path_mp4
+            logger.info(f"Preview MP4 created: {output_path_mp4}")
     
     def annotate_frame(
         self,
