@@ -143,6 +143,30 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "display": "slider",
                     "tooltip": "Minimum confidence score for including detected movements:\n\n• 0.0-0.2: Include all detections (may include noise)\n• 0.3-0.4: Balanced filtering (recommended start)\n• 0.5-0.7: Conservative, only clear movements\n• 0.8-1.0: Ultra-strict, only highest confidence\n\nConfidence based on landmark quality, face visibility, lighting.\nWith new exponential sensitivity, lower values work better."
                 }),
+                "viseme_sensitivity": ("FLOAT", {
+                    "default": 1.0,
+                    "min": 0.1,
+                    "max": 2.0,
+                    "step": 0.05,
+                    "display": "slider",
+                    "tooltip": "Viseme detection sensitivity (geometric thresholds):\n\n• 0.1-0.5: Very strict, only obvious vowel shapes\n• 0.8-1.2: Balanced detection (recommended)\n• 1.5-2.0: Lenient, detects subtle vowel variations\n\nHigher = more detections, may include false positives\nLower = fewer detections, higher accuracy\n\nOnly affects viseme classification, not movement detection."
+                }),
+                "viseme_confidence_threshold": ("FLOAT", {
+                    "default": 0.4,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05,
+                    "display": "slider",
+                    "tooltip": "Minimum confidence for valid viseme classification:\n\n• 0.0-0.2: Show all viseme attempts (noisy)\n• 0.3-0.5: Balanced filtering (recommended)\n• 0.6-0.8: Conservative, only clear vowels\n• 0.9-1.0: Ultra-strict, only perfect detections\n\nBelow threshold shows as 'neutral' instead of uncertain vowel.\nHelps reduce flickering between different vowel classifications."
+                }),
+                "viseme_smoothing": ("FLOAT", {
+                    "default": 0.3,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05,
+                    "display": "slider",
+                    "tooltip": "Temporal smoothing to reduce viseme flickering:\n\n• 0.0: No smoothing (immediate response, may flicker)\n• 0.3: Light smoothing (recommended balance)\n• 0.7: Heavy smoothing (stable but slower response)\n• 1.0: Maximum smoothing (very stable, delayed)\n\nReduces rapid switching between visemes for cleaner sequences.\nUseful for noisy videos or subtle mouth movements."
+                }),
             }
         }
     
@@ -162,7 +186,9 @@ class MouthMovementAnalyzerNode(BaseNode):
     def _generate_cache_key(self, video_input, provider: str, sensitivity: float, 
                            min_duration: float, merge_threshold: float, 
                            confidence_threshold: float, preview_mode: bool,
-                           enable_viseme: bool = False) -> str:
+                           enable_viseme: bool = False, viseme_sensitivity: float = 1.0,
+                           viseme_confidence_threshold: float = 0.4, 
+                           viseme_smoothing: float = 0.3) -> str:
         """Generate cache key for mouth movement analysis (excludes SRT format)"""
         # Get video source path for cache key
         if hasattr(video_input, 'get_stream_source'):
@@ -201,7 +227,10 @@ class MouthMovementAnalyzerNode(BaseNode):
             'merge_threshold': merge_threshold,
             'confidence_threshold': confidence_threshold,
             'preview_mode': preview_mode,
-            'enable_viseme': enable_viseme
+            'enable_viseme': enable_viseme,
+            'viseme_sensitivity': viseme_sensitivity,
+            'viseme_confidence_threshold': viseme_confidence_threshold,
+            'viseme_smoothing': viseme_smoothing
         }
         
         cache_string = str(sorted(cache_data.items()))
@@ -226,14 +255,16 @@ class MouthMovementAnalyzerNode(BaseNode):
     @classmethod
     def IS_CHANGED(cls, video, provider, sensitivity, min_duration, output_format, 
                    srt_placeholder_format, enable_viseme_detection=False, preview_mode=False, 
-                   merge_threshold=0.2, confidence_threshold=0.5, **kwargs):
+                   merge_threshold=0.2, confidence_threshold=0.5, viseme_sensitivity=1.0,
+                   viseme_confidence_threshold=0.4, viseme_smoothing=0.3, **kwargs):
         """Cache invalidation - only invalidate for analysis parameters, not format"""
         # Create temporary instance for cache key generation
         temp_instance = cls()
         cache_key = temp_instance._generate_cache_key(
             video, provider, sensitivity, min_duration, 
             merge_threshold, confidence_threshold, preview_mode,
-            enable_viseme_detection
+            enable_viseme_detection, viseme_sensitivity, 
+            viseme_confidence_threshold, viseme_smoothing
         )
         
         # Return cache key - ComfyUI will only re-execute if this changes
@@ -287,6 +318,9 @@ class MouthMovementAnalyzerNode(BaseNode):
         preview_mode: bool = False,
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
+        viseme_sensitivity: float = 1.0,
+        viseme_confidence_threshold: float = 0.4,
+        viseme_smoothing: float = 0.3,
         **kwargs
     ):
         """
@@ -298,7 +332,8 @@ class MouthMovementAnalyzerNode(BaseNode):
         cache_key = self._generate_cache_key(
             video, provider, sensitivity, min_duration,
             merge_threshold, confidence_threshold, preview_mode,
-            enable_viseme_detection
+            enable_viseme_detection, viseme_sensitivity,
+            viseme_confidence_threshold, viseme_smoothing
         )
         
         # Check cache first
@@ -327,7 +362,10 @@ class MouthMovementAnalyzerNode(BaseNode):
                 sensitivity=sensitivity,
                 min_duration=min_duration,
                 merge_threshold=merge_threshold,
-                confidence_threshold=confidence_threshold
+                confidence_threshold=confidence_threshold,
+                viseme_sensitivity=viseme_sensitivity,
+                viseme_confidence_threshold=viseme_confidence_threshold,
+                viseme_smoothing=viseme_smoothing
             )
             
             # Analyze video with viseme detection if enabled

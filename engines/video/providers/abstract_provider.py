@@ -55,7 +55,10 @@ class AbstractProvider(ABC):
         sensitivity: float = 0.3,
         min_duration: float = 0.1,
         merge_threshold: float = 0.2,
-        confidence_threshold: float = 0.5
+        confidence_threshold: float = 0.5,
+        viseme_sensitivity: float = 1.0,
+        viseme_confidence_threshold: float = 0.4,
+        viseme_smoothing: float = 0.3
     ):
         """
         Initialize provider with common parameters
@@ -70,7 +73,11 @@ class AbstractProvider(ABC):
         self.min_duration = min_duration
         self.merge_threshold = merge_threshold
         self.confidence_threshold = confidence_threshold
+        self.viseme_sensitivity = viseme_sensitivity
+        self.viseme_confidence_threshold = viseme_confidence_threshold
+        self.viseme_smoothing = viseme_smoothing
         self.preview_video = None
+        self.previous_visemes = []  # For smoothing
         
         # Provider-specific initialization
         self._initialize()

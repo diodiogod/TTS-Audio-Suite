@@ -444,26 +444,28 @@ class MediaPipeProvider(AbstractProvider):
         if mar < self.mar_threshold * 0.5:  # Half threshold for complete closure
             return 'neutral', 0.8
         
-        # More sensitive thresholds for better detection
+        # Apply viseme sensitivity scaling to thresholds
+        sens_factor = self.viseme_sensitivity
+        
         # A: Wide open mouth, high aperture
-        if mar > 0.25 and lip_ratio < 3.5:
-            viseme_scores['A'] = (mar / 0.5) * (1.0 + normalized_area)
+        if mar > (0.25 / sens_factor) and lip_ratio < (3.5 * sens_factor):
+            viseme_scores['A'] = (mar / 0.5) * (1.0 + normalized_area) * sens_factor
         
         # E: Spread lips, moderate opening
-        if 0.1 < mar < 0.3 and lip_ratio > 2.5:
-            viseme_scores['E'] = (1.0 - abs(mar - 0.2) * 5.0) * min(1.0, lip_ratio / 3.5)
+        if (0.1 / sens_factor) < mar < (0.3 / sens_factor) and lip_ratio > (2.5 / sens_factor):
+            viseme_scores['E'] = (1.0 - abs(mar - 0.2) * 5.0) * min(1.0, lip_ratio / 3.5) * sens_factor
         
         # I: Narrow vertical, wide horizontal (smile-like)
-        if mar < 0.15 and lip_ratio > 3.0:
-            viseme_scores['I'] = (1.0 - mar * 6.0) * min(1.0, lip_ratio / 4.0)
+        if mar < (0.15 / sens_factor) and lip_ratio > (3.0 / sens_factor):
+            viseme_scores['I'] = (1.0 - mar * 6.0) * min(1.0, lip_ratio / 4.0) * sens_factor
         
         # O: Rounded, moderate opening
-        if 0.15 < mar < 0.35 and roundedness > 0.5:
-            viseme_scores['O'] = roundedness * (1.0 - abs(mar - 0.25) * 4.0)
+        if (0.15 / sens_factor) < mar < (0.35 / sens_factor) and roundedness > (0.5 / sens_factor):
+            viseme_scores['O'] = roundedness * (1.0 - abs(mar - 0.25) * 4.0) * sens_factor
         
         # U: Small rounded opening
-        if mar < 0.2 and roundedness > 0.6:
-            viseme_scores['U'] = roundedness * (1.0 - mar * 5.0)
+        if mar < (0.2 / sens_factor) and roundedness > (0.6 / sens_factor):
+            viseme_scores['U'] = roundedness * (1.0 - mar * 5.0) * sens_factor
         
         # Find best match
         best_viseme = max(viseme_scores.items(), key=lambda x: x[1])
@@ -471,9 +473,33 @@ class MediaPipeProvider(AbstractProvider):
         # Normalize confidence to 0-1 range
         confidence = min(1.0, best_viseme[1] / 2.0)
         
-        # If confidence is too low, return neutral
-        if confidence < 0.3:
-            return 'neutral', 0.5
+        # Apply viseme confidence threshold
+        if confidence < self.viseme_confidence_threshold:
+            return 'neutral', confidence
+        
+        # Apply temporal smoothing if enabled
+        if self.viseme_smoothing > 0.0 and hasattr(self, 'previous_visemes'):
+            # Add current detection to history
+            self.previous_visemes.append((best_viseme[0], confidence))
+            
+            # Keep only recent history for smoothing
+            history_length = max(1, int(5 * self.viseme_smoothing))  # 1-5 frames
+            self.previous_visemes = self.previous_visemes[-history_length:]
+            
+            # Calculate weighted average (more recent = higher weight)
+            viseme_weights = {}
+            total_weight = 0.0
+            
+            for i, (v, c) in enumerate(self.previous_visemes):
+                weight = (i + 1) * c  # Recent frames + confidence weighting
+                viseme_weights[v] = viseme_weights.get(v, 0.0) + weight
+                total_weight += weight
+            
+            if total_weight > 0:
+                # Find most weighted viseme
+                smoothed_viseme = max(viseme_weights.items(), key=lambda x: x[1])
+                smoothed_confidence = min(1.0, smoothed_viseme[1] / total_weight)
+                return smoothed_viseme[0], smoothed_confidence
         
         return best_viseme[0], confidence
     
@@ -655,8 +681,10 @@ class MediaPipeProvider(AbstractProvider):
         color = (0, 255, 0) if is_moving else (255, 0, 0)
         status_text = f"SPEAKING: {confidence:.2f}" if is_moving else f"SILENT: {confidence:.2f}"
         
-        # Add background rectangle for better text visibility
-        cv2.rectangle(annotated, (5, 5), (300, 105), (0, 0, 0), -1)
+        # Add semi-transparent background for better text visibility
+        overlay = annotated.copy()
+        cv2.rectangle(overlay, (5, 5), (300, 105), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.7, annotated, 0.3, 0, annotated)
         cv2.putText(
             annotated,
             status_text,
@@ -746,26 +774,7 @@ class MediaPipeProvider(AbstractProvider):
                     1
                 )
                 
-                # Draw viseme legend at bottom
-                legend_y = frame.shape[0] - 20
-                legend_x = 10
-                
-                # Background for legend
-                cv2.rectangle(annotated, (5, legend_y - 20), (300, legend_y + 5), (0, 0, 0), -1)
-                
-                # Draw each viseme with its color
-                for idx, (v, color) in enumerate(viseme_colors.items()):
-                    if v != 'neutral':
-                        x_offset = legend_x + (idx * 50)
-                        cv2.putText(
-                            annotated,
-                            v,
-                            (x_offset, legend_y),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            color,
-                            2
-                        )
+                # No legend needed - current viseme display and color-coded landmarks are sufficient
         
         return annotated
     
