@@ -56,6 +56,16 @@ class VisemeDetectionOptionsNode:
                     "display": "slider",
                     "tooltip": "Temporal smoothing to reduce viseme flickering:\n\n• 0.0: No smoothing (immediate response, may flicker)\n• 0.3: Light smoothing (recommended balance)\n• 0.7: Heavy smoothing (stable but slower response)\n• 1.0: Maximum smoothing (very stable, delayed)\n\nReduces rapid switching between visemes for cleaner sequences.\nUseful for noisy videos or subtle mouth movements."
                 }),
+                "enable_consonant_detection": ("BOOLEAN", {
+                    "default": False,
+                    "label": "Enable Consonant Detection",
+                    "tooltip": "Detect consonants (B, P, M, F, V, TH, etc.) in addition to vowels:\n\n• Vowels only: A, E, I, O, U, _\n• With consonants: A, E, I, O, U, B, P, M, F, V, TH, _, etc.\n• Adds ~10% processing time\n• Provides more detailed phoneme sequences\n• Better for advanced lip-sync and speech analysis\n\nLeave disabled for basic vowel-only detection."
+                }),
+                "enable_word_prediction": ("BOOLEAN", {
+                    "default": False,
+                    "label": "Enable Word Prediction",
+                    "tooltip": "Predict words from detected phoneme sequences:\n\n• Uses 10,000 most common English words\n• Matches phoneme patterns to suggest likely words\n• Shows confidence with ?, (), markers\n• Example: 'AEIOU' → 'you', 'hey?', '(audio)'\n• Helpful for manual SRT editing\n• No processing time impact\n\nRequires viseme detection enabled to work."
+                }),
             }
         }
     
@@ -69,7 +79,9 @@ class VisemeDetectionOptionsNode:
         enable_viseme_detection: bool,
         viseme_sensitivity: float,
         viseme_confidence_threshold: float,
-        viseme_smoothing: float
+        viseme_smoothing: float,
+        enable_consonant_detection: bool,
+        enable_word_prediction: bool
     ) -> Tuple[Dict[str, Any]]:
         """
         Create viseme options configuration
@@ -81,10 +93,13 @@ class VisemeDetectionOptionsNode:
             "enable_viseme_detection": enable_viseme_detection,
             "viseme_sensitivity": viseme_sensitivity,
             "viseme_confidence_threshold": viseme_confidence_threshold,
-            "viseme_smoothing": viseme_smoothing
+            "viseme_smoothing": viseme_smoothing,
+            "enable_consonant_detection": enable_consonant_detection,
+            "enable_word_prediction": enable_word_prediction
         }
         
         logger.info(f"Viseme options created: enabled={enable_viseme_detection}, "
+                   f"consonants={enable_consonant_detection}, words={enable_word_prediction}, "
                    f"sensitivity={viseme_sensitivity}, confidence={viseme_confidence_threshold}, "
                    f"smoothing={viseme_smoothing}")
         

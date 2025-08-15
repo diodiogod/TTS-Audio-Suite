@@ -58,7 +58,8 @@ class AbstractProvider(ABC):
         confidence_threshold: float = 0.5,
         viseme_sensitivity: float = 1.0,
         viseme_confidence_threshold: float = 0.4,
-        viseme_smoothing: float = 0.3
+        viseme_smoothing: float = 0.3,
+        enable_consonant_detection: bool = False
     ):
         """
         Initialize provider with common parameters
@@ -76,6 +77,7 @@ class AbstractProvider(ABC):
         self.viseme_sensitivity = viseme_sensitivity
         self.viseme_confidence_threshold = viseme_confidence_threshold
         self.viseme_smoothing = viseme_smoothing
+        self.enable_consonant_detection = enable_consonant_detection
         self.preview_video = None
         self.previous_visemes = []  # For smoothing
         

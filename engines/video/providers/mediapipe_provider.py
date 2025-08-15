@@ -200,7 +200,7 @@ class MediaPipeProvider(AbstractProvider):
                 # Extract viseme features if enabled
                 if enable_viseme:
                     features = self.extract_geometric_features(landmarks)
-                    viseme, viseme_conf = self.classify_viseme(features)
+                    viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
                     
                     viseme_frames.append(VisemeFrame(
                         frame_index=frame_count,
@@ -392,6 +392,27 @@ class MediaPipeProvider(AbstractProvider):
             # Calculate MAR for backward compatibility
             mar = lip_height / lip_width if lip_width > 0 else 0
             
+            # Enhanced features for consonant detection
+            # Lip contact detection (for B, P, M)
+            lip_contact = 1.0 - (lip_height / lip_width) if lip_width > 0 else 1.0
+            
+            # Teeth visibility (for F, V, TH) - using inner lip landmarks
+            teeth_gap = np.linalg.norm(landmarks[13][:2] - landmarks[14][:2])  # Inner gap
+            teeth_visibility = teeth_gap / lip_width if lip_width > 0 else 0
+            
+            # Lip compression (for stops: P, B, T, D, K, G)
+            lip_compression = (upper_lip_curvature + lower_lip_curvature) / lip_width if lip_width > 0 else 0
+            
+            # Nose flare detection (for nasals: M, N, NG) - using nose landmarks
+            left_nostril = landmarks[31][:2] if len(landmarks) > 31 else left_corner
+            right_nostril = landmarks[35][:2] if len(landmarks) > 35 else right_corner
+            nose_width = np.linalg.norm(right_nostril - left_nostril)
+            nose_flare = nose_width / lip_width if lip_width > 0 else 0
+            
+            # Tongue visibility (for TH, L, R) - approximate using inner mouth
+            tongue_space = np.linalg.norm(landmarks[17][:2] - landmarks[18][:2]) if len(landmarks) > 18 else 0
+            tongue_visibility = tongue_space / lip_width if lip_width > 0 else 0
+            
             return {
                 'lip_width': lip_width,
                 'lip_height': lip_height,
@@ -401,23 +422,31 @@ class MediaPipeProvider(AbstractProvider):
                 'lower_lip_curvature': lower_lip_curvature,
                 'roundedness': roundedness,
                 'lip_protrusion': lip_protrusion,
-                'mar': mar
+                'mar': mar,
+                # New consonant features
+                'lip_contact': lip_contact,
+                'teeth_visibility': teeth_visibility,
+                'lip_compression': lip_compression,
+                'nose_flare': nose_flare,
+                'tongue_visibility': tongue_visibility
             }
             
         except (IndexError, TypeError) as e:
             logger.warning(f"Error extracting geometric features: {e}")
             return {}
     
-    def classify_viseme(self, features: Dict[str, float]) -> Tuple[str, float]:
+    def classify_viseme(self, features: Dict[str, float], enable_consonants: bool = False) -> Tuple[str, float]:
         """
         Classify mouth shape into viseme categories based on geometric features
         
         Args:
             features: Dictionary of geometric features
+            enable_consonants: Whether to detect consonants in addition to vowels
             
         Returns:
             Tuple of (viseme_label, confidence)
-            Visemes: 'A', 'E', 'I', 'O', 'U', 'neutral'
+            Vowels: 'A', 'E', 'I', 'O', 'U', 'neutral'
+            Consonants (if enabled): 'B', 'P', 'M', 'F', 'V', 'TH', etc.
         """
         if not features:
             return 'neutral', 0.0
@@ -430,7 +459,7 @@ class MediaPipeProvider(AbstractProvider):
         # Normalize mouth area (rough approximation)
         normalized_area = min(1.0, mouth_area / 1000.0)  # Adjust scale as needed
         
-        # Vowel classification rules based on research
+        # Initialize scoring for vowels and optionally consonants
         viseme_scores = {
             'A': 0.0,
             'E': 0.0,
@@ -439,6 +468,66 @@ class MediaPipeProvider(AbstractProvider):
             'U': 0.0,
             'neutral': 0.0
         }
+        
+        # Add consonant scores if enabled
+        if enable_consonants:
+            consonant_scores = {
+                'B': 0.0, 'P': 0.0, 'M': 0.0,  # Bilabial stops/nasals
+                'F': 0.0, 'V': 0.0,             # Labiodental fricatives
+                'TH': 0.0,                      # Dental fricatives
+                'T': 0.0, 'D': 0.0, 'N': 0.0,  # Alveolar stops/nasals
+                'K': 0.0, 'G': 0.0              # Velar stops
+            }
+            viseme_scores.update(consonant_scores)
+        
+        # Get consonant features for classification
+        lip_contact = features.get('lip_contact', 0)
+        teeth_visibility = features.get('teeth_visibility', 0)
+        lip_compression = features.get('lip_compression', 0)
+        nose_flare = features.get('nose_flare', 0)
+        
+        # Consonant classification (if enabled)
+        if enable_consonants:
+            sens_factor = self.viseme_sensitivity
+            
+            # Bilabial stops and nasals (lips together)
+            if lip_contact > (0.8 / sens_factor):
+                # Distinguish between B/P/M based on other features
+                if nose_flare > (0.3 / sens_factor):
+                    viseme_scores['M'] = lip_contact * nose_flare * sens_factor  # Nasal
+                elif lip_compression > (0.5 / sens_factor):
+                    viseme_scores['P'] = lip_contact * lip_compression * sens_factor  # Voiceless stop
+                else:
+                    viseme_scores['B'] = lip_contact * sens_factor  # Voiced stop
+            
+            # Labiodental fricatives (teeth on lip)
+            if teeth_visibility > (0.4 / sens_factor) and lip_contact > (0.3 / sens_factor):
+                if lip_compression > (0.4 / sens_factor):
+                    viseme_scores['F'] = teeth_visibility * lip_compression * sens_factor  # Voiceless
+                else:
+                    viseme_scores['V'] = teeth_visibility * lip_contact * sens_factor  # Voiced
+            
+            # Dental fricatives (tongue between teeth)
+            if teeth_visibility > (0.6 / sens_factor) and mar > (0.1 / sens_factor):
+                viseme_scores['TH'] = teeth_visibility * mar * sens_factor
+            
+            # Alveolar and velar stops (general compression patterns)
+            if lip_compression > (0.6 / sens_factor) and lip_contact < (0.5 / sens_factor):
+                if mar < (0.1 / sens_factor):
+                    viseme_scores['T'] = lip_compression * (1.0 - mar) * sens_factor  # Voiceless
+                elif nose_flare > (0.2 / sens_factor):
+                    viseme_scores['N'] = lip_compression * nose_flare * sens_factor  # Nasal
+                else:
+                    viseme_scores['D'] = lip_compression * mar * sens_factor  # Voiced
+            
+            # Velar stops (back of tongue, harder to detect with lip landmarks)
+            if lip_compression > (0.4 / sens_factor) and roundedness < (0.3 / sens_factor):
+                if mar < (0.05 / sens_factor):
+                    viseme_scores['K'] = lip_compression * (1.0 - roundedness) * sens_factor
+                else:
+                    viseme_scores['G'] = lip_compression * (1.0 - roundedness) * mar * sens_factor
+        
+        # Vowel classification rules based on research
         
         # Check if mouth is open enough for vowel
         if mar < self.mar_threshold * 0.5:  # Half threshold for complete closure
@@ -706,11 +795,24 @@ class MediaPipeProvider(AbstractProvider):
             
             # Color coding for visemes
             viseme_colors = {
+                # Vowels
                 'A': (255, 100, 100),  # Red-ish
                 'E': (100, 255, 100),  # Green-ish
                 'I': (100, 100, 255),  # Blue-ish
                 'O': (255, 255, 100),  # Yellow-ish
                 'U': (255, 100, 255),  # Magenta-ish
+                # Consonants (cooler colors)
+                'B': (150, 75, 0),     # Brown
+                'P': (150, 150, 0),    # Olive
+                'M': (75, 150, 75),    # Dark green
+                'F': (200, 50, 150),   # Pink
+                'V': (150, 50, 200),   # Purple
+                'TH': (100, 200, 200), # Cyan
+                'T': (200, 150, 50),   # Orange
+                'D': (150, 100, 50),   # Bronze
+                'N': (50, 150, 100),   # Teal
+                'K': (200, 100, 0),    # Dark orange
+                'G': (100, 150, 200),  # Light blue
                 'neutral': (128, 128, 128)  # Gray
             }
             

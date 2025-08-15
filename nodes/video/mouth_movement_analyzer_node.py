@@ -161,7 +161,8 @@ class MouthMovementAnalyzerNode(BaseNode):
                            confidence_threshold: float, preview_mode: bool,
                            enable_viseme: bool = False, viseme_sensitivity: float = 1.0,
                            viseme_confidence_threshold: float = 0.4, 
-                           viseme_smoothing: float = 0.3) -> str:
+                           viseme_smoothing: float = 0.3,
+                           enable_consonant_detection: bool = False) -> str:
         """Generate cache key for mouth movement analysis (excludes SRT format)"""
         # Get video source path for cache key
         if hasattr(video_input, 'get_stream_source'):
@@ -203,7 +204,8 @@ class MouthMovementAnalyzerNode(BaseNode):
             'enable_viseme': enable_viseme,
             'viseme_sensitivity': viseme_sensitivity,
             'viseme_confidence_threshold': viseme_confidence_threshold,
-            'viseme_smoothing': viseme_smoothing
+            'viseme_smoothing': viseme_smoothing,
+            'enable_consonant_detection': enable_consonant_detection
         }
         
         cache_string = str(sorted(cache_data.items()))
@@ -236,11 +238,13 @@ class MouthMovementAnalyzerNode(BaseNode):
             viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
             viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.4)
             viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
+            enable_consonant_detection = viseme_options.get("enable_consonant_detection", False)
         else:
             enable_viseme_detection = False
             viseme_sensitivity = 1.0
             viseme_confidence_threshold = 0.4
             viseme_smoothing = 0.3
+            enable_consonant_detection = False
         
         # Create temporary instance for cache key generation
         temp_instance = cls()
@@ -248,7 +252,8 @@ class MouthMovementAnalyzerNode(BaseNode):
             video, provider, sensitivity, min_duration, 
             merge_threshold, confidence_threshold, preview_mode,
             enable_viseme_detection, viseme_sensitivity, 
-            viseme_confidence_threshold, viseme_smoothing
+            viseme_confidence_threshold, viseme_smoothing,
+            enable_consonant_detection
         )
         
         # Return cache key - ComfyUI will only re-execute if this changes
@@ -315,19 +320,24 @@ class MouthMovementAnalyzerNode(BaseNode):
             viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
             viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.4)
             viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
+            enable_consonant_detection = viseme_options.get("enable_consonant_detection", False)
+            enable_word_prediction = viseme_options.get("enable_word_prediction", False)
         else:
             # No viseme options connected - basic speech detection only
             enable_viseme_detection = False
             viseme_sensitivity = 1.0
             viseme_confidence_threshold = 0.4
             viseme_smoothing = 0.3
+            enable_consonant_detection = False
+            enable_word_prediction = False
         
         # Generate cache key for analysis (excludes format parameters)
         cache_key = self._generate_cache_key(
             video, provider, sensitivity, min_duration,
             merge_threshold, confidence_threshold, preview_mode,
             enable_viseme_detection, viseme_sensitivity,
-            viseme_confidence_threshold, viseme_smoothing
+            viseme_confidence_threshold, viseme_smoothing,
+            enable_consonant_detection
         )
         
         # Check cache first
@@ -359,7 +369,8 @@ class MouthMovementAnalyzerNode(BaseNode):
                 confidence_threshold=confidence_threshold,
                 viseme_sensitivity=viseme_sensitivity,
                 viseme_confidence_threshold=viseme_confidence_threshold,
-                viseme_smoothing=viseme_smoothing
+                viseme_smoothing=viseme_smoothing,
+                enable_consonant_detection=enable_consonant_detection
             )
             
             # Analyze video with viseme detection if enabled
@@ -391,7 +402,7 @@ class MouthMovementAnalyzerNode(BaseNode):
             self._cache_analysis(cache_key, timing_data, movement_frames, confidence_scores, preview_path)
         
         # Format outputs based on selected format
-        srt_output = self._format_as_srt(timing_data, srt_placeholder_format) if output_format in [OutputFormat.SRT.value, OutputFormat.TIMING_DATA.value] else ""
+        srt_output = self._format_as_srt(timing_data, srt_placeholder_format, enable_word_prediction) if output_format in [OutputFormat.SRT.value, OutputFormat.TIMING_DATA.value] else ""
         
         if output_format == OutputFormat.JSON.value:
             srt_output = self._format_as_json(timing_data)
@@ -453,9 +464,27 @@ class MouthMovementAnalyzerNode(BaseNode):
             "result": (output_video, timing_data, srt_output, movement_frames, confidence_scores)
         }
     
-    def _format_as_srt(self, timing_data, placeholder_format: str) -> str:
+    def _format_as_srt(self, timing_data, placeholder_format: str, enable_word_prediction: bool = False) -> str:
         """Convert timing data to SRT format with user-selected placeholder format"""
         srt_lines = []
+        
+        # Initialize word prediction if enabled
+        phoneme_matcher = None
+        if enable_word_prediction:
+            try:
+                # Import here to avoid dependency issues
+                import sys
+                import os
+                utils_path = os.path.join(project_root, "utils")
+                if utils_path not in sys.path:
+                    sys.path.insert(0, utils_path)
+                
+                from utils.phoneme_matcher import get_phoneme_matcher
+                phoneme_matcher = get_phoneme_matcher()
+                logger.info("Word prediction enabled with phoneme matcher")
+            except Exception as e:
+                logger.warning(f"Could not initialize word prediction: {e}")
+                enable_word_prediction = False
         
         for i, segment in enumerate(timing_data.segments, 1):
             start_time = self._seconds_to_srt_time(segment.start_time)
@@ -495,9 +524,22 @@ class MouthMovementAnalyzerNode(BaseNode):
                             word_chunks.append(visemes[i:i+size])
                             i += size
                     
-                    placeholder = " ".join(word_chunks)
-                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
-                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                    # Apply word prediction if enabled
+                    if enable_word_prediction and phoneme_matcher:
+                        predicted_words = []
+                        for chunk in word_chunks:
+                            suggestions = phoneme_matcher.get_word_suggestions_for_segment(chunk)
+                            if suggestions:
+                                predicted_words.append(suggestions[0])  # Use best suggestion
+                            else:
+                                predicted_words.append(chunk)  # Fallback to phonemes
+                        placeholder = " ".join(predicted_words)
+                        avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                        info = f"(predicted, confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                    else:
+                        placeholder = " ".join(word_chunks)
+                        avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                        info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
                     # Fallback to estimated words
                     estimated_words = max(1, int(duration * 3.5))
@@ -544,9 +586,31 @@ class MouthMovementAnalyzerNode(BaseNode):
                                 i += syl_size
                             word_syllables.append("-".join(syllables))
                     
-                    placeholder = " ".join(word_syllables)  # Space separates words, hyphens separate syllables
-                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
-                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                    # Apply word prediction for syllables if enabled
+                    if enable_word_prediction and phoneme_matcher:
+                        predicted_syllables = []
+                        for syllable_group in word_syllables:
+                            # Try to predict words from syllable patterns
+                            clean_group = syllable_group.replace('-', '')
+                            suggestions = phoneme_matcher.get_word_suggestions_for_segment(clean_group)
+                            if suggestions:
+                                # Convert predicted word back to syllable format
+                                word = suggestions[0].replace('?', '').replace('(', '').replace(')', '')
+                                if len(word) > 3:
+                                    # Split longer words into syllable-like chunks
+                                    mid = len(word) // 2
+                                    predicted_syllables.append(f"{word[:mid]}-{word[mid:]}")
+                                else:
+                                    predicted_syllables.append(word)
+                            else:
+                                predicted_syllables.append(syllable_group)
+                        placeholder = " ".join(predicted_syllables)
+                        avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                        info = f"(predicted syllables, confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                    else:
+                        placeholder = " ".join(word_syllables)  # Space separates words, hyphens separate syllables
+                        avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                        info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
                     # Fallback to estimated syllables
                     estimated_syllables = max(1, int(duration * 4.5))
@@ -555,10 +619,23 @@ class MouthMovementAnalyzerNode(BaseNode):
                 
             elif placeholder_format == SRTPlaceholderFormat.CHARACTERS.value:
                 if has_visemes:
-                    # Show raw viseme sequence as characters
-                    placeholder = segment.viseme_sequence
-                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
-                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                    # Apply word prediction for character-level if enabled
+                    if enable_word_prediction and phoneme_matcher:
+                        # Try to predict from entire sequence
+                        suggestions = phoneme_matcher.get_word_suggestions_for_segment(segment.viseme_sequence)
+                        if suggestions:
+                            # Show suggested words with original phonemes
+                            word_suggestions = " | ".join(suggestions[:3])  # Top 3 suggestions
+                            placeholder = f"{segment.viseme_sequence} → {word_suggestions}"
+                        else:
+                            placeholder = segment.viseme_sequence
+                        avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                        info = f"(phoneme→word, confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                    else:
+                        # Show raw viseme sequence as characters
+                        placeholder = segment.viseme_sequence
+                        avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                        info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
                     # Fallback to estimated characters
                     estimated_chars = max(1, int(duration * 20))
