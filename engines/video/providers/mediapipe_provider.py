@@ -38,16 +38,27 @@ VisemeFrame = abstract_module.VisemeFrame
 
 # Import modular viseme analysis system
 try:
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    analysis_path = os.path.join(project_root, "engines", "video", "analysis")
+    # Add analysis path to sys.path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    analysis_path = os.path.join(current_dir, "..", "analysis")
     if analysis_path not in sys.path:
         sys.path.insert(0, analysis_path)
     
     from viseme_analysis_factory import VisemeAnalysisFactory
     ANALYSIS_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Modular analysis system not available: {e}")
-    ANALYSIS_AVAILABLE = False
+    try:
+        # Alternative: Try from project root
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        analysis_path = os.path.join(project_root, "engines", "video", "analysis")
+        if analysis_path not in sys.path:
+            sys.path.insert(0, analysis_path)
+        
+        from viseme_analysis_factory import VisemeAnalysisFactory
+        ANALYSIS_AVAILABLE = True
+    except ImportError:
+        print(f"Warning: Modular analysis system not available: {e}")
+        ANALYSIS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 

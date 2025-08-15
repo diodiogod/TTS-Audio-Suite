@@ -35,16 +35,26 @@ VisemeFrame = abstract_module.VisemeFrame
 
 # Import modular viseme analysis system
 try:
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    analysis_path = os.path.join(project_root, "engines", "video", "analysis")
+    # Add analysis path to sys.path
+    analysis_path = os.path.join(current_dir, "..", "analysis")
     if analysis_path not in sys.path:
         sys.path.insert(0, analysis_path)
     
     from viseme_analysis_factory import VisemeAnalysisFactory
     ANALYSIS_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Modular analysis system not available: {e}")
-    ANALYSIS_AVAILABLE = False
+    try:
+        # Alternative: Try from project root
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        analysis_path = os.path.join(project_root, "engines", "video", "analysis")
+        if analysis_path not in sys.path:
+            sys.path.insert(0, analysis_path)
+        
+        from viseme_analysis_factory import VisemeAnalysisFactory
+        ANALYSIS_AVAILABLE = True
+    except ImportError:
+        print(f"Warning: Modular analysis system not available: {e}")
+        ANALYSIS_AVAILABLE = False
 
 # Try to import bundled OpenSeeFace components
 OPENSEEFACE_AVAILABLE = False
@@ -57,7 +67,7 @@ try:
     from tracker import Tracker
     from model_downloader import openseeface_downloader
     OPENSEEFACE_AVAILABLE = True
-    logger.info("Using bundled OpenSeeFace components")
+    print("Using bundled OpenSeeFace components")
 except ImportError as e:
     try:
         # Fallback: Try user's environment or common paths
@@ -74,15 +84,15 @@ except ImportError as e:
                 try:
                     from tracker import Tracker
                     OPENSEEFACE_AVAILABLE = True
-                    logger.info(f"Using OpenSeeFace from: {path}")
+                    print(f"Using OpenSeeFace from: {path}")
                     break
                 except ImportError:
                     continue
                     
         if not OPENSEEFACE_AVAILABLE:
-            logger.warning("OpenSeeFace not available. Install with: pip install onnxruntime opencv-python pillow numpy")
+            print("OpenSeeFace not available. Install with: pip install onnxruntime opencv-python pillow numpy")
     except Exception as e:
-        logger.warning(f"OpenSeeFace initialization failed: {e}")
+        print(f"OpenSeeFace initialization failed: {e}")
 
 logger = logging.getLogger(__name__)
 
