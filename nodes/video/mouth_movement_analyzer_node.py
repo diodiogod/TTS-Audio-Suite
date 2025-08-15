@@ -116,10 +116,8 @@ class MouthMovementAnalyzerNode(BaseNode):
                 }),
             },
             "optional": {
-                "enable_viseme_detection": ("BOOLEAN", {
-                    "default": False,
-                    "label": "Enable Viseme Detection (Vowels)",
-                    "tooltip": "Enable vowel detection (A, E, I, O, U) for lip-sync:\n\n• Analyzes mouth shape geometry beyond simple open/close\n• Detects vowel patterns in mouth movements\n• Adds ~20% processing time\n• Provides phoneme sequences for better TTS sync\n\nUse for: Creating precise lip-sync, vowel timing analysis"
+                "viseme_options": ("VISEME_OPTIONS", {
+                    "tooltip": "Connect Viseme Mouth Shape Options node for vowel detection (A, E, I, O, U):\n\n• When connected: Enables precise vowel classification\n• When not connected: Basic speech/no-speech detection only\n\nViseme detection adds ~20% processing time but provides detailed mouth shape analysis for lip-sync."
                 }),
                 "preview_mode": ("BOOLEAN", {
                     "default": False,
@@ -142,30 +140,6 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "step": 0.01,
                     "display": "slider",
                     "tooltip": "Minimum confidence score for including detected movements:\n\n• 0.0-0.2: Include all detections (may include noise)\n• 0.3-0.4: Balanced filtering (recommended start)\n• 0.5-0.7: Conservative, only clear movements\n• 0.8-1.0: Ultra-strict, only highest confidence\n\nConfidence based on landmark quality, face visibility, lighting.\nWith new exponential sensitivity, lower values work better."
-                }),
-                "viseme_sensitivity": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.1,
-                    "max": 2.0,
-                    "step": 0.05,
-                    "display": "slider",
-                    "tooltip": "How hard should I look for vowels?\n\nControls geometric thresholds for mouth shape classification:\n\n• 0.1-0.5: Very strict, only obvious vowel shapes\n• 0.8-1.2: Balanced detection (recommended)\n• 1.5-2.0: Lenient, detects subtle vowel variations\n\nHigher = more detections, may include false positives\nLower = fewer detections, higher accuracy"
-                }),
-                "viseme_confidence_threshold": ("FLOAT", {
-                    "default": 0.4,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider",
-                    "tooltip": "How sure should I be before showing a vowel?\n\nMinimum confidence for valid viseme classification:\n\n• 0.0-0.2: Show all viseme attempts (noisy)\n• 0.3-0.5: Balanced filtering (recommended)\n• 0.6-0.8: Conservative, only clear vowels\n• 0.9-1.0: Ultra-strict, only perfect detections\n\nBelow threshold shows as 'neutral' instead of uncertain vowel."
-                }),
-                "viseme_smoothing": ("FLOAT", {
-                    "default": 0.3,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider",
-                    "tooltip": "Temporal smoothing to reduce viseme flickering:\n\n• 0.0: No smoothing (immediate response, may flicker)\n• 0.3: Light smoothing (recommended balance)\n• 0.7: Heavy smoothing (stable but slower response)\n• 1.0: Maximum smoothing (very stable, delayed)\n\nReduces rapid switching between visemes for cleaner sequences.\nUseful for noisy videos or subtle mouth movements."
                 }),
             }
         }
@@ -254,10 +228,21 @@ class MouthMovementAnalyzerNode(BaseNode):
     
     @classmethod
     def IS_CHANGED(cls, video, provider, sensitivity, min_duration, output_format, 
-                   srt_placeholder_format, enable_viseme_detection=False, preview_mode=False, 
-                   merge_threshold=0.2, confidence_threshold=0.5, viseme_sensitivity=1.0,
-                   viseme_confidence_threshold=0.4, viseme_smoothing=0.3, **kwargs):
+                   srt_placeholder_format, viseme_options=None, preview_mode=False, 
+                   merge_threshold=0.2, confidence_threshold=0.5, **kwargs):
         """Cache invalidation - only invalidate for analysis parameters, not format"""
+        # Extract viseme settings from options or use defaults
+        if viseme_options is not None:
+            enable_viseme_detection = viseme_options.get("enable_viseme_detection", False)
+            viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
+            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.4)
+            viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
+        else:
+            enable_viseme_detection = False
+            viseme_sensitivity = 1.0
+            viseme_confidence_threshold = 0.4
+            viseme_smoothing = 0.3
+        
         # Create temporary instance for cache key generation
         temp_instance = cls()
         cache_key = temp_instance._generate_cache_key(
@@ -314,19 +299,29 @@ class MouthMovementAnalyzerNode(BaseNode):
         min_duration: float,
         output_format: str,
         srt_placeholder_format: str,
-        enable_viseme_detection: bool = False,
+        viseme_options=None,
         preview_mode: bool = False,
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
-        viseme_sensitivity: float = 1.0,
-        viseme_confidence_threshold: float = 0.4,
-        viseme_smoothing: float = 0.3,
         **kwargs
     ):
         """
         Main analysis function with caching
         """
         logger.info(f"Starting mouth movement analysis with {provider} provider")
+        
+        # Extract viseme settings from options or use defaults
+        if viseme_options is not None:
+            enable_viseme_detection = viseme_options.get("enable_viseme_detection", False)
+            viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
+            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.4)
+            viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
+        else:
+            # No viseme options connected - basic speech detection only
+            enable_viseme_detection = False
+            viseme_sensitivity = 1.0
+            viseme_confidence_threshold = 0.4
+            viseme_smoothing = 0.3
         
         # Generate cache key for analysis (excludes format parameters)
         cache_key = self._generate_cache_key(

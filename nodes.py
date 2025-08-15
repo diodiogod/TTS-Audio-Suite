@@ -330,6 +330,14 @@ except Exception as e:
     print(f"❌ Mouth Movement Analyzer failed: {e}")
     MOUTH_MOVEMENT_AVAILABLE = False
 
+try:
+    viseme_options_module = load_node_module("viseme_options_node", "video/viseme_options_node.py")
+    VisemeDetectionOptionsNode = viseme_options_module.VisemeDetectionOptionsNode
+    VISEME_OPTIONS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Viseme Options failed: {e}")
+    VISEME_OPTIONS_AVAILABLE = False
+
 # Register RVC nodes
 if RVC_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["RVCEngineNode"] = RVCEngineNode
@@ -355,6 +363,10 @@ if LOAD_RVC_MODEL_AVAILABLE:
 if MOUTH_MOVEMENT_AVAILABLE:
     NODE_CLASS_MAPPINGS["MouthMovementAnalyzer"] = MouthMovementAnalyzerNode
     NODE_DISPLAY_NAME_MAPPINGS["MouthMovementAnalyzer"] = "🎥 Mouth Movement Analyzer"
+
+if VISEME_OPTIONS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VisemeDetectionOptionsNode"] = VisemeDetectionOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["VisemeDetectionOptionsNode"] = "🔧 Viseme Mouth Shape Options"
 
 # Print startup banner
 print(SEPARATOR)
