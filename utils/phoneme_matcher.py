@@ -351,8 +351,17 @@ class PhonemeWordMatcher:
         Returns:
             List of (word, confidence) tuples
         """
-        if not phoneme_sequence or phoneme_sequence.replace('_', '') == '':
+        # Handle empty or all-underscore sequences with neutral words
+        if not phoneme_sequence:
             return []
+        
+        clean_content = phoneme_sequence.replace('_', '').strip()
+        if not clean_content:
+            # All underscores - uncertain detection, return neutral common words
+            neutral_words = ['the', 'and', 'that', 'this', 'with', 'from', 'they', 'have', 'been']
+            # Use length to pick different alternatives for variety
+            word_index = len(phoneme_sequence) % len(neutral_words) 
+            return [(neutral_words[word_index], 0.5)]
         
         # Keep underscores for wildcard matching, but also create clean version
         wildcard_sequence = phoneme_sequence  # Keep _ as wildcards
@@ -670,19 +679,31 @@ class PhonemeWordMatcher:
             dominant_ratio = char_counts[dominant_char] / len(clean_sequence)
             dominant_count = char_counts[dominant_char]
             
-            # For very long sequences (4+), if one character dominates (>60%), treat as that sound
+            # For very long sequences (4+), if one character dominates (>60%), use expanded alternatives
             if len(clean_sequence) >= 4 and dominant_ratio > 0.6:
-                vowel_words = {
-                    'I': 'it', 'A': 'at', 'E': 'eh', 'O': 'oh', 'U': 'uh'
+                char_alternatives = {
+                    'I': ['it', 'if', 'is', 'in', 'ice', 'ivy', 'idea'],
+                    'A': ['at', 'as', 'an', 'ah', 'apple', 'army', 'angry'], 
+                    'E': ['eh', 'every', 'energy', 'eleven', 'exit', 'empty'],
+                    'O': ['oh', 'on', 'or', 'ox', 'open', 'only', 'often'],
+                    'U': ['uh', 'up', 'us', 'um', 'under', 'until', 'ugly'],
+                    'B': ['be', 'by', 'big', 'baby', 'maybe', 'about', 'but', 'boy', 'bad', 'buy', 'bay', 'bow'],
+                    'P': ['pah', 'pop', 'put', 'pay', 'paper', 'happy', 'apple', 'top', 'up'],
+                    'M': ['mm', 'me', 'my', 'may', 'maybe', 'more', 'many', 'man', 'make', 'come'],
+                    'F': ['ff', 'of', 'if', 'for', 'family', 'forty', 'coffee', 'life', 'off'],
+                    'V': ['vv', 'very', 'have', 'every', 'seven', 'never', 'give', 'love'],
+                    'T': ['tt', 'to', 'the', 'try', 'water', 'little', 'better', 'time', 'take'],
+                    'D': ['dd', 'do', 'day', 'dig', 'today', 'under', 'order', 'good', 'made'],
+                    'K': ['kay', 'key', 'can', 'back', 'take', 'like', 'work', 'look', 'make'],
+                    'G': ['go', 'got', 'big', 'give', 'good', 'again', 'right', 'get', 'great'],
+                    'N': ['no', 'new', 'now', 'can', 'than', 'when', 'then', 'any', 'man']
                 }
-                consonant_words = {
-                    'B': 'be', 'P': 'pah', 'M': 'mmm', 'F': 'fff', 'V': 'vvv',
-                    'T': 'ttt', 'D': 'ddd', 'K': 'kay', 'G': 'ggg', 'N': 'nnn'
-                }
-                if dominant_char in vowel_words:
-                    return [vowel_words[dominant_char]]
-                elif dominant_char in consonant_words:
-                    return [consonant_words[dominant_char]]
+                
+                if dominant_char in char_alternatives:
+                    alternatives = char_alternatives[dominant_char]
+                    # Use pattern characteristics to pick different alternatives
+                    alt_index = (len(clean_sequence) + dominant_count) % len(alternatives)
+                    return [alternatives[alt_index]]
         
             # Handle repeated patterns systematically - find phonetically coherent words
             
@@ -720,16 +741,16 @@ class PhonemeWordMatcher:
                 'E': ['eh', 'every', 'energy', 'eleven', 'exit', 'empty'],
                 'O': ['oh', 'on', 'or', 'ox', 'open', 'only', 'often'],
                 'U': ['uh', 'up', 'us', 'um', 'under', 'until', 'ugly'],
-                'B': ['be', 'by', 'but', 'big', 'baby', 'maybe', 'about'],
-                'P': ['pah', 'pop', 'put', 'pay', 'paper', 'happy', 'apple'],
-                'M': ['mm', 'me', 'my', 'may', 'maybe', 'more', 'many'],
-                'F': ['ff', 'of', 'if', 'for', 'family', 'forty', 'coffee'],
-                'V': ['vv', 'very', 'have', 'every', 'seven', 'never'],
-                'T': ['tt', 'to', 'the', 'try', 'water', 'little', 'better'],
-                'D': ['dd', 'do', 'day', 'dig', 'today', 'under', 'order'],
-                'K': ['kay', 'key', 'can', 'back', 'take', 'like', 'work'],
-                'G': ['go', 'got', 'big', 'give', 'good', 'again', 'right'],
-                'N': ['no', 'new', 'now', 'can', 'than', 'when', 'then']
+                'B': ['be', 'by', 'big', 'baby', 'maybe', 'about', 'but', 'boy', 'bad', 'buy', 'bay', 'bow'],
+                'P': ['pah', 'pop', 'put', 'pay', 'paper', 'happy', 'apple', 'top', 'up'],
+                'M': ['mm', 'me', 'my', 'may', 'maybe', 'more', 'many', 'man', 'make', 'come'],
+                'F': ['ff', 'of', 'if', 'for', 'family', 'forty', 'coffee', 'life', 'off'],
+                'V': ['vv', 'very', 'have', 'every', 'seven', 'never', 'give', 'love'],
+                'T': ['tt', 'to', 'the', 'try', 'water', 'little', 'better', 'time', 'take'],
+                'D': ['dd', 'do', 'day', 'dig', 'today', 'under', 'order', 'good', 'made'],
+                'K': ['kay', 'key', 'can', 'back', 'take', 'like', 'work', 'look', 'make'],
+                'G': ['go', 'got', 'big', 'give', 'good', 'again', 'right', 'get', 'great'],
+                'N': ['no', 'new', 'now', 'can', 'than', 'when', 'then', 'any', 'man']
             }
             
             if dominant_char in char_alternatives:
