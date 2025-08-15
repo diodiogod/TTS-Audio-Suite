@@ -486,52 +486,12 @@ class MediaPipeProvider(AbstractProvider):
         lip_compression = features.get('lip_compression', 0)
         nose_flare = features.get('nose_flare', 0)
         
-        # Consonant classification (if enabled)
-        if enable_consonants:
-            sens_factor = self.viseme_sensitivity
-            
-            # Bilabial stops and nasals (lips together)
-            if lip_contact > (0.8 / sens_factor):
-                # Distinguish between B/P/M based on other features
-                if nose_flare > (0.3 / sens_factor):
-                    viseme_scores['M'] = lip_contact * nose_flare * sens_factor  # Nasal
-                elif lip_compression > (0.5 / sens_factor):
-                    viseme_scores['P'] = lip_contact * lip_compression * sens_factor  # Voiceless stop
-                else:
-                    viseme_scores['B'] = lip_contact * sens_factor  # Voiced stop
-            
-            # Labiodental fricatives (teeth on lip)
-            if teeth_visibility > (0.4 / sens_factor) and lip_contact > (0.3 / sens_factor):
-                if lip_compression > (0.4 / sens_factor):
-                    viseme_scores['F'] = teeth_visibility * lip_compression * sens_factor  # Voiceless
-                else:
-                    viseme_scores['V'] = teeth_visibility * lip_contact * sens_factor  # Voiced
-            
-            # Dental fricatives (tongue between teeth)
-            if teeth_visibility > (0.6 / sens_factor) and mar > (0.1 / sens_factor):
-                viseme_scores['TH'] = teeth_visibility * mar * sens_factor
-            
-            # Alveolar and velar stops (general compression patterns)
-            if lip_compression > (0.6 / sens_factor) and lip_contact < (0.5 / sens_factor):
-                if mar < (0.1 / sens_factor):
-                    viseme_scores['T'] = lip_compression * (1.0 - mar) * sens_factor  # Voiceless
-                elif nose_flare > (0.2 / sens_factor):
-                    viseme_scores['N'] = lip_compression * nose_flare * sens_factor  # Nasal
-                else:
-                    viseme_scores['D'] = lip_compression * mar * sens_factor  # Voiced
-            
-            # Velar stops (back of tongue, harder to detect with lip landmarks)
-            if lip_compression > (0.4 / sens_factor) and roundedness < (0.3 / sens_factor):
-                if mar < (0.05 / sens_factor):
-                    viseme_scores['K'] = lip_compression * (1.0 - roundedness) * sens_factor
-                else:
-                    viseme_scores['G'] = lip_compression * (1.0 - roundedness) * mar * sens_factor
-        
-        # Vowel classification rules based on research
-        
-        # Check if mouth is open enough for vowel
+        # Check if mouth is open enough for vowel (complete closure = neutral)
         if mar < self.mar_threshold * 0.5:  # Half threshold for complete closure
             return 'neutral', 0.8
+        
+        # Vowel classification first (PRIMARY DETECTION)
+        # Vowels are 60-80% of speech - they should dominate classification
         
         # Apply viseme sensitivity scaling to thresholds
         sens_factor = self.viseme_sensitivity
@@ -555,6 +515,76 @@ class MediaPipeProvider(AbstractProvider):
         # U: Small rounded opening
         if mar < (0.2 / sens_factor) and roundedness > (0.6 / sens_factor):
             viseme_scores['U'] = roundedness * (1.0 - mar * 5.0) * sens_factor
+        
+        # Find best vowel match first
+        best_vowel = max([(k, v) for k, v in viseme_scores.items() if k in ['A', 'E', 'I', 'O', 'U', 'neutral']], 
+                        key=lambda x: x[1])
+        
+        # Consonant classification (SECONDARY - Only if vowels weak and extremely high confidence)
+        # Consonants are RARE (15-25% total) and BRIEF interruptions of vowel flow
+        if enable_consonants and best_vowel[1] < 0.3:  # Only if vowels are very weak
+            
+            # DRASTICALLY RAISED THRESHOLDS (10x more restrictive)
+            # B sounds occur ~0.5% of speech, not 70%!
+            
+            # Bilabial stops and nasals (lips completely closed - VERY rare)
+            if lip_contact > (0.98 / sens_factor):  # Was 0.8, now 0.98 - must be nearly complete closure
+                # Distinguish between B/P/M based on other features
+                if nose_flare > (0.8 / sens_factor):  # Was 0.3, now 0.8 - strong nasal signal required
+                    consonant_score = lip_contact * nose_flare * sens_factor * 0.5  # Reduced scoring
+                    if consonant_score > best_vowel[1] * 2.0:  # Must be 2x stronger than vowels
+                        viseme_scores['M'] = consonant_score
+                elif lip_compression > (0.9 / sens_factor):  # Was 0.5, now 0.9 - extreme compression
+                    consonant_score = lip_contact * lip_compression * sens_factor * 0.5
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['P'] = consonant_score
+                else:
+                    consonant_score = lip_contact * sens_factor * 0.5
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['B'] = consonant_score
+            
+            # Labiodental fricatives (teeth clearly on lip - rare)
+            if teeth_visibility > (0.9 / sens_factor) and lip_contact > (0.8 / sens_factor):  # Was 0.4/0.3, now 0.9/0.8
+                if lip_compression > (0.8 / sens_factor):  # Was 0.4, now 0.8
+                    consonant_score = teeth_visibility * lip_compression * sens_factor * 0.4
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['F'] = consonant_score
+                else:
+                    consonant_score = teeth_visibility * lip_contact * sens_factor * 0.4
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['V'] = consonant_score
+            
+            # Dental fricatives (tongue clearly visible between teeth - very rare)
+            if teeth_visibility > (0.95 / sens_factor) and mar > (0.2 / sens_factor):  # Was 0.6/0.1, now 0.95/0.2
+                consonant_score = teeth_visibility * mar * sens_factor * 0.3
+                if consonant_score > best_vowel[1] * 2.0:
+                    viseme_scores['TH'] = consonant_score
+            
+            # Alveolar and velar stops (extreme compression only)
+            if lip_compression > (0.95 / sens_factor) and lip_contact < (0.3 / sens_factor):  # Was 0.6/0.5, now 0.95/0.3
+                if mar < (0.05 / sens_factor):  # Was 0.1, now 0.05
+                    consonant_score = lip_compression * (1.0 - mar) * sens_factor * 0.3
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['T'] = consonant_score
+                elif nose_flare > (0.7 / sens_factor):  # Was 0.2, now 0.7
+                    consonant_score = lip_compression * nose_flare * sens_factor * 0.3
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['N'] = consonant_score
+                else:
+                    consonant_score = lip_compression * mar * sens_factor * 0.3
+                    if consonant_score > best_vowel[1] * 2.0:
+                        viseme_scores['D'] = consonant_score
+            
+            # Velar stops (back of tongue - nearly impossible to detect reliably)
+            if lip_compression > (0.9 / sens_factor) and roundedness < (0.1 / sens_factor):  # Was 0.4/0.3, now 0.9/0.1
+                if mar < (0.02 / sens_factor):  # Was 0.05, now 0.02
+                    consonant_score = lip_compression * (1.0 - roundedness) * sens_factor * 0.2
+                    if consonant_score > best_vowel[1] * 3.0:  # 3x threshold for hard-to-detect sounds
+                        viseme_scores['K'] = consonant_score
+                else:
+                    consonant_score = lip_compression * (1.0 - roundedness) * mar * sens_factor * 0.2
+                    if consonant_score > best_vowel[1] * 3.0:
+                        viseme_scores['G'] = consonant_score
         
         # Find best match
         best_viseme = max(viseme_scores.items(), key=lambda x: x[1])
@@ -644,7 +674,7 @@ class MediaPipeProvider(AbstractProvider):
         fps: float
     ):
         """
-        Add viseme sequences to movement segments
+        Add viseme sequences to movement segments with temporal filtering
         
         Args:
             segments: List of movement segments
@@ -653,27 +683,131 @@ class MediaPipeProvider(AbstractProvider):
         """
         for segment in segments:
             # Get visemes for this segment's frame range
-            segment_visemes = []
-            segment_confidences = []
+            raw_visemes = []
+            raw_confidences = []
             
             for frame_idx in range(segment.start_frame, segment.end_frame + 1):
                 if frame_idx < len(viseme_frames):
                     vf = viseme_frames[frame_idx]
                     # Include neutral visemes as underscores for better timing information
                     if vf.viseme == 'neutral':
-                        segment_visemes.append('_')
-                        segment_confidences.append(vf.confidence)
+                        raw_visemes.append('_')
+                        raw_confidences.append(vf.confidence)
                     else:
-                        segment_visemes.append(vf.viseme)
-                        segment_confidences.append(vf.confidence)
+                        raw_visemes.append(vf.viseme)
+                        raw_confidences.append(vf.confidence)
             
-            # Create viseme sequence string
-            if segment_visemes:
-                segment.viseme_sequence = ''.join(segment_visemes)
-                segment.viseme_confidences = segment_confidences
+            # Apply temporal filtering for consonants (CRITICAL FIX)
+            if raw_visemes:
+                filtered_visemes, filtered_confidences = self._apply_temporal_filtering(
+                    raw_visemes, raw_confidences, fps
+                )
+                segment.viseme_sequence = ''.join(filtered_visemes)
+                segment.viseme_confidences = filtered_confidences
             else:
                 segment.viseme_sequence = ''
                 segment.viseme_confidences = []
+    
+    def _apply_temporal_filtering(self, visemes: List[str], confidences: List[float], fps: float) -> Tuple[List[str], List[float]]:
+        """
+        Apply temporal filtering to remove unrealistic consonant patterns
+        
+        Consonants should be BRIEF (1-3 frames max) and RARE in natural speech
+        
+        Args:
+            visemes: List of detected visemes
+            confidences: List of confidence scores
+            fps: Video framerate
+            
+        Returns:
+            Tuple of (filtered_visemes, filtered_confidences)
+        """
+        if len(visemes) < 2:
+            return visemes, confidences
+            
+        consonants = {'B', 'P', 'M', 'F', 'V', 'TH', 'T', 'D', 'N', 'K', 'G'}
+        vowels = {'A', 'E', 'I', 'O', 'U'}
+        
+        filtered_visemes = visemes[:]
+        filtered_confidences = confidences[:]
+        
+        # 1. TEMPORAL FILTERING: Remove sustained consonants (>3 frames)
+        i = 0
+        while i < len(filtered_visemes):
+            if filtered_visemes[i] in consonants:
+                # Count consecutive frames of this consonant
+                consonant_start = i
+                current_consonant = filtered_visemes[i]
+                
+                # Find end of consonant sequence
+                while (i < len(filtered_visemes) and 
+                       filtered_visemes[i] == current_consonant):
+                    i += 1
+                
+                consonant_length = i - consonant_start
+                
+                # CRITICAL: Consonants longer than 3 frames are impossible
+                # Convert them to the most appropriate vowel or neutral
+                if consonant_length > 3:
+                    # Find best replacement (prefer previous/next vowel or neutral)
+                    replacement = '_'  # Default to neutral
+                    
+                    # Look for neighboring vowels to use as replacement
+                    if consonant_start > 0 and filtered_visemes[consonant_start - 1] in vowels:
+                        replacement = filtered_visemes[consonant_start - 1]
+                    elif i < len(filtered_visemes) and filtered_visemes[i] in vowels:
+                        replacement = filtered_visemes[i]
+                    
+                    # Replace the sustained consonant with appropriate vowel/neutral
+                    for j in range(consonant_start, i):
+                        filtered_visemes[j] = replacement
+                        # Reduce confidence since this was a correction
+                        filtered_confidences[j] *= 0.3
+            else:
+                i += 1
+        
+        # 2. FREQUENCY FILTERING: Enforce natural consonant frequency limits
+        total_frames = len(filtered_visemes)
+        consonant_count = sum(1 for v in filtered_visemes if v in consonants)
+        consonant_frequency = consonant_count / total_frames if total_frames > 0 else 0
+        
+        # If consonant frequency > 25%, demote lowest confidence consonants
+        if consonant_frequency > 0.25:
+            # Get consonant indices with their confidence scores
+            consonant_indices = [(i, filtered_confidences[i]) for i, v in enumerate(filtered_visemes) if v in consonants]
+            
+            # Sort by confidence (lowest first)
+            consonant_indices.sort(key=lambda x: x[1])
+            
+            # Calculate how many to convert
+            target_consonants = int(total_frames * 0.25)  # Max 25%
+            excess_count = len(consonant_indices) - target_consonants
+            
+            # Convert lowest confidence consonants to neutral
+            for i in range(excess_count):
+                idx = consonant_indices[i][0]
+                filtered_visemes[idx] = '_'
+                filtered_confidences[idx] *= 0.2  # Very low confidence
+        
+        # 3. SPECIFIC B-FREQUENCY FILTER: B should be ~0.5% of frames, not 70%!
+        b_count = sum(1 for v in filtered_visemes if v == 'B')
+        b_frequency = b_count / total_frames if total_frames > 0 else 0
+        
+        if b_frequency > 0.05:  # Max 5% B sounds
+            # Get B indices with confidence scores
+            b_indices = [(i, filtered_confidences[i]) for i, v in enumerate(filtered_visemes) if v == 'B']
+            b_indices.sort(key=lambda x: x[1])  # Lowest confidence first
+            
+            # Keep only highest confidence B's (max 5% of segment)
+            max_b_count = max(1, int(total_frames * 0.05))
+            excess_b_count = len(b_indices) - max_b_count
+            
+            for i in range(excess_b_count):
+                idx = b_indices[i][0]
+                filtered_visemes[idx] = '_'  # Convert to neutral
+                filtered_confidences[idx] *= 0.1
+        
+        return filtered_visemes, filtered_confidences
     
     def get_preview_video(self) -> Optional[str]:
         """Get the preview video file path if generated"""
