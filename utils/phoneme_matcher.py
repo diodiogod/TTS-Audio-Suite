@@ -312,12 +312,13 @@ class PhonemeWordMatcher:
         """
         matches = self.match_phonemes_to_words(viseme_sequence, max_suggestions=3)
         
-        # Only use high confidence matches (>0.7) and prefer shorter, common words
+        # Use more lenient confidence for common patterns and prefer shorter, common words
         good_matches = []
         for word, confidence in matches:
-            if confidence > 0.7 and len(word) <= 8 and word.isalpha():
-                # Prefer shorter words and common words
-                word_score = confidence + (0.1 if len(word) <= 4 else 0)
+            min_confidence = 0.4 if len(word) <= 4 else 0.6  # Lower threshold for short words
+            if confidence > min_confidence and len(word) <= 8 and word.isalpha():
+                # Strongly prefer shorter words and common words
+                word_score = confidence + (0.3 if len(word) <= 3 else 0.1 if len(word) <= 4 else 0)
                 good_matches.append((word, word_score))
         
         if good_matches:
@@ -326,10 +327,24 @@ class PhonemeWordMatcher:
             best_word = good_matches[0][0]
             return [best_word]
         
-        # If no good matches, return the raw phonemes (but cleaned up)
+        # If no good matches, try simplified patterns for common words
         clean_sequence = viseme_sequence.replace('_', '').strip()
+        
+        # Special handling for common repeated patterns
+        if clean_sequence == 'I' or 'III' in clean_sequence:
+            return ['it']  # Common "I" sound words
+        elif clean_sequence == 'A' or 'AAA' in clean_sequence:
+            return ['at']  # Common "A" sound words  
+        elif clean_sequence == 'E' or 'EEE' in clean_sequence:
+            return ['eh']  # Common "E" sound
+        elif clean_sequence == 'O' or 'OOO' in clean_sequence:
+            return ['oh']  # Common "O" sound
+        elif clean_sequence == 'U' or 'UUU' in clean_sequence:
+            return ['uh']  # Common "U" sound
+        
+        # For very short sequences, just return cleaned
         if len(clean_sequence) <= 2:
-            return [clean_sequence]  # Very short sequences
+            return [clean_sequence]
         else:
             return [viseme_sequence]  # Show original with underscores
 

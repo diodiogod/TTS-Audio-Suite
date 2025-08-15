@@ -486,7 +486,10 @@ class MouthMovementAnalyzerNode(BaseNode):
                 logger.warning(f"Could not initialize word prediction: {e}")
                 enable_word_prediction = False
         
-        for i, segment in enumerate(timing_data.segments, 1):
+        # Sort segments by start time to ensure proper chronological order
+        sorted_segments = sorted(timing_data.segments, key=lambda s: s.start_time)
+        
+        for i, segment in enumerate(sorted_segments, 1):
             start_time = self._seconds_to_srt_time(segment.start_time)
             end_time = self._seconds_to_srt_time(segment.end_time)
             
