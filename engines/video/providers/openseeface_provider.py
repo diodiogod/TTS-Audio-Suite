@@ -114,12 +114,29 @@ class OpenSeeFaceProvider(AbstractProvider):
     - Fallback when MediaPipe struggles
     """
     
-    def __init__(self, sensitivity: float = 0.3):
+    def __init__(
+        self,
+        sensitivity: float = 0.3,
+        min_duration: float = 0.1,
+        merge_threshold: float = 0.2,
+        confidence_threshold: float = 0.5,
+        viseme_sensitivity: float = 1.0,
+        viseme_confidence_threshold: float = 0.4,
+        viseme_smoothing: float = 0.3,
+        enable_consonant_detection: bool = False
+    ):
         """
         Initialize OpenSeeFace provider
         
         Args:
             sensitivity: Movement detection sensitivity (0.1-1.0)
+            min_duration: Minimum movement duration in seconds
+            merge_threshold: Threshold for merging nearby segments
+            confidence_threshold: Minimum confidence for valid detection
+            viseme_sensitivity: Viseme detection sensitivity
+            viseme_confidence_threshold: Minimum confidence for viseme detection
+            viseme_smoothing: Temporal smoothing factor for visemes
+            enable_consonant_detection: Whether to detect consonants
         """
         if not OPENSEEFACE_AVAILABLE:
             raise RuntimeError(
@@ -131,7 +148,17 @@ class OpenSeeFaceProvider(AbstractProvider):
         if not OPENCV_AVAILABLE:
             raise RuntimeError("OpenCV is required for OpenSeeFace provider. Install with: pip install opencv-python")
         
-        super().__init__(sensitivity)
+        # Call parent constructor with all parameters
+        super().__init__(
+            sensitivity=sensitivity,
+            min_duration=min_duration,
+            merge_threshold=merge_threshold,
+            confidence_threshold=confidence_threshold,
+            viseme_sensitivity=viseme_sensitivity,
+            viseme_confidence_threshold=viseme_confidence_threshold,
+            viseme_smoothing=viseme_smoothing,
+            enable_consonant_detection=enable_consonant_detection
+        )
         
         # Calculate MAR threshold using exponential sensitivity mapping
         import math
@@ -144,8 +171,6 @@ class OpenSeeFaceProvider(AbstractProvider):
         
         # Initialize tracking parameters
         self.tracker = None
-        self.enable_viseme_detection = False
-        self.enable_consonant_detection = False
         
         logger.info(f"OpenSeeFace provider initialized with MAR threshold: {self.mar_threshold:.3f}")
         
