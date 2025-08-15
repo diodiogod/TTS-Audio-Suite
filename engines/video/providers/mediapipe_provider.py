@@ -520,70 +520,70 @@ class MediaPipeProvider(AbstractProvider):
         best_vowel = max([(k, v) for k, v in viseme_scores.items() if k in ['A', 'E', 'I', 'O', 'U', 'neutral']], 
                         key=lambda x: x[1])
         
-        # Consonant classification (SECONDARY - Only if vowels weak and extremely high confidence)
+        # Consonant classification (SECONDARY - Only if vowels weak and high confidence)
         # Consonants are RARE (15-25% total) and BRIEF interruptions of vowel flow
-        if enable_consonants and best_vowel[1] < 0.3:  # Only if vowels are very weak
+        if enable_consonants and best_vowel[1] < 0.6:  # Allow consonants when vowels are moderate (was 0.3)
             
-            # DRASTICALLY RAISED THRESHOLDS (10x more restrictive)
-            # B sounds occur ~0.5% of speech, not 70%!
+            # MODERATELY RAISED THRESHOLDS (balanced for realistic detection)
+            # B sounds occur ~2-5% of speech - rare but not impossible
             
-            # Bilabial stops and nasals (lips completely closed - VERY rare)
-            if lip_contact > (0.98 / sens_factor):  # Was 0.8, now 0.98 - must be nearly complete closure
+            # Bilabial stops and nasals (lips clearly closed but achievable)
+            if lip_contact > (0.92 / sens_factor):  # Was 0.98, now 0.92 - still restrictive but achievable
                 # Distinguish between B/P/M based on other features
-                if nose_flare > (0.8 / sens_factor):  # Was 0.3, now 0.8 - strong nasal signal required
-                    consonant_score = lip_contact * nose_flare * sens_factor * 0.5  # Reduced scoring
-                    if consonant_score > best_vowel[1] * 2.0:  # Must be 2x stronger than vowels
+                if nose_flare > (0.6 / sens_factor):  # Was 0.8, now 0.6 - more achievable
+                    consonant_score = lip_contact * nose_flare * sens_factor * 0.7  # Increased scoring
+                    if consonant_score > best_vowel[1] * 1.5:  # Was 2.0, now 1.5 - more reasonable
                         viseme_scores['M'] = consonant_score
-                elif lip_compression > (0.9 / sens_factor):  # Was 0.5, now 0.9 - extreme compression
-                    consonant_score = lip_contact * lip_compression * sens_factor * 0.5
-                    if consonant_score > best_vowel[1] * 2.0:
+                elif lip_compression > (0.75 / sens_factor):  # Was 0.9, now 0.75 - more achievable
+                    consonant_score = lip_contact * lip_compression * sens_factor * 0.7
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['P'] = consonant_score
                 else:
-                    consonant_score = lip_contact * sens_factor * 0.5
-                    if consonant_score > best_vowel[1] * 2.0:
+                    consonant_score = lip_contact * sens_factor * 0.7
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['B'] = consonant_score
             
-            # Labiodental fricatives (teeth clearly on lip - rare)
-            if teeth_visibility > (0.9 / sens_factor) and lip_contact > (0.8 / sens_factor):  # Was 0.4/0.3, now 0.9/0.8
-                if lip_compression > (0.8 / sens_factor):  # Was 0.4, now 0.8
-                    consonant_score = teeth_visibility * lip_compression * sens_factor * 0.4
-                    if consonant_score > best_vowel[1] * 2.0:
+            # Labiodental fricatives (teeth on lip - moderately rare)
+            if teeth_visibility > (0.75 / sens_factor) and lip_contact > (0.6 / sens_factor):  # Was 0.9/0.8, now 0.75/0.6
+                if lip_compression > (0.6 / sens_factor):  # Was 0.8, now 0.6
+                    consonant_score = teeth_visibility * lip_compression * sens_factor * 0.6
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['F'] = consonant_score
                 else:
-                    consonant_score = teeth_visibility * lip_contact * sens_factor * 0.4
-                    if consonant_score > best_vowel[1] * 2.0:
+                    consonant_score = teeth_visibility * lip_contact * sens_factor * 0.6
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['V'] = consonant_score
             
-            # Dental fricatives (tongue clearly visible between teeth - very rare)
-            if teeth_visibility > (0.95 / sens_factor) and mar > (0.2 / sens_factor):  # Was 0.6/0.1, now 0.95/0.2
-                consonant_score = teeth_visibility * mar * sens_factor * 0.3
-                if consonant_score > best_vowel[1] * 2.0:
+            # Dental fricatives (tongue visible between teeth - rare)
+            if teeth_visibility > (0.8 / sens_factor) and mar > (0.15 / sens_factor):  # Was 0.95/0.2, now 0.8/0.15
+                consonant_score = teeth_visibility * mar * sens_factor * 0.5
+                if consonant_score > best_vowel[1] * 1.5:
                     viseme_scores['TH'] = consonant_score
             
-            # Alveolar and velar stops (extreme compression only)
-            if lip_compression > (0.95 / sens_factor) and lip_contact < (0.3 / sens_factor):  # Was 0.6/0.5, now 0.95/0.3
-                if mar < (0.05 / sens_factor):  # Was 0.1, now 0.05
-                    consonant_score = lip_compression * (1.0 - mar) * sens_factor * 0.3
-                    if consonant_score > best_vowel[1] * 2.0:
+            # Alveolar and velar stops (significant compression)
+            if lip_compression > (0.8 / sens_factor) and lip_contact < (0.4 / sens_factor):  # Was 0.95/0.3, now 0.8/0.4
+                if mar < (0.08 / sens_factor):  # Was 0.05, now 0.08
+                    consonant_score = lip_compression * (1.0 - mar) * sens_factor * 0.5
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['T'] = consonant_score
-                elif nose_flare > (0.7 / sens_factor):  # Was 0.2, now 0.7
-                    consonant_score = lip_compression * nose_flare * sens_factor * 0.3
-                    if consonant_score > best_vowel[1] * 2.0:
+                elif nose_flare > (0.5 / sens_factor):  # Was 0.7, now 0.5
+                    consonant_score = lip_compression * nose_flare * sens_factor * 0.5
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['N'] = consonant_score
                 else:
-                    consonant_score = lip_compression * mar * sens_factor * 0.3
-                    if consonant_score > best_vowel[1] * 2.0:
+                    consonant_score = lip_compression * mar * sens_factor * 0.5
+                    if consonant_score > best_vowel[1] * 1.5:
                         viseme_scores['D'] = consonant_score
             
-            # Velar stops (back of tongue - nearly impossible to detect reliably)
-            if lip_compression > (0.9 / sens_factor) and roundedness < (0.1 / sens_factor):  # Was 0.4/0.3, now 0.9/0.1
-                if mar < (0.02 / sens_factor):  # Was 0.05, now 0.02
-                    consonant_score = lip_compression * (1.0 - roundedness) * sens_factor * 0.2
-                    if consonant_score > best_vowel[1] * 3.0:  # 3x threshold for hard-to-detect sounds
+            # Velar stops (back of tongue - hard to detect but possible)
+            if lip_compression > (0.7 / sens_factor) and roundedness < (0.2 / sens_factor):  # Was 0.9/0.1, now 0.7/0.2
+                if mar < (0.05 / sens_factor):  # Was 0.02, now 0.05
+                    consonant_score = lip_compression * (1.0 - roundedness) * sens_factor * 0.4
+                    if consonant_score > best_vowel[1] * 2.0:  # Keep higher threshold for hard-to-detect
                         viseme_scores['K'] = consonant_score
                 else:
-                    consonant_score = lip_compression * (1.0 - roundedness) * mar * sens_factor * 0.2
-                    if consonant_score > best_vowel[1] * 3.0:
+                    consonant_score = lip_compression * (1.0 - roundedness) * mar * sens_factor * 0.4
+                    if consonant_score > best_vowel[1] * 2.0:
                         viseme_scores['G'] = consonant_score
         
         # Find best match
