@@ -69,8 +69,11 @@ class MediaPipeProvider(AbstractProvider):
             min_tracking_confidence=0.5
         )
         
-        # MAR threshold based on sensitivity
-        self.mar_threshold = 0.15 * (2.0 - self.sensitivity)  # Higher sensitivity = lower threshold
+        # MAR threshold based on sensitivity - more aggressive scaling for better detection
+        # At sensitivity 0.1: threshold = 0.20 (conservative)
+        # At sensitivity 0.5: threshold = 0.10 (balanced) 
+        # At sensitivity 1.0: threshold = 0.02 (very sensitive)
+        self.mar_threshold = 0.02 + (0.18 * (1.0 - self.sensitivity))  # Exponential scaling for sensitivity
         
         logger.info(f"MediaPipe provider initialized with MAR threshold: {self.mar_threshold:.3f}")
     

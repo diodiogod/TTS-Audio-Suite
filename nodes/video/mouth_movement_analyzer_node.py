@@ -60,6 +60,15 @@ class OutputFormat(Enum):
     TIMING_DATA = "TIMING_DATA"
 
 
+class SRTPlaceholderFormat(Enum):
+    """Available SRT placeholder formats"""
+    WORDS = "Words"
+    SYLLABLES = "Syllables"
+    CHARACTERS = "Characters"
+    UNDERSCORES = "Underscores"
+    DURATION_INFO = "Duration + Length"
+
+
 class MouthMovementAnalyzerNode(BaseNode):
     """
     Analyzes videos to detect mouth movement timing for TTS synchronization
@@ -81,35 +90,39 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "max": 1.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "Movement detection sensitivity (Mouth Aspect Ratio threshold):\n\n• Lower values (0.1-0.2): Detect only obvious mouth movements\n  - Good for clear speech, reduces false positives\n  - Use when video has noise or artifacts\n\n• Medium values (0.3-0.4): Balanced detection (recommended)\n  - Catches most speech movements reliably\n  - Good starting point for most videos\n\n• Higher values (0.5-1.0): Detect subtle movements\n  - Catches whispers, lip sync, small movements\n  - May include false positives from noise\n\nTip: Start with 0.3 and adjust based on results"
+                    "tooltip": "Movement detection sensitivity (Mouth Aspect Ratio threshold):\n\nLower values: Only detect obvious mouth movements, fewer false positives\nHigher values: Detect subtle movements, may include noise\n\nRecommended: Start with 0.3, increase if missing speech, decrease if too noisy"
                 }),
                 "min_duration": ("FLOAT", {
                     "default": 0.1,
-                    "min": 0.05,
+                    "min": 0.01,
                     "max": 2.0,
-                    "step": 0.05,
+                    "step": 0.01,
                     "display": "number",
-                    "tooltip": "Minimum duration for valid speech segments (in seconds):\n\n• Very short (0.05-0.08s): Include quick sounds, stutters\n  - Good for detailed analysis, rapid speech\n  - May include mouth noise, clicks\n\n• Short (0.1-0.15s): Normal speech segments (recommended)\n  - Filters out most noise and artifacts\n  - Good balance for TTS synchronization\n\n• Medium (0.2-0.5s): Only longer phrases\n  - Cleaner output, fewer segments\n  - Good for slow, deliberate speech\n\n• Long (0.5s+): Only extended speech\n  - Very clean, minimal segments\n  - May miss short words\n\nTip: 0.1s works well for most TTS applications"
+                    "tooltip": "Minimum duration for valid speech segments (in seconds):\n\nLower values: Include quick sounds and short words, more segments\nHigher values: Only longer phrases, cleaner but may miss short words\n\nRecommended: 0.1s for balanced filtering, 0.05s for detailed analysis"
                 }),
                 "output_format": ([f.value for f in OutputFormat], {
                     "default": OutputFormat.SRT.value,
-                    "tooltip": "Output format for timing data:\n\n• SRT: SubRip subtitle format\n  - Standard timing format: 00:01:23,456 --> 00:01:25,789\n  - Compatible with most video players and TTS systems\n  - Best for TTS synchronization workflows\n\n• JSON: Structured data format\n  - Detailed analysis data with confidence scores\n  - Includes metadata and frame-level information\n  - Good for custom processing or debugging\n\n• CSV: Comma-separated values\n  - Simple spreadsheet format\n  - Easy to import into Excel or data analysis tools\n  - Good for statistical analysis\n\n• TIMING_DATA: Internal ComfyUI format\n  - For connecting to other TTS Audio Suite nodes\n  - Preserves all analysis details and metadata\n\nRecommended: Use SRT for TTS workflows, JSON for analysis"
+                    "tooltip": "Output format for timing data:\n\n• SRT: Standard subtitle format, best for TTS synchronization\n• JSON: Detailed data with confidence scores for analysis\n• CSV: Spreadsheet format for data processing\n• TIMING_DATA: Internal format for connecting to other nodes\n\nRecommended: SRT for TTS workflows, JSON for debugging"
+                }),
+                "srt_placeholder_format": ([f.value for f in SRTPlaceholderFormat], {
+                    "default": SRTPlaceholderFormat.WORDS.value,
+                    "tooltip": "SRT placeholder format to show timing capacity:\n\n• Words: [word word word] - intuitive for content creators\n• Syllables: [syl-la-ble syl-la-ble] - accurate for TTS timing\n• Characters: [••••••••••••••••••••] - precise character count\n• Underscores: [_ _ _ _ _] - clean visual length indicator\n• Duration + Length: [1.2s: ________] - shows both time and space\n\nRecommended: Words for general use, Syllables for precise TTS"
                 }),
             },
             "optional": {
                 "preview_mode": ("BOOLEAN", {
                     "default": False,
                     "label": "Show preview with movement markers",
-                    "tooltip": "Generate annotated video preview showing detected movements:\n\n• When enabled: Creates a preview video with visual markers\n  - Green overlay: Active mouth movement detected\n  - Red overlay: No movement detected\n  - Confidence scores and MAR values displayed\n  - Facial landmarks and mouth region highlighted\n\n• Performance impact:\n  - Uses 540p resolution for faster processing\n  - Fast VP9 encoding for quick generation\n  - Increases processing time by ~30-50%\n\n• Use cases:\n  - Debugging detection accuracy\n  - Visualizing analysis results\n  - Tuning sensitivity parameters\n  - Presentations and demonstrations\n\nTip: Enable for testing, disable for production workflows"
+                    "tooltip": "Generate annotated video preview with movement markers:\n\nShows green/red overlays for detected/undetected movements with confidence scores and facial landmarks.\n\nPerformance: Uses 540p resolution, increases processing time by ~40%\n\nUse for: Debugging detection accuracy and tuning parameters"
                 }),
                 "merge_threshold": ("FLOAT", {
                     "default": 0.2,
                     "min": 0.0,
-                    "max": 1.0,
+                    "max": 3.0,
                     "step": 0.05,
                     "display": "slider",
                     "label": "Merge gaps shorter than (seconds)",
-                    "tooltip": "Merge nearby speech segments separated by short gaps:\n\n• No merging (0.0s): Keep all segments separate\n  - Preserves every detected pause\n  - May create many short segments\n  - Good for detailed timing analysis\n\n• Light merging (0.1-0.2s): Merge very short pauses (recommended)\n  - Combines words separated by brief pauses\n  - Reduces segment count while preserving speech patterns\n  - Good for natural TTS flow\n\n• Medium merging (0.3-0.5s): Merge longer pauses\n  - Creates phrase-level segments\n  - Smoother TTS synchronization\n  - May lose some natural speech rhythm\n\n• Heavy merging (0.6s+): Only major pauses separate segments\n  - Creates sentence-level segments\n  - Very smooth but may lose detail\n\nExample: Two segments [0-2s] and [2.1-4s] with 0.2s threshold\nbecome one segment [0-4s] because gap (0.1s) < threshold (0.2s)"
+                    "tooltip": "Merge nearby speech segments separated by short gaps:\n\nLower values: Keep more segments separate, preserve natural pauses\nHigher values: Merge more segments together, smoother but less detailed\n\nRecommended: 0.2s for natural flow, 1.0s+ for sentence-level segments"
                 }),
                 "confidence_threshold": ("FLOAT", {
                     "default": 0.5,
@@ -117,7 +130,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "max": 1.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "Minimum confidence score for including detected movements:\n\n• Low threshold (0.0-0.3): Include uncertain detections\n  - Catches more potential movements\n  - May include false positives from noise, shadows\n  - Good for subtle or unclear videos\n\n• Medium threshold (0.4-0.6): Balanced filtering (recommended)\n  - Good balance of accuracy vs completeness\n  - Filters out most false positives\n  - Retains clear mouth movements\n\n• High threshold (0.7-1.0): Only high-confidence detections\n  - Very clean results, minimal false positives\n  - May miss subtle or partially obscured movements\n  - Good for high-quality, well-lit videos\n\nConfidence is based on:\n• MediaPipe landmark detection quality\n• Face visibility and lighting\n• Motion clarity and consistency\n• Facial orientation and occlusion\n\nTip: Start with 0.5 and lower if missing movements,\nraise if getting too many false detections"
+                    "tooltip": "Minimum confidence score for including detected movements:\n\nLower values: Include uncertain detections, catch more movements but may include noise\nHigher values: Only high-confidence detections, cleaner but may miss subtle movements\n\nConfidence based on: Landmark quality, face visibility, lighting, motion clarity\n\nRecommended: Start with 0.5, lower if missing movements, raise if too noisy"
                 }),
             }
         }
@@ -182,6 +195,7 @@ class MouthMovementAnalyzerNode(BaseNode):
         sensitivity: float,
         min_duration: float,
         output_format: str,
+        srt_placeholder_format: str,
         preview_mode: bool = False,
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
@@ -214,7 +228,7 @@ class MouthMovementAnalyzerNode(BaseNode):
         timing_data = analyzer.analyze_video(video, preview_mode=preview_mode)
         
         # Format outputs based on selected format
-        srt_output = self._format_as_srt(timing_data) if output_format in [OutputFormat.SRT.value, OutputFormat.TIMING_DATA.value] else ""
+        srt_output = self._format_as_srt(timing_data, srt_placeholder_format) if output_format in [OutputFormat.SRT.value, OutputFormat.TIMING_DATA.value] else ""
         
         if output_format == OutputFormat.JSON.value:
             srt_output = self._format_as_json(timing_data)
@@ -286,17 +300,57 @@ class MouthMovementAnalyzerNode(BaseNode):
             "result": (output_video, timing_data, srt_output, movement_frames, confidence_scores)
         }
     
-    def _format_as_srt(self, timing_data) -> str:
-        """Convert timing data to SRT format"""
+    def _format_as_srt(self, timing_data, placeholder_format: str) -> str:
+        """Convert timing data to SRT format with user-selected placeholder format"""
         srt_lines = []
         
         for i, segment in enumerate(timing_data.segments, 1):
             start_time = self._seconds_to_srt_time(segment.start_time)
             end_time = self._seconds_to_srt_time(segment.end_time)
             
+            # Calculate segment duration
+            duration = segment.end_time - segment.start_time
+            
+            # Generate placeholder based on selected format
+            if placeholder_format == SRTPlaceholderFormat.WORDS.value:
+                # 3.5 words per second for normal speech
+                estimated_words = max(1, int(duration * 3.5))
+                placeholder = " ".join(["word"] * estimated_words)
+                info = f"({estimated_words} word{'s' if estimated_words != 1 else ''}, {duration:.1f}s)"
+                
+            elif placeholder_format == SRTPlaceholderFormat.SYLLABLES.value:
+                # 4.5 syllables per second for normal speech
+                estimated_syllables = max(1, int(duration * 4.5))
+                placeholder = " ".join(["syl-la-ble"] * (estimated_syllables // 3 + 1))[:estimated_syllables * 4]  # Approximate syllable representation
+                info = f"({estimated_syllables} syllable{'s' if estimated_syllables != 1 else ''}, {duration:.1f}s)"
+                
+            elif placeholder_format == SRTPlaceholderFormat.CHARACTERS.value:
+                # 20 characters per second for normal speech
+                estimated_chars = max(1, int(duration * 20))
+                placeholder = "•" * estimated_chars
+                info = f"({estimated_chars} char{'s' if estimated_chars != 1 else ''}, {duration:.1f}s)"
+                
+            elif placeholder_format == SRTPlaceholderFormat.UNDERSCORES.value:
+                # Visual word slots with underscores
+                estimated_words = max(1, int(duration * 3.5))
+                placeholder = " ".join(["_"] * estimated_words)
+                info = f"({estimated_words} slot{'s' if estimated_words != 1 else ''}, {duration:.1f}s)"
+                
+            elif placeholder_format == SRTPlaceholderFormat.DURATION_INFO.value:
+                # Duration with visual length indicator
+                estimated_chars = max(1, int(duration * 20))
+                placeholder = f"{duration:.1f}s: " + "_" * min(estimated_chars, 40)  # Cap at 40 chars for readability
+                info = f"({estimated_chars} chars max)"
+                
+            else:
+                # Fallback to words format
+                estimated_words = max(1, int(duration * 3.5))
+                placeholder = " ".join(["word"] * estimated_words)
+                info = f"({estimated_words} word{'s' if estimated_words != 1 else ''}, {duration:.1f}s)"
+            
             srt_lines.append(f"{i}")
             srt_lines.append(f"{start_time} --> {end_time}")
-            srt_lines.append(f"[Movement {i}]")  # Placeholder text
+            srt_lines.append(f"[{placeholder}] {info}")
             srt_lines.append("")
         
         return "\n".join(srt_lines)
