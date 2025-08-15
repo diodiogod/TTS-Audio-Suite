@@ -61,6 +61,11 @@ class VisemeDetectionOptionsNode:
                     "label": "Enable Consonant Detection",
                     "tooltip": "Detect consonants (B, P, M, F, V, TH, etc.) in addition to vowels:\n\n• Vowels only: A, E, I, O, U, _\n• With consonants: A, E, I, O, U, B, P, M, F, V, TH, _, etc.\n• Adds ~10% processing time\n• Provides more detailed phoneme sequences\n• Better for advanced lip-sync and speech analysis\n\nLeave disabled for basic vowel-only detection."
                 }),
+                "enable_temporal_analysis": ("BOOLEAN", {
+                    "default": False,
+                    "label": "Enable Temporal Analysis",
+                    "tooltip": "Advanced consonant burst detection using 5-frame windows:\n\n• Analyzes onset → peak → release patterns for true consonants\n• Dramatically improves B/P/M distinction accuracy\n• Detects rapid lip closure/release vs sustained patterns\n• Better coarticulation modeling (vowel context)\n• Adds ~50% processing time but much higher accuracy\n• Requires consonant detection enabled\n\nRecommended for: research, high-quality phonetic analysis\nSkip for: basic lip-sync, real-time processing"
+                }),
                 "enable_word_prediction": ("BOOLEAN", {
                     "default": False,
                     "label": "Enable Word Prediction",
@@ -81,6 +86,7 @@ class VisemeDetectionOptionsNode:
         viseme_confidence_threshold: float,
         viseme_smoothing: float,
         enable_consonant_detection: bool,
+        enable_temporal_analysis: bool,
         enable_word_prediction: bool
     ) -> Tuple[Dict[str, Any]]:
         """
@@ -95,13 +101,14 @@ class VisemeDetectionOptionsNode:
             "viseme_confidence_threshold": viseme_confidence_threshold,
             "viseme_smoothing": viseme_smoothing,
             "enable_consonant_detection": enable_consonant_detection,
+            "enable_temporal_analysis": enable_temporal_analysis,
             "enable_word_prediction": enable_word_prediction
         }
         
         logger.info(f"Viseme options created: enabled={enable_viseme_detection}, "
-                   f"consonants={enable_consonant_detection}, words={enable_word_prediction}, "
-                   f"sensitivity={viseme_sensitivity}, confidence={viseme_confidence_threshold}, "
-                   f"smoothing={viseme_smoothing}")
+                   f"consonants={enable_consonant_detection}, temporal={enable_temporal_analysis}, "
+                   f"words={enable_word_prediction}, sensitivity={viseme_sensitivity}, "
+                   f"confidence={viseme_confidence_threshold}, smoothing={viseme_smoothing}")
         
         return (viseme_options,)
 

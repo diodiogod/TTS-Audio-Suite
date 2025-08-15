@@ -36,6 +36,19 @@ TimingData = abstract_module.TimingData
 MovementSegment = abstract_module.MovementSegment
 VisemeFrame = abstract_module.VisemeFrame
 
+# Import modular viseme analysis system
+try:
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    analysis_path = os.path.join(project_root, "engines", "video", "analysis")
+    if analysis_path not in sys.path:
+        sys.path.insert(0, analysis_path)
+    
+    from viseme_analysis_factory import VisemeAnalysisFactory
+    ANALYSIS_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Modular analysis system not available: {e}")
+    ANALYSIS_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -98,7 +111,7 @@ class MediaPipeProvider(AbstractProvider):
         
         logger.info(f"MediaPipe provider initialized with MAR threshold: {self.mar_threshold:.3f}")
     
-    def analyze_video(self, video_input, preview_mode: bool = False, enable_viseme: bool = False) -> TimingData:
+    def analyze_video(self, video_input, preview_mode: bool = False, enable_viseme: bool = False, viseme_options: Dict[str, Any] = None) -> TimingData:
         """
         Analyze video using MediaPipe Face Mesh
         """
@@ -120,6 +133,9 @@ class MediaPipeProvider(AbstractProvider):
             video_path = video_input
         else:
             raise ValueError(f"Cannot extract file path from video input of type {type(video_input)}. Available attributes: {dir(video_input)}")
+        
+        # Store viseme options for modular analysis
+        self.viseme_options = viseme_options or {}
         
         logger.info(f"Analyzing video with MediaPipe: {video_path}")
         
@@ -200,7 +216,15 @@ class MediaPipeProvider(AbstractProvider):
                 # Extract viseme features if enabled
                 if enable_viseme:
                     features = self.extract_geometric_features(landmarks)
-                    viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
+                    
+                    # Use modular analysis system if available
+                    if ANALYSIS_AVAILABLE and hasattr(self, 'viseme_options'):
+                        analyzer = VisemeAnalysisFactory.create_analyzer(self.viseme_options)
+                        result = analyzer.classify_viseme(features, self.enable_consonant_detection)
+                        viseme, viseme_conf = result.viseme, result.confidence
+                    else:
+                        # Fallback to built-in method
+                        viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
                     
                     viseme_frames.append(VisemeFrame(
                         frame_index=frame_count,
