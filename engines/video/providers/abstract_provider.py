@@ -7,8 +7,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
-from dataclasses import dataclass
-from typing import Any, Dict, List
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 @dataclass
 class MovementSegment:
@@ -19,6 +19,16 @@ class MovementSegment:
     end_frame: int
     confidence: float  # 0.0 to 1.0
     peak_mar: float    # peak mouth aspect ratio
+    viseme_sequence: Optional[str] = None  # e.g., "AAEEIIOOUUA"
+    viseme_confidences: Optional[List[float]] = None  # confidence per viseme
+
+@dataclass
+class VisemeFrame:
+    """Viseme detection for a single frame"""
+    frame_index: int
+    viseme: str  # 'A', 'E', 'I', 'O', 'U', or 'neutral'
+    confidence: float
+    geometric_features: Dict[str, float]  # lip_width, lip_height, etc.
 
 @dataclass
 class TimingData:
@@ -29,6 +39,7 @@ class TimingData:
     total_duration: float
     provider: str
     metadata: Dict[str, Any]
+    viseme_frames: Optional[List[VisemeFrame]] = None  # Frame-by-frame viseme data
 
 logger = logging.getLogger(__name__)
 
@@ -239,14 +250,14 @@ class AbstractProvider(ABC):
         
         return segments
     
-    def get_preview_video(self) -> Optional[Any]:
+    def get_preview_frames(self) -> Optional[List[np.ndarray]]:
         """
-        Get the preview video with movement markers if generated
+        Get the preview frames with movement markers if generated
         
         Returns:
-            Preview video or None
+            List of preview frames or None
         """
-        return self.preview_video
+        return getattr(self, 'preview_frames', None)
     
     def annotate_frame(
         self,

@@ -5,7 +5,7 @@ High-performance facial landmark detection with 468 3D face landmarks
 
 import logging
 import os
-from typing import Optional, Tuple, List, Any
+from typing import Optional, Tuple, List, Any, Dict
 import numpy as np
 
 try:
@@ -34,6 +34,7 @@ spec.loader.exec_module(abstract_module)
 AbstractProvider = abstract_module.AbstractProvider
 TimingData = abstract_module.TimingData
 MovementSegment = abstract_module.MovementSegment
+VisemeFrame = abstract_module.VisemeFrame
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +70,35 @@ class MediaPipeProvider(AbstractProvider):
             min_tracking_confidence=0.5
         )
         
-        # MAR threshold based on sensitivity - more aggressive scaling for better detection
-        # At sensitivity 0.1: threshold = 0.20 (conservative)
-        # At sensitivity 0.5: threshold = 0.10 (balanced) 
-        # At sensitivity 1.0: threshold = 0.02 (very sensitive)
-        self.mar_threshold = 0.02 + (0.18 * (1.0 - self.sensitivity))  # Exponential scaling for sensitivity
+        # Enhanced MAR threshold with exponential scaling for ultra-fine control
+        # Exponential mapping for much more granular sensitivity control:
+        # At sensitivity 0.1: threshold ≈ 0.25 (very conservative, only obvious movements)
+        # At sensitivity 0.3: threshold ≈ 0.12 (moderate, good for clear speech)
+        # At sensitivity 0.5: threshold ≈ 0.08 (balanced, catches most speech)
+        # At sensitivity 0.7: threshold ≈ 0.05 (sensitive, includes subtle movements)
+        # At sensitivity 0.9: threshold ≈ 0.025 (very sensitive, catches whispers)
+        # At sensitivity 1.0: threshold ≈ 0.015 (ultra-sensitive, may include micro-movements)
+        
+        # Use exponential decay for ultra-fine control at high sensitivity
+        normalized_sensitivity = max(0.0, min(1.0, self.sensitivity))  # Clamp to [0,1]
+        
+        # Exponential formula: threshold = base_max * exp(-sensitivity_factor * sensitivity)
+        # This gives much finer control at higher sensitivities
+        import math
+        base_max = 0.25  # Maximum threshold at sensitivity 0
+        sensitivity_factor = 4.0  # Controls how steep the exponential curve is
+        
+        self.mar_threshold = base_max * math.exp(-sensitivity_factor * normalized_sensitivity)
+        
+        # Ensure minimum threshold to prevent unrealistic detection
+        self.mar_threshold = max(0.01, self.mar_threshold)
+        
+        # Initialize viseme detection mode
+        self.enable_viseme_detection = False  # Will be enabled via node parameters
         
         logger.info(f"MediaPipe provider initialized with MAR threshold: {self.mar_threshold:.3f}")
     
-    def analyze_video(self, video_input, preview_mode: bool = False) -> TimingData:
+    def analyze_video(self, video_input, preview_mode: bool = False, enable_viseme: bool = False) -> TimingData:
         """
         Analyze video using MediaPipe Face Mesh
         """
@@ -147,6 +168,7 @@ class MediaPipeProvider(AbstractProvider):
         movement_frames = []
         confidence_scores = []
         mar_values = []
+        viseme_frames = [] if enable_viseme else None
         preview_frames = [] if preview_mode else None
         
         # Store scaling factors for later coordinate conversion
@@ -170,12 +192,31 @@ class MediaPipeProvider(AbstractProvider):
             movement_frames.append(is_moving)
             confidence_scores.append(confidence)
             
-            # Calculate MAR if landmarks detected (using processed frame coordinates)
+            # Calculate MAR and extract features if landmarks detected
             if landmarks is not None:
                 mar = self.calculate_mar(landmarks)
                 mar_values.append(mar)
+                
+                # Extract viseme features if enabled
+                if enable_viseme:
+                    features = self.extract_geometric_features(landmarks)
+                    viseme, viseme_conf = self.classify_viseme(features)
+                    
+                    viseme_frames.append(VisemeFrame(
+                        frame_index=frame_count,
+                        viseme=viseme,
+                        confidence=viseme_conf,
+                        geometric_features=features
+                    ))
             else:
                 mar_values.append(0.0)
+                if enable_viseme:
+                    viseme_frames.append(VisemeFrame(
+                        frame_index=frame_count,
+                        viseme='neutral',
+                        confidence=0.0,
+                        geometric_features={}
+                    ))
             
             # Generate preview frame if requested (using processed frame for consistency)
             if preview_mode:
@@ -207,6 +248,10 @@ class MediaPipeProvider(AbstractProvider):
         else:
             self.preview_frames = None
         
+        # Add viseme sequences to segments if enabled
+        if enable_viseme and viseme_frames:
+            self._add_viseme_sequences_to_segments(filtered_segments, viseme_frames, fps)
+        
         # Create timing data
         timing_data = TimingData(
             segments=filtered_segments,
@@ -219,8 +264,10 @@ class MediaPipeProvider(AbstractProvider):
                 "sensitivity": self.sensitivity,
                 "video_resolution": f"{width}x{height}",
                 "total_segments_before_filter": len(segments),
-                "total_segments_after_filter": len(filtered_segments)
-            }
+                "total_segments_after_filter": len(filtered_segments),
+                "viseme_detection_enabled": enable_viseme
+            },
+            viseme_frames=viseme_frames
         )
         
         logger.info(f"Analysis complete: {len(filtered_segments)} segments detected (filtered from {len(segments)})")
@@ -263,6 +310,160 @@ class MediaPipeProvider(AbstractProvider):
             confidence = max(0.0, 1.0 - (self.mar_threshold - mar) / self.mar_threshold)
         
         return is_moving, confidence, landmarks
+    
+    def extract_geometric_features(self, landmarks: np.ndarray) -> Dict[str, float]:
+        """
+        Extract comprehensive geometric features for viseme detection
+        
+        Returns:
+            Dictionary of geometric features including:
+            - lip_width: Horizontal distance between mouth corners
+            - lip_height: Vertical distance between upper and lower lips
+            - mouth_area: Approximate area of mouth opening
+            - lip_ratio: Width/height ratio for shape classification
+            - upper_lip_curvature: Curvature of upper lip
+            - lower_lip_curvature: Curvature of lower lip
+            - mouth_roundedness: How circular the mouth shape is
+            - lip_protrusion: 3D depth information from MediaPipe
+        """
+        if landmarks is None or len(landmarks) < 468:
+            return {}
+        
+        try:
+            # Key landmark points for mouth geometry
+            left_corner = landmarks[61][:2]  # Left mouth corner
+            right_corner = landmarks[291][:2]  # Right mouth corner
+            upper_lip_top = landmarks[13][:2]  # Top of upper lip
+            lower_lip_bottom = landmarks[14][:2]  # Bottom of lower lip
+            upper_inner = landmarks[82][:2]  # Inner upper lip
+            lower_inner = landmarks[87][:2]  # Inner lower lip
+            
+            # Additional points for detailed analysis
+            upper_lip_left = landmarks[84][:2]  # Upper lip left
+            upper_lip_right = landmarks[314][:2]  # Upper lip right
+            lower_lip_left = landmarks[91][:2]  # Lower lip left
+            lower_lip_right = landmarks[321][:2]  # Lower lip right
+            
+            # Calculate basic measurements
+            lip_width = np.linalg.norm(right_corner - left_corner)
+            lip_height_outer = np.linalg.norm(upper_lip_top - lower_lip_bottom)
+            lip_height_inner = np.linalg.norm(upper_inner - lower_inner)
+            lip_height = (lip_height_outer + lip_height_inner) / 2
+            
+            # Aspect ratio for shape classification
+            lip_ratio = lip_width / lip_height if lip_height > 0 else 0
+            
+            # Approximate mouth area (simplified)
+            mouth_area = lip_width * lip_height * 0.7  # Elliptical approximation
+            
+            # Calculate lip curvature (simplified)
+            upper_lip_center = (upper_lip_left + upper_lip_top + upper_lip_right) / 3
+            lower_lip_center = (lower_lip_left + lower_lip_bottom + lower_lip_right) / 3
+            
+            upper_lip_curvature = np.linalg.norm(upper_lip_top - upper_lip_center)
+            lower_lip_curvature = np.linalg.norm(lower_lip_bottom - lower_lip_center)
+            
+            # Calculate roundedness (how circular vs elliptical)
+            # Perfect circle = 1.0, wider ellipse > 1.0, taller ellipse < 1.0
+            roundedness = min(lip_width, lip_height) / max(lip_width, lip_height) if max(lip_width, lip_height) > 0 else 0
+            
+            # Extract 3D depth information if available
+            lip_protrusion = 0.0
+            if landmarks.shape[1] >= 3:
+                # Average Z-coordinate of lip landmarks
+                lip_z_coords = [
+                    landmarks[61][2], landmarks[291][2],
+                    landmarks[13][2], landmarks[14][2],
+                    landmarks[82][2], landmarks[87][2]
+                ]
+                lip_protrusion = np.mean(lip_z_coords)
+            
+            # Calculate MAR for backward compatibility
+            mar = lip_height / lip_width if lip_width > 0 else 0
+            
+            return {
+                'lip_width': lip_width,
+                'lip_height': lip_height,
+                'mouth_area': mouth_area,
+                'lip_ratio': lip_ratio,
+                'upper_lip_curvature': upper_lip_curvature,
+                'lower_lip_curvature': lower_lip_curvature,
+                'roundedness': roundedness,
+                'lip_protrusion': lip_protrusion,
+                'mar': mar
+            }
+            
+        except (IndexError, TypeError) as e:
+            logger.warning(f"Error extracting geometric features: {e}")
+            return {}
+    
+    def classify_viseme(self, features: Dict[str, float]) -> Tuple[str, float]:
+        """
+        Classify mouth shape into viseme categories based on geometric features
+        
+        Args:
+            features: Dictionary of geometric features
+            
+        Returns:
+            Tuple of (viseme_label, confidence)
+            Visemes: 'A', 'E', 'I', 'O', 'U', 'neutral'
+        """
+        if not features:
+            return 'neutral', 0.0
+        
+        lip_ratio = features.get('lip_ratio', 0)
+        roundedness = features.get('roundedness', 0)
+        mouth_area = features.get('mouth_area', 0)
+        mar = features.get('mar', 0)
+        
+        # Normalize mouth area (rough approximation)
+        normalized_area = min(1.0, mouth_area / 1000.0)  # Adjust scale as needed
+        
+        # Vowel classification rules based on research
+        viseme_scores = {
+            'A': 0.0,
+            'E': 0.0,
+            'I': 0.0,
+            'O': 0.0,
+            'U': 0.0,
+            'neutral': 0.0
+        }
+        
+        # Check if mouth is open enough for vowel
+        if mar < self.mar_threshold:
+            return 'neutral', 0.8
+        
+        # A: Wide open mouth, high aperture
+        if mar > 0.4 and lip_ratio < 3.0:
+            viseme_scores['A'] = (mar - 0.4) * 2.0 + normalized_area
+        
+        # E: Spread lips, moderate opening
+        if 0.15 < mar < 0.35 and lip_ratio > 3.5:
+            viseme_scores['E'] = (1.0 - abs(mar - 0.25) * 4.0) * (lip_ratio / 5.0)
+        
+        # I: Narrow vertical, wide horizontal
+        if mar < 0.2 and lip_ratio > 4.0:
+            viseme_scores['I'] = (1.0 - mar * 5.0) * (lip_ratio / 6.0)
+        
+        # O: Rounded, moderate opening
+        if 0.2 < mar < 0.4 and roundedness > 0.6:
+            viseme_scores['O'] = roundedness + (1.0 - abs(mar - 0.3) * 5.0)
+        
+        # U: Small rounded opening
+        if mar < 0.25 and roundedness > 0.7:
+            viseme_scores['U'] = roundedness + (1.0 - mar * 4.0)
+        
+        # Find best match
+        best_viseme = max(viseme_scores.items(), key=lambda x: x[1])
+        
+        # Normalize confidence to 0-1 range
+        confidence = min(1.0, best_viseme[1] / 2.0)
+        
+        # If confidence is too low, return neutral
+        if confidence < 0.3:
+            return 'neutral', 0.5
+        
+        return best_viseme[0], confidence
     
     def calculate_mar(self, landmarks: np.ndarray) -> float:
         """
@@ -308,6 +509,40 @@ class MediaPipeProvider(AbstractProvider):
         except (IndexError, TypeError) as e:
             logger.warning(f"Error calculating MAR: {e}")
             return 0.0
+    
+    def _add_viseme_sequences_to_segments(
+        self,
+        segments: List[MovementSegment],
+        viseme_frames: List[VisemeFrame],
+        fps: float
+    ):
+        """
+        Add viseme sequences to movement segments
+        
+        Args:
+            segments: List of movement segments
+            viseme_frames: List of viseme detections per frame
+            fps: Video framerate
+        """
+        for segment in segments:
+            # Get visemes for this segment's frame range
+            segment_visemes = []
+            segment_confidences = []
+            
+            for frame_idx in range(segment.start_frame, segment.end_frame + 1):
+                if frame_idx < len(viseme_frames):
+                    vf = viseme_frames[frame_idx]
+                    if vf.viseme != 'neutral':
+                        segment_visemes.append(vf.viseme)
+                        segment_confidences.append(vf.confidence)
+            
+            # Create viseme sequence string
+            if segment_visemes:
+                segment.viseme_sequence = ''.join(segment_visemes)
+                segment.viseme_confidences = segment_confidences
+            else:
+                segment.viseme_sequence = ''
+                segment.viseme_confidences = []
     
     def get_preview_video(self) -> Optional[str]:
         """Get the preview video file path if generated"""

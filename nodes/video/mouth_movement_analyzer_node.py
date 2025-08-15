@@ -12,6 +12,8 @@ from enum import Enum
 import numpy as np
 import folder_paths
 import nodes
+import hashlib
+import pickle
 
 try:
     import cv2
@@ -44,6 +46,9 @@ BaseNode = load_base_node()
 
 logger = logging.getLogger(__name__)
 
+# Global cache for mouth movement analysis
+MOUTH_MOVEMENT_CACHE = {}
+
 
 class AnalysisProvider(Enum):
     """Available analysis providers"""
@@ -67,6 +72,7 @@ class SRTPlaceholderFormat(Enum):
     CHARACTERS = "Characters"
     UNDERSCORES = "Underscores"
     DURATION_INFO = "Duration + Length"
+    VISEME_SEQUENCE = "Viseme Sequence"  # New: Show detected vowels
 
 
 class MouthMovementAnalyzerNode(BaseNode):
@@ -85,12 +91,12 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework with 468 facial landmarks\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n\n• OpenSeeFace: Real-time face tracking (coming soon)\n  - More detailed expression analysis\n  - Better for subtle movements\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies\n  - Good for older hardware"
                 }),
                 "sensitivity": ("FLOAT", {
-                    "default": 0.3,
-                    "min": 0.1,
+                    "default": 0.5,
+                    "min": 0.05,
                     "max": 1.0,
-                    "step": 0.05,
+                    "step": 0.01,
                     "display": "slider",
-                    "tooltip": "Movement detection sensitivity (Mouth Aspect Ratio threshold):\n\nLower values: Only detect obvious mouth movements, fewer false positives\nHigher values: Detect subtle movements, may include noise\n\nRecommended: Start with 0.3, increase if missing speech, decrease if too noisy"
+                    "tooltip": "Ultra-fine movement detection sensitivity (exponential scaling):\n\n• 0.05-0.2: Only obvious mouth movements (conservative)\n• 0.3-0.4: Clear speech detection (balanced)\n• 0.5-0.6: Most speech including soft talking\n• 0.7-0.8: Sensitive, catches subtle movements\n• 0.9-1.0: Ultra-sensitive, includes whispers and micro-movements\n\nExponential scaling provides fine control at higher values.\nStart with 0.5, then fine-tune in 0.01 increments."
                 }),
                 "min_duration": ("FLOAT", {
                     "default": 0.1,
@@ -106,10 +112,15 @@ class MouthMovementAnalyzerNode(BaseNode):
                 }),
                 "srt_placeholder_format": ([f.value for f in SRTPlaceholderFormat], {
                     "default": SRTPlaceholderFormat.WORDS.value,
-                    "tooltip": "SRT placeholder format to show timing capacity:\n\n• Words: [word word word] - intuitive for content creators\n• Syllables: [syl-la-ble syl-la-ble] - accurate for TTS timing\n• Characters: [••••••••••••••••••••] - precise character count\n• Underscores: [_ _ _ _ _] - clean visual length indicator\n• Duration + Length: [1.2s: ________] - shows both time and space\n\nRecommended: Words for general use, Syllables for precise TTS"
+                    "tooltip": "SRT placeholder format to show timing capacity:\n\n• Words: [word word word] - intuitive for content creators\n• Syllables: [syl-la-ble syl-la-ble] - accurate for TTS timing\n• Characters: [••••••••••••••••••••] - precise character count\n• Underscores: [_ _ _ _ _] - clean visual length indicator\n• Duration + Length: [1.2s: ________] - shows both time and space\n• Viseme Sequence: [AAEEIIOOUUA] - detected vowel patterns\n\nRecommended: Words for general use, Viseme Sequence for lip-sync"
                 }),
             },
             "optional": {
+                "enable_viseme_detection": ("BOOLEAN", {
+                    "default": False,
+                    "label": "Enable Viseme Detection (Vowels)",
+                    "tooltip": "Enable vowel detection (A, E, I, O, U) for lip-sync:\n\n• Analyzes mouth shape geometry beyond simple open/close\n• Detects vowel patterns in mouth movements\n• Adds ~20% processing time\n• Provides phoneme sequences for better TTS sync\n\nUse for: Creating precise lip-sync, vowel timing analysis"
+                }),
                 "preview_mode": ("BOOLEAN", {
                     "default": False,
                     "label": "Show preview with movement markers",
@@ -125,12 +136,12 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "tooltip": "Merge nearby speech segments separated by short gaps:\n\nLower values: Keep more segments separate, preserve natural pauses\nHigher values: Merge more segments together, smoother but less detailed\n\nRecommended: 0.2s for natural flow, 1.0s+ for sentence-level segments"
                 }),
                 "confidence_threshold": ("FLOAT", {
-                    "default": 0.5,
+                    "default": 0.3,
                     "min": 0.0,
                     "max": 1.0,
-                    "step": 0.05,
+                    "step": 0.01,
                     "display": "slider",
-                    "tooltip": "Minimum confidence score for including detected movements:\n\nLower values: Include uncertain detections, catch more movements but may include noise\nHigher values: Only high-confidence detections, cleaner but may miss subtle movements\n\nConfidence based on: Landmark quality, face visibility, lighting, motion clarity\n\nRecommended: Start with 0.5, lower if missing movements, raise if too noisy"
+                    "tooltip": "Minimum confidence score for including detected movements:\n\n• 0.0-0.2: Include all detections (may include noise)\n• 0.3-0.4: Balanced filtering (recommended start)\n• 0.5-0.7: Conservative, only clear movements\n• 0.8-1.0: Ultra-strict, only highest confidence\n\nConfidence based on landmark quality, face visibility, lighting.\nWith new exponential sensitivity, lower values work better."
                 }),
             }
         }
@@ -142,15 +153,91 @@ class MouthMovementAnalyzerNode(BaseNode):
     CATEGORY = "image/video"
     OUTPUT_NODE = True
     
-    # Control animation widget behavior
-    @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        return float("NaN")  # Always re-execute for fresh animation
     
     def __init__(self):
         super().__init__()
         self.provider_registry = {}
         self._register_providers()
+    
+    def _generate_cache_key(self, video_input, provider: str, sensitivity: float, 
+                           min_duration: float, merge_threshold: float, 
+                           confidence_threshold: float, preview_mode: bool,
+                           enable_viseme: bool = False) -> str:
+        """Generate cache key for mouth movement analysis (excludes SRT format)"""
+        # Get video source path for cache key
+        if hasattr(video_input, 'get_stream_source'):
+            video_path = video_input.get_stream_source()
+        elif hasattr(video_input, '_VideoFromFile__file'):
+            video_path = video_input._VideoFromFile__file
+        elif hasattr(video_input, 'video_path'):
+            video_path = video_input.video_path()
+        elif hasattr(video_input, 'path'):
+            video_path = video_input.path
+        elif hasattr(video_input, 'file_path'):
+            video_path = video_input.file_path
+        elif isinstance(video_input, str):
+            video_path = video_input
+        else:
+            video_path = str(video_input)
+        
+        # Get video file stats for cache invalidation
+        try:
+            import os
+            if os.path.exists(video_path):
+                file_stats = os.stat(video_path)
+                file_hash = f"{file_stats.st_size}_{file_stats.st_mtime}"
+            else:
+                file_hash = "unknown_file"
+        except:
+            file_hash = "unknown_file"
+        
+        # Create cache data (excludes output_format and srt_placeholder_format)
+        cache_data = {
+            'video_path': video_path,
+            'file_hash': file_hash,
+            'provider': provider,
+            'sensitivity': sensitivity,
+            'min_duration': min_duration,
+            'merge_threshold': merge_threshold,
+            'confidence_threshold': confidence_threshold,
+            'preview_mode': preview_mode,
+            'enable_viseme': enable_viseme
+        }
+        
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+    
+    def _get_cached_analysis(self, cache_key: str) -> Optional[Any]:
+        """Retrieve cached mouth movement analysis"""
+        return MOUTH_MOVEMENT_CACHE.get(cache_key)
+    
+    def _cache_analysis(self, cache_key: str, timing_data, movement_frames: List[int], 
+                       confidence_scores: List[float], preview_path: Optional[str] = None):
+        """Cache mouth movement analysis results"""
+        cache_data = {
+            'timing_data': timing_data,
+            'movement_frames': movement_frames,
+            'confidence_scores': confidence_scores,
+            'preview_path': preview_path
+        }
+        MOUTH_MOVEMENT_CACHE[cache_key] = cache_data
+        logger.info(f"💾 Cached mouth movement analysis: {cache_key[:8]}...")
+    
+    @classmethod
+    def IS_CHANGED(cls, video, provider, sensitivity, min_duration, output_format, 
+                   srt_placeholder_format, enable_viseme_detection=False, preview_mode=False, 
+                   merge_threshold=0.2, confidence_threshold=0.5, **kwargs):
+        """Cache invalidation - only invalidate for analysis parameters, not format"""
+        # Create temporary instance for cache key generation
+        temp_instance = cls()
+        cache_key = temp_instance._generate_cache_key(
+            video, provider, sensitivity, min_duration, 
+            merge_threshold, confidence_threshold, preview_mode,
+            enable_viseme_detection
+        )
+        
+        # Return cache key - ComfyUI will only re-execute if this changes
+        return cache_key
     
     def _register_providers(self):
         """Register available analysis providers"""
@@ -196,36 +283,80 @@ class MouthMovementAnalyzerNode(BaseNode):
         min_duration: float,
         output_format: str,
         srt_placeholder_format: str,
+        enable_viseme_detection: bool = False,
         preview_mode: bool = False,
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
         **kwargs
     ):
         """
-        Main analysis function
+        Main analysis function with caching
         """
         logger.info(f"Starting mouth movement analysis with {provider} provider")
         
-        # Validate provider availability
-        if provider not in self.provider_registry:
-            available = list(self.provider_registry.keys())
-            if not available:
-                raise RuntimeError("No analysis providers available. Please install required dependencies.")
-            
-            logger.warning(f"{provider} not available, falling back to {available[0]}")
-            provider = available[0]
-        
-        # Initialize selected provider
-        provider_class = self.provider_registry[provider]
-        analyzer = provider_class(
-            sensitivity=sensitivity,
-            min_duration=min_duration,
-            merge_threshold=merge_threshold,
-            confidence_threshold=confidence_threshold
+        # Generate cache key for analysis (excludes format parameters)
+        cache_key = self._generate_cache_key(
+            video, provider, sensitivity, min_duration,
+            merge_threshold, confidence_threshold, preview_mode,
+            enable_viseme_detection
         )
         
-        # Analyze video
-        timing_data = analyzer.analyze_video(video, preview_mode=preview_mode)
+        # Check cache first
+        cached_result = self._get_cached_analysis(cache_key)
+        if cached_result:
+            logger.info(f"💾 CACHE HIT for mouth movement analysis: {cache_key[:8]}...")
+            timing_data = cached_result['timing_data']
+            movement_frames = cached_result['movement_frames']
+            confidence_scores = cached_result['confidence_scores']
+            preview_path = cached_result.get('preview_path')
+        else:
+            logger.info(f"🔍 CACHE MISS - analyzing video: {cache_key[:8]}...")
+            
+            # Validate provider availability
+            if provider not in self.provider_registry:
+                available = list(self.provider_registry.keys())
+                if not available:
+                    raise RuntimeError("No analysis providers available. Please install required dependencies.")
+                
+                logger.warning(f"{provider} not available, falling back to {available[0]}")
+                provider = available[0]
+            
+            # Initialize selected provider
+            provider_class = self.provider_registry[provider]
+            analyzer = provider_class(
+                sensitivity=sensitivity,
+                min_duration=min_duration,
+                merge_threshold=merge_threshold,
+                confidence_threshold=confidence_threshold
+            )
+            
+            # Analyze video with viseme detection if enabled
+            if hasattr(analyzer, 'analyze_video'):
+                # Check if provider supports viseme detection
+                import inspect
+                sig = inspect.signature(analyzer.analyze_video)
+                if 'enable_viseme' in sig.parameters:
+                    timing_data = analyzer.analyze_video(video, preview_mode=preview_mode, enable_viseme=enable_viseme_detection)
+                else:
+                    timing_data = analyzer.analyze_video(video, preview_mode=preview_mode)
+                    if enable_viseme_detection:
+                        logger.warning(f"{provider} provider doesn't support viseme detection yet")
+            else:
+                timing_data = analyzer.analyze_video(video, preview_mode=preview_mode)
+            
+            # Extract movement frames and confidence scores
+            movement_frames = []
+            confidence_scores = []
+            
+            for segment in timing_data.segments:
+                movement_frames.extend(range(segment.start_frame, segment.end_frame + 1))
+                confidence_scores.append(segment.confidence)
+            
+            # Get preview path if generated
+            preview_path = analyzer.get_preview_video() if hasattr(analyzer, 'get_preview_video') else None
+            
+            # Cache the analysis results
+            self._cache_analysis(cache_key, timing_data, movement_frames, confidence_scores, preview_path)
         
         # Format outputs based on selected format
         srt_output = self._format_as_srt(timing_data, srt_placeholder_format) if output_format in [OutputFormat.SRT.value, OutputFormat.TIMING_DATA.value] else ""
@@ -235,23 +366,13 @@ class MouthMovementAnalyzerNode(BaseNode):
         elif output_format == OutputFormat.CSV.value:
             srt_output = self._format_as_csv(timing_data)
         
-        # Extract movement frames and confidence scores
-        movement_frames = []
-        confidence_scores = []
-        
-        for segment in timing_data.segments:
-            movement_frames.extend(range(segment.start_frame, segment.end_frame + 1))
-            confidence_scores.append(segment.confidence)
-        
         logger.info(f"Analysis complete: {len(timing_data.segments)} segments detected")
         
         # Prepare UI data for video preview (combine Preview Bridge file handling with Save Video video display)
         ui_data = {}
         
-        if preview_mode and CV2_AVAILABLE:
-            # Get the preview video path 
-            preview_path = analyzer.get_preview_video() if hasattr(analyzer, 'get_preview_video') else None
-            if preview_path and os.path.exists(preview_path):
+        if preview_mode and CV2_AVAILABLE and preview_path:
+            if os.path.exists(preview_path):
                 try:
                     # Verify file exists and log details
                     if not os.path.exists(preview_path):
@@ -341,6 +462,40 @@ class MouthMovementAnalyzerNode(BaseNode):
                 estimated_chars = max(1, int(duration * 20))
                 placeholder = f"{duration:.1f}s: " + "_" * min(estimated_chars, 40)  # Cap at 40 chars for readability
                 info = f"({estimated_chars} chars max)"
+                
+            elif placeholder_format == SRTPlaceholderFormat.VISEME_SEQUENCE.value:
+                # Show detected viseme sequence if available
+                if hasattr(segment, 'viseme_sequence') and segment.viseme_sequence:
+                    # Group consecutive identical visemes for readability
+                    grouped_visemes = []
+                    current_viseme = ''
+                    count = 0
+                    
+                    for v in segment.viseme_sequence:
+                        if v == current_viseme:
+                            count += 1
+                        else:
+                            if current_viseme:
+                                if count > 1:
+                                    grouped_visemes.append(f"{current_viseme}{count}")
+                                else:
+                                    grouped_visemes.append(current_viseme)
+                            current_viseme = v
+                            count = 1
+                    
+                    # Add last group
+                    if current_viseme:
+                        if count > 1:
+                            grouped_visemes.append(f"{current_viseme}{count}")
+                        else:
+                            grouped_visemes.append(current_viseme)
+                    
+                    placeholder = '-'.join(grouped_visemes) if grouped_visemes else "[no vowels detected]"
+                    avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
+                    info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
+                else:
+                    placeholder = "[viseme detection not enabled]"
+                    info = f"({duration:.1f}s)"
                 
             else:
                 # Fallback to words format

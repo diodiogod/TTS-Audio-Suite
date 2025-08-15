@@ -19,21 +19,27 @@
 #     `pip install --upgrade pip setuptools wheel` command again before installing any custom node requirements.
 
 
+# Foundation dependencies (MUST be installed first in this order)
+numpy>=2.0.0,<2.3.0  # Balance compatibility: >=2.0 for audio-separator, <2.3 for Numba
+scipy
+torch
+torchaudio
+
+# Audio processing dependencies (depend on numpy/torch)
+librosa
+soundfile
+sounddevice
+einops
+
 # Core ChatterboxTTS dependencies
 s3tokenizer>=0.1.7
 resemble-perth
-librosa
-scipy
 omegaconf
 transformers==4.46.3
 diffusers
 
 # Additional dependencies for SRT support and audio processing
 conformer>=0.3.2
-torch
-torchaudio
-numpy>=2.0.0,<2.3.0  # Balance compatibility: >=2.0 for audio-separator, <2.3 for Numba
-einops
 
 # Audio processing and timing dependencies
 soundfile
