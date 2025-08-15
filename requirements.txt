@@ -67,3 +67,9 @@ requests                  # Model downloading functionality
 mediapipe>=0.10.0         # Google's MediaPipe for facial landmark detection
 opencv-python>=4.8.0      # Computer vision library for video processing
 protobuf>=4.21.0,<5.0.0   # Protocol buffers compatibility for MediaPipe
+
+# OpenSeeFace dependencies (optional - for robust tracking in challenging conditions)
+onnxruntime               # ONNX model inference for OpenSeeFace (already included above for RVC)
+pillow                    # Image processing library for OpenSeeFace
+# Note: OpenSeeFace itself is not on PyPI, users should install via:
+# git clone https://github.com/emilianavt/OpenSeeFace.git

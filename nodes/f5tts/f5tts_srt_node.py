@@ -433,13 +433,20 @@ Hello! This is F5-TTS SRT with character switching.
                     required_model = get_model_for_language("f5tts", lang_code, model)
                     
                     for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
-                        # Get character voice or use main reference for cache key
-                        from utils.voice.discovery import get_character_mapping
-                        character_mapping = get_character_mapping([character], engine_type="f5tts")
-                        char_audio, char_text = character_mapping.get(character, (None, None))
-                        if not char_audio or not char_text:
+                        # PRIORITY FIX: For "narrator" character, always use main reference when provided
+                        # This ensures Character Voices node and dropdown selection work correctly
+                        if character == "narrator" and audio_prompt and validated_ref_text:
+                            # Use main reference for narrator (from Character Voices or dropdown)
                             char_audio = audio_prompt
                             char_text = validated_ref_text
+                        else:
+                            # Get character-specific voice for named characters
+                            from utils.voice.discovery import get_character_mapping
+                            character_mapping = get_character_mapping([character], engine_type="f5tts")
+                            char_audio, char_text = character_mapping.get(character, (None, None))
+                            if not char_audio or not char_text:
+                                char_audio = audio_prompt
+                                char_text = validated_ref_text
                         
                         # Validate and clamp nfe_step
                         safe_nfe_step = max(1, min(nfe_step, 71))
@@ -497,13 +504,26 @@ Hello! This is F5-TTS SRT with character switching.
                         else:
                             print(f"🎭 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} using '{character}'")
                     
-                    # Get character voice or use main reference
-                    from utils.voice.discovery import get_character_mapping
-                    character_mapping = get_character_mapping([character], engine_type="f5tts")
-                    char_audio, char_text = character_mapping.get(character, (None, None))
-                    if not char_audio or not char_text:
+                    # PRIORITY FIX: For "narrator" character, always use main reference when provided
+                    # This ensures Character Voices node and dropdown selection work correctly
+                    if character == "narrator" and audio_prompt and validated_ref_text:
+                        # Use main reference for narrator (from Character Voices or dropdown)
                         char_audio = audio_prompt
                         char_text = validated_ref_text
+                        print(f"🎯 F5-TTS: Using main reference for narrator (from Character Voices/dropdown)")
+                    else:
+                        # Get character-specific voice for named characters
+                        from utils.voice.discovery import get_character_mapping
+                        character_mapping = get_character_mapping([character], engine_type="f5tts")
+                        char_audio, char_text = character_mapping.get(character, (None, None))
+                        
+                        if not char_audio or not char_text:
+                            # Fallback to main reference if character-specific voice not found
+                            char_audio = audio_prompt
+                            char_text = validated_ref_text
+                            print(f"🔄 F5-TTS: Using main reference fallback for '{character}'")
+                        else:
+                            print(f"🎭 F5-TTS: Using character-specific voice for '{character}'")
                     
                     # Validate and clamp nfe_step to prevent ODE solver issues
                     safe_nfe_step = max(1, min(nfe_step, 71))
