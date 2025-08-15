@@ -26,15 +26,60 @@ class PhonemeWordMatcher:
     def _get_default_dictionary_path(self) -> str:
         """Get path to default dictionary file"""
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Try CMU dictionary first (has phoneme data), fallback to word list
+        cmu_path = os.path.join(current_dir, "data", "dictionaries", "cmudict.txt")
+        if os.path.exists(cmu_path):
+            return cmu_path
+        
+        moby_path = os.path.join(current_dir, "data", "dictionaries", "moby_words.txt")
+        if os.path.exists(moby_path):
+            return moby_path
+            
         return os.path.join(current_dir, "data", "dictionaries", "common_words.txt")
     
     def _load_dictionary(self):
         """Load word list from dictionary file"""
         try:
             if os.path.exists(self.dictionary_path):
-                with open(self.dictionary_path, 'r', encoding='utf-8') as f:
-                    self.word_list = [line.strip().lower() for line in f if line.strip()]
+                self.word_list = []
+                self.cmu_phonemes = {}  # word -> phoneme sequence
+                
+                with open(self.dictionary_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#'):
+                            continue
+                        
+                        # Check if this is CMU format (word PHONEME1 PHONEME2...)
+                        if ' ' in line and any(c.isupper() for c in line):
+                            parts = line.split()
+                            if len(parts) > 1:
+                                word = parts[0].lower()
+                                # Remove variant markers like (2), (3)
+                                if '(' in word:
+                                    word = word.split('(')[0]
+                                
+                                phonemes = parts[1:]
+                                self.word_list.append(word)
+                                self.cmu_phonemes[word] = phonemes
+                        else:
+                            # Simple word list format
+                            word = line.lower()
+                            if word and word.isalpha():  # Only alphabetic words
+                                self.word_list.append(word)
+                
+                # Remove duplicates while preserving order
+                seen = set()
+                unique_words = []
+                for word in self.word_list:
+                    if word not in seen:
+                        seen.add(word)
+                        unique_words.append(word)
+                self.word_list = unique_words
+                
                 logger.info(f"Loaded {len(self.word_list)} words from dictionary")
+                if self.cmu_phonemes:
+                    logger.info(f"Found CMU phoneme data for {len(self.cmu_phonemes)} words")
             else:
                 logger.warning(f"Dictionary not found: {self.dictionary_path}")
                 # Fallback to basic words
@@ -42,10 +87,12 @@ class PhonemeWordMatcher:
                     "the", "and", "you", "that", "was", "for", "are", "with", "his", "they",
                     "have", "this", "from", "had", "she", "but", "not", "what", "all", "can"
                 ]
+                self.cmu_phonemes = {}
                 logger.info(f"Using fallback dictionary with {len(self.word_list)} words")
         except Exception as e:
             logger.error(f"Error loading dictionary: {e}")
             self.word_list = ["the", "and", "you"]  # Minimal fallback
+            self.cmu_phonemes = {}
     
     def _build_phoneme_patterns(self):
         """
@@ -70,12 +117,58 @@ class PhonemeWordMatcher:
         }
         
         # Build patterns for each word
-        for word in self.word_list[:1000]:  # Use top 1000 words for performance
-            pattern = self._word_to_phoneme_pattern(word)
-            if pattern:
+        words_to_process = self.word_list[:5000] if len(self.word_list) > 5000 else self.word_list  # Use more words now
+        
+        for word in words_to_process:
+            # Use CMU phoneme data if available, otherwise fall back to spelling approximation
+            if hasattr(self, 'cmu_phonemes') and word in self.cmu_phonemes:
+                pattern = self._cmu_to_viseme_pattern(self.cmu_phonemes[word])
+            else:
+                pattern = self._word_to_phoneme_pattern(word)
+            
+            if pattern and len(pattern) > 0:
                 if pattern not in self.phoneme_patterns:
                     self.phoneme_patterns[pattern] = []
                 self.phoneme_patterns[pattern].append(word)
+    
+    def _cmu_to_viseme_pattern(self, cmu_phonemes: List[str]) -> str:
+        """
+        Convert CMU phonemes to viseme pattern
+        Maps CMU phoneme notation to our viseme symbols
+        """
+        pattern = ""
+        
+        # CMU to viseme mapping
+        cmu_to_viseme = {
+            # Vowels
+            'AA': 'A', 'AE': 'A', 'AH': 'A', 'AO': 'O', 'AW': 'A',  # A-like sounds
+            'AY': 'A', 'EH': 'E', 'ER': 'E', 'EY': 'E', 'IH': 'I',  # E-like sounds  
+            'IY': 'I', 'OW': 'O', 'OY': 'O', 'UH': 'U', 'UW': 'U',  # I, O, U sounds
+            
+            # Consonants (visually detectable)
+            'B': 'B', 'P': 'P', 'M': 'M',           # Bilabial
+            'F': 'F', 'V': 'V',                      # Labiodental  
+            'TH': 'TH', 'DH': 'TH',                  # Dental
+            'T': 'T', 'D': 'D', 'N': 'N',           # Alveolar
+            'K': 'K', 'G': 'G', 'NG': 'N',          # Velar
+            
+            # Other consonants (less visually distinctive) - skip or approximate
+            'S': '', 'Z': '', 'SH': '', 'ZH': '',    # Sibilants (hard to see)
+            'CH': 'T', 'JH': 'D',                    # Affricates (approximate)
+            'L': '', 'R': '', 'W': 'U', 'Y': 'I',   # Liquids/glides (approximate)
+            'HH': '',                                 # Aspirant (not visible)
+        }
+        
+        for phoneme in cmu_phonemes:
+            # Remove stress markers (0, 1, 2)
+            clean_phoneme = ''.join(c for c in phoneme if not c.isdigit())
+            
+            if clean_phoneme in cmu_to_viseme:
+                viseme = cmu_to_viseme[clean_phoneme]
+                if viseme:  # Only add non-empty visemes
+                    pattern += viseme
+        
+        return pattern
     
     def _word_to_phoneme_pattern(self, word: str) -> str:
         """
