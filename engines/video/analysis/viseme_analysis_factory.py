@@ -3,9 +3,16 @@ Factory for creating appropriate viseme analysis systems
 """
 
 from typing import Dict, Any
-from .abstract_viseme_classifier import AbstractVisemeClassifier
-from .basic_viseme_classifier import BasicVisemeClassifier
-from .temporal_consonant_analyzer import TemporalConsonantAnalyzer
+
+try:
+    from .abstract_viseme_classifier import AbstractVisemeClassifier
+    from .basic_viseme_classifier import BasicVisemeClassifier
+    from .temporal_consonant_analyzer import TemporalConsonantAnalyzer
+except ImportError:
+    # Fallback to absolute imports
+    from abstract_viseme_classifier import AbstractVisemeClassifier
+    from basic_viseme_classifier import BasicVisemeClassifier
+    from temporal_consonant_analyzer import TemporalConsonantAnalyzer
 
 
 class VisemeAnalysisFactory:

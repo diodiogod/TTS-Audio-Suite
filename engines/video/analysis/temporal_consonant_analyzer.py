@@ -6,7 +6,11 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional
 from collections import deque
 from dataclasses import dataclass
-from .basic_viseme_classifier import BasicVisemeClassifier, VisemeResult
+
+try:
+    from .basic_viseme_classifier import BasicVisemeClassifier, VisemeResult
+except ImportError:
+    from basic_viseme_classifier import BasicVisemeClassifier, VisemeResult
 
 
 @dataclass

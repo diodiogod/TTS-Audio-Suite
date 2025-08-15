@@ -4,7 +4,11 @@ Basic Viseme Classifier - Frame-by-frame geometric analysis
 
 import numpy as np
 from typing import Dict, Tuple
-from .abstract_viseme_classifier import AbstractVisemeClassifier, VisemeResult
+
+try:
+    from .abstract_viseme_classifier import AbstractVisemeClassifier, VisemeResult
+except ImportError:
+    from abstract_viseme_classifier import AbstractVisemeClassifier, VisemeResult
 
 
 class BasicVisemeClassifier(AbstractVisemeClassifier):

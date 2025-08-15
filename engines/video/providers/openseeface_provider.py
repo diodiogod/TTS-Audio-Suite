@@ -148,6 +148,70 @@ class OpenSeeFaceProvider(AbstractProvider):
         self.enable_consonant_detection = False
         
         logger.info(f"OpenSeeFace provider initialized with MAR threshold: {self.mar_threshold:.3f}")
+        
+        # Initialize provider
+        self._initialize()
+    
+    def _check_dependencies(self):
+        """Check if required dependencies are installed"""
+        if not OPENSEEFACE_AVAILABLE:
+            raise RuntimeError("OpenSeeFace is not available")
+        if not OPENCV_AVAILABLE:
+            raise RuntimeError("OpenCV is not available")
+    
+    def _initialize(self):
+        """Initialize provider-specific components"""
+        self._check_dependencies()
+        # Additional initialization done in analyze_video when we have video dimensions
+    
+    @property
+    def provider_name(self) -> str:
+        """Return the name of this provider"""
+        return "OpenSeeFace"
+    
+    def detect_movement(self, frame: np.ndarray) -> Tuple[bool, float, Optional[np.ndarray]]:
+        """
+        Detect mouth movement in a single frame
+        
+        Args:
+            frame: Input video frame
+            
+        Returns:
+            Tuple of (movement_detected, confidence, landmarks)
+        """
+        if self.tracker is None:
+            return False, 0.0, None
+        
+        try:
+            faces = self.tracker.predict(frame)
+            
+            if len(faces) > 0:
+                face = faces[0]
+                landmarks = face.landmarks
+                confidence = face.conf
+                
+                if confidence > 0.7:  # Conservative threshold
+                    mar = self._calculate_mar_openseeface(landmarks)
+                    movement_detected = mar > self.mar_threshold
+                    return movement_detected, confidence, landmarks
+            
+            return False, 0.0, None
+            
+        except Exception as e:
+            logger.warning(f"OpenSeeFace movement detection failed: {e}")
+            return False, 0.0, None
+    
+    def calculate_mar(self, landmarks: np.ndarray) -> float:
+        """
+        Calculate Mouth Aspect Ratio from landmarks
+        
+        Args:
+            landmarks: Facial landmarks array
+            
+        Returns:
+            Mouth aspect ratio value
+        """
+        return self._calculate_mar_openseeface(landmarks)
     
     def _get_model_filename(self, model_type: int) -> str:
         """Get model filename for given model type"""
