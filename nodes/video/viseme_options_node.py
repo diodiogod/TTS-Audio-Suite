@@ -30,7 +30,7 @@ class VisemeDetectionOptionsNode:
                 "enable_viseme_detection": ("BOOLEAN", {
                     "default": True,
                     "label": "Enable Viseme Detection",
-                    "tooltip": "Enable vowel classification (A, E, I, O, U) for precise lip-sync:\\n\\n• Analyzes mouth shape geometry beyond simple open/close\\n• Detects vowel patterns in mouth movements\\n• Adds ~20% processing time\\n• Provides phoneme sequences for better TTS synchronization"
+                    "tooltip": "Enable vowel classification (A, E, I, O, U) for precise lip-sync:\n\n• Analyzes mouth shape geometry beyond simple open/close\n• Detects vowel patterns in mouth movements\n• Adds ~20% processing time\n• Provides phoneme sequences for better TTS synchronization"
                 }),
                 "viseme_sensitivity": ("FLOAT", {
                     "default": 1.0,
@@ -38,7 +38,7 @@ class VisemeDetectionOptionsNode:
                     "max": 2.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "How hard should I look for vowels?\\n\\nControls geometric thresholds for mouth shape classification:\\n\\n• 0.1-0.5: Very strict, only obvious vowel shapes\\n• 0.8-1.2: Balanced detection (recommended)\\n• 1.5-2.0: Lenient, detects subtle vowel variations\\n\\nHigher = more detections, may include false positives\\nLower = fewer detections, higher accuracy"
+                    "tooltip": "How hard should I look for vowels?\n\nControls geometric thresholds for mouth shape classification:\n\n• 0.1-0.5: Very strict, only obvious vowel shapes\n• 0.8-1.2: Balanced detection (recommended)\n• 1.5-2.0: Lenient, detects subtle vowel variations\n\nHigher = more detections, may include false positives\nLower = fewer detections, higher accuracy"
                 }),
                 "viseme_confidence_threshold": ("FLOAT", {
                     "default": 0.4,
@@ -46,7 +46,7 @@ class VisemeDetectionOptionsNode:
                     "max": 1.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "How sure should I be before showing a vowel?\\n\\nMinimum confidence for valid viseme classification:\\n\\n• 0.0-0.2: Show all viseme attempts (noisy)\\n• 0.3-0.5: Balanced filtering (recommended)\\n• 0.6-0.8: Conservative, only clear vowels\\n• 0.9-1.0: Ultra-strict, only perfect detections\\n\\nBelow threshold shows as 'neutral' instead of uncertain vowel."
+                    "tooltip": "How sure should I be before showing a vowel?\n\nMinimum confidence for valid viseme classification:\n\n• 0.0-0.2: Show all viseme attempts (noisy)\n• 0.3-0.5: Balanced filtering (recommended)\n• 0.6-0.8: Conservative, only clear vowels\n• 0.9-1.0: Ultra-strict, only perfect detections\n\nBelow threshold shows as 'neutral' instead of uncertain vowel."
                 }),
                 "viseme_smoothing": ("FLOAT", {
                     "default": 0.3,
@@ -54,7 +54,7 @@ class VisemeDetectionOptionsNode:
                     "max": 1.0,
                     "step": 0.05,
                     "display": "slider",
-                    "tooltip": "Temporal smoothing to reduce viseme flickering:\\n\\n• 0.0: No smoothing (immediate response, may flicker)\\n• 0.3: Light smoothing (recommended balance)\\n• 0.7: Heavy smoothing (stable but slower response)\\n• 1.0: Maximum smoothing (very stable, delayed)\\n\\nReduces rapid switching between visemes for cleaner sequences.\\nUseful for noisy videos or subtle mouth movements."
+                    "tooltip": "Temporal smoothing to reduce viseme flickering:\n\n• 0.0: No smoothing (immediate response, may flicker)\n• 0.3: Light smoothing (recommended balance)\n• 0.7: Heavy smoothing (stable but slower response)\n• 1.0: Maximum smoothing (very stable, delayed)\n\nReduces rapid switching between visemes for cleaner sequences.\nUseful for noisy videos or subtle mouth movements."
                 }),
             }
         }

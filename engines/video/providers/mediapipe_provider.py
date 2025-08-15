@@ -570,7 +570,11 @@ class MediaPipeProvider(AbstractProvider):
             for frame_idx in range(segment.start_frame, segment.end_frame + 1):
                 if frame_idx < len(viseme_frames):
                     vf = viseme_frames[frame_idx]
-                    if vf.viseme != 'neutral':
+                    # Include neutral visemes as underscores for better timing information
+                    if vf.viseme == 'neutral':
+                        segment_visemes.append('_')
+                        segment_confidences.append(vf.confidence)
+                    else:
                         segment_visemes.append(vf.viseme)
                         segment_confidences.append(vf.confidence)
             
@@ -737,7 +741,7 @@ class MediaPipeProvider(AbstractProvider):
             # Draw Viseme detection if available
             if current_viseme:
                 # Draw large viseme character
-                viseme_display = current_viseme if current_viseme != 'neutral' else '-'
+                viseme_display = current_viseme if current_viseme != 'neutral' else '_'
                 viseme_color = viseme_colors.get(current_viseme, (255, 255, 255))
                 
                 # Large viseme character display
