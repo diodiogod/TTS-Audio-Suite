@@ -472,22 +472,28 @@ class MouthMovementAnalyzerNode(BaseNode):
             # Generate placeholder based on selected format
             if placeholder_format == SRTPlaceholderFormat.WORDS.value:
                 if has_visemes:
-                    # Group visemes as word-like chunks (every 2-4 vowels)
+                    # Estimate word boundaries in viseme sequence (using pauses and timing)
                     visemes = segment.viseme_sequence
-                    word_chunks = []
-                    i = 0
-                    while i < len(visemes):
-                        chunk_size = min(4, len(visemes) - i)  # 1-4 vowels per "word"
-                        if chunk_size >= 3:
-                            chunk_size = 3  # Prefer 3-vowel chunks
-                        elif chunk_size == 1 and i > 0:
-                            # Attach single vowel to previous chunk if possible
-                            word_chunks[-1] += visemes[i]
-                            i += 1
-                            continue
+                    words_per_second = 3.5  # Standard speech rate
+                    estimated_words = max(1, round(duration * words_per_second))
+                    
+                    # Split visemes into estimated word chunks
+                    if len(visemes) <= estimated_words:
+                        # Each vowel is a separate word
+                        word_chunks = list(visemes)
+                    else:
+                        # Distribute vowels across estimated words
+                        chunk_size = len(visemes) // estimated_words
+                        remainder = len(visemes) % estimated_words
                         
-                        word_chunks.append(visemes[i:i+chunk_size])
-                        i += chunk_size
+                        word_chunks = []
+                        i = 0
+                        for w in range(estimated_words):
+                            # Add extra vowel to some words if remainder
+                            size = chunk_size + (1 if w < remainder else 0)
+                            size = max(1, size)  # Ensure at least 1 vowel per word
+                            word_chunks.append(visemes[i:i+size])
+                            i += size
                     
                     placeholder = " ".join(word_chunks)
                     avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
@@ -500,16 +506,45 @@ class MouthMovementAnalyzerNode(BaseNode):
                 
             elif placeholder_format == SRTPlaceholderFormat.SYLLABLES.value:
                 if has_visemes:
-                    # Group visemes as syllable-like chunks (every 1-2 vowels)
+                    # Create syllable structure with word boundaries like "syl-la-ble syl-la-ble"
                     visemes = segment.viseme_sequence
-                    syllable_chunks = []
-                    i = 0
-                    while i < len(visemes):
-                        chunk_size = min(2, len(visemes) - i)  # 1-2 vowels per syllable
-                        syllable_chunks.append(visemes[i:i+chunk_size])
-                        i += chunk_size
+                    words_per_second = 3.5
+                    syllables_per_word = 2.5  # Average syllables per word
+                    estimated_words = max(1, round(duration * words_per_second))
                     
-                    placeholder = "-".join(syllable_chunks)
+                    # Split visemes into word groups first
+                    if len(visemes) <= estimated_words:
+                        word_groups = [[v] for v in visemes]  # Each vowel is a word
+                    else:
+                        # Distribute vowels across estimated words
+                        chunk_size = len(visemes) // estimated_words
+                        remainder = len(visemes) % estimated_words
+                        
+                        word_groups = []
+                        i = 0
+                        for w in range(estimated_words):
+                            size = chunk_size + (1 if w < remainder else 0)
+                            size = max(1, size)
+                            word_groups.append(list(visemes[i:i+size]))
+                            i += size
+                    
+                    # Convert each word group to syllable format (split into 1-2 vowel chunks)
+                    word_syllables = []
+                    for word_vowels in word_groups:
+                        if len(word_vowels) <= 2:
+                            # Short word - keep as single syllable
+                            word_syllables.append("".join(word_vowels))
+                        else:
+                            # Split into syllables of 1-2 vowels
+                            syllables = []
+                            i = 0
+                            while i < len(word_vowels):
+                                syl_size = min(2, len(word_vowels) - i)
+                                syllables.append("".join(word_vowels[i:i+syl_size]))
+                                i += syl_size
+                            word_syllables.append("-".join(syllables))
+                    
+                    placeholder = " ".join(word_syllables)  # Space separates words, hyphens separate syllables
                     avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
                     info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
