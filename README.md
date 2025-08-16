@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# TTS Audio Suite v4.3.7
+# TTS Audio Suite v4.4.0
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -24,6 +24,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 - [🆕 What's New in my Project?](#-whats-new-in-my-project)
   - [SRT Timing and TTS Node](#srt-timing-and-tts-node)
   - [🆕 F5-TTS Integration and 🆕 Audio Analyzer](#-f5-tts-integration-and--audio-analyzer)
+  - [🗣️ Silent Speech Analyzer](#️-silent-speech-analyzer)
   - [🎭 Character & Narrator Switching](#-character--narrator-switching)
   - [🌍 Language Switching with Bracket Syntax](#-language-switching-with-bracket-syntax)
   - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
@@ -143,6 +144,35 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **Audio Wave Analyzer**: Interactive waveform visualization for precise timing extraction
 * **Multi-language Support**: English, German, Spanish, French, Japanese models
 * **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
+
+</details>
+
+<details>
+<summary><h3>🗣️ Silent Speech Analyzer</h3></summary>
+
+**NEW in v4.4.0**: Video analysis and mouth movement detection for silent video processing!
+
+* **Mouth Movement Analysis**: Real-time detection of mouth shapes and movements from video
+* **Experimental Viseme Classification**: Approximate detection of vowels (A, E, I, O, U) and consonants (B, F, M, etc.) - results are experimental approximations, not precise
+* **3-Level Analysis System**:
+  - Frame-level mouth movement detection
+  - Syllable grouping with temporal analysis  
+  - Word prediction using CMU Pronouncing Dictionary (135K+ words)
+* **Base SRT Generation**: Creates timing-focused SRT files with start/end speech timing as foundation for user editing
+* **MediaPipe Integration**: Production-ready analysis using Google's MediaPipe framework
+* **Visual Feedback**: Preview videos with overlaid detection results
+* **Automatic Phonetic Placeholders**: Word predictions provide phonetically-sensible placeholders, but phrases require user editing for meaningful content
+* **TTS Integration**: SRT output designed for use with TTS SRT nodes after manual content editing
+
+**Perfect for:**
+- Creating base timing templates from silent video footage
+- Animation and VFX reference timing
+- Foundation for manual subtitle creation
+
+**Important Notes**: 
+- OpenSeeFace provider is experimental and not recommended for production use - MediaPipe is the stable solution
+- Viseme detection is experimental approximation - expect to manually edit both timing and content
+- Generated text placeholders are phonetic suggestions, not meaningful sentences
 
 </details>
 
