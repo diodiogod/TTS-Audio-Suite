@@ -1,3 +1,7 @@
+# Reference ComfyUI folders (not part of this project)
+ComfyUI/
+ComfyUI_frontend/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
