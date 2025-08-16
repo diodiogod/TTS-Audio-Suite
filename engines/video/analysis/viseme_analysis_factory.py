@@ -38,7 +38,7 @@ class VisemeAnalysisFactory:
         enable_consonants = config.get('enable_consonant_detection', False)
         enable_temporal = config.get('enable_temporal_analysis', False)
         sensitivity = config.get('viseme_sensitivity', 1.0)
-        confidence_threshold = config.get('viseme_confidence_threshold', 0.4)
+        confidence_threshold = config.get('viseme_confidence_threshold', 0.04)
         
         # Choose analyzer type based on configuration
         if enable_consonants and enable_temporal:
@@ -83,7 +83,7 @@ class VisemeAnalysisFactory:
                 'enable_consonant_detection': True,
                 'enable_temporal_analysis': False,
                 'viseme_sensitivity': 1.2,
-                'viseme_confidence_threshold': 0.4,
+                'viseme_confidence_threshold': 0.04,
                 'description': 'Good balance of speed and accuracy with basic consonants'
             },
             
@@ -129,7 +129,7 @@ class VisemeAnalysisFactory:
         
         # Numeric options with bounds
         validated['viseme_sensitivity'] = max(0.1, min(2.0, float(config.get('viseme_sensitivity', 1.0))))
-        validated['viseme_confidence_threshold'] = max(0.0, min(1.0, float(config.get('viseme_confidence_threshold', 0.4))))
+        validated['viseme_confidence_threshold'] = max(0.0, min(1.0, float(config.get('viseme_confidence_threshold', 0.04))))
         validated['viseme_smoothing'] = max(0.0, min(1.0, float(config.get('viseme_smoothing', 0.3))))
         
         # Temporal analysis options

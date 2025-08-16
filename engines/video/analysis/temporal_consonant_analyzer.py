@@ -45,7 +45,7 @@ class TemporalConsonantAnalyzer(BasicVisemeClassifier):
     Provides dramatically more accurate consonant detection than frame-by-frame.
     """
     
-    def __init__(self, sensitivity: float = 1.0, confidence_threshold: float = 0.4,
+    def __init__(self, sensitivity: float = 1.0, confidence_threshold: float = 0.04,
                  window_size: int = 5, burst_threshold: float = 0.4):
         """
         Initialize temporal analyzer

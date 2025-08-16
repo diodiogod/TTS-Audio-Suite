@@ -19,7 +19,7 @@ class BasicVisemeClassifier(AbstractVisemeClassifier):
     Good for basic vowel detection and simple consonant identification.
     """
     
-    def __init__(self, sensitivity: float = 1.0, confidence_threshold: float = 0.4, 
+    def __init__(self, sensitivity: float = 1.0, confidence_threshold: float = 0.2, 
                  mar_threshold: float = 0.05):
         """
         Initialize basic classifier
@@ -56,6 +56,8 @@ class BasicVisemeClassifier(AbstractVisemeClassifier):
         roundedness = features.get('roundedness', 0)
         mouth_area = features.get('mouth_area', 0)
         mar = features.get('mar', 0)
+        
+        # Debug logging disabled - geometric features now shown in preview video
         
         # Get consonant features
         lip_contact = features.get('lip_contact', 0)
@@ -99,6 +101,9 @@ class BasicVisemeClassifier(AbstractVisemeClassifier):
         # Find best match
         best_viseme = max(viseme_scores.items(), key=lambda x: x[1])
         
+        # Temporary debug: add vowel scores to metadata for preview display
+        vowel_scores = {k: v for k, v in viseme_scores.items() if k in ['A', 'E', 'I', 'O', 'U'] and v > 0.0}
+        
         # Normalize confidence to 0-1 range
         confidence = min(1.0, best_viseme[1] / 2.0)
         
@@ -116,6 +121,7 @@ class BasicVisemeClassifier(AbstractVisemeClassifier):
         return VisemeResult(smoothed_viseme, smoothed_confidence, {
             'method': 'basic_geometric',
             'raw_scores': {k: v for k, v in viseme_scores.items() if v > 0.1},
+            'vowel_scores': vowel_scores,  # Temporary debug info
             'features_used': list(features.keys())
         })
     
@@ -123,39 +129,76 @@ class BasicVisemeClassifier(AbstractVisemeClassifier):
                         roundedness: float, normalized_area: float, sens_factor: float):
         """Classify vowel visemes based on geometric features"""
         
+        
         # A: Wide open mouth, high aperture
         if mar > (0.25 / sens_factor) and lip_ratio < (3.5 * sens_factor):
             scores['A'] = (mar / 0.5) * (1.0 + normalized_area) * sens_factor
         
-        # E: Spread lips, moderate opening
-        if (0.1 / sens_factor) < mar < (0.3 / sens_factor) and lip_ratio > (2.5 / sens_factor):
-            scores['E'] = (1.0 - abs(mar - 0.2) * 5.0) * min(1.0, lip_ratio / 3.5) * sens_factor
+        # E: Spread lips, moderate opening - made more specific to avoid over-detection
+        if (0.08 / sens_factor) < mar < (0.25 / sens_factor) and lip_ratio > (3.0 / sens_factor) and roundedness < (0.4 / sens_factor):
+            # Penalize E when mouth is too round (should be U or O instead)
+            e_score = (1.0 - abs(mar - 0.16) * 6.0) * min(1.0, lip_ratio / 3.5) * sens_factor
+            # Reduce E score when roundedness suggests U/O
+            e_score *= (1.0 - roundedness * 0.7)
+            scores['E'] = max(0.0, e_score)
         
         # I: Narrow vertical, wide horizontal (smile-like)
         if mar < (0.15 / sens_factor) and lip_ratio > (3.0 / sens_factor):
             scores['I'] = (1.0 - mar * 6.0) * min(1.0, lip_ratio / 4.0) * sens_factor
         
-        # O: Rounded, moderate opening
-        if (0.15 / sens_factor) < mar < (0.35 / sens_factor) and roundedness > (0.5 / sens_factor):
-            scores['O'] = roundedness * (1.0 - abs(mar - 0.25) * 4.0) * sens_factor
+        # O: Rounded, moderate opening - prioritize roundedness over lip_ratio  
+        # Simple approach: wider ranges with high sensitivity
+        if 0.05 < mar < 0.50 and roundedness > 0.30:  # Very permissive ranges
+            # O should have balanced opening and strong roundedness
+            o_score = roundedness * (1.0 - abs(mar - 0.25) * 2.0) * sens_factor
+            
+            # Penalize very wide mouths (E-like), but allow moderate width for O
+            width_penalty = 0.0
+            if lip_ratio > 5.0:
+                width_penalty = min(0.5, (lip_ratio - 5.0) * 0.1)
+            
+            o_score *= (1.0 - width_penalty)
+            
+            # Bonus for good roundedness
+            if roundedness > 0.5:
+                o_score *= 1.3
+                
+            scores['O'] = max(0.0, o_score)
         
-        # U: Small rounded opening
-        if mar < (0.2 / sens_factor) and roundedness > (0.6 / sens_factor):
-            scores['U'] = roundedness * (1.0 - mar * 5.0) * sens_factor
+        # U: Small rounded opening - prioritize roundedness and small MAR
+        # Simple approach: wider ranges with high sensitivity  
+        if mar < 0.35 and roundedness > 0.30:  # Very permissive ranges
+            # U prioritizes roundedness over small opening
+            u_score = roundedness * (1.0 - mar * 2.0) * sens_factor
+            
+            # Strong bonus for very round mouth with small opening
+            if roundedness > 0.5 and mar < 0.25:
+                u_score *= 1.5
+            
+            # Penalize very wide mouths (E-like), but allow some width for natural U
+            width_penalty = 0.0
+            if lip_ratio > 6.0:
+                width_penalty = min(0.4, (lip_ratio - 6.0) * 0.08)
+            
+            u_score *= (1.0 - width_penalty)
+            
+            scores['U'] = max(0.0, u_score)
     
     def _classify_consonants(self, scores: Dict[str, float], lip_contact: float,
                            teeth_visibility: float, lip_compression: float,
                            nose_flare: float, mar: float, roundedness: float, sens_factor: float):
         """Classify consonant visemes based on geometric features"""
         
-        # Bilabial stops and nasals (lips clearly closed but achievable)
-        if lip_contact > (0.92 / sens_factor):
-            if nose_flare > (0.6 / sens_factor):  # Nasal
-                scores['M'] = lip_contact * nose_flare * sens_factor
-            elif lip_compression > (0.75 / sens_factor):  # Voiceless stop
-                scores['P'] = lip_contact * lip_compression * sens_factor
-            else:  # Voiced stop
-                scores['B'] = lip_contact * sens_factor
+        # Bilabial stops and nasals - much more conservative to prevent B over-detection
+        if lip_contact > (0.95 / sens_factor) and mar < (0.05 / sens_factor):  # Almost completely closed
+            if nose_flare > (0.7 / sens_factor):  # Strong nasal indicator
+                scores['M'] = lip_contact * nose_flare * sens_factor * 0.7  # Reduce consonant scores
+            elif lip_compression > (0.8 / sens_factor):  # Very strong compression for P
+                scores['P'] = lip_contact * lip_compression * sens_factor * 0.6
+            else:  # B requires perfect lip closure
+                # B should be extremely rare - only when lips are truly sealed
+                if lip_contact > 0.98 and mar < 0.03:
+                    scores['B'] = lip_contact * sens_factor * 0.5  # Heavily reduced B scoring
         
         # Labiodental fricatives (teeth on lip)
         if teeth_visibility > (0.75 / sens_factor) and lip_contact > (0.6 / sens_factor):

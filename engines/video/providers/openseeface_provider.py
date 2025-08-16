@@ -121,7 +121,7 @@ class OpenSeeFaceProvider(AbstractProvider):
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
         viseme_sensitivity: float = 1.0,
-        viseme_confidence_threshold: float = 0.4,
+        viseme_confidence_threshold: float = 0.04,
         viseme_smoothing: float = 0.3,
         enable_consonant_detection: bool = False
     ):
@@ -770,11 +770,12 @@ class OpenSeeFaceProvider(AbstractProvider):
             
             # === SOPHISTICATED MAR CALCULATION ===
             
-            # Debug: log the actual measurements to understand the issue
-            debug_measurements = True  # Enable temporarily for debugging
+            # Debug: log the actual measurements to understand the issue (limited to first 5 frames)
+            debug_measurements = getattr(self, '_debug_frame_count', 0) < 5
             if debug_measurements:
                 logger.info(f"OpenSeeFace measurements: outer_width={outer_width:.3f}, outer_height_avg={outer_height_avg:.3f}")
                 logger.info(f"OpenSeeFace measurements: inner_width={inner_width:.3f}, inner_height={inner_height:.3f}")
+                self._debug_frame_count = getattr(self, '_debug_frame_count', 0) + 1
             
             # Primary MAR using outer mouth for stability
             if outer_width > 0:
@@ -788,7 +789,7 @@ class OpenSeeFaceProvider(AbstractProvider):
             else:
                 inner_mar = 0.0
             
-            # Debug: log MAR components
+            # Debug: log MAR components (limited to first 5 frames)
             if debug_measurements:
                 logger.info(f"OpenSeeFace MAR components: outer_mar={outer_mar:.6f}, inner_mar={inner_mar:.6f}")
             

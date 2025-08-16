@@ -29,6 +29,7 @@ class VisemeFrame:
     viseme: str  # 'A', 'E', 'I', 'O', 'U', or 'neutral'
     confidence: float
     geometric_features: Dict[str, float]  # lip_width, lip_height, etc.
+    metadata: Optional[Dict[str, Any]] = None  # Additional debug info (scores, etc.)
 
 @dataclass
 class TimingData:
@@ -57,7 +58,7 @@ class AbstractProvider(ABC):
         merge_threshold: float = 0.2,
         confidence_threshold: float = 0.5,
         viseme_sensitivity: float = 1.0,
-        viseme_confidence_threshold: float = 0.4,
+        viseme_confidence_threshold: float = 0.04,
         viseme_smoothing: float = 0.3,
         enable_consonant_detection: bool = False
     ):

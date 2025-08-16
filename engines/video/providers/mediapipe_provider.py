@@ -230,10 +230,12 @@ class MediaPipeProvider(AbstractProvider):
                     features = self.extract_geometric_features(landmarks)
                     
                     # Use modular analysis system if available
+                    metadata = None
                     if ANALYSIS_AVAILABLE and hasattr(self, 'viseme_options'):
                         analyzer = VisemeAnalysisFactory.create_analyzer(self.viseme_options)
                         result = analyzer.classify_viseme(features, self.enable_consonant_detection)
                         viseme, viseme_conf = result.viseme, result.confidence
+                        metadata = result.metadata  # Capture classifier metadata
                     else:
                         # Fallback to built-in method
                         viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
@@ -242,7 +244,8 @@ class MediaPipeProvider(AbstractProvider):
                         frame_index=frame_count,
                         viseme=viseme,
                         confidence=viseme_conf,
-                        geometric_features=features
+                        geometric_features=features,
+                        metadata=metadata
                     ))
             else:
                 mar_values.append(0.0)
@@ -251,22 +254,32 @@ class MediaPipeProvider(AbstractProvider):
                         frame_index=frame_count,
                         viseme='neutral',
                         confidence=0.0,
-                        geometric_features={}
+                        geometric_features={},
+                        metadata=None
                     ))
             
             # Generate preview frame if requested (using processed frame for consistency)
             if preview_mode:
-                # Get current viseme if available
+                # Get current viseme and geometric features if available
                 current_viseme = None
                 viseme_confidence = 0.0
+                geometric_features = None
+                vowel_scores = None
                 if enable_viseme and viseme_frames and frame_count < len(viseme_frames):
                     current_viseme = viseme_frames[-1].viseme  # Last added viseme
                     viseme_confidence = viseme_frames[-1].confidence
+                    geometric_features = viseme_frames[-1].geometric_features
+                    # Extract vowel scores from metadata for debugging
+                    if hasattr(viseme_frames[-1], 'metadata') and viseme_frames[-1].metadata:
+                        vowel_scores = viseme_frames[-1].metadata.get('vowel_scores')
                 
                 annotated = self.annotate_frame(
                     frame, landmarks, is_moving, confidence,
                     current_viseme=current_viseme, 
-                    viseme_confidence=viseme_confidence
+                    viseme_confidence=viseme_confidence,
+                    geometric_features=geometric_features,
+                    frame_number=frame_count,
+                    vowel_scores=vowel_scores
                 )
                 preview_frames.append(annotated)
             
@@ -419,9 +432,65 @@ class MediaPipeProvider(AbstractProvider):
             upper_lip_curvature = np.linalg.norm(upper_lip_top - upper_lip_center)
             lower_lip_curvature = np.linalg.norm(lower_lip_bottom - lower_lip_center)
             
-            # Calculate roundedness (how circular vs elliptical)
-            # Perfect circle = 1.0, wider ellipse > 1.0, taller ellipse < 1.0
-            roundedness = min(lip_width, lip_height) / max(lip_width, lip_height) if max(lip_width, lip_height) > 0 else 0
+            # Calculate roundedness using a robust geometric approach
+            # MediaPipe mouth landmarks: outer lip contour (lips) + inner lip area
+            mouth_center = np.array([(left_corner[0] + right_corner[0]) / 2, 
+                                   (upper_lip_top[1] + lower_lip_bottom[1]) / 2])
+            
+            # Use correct MediaPipe mouth landmark indices for outer lip contour
+            # These form a closed loop around the mouth perimeter
+            outer_lip_indices = [61, 84, 17, 314, 405, 320, 307, 375, 321, 308, 324, 318]
+            
+            # Extract outer lip contour points
+            mouth_contour = []
+            for idx in outer_lip_indices:
+                if idx < len(landmarks):
+                    mouth_contour.append(landmarks[idx][:2])
+            
+            if len(mouth_contour) >= 6:  # Need enough points for meaningful analysis
+                # Method 1: Circularity via perimeter-to-area ratio
+                # Calculate contour area and perimeter
+                contour_area = 0.0
+                perimeter = 0.0
+                
+                for i in range(len(mouth_contour)):
+                    j = (i + 1) % len(mouth_contour)
+                    # Shoelace formula for polygon area
+                    contour_area += mouth_contour[i][0] * mouth_contour[j][1]
+                    contour_area -= mouth_contour[j][0] * mouth_contour[i][1]
+                    # Perimeter calculation
+                    perimeter += np.linalg.norm(np.array(mouth_contour[j]) - np.array(mouth_contour[i]))
+                
+                contour_area = abs(contour_area) / 2.0
+                
+                if perimeter > 0 and contour_area > 0:
+                    # Circularity: 4π * area / perimeter²
+                    # Perfect circle = 1.0, elongated shapes < 1.0
+                    circularity = (4 * np.pi * contour_area) / (perimeter ** 2)
+                    roundedness = min(1.0, circularity)  # Clamp to max 1.0
+                else:
+                    # Fallback: Method 2: Distance variance from center
+                    distances = [np.linalg.norm(np.array(point) - mouth_center) for point in mouth_contour]
+                    if distances:
+                        mean_dist = np.mean(distances)
+                        std_dist = np.std(distances)
+                        # Low coefficient of variation = high roundedness
+                        cv = std_dist / mean_dist if mean_dist > 0 else 1.0
+                        roundedness = max(0.0, 1.0 - cv * 2.0)  # Less aggressive scaling
+                    else:
+                        roundedness = 0.0
+            else:
+                # Fallback: Simple aspect ratio based roundedness
+                if lip_height > 0:
+                    aspect_ratio = lip_width / lip_height
+                    # Circular shape has aspect ratio around 1.0-1.5
+                    if 0.8 <= aspect_ratio <= 2.0:
+                        roundedness = 1.0 - abs(aspect_ratio - 1.2) / 2.0  # Peak at 1.2 ratio
+                        roundedness = max(0.0, min(1.0, roundedness))
+                    else:
+                        roundedness = 0.0
+                else:
+                    roundedness = 0.0
             
             # Extract 3D depth information if available
             lip_protrusion = 0.0
@@ -920,7 +989,10 @@ class MediaPipeProvider(AbstractProvider):
         is_moving: bool,
         confidence: float,
         current_viseme: Optional[str] = None,
-        viseme_confidence: float = 0.0
+        viseme_confidence: float = 0.0,
+        geometric_features: Optional[dict] = None,
+        frame_number: Optional[int] = None,
+        vowel_scores: Optional[dict] = None
     ) -> np.ndarray:
         """
         Enhanced frame annotation with MediaPipe landmarks and viseme display
@@ -933,8 +1005,20 @@ class MediaPipeProvider(AbstractProvider):
         
         # Add semi-transparent background for better text visibility
         overlay = annotated.copy()
-        cv2.rectangle(overlay, (5, 5), (300, 105), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (5, 5), (350, 130), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.7, annotated, 0.3, 0, annotated)
+        
+        # Add frame number if provided
+        if frame_number is not None:
+            cv2.putText(
+                annotated,
+                f"Fr: {frame_number}",
+                (280, 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (200, 200, 200),
+                1
+            )
         cv2.putText(
             annotated,
             status_text,
@@ -1037,7 +1121,66 @@ class MediaPipeProvider(AbstractProvider):
                     1
                 )
                 
-                # No legend needed - current viseme display and color-coded landmarks are sufficient
+                # Add vowel scores debugging (temporary)
+                if vowel_scores:
+                    score_text = " ".join([f"{k}:{v:.2f}" for k, v in vowel_scores.items()])
+                    cv2.putText(
+                        annotated,
+                        f"Scores: {score_text}",
+                        (10, 115),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (200, 200, 200),
+                        1
+                    )
+        
+        # Add geometric features display if available
+        if geometric_features:
+            # Extend overlay for additional metrics
+            overlay = annotated.copy()
+            cv2.rectangle(overlay, (5, 135), (400, 200), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.7, annotated, 0.3, 0, annotated)
+            
+            # Display key geometric features
+            roundedness = geometric_features.get('roundedness', 0.0)
+            lip_ratio = geometric_features.get('lip_ratio', 0.0)
+            mar = geometric_features.get('mar', 0.0)
+            
+            # Line 1: Roundedness (most important for U/O)
+            round_text = f"Roundedness: {roundedness:.3f}"
+            cv2.putText(
+                annotated,
+                round_text,
+                (10, 155),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 255),  # Yellow for roundedness
+                1
+            )
+            
+            # Line 2: Lip Ratio (width/height)
+            ratio_text = f"Lip Ratio: {lip_ratio:.2f}"
+            cv2.putText(
+                annotated,
+                ratio_text,
+                (10, 175),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 255),  # Magenta for lip ratio
+                1
+            )
+            
+            # Line 3: MAR for reference
+            mar_text = f"MAR: {mar:.3f}"
+            cv2.putText(
+                annotated,
+                mar_text,
+                (10, 195),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),  # White for MAR
+                1
+            )
         
         return annotated
     

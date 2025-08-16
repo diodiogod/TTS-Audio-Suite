@@ -152,6 +152,12 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/audio/rvc_pitch_options_node.py** - Advanced pitch extraction settings for RVC voice conversion
 
+### Video Analysis System
+
+**nodes/video/mouth_movement_analyzer_node.py** - 🗣️ Silent Speech Analyzer for detecting mouth movement in silent video frames to extract precise timing for TTS SRT synchronization
+
+**nodes/video/viseme_options_node.py** - Advanced viseme detection configuration with vowel/consonant detection, word prediction, and temporal analysis settings
+
 ### RVC Model Management
 
 **nodes/models/load_rvc_model_node.py** - RVC model loader with FAISS index support and automatic downloading

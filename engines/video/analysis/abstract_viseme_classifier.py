@@ -23,7 +23,7 @@ class AbstractVisemeClassifier(ABC):
     and advanced temporal analysis systems.
     """
     
-    def __init__(self, sensitivity: float = 1.0, confidence_threshold: float = 0.4):
+    def __init__(self, sensitivity: float = 1.0, confidence_threshold: float = 0.04):
         """
         Initialize classifier
         

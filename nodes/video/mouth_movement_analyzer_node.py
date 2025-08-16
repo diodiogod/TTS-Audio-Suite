@@ -165,7 +165,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                            min_duration: float, merge_threshold: float, 
                            confidence_threshold: float, preview_mode: bool,
                            enable_viseme: bool = False, viseme_sensitivity: float = 1.0,
-                           viseme_confidence_threshold: float = 0.4, 
+                           viseme_confidence_threshold: float = 0.04, 
                            viseme_smoothing: float = 0.3,
                            enable_consonant_detection: bool = False) -> str:
         """Generate cache key for mouth movement analysis (excludes SRT format)"""
@@ -241,13 +241,13 @@ class MouthMovementAnalyzerNode(BaseNode):
         if viseme_options is not None:
             enable_viseme_detection = viseme_options.get("enable_viseme_detection", False)
             viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
-            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.4)
+            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.04)
             viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
             enable_consonant_detection = viseme_options.get("enable_consonant_detection", False)
         else:
             enable_viseme_detection = False
             viseme_sensitivity = 1.0
-            viseme_confidence_threshold = 0.4
+            viseme_confidence_threshold = 0.04
             viseme_smoothing = 0.3
             enable_consonant_detection = False
         
@@ -324,7 +324,7 @@ class MouthMovementAnalyzerNode(BaseNode):
         if viseme_options is not None:
             enable_viseme_detection = viseme_options.get("enable_viseme_detection", False)
             viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
-            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.4)
+            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.04)
             viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
             enable_consonant_detection = viseme_options.get("enable_consonant_detection", False)
             enable_word_prediction = viseme_options.get("enable_word_prediction", False)
@@ -332,7 +332,7 @@ class MouthMovementAnalyzerNode(BaseNode):
             # No viseme options connected - basic speech detection only
             enable_viseme_detection = False
             viseme_sensitivity = 1.0
-            viseme_confidence_threshold = 0.4
+            viseme_confidence_threshold = 0.04
             viseme_smoothing = 0.3
             enable_consonant_detection = False
             enable_word_prediction = False
