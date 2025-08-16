@@ -94,17 +94,12 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 
 ## Features
 
-- 🎤 **ChatterBox TTS** - Generate speech from text with optional voice cloning
-- 🎙️ **F5-TTS** - High-quality voice synthesis with reference audio + text cloning
-- 🔄 **ChatterBox VC** - Convert voice from one speaker to another with iterative refinement
-- 🎵 **RVC Voice Conversion** - Real-time voice conversion using .pth character models
-- 🎙️ **ChatterBox Voice Capture** - Record voice input with smart silence detection
-- ⚡ **Fast & Quality** - Production-grade TTS that outperforms ElevenLabs
-- 🎭 **Character Switching** - Multi-character TTS with `[CharacterName]` tags and alias system
-- 🌍 **Language Switching** - Use `[language:character]` syntax for seamless model switching (`[de:Alice]`, `[fr:]`, etc.)
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS and F5-TTS with voice cloning, reference audio synthesis, and production-grade quality
+- 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
+- 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
+- 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
+- 🌍 **Multi-language Support** - ChatterBox (English, German, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
-- 🌍 **Multi-language ChatterBox** - Support for English, German, Norwegian models with automatic download and local model prioritization
-- 🌍 **Multi-language F5-TTS** - Support for English, German, Spanish, French, Japanese, Hindi and more
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
