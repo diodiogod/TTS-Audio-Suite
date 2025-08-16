@@ -33,7 +33,7 @@ class VisemeDetectionOptionsNode:
                     "tooltip": "Enable vowel classification (A, E, I, O, U) for precise lip-sync:\n\n• Analyzes mouth shape geometry beyond simple open/close\n• Detects vowel patterns in mouth movements\n• Adds ~20% processing time\n• Provides phoneme sequences for better TTS synchronization"
                 }),
                 "viseme_sensitivity": ("FLOAT", {
-                    "default": 1.0,
+                    "default": 2.0,
                     "min": 0.1,
                     "max": 2.0,
                     "step": 0.05,
@@ -49,7 +49,7 @@ class VisemeDetectionOptionsNode:
                     "tooltip": "How sure should I be before showing a vowel?\n\nMinimum confidence for valid viseme classification:\n\n• 0.0-0.2: Show all viseme attempts (noisy)\n• 0.3-0.5: Balanced filtering (recommended)\n• 0.6-0.8: Conservative, only clear vowels\n• 0.9-1.0: Ultra-strict, only perfect detections\n\nBelow threshold shows as 'neutral' instead of uncertain vowel."
                 }),
                 "viseme_smoothing": ("FLOAT", {
-                    "default": 0.3,
+                    "default": 0.0,
                     "min": 0.0,
                     "max": 1.0,
                     "step": 0.05,
@@ -57,12 +57,12 @@ class VisemeDetectionOptionsNode:
                     "tooltip": "Temporal smoothing to reduce viseme flickering:\n\n• 0.0: No smoothing (immediate response, may flicker)\n• 0.3: Light smoothing (recommended balance)\n• 0.7: Heavy smoothing (stable but slower response)\n• 1.0: Maximum smoothing (very stable, delayed)\n\nReduces rapid switching between visemes for cleaner sequences.\nUseful for noisy videos or subtle mouth movements."
                 }),
                 "enable_consonant_detection": ("BOOLEAN", {
-                    "default": False,
+                    "default": True,
                     "label": "Enable Consonant Detection",
                     "tooltip": "Detect consonants (B, P, M, F, V, TH, etc.) in addition to vowels:\n\n• Vowels only: A, E, I, O, U, _\n• With consonants: A, E, I, O, U, B, P, M, F, V, TH, _, etc.\n• Adds ~10% processing time\n• Provides more detailed phoneme sequences\n• Better for advanced lip-sync and speech analysis\n\nLeave disabled for basic vowel-only detection."
                 }),
                 "enable_temporal_analysis": ("BOOLEAN", {
-                    "default": False,
+                    "default": True,
                     "label": "Enable Temporal Analysis",
                     "tooltip": "Advanced consonant burst detection using 5-frame windows:\n\n• Analyzes onset → peak → release patterns for true consonants\n• Dramatically improves B/P/M distinction accuracy\n• Detects rapid lip closure/release vs sustained patterns\n• Better coarticulation modeling (vowel context)\n• Adds ~50% processing time but much higher accuracy\n• Requires consonant detection enabled\n\nRecommended for: research, high-quality phonetic analysis\nSkip for: basic lip-sync, real-time processing"
                 }),

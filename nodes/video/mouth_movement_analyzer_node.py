@@ -6,6 +6,7 @@ Detects and analyzes mouth movement in silent video frames to extract precise mo
 import os
 import json
 import logging
+import time
 from typing import Dict, List, Tuple, Any, Optional
 from enum import Enum
 
@@ -90,7 +91,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework with 468 facial landmarks\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n  - Recommended for production use\n\n• OpenSeeFace: Real-time face tracking (EXPERIMENTAL)\n  - More detailed expression analysis\n  - Better for subtle movements\n  - Still being optimized, may have issues\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies\n  - Good for older hardware"
                 }),
                 "sensitivity": ("FLOAT", {
-                    "default": 0.5,
+                    "default": 1.0,
                     "min": 0.05,
                     "max": 1.0,
                     "step": 0.01,
@@ -98,7 +99,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "tooltip": "Ultra-fine movement detection sensitivity (exponential scaling):\n\n• 0.05-0.2: Only obvious mouth movements (conservative)\n• 0.3-0.4: Clear speech detection (balanced)\n• 0.5-0.6: Most speech including soft talking\n• 0.7-0.8: Sensitive, catches subtle movements\n• 0.9-1.0: Ultra-sensitive, includes whispers and micro-movements\n\nExponential scaling provides fine control at higher values.\nStart with 0.5, then fine-tune in 0.01 increments."
                 }),
                 "min_duration": ("FLOAT", {
-                    "default": 0.1,
+                    "default": 0.05,
                     "min": 0.01,
                     "max": 2.0,
                     "step": 0.01,
@@ -138,7 +139,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "tooltip": "Merge nearby speech segments separated by short gaps:\n\nLower values: Keep more segments separate, preserve natural pauses\nHigher values: Merge more segments together, smoother but less detailed\n\nRecommended: 0.2s for natural flow, 1.0s+ for sentence-level segments"
                 }),
                 "confidence_threshold": ("FLOAT", {
-                    "default": 0.3,
+                    "default": 0.02,
                     "min": 0.0,
                     "max": 1.0,
                     "step": 0.01,
@@ -148,8 +149,8 @@ class MouthMovementAnalyzerNode(BaseNode):
             }
         }
     
-    RETURN_TYPES = ("VIDEO", "TIMING_DATA", "STRING", "LIST", "LIST") 
-    RETURN_NAMES = ("video", "timing_data", "formatted_output", "movement_frames", "confidence_scores")
+    RETURN_TYPES = ("VIDEO", "STRING", "TIMING_DATA", "LIST", "LIST") 
+    RETURN_NAMES = ("video", "srt_output", "timing_data", "movement_frames", "confidence_scores")
     
     FUNCTION = "analyze_mouth_movement"
     CATEGORY = "image/video"
@@ -479,7 +480,7 @@ class MouthMovementAnalyzerNode(BaseNode):
         
         return {
             "ui": ui_data,
-            "result": (output_video, timing_data, srt_output, movement_frames, confidence_scores)
+            "result": (output_video, srt_output, timing_data, movement_frames, confidence_scores)
         }
     
     def _format_as_srt(self, timing_data, placeholder_format: str, enable_word_prediction: bool = False, clean_subtitle_output: bool = False) -> str:
