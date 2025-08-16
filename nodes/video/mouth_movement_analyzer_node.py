@@ -385,7 +385,11 @@ class MouthMovementAnalyzerNode(BaseNode):
                 import inspect
                 sig = inspect.signature(analyzer.analyze_video)
                 if 'enable_viseme' in sig.parameters:
-                    timing_data = analyzer.analyze_video(video, preview_mode=preview_mode, enable_viseme=enable_viseme_detection)
+                    # Pass full viseme_options dictionary to provider
+                    if 'viseme_options' in sig.parameters:
+                        timing_data = analyzer.analyze_video(video, preview_mode=preview_mode, enable_viseme=enable_viseme_detection, viseme_options=viseme_options)
+                    else:
+                        timing_data = analyzer.analyze_video(video, preview_mode=preview_mode, enable_viseme=enable_viseme_detection)
                 else:
                     timing_data = analyzer.analyze_video(video, preview_mode=preview_mode)
                     if enable_viseme_detection:
@@ -433,33 +437,39 @@ class MouthMovementAnalyzerNode(BaseNode):
                     file_size = os.path.getsize(preview_path)
                     logger.info(f"Preview video file exists: {preview_path} ({file_size} bytes)")
                     
-                    # Get just the filename from the full path
-                    preview_filename = os.path.basename(preview_path)
+                    # Store preview in ComfyUI's temp directory instead of output directory
+                    try:
+                        # Try ComfyUI temp directory first
+                        temp_dir = folder_paths.get_temp_directory()
+                    except:
+                        # Fallback to system temp if ComfyUI doesn't have get_temp_directory
+                        import tempfile
+                        temp_dir = tempfile.gettempdir()
                     
-                    # Create UI data exactly like SaveAnimatedWEBP does (native ComfyUI)
+                    preview_filename = f"viseme_preview_{cache_key[:8]}_{int(time.time())}.webm"
+                    preview_temp_path = os.path.join(temp_dir, preview_filename)
+                    
+                    # Copy preview to temp directory
+                    import shutil
+                    shutil.copy2(preview_path, preview_temp_path)
+                    
+                    # Create UI data for ComfyUI display using temp location
                     results = [{
                         "filename": preview_filename,
                         "subfolder": "",
-                        "type": "output"
+                        "type": "temp"
                     }]
                     ui_data = {
                         "images": results,
                         "animated": (True,)  # This triggers native animation display
                     }
                     
-                    # Verify the file was copied to output directory
-                    output_dir = folder_paths.get_output_directory()
-                    expected_output_path = os.path.join(output_dir, preview_filename)
-                    
-                    if os.path.exists(expected_output_path):
-                        output_size = os.path.getsize(expected_output_path)
-                        logger.info(f"Preview video ready: {preview_filename} in output directory ({output_size} bytes)")
+                    # Verify temp file exists
+                    if os.path.exists(preview_temp_path):
+                        temp_size = os.path.getsize(preview_temp_path)
+                        logger.info(f"Preview video ready in ComfyUI temp: {preview_temp_path} ({temp_size} bytes)")
                     else:
-                        logger.error(f"Preview video not found in output directory: {expected_output_path}")
-                        # Copy from original location to output directory
-                        import shutil
-                        shutil.copy2(preview_path, expected_output_path)
-                        logger.info(f"Copied preview video to output directory: {expected_output_path}")
+                        logger.error(f"Preview video not found in temp: {preview_temp_path}")
                     
                 except Exception as e:
                     logger.warning(f"Failed to prepare video preview: {e}")

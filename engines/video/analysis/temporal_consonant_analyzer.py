@@ -95,14 +95,42 @@ class TemporalConsonantAnalyzer(BasicVisemeClassifier):
         if len(self.frame_history) < self.window_size:
             return super().classify_viseme(features, enable_consonants)
         
-        # Perform temporal analysis
+        # NEW APPROACH: Additive consonant+vowel detection
+        consonant_detected = None
+        
         if enable_consonants:
+            # First check for direct consonant bursts
             consonant_result = self._analyze_consonant_bursts()
             if consonant_result:
-                return consonant_result
+                consonant_detected = consonant_result.viseme
+            else:
+                # Retroactive burst detection - check if current vowel suggests recent consonant
+                retroactive_result = self._analyze_retroactive_bursts()
+                if retroactive_result:
+                    consonant_detected = retroactive_result.viseme
         
-        # Vowel analysis with temporal smoothing
+        # Always analyze vowel patterns (don't skip vowels!)
         vowel_result = self._analyze_vowel_patterns()
+        
+        # Combine consonant + vowel if both detected
+        if consonant_detected and vowel_result.viseme != 'neutral':
+            combined_viseme = consonant_detected + vowel_result.viseme
+            combined_confidence = min(0.8, (vowel_result.confidence + 0.6) / 2)  # Average with consonant confidence
+            
+            return VisemeResult(
+                combined_viseme,
+                combined_confidence,
+                {
+                    'method': 'additive_consonant_vowel',
+                    'consonant': consonant_detected,
+                    'vowel': vowel_result.viseme,
+                    'consonant_source': 'retroactive_burst' if consonant_detected else None,
+                    'vowel_confidence': vowel_result.confidence,
+                    'raw_scores': {consonant_detected: 0.6, vowel_result.viseme: vowel_result.confidence}  # Show detected components
+                }
+            )
+        
+        # Return vowel if no consonant detected
         return vowel_result
     
     def _analyze_consonant_bursts(self) -> Optional[VisemeResult]:
@@ -346,6 +374,104 @@ class TemporalConsonantAnalyzer(BasicVisemeClassifier):
             trajectories[feature_name] = trajectory
         
         return trajectories
+    
+    def _analyze_retroactive_bursts(self) -> Optional[VisemeResult]:
+        """
+        Retroactive consonant detection: Detect vowels that suggest recent consonant bursts
+        
+        Logic: If current frame shows vowel + high LipContact, look backward for closure
+        Example: Detect P in "Papa" when seeing A with high LipContact
+        
+        Returns:
+            VisemeResult if retroactive consonant detected, None otherwise
+        """
+        frames = list(self.frame_history)
+        if len(frames) < 3:  # Need at least 3 frames for retroactive analysis
+            return None
+            
+        current_frame = frames[-1]  # Current frame
+        prev_frames = frames[-3:-1]  # Look back 2 frames
+        
+        # Get current frame features
+        current_features = current_frame.features
+        mar = current_features.get('mar', 0)
+        lip_contact = current_features.get('lip_contact', 0)
+        roundedness = current_features.get('roundedness', 0)
+        lip_ratio = current_features.get('lip_ratio', 0)
+        
+        # Check if current frame is a vowel with consonant evidence
+        is_vowel = mar > 0.1  # Mouth is open (vowel)
+        
+        # Different thresholds for different consonant types
+        has_bilabial_evidence = lip_contact > 0.7  # P, B, M (high closure)
+        has_fricative_evidence = lip_contact > 0.4 and current_features.get('teeth_visibility', 0) > 0.4  # F, V, TH (teeth+lip)
+        
+        if not (is_vowel and (has_bilabial_evidence or has_fricative_evidence)):
+            return None
+            
+        # Look backward for the actual closure moment
+        for i, prev_frame in enumerate(reversed(prev_frames)):
+            prev_features = prev_frame.features
+            prev_mar = prev_features.get('mar', 0)
+            prev_lip_contact = prev_features.get('lip_contact', 0)
+            prev_lip_compression = prev_features.get('lip_compression', 0)
+            prev_nose_flare = prev_features.get('nose_flare', 0)
+            
+            # Check for different consonant patterns
+            was_bilabial_closed = prev_mar < 0.05 and prev_lip_contact > 0.9  # P, B, M
+            was_fricative_active = prev_features.get('teeth_visibility', 0) > 0.5 and prev_lip_contact > 0.3  # F, V, TH
+            
+            if was_bilabial_closed or was_fricative_active:
+                # Determine consonant type based on characteristics
+                consonant_type = 'P'  # Default
+                confidence = 0.6
+                
+                if was_fricative_active:
+                    # Fricative consonants (F, V, TH)
+                    teeth_vis = prev_features.get('teeth_visibility', 0)
+                    if teeth_vis > 0.7:
+                        consonant_type = 'F'  # Strong teeth visibility = F
+                        confidence = 0.7
+                    elif teeth_vis > 0.5:
+                        consonant_type = 'TH'  # Moderate teeth = TH
+                        confidence = 0.6
+                    else:
+                        consonant_type = 'V'  # Lower teeth = V
+                        confidence = 0.5
+                elif was_bilabial_closed:
+                    # Bilabial consonants (P, B, M)
+                    if prev_nose_flare > 0.6:
+                        consonant_type = 'M'  # Nasal
+                        confidence = 0.7
+                    elif prev_lip_compression > 0.8:
+                        consonant_type = 'P'  # Voiceless stop
+                        confidence = 0.8
+                    else:
+                        consonant_type = 'B'  # Voiced stop
+                        confidence = 0.6
+                
+                # Return the detected consonant
+                return VisemeResult(
+                    consonant_type,
+                    confidence,
+                    {
+                        'method': 'retroactive_burst_detection',
+                        'closure_frame_offset': -(i + 1),  # How many frames back
+                        'current_vowel_evidence': {
+                            'mar': mar,
+                            'lip_contact': lip_contact,
+                            'roundedness': roundedness
+                        },
+                        'closure_evidence': {
+                            'prev_mar': prev_mar,
+                            'prev_lip_contact': prev_lip_contact,
+                            'prev_lip_compression': prev_lip_compression,
+                            'prev_nose_flare': prev_nose_flare
+                        }
+                    }
+                )
+                
+        return None
     
     def _analyze_vowel_patterns(self) -> VisemeResult:
         """Analyze vowel patterns with temporal smoothing"""

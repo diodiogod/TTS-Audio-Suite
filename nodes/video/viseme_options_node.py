@@ -95,6 +95,11 @@ class VisemeDetectionOptionsNode:
         Returns:
             Dictionary containing all viseme detection settings
         """
+        # Auto-enable temporal analysis when consonants are enabled for better accuracy
+        if enable_consonant_detection:
+            enable_temporal_analysis = True
+            logger.info("Auto-enabled temporal analysis for consonant detection")
+
         viseme_options = {
             "enable_viseme_detection": enable_viseme_detection,
             "viseme_sensitivity": viseme_sensitivity,

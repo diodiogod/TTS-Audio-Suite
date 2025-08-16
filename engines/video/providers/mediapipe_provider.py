@@ -146,8 +146,24 @@ class MediaPipeProvider(AbstractProvider):
         else:
             raise ValueError(f"Cannot extract file path from video input of type {type(video_input)}. Available attributes: {dir(video_input)}")
         
-        # Store viseme options for modular analysis
+        # Store viseme options for modular analysis - ensure defaults are set
         self.viseme_options = viseme_options or {}
+        
+        # Ensure critical options have defaults for modular analysis
+        if 'enable_consonant_detection' not in self.viseme_options:
+            self.viseme_options['enable_consonant_detection'] = False
+        if 'enable_temporal_analysis' not in self.viseme_options:
+            self.viseme_options['enable_temporal_analysis'] = False
+        if 'viseme_sensitivity' not in self.viseme_options:
+            self.viseme_options['viseme_sensitivity'] = 1.0
+        if 'viseme_confidence_threshold' not in self.viseme_options:
+            self.viseme_options['viseme_confidence_threshold'] = 0.04
+        
+        # Extract consonant detection setting from options
+        self.enable_consonant_detection = self.viseme_options.get('enable_consonant_detection', False)
+        
+        print(f"[DEBUG] MediaPipe viseme_options: {self.viseme_options}")
+        print(f"[DEBUG] ANALYSIS_AVAILABLE: {ANALYSIS_AVAILABLE}")
         
         logger.info(f"Analyzing video with MediaPipe: {video_path}")
         
@@ -231,13 +247,18 @@ class MediaPipeProvider(AbstractProvider):
                     
                     # Use modular analysis system if available
                     metadata = None
-                    if ANALYSIS_AVAILABLE and hasattr(self, 'viseme_options'):
-                        analyzer = VisemeAnalysisFactory.create_analyzer(self.viseme_options)
-                        result = analyzer.classify_viseme(features, self.enable_consonant_detection)
+                    if ANALYSIS_AVAILABLE and self.viseme_options:
+                        # Create analyzer only once per video, not per frame!
+                        if not hasattr(self, '_temporal_analyzer'):
+                            self._temporal_analyzer = VisemeAnalysisFactory.create_analyzer(self.viseme_options)
+                            print(f"[DEBUG] Created persistent analyzer: {type(self._temporal_analyzer).__name__}")
+                        
+                        result = self._temporal_analyzer.classify_viseme(features, self.enable_consonant_detection)
                         viseme, viseme_conf = result.viseme, result.confidence
                         metadata = result.metadata  # Capture classifier metadata
                     else:
                         # Fallback to built-in method
+                        print(f"[DEBUG] Using built-in method: ANALYSIS_AVAILABLE={ANALYSIS_AVAILABLE}, viseme_options={bool(self.viseme_options)}")
                         viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
                     
                     viseme_frames.append(VisemeFrame(
@@ -264,14 +285,23 @@ class MediaPipeProvider(AbstractProvider):
                 current_viseme = None
                 viseme_confidence = 0.0
                 geometric_features = None
-                vowel_scores = None
+                consonant_scores = None
                 if enable_viseme and viseme_frames and frame_count < len(viseme_frames):
                     current_viseme = viseme_frames[-1].viseme  # Last added viseme
                     viseme_confidence = viseme_frames[-1].confidence
                     geometric_features = viseme_frames[-1].geometric_features
-                    # Extract vowel scores from metadata for debugging
+                    # Extract debug info from metadata
                     if hasattr(viseme_frames[-1], 'metadata') and viseme_frames[-1].metadata:
-                        vowel_scores = viseme_frames[-1].metadata.get('vowel_scores')
+                        metadata = viseme_frames[-1].metadata
+                        consonant_scores = metadata.get('raw_scores', {})
+                        # Filter for consonant scores only
+                        consonant_scores = {k: v for k, v in consonant_scores.items()
+                                          if k in ['B', 'P', 'M', 'F', 'V', 'TH', 'T', 'D', 'N', 'K', 'G'] and v > 0.0}
+
+                        # Extract analyzer method info
+                        analyzer_method = metadata.get('method', 'unknown')
+                    else:
+                        analyzer_method = 'basic'
                 
                 annotated = self.annotate_frame(
                     frame, landmarks, is_moving, confidence,
@@ -279,7 +309,8 @@ class MediaPipeProvider(AbstractProvider):
                     viseme_confidence=viseme_confidence,
                     geometric_features=geometric_features,
                     frame_number=frame_count,
-                    vowel_scores=vowel_scores
+                    consonant_scores=consonant_scores,
+                    analyzer_method=analyzer_method
                 )
                 preview_frames.append(annotated)
             
@@ -992,7 +1023,8 @@ class MediaPipeProvider(AbstractProvider):
         viseme_confidence: float = 0.0,
         geometric_features: Optional[dict] = None,
         frame_number: Optional[int] = None,
-        vowel_scores: Optional[dict] = None
+        consonant_scores: Optional[dict] = None,
+        analyzer_method: str = 'basic'
     ) -> np.ndarray:
         """
         Enhanced frame annotation with MediaPipe landmarks and viseme display
@@ -1008,17 +1040,29 @@ class MediaPipeProvider(AbstractProvider):
         cv2.rectangle(overlay, (5, 5), (350, 130), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.7, annotated, 0.3, 0, annotated)
         
-        # Add frame number if provided
+        # Add frame number if provided - position it in top-right area
         if frame_number is not None:
             cv2.putText(
                 annotated,
-                f"Fr: {frame_number}",
-                (280, 25),
+                f"Frame: {frame_number}",
+                (200, 25),  # Top-right area, same height as status text
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (200, 200, 200),
-                1
+                0.6,  # Slightly bigger for visibility
+                (0, 255, 255),  # Bright yellow for visibility
+                2  # Thicker stroke
             )
+
+        # Add analyzer method info
+        method_color = (255, 255, 0) if 'temporal' in analyzer_method.lower() else (128, 128, 128)
+        cv2.putText(
+            annotated,
+            f"Analyzer: {analyzer_method}",
+            (200, 50),  # Below frame number
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            method_color,
+            1
+        )
         cv2.putText(
             annotated,
             status_text,
@@ -1121,16 +1165,16 @@ class MediaPipeProvider(AbstractProvider):
                     1
                 )
                 
-                # Add vowel scores debugging (temporary)
-                if vowel_scores:
-                    score_text = " ".join([f"{k}:{v:.2f}" for k, v in vowel_scores.items()])
+                # Add consonant scores debugging
+                if consonant_scores:
+                    score_text = " ".join([f"{k}:{v:.2f}" for k, v in consonant_scores.items()])
                     cv2.putText(
                         annotated,
-                        f"Scores: {score_text}",
+                        f"Consonants: {score_text}",
                         (10, 115),
                         cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        (200, 200, 200),
+                        0.4,  # Smaller font for consonant scores
+                        (255, 100, 255),  # Purple color for consonant scores
                         1
                     )
         
@@ -1179,6 +1223,52 @@ class MediaPipeProvider(AbstractProvider):
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 (255, 255, 255),  # White for MAR
+                1
+            )
+
+            # Add consonant features for debugging consonant detection
+            lip_contact = geometric_features.get('lip_contact', 0.0)
+            teeth_visibility = geometric_features.get('teeth_visibility', 0.0)
+            lip_compression = geometric_features.get('lip_compression', 0.0)
+
+            # Extend the black background to accommodate consonant features
+            overlay = annotated.copy()
+            cv2.rectangle(overlay, (5, 200), (400, 260), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.7, annotated, 0.3, 0, annotated)
+
+            # Line 4: Lip Contact (for B, P, M)
+            contact_text = f"LipContact: {lip_contact:.3f}"
+            cv2.putText(
+                annotated,
+                contact_text,
+                (10, 220),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (0, 255, 0),  # Green for lip contact
+                1
+            )
+
+            # Line 5: Teeth Visibility (for F, V, TH)
+            teeth_text = f"TeethVis: {teeth_visibility:.3f}"
+            cv2.putText(
+                annotated,
+                teeth_text,
+                (10, 240),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (0, 200, 255),  # Orange for teeth visibility
+                1
+            )
+
+            # Line 6: Lip Compression (for various consonants)
+            compression_text = f"LipComp: {lip_compression:.3f}"
+            cv2.putText(
+                annotated,
+                compression_text,
+                (10, 260),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (255, 200, 0),  # Cyan for lip compression
                 1
             )
         

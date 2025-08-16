@@ -49,6 +49,7 @@ class VisemeAnalysisFactory:
                 window_size=config.get('temporal_window_size', 5),
                 burst_threshold=config.get('consonant_burst_threshold', 0.4)
             )
+            print(f"[ANALYZER] Created TemporalConsonantAnalyzer (sensitivity={sensitivity}, window={config.get('temporal_window_size', 5)})")
         else:
             # Basic frame-by-frame analysis (faster, good for vowels)
             analyzer = BasicVisemeClassifier(
@@ -56,6 +57,7 @@ class VisemeAnalysisFactory:
                 confidence_threshold=confidence_threshold,
                 mar_threshold=config.get('mar_threshold', 0.05)
             )
+            print(f"[ANALYZER] Created BasicVisemeClassifier (sensitivity={sensitivity})")
         
         return analyzer
     
