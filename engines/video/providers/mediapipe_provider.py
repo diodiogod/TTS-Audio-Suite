@@ -1044,12 +1044,12 @@ class MediaPipeProvider(AbstractProvider):
         if frame_number is not None:
             cv2.putText(
                 annotated,
-                f"Frame: {frame_number}",
+                f"Fr: {frame_number}",
                 (200, 25),  # Top-right area, same height as status text
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,  # Slightly bigger for visibility
+                0.4,  # Smaller font
                 (0, 255, 255),  # Bright yellow for visibility
-                2  # Thicker stroke
+                1  # Thinner stroke
             )
 
         # Add analyzer method info
