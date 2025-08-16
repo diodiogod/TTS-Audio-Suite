@@ -11,6 +11,46 @@ Unified architecture supporting ChatterBox, F5-TTS, and future engines like RVC:
 # Import from the main nodes.py file which handles the new unified architecture
 import importlib.util
 import os
+import sys
+
+# Check for old ChatterBox extension conflict
+def check_old_extension_conflict():
+    """Check if the old ComfyUI_ChatterBox_SRT_Voice extension is installed"""
+    try:
+        import folder_paths
+        custom_nodes_path = folder_paths.get_folder_paths("custom_nodes")[0]
+        old_extension_path = os.path.join(custom_nodes_path, "ComfyUI_ChatterBox_SRT_Voice")
+        
+        if os.path.exists(old_extension_path):
+            print("\n" + "="*80)
+            print("⚠️  EXTENSION CONFLICT DETECTED ⚠️")
+            print("="*80)
+            print("❌ OLD EXTENSION FOUND: ComfyUI_ChatterBox_SRT_Voice")
+            print("🆕 CURRENT EXTENSION: ComfyUI_TTS_Audio_Suite")
+            print("")
+            print("The old 'ComfyUI_ChatterBox_SRT_Voice' extension conflicts with this")
+            print("new 'ComfyUI_TTS_Audio_Suite' extension and MUST be removed.")
+            print("")
+            print("REQUIRED ACTION:")
+            print(f"1. Delete the old extension folder: {old_extension_path}")
+            print("2. Restart ComfyUI")
+            print("")
+            print("The TTS Audio Suite is the evolved version with:")
+            print("• Unified architecture supporting multiple TTS engines")
+            print("• Better performance and stability")
+            print("• All features from the old extension plus new capabilities")
+            print("")
+            print("Your workflows will be compatible - just update node names.")
+            print("="*80)
+            print("")
+            return True
+    except Exception as e:
+        # Silently continue if we can't check (e.g., folder_paths not available yet)
+        pass
+    return False
+
+# Perform conflict check
+OLD_EXTENSION_CONFLICT = check_old_extension_conflict()
 
 # Get the path to the nodes.py file
 nodes_py_path = os.path.join(os.path.dirname(__file__), "nodes.py")

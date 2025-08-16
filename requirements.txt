@@ -19,21 +19,27 @@
 #     `pip install --upgrade pip setuptools wheel` command again before installing any custom node requirements.
 
 
+# Foundation dependencies (MUST be installed first in this order)
+numpy>=2.0.0,<2.3.0  # Balance compatibility: >=2.0 for audio-separator, <2.3 for Numba
+scipy
+torch
+torchaudio
+
+# Audio processing dependencies (depend on numpy/torch)
+librosa
+soundfile
+sounddevice
+einops
+
 # Core ChatterboxTTS dependencies
 s3tokenizer>=0.1.7
 resemble-perth
-librosa
-scipy
 omegaconf
 transformers>=4.46.3
 diffusers
 
 # Additional dependencies for SRT support and audio processing
 conformer>=0.3.2
-torch
-torchaudio
-numpy
-einops
 
 # Audio processing and timing dependencies
 soundfile
@@ -55,5 +61,13 @@ torchcrepe                # CREPE pitch extraction algorithm
 torchfcpe                 # Fast Context-based Pitch Estimation (FCPE) for real-time RVC
 monotonic-alignment-search # Audio alignment utilities
 audio-separator           # Ultimate Vocal Remover compatibility layer for vocal separation
-
 requests                  # Model downloading functionality
+
+# Video analysis dependencies for Mouth Movement Analyzer
+mediapipe>=0.10.0         # Google's MediaPipe for facial landmark detection
+opencv-python>=4.8.0      # Computer vision library for video processing
+protobuf>=4.21.0,<5.0.0   # Protocol buffers compatibility for MediaPipe
+
+# OpenSeeFace dependencies (optional - for robust tracking in challenging conditions)
+# onnxruntime               # ONNX model inference for OpenSeeFace (already included above for RVC)
+pillow                    # Image processing library for OpenSeeFace

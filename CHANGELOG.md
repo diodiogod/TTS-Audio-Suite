@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2025-08-16
+
+### Added
+
+- Add new 🗣️ Silent Speech Analyzer node for video mouth movement analysis
+Features experimental viseme detection for vowels (A, E, I, O, U) and consonants (B, F, M, etc.)
+Provides 3-level analysis: frame detection → syllable grouping → word prediction
+Generates base SRT timing files for manual editing and use with TTS SRT nodes
+Includes MediaPipe integration for production-ready mouth movement tracking
+Supports visual feedback in preview videos with detection overlays
+Word predictions use CMU Pronouncing Dictionary (135K+ words) as phonetic placeholders
+Optimized default values for better detection sensitivity and response time
+Note: OpenSeeFace provider available but experimental - MediaPipe recommended
+Important: Results are experimental approximations requiring manual editing
 ## [4.3.7] - 2025-08-13
 
 ### Added

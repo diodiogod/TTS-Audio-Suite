@@ -349,6 +349,14 @@ class BaseTTSNode(BaseChatterBoxNode):
             audio = audio.detach()
         if hasattr(audio, 'clone'):
             audio = audio.clone()
+        
+        # Ensure audio is on CPU and proper dtype for ComfyUI compatibility
+        if hasattr(audio, 'cpu'):
+            audio = audio.cpu()
+        
+        # Ensure float32 dtype for ComfyUI video nodes
+        if hasattr(audio, 'float'):
+            audio = audio.float()  # Converts to float32
             
         return audio
 

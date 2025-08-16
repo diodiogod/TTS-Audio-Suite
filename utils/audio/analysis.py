@@ -142,7 +142,7 @@ class AudioAnalyzer:
             audio = audio.squeeze()
         
         # Convert to numpy for analysis
-        audio_np = audio.detach().numpy() if audio.requires_grad else audio.numpy()
+        audio_np = audio.detach().cpu().numpy() if audio.requires_grad else audio.cpu().numpy()
         duration = len(audio_np) / sample_rate
         
         # Create time axis
