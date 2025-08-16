@@ -25,7 +25,7 @@ resemble-perth
 librosa
 scipy
 omegaconf
-transformers==4.46.3
+transformers>=4.46.3
 diffusers
 
 # Additional dependencies for SRT support and audio processing
@@ -55,4 +55,5 @@ torchcrepe                # CREPE pitch extraction algorithm
 torchfcpe                 # Fast Context-based Pitch Estimation (FCPE) for real-time RVC
 monotonic-alignment-search # Audio alignment utilities
 audio-separator           # Ultimate Vocal Remover compatibility layer for vocal separation
+
 requests                  # Model downloading functionality
