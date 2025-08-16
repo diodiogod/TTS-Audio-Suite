@@ -355,6 +355,14 @@ class AudioProcessingUtils:
         if audio.dim() == 2:
             audio = audio.unsqueeze(0)  # Add batch dimension [channels, samples] -> [1, channels, samples]
         
+        # Ensure audio is on CPU and proper dtype for ComfyUI compatibility
+        if hasattr(audio, 'cpu'):
+            audio = audio.cpu()
+        
+        # Ensure float32 dtype for ComfyUI video nodes
+        if hasattr(audio, 'float'):
+            audio = audio.float()  # Converts to float32
+        
         return {
             "waveform": audio,
             "sample_rate": sample_rate
@@ -424,9 +432,9 @@ class AudioProcessingUtils:
         
         # Handle edge cases
         if silent_mask[0]:
-            silence_starts = torch.cat([torch.tensor([0]), silence_starts])
+            silence_starts = torch.cat([torch.tensor([0], device=silence_starts.device), silence_starts])
         if silent_mask[-1]:
-            silence_ends = torch.cat([silence_ends, torch.tensor([len(audio)])])
+            silence_ends = torch.cat([silence_ends, torch.tensor([len(audio)], device=silence_ends.device)])
         
         # Filter by minimum duration
         silent_regions = []

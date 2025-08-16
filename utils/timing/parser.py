@@ -122,9 +122,9 @@ class SRTParser:
                 f"Subtitle {sequence}: Duration too long ({duration:.1f}s). Maximum 30s recommended."
             )
         
-        if duration < 0.1:  # Less than 100ms seems too short
+        if duration < 0.05:  # Less than 50ms seems too short
             raise SRTParseError(
-                f"Subtitle {sequence}: Duration too short ({duration:.3f}s). Minimum 0.1s required."
+                f"Subtitle {sequence}: Duration too short ({duration:.3f}s). Minimum 0.05s required."
             )
     
     @classmethod

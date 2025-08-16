@@ -7,6 +7,7 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and RVC voice conversion
+- **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
 - **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
 - **Multilingual Support**: German and Norwegian models for both ChatterBox TTS and Voice Conversion
@@ -151,6 +152,12 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/audio/rvc_pitch_options_node.py** - Advanced pitch extraction settings for RVC voice conversion
 
+### Video Analysis System
+
+**nodes/video/mouth_movement_analyzer_node.py** - 🗣️ Silent Speech Analyzer for detecting mouth movement in silent video frames to extract precise timing for TTS SRT synchronization
+
+**nodes/video/viseme_options_node.py** - Advanced viseme detection configuration with vowel/consonant detection, word prediction, and temporal analysis settings
+
 ### RVC Model Management
 
 **nodes/models/load_rvc_model_node.py** - RVC model loader with FAISS index support and automatic downloading
@@ -207,7 +214,9 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ### Downloads
 
-**utils/downloads/model_downloader.py** - Universal model auto-download system for RVC models with Hugging Face integration
+**utils/downloads/unified_downloader.py** - Centralized download system for all engines eliminating HuggingFace cache duplication with direct HTTP downloads to organized TTS/ structure
+
+**utils/downloads/model_downloader.py** - RVC-specific model auto-download system with direct downloads (legacy, integrated with unified system)
 
 ### Timing and SRT
 

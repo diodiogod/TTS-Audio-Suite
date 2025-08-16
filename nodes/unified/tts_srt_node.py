@@ -367,14 +367,14 @@ Hello! This is unified SRT TTS with character switching.
                     batch_size = 0
                 
                 # F5-TTS SRT parameters
-                # For F5-TTS we need to handle reference_audio_file vs opt_reference_audio differently
-                if opt_narrator:
-                    # Use direct reference audio from Character Voices
+                # Always use the resolved audio reference from _get_voice_reference priority logic
+                if audio_tensor:
+                    # Use resolved audio reference (from opt_narrator OR narrator_voice dropdown)
                     opt_reference_audio = audio_tensor
                     reference_audio_file = "none"
                     opt_reference_text = reference_text
                 else:
-                    # Use narrator_voice dropdown
+                    # Fallback to file-based reference (shouldn't happen if _get_voice_reference worked)
                     opt_reference_audio = None
                     reference_audio_file = narrator_voice
                     opt_reference_text = reference_text
