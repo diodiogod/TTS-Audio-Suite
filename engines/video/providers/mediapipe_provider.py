@@ -5,6 +5,7 @@ High-performance facial landmark detection with 468 3D face landmarks
 
 import logging
 import os
+import sys
 from typing import Optional, Tuple, List, Any, Dict
 import numpy as np
 
@@ -290,7 +291,16 @@ class MediaPipeProvider(AbstractProvider):
         # Create preview video if requested
         if preview_mode and preview_frames:
             self.preview_frames = preview_frames
-            self._create_preview_video(preview_frames, fps, width, height)
+            provider_dir = os.path.dirname(os.path.abspath(__file__))
+            utils_dir = os.path.join(os.path.dirname(provider_dir), "utils")
+            if utils_dir not in sys.path:
+                sys.path.insert(0, utils_dir)
+            from preview_creator import PreviewVideoCreator
+            preview_path = PreviewVideoCreator.create_preview_video(
+                preview_frames, fps, width, height, "MediaPipe"
+            )
+            if preview_path:
+                self.preview_video = preview_path
         else:
             self.preview_frames = None
         

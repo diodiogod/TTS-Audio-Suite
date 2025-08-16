@@ -523,13 +523,30 @@ class Tracker():
             if model_type < 0:
                 threshold = 0.87
 
-        self.retinaface = RetinaFaceDetector(model_path=os.path.join(model_base_path, "retinaface_640x640_opt.onnx"), json_path=os.path.join(model_base_path, "priorbox_640x640.json"), threads=max(max_threads,4), top_k=max_faces, res=(640, 640))
-        self.retinaface_scan = RetinaFaceDetector(model_path=os.path.join(model_base_path, "retinaface_640x640_opt.onnx"), json_path=os.path.join(model_base_path, "priorbox_640x640.json"), threads=2, top_k=max_faces, res=(640, 640))
+        # Only initialize RetinaFace if use_retinaface is True and models exist
         self.use_retinaface = use_retinaface
+        self.retinaface = None
+        self.retinaface_scan = None
+        
+        if use_retinaface:
+            retinaface_model_path = os.path.join(model_base_path, "retinaface_640x640_opt.onnx")
+            priorbox_json_path = os.path.join(model_base_path, "priorbox_640x640.json")
+            
+            if os.path.exists(retinaface_model_path) and os.path.exists(priorbox_json_path):
+                try:
+                    self.retinaface = RetinaFaceDetector(model_path=retinaface_model_path, json_path=priorbox_json_path, threads=max(max_threads,4), top_k=max_faces, res=(640, 640))
+                    self.retinaface_scan = RetinaFaceDetector(model_path=retinaface_model_path, json_path=priorbox_json_path, threads=2, top_k=max_faces, res=(640, 640))
+                except Exception as e:
+                    print(f"Warning: Failed to initialize RetinaFace: {e}")
+                    self.use_retinaface = False
+            else:
+                print(f"Warning: RetinaFace models not found, disabling RetinaFace detection")
+                self.use_retinaface = False
 
         # OTR 1.9 and later requires specifying providers
         # explicitly as an argument in InferenceSession()
-        providersList = onnxruntime.capi._pybind_state.get_available_providers()
+        # Suppress ONNX runtime warnings about TensorRT by using CPU-only
+        providersList = ['CPUExecutionProvider']
 
         # Single face instance with multiple threads
         self.session = onnxruntime.InferenceSession(os.path.join(model_base_path, model), sess_options=options, providers=providersList)
@@ -557,7 +574,18 @@ class Tracker():
         options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
         options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         options.log_severity_level = 3
-        self.gaze_model = onnxruntime.InferenceSession(os.path.join(model_base_path, "mnv3_gaze32_split_opt.onnx"), sess_options=options, providers=providersList)
+        
+        # Only load gaze model if not disabled and model exists
+        self.gaze_model = None
+        if not no_gaze:
+            gaze_model_path = os.path.join(model_base_path, "mnv3_gaze32_split_opt.onnx")
+            if os.path.exists(gaze_model_path):
+                try:
+                    self.gaze_model = onnxruntime.InferenceSession(gaze_model_path, sess_options=options, providers=providersList)
+                except Exception as e:
+                    print(f"Warning: Failed to load gaze model: {e}")
+            else:
+                print(f"Warning: Gaze model not found at {gaze_model_path}, gaze tracking disabled")
 
         self.detection = onnxruntime.InferenceSession(os.path.join(model_base_path, "mnv3_detection_opt.onnx"), sess_options=options, providers=providersList)
         self.faces = []
@@ -925,7 +953,7 @@ class Tracker():
         return frame, lms, offset
 
     def get_eye_state(self, frame, lms):
-        if self.no_gaze:
+        if self.no_gaze or self.gaze_model is None:
             return [(1.0, 0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0)]
         lms = np.array(lms)
         e_x = [0,0]
@@ -1047,20 +1075,21 @@ class Tracker():
         self.wait_count += 1
         if self.detected == 0:
             start_fd = time.perf_counter()
-            if self.use_retinaface > 0 or self.try_hard:
-                retinaface_detections = self.retinaface.detect_retina(frame)
-                new_faces.extend(retinaface_detections)
-            if self.use_retinaface == 0 or self.try_hard:
+            if (self.use_retinaface and self.retinaface is not None) or self.try_hard:
+                if self.retinaface is not None:
+                    retinaface_detections = self.retinaface.detect_retina(frame)
+                    new_faces.extend(retinaface_detections)
+            if (not self.use_retinaface or self.retinaface is None) or self.try_hard:
                 new_faces.extend(self.detect_faces(frame))
             if self.try_hard:
                 new_faces.extend([(0, 0, self.width, self.height)])
             duration_fd = 1000 * (time.perf_counter() - start_fd)
             self.wait_count = 0
         elif self.detected < self.max_faces:
-            if self.use_retinaface > 0:
+            if self.use_retinaface and self.retinaface_scan is not None:
                 new_faces.extend(self.retinaface_scan.get_results())
             if self.wait_count >= self.scan_every:
-                if self.use_retinaface > 0:
+                if self.use_retinaface and self.retinaface_scan is not None:
                     self.retinaface_scan.background_detect(frame)
                 else:
                     start_fd = time.perf_counter()

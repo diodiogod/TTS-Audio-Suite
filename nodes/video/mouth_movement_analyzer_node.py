@@ -1,6 +1,6 @@
 """
-Mouth Movement Analyzer Node
-Analyzes silent videos to extract precise mouth movement timing for TTS SRT synchronization
+Silent Speech Analyzer Node
+Detects and analyzes mouth movement in silent video frames to extract precise mouth movement timing for TTS SRT synchronization.
 """
 
 import os
@@ -87,7 +87,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                 "video": ("VIDEO",),
                 "provider": ([p.value for p in AnalysisProvider], {
                     "default": AnalysisProvider.MEDIAPIPE.value,
-                    "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework with 468 facial landmarks\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n\n• OpenSeeFace: Real-time face tracking (coming soon)\n  - More detailed expression analysis\n  - Better for subtle movements\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies\n  - Good for older hardware"
+                    "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework with 468 facial landmarks\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n  - Recommended for production use\n\n• OpenSeeFace: Real-time face tracking (EXPERIMENTAL)\n  - More detailed expression analysis\n  - Better for subtle movements\n  - Still being optimized, may have issues\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies\n  - Good for older hardware"
                 }),
                 "sensitivity": ("FLOAT", {
                     "default": 0.5,
@@ -507,7 +507,7 @@ class MouthMovementAnalyzerNode(BaseNode):
             # Check if we have viseme data for this segment
             has_visemes = (hasattr(segment, 'viseme_sequence') and 
                           segment.viseme_sequence and 
-                          len(segment.viseme_sequence.strip()) > 0)
+                          len(segment.viseme_sequence) > 0)
             
             # Generate placeholder based on selected format
             if placeholder_format == SRTPlaceholderFormat.WORDS.value:
@@ -568,7 +568,15 @@ class MouthMovementAnalyzerNode(BaseNode):
                         else:
                             info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                     else:
-                        placeholder = " ".join(word_chunks)
+                        # Convert word_chunks (lists of visemes) to strings
+                        chunk_strings = []
+                        for chunk in word_chunks:
+                            if isinstance(chunk, list):
+                                chunk_strings.append("".join(chunk))  # Join visemes in chunk
+                            else:
+                                chunk_strings.append(str(chunk))
+                        
+                        placeholder = " ".join(chunk_strings)
                         avg_confidence = sum(segment.viseme_confidences) / len(segment.viseme_confidences) if segment.viseme_confidences else 0
                         info = f"(confidence: {avg_confidence:.1%}, {duration:.1f}s)"
                 else:
@@ -845,5 +853,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MouthMovementAnalyzer": "🎥 Mouth Movement Analyzer"
+    "MouthMovementAnalyzer": "🗣️ Silent Speech Analyzer"
 }

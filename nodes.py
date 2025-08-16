@@ -362,7 +362,7 @@ if LOAD_RVC_MODEL_AVAILABLE:
 # Register video analysis nodes
 if MOUTH_MOVEMENT_AVAILABLE:
     NODE_CLASS_MAPPINGS["MouthMovementAnalyzer"] = MouthMovementAnalyzerNode
-    NODE_DISPLAY_NAME_MAPPINGS["MouthMovementAnalyzer"] = "🎥 Mouth Movement Analyzer"
+    NODE_DISPLAY_NAME_MAPPINGS["MouthMovementAnalyzer"] = "🗣️ Silent Speech Analyzer"
 
 if VISEME_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["VisemeDetectionOptionsNode"] = VisemeDetectionOptionsNode
