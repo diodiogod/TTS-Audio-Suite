@@ -1,0 +1,34 @@
+{
+    "belinda": {
+        "transcript": "Twas the night before my birthday. Hooray! It's almost here! It may not be a holiday, but it's the best day of the year.",
+        "audio_file": "belinda.wav"
+    },
+    "broom_salesman": {
+        "transcript": "I would imagine so. A wand with a dragon heartstring core is capable of dazzling magic. And the bond between you and your wand should only grow stronger. Do not be surprised at your new wand's ability to perceive your intentions - particularly in a moment of need.",
+        "audio_file": "broom_salesman.wav"
+    },
+    "chadwick": {
+        "transcript": "Oh dear, who left all this junk lying around? Whoops, there it goes! Mind your pointed little pink head, starfish man.",
+        "audio_file": "chadwick.wav"
+    },
+    "en_man": {
+        "transcript": "Maintaining your ability to learn translates into increased marketability, improved career options and higher salaries.",
+        "audio_file": "en_man.wav"
+    },
+    "en_woman": {
+        "transcript": "The device would work during the day as well, if you took steps to either block direct sunlight or point it away from the sun.",
+        "audio_file": "en_woman.wav"
+    },
+    "mabel": {
+        "transcript": "You do talk an awful lot about weather, did you know that? Sometimes I wonder if you're actually content to be a wizard or if you're secretly harbouring a desire to become a seer of the clouds.",
+        "audio_file": "mabel.wav"
+    },
+    "vex": {
+        "transcript": "Uhh, this is going to take forever. Why is everything so far?",
+        "audio_file": "vex.wav"
+    },
+    "zh_man_sichuan": {
+        "transcript": "对，这就是我，万人敬仰的太乙真人，虽然有点婴儿肥，但也掩不住我逼人的帅气。",
+        "audio_file": "zh_man_sichuan.wav"
+    }
+}
