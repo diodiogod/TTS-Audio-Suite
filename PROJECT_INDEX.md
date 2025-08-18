@@ -6,7 +6,7 @@
 
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
-- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, and RVC voice conversion
+- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, and RVC voice conversion
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
 - **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
@@ -76,6 +76,11 @@ This extension features a **unified modular architecture** supporting multiple T
 - **f5tts_edit_engine.py** - Speech editing engine for targeted word replacement
 - **audio_compositing.py** - Audio compositing with crossfade and segment processing
 
+**engines/higgs_audio/** - Higgs Audio 2 engine implementation with voice cloning
+- **higgs_audio.py** - Main Higgs Audio 2 wrapper with voice cloning and chunking support
+- **higgs_audio_downloader.py** - Model auto-download system for generation and tokenizer models
+- **boson_multimodal/** - Complete boson_multimodal implementation from HiggsAudio team
+
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
 - **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
@@ -99,6 +104,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/adapters/f5tts_adapter.py** - F5-TTS engine adapter with parameter mapping and cache integration
 
+**engines/adapters/higgs_audio_adapter.py** - Higgs Audio 2 engine adapter with voice cloning and parameter validation
+
 **engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
 
 **engines/adapters/f5tts_streaming_adapter.py** - F5-TTS streaming adapter enabling parallel processing with language model switching
@@ -110,6 +117,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/engines/chatterbox_engine_node.py** - ChatterBox engine configuration node for language, device, and generation parameters
 
 **nodes/engines/f5tts_engine_node.py** - F5-TTS engine configuration node with model selection and generation settings
+
+**nodes/engines/higgs_audio_engine_node.py** - Higgs Audio 2 engine configuration node with voice cloning parameters and generation settings
 
 **nodes/engines/rvc_engine_node.py** - RVC voice conversion node with pitch control and quality settings
 
@@ -297,6 +306,7 @@ This extension features a **unified modular architecture** supporting multiple T
 **voices_examples/** - Character voice reference files with both audio samples and text descriptions
 - **male/** - Male voice examples with reference audio and text
 - **female/** - Female voice examples with reference audio and text
+- **higgs_audio/** - Higgs Audio 2 voice presets (belinda, en_woman, en_man, chadwick, vex, etc.) with config.json
 - **#character_alias_map.txt** - Character alias mapping configuration
 - Individual character voice files (Clint Eastwood, David Attenborough, Morgan Freeman, Sophie Anderson)
 

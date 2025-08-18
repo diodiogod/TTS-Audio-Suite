@@ -111,48 +111,19 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "min": 128,
                     "max": 4096,
                     "step": 128,
-                    "tooltip": "Maximum tokens to generate (affects audio length and pacing)"
-                }),
-                "max_tokens_per_chunk": ("INT", {
-                    "default": 225,
-                    "min": 100,
-                    "max": 500,
-                    "step": 25,
-                    "tooltip": "Maximum tokens per chunk for long text processing"
-                }),
-                "silence_between_chunks_ms": ("INT", {
-                    "default": 100,
-                    "min": 0,
-                    "max": 2000,
-                    "step": 25,
-                    "tooltip": "Silence between chunks in milliseconds"
-                }),
-                "enable_chunking": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "Enable chunking for unlimited length generation"
-                }),
-                "enable_cache": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "Enable caching to speed up repeated generations"
-                }),
-                "seed": ("INT", {
-                    "default": -1,
-                    "min": -1,
-                    "max": 2147483647,
-                    "tooltip": "Random seed (-1 for random, >= 0 for reproducible results)"
+                    "tooltip": "Maximum tokens to generate per chunk (affects audio length and pacing)"
                 })
             }
         }
     
-    RETURN_TYPES = ("HIGGS_AUDIO_ENGINE",)
-    RETURN_NAMES = ("higgs_audio_engine",)
+    RETURN_TYPES = ("TTS_ENGINE",)
+    RETURN_NAMES = ("tts_engine",)
     FUNCTION = "create_engine_config"
     CATEGORY = "🎤 TTS Audio Suite/Engines"
     DESCRIPTION = "Configure Higgs Audio 2 engine for TTS generation with voice cloning"
     
     def create_engine_config(self, model, device, voice_preset, audio_priority, system_prompt,
-                           temperature, top_p, top_k, max_new_tokens, max_tokens_per_chunk,
-                           silence_between_chunks_ms, enable_chunking, enable_cache, seed):
+                           temperature, top_p, top_k, max_new_tokens):
         """Create Higgs Audio engine configuration"""
         
         # Validate parameters
@@ -167,11 +138,6 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "top_p": max(0.1, min(1.0, top_p)),
             "top_k": max(-1, min(100, top_k)),
             "max_new_tokens": max(128, min(4096, max_new_tokens)),
-            "max_tokens_per_chunk": max(100, min(500, max_tokens_per_chunk)),
-            "silence_between_chunks_ms": max(0, min(2000, silence_between_chunks_ms)),
-            "enable_chunking": enable_chunking,
-            "enable_cache": enable_cache,
-            "seed": seed if seed >= 0 else -1,
             "adapter_class": "HiggsAudioEngineAdapter"
         }
         

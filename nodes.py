@@ -56,6 +56,14 @@ except Exception as e:
     print(f"❌ F5 TTS Engine failed: {e}")
     F5TTS_ENGINE_AVAILABLE = False
 
+try:
+    higgs_audio_engine_module = load_node_module("higgs_audio_engine_node", "engines/higgs_audio_engine_node.py")
+    HiggsAudioEngineNode = higgs_audio_engine_module.HiggsAudioEngineNode
+    HIGGS_AUDIO_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Higgs Audio Engine failed: {e}")
+    HIGGS_AUDIO_ENGINE_AVAILABLE = False
+
 # Load shared nodes
 try:
     character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
@@ -281,6 +289,10 @@ if CHATTERBOX_ENGINE_AVAILABLE:
 if F5TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["F5TTSEngineNode"] = F5TTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["F5TTSEngineNode"] = "⚙️ F5 TTS Engine"
+
+if HIGGS_AUDIO_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["HiggsAudioEngineNode"] = HiggsAudioEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["HiggsAudioEngineNode"] = "⚙️ Higgs Audio 2 Engine"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

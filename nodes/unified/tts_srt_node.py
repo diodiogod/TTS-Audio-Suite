@@ -209,6 +209,36 @@ Hello! This is unified SRT TTS with character switching.
                 self._cached_engine_instances[cache_key] = engine_instance
                 return engine_instance
                 
+            elif engine_type == "higgs_audio":
+                # Create a wrapper instance for Higgs Audio using the adapter pattern
+                from engines.adapters.higgs_audio_adapter import HiggsAudioEngineAdapter
+                
+                # Create a minimal wrapper node for the adapter
+                class HiggsAudioSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.adapter = HiggsAudioEngineAdapter(self)
+                        # Store current model name for adapter caching
+                        self.current_model_name = None
+                    
+                    def generate_srt_audio(self, srt_content, **params):
+                        # SRT processing is handled by the unified node, this just handles audio generation
+                        # Merge config with runtime params
+                        merged_params = self.config.copy()
+                        merged_params.update(params)
+                        return self.adapter.generate_segment_audio(
+                            merged_params.get('text', ''),
+                            merged_params.get('char_audio'),
+                            merged_params.get('char_text', ''),
+                            merged_params.get('character', 'narrator'),
+                            **merged_params
+                        )
+                
+                engine_instance = HiggsAudioSRTWrapper(config)
+                # Cache the instance
+                self._cached_engine_instances[cache_key] = engine_instance
+                return engine_instance
+                
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -400,6 +430,82 @@ Hello! This is unified SRT TTS with character switching.
                     min_stretch_ratio=min_stretch_ratio,
                     timing_tolerance=timing_tolerance
                 )
+                
+            elif engine_type == "higgs_audio":
+                # Higgs Audio 2 SRT processing - handle at unified level since no native SRT support
+                # Parse SRT and generate audio for each segment, then combine with timing
+                from utils.srt.srt_parser import parse_srt, format_srt
+                
+                # Parse SRT content
+                srt_segments = parse_srt(srt_content)
+                
+                # Generate audio for each segment
+                audio_segments = []
+                total_duration = 0.0
+                
+                for segment in srt_segments:
+                    segment_text = segment['text']
+                    
+                    # Prepare reference audio
+                    reference_audio_dict = None
+                    if audio_tensor is not None:
+                        reference_audio_dict = {
+                            "waveform": audio_tensor,
+                            "sample_rate": 24000
+                        }
+                    
+                    # Generate audio for this segment using the wrapper
+                    segment_audio = engine_instance.generate_srt_audio(
+                        srt_content=srt_content,  # Full SRT for context
+                        text=segment_text,
+                        char_audio=reference_audio_dict,
+                        char_text=reference_text or "",
+                        character="narrator",
+                        # Config parameters
+                        voice_preset=config.get("voice_preset", "voice_clone"),
+                        audio_priority=config.get("audio_priority", "auto"),
+                        system_prompt=config.get("system_prompt", "Generate audio following instruction."),
+                        temperature=config.get("temperature", 1.0),
+                        top_p=config.get("top_p", 0.95),
+                        top_k=config.get("top_k", 50),
+                        max_new_tokens=config.get("max_new_tokens", 2048),
+                        seed=seed,
+                        enable_audio_cache=enable_audio_cache
+                    )
+                    
+                    # Convert tensor to audio dict format
+                    if isinstance(segment_audio, torch.Tensor):
+                        if segment_audio.dim() == 1:
+                            segment_audio = segment_audio.unsqueeze(0)
+                        elif segment_audio.dim() == 3:
+                            segment_audio = segment_audio.squeeze(0)
+                        
+                        segment_audio_dict = {
+                            "waveform": segment_audio.cpu(),
+                            "sample_rate": 24000
+                        }
+                    else:
+                        segment_audio_dict = segment_audio
+                    
+                    audio_segments.append(segment_audio_dict)
+                    segment_duration = segment_audio_dict["waveform"].size(-1) / segment_audio_dict["sample_rate"]
+                    total_duration += segment_duration
+                
+                # Combine audio segments based on timing mode
+                if timing_mode == "concatenate":
+                    # Simple concatenation
+                    combined_waveform = torch.cat([seg["waveform"] for seg in audio_segments], dim=-1)
+                    combined_audio = {"waveform": combined_waveform, "sample_rate": 24000}
+                    timing_report = f"Concatenated {len(audio_segments)} segments, total duration: {total_duration:.2f}s"
+                    adjusted_srt = srt_content  # Keep original for now
+                else:
+                    # For other modes, concatenate with basic timing (simplified implementation)
+                    combined_waveform = torch.cat([seg["waveform"] for seg in audio_segments], dim=-1)
+                    combined_audio = {"waveform": combined_waveform, "sample_rate": 24000}
+                    timing_report = f"Generated {len(audio_segments)} segments with {timing_mode} timing"
+                    adjusted_srt = srt_content  # Keep original for now
+                
+                result = (combined_audio, f"Higgs Audio SRT: Generated {len(audio_segments)} segments", timing_report, adjusted_srt)
                 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")

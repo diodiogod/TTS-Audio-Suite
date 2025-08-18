@@ -192,6 +192,28 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Cache the instance
                 self._cached_engine_instances[cache_key] = engine_instance
+                
+            elif engine_type == "higgs_audio":
+                # Create a wrapper instance for Higgs Audio using the adapter pattern
+                from engines.adapters.higgs_audio_adapter import HiggsAudioEngineAdapter
+                
+                # Create a minimal wrapper node for the adapter
+                class HiggsAudioWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.adapter = HiggsAudioEngineAdapter(self)
+                        # Store current model name for adapter caching
+                        self.current_model_name = None
+                    
+                    def generate_tts_audio(self, text, char_audio, char_text, character="narrator", **params):
+                        # Merge config with runtime params
+                        merged_params = self.config.copy()
+                        merged_params.update(params)
+                        return self.adapter.generate_segment_audio(text, char_audio, char_text, character, **merged_params)
+                
+                engine_instance = HiggsAudioWrapper(config)
+                # Cache the instance
+                self._cached_engine_instances[cache_key] = engine_instance
                 return engine_instance
                 
             else:
@@ -380,6 +402,50 @@ Back to the main narrator voice for the conclusion.""",
                     silence_between_chunks_ms=silence_between_chunks_ms,
                     enable_audio_cache=enable_audio_cache
                 )
+                
+            elif engine_type == "higgs_audio":
+                # Higgs Audio 2 parameters - uses the wrapper with adapter
+                # Prepare reference audio for voice cloning
+                reference_audio_dict = None
+                if audio_tensor is not None:
+                    reference_audio_dict = {
+                        "waveform": audio_tensor,
+                        "sample_rate": 24000  # Assume standard sample rate, will be handled by engine
+                    }
+                
+                # Use the wrapper's generate method which calls the adapter
+                result = engine_instance.generate_tts_audio(
+                    text=text,
+                    char_audio=reference_audio_dict,
+                    char_text=reference_text or "",
+                    character="narrator",
+                    # Config parameters
+                    voice_preset=config.get("voice_preset", "voice_clone"),
+                    audio_priority=config.get("audio_priority", "auto"),
+                    system_prompt=config.get("system_prompt", "Generate audio following instruction."),
+                    temperature=config.get("temperature", 1.0),
+                    top_p=config.get("top_p", 0.95),
+                    top_k=config.get("top_k", 50),
+                    max_new_tokens=config.get("max_new_tokens", 2048),
+                    seed=seed,
+                    enable_audio_cache=enable_audio_cache,
+                    # Chunking parameters - convert chars to tokens for Higgs Audio
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    silence_between_chunks_ms=silence_between_chunks_ms
+                )
+                
+                # Convert single tensor result to ComfyUI audio format
+                if isinstance(result, torch.Tensor):
+                    # Ensure correct dimensions
+                    if result.dim() == 1:
+                        result = result.unsqueeze(0)  # Add channel dimension
+                    elif result.dim() == 3:
+                        result = result.squeeze(0)  # Remove batch dimension
+                    
+                    result = ({
+                        "waveform": result.cpu(),
+                        "sample_rate": 24000  # Higgs Audio v2 sample rate
+                    }, "Higgs Audio generation completed")
                 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
