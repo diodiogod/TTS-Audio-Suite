@@ -71,3 +71,7 @@ protobuf>=4.21.0,<5.0.0   # Protocol buffers compatibility for MediaPipe
 # OpenSeeFace dependencies (optional - for robust tracking in challenging conditions)
 # onnxruntime               # ONNX model inference for OpenSeeFace (already included above for RVC)
 pillow                    # Image processing library for OpenSeeFace
+
+# Higgs Audio 2 dependencies - NEW for v4.3 (minimal essential dependencies)
+descript-audio-codec      # Audio codec for Higgs Audio tokenizer (ESSENTIAL)
+vector_quantize_pytorch   # Vector quantization for audio processing (ESSENTIAL)

@@ -1,0 +1,51 @@
+Third-Party License Attribution for Audio Processing Module
+===========================================================
+
+This directory contains code derived from multiple open-source projects. 
+The following sections detail the licenses and attributions for third-party code.
+
+## XCodec Repository
+The code in this directory is derived from:
+https://github.com/zhenye234/xcodec
+
+## Individual File Attributions
+
+### Quantization Module (quantization/)
+- Several files contain code derived from Meta Platforms, Inc. and the vector-quantize-pytorch repository
+- Individual files contain their own license headers where applicable
+- The vector-quantize-pytorch portions are licensed under the MIT License
+
+## License Terms
+
+### MIT License (for applicable portions)
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Attribution Requirements
+When using this code, please ensure proper attribution to:
+1. The original xcodec repository: https://github.com/zhenye234/xcodec
+2. Any other repositories mentioned in individual file headers
+3. This derivative work and its modifications
+
+## Disclaimer
+This directory contains modified versions of the original code. Please refer to
+the original repositories for the canonical implementations and their specific
+license terms.
+
+For any questions about licensing or attribution, please check the individual
+file headers and the original source repositories. 
