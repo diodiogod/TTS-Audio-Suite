@@ -549,6 +549,34 @@ Back to the main narrator voice for the conclusion.""",
                     
                     if opt_second_narrator is not None:
                         second_audio_dict = opt_second_narrator
+                        # Extract reference text from second narrator if it's from Character Voices
+                        second_narrator_ref_text = ""
+                        if isinstance(second_audio_dict, dict) and "reference_text" in second_audio_dict:
+                            second_narrator_ref_text = second_audio_dict["reference_text"]
+                        elif hasattr(second_audio_dict, 'get'):
+                            second_narrator_ref_text = second_audio_dict.get("reference_text", "")
+                    
+                    # Validate and fix audio tensors for System Context mode
+                    if multi_speaker_mode == "Native Multi-Speaker (System Context)":
+                        # System Context mode requires valid reference audio - check for empty tensors
+                        if second_audio_dict and "waveform" in second_audio_dict:
+                            # Handle nested waveform structure
+                            waveform = second_audio_dict["waveform"]
+                            if isinstance(waveform, dict) and "waveform" in waveform:
+                                actual_tensor = waveform["waveform"]
+                            else:
+                                actual_tensor = waveform
+                            
+                            # Check if tensor is empty or malformed
+                            if not hasattr(actual_tensor, 'numel') or actual_tensor.numel() == 0:
+                                print("🎭 System Context: Second narrator audio is empty, using primary reference for both")
+                                second_audio_dict = reference_audio_dict
+                        elif not second_audio_dict:
+                            print("🎭 System Context: No second narrator, using primary reference for both")
+                            second_audio_dict = reference_audio_dict
+                    
+                    # Track the last active speaker across segments
+                    last_active_speaker = "SPEAKER0"  # Default starting speaker
                     
                     for i, segment in enumerate(segments):
                         if not segment.strip():
@@ -572,12 +600,28 @@ Back to the main narrator voice for the conclusion.""",
                         else:
                             # This is a text segment - generate audio using native mode
                             if segment.strip():
-                                print(f"  🎭 Generating native audio for: '{segment[:50]}...'")
+                                # Ensure segment has speaker tags for native mode
+                                segment_text = segment.strip()
+                                if not re.search(r'\[SPEAKER[0-9]+\]', segment_text):
+                                    # Add the last active speaker tag if missing
+                                    segment_text = f"[{last_active_speaker}] {segment_text}"
+                                    print(f"  🎭 Added {last_active_speaker} tag to segment: '{segment_text[:50]}...'")
+                                else:
+                                    print(f"  🎭 Generating native audio for: '{segment_text[:50]}...'")
+                                
+                                # Update last active speaker based on what's in this segment
+                                speakers_in_segment = re.findall(r'\[SPEAKER[0-9]+\]', segment_text)
+                                if speakers_in_segment:
+                                    # Use the last speaker mentioned in this segment
+                                    last_active_speaker = speakers_in_segment[-1][1:-1]  # Remove brackets
+                                
+                                print(f"  🎭 Speakers in segment: {speakers_in_segment}")
+                                print(f"  🎭 Last active speaker now: {last_active_speaker}")
                                 
                                 segment_result = engine_instance.generate_tts_audio(
-                                    text=segment.strip(),
+                                    text=segment_text,
                                     char_audio=reference_audio_dict,
-                                    char_text=reference_text or "",
+                                    char_text="",  # Higgs Audio doesn't need reference text
                                     character="SPEAKER0",
                                     # Config parameters
                                     voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
@@ -593,7 +637,7 @@ Back to the main narrator voice for the conclusion.""",
                                     # Native mode specific parameters
                                     multi_speaker_mode=multi_speaker_mode,
                                     second_narrator_audio=second_audio_dict,
-                                    second_narrator_text=""
+                                    second_narrator_text=""  # Higgs Audio doesn't need reference text
                                 )
                                 
                                 audio_segments.append(segment_result)
