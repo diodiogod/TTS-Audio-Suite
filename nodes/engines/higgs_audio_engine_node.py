@@ -72,9 +72,9 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "default": "auto",
                     "tooltip": "Device to run the model on"
                 }),
-                "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker (System Context)", "Native Multi-Speaker (Conversation)"], {
+                "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker (Conversation)", "Native Multi-Speaker (System Context)"], {
                     "default": "Custom Character Switching",
-                    "tooltip": "IMPORTANT: Each mode requires different text formats!\n\n• Custom Character Switching: Use ANY character names like [Alice], [Bob], [Narrator]. Each segment generated separately with character-specific voice files from voices folder. Falls back to narrator voice if character not found. Most flexible.\n\n• Native Multi-Speaker (System Context): Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! Requires opt_second_narrator input. Better for natural dialogue flow and voice consistency.\n\n• Native Multi-Speaker (Conversation): Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! Requires opt_second_narrator input. Good for continuing conversations.\n\nAll modes support [pause:2] tags."
+                    "tooltip": "IMPORTANT: Each mode requires different text formats!\n\n• Custom Character Switching: Use ANY character names like [Alice], [Bob], [Narrator]. Each segment generated separately with character-specific voice files from voices folder. Falls back to narrator voice if character not found. Most flexible.\n\n• Native Multi-Speaker (Conversation): ⭐ RECOMMENDED - Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! Requires opt_second_narrator input. Best voice cloning quality with natural conversation flow.\n\n• Native Multi-Speaker (System Context): ⚠️ EXPERIMENTAL - Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! May produce lower audio quality or artifacts.\n\nPause tags ([pause:2]) are handled naturally by Higgs Audio's internal timing."
                 }),
                 "voice_preset": (voice_preset_list, {
                     "default": "voice_clone",
