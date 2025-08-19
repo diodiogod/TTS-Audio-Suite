@@ -380,13 +380,20 @@ Back to the main narrator voice for the conclusion.""",
                 main_voices = []
                 
                 for character in characters:
-                    audio_path, ref_text = character_mapping.get(character, (None, None))
-                    if audio_path and ref_text:
-                        voice_refs[character] = (audio_path, ref_text)
-                        character_voices.append(character)
-                    else:
+                    # PRIORITY: If a narrator voice was provided, always use it for "narrator" character
+                    if character == "narrator" and main_audio_prompt and main_ref_text:
                         voice_refs[character] = (main_audio_prompt, main_ref_text)
                         main_voices.append(character)
+                    else:
+                        # For other characters, try character mapping first
+                        audio_path, ref_text = character_mapping.get(character, (None, None))
+                        if audio_path and ref_text:
+                            voice_refs[character] = (audio_path, ref_text)
+                            character_voices.append(character)
+                        else:
+                            # Fallback to provided narrator voice if available
+                            voice_refs[character] = (main_audio_prompt, main_ref_text)
+                            main_voices.append(character)
                 
                 # Consolidated voice summary logging
                 voice_summary = []
