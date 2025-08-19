@@ -1,0 +1,20 @@
+# F5TTS_v1_Base | E2TTS_Base
+model = "F5TTS_v1_Base"
+ref_audio = "infer/examples/multi/main.flac"
+# If an empty "", transcribes the reference audio automatically.
+ref_text = ""
+gen_text = ""
+# File with text to generate. Ignores the text above.
+gen_file = "infer/examples/multi/story.txt"
+remove_silence = true
+output_dir = "tests"
+output_file = "infer_cli_story.wav"
+
+[voices.town]
+ref_audio = "infer/examples/multi/town.flac"
+ref_text = ""
+speed = 0.8  # will ignore global speed
+
+[voices.country]
+ref_audio = "infer/examples/multi/country.flac"
+ref_text = ""
