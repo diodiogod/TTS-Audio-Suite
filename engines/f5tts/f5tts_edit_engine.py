@@ -42,9 +42,9 @@ class F5TTSEditEngine:
         
         try:
             # Import F5-TTS modules
-            from f5_tts.model import CFM
-            from f5_tts.infer.utils_infer import load_checkpoint, load_vocoder
-            from f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
+            from engines.f5_tts.model import CFM
+            from engines.f5_tts.infer.utils_infer import load_checkpoint, load_vocoder
+            from engines.f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
             from omegaconf import OmegaConf
             from hydra.utils import get_class
             from importlib.resources import files

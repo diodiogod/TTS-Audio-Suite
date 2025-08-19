@@ -4,6 +4,7 @@ Downloads Higgs Audio models to organized TTS/HiggsAudio/ structure
 """
 
 import os
+import sys
 from typing import Optional, Dict, List, Tuple
 from pathlib import Path
 
@@ -13,8 +14,6 @@ engines_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(engines_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
-import sys
 from utils.downloads.unified_downloader import unified_downloader
 import folder_paths
 
@@ -31,7 +30,7 @@ HIGGS_AUDIO_MODELS = {
         ],
         "tokenizer_files": [
             {"remote": "config.json", "local": "config.json"},
-            {"remote": "pytorch_model.bin", "local": "pytorch_model.bin"},
+            {"remote": "model.pth", "local": "model.pth"},
         ]
     }
 }

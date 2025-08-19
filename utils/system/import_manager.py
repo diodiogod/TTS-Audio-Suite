@@ -165,7 +165,7 @@ class ImportManager:
         
         try:
             # Try to import F5-TTS API
-            from f5_tts.api import F5TTS
+            from engines.f5_tts.api import F5TTS
             
             self.loaded_modules[module_key] = F5TTS
             self.import_status[module_key] = {
