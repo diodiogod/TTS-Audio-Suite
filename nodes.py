@@ -385,9 +385,11 @@ print(SEPARATOR)
 print(f"🚀 TTS Audio Suite {VERSION_DISPLAY}")
 print("Universal multi-engine TTS extension for ComfyUI")
 
-# Check for local models (legacy compatibility)
+# Check for local models using updated model manager
 try:
-    model_paths = find_chatterbox_models()
+    from utils.models.manager import ModelManager
+    model_manager = ModelManager()
+    model_paths = model_manager.find_chatterbox_models()
     first_source = model_paths[0][0] if model_paths else None
     if first_source == "bundled":
         print("✓ Using bundled ChatterBox models")
@@ -400,6 +402,13 @@ try:
 except:
     print("⚠️ ChatterBox model discovery not available")
 
+# Import dependency checker
+try:
+    from utils.system.dependency_checker import DependencyChecker
+    DEPENDENCY_CHECKER_AVAILABLE = True
+except ImportError:
+    DEPENDENCY_CHECKER_AVAILABLE = False
+
 # Check for system dependency issues (only show warnings if problems detected)
 dependency_warnings = []
 
@@ -407,6 +416,10 @@ dependency_warnings = []
 if VOICE_CAPTURE_AVAILABLE and hasattr(audio_recorder_module, 'SOUNDDEVICE_AVAILABLE') and not audio_recorder_module.SOUNDDEVICE_AVAILABLE:
     dependency_warnings.append("⚠️ PortAudio library not found - Voice recording disabled")
     dependency_warnings.append("   Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)")
+
+# Check for missing dependencies using our dependency checker
+if DEPENDENCY_CHECKER_AVAILABLE:
+    dependency_warnings.extend(DependencyChecker.get_startup_warnings())
 
 # Only show dependency section if there are warnings
 if dependency_warnings:

@@ -21,57 +21,64 @@
 
 # Foundation dependencies (MUST be installed first in this order)
 numpy>=2.0.0,<2.3.0  # Balance compatibility: >=2.0 for audio-separator, <2.3 for Numba
-scipy
-torch
-torchaudio
+scipy>=1.10.0
+torch>=2.0.0
+torchaudio>=2.0.0
 
 # Audio processing dependencies (depend on numpy/torch)
-librosa
-soundfile
-sounddevice
-einops
+librosa>=0.10.0  # Pin to prevent backtracking to ancient versions
+soundfile>=0.12.0
+sounddevice>=0.4.0
+einops>=0.6.0
 
 # Core ChatterboxTTS dependencies
 s3tokenizer>=0.1.7
 resemble-perth
-omegaconf
+omegaconf>=2.3.0
 transformers>=4.46.3
-diffusers
+diffusers>=0.30.0
 
 # Additional dependencies for SRT support and audio processing
 conformer>=0.3.2
 
-# Audio processing and timing dependencies
-soundfile
-sounddevice
-
-# F5-TTS dependencies (optional - only needed if using F5-TTS nodes)
-# Note: F5-TTS is best installed from source for latest features:
-# git clone https://github.com/SWivid/F5-TTS.git && cd F5-TTS && pip install -e .
-f5-tts>=0.0.1
+# F5-TTS dependencies (for bundled version - minimal essential only)
 cached-path>=1.3.0
+jieba  # Chinese text processing for F5-TTS
+pypinyin  # Chinese pinyin conversion for F5-TTS
+unidecode  # Unicode text normalization
+# Note: vocos will be downloaded on-demand by F5-TTS, not pre-installed
 
 # RVC (Real-time Voice Conversion) dependencies - NEW for v4
 # Required for RVC Voice Changer functionality and character model loading
 faiss-cpu>=1.7.4          # Vector similarity search for voice matching (CPU version for compatibility)
 # faiss-gpu>=1.7.4        # Uncomment for GPU acceleration (requires CUDA compatibility)
-onnxruntime-gpu           # ONNX model inference with CUDA acceleration for vocal separation
+onnxruntime-gpu>=1.22.0   # ONNX model inference with CUDA acceleration for vocal separation
 # onnxruntime             # CPU fallback if GPU version fails: pip uninstall onnxruntime-gpu && pip install onnxruntime
-torchcrepe                # CREPE pitch extraction algorithm
-torchfcpe                 # Fast Context-based Pitch Estimation (FCPE) for real-time RVC
-monotonic-alignment-search # Audio alignment utilities
-audio-separator           # Ultimate Vocal Remover compatibility layer for vocal separation
+torchcrepe>=0.0.24        # CREPE pitch extraction algorithm
+torchfcpe>=0.0.4          # Fast Context-based Pitch Estimation (FCPE) for real-time RVC
+monotonic-alignment-search>=0.2.0 # Audio alignment utilities
+audio-separator>=0.35.2   # Ultimate Vocal Remover compatibility layer for vocal separation
 requests                  # Model downloading functionality
 
 # Video analysis dependencies for Mouth Movement Analyzer
 mediapipe>=0.10.0         # Google's MediaPipe for facial landmark detection
 opencv-python>=4.8.0      # Computer vision library for video processing
-protobuf>=4.21.0,<5.0.0   # Protocol buffers compatibility for MediaPipe
+protobuf>=4.21.0         # Protocol buffers compatibility for MediaPipe
 
 # OpenSeeFace dependencies (optional - for robust tracking in challenging conditions)
 # onnxruntime               # ONNX model inference for OpenSeeFace (already included above for RVC)
 pillow                    # Image processing library for OpenSeeFace
 
-# Higgs Audio 2 dependencies - NEW for v4.3 (minimal essential dependencies)
-descript-audio-codec      # Audio codec for Higgs Audio tokenizer (ESSENTIAL)
-vector_quantize_pytorch   # Vector quantization for audio processing (ESSENTIAL)
+# Higgs Audio 2 dependencies - NEW for v4.3
+# Note: The heavy dependencies below are commented out due to pip resolver conflicts.
+# To use Higgs Audio 2 engine, install these manually:
+#   pip install descript-audio-codec vector_quantize_pytorch --no-deps
+# descript-audio-codec      # Audio codec for Higgs Audio tokenizer (ESSENTIAL for Higgs Audio 2)
+# vector_quantize_pytorch   # Vector quantization for audio processing (ESSENTIAL for Higgs Audio 2)
+dacite                    # Data class utilities for Higgs Audio boson_multimodal (ESSENTIAL)
+
+# F5-TTS - BUNDLED VERSION INCLUDED
+# F5-TTS is bundled directly in engines/f5_tts/ to avoid numpy dependency conflicts
+# Original F5-TTS 1.1.7 requires numpy<=1.26.4 which conflicts with numpy>=2.0.0
+# Bundled version works with numpy 2.x without conflicts
+# Note: No need to pip install f5-tts separately

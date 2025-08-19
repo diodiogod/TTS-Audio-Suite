@@ -14,7 +14,8 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from utils.models.language_mapper import get_model_for_language
-from engines.higgs_audio.higgs_audio import HiggsAudioEngine, HIGGS_AUDIO_MODELS
+from engines.higgs_audio.higgs_audio import HiggsAudioEngine
+from engines.higgs_audio.higgs_audio_downloader import HIGGS_AUDIO_MODELS
 
 
 class HiggsAudioEngineAdapter:
@@ -126,7 +127,18 @@ class HiggsAudioEngineAdapter:
         max_new_tokens = params.get("max_new_tokens", 2048)
         seed = params.get("seed", -1)
         enable_cache = params.get("enable_audio_cache", True)
-        audio_priority = params.get("audio_priority", "auto")
+        model_name = params.get("model", "higgs-audio-v2-3B")
+        device = params.get("device", "auto")
+        
+        # Native multi-speaker mode parameters
+        multi_speaker_mode = params.get("multi_speaker_mode", "Custom Character Switching")
+        second_narrator_audio = params.get("second_narrator_audio")
+        second_narrator_text = params.get("second_narrator_text", "")
+        
+        # Initialize engine if not already done
+        if not self.higgs_engine.engine:
+            print(f"🚀 Initializing Higgs Audio engine with model: {model_name}")
+            self.load_base_model(model_name, device)
         
         # Prepare reference audio
         reference_audio = None
@@ -148,25 +160,56 @@ class HiggsAudioEngineAdapter:
         
         # Generate audio using Higgs Audio engine
         try:
-            audio_result, generation_info = self.higgs_engine.generate(
-                text=text,
-                voice_preset=voice_preset,
-                reference_audio=reference_audio,
-                reference_text=char_text or "",
-                audio_priority=audio_priority,
-                system_prompt=system_prompt,
-                max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                top_k=top_k,
-                enable_chunking=False,  # Single segment, no chunking needed
-                enable_cache=enable_cache,
-                character=character,
-                seed=seed
-            )
+            if multi_speaker_mode in ["Native Multi-Speaker (System Context)", "Native Multi-Speaker (Conversation)"]:
+                # Use native multi-speaker mode with multiple reference audios
+                audio_result, generation_info = self.higgs_engine.generate_native_multispeaker(
+                    text=text,
+                    primary_reference_audio=reference_audio,
+                    primary_reference_text=char_text or "",
+                    secondary_reference_audio=second_narrator_audio,
+                    secondary_reference_text=second_narrator_text,
+                    use_system_context=(multi_speaker_mode == "Native Multi-Speaker (System Context)"),
+                    system_prompt=system_prompt,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    enable_cache=enable_cache,
+                    character=character,
+                    seed=seed
+                )
+            else:
+                # Use custom character switching mode (existing behavior)
+                audio_result, generation_info = self.higgs_engine.generate(
+                    text=text,
+                    voice_preset=voice_preset,
+                    reference_audio=reference_audio,
+                    reference_text=char_text or "",
+                    system_prompt=system_prompt,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    enable_chunking=False,  # Single segment, no chunking needed
+                    enable_cache=enable_cache,
+                    character=character,
+                    seed=seed
+                )
             
-            # Return the waveform tensor
-            return audio_result["waveform"]
+            # Return the waveform tensor with correct dimensions for ComfyUI
+            waveform = audio_result["waveform"]
+            
+            # Ensure correct dimensions: ComfyUI expects [channels, samples]
+            if waveform.dim() == 3:
+                # Handle [batch, channels, samples] -> [channels, samples]
+                if waveform.size(0) == 1:  # batch size of 1
+                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                else:
+                    waveform = waveform[0]  # Take first item from batch
+            elif waveform.dim() == 1:
+                waveform = waveform.unsqueeze(0)  # Add channel dimension
+            
+            return waveform
             
         except Exception as e:
             print(f"❌ Error generating Higgs Audio segment: {e}")

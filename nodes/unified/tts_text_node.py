@@ -145,7 +145,8 @@ Back to the main narrator voice for the conclusion.""",
         """
         try:
             engine_type = engine_data.get("engine_type")
-            config = engine_data.get("config", {})
+            # The engine_data IS the config - not nested under "config"
+            config = engine_data
             
             # Create cache key based on engine type and stable config
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(config.items())).encode()).hexdigest()[:8]}"
@@ -192,6 +193,7 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Cache the instance
                 self._cached_engine_instances[cache_key] = engine_instance
+                return engine_instance
                 
             elif engine_type == "higgs_audio":
                 # Create a wrapper instance for Higgs Audio using the adapter pattern
@@ -404,48 +406,250 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
             elif engine_type == "higgs_audio":
-                # Higgs Audio 2 parameters - uses the wrapper with adapter
-                # Prepare reference audio for voice cloning
-                reference_audio_dict = None
-                if audio_tensor is not None:
-                    reference_audio_dict = {
-                        "waveform": audio_tensor,
-                        "sample_rate": 24000  # Assume standard sample rate, will be handled by engine
-                    }
+                # Higgs Audio 2 with multiple speaker modes  
+                # Get the mode from the engine config, not the TTS Text node config
+                multi_speaker_mode = engine_instance.config.get("multi_speaker_mode", "Custom Character Switching")
+                print(f"🎭 Higgs Audio: Using mode '{multi_speaker_mode}'")
                 
-                # Use the wrapper's generate method which calls the adapter
-                result = engine_instance.generate_tts_audio(
-                    text=text,
-                    char_audio=reference_audio_dict,
-                    char_text=reference_text or "",
-                    character="narrator",
-                    # Config parameters
-                    voice_preset=config.get("voice_preset", "voice_clone"),
-                    audio_priority=config.get("audio_priority", "auto"),
-                    system_prompt=config.get("system_prompt", "Generate audio following instruction."),
-                    temperature=config.get("temperature", 1.0),
-                    top_p=config.get("top_p", 0.95),
-                    top_k=config.get("top_k", 50),
-                    max_new_tokens=config.get("max_new_tokens", 2048),
-                    seed=seed,
-                    enable_audio_cache=enable_audio_cache,
-                    # Chunking parameters - convert chars to tokens for Higgs Audio
-                    max_chars_per_chunk=max_chars_per_chunk,
-                    silence_between_chunks_ms=silence_between_chunks_ms
-                )
+                if multi_speaker_mode == "Custom Character Switching":
+                    # Our custom approach with character parsing
+                    print(f"🎭 Higgs Audio: Parsing character text for voice switching")
+                    
+                    # Parse character segments from text
+                    character_segments = parse_character_text(text)
+                    print(f"🎭 Higgs Audio: Found {len(character_segments)} character segments")
+                    
+                    # Process each character segment with appropriate voice
+                    audio_segments = []
+                    total_chars = 0
+                    
+                    for i, (character, segment_text) in enumerate(character_segments):
+                        if not segment_text.strip():
+                            continue
+                            
+                        print(f"🎭 Processing segment {i+1}/{len(character_segments)}: [{character}] '{segment_text[:50]}...'")
+                        total_chars += len(segment_text)
+                        
+                        # Get voice reference for this character
+                        if character.lower() == "narrator":
+                            # Use the main narrator voice
+                            char_audio_dict = None
+                            if audio_tensor is not None:
+                                char_audio_dict = {
+                                    "waveform": audio_tensor,
+                                    "sample_rate": 24000
+                                }
+                            char_ref_text = reference_text or ""
+                        else:
+                            # Try to load character-specific voice
+                            from utils.voice.discovery import load_voice_reference
+                            try:
+                                char_audio_path, char_ref_text = load_voice_reference(character)
+                                if char_audio_path and os.path.exists(char_audio_path):
+                                    import torchaudio
+                                    waveform, sample_rate = torchaudio.load(char_audio_path)
+                                    if waveform.shape[0] > 1:
+                                        waveform = torch.mean(waveform, dim=0, keepdim=True)
+                                    char_audio_dict = {"waveform": waveform, "sample_rate": sample_rate}
+                                    print(f"🎭 Using character voice: {character}")
+                                else:
+                                    # Fall back to narrator voice
+                                    char_audio_dict = None
+                                    if audio_tensor is not None:
+                                        char_audio_dict = {
+                                            "waveform": audio_tensor,
+                                            "sample_rate": 24000
+                                        }
+                                    char_ref_text = reference_text or ""
+                                    print(f"🎭 Character '{character}' not found, using narrator voice")
+                            except Exception as e:
+                                print(f"⚠️ Error loading character '{character}': {e}, using narrator")
+                                char_audio_dict = None
+                                if audio_tensor is not None:
+                                    char_audio_dict = {
+                                        "waveform": audio_tensor,
+                                        "sample_rate": 24000
+                                    }
+                                char_ref_text = reference_text or ""
+                        
+                        # Generate audio for this segment
+                        segment_result = engine_instance.generate_tts_audio(
+                            text=segment_text,
+                            char_audio=char_audio_dict,
+                            char_text=char_ref_text,
+                            character=character,
+                            # Config parameters
+                            voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
+                            system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
+                            temperature=engine_instance.config.get("temperature", 1.0),
+                            top_p=engine_instance.config.get("top_p", 0.95),
+                            top_k=engine_instance.config.get("top_k", 50),
+                            max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
+                            seed=seed,
+                            enable_audio_cache=enable_audio_cache,
+                            max_chars_per_chunk=max_chars_per_chunk,
+                            silence_between_chunks_ms=silence_between_chunks_ms
+                        )
+                        
+                        audio_segments.append(segment_result)
+                
+                    # Combine all segments
+                    if len(audio_segments) == 1:
+                        result = audio_segments[0]
+                    else:
+                        print(f"🔗 Combining {len(audio_segments)} character segments")
+                        # Combine audio tensors with silence between characters
+                        combined_waveform = audio_segments[0]
+                        sample_rate = 24000
+                        
+                        # Add silence between character segments (250ms)
+                        silence_samples = int(0.25 * sample_rate)
+                        
+                        for next_segment in audio_segments[1:]:
+                            # Add silence
+                            if silence_samples > 0:
+                                silence = torch.zeros(1, silence_samples)
+                                combined_waveform = torch.cat([combined_waveform, silence], dim=-1)
+                            
+                            # Add next segment
+                            combined_waveform = torch.cat([combined_waveform, next_segment], dim=-1)
+                        
+                        result = combined_waveform
+                
+                else:
+                    # Native multi-speaker modes - use Higgs Audio's built-in capabilities with pause support
+                    print(f"🎭 Higgs Audio: Using native multi-speaker mode")
+                    
+                    # Get second narrator audio if provided
+                    opt_second_narrator = engine_instance.config.get("opt_second_narrator")
+                    
+                    # Parse text for both pause tags AND speaker tags to create segments
+                    from utils.text.pause_processor import PauseTagProcessor
+                    import re
+                    
+                    # Split text by pause tags while preserving speaker context
+                    pause_pattern = r'(\[(?:pause|wait|stop):(?:\d+(?:\.\d+)?(?:s|ms)?)\])'
+                    segments = re.split(pause_pattern, text)
+                    
+                    print(f"🎭 Native mode: Found {len(segments)} text segments (including pauses)")
+                    
+                    # Process segments to generate audio with pauses
+                    audio_segments = []
+                    sample_rate = 24000
+                    
+                    # Prepare reference audios for native mode
+                    reference_audio_dict = None
+                    second_audio_dict = None
+                    
+                    if audio_tensor is not None:
+                        reference_audio_dict = {
+                            "waveform": audio_tensor,
+                            "sample_rate": 24000
+                        }
+                    
+                    if opt_second_narrator is not None:
+                        second_audio_dict = opt_second_narrator
+                    
+                    for i, segment in enumerate(segments):
+                        if not segment.strip():
+                            continue
+                            
+                        # Check if this segment is a pause tag
+                        pause_match = re.match(r'\[(?:pause|wait|stop):(\d+(?:\.\d+)?)(?:(s|ms))?\]', segment)
+                        if pause_match:
+                            # This is a pause - generate silence
+                            duration_str = pause_match.group(1)
+                            unit = pause_match.group(2) or 's'  # Default to seconds
+                            
+                            duration = float(duration_str)
+                            if unit == 'ms':
+                                duration = duration / 1000.0  # Convert to seconds
+                            
+                            silence_samples = int(duration * sample_rate)
+                            silence_tensor = torch.zeros(1, silence_samples)
+                            audio_segments.append(silence_tensor)
+                            print(f"  ⏸️ Adding {duration}s pause ({silence_samples} samples)")
+                        else:
+                            # This is a text segment - generate audio using native mode
+                            if segment.strip():
+                                print(f"  🎭 Generating native audio for: '{segment[:50]}...'")
+                                
+                                segment_result = engine_instance.generate_tts_audio(
+                                    text=segment.strip(),
+                                    char_audio=reference_audio_dict,
+                                    char_text=reference_text or "",
+                                    character="SPEAKER0",
+                                    # Config parameters
+                                    voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
+                                    system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
+                                    temperature=engine_instance.config.get("temperature", 1.0),
+                                    top_p=engine_instance.config.get("top_p", 0.95),
+                                    top_k=engine_instance.config.get("top_k", 50),
+                                    max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
+                                    seed=seed,
+                                    enable_audio_cache=enable_audio_cache,
+                                    max_chars_per_chunk=max_chars_per_chunk,
+                                    silence_between_chunks_ms=0,  # No extra silence, we handle pauses manually
+                                    # Native mode specific parameters
+                                    multi_speaker_mode=multi_speaker_mode,
+                                    second_narrator_audio=second_audio_dict,
+                                    second_narrator_text=""
+                                )
+                                
+                                audio_segments.append(segment_result)
+                    
+                    # Combine all segments (audio + pauses)
+                    if len(audio_segments) == 1:
+                        result = audio_segments[0]
+                    else:
+                        print(f"🔗 Combining {len(audio_segments)} native segments with pauses")
+                        combined_waveform = audio_segments[0]
+                        
+                        for next_segment in audio_segments[1:]:
+                            # Concatenate directly (pauses are already included as silence tensors)
+                            combined_waveform = torch.cat([combined_waveform, next_segment], dim=-1)
+                        
+                        result = combined_waveform
+                
+                # CRITICAL FIX: Ensure tensor has correct dimensions for ComfyUI
+                if isinstance(result, torch.Tensor):
+                    print(f"🔧 Higgs Audio tensor before fix: {result.shape}")
+                    if result.dim() == 3 and result.size(0) == 1:
+                        result = result.squeeze(0)  # Remove batch dimension [1,1,N] -> [1,N]
+                        print(f"🔧 Higgs Audio tensor after fix: {result.shape}")
+                    elif result.dim() == 1:
+                        result = result.unsqueeze(0)  # Add channel dimension [N] -> [1,N]
                 
                 # Convert single tensor result to ComfyUI audio format
                 if isinstance(result, torch.Tensor):
-                    # Ensure correct dimensions
+                    # Ensure correct dimensions for ComfyUI: [channels, samples]
                     if result.dim() == 1:
-                        result = result.unsqueeze(0)  # Add channel dimension
+                        result = result.unsqueeze(0)  # Add channel dimension: [samples] -> [1, samples]
                     elif result.dim() == 3:
-                        result = result.squeeze(0)  # Remove batch dimension
+                        # Handle [batch, channels, samples] -> [channels, samples]
+                        if result.size(0) == 1:  # batch size of 1
+                            result = result.squeeze(0)  # Remove batch dimension
+                        else:
+                            result = result[0]  # Take first item from batch
                     
-                    result = ({
-                        "waveform": result.cpu(),
-                        "sample_rate": 24000  # Higgs Audio v2 sample rate
-                    }, "Higgs Audio generation completed")
+                    # Ensure we have exactly 2 dimensions: [channels, samples]
+                    if result.dim() != 2:
+                        print(f"⚠️ Unexpected tensor dimensions: {result.shape}, reshaping to 2D")
+                        if result.dim() == 1:
+                            result = result.unsqueeze(0)
+                        elif result.dim() > 2:
+                            # Flatten to 1D and add channel dimension
+                            result = result.view(-1).unsqueeze(0)
+                    
+                    # Use the same format_audio_output as ChatterBox for consistency
+                    final_waveform = result.cpu()
+                    print(f"🔧 Higgs Audio raw tensor: {final_waveform.shape}")
+                    
+                    # Format using base class method (adds batch dimension like ChatterBox)
+                    formatted_audio = self.format_audio_output(final_waveform, 24000)
+                    print(f"🔧 After format_audio_output: {formatted_audio['waveform'].shape}")
+                    
+                    result = (formatted_audio, "Higgs Audio generation completed")
                 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")

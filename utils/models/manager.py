@@ -68,16 +68,64 @@ class ModelManager:
             return model_paths  # Return immediately if bundled models found
         
         # 2. Check ComfyUI models folder - new TTS organization
-        comfyui_model_path_tts = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", "s3gen.pt")
-        if os.path.exists(comfyui_model_path_tts):
-            model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_tts)))
-            return model_paths
+        comfyui_tts_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox")
+        if os.path.exists(comfyui_tts_dir):
+            # Check for direct s3gen.pt in chatterbox folder
+            direct_model = os.path.join(comfyui_tts_dir, "s3gen.pt")
+            if os.path.exists(direct_model):
+                model_paths.append(("comfyui", comfyui_tts_dir))
+                return model_paths
+            
+            # Check for language subdirectories (English, German, etc.)
+            try:
+                for item in os.listdir(comfyui_tts_dir):
+                    item_path = os.path.join(comfyui_tts_dir, item)
+                    if os.path.isdir(item_path):
+                        # Check if this subdirectory contains ChatterBox model files
+                        required_files = ["s3gen.", "ve.", "t3_cfg.", "tokenizer.json"]
+                        has_model = False
+                        for file in os.listdir(item_path):
+                            for required in required_files:
+                                if file.startswith(required) and (file.endswith(".pt") or file.endswith(".safetensors")):
+                                    has_model = True
+                                    break
+                            if has_model:
+                                break
+                        if has_model:
+                            model_paths.append(("comfyui", comfyui_tts_dir))
+                            return model_paths
+            except OSError:
+                pass
         
         # 3. Check legacy location (direct chatterbox) for backward compatibility
-        comfyui_model_path_legacy = os.path.join(folder_paths.models_dir, "chatterbox", "s3gen.pt")
-        if os.path.exists(comfyui_model_path_legacy):
-            model_paths.append(("comfyui", os.path.dirname(comfyui_model_path_legacy)))
-            return model_paths
+        comfyui_legacy_dir = os.path.join(folder_paths.models_dir, "chatterbox")
+        if os.path.exists(comfyui_legacy_dir):
+            # Check for direct s3gen.pt in chatterbox folder
+            direct_model = os.path.join(comfyui_legacy_dir, "s3gen.pt")
+            if os.path.exists(direct_model):
+                model_paths.append(("comfyui", comfyui_legacy_dir))
+                return model_paths
+            
+            # Check for language subdirectories
+            try:
+                for item in os.listdir(comfyui_legacy_dir):
+                    item_path = os.path.join(comfyui_legacy_dir, item)
+                    if os.path.isdir(item_path):
+                        # Check if this subdirectory contains ChatterBox model files
+                        required_files = ["s3gen.", "ve.", "t3_cfg.", "tokenizer.json"]
+                        has_model = False
+                        for file in os.listdir(item_path):
+                            for required in required_files:
+                                if file.startswith(required) and (file.endswith(".pt") or file.endswith(".safetensors")):
+                                    has_model = True
+                                    break
+                            if has_model:
+                                break
+                        if has_model:
+                            model_paths.append(("comfyui", comfyui_legacy_dir))
+                            return model_paths
+            except OSError:
+                pass
         
         # 4. HuggingFace download as fallback
         model_paths.append(("huggingface", None))

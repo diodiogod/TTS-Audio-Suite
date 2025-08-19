@@ -72,13 +72,13 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "default": "auto",
                     "tooltip": "Device to run the model on"
                 }),
+                "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker (System Context)", "Native Multi-Speaker (Conversation)"], {
+                    "default": "Custom Character Switching",
+                    "tooltip": "IMPORTANT: Each mode requires different text formats!\n\n• Custom Character Switching: Use ANY character names like [Alice], [Bob], [Narrator]. Each segment generated separately with character-specific voice files from voices folder. Falls back to narrator voice if character not found. Most flexible.\n\n• Native Multi-Speaker (System Context): Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! Requires opt_second_narrator input. Better for natural dialogue flow and voice consistency.\n\n• Native Multi-Speaker (Conversation): Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! Requires opt_second_narrator input. Good for continuing conversations.\n\nAll modes support [pause:2] tags."
+                }),
                 "voice_preset": (voice_preset_list, {
                     "default": "voice_clone",
                     "tooltip": "Voice preset to use for generation (voice_clone = use reference audio)"
-                }),
-                "audio_priority": (["auto", "preset_dropdown", "reference_input", "force_preset"], {
-                    "default": "auto",
-                    "tooltip": "Which audio source takes priority for voice cloning"
                 }),
                 "system_prompt": ("STRING", {
                     "default": "Generate audio following instruction.",
@@ -113,6 +113,11 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "step": 128,
                     "tooltip": "Maximum tokens to generate per chunk (affects audio length and pacing)"
                 })
+            },
+            "optional": {
+                "opt_second_narrator": ("AUDIO", {
+                    "tooltip": "Second narrator voice for native multi-speaker modes. Used as SPEAKER1 voice when multi_speaker_mode is set to Native Multi-Speaker. Only needed for native modes, ignored in Custom Character Switching mode. First narrator (from Character Voices or TTS Text) becomes SPEAKER0."
+                })
             }
         }
     
@@ -122,8 +127,8 @@ class HiggsAudioEngineNode(BaseTTSNode):
     CATEGORY = "🎤 TTS Audio Suite/Engines"
     DESCRIPTION = "Configure Higgs Audio 2 engine for TTS generation with voice cloning"
     
-    def create_engine_config(self, model, device, voice_preset, audio_priority, system_prompt,
-                           temperature, top_p, top_k, max_new_tokens):
+    def create_engine_config(self, model, device, multi_speaker_mode, voice_preset, system_prompt,
+                           temperature, top_p, top_k, max_new_tokens, opt_second_narrator=None):
         """Create Higgs Audio engine configuration"""
         
         # Validate parameters
@@ -131,13 +136,14 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "engine_type": "higgs_audio",
             "model": model,
             "device": device,
+            "multi_speaker_mode": multi_speaker_mode,
             "voice_preset": voice_preset,
-            "audio_priority": audio_priority,
             "system_prompt": system_prompt,
             "temperature": max(0.0, min(2.0, temperature)),
             "top_p": max(0.1, min(1.0, top_p)),
             "top_k": max(-1, min(100, top_k)),
             "max_new_tokens": max(128, min(4096, max_new_tokens)),
+            "opt_second_narrator": opt_second_narrator,
             "adapter_class": "HiggsAudioEngineAdapter"
         }
         

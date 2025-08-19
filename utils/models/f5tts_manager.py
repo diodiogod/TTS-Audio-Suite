@@ -34,7 +34,7 @@ class F5TTSModelManager:
     def _check_f5tts_availability(self):
         """Check if F5-TTS is available"""
         try:
-            import f5_tts
+            import engines.f5_tts
             self.f5tts_available = True
         except ImportError:
             self.f5tts_available = False

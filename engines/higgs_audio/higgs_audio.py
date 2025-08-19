@@ -374,6 +374,155 @@ class HiggsAudioEngine:
         
         return combined_audio, info
     
+    def generate_native_multispeaker(self,
+                                   text: str,
+                                   primary_reference_audio: Optional[Dict[str, Any]] = None,
+                                   primary_reference_text: str = "",
+                                   secondary_reference_audio: Optional[Dict[str, Any]] = None,
+                                   secondary_reference_text: str = "",
+                                   use_system_context: bool = True,
+                                   system_prompt: str = "Generate audio following instruction.",
+                                   max_new_tokens: int = 2048,
+                                   temperature: float = 1.0,
+                                   top_p: float = 0.95,
+                                   top_k: int = 50,
+                                   enable_cache: bool = True,
+                                   character: str = "SPEAKER0",
+                                   seed: int = -1) -> Tuple[Dict[str, Any], str]:
+        """
+        Generate audio using Higgs Audio 2's native multi-speaker capabilities
+        
+        Args:
+            text: Input text with [SPEAKER0] and [SPEAKER1] tags
+            primary_reference_audio: Reference audio for SPEAKER0
+            primary_reference_text: Text corresponding to primary reference
+            secondary_reference_audio: Reference audio for SPEAKER1  
+            secondary_reference_text: Text corresponding to secondary reference
+            use_system_context: If True, use system context mode; if False, use conversation mode
+            system_prompt: System prompt for generation
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            top_p: Nucleus sampling parameter
+            top_k: Top-k sampling parameter
+            enable_cache: Whether to use caching
+            character: Character name for caching
+            seed: Random seed (-1 for random)
+            
+        Returns:
+            Tuple of (audio dict, generation info string)
+        """
+        if not self.engine:
+            raise RuntimeError("Engine not initialized. Call initialize_engine first.")
+        
+        start_time = time.time()
+        print(f"🎭 Native multi-speaker generation: {'System Context' if use_system_context else 'Conversation'} mode")
+        
+        # Build messages for ChatML format
+        messages = []
+        
+        # Add system prompt
+        if system_prompt.strip():
+            messages.append(Message(role="system", content=system_prompt))
+        
+        # Add reference audios based on mode
+        if use_system_context:
+            # System context mode: Add both reference audios as system context
+            if primary_reference_audio is not None:
+                try:
+                    primary_base64 = self._audio_to_base64(primary_reference_audio)
+                    if primary_base64:
+                        if primary_reference_text:
+                            messages.append(Message(role="system", content=f"SPEAKER0 reference: {primary_reference_text}"))
+                        audio_content = AudioContent(raw_audio=primary_base64, audio_url="")
+                        messages.append(Message(role="system", content=[audio_content]))
+                except Exception as e:
+                    print(f"⚠️ Failed to encode primary reference audio: {e}")
+            
+            if secondary_reference_audio is not None:
+                try:
+                    secondary_base64 = self._audio_to_base64(secondary_reference_audio)
+                    if secondary_base64:
+                        if secondary_reference_text:
+                            messages.append(Message(role="system", content=f"SPEAKER1 reference: {secondary_reference_text}"))
+                        audio_content = AudioContent(raw_audio=secondary_base64, audio_url="")
+                        messages.append(Message(role="system", content=[audio_content]))
+                except Exception as e:
+                    print(f"⚠️ Failed to encode secondary reference audio: {e}")
+        else:
+            # Conversation mode: Add reference audios as assistant messages
+            if primary_reference_audio is not None:
+                try:
+                    primary_base64 = self._audio_to_base64(primary_reference_audio)
+                    if primary_base64:
+                        if primary_reference_text:
+                            messages.append(Message(role="system", content=primary_reference_text))
+                        audio_content = AudioContent(raw_audio=primary_base64, audio_url="")
+                        messages.append(Message(role="assistant", content=[audio_content]))
+                except Exception as e:
+                    print(f"⚠️ Failed to encode primary reference audio: {e}")
+            
+            if secondary_reference_audio is not None:
+                try:
+                    secondary_base64 = self._audio_to_base64(secondary_reference_audio)
+                    if secondary_base64:
+                        if secondary_reference_text:
+                            messages.append(Message(role="system", content=secondary_reference_text))
+                        audio_content = AudioContent(raw_audio=secondary_base64, audio_url="")
+                        messages.append(Message(role="assistant", content=[audio_content]))
+                except Exception as e:
+                    print(f"⚠️ Failed to encode secondary reference audio: {e}")
+        
+        # Add user text with SPEAKER tags
+        messages.append(Message(role="user", content=text))
+        
+        # Create ChatML sample
+        chat_sample = ChatMLSample(messages=messages)
+        
+        # Generate audio
+        print(f"🗣️ Generating native multi-speaker audio...")
+        
+        try:
+            output = self.engine.generate(
+                chat_ml_sample=chat_sample,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k if top_k > 0 else None,
+                stop_strings=["<|end_of_text|>", "<|eot_id|>"],
+                seed=seed
+            )
+            
+            # Convert output to audio dict
+            if hasattr(output, 'audio') and hasattr(output, 'sampling_rate'):
+                audio_np = output.audio
+                
+                # Convert numpy to tensor
+                if len(audio_np.shape) == 1:
+                    audio_tensor = torch.from_numpy(audio_np).unsqueeze(0).unsqueeze(0).float()
+                elif len(audio_np.shape) == 2:
+                    audio_tensor = torch.from_numpy(audio_np).unsqueeze(0).float()
+                else:
+                    audio_tensor = torch.from_numpy(audio_np).float()
+                
+                audio_result = {
+                    "waveform": audio_tensor,
+                    "sample_rate": output.sampling_rate
+                }
+                
+                # Calculate duration and info
+                duration = audio_tensor.size(-1) / output.sampling_rate
+                generation_time = time.time() - start_time
+                info = f"Native multi-speaker: {duration:.1f}s audio in {generation_time:.1f}s"
+                
+                print(f"  ✅ Generated native multi-speaker audio: {audio_tensor.shape}, sample_rate: {output.sampling_rate}")
+                return audio_result, info
+            else:
+                raise ValueError("Invalid audio output from Higgs Audio engine")
+                
+        except Exception as e:
+            print(f"❌ Error during native multi-speaker generation: {e}")
+            raise e
+    
     def _process_single_chunk(self,
                              chunk_text: str,
                              voice_preset: str,
@@ -530,16 +679,28 @@ class HiggsAudioEngine:
         if not sf:
             raise ImportError("soundfile is required for audio encoding")
         
-        waveform = comfy_audio["waveform"]
-        sample_rate = comfy_audio["sample_rate"]
+        # Handle nested ComfyUI audio format
+        if "waveform" in comfy_audio and isinstance(comfy_audio["waveform"], dict):
+            # Nested format: {"waveform": {"waveform": tensor, "sample_rate": int}, ...}
+            inner_audio = comfy_audio["waveform"]
+            waveform = inner_audio["waveform"]
+            sample_rate = inner_audio["sample_rate"]
+        else:
+            # Direct format: {"waveform": tensor, "sample_rate": int}
+            waveform = comfy_audio["waveform"]
+            sample_rate = comfy_audio["sample_rate"]
+        
+        # Ensure we have a tensor with dim() method
+        if not hasattr(waveform, 'dim'):
+            raise TypeError(f"Expected tensor with dim() method, got {type(waveform)}")
         
         # Handle tensor dimensions
         if waveform.dim() == 3:
-            audio_np = waveform[0, 0].numpy()
+            audio_np = waveform[0, 0].cpu().numpy()
         elif waveform.dim() == 2:
-            audio_np = waveform[0].numpy()
+            audio_np = waveform[0].cpu().numpy()
         else:
-            audio_np = waveform.numpy()
+            audio_np = waveform.cpu().numpy()
         
         # Write to buffer
         buffer = io.BytesIO()

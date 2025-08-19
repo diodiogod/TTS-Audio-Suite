@@ -123,7 +123,7 @@ class ChatterBoxF5TTS:
                 self._setup_vocos_redirect(vocos_dir)
             
             # Try to import F5-TTS
-            from f5_tts.api import F5TTS
+            from engines.f5_tts.api import F5TTS
             
             # Check if we have local model directory
             if self.ckpt_dir and os.path.exists(self.ckpt_dir):
