@@ -440,14 +440,21 @@ class HiggsAudioEngine:
             
             if secondary_reference_audio is not None:
                 try:
+                    print(f"🔧 DEBUG: Secondary audio type: {type(secondary_reference_audio)}")
+                    print(f"🔧 DEBUG: Secondary audio keys: {list(secondary_reference_audio.keys()) if isinstance(secondary_reference_audio, dict) else 'not dict'}")
                     secondary_base64 = self._audio_to_base64(secondary_reference_audio)
                     if secondary_base64:
+                        print(f"🔧 DEBUG: Secondary audio encoded successfully, length: {len(secondary_base64)}")
                         if secondary_reference_text:
                             messages.append(Message(role="system", content=f"SPEAKER1 reference: {secondary_reference_text}"))
                         audio_content = AudioContent(raw_audio=secondary_base64, audio_url="")
                         messages.append(Message(role="system", content=[audio_content]))
+                    else:
+                        print(f"🔧 DEBUG: Secondary audio encoding returned empty string")
                 except Exception as e:
                     print(f"⚠️ Failed to encode secondary reference audio: {e}")
+                    print(f"🔧 DEBUG: Secondary audio structure: {secondary_reference_audio}")
+                    # Don't add empty audio - this might be causing the size 0 error
         else:
             # Conversation mode: Add reference audios as assistant messages
             if primary_reference_audio is not None:
@@ -474,6 +481,19 @@ class HiggsAudioEngine:
         
         # Add user text with SPEAKER tags
         messages.append(Message(role="user", content=text))
+        
+        # DEBUG: Print final message structure
+        print(f"🔧 DEBUG: Final ChatML messages count: {len(messages)}")
+        for i, msg in enumerate(messages):
+            print(f"🔧 DEBUG: Message {i}: role={msg.role}, content_type={type(msg.content)}")
+            if isinstance(msg.content, str):
+                print(f"🔧 DEBUG:   Text content: '{msg.content[:100]}...'")
+            elif isinstance(msg.content, list):
+                print(f"🔧 DEBUG:   List content with {len(msg.content)} items")
+                for j, item in enumerate(msg.content):
+                    print(f"🔧 DEBUG:     Item {j}: {type(item)}")
+            else:
+                print(f"🔧 DEBUG:   Other content: {msg.content}")
         
         # Create ChatML sample
         chat_sample = ChatMLSample(messages=messages)
