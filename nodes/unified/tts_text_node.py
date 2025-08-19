@@ -412,109 +412,116 @@ Back to the main narrator voice for the conclusion.""",
                 print(f"🎭 Higgs Audio: Using mode '{multi_speaker_mode}'")
                 
                 if multi_speaker_mode == "Custom Character Switching":
-                    # Our custom approach with character parsing
-                    print(f"🎭 Higgs Audio: Parsing character text for voice switching")
+                    # Use existing modular utilities - pause processing first, then character parsing (like ChatterBox)
+                    print(f"🎭 Higgs Audio: Using character switching with pause support")
                     
-                    # Parse character segments from text
+                    # Import modular utilities  
+                    from utils.text.pause_processor import PauseTagProcessor
+                    from utils.voice.discovery import get_character_mapping
+                    
+                    # Discover characters and build voice mapping
                     character_segments = parse_character_text(text)
-                    print(f"🎭 Higgs Audio: Found {len(character_segments)} character segments")
+                    all_characters = set(char for char, _ in character_segments)
+                    character_mapping = get_character_mapping(list(all_characters), engine_type="higgs_audio")
                     
-                    # Process each character segment with appropriate voice
-                    audio_segments = []
-                    total_chars = 0
+                    print(f"🎭 Higgs Audio: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
                     
-                    for i, (character, segment_text) in enumerate(character_segments):
-                        if not segment_text.strip():
+                    # Build voice references - CRITICAL: Start with narrator using connected voice
+                    narrator_voice_dict = None
+                    if audio_tensor is not None:
+                        narrator_voice_dict = {"waveform": audio_tensor["waveform"], "sample_rate": audio_tensor["sample_rate"]}
+                    
+                    voice_refs = {'narrator': narrator_voice_dict}
+                    
+                    for character in all_characters:
+                        # Skip narrator - already set above with connected voice
+                        if character.lower() == "narrator":
                             continue
                             
-                        print(f"🎭 Processing segment {i+1}/{len(character_segments)}: [{character}] '{segment_text[:50]}...'")
-                        total_chars += len(segment_text)
-                        
-                        # Get voice reference for this character
-                        if character.lower() == "narrator":
-                            # Use the main narrator voice
-                            char_audio_dict = None
-                            if audio_tensor is not None:
-                                char_audio_dict = {
-                                    "waveform": audio_tensor,
-                                    "sample_rate": 24000
-                                }
-                            char_ref_text = reference_text or ""
+                        audio_path, _ = character_mapping.get(character, (None, None))
+                        if audio_path and os.path.exists(audio_path):
+                            import torchaudio
+                            waveform, sample_rate = torchaudio.load(audio_path)
+                            if waveform.shape[0] > 1:
+                                waveform = torch.mean(waveform, dim=0, keepdim=True)
+                            voice_refs[character] = {"waveform": waveform, "sample_rate": sample_rate}
                         else:
-                            # Try to load character-specific voice
-                            from utils.voice.discovery import load_voice_reference
-                            try:
-                                char_audio_path, char_ref_text = load_voice_reference(character)
-                                if char_audio_path and os.path.exists(char_audio_path):
-                                    import torchaudio
-                                    waveform, sample_rate = torchaudio.load(char_audio_path)
-                                    if waveform.shape[0] > 1:
-                                        waveform = torch.mean(waveform, dim=0, keepdim=True)
-                                    char_audio_dict = {"waveform": waveform, "sample_rate": sample_rate}
-                                    print(f"🎭 Using character voice: {character}")
-                                else:
-                                    # Fall back to narrator voice
-                                    char_audio_dict = None
-                                    if audio_tensor is not None:
-                                        char_audio_dict = {
-                                            "waveform": audio_tensor,
-                                            "sample_rate": 24000
-                                        }
-                                    char_ref_text = reference_text or ""
-                                    print(f"🎭 Character '{character}' not found, using narrator voice")
-                            except Exception as e:
-                                print(f"⚠️ Error loading character '{character}': {e}, using narrator")
-                                char_audio_dict = None
-                                if audio_tensor is not None:
-                                    char_audio_dict = {
-                                        "waveform": audio_tensor,
-                                        "sample_rate": 24000
-                                    }
-                                char_ref_text = reference_text or ""
-                        
-                        # Generate audio for this segment
-                        segment_result = engine_instance.generate_tts_audio(
-                            text=segment_text,
-                            char_audio=char_audio_dict,
-                            char_text=char_ref_text,
-                            character=character,
-                            # Config parameters
-                            voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
-                            system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
-                            temperature=engine_instance.config.get("temperature", 1.0),
-                            top_p=engine_instance.config.get("top_p", 0.95),
-                            top_k=engine_instance.config.get("top_k", 50),
-                            max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
-                            seed=seed,
-                            enable_audio_cache=enable_audio_cache,
-                            max_chars_per_chunk=max_chars_per_chunk,
-                            silence_between_chunks_ms=silence_between_chunks_ms
-                        )
-                        
-                        audio_segments.append(segment_result)
-                
-                    # Combine all segments
-                    if len(audio_segments) == 1:
-                        result = audio_segments[0]
-                    else:
-                        print(f"🔗 Combining {len(audio_segments)} character segments")
-                        # Combine audio tensors with silence between characters
-                        combined_waveform = audio_segments[0]
-                        sample_rate = 24000
-                        
-                        # Add silence between character segments (250ms)
-                        silence_samples = int(0.25 * sample_rate)
-                        
-                        for next_segment in audio_segments[1:]:
-                            # Add silence
-                            if silence_samples > 0:
-                                silence = torch.zeros(1, silence_samples)
-                                combined_waveform = torch.cat([combined_waveform, silence], dim=-1)
+                            # Use main narrator voice as fallback
+                            voice_refs[character] = narrator_voice_dict
+                    
+                    def tts_generate_func(text_content: str) -> torch.Tensor:
+                        """TTS generation function for pause tag processor"""
+                        if '[' in text_content and ']' in text_content:
+                            # Handle character switching within this segment
+                            char_segments = parse_character_text(text_content)
+                            segment_audio_parts = []
                             
-                            # Add next segment
-                            combined_waveform = torch.cat([combined_waveform, next_segment], dim=-1)
-                        
-                        result = combined_waveform
+                            for character, segment_text in char_segments:
+                                char_audio_dict = voice_refs.get(character)
+                                char_ref_text = reference_text or ""
+                                
+                                segment_result = engine_instance.generate_tts_audio(
+                                    text=segment_text,
+                                    char_audio=char_audio_dict,
+                                    char_text=char_ref_text,
+                                    character=character,
+                                    voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
+                                    system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
+                                    temperature=engine_instance.config.get("temperature", 1.0),
+                                    top_p=engine_instance.config.get("top_p", 0.95),
+                                    top_k=engine_instance.config.get("top_k", 50),
+                                    max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
+                                    seed=seed,
+                                    enable_audio_cache=enable_audio_cache,
+                                    max_chars_per_chunk=max_chars_per_chunk,
+                                    silence_between_chunks_ms=0
+                                )
+                                segment_audio_parts.append(segment_result)
+                            
+                            # Combine character segments
+                            if segment_audio_parts:
+                                return torch.cat(segment_audio_parts, dim=-1)
+                            else:
+                                return torch.zeros(1, 0)
+                        else:
+                            # Simple text segment without character switching - use narrator voice
+                            narrator_audio = voice_refs.get("narrator")
+                            if narrator_audio is None and audio_tensor is not None:
+                                narrator_audio = {"waveform": audio_tensor, "sample_rate": 24000}
+                            
+                            return engine_instance.generate_tts_audio(
+                                text=text_content,
+                                char_audio=narrator_audio,
+                                char_text=reference_text or "",
+                                character="narrator",
+                                voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
+                                system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
+                                temperature=engine_instance.config.get("temperature", 1.0),
+                                top_p=engine_instance.config.get("top_p", 0.95),
+                                top_k=engine_instance.config.get("top_k", 50),
+                                max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
+                                seed=seed,
+                                enable_audio_cache=enable_audio_cache,
+                                max_chars_per_chunk=max_chars_per_chunk,
+                                silence_between_chunks_ms=0
+                            )
+                    
+                    # Process with pause tag handling using existing utility
+                    pause_processor = PauseTagProcessor()
+                    
+                    # Parse text into segments (text and pause segments)
+                    segments, clean_text = pause_processor.parse_pause_tags(text)
+                    
+                    # Generate audio with pauses
+                    if segments:
+                        result = pause_processor.generate_audio_with_pauses(
+                            segments=segments,
+                            tts_generate_func=tts_generate_func,
+                            sample_rate=24000
+                        )
+                    else:
+                        # No pause tags, just generate directly
+                        result = tts_generate_func(text)
                 
                 else:
                     # Native multi-speaker modes - process entire conversation as single unit
