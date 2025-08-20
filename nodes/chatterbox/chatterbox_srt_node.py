@@ -382,14 +382,6 @@ The audio will match these exact timings.""",
         """Cache generated audio for a single segment in global cache - ORIGINAL BEHAVIOR"""
         GLOBAL_AUDIO_CACHE[segment_cache_key] = (audio_tensor.clone(), natural_duration)
     
-    def _detect_overlaps(self, subtitles: List) -> bool:
-        """Detect if subtitles have overlapping time ranges."""
-        for i in range(len(subtitles) - 1):
-            current = subtitles[i]
-            next_sub = subtitles[i + 1]
-            if current.end_time > next_sub.start_time:
-                return True
-        return False
     
     def _generate_with_preloaded_model(self, model, text: str, voice_path: str, language: str, 
                                      character: str, exaggeration: float, temperature: float, 
@@ -670,14 +662,12 @@ The audio will match these exact timings.""",
             srt_parser = self.SRTParser()
             subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
             
-            # Check if subtitles have overlaps and handle smart_natural mode
-            has_overlaps = self._detect_overlaps(subtitles)
-            current_timing_mode = timing_mode
-            mode_switched = False
-            if has_overlaps and current_timing_mode == "smart_natural":
-                print("⚠️ ChatterBox SRT: Overlapping subtitles detected, switching from smart_natural to pad_with_silence mode")
-                current_timing_mode = "pad_with_silence"
-                mode_switched = True
+            # Check if subtitles have overlaps and handle smart_natural mode using modular utility
+            from utils.timing.overlap_detection import SRTOverlapHandler
+            has_overlaps = SRTOverlapHandler.detect_overlaps(subtitles)
+            current_timing_mode, mode_switched = SRTOverlapHandler.handle_smart_natural_fallback(
+                timing_mode, has_overlaps, "ChatterBox SRT"
+            )
             
             # Set up character parser with available characters BEFORE processing subtitles
             available_chars = get_available_characters()
