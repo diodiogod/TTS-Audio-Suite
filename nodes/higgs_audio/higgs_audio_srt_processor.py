@@ -263,22 +263,30 @@ class HiggsAudioSRTProcessor:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             
             if timing_mode == "stretch_to_fit":
-                # For stretch_to_fit, we need (start_time, end_time) tuples for the assembler
+                # Use the same modular approach as F5-TTS and ChatterBox
+                from utils.system.import_manager import import_manager
+                success, modules, source = import_manager.import_srt_modules()
+                if not success:
+                    raise ImportError("SRT modules not available for timing calculations")
+                
+                calculate_timing_adjustments = modules.get("calculate_timing_adjustments")
+                if not calculate_timing_adjustments:
+                    raise ImportError("calculate_timing_adjustments function not found")
+                
+                # Calculate natural durations and target timings
+                natural_durations = [audio_tensors[i].size(-1) / self.sample_rate for i in range(len(audio_tensors))]
                 target_timings = [(seg.start_time, seg.end_time) for seg in srt_segments]
+                
+                # Use modular timing adjustment calculation (same as F5-TTS)
+                adjustments = calculate_timing_adjustments(natural_durations, target_timings)
+                
+                # Add sequence numbers and original text to adjustments
+                for i, (adj, seg) in enumerate(zip(adjustments, srt_segments)):
+                    adj['sequence'] = seg.sequence
+                    adj['original_text'] = seg.text
+                
+                # Assemble final audio
                 final_audio_tensor = assembler.assemble_stretch_to_fit(audio_tensors, target_timings, fade_for_StretchToFit)
-                # Generate basic adjustments for reporting
-                adjustments = []
-                for i, seg in enumerate(srt_segments):
-                    adjustments.append({
-                        "sequence": seg.sequence,
-                        "start_time": seg.start_time,
-                        "end_time": seg.end_time,
-                        "original_text": seg.text,
-                        "needs_stretching": True,
-                        "stretch_type": "stretch_to_fit",
-                        "stretch_factor": 1.0,
-                        "natural_duration": audio_tensors[i].size(-1) / self.sample_rate if i < len(audio_tensors) else 0.0
-                    })
             elif timing_mode == "pad_with_silence":
                 final_audio_tensor = assembler.assemble_with_overlaps(audio_tensors, srt_segments, device)
                 # Generate basic adjustments for reporting
