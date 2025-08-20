@@ -263,11 +263,35 @@ class HiggsAudioSRTProcessor:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             
             if timing_mode == "stretch_to_fit":
-                final_audio_tensor = assembler.assemble_stretch_to_fit(audio_tensors, srt_segments, fade_for_StretchToFit)
-                adjustments = [{"mode": "stretch_to_fit"}]
+                # For stretch_to_fit, we need (start_time, end_time) tuples for the assembler
+                target_timings = [(seg.start_time, seg.end_time) for seg in srt_segments]
+                final_audio_tensor = assembler.assemble_stretch_to_fit(audio_tensors, target_timings, fade_for_StretchToFit)
+                # Generate basic adjustments for reporting
+                adjustments = []
+                for i, seg in enumerate(srt_segments):
+                    adjustments.append({
+                        "sequence": seg.sequence,
+                        "start_time": seg.start_time,
+                        "end_time": seg.end_time,
+                        "original_text": seg.text,
+                        "needs_stretching": True,
+                        "stretch_type": "stretch_to_fit",
+                        "stretch_factor": 1.0,
+                        "natural_duration": audio_tensors[i].size(-1) / self.sample_rate if i < len(audio_tensors) else 0.0
+                    })
             elif timing_mode == "pad_with_silence":
                 final_audio_tensor = assembler.assemble_with_overlaps(audio_tensors, srt_segments, device)
-                adjustments = [{"mode": "pad_with_silence"}]
+                # Generate basic adjustments for reporting
+                adjustments = []
+                for i, seg in enumerate(srt_segments):
+                    adjustments.append({
+                        "sequence": seg.sequence,
+                        "start_time": seg.start_time,
+                        "end_time": seg.end_time,
+                        "original_text": seg.text,
+                        "needs_stretching": False,
+                        "natural_duration": audio_tensors[i].size(-1) / self.sample_rate if i < len(audio_tensors) else 0.0
+                    })
             elif timing_mode == "concatenate":
                 adjustments = timing_engine.calculate_concatenation_adjustments(audio_tensors, srt_segments)
                 final_audio_tensor = assembler.assemble_concatenation(audio_tensors, fade_for_StretchToFit)
