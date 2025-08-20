@@ -160,7 +160,8 @@ Hello! This is unified SRT TTS with character switching.
         """
         try:
             engine_type = engine_data.get("engine_type")
-            config = engine_data.get("config", {})
+            # The engine_data IS the config - not nested under "config"
+            config = engine_data
             
             # Create cache key based only on stable parameters that affect engine instance creation
             stable_params = {
