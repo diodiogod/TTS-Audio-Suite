@@ -118,6 +118,11 @@ class HiggsAudioEngineAdapter:
         Returns:
             Generated audio tensor
         """
+        # Ensure engine is initialized with current model/device
+        model = params.get("model", "higgs-audio-v2-3B")
+        device = params.get("device", "auto")
+        self.load_base_model(model, device)
+        
         # Extract Higgs Audio specific parameters
         voice_preset = params.get("voice_preset", "voice_clone")
         system_prompt = params.get("system_prompt", "Generate audio following instruction.")
