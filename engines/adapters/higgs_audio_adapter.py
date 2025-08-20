@@ -63,9 +63,9 @@ class HiggsAudioEngineAdapter:
             model_name: Model name to load
             device: Device to load model on
         """
-        # Check if the model is already loaded to avoid redundant loading
+        # Check if the model is already loaded AND engine is initialized
         current_model = getattr(self.node, 'current_model_name', None)
-        if current_model == model_name:
+        if current_model == model_name and self.higgs_engine.engine is not None:
             print(f"💾 Higgs Audio adapter: Model '{model_name}' already loaded - skipping base model load")
             return
         
