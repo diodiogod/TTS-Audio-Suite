@@ -405,208 +405,28 @@ Back to the main narrator voice for the conclusion.""",
                     enable_audio_cache=enable_audio_cache
                 )
                 
+                
             elif engine_type == "higgs_audio":
-                # Higgs Audio 2 with multiple speaker modes  
-                # Get the mode from the engine config, not the TTS Text node config
-                multi_speaker_mode = engine_instance.config.get("multi_speaker_mode", "Custom Character Switching")
-                print(f"🎭 Higgs Audio: Using mode '{multi_speaker_mode}'")
+                # Import and create the Higgs Audio TTS processor
+                higgs_tts_processor_path = os.path.join(nodes_dir, "higgs_audio", "higgs_audio_tts_processor.py")
+                higgs_tts_spec = importlib.util.spec_from_file_location("higgs_audio_tts_processor_module", higgs_tts_processor_path)
+                higgs_tts_module = importlib.util.module_from_spec(higgs_tts_spec)
+                higgs_tts_spec.loader.exec_module(higgs_tts_module)
                 
-                if multi_speaker_mode == "Custom Character Switching":
-                    # Use existing modular utilities - pause processing first, then character parsing (like ChatterBox)
-                    print(f"🎭 Higgs Audio: Using character switching with pause support")
-                    
-                    # Import modular utilities  
-                    from utils.text.pause_processor import PauseTagProcessor
-                    from utils.voice.discovery import get_character_mapping
-                    
-                    # Discover characters and build voice mapping
-                    character_segments = parse_character_text(text)
-                    all_characters = set(char for char, _ in character_segments)
-                    character_mapping = get_character_mapping(list(all_characters), engine_type="higgs_audio")
-                    
-                    print(f"🎭 Higgs Audio: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
-                    
-                    # Build voice references - CRITICAL: Start with narrator using connected voice
-                    narrator_voice_dict = None
-                    if audio_tensor is not None:
-                        narrator_voice_dict = {"waveform": audio_tensor["waveform"], "sample_rate": audio_tensor["sample_rate"]}
-                    
-                    voice_refs = {'narrator': narrator_voice_dict}
-                    
-                    for character in all_characters:
-                        # Skip narrator - already set above with connected voice
-                        if character.lower() == "narrator":
-                            continue
-                            
-                        audio_path, _ = character_mapping.get(character, (None, None))
-                        if audio_path and os.path.exists(audio_path):
-                            import torchaudio
-                            waveform, sample_rate = torchaudio.load(audio_path)
-                            if waveform.shape[0] > 1:
-                                waveform = torch.mean(waveform, dim=0, keepdim=True)
-                            voice_refs[character] = {"waveform": waveform, "sample_rate": sample_rate}
-                        else:
-                            # Use main narrator voice as fallback
-                            voice_refs[character] = narrator_voice_dict
-                    
-                    def tts_generate_func(text_content: str) -> torch.Tensor:
-                        """TTS generation function for pause tag processor"""
-                        if '[' in text_content and ']' in text_content:
-                            # Handle character switching within this segment
-                            char_segments = parse_character_text(text_content)
-                            segment_audio_parts = []
-                            
-                            for character, segment_text in char_segments:
-                                char_audio_dict = voice_refs.get(character)
-                                char_ref_text = reference_text or ""
-                                
-                                segment_result = engine_instance.generate_tts_audio(
-                                    text=segment_text,
-                                    char_audio=char_audio_dict,
-                                    char_text=char_ref_text,
-                                    character=character,
-                                    voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
-                                    system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
-                                    temperature=engine_instance.config.get("temperature", 1.0),
-                                    top_p=engine_instance.config.get("top_p", 0.95),
-                                    top_k=engine_instance.config.get("top_k", 50),
-                                    max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
-                                    seed=seed,
-                                    enable_audio_cache=enable_audio_cache,
-                                    max_chars_per_chunk=max_chars_per_chunk,
-                                    silence_between_chunks_ms=0
-                                )
-                                segment_audio_parts.append(segment_result)
-                            
-                            # Combine character segments
-                            if segment_audio_parts:
-                                return torch.cat(segment_audio_parts, dim=-1)
-                            else:
-                                return torch.zeros(1, 0)
-                        else:
-                            # Simple text segment without character switching - use narrator voice
-                            narrator_audio = voice_refs.get("narrator")
-                            if narrator_audio is None and audio_tensor is not None:
-                                narrator_audio = {"waveform": audio_tensor, "sample_rate": 24000}
-                            
-                            return engine_instance.generate_tts_audio(
-                                text=text_content,
-                                char_audio=narrator_audio,
-                                char_text=reference_text or "",
-                                character="narrator",
-                                voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
-                                system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
-                                temperature=engine_instance.config.get("temperature", 1.0),
-                                top_p=engine_instance.config.get("top_p", 0.95),
-                                top_k=engine_instance.config.get("top_k", 50),
-                                max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
-                                seed=seed,
-                                enable_audio_cache=enable_audio_cache,
-                                max_chars_per_chunk=max_chars_per_chunk,
-                                silence_between_chunks_ms=0
-                            )
-                    
-                    # Process with pause tag handling using existing utility
-                    pause_processor = PauseTagProcessor()
-                    
-                    # Parse text into segments (text and pause segments)
-                    segments, clean_text = pause_processor.parse_pause_tags(text)
-                    
-                    # Generate audio with pauses
-                    if segments:
-                        result = pause_processor.generate_audio_with_pauses(
-                            segments=segments,
-                            tts_generate_func=tts_generate_func,
-                            sample_rate=24000
-                        )
-                    else:
-                        # No pause tags, just generate directly
-                        result = tts_generate_func(text)
+                HiggsAudioTTSProcessor = higgs_tts_module.HiggsAudioTTSProcessor
+                tts_processor = HiggsAudioTTSProcessor(engine_instance)
                 
-                else:
-                    # Native multi-speaker modes - process entire conversation as single unit
-                    print(f"🎭 Higgs Audio: Using native multi-speaker mode (whole conversation processing)")
-                    
-                    # Get second narrator audio if provided
-                    opt_second_narrator = engine_instance.config.get("opt_second_narrator")
-                    
-                    # Prepare reference audios for native mode
-                    reference_audio_dict = None
-                    second_audio_dict = None
-                    
-                    if audio_tensor is not None:
-                        reference_audio_dict = {
-                            "waveform": audio_tensor,
-                            "sample_rate": 24000
-                        }
-                    
-                    if opt_second_narrator is not None:
-                        second_audio_dict = opt_second_narrator
-                    
-                    # Process entire conversation as single unit - let Higgs Audio handle pauses and speaker transitions
-                    print(f"🎭 Processing full conversation: '{text[:100]}...'")
-                    
-                    result = engine_instance.generate_tts_audio(
-                        text=text,  # Full conversation text
-                        char_audio=reference_audio_dict,
-                        char_text="",  # Higgs Audio doesn't need reference text
-                        character="SPEAKER0",
-                        # Config parameters
-                        voice_preset=engine_instance.config.get("voice_preset", "voice_clone"),
-                        system_prompt=engine_instance.config.get("system_prompt", "Generate audio following instruction."),
-                        temperature=engine_instance.config.get("temperature", 1.0),
-                        top_p=engine_instance.config.get("top_p", 0.95),
-                        top_k=engine_instance.config.get("top_k", 50),
-                        max_new_tokens=engine_instance.config.get("max_new_tokens", 2048),
-                        seed=seed,
-                        enable_audio_cache=enable_audio_cache,
-                        max_chars_per_chunk=max_chars_per_chunk,  # This might trigger chunking - unknown how it will interact
-                        silence_between_chunks_ms=0,
-                        # Native mode specific parameters
-                        multi_speaker_mode=multi_speaker_mode,
-                        second_narrator_audio=second_audio_dict,
-                        second_narrator_text=""  # Higgs Audio doesn't need reference text
-                    )
-                
-                # CRITICAL FIX: Ensure tensor has correct dimensions for ComfyUI
-                if isinstance(result, torch.Tensor):
-                    print(f"🔧 Higgs Audio tensor before fix: {result.shape}")
-                    if result.dim() == 3 and result.size(0) == 1:
-                        result = result.squeeze(0)  # Remove batch dimension [1,1,N] -> [1,N]
-                        print(f"🔧 Higgs Audio tensor after fix: {result.shape}")
-                    elif result.dim() == 1:
-                        result = result.unsqueeze(0)  # Add channel dimension [N] -> [1,N]
-                
-                # Convert single tensor result to ComfyUI audio format
-                if isinstance(result, torch.Tensor):
-                    # Ensure correct dimensions for ComfyUI: [channels, samples]
-                    if result.dim() == 1:
-                        result = result.unsqueeze(0)  # Add channel dimension: [samples] -> [1, samples]
-                    elif result.dim() == 3:
-                        # Handle [batch, channels, samples] -> [channels, samples]
-                        if result.size(0) == 1:  # batch size of 1
-                            result = result.squeeze(0)  # Remove batch dimension
-                        else:
-                            result = result[0]  # Take first item from batch
-                    
-                    # Ensure we have exactly 2 dimensions: [channels, samples]
-                    if result.dim() != 2:
-                        print(f"⚠️ Unexpected tensor dimensions: {result.shape}, reshaping to 2D")
-                        if result.dim() == 1:
-                            result = result.unsqueeze(0)
-                        elif result.dim() > 2:
-                            # Flatten to 1D and add channel dimension
-                            result = result.view(-1).unsqueeze(0)
-                    
-                    # Use the same format_audio_output as ChatterBox for consistency
-                    final_waveform = result.cpu()
-                    print(f"🔧 Higgs Audio raw tensor: {final_waveform.shape}")
-                    
-                    # Format using base class method (adds batch dimension like ChatterBox)
-                    formatted_audio = self.format_audio_output(final_waveform, 24000)
-                    print(f"🔧 After format_audio_output: {formatted_audio['waveform'].shape}")
-                    
-                    result = (formatted_audio, "Higgs Audio generation completed")
+                # Clean delegation to TTS processor
+                result = tts_processor.generate_tts_speech(
+                    text=text,
+                    multi_speaker_mode=engine_instance.config.get("multi_speaker_mode", "Custom Character Switching"),
+                    audio_tensor=audio_tensor,
+                    reference_text=reference_text,
+                    seed=seed,
+                    enable_audio_cache=enable_audio_cache,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    silence_between_chunks_ms=silence_between_chunks_ms
+                )
                 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
