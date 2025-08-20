@@ -211,7 +211,7 @@ Back to the main narrator voice for the conclusion.""",
                 class HiggsAudioWrapper:
                     def __init__(self, config):
                         self.config = config
-                        self.adapter = HiggsAudioEngineAdapter(self)
+                        # Don't cache adapter - create fresh each time to ensure config updates
                         # Store current model name for adapter caching
                         self.current_model_name = None
                     
@@ -219,7 +219,9 @@ Back to the main narrator voice for the conclusion.""",
                         # Merge config with runtime params
                         merged_params = self.config.copy()
                         merged_params.update(params)
-                        return self.adapter.generate_segment_audio(text, char_audio, char_text, character, **merged_params)
+                        # Create fresh adapter instance with current config to ensure parameter updates
+                        adapter = HiggsAudioEngineAdapter(self)
+                        return adapter.generate_segment_audio(text, char_audio, char_text, character, **merged_params)
                 
                 engine_instance = HiggsAudioWrapper(config)
                 # Cache the instance

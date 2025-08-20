@@ -225,7 +225,7 @@ Hello! This is unified SRT TTS with character switching.
                 class HiggsAudioSRTWrapper:
                     def __init__(self, config):
                         self.config = config
-                        self.adapter = HiggsAudioEngineAdapter(self)
+                        # Don't cache adapter - create fresh each time to ensure config updates
                         # Store current model name for adapter caching
                         self.current_model_name = None
                     
@@ -234,6 +234,9 @@ Hello! This is unified SRT TTS with character switching.
                         # Merge config with runtime params
                         merged_params = self.config.copy()
                         merged_params.update(params)
+                        
+                        # Debug: Check what temperature is being passed
+                        print(f"🔧 Wrapper config temp: {self.config.get('temperature')}, merged temp: {merged_params.get('temperature')}")
                         
                         # Extract required parameters for adapter
                         text = merged_params.get('text', '')
@@ -245,7 +248,9 @@ Hello! This is unified SRT TTS with character switching.
                         adapter_params = {k: v for k, v in merged_params.items() 
                                         if k not in ['srt_content', 'text', 'char_audio', 'char_text', 'character']}
                         
-                        return self.adapter.generate_segment_audio(
+                        # Create fresh adapter instance with current config to ensure parameter updates
+                        adapter = HiggsAudioEngineAdapter(self)
+                        return adapter.generate_segment_audio(
                             text, char_audio, char_text, character, **adapter_params
                         )
                 
