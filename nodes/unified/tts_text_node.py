@@ -148,13 +148,21 @@ Back to the main narrator voice for the conclusion.""",
             # The engine_data IS the config - not nested under "config"
             config = engine_data
             
-            # Create cache key based on engine type and stable config
-            cache_key = f"{engine_type}_{hashlib.md5(str(sorted(config.items())).encode()).hexdigest()[:8]}"
+            # Create cache key based only on stable parameters that affect engine instance creation
+            stable_params = {
+                'engine_type': config.get('engine_type'),
+                'model': config.get('model'),
+                'device': config.get('device'),
+                'adapter_class': config.get('adapter_class')
+            }
+            cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
-            # Check if we have a cached instance with the same configuration
+            # Check if we have a cached instance with the same stable configuration
             if cache_key in self._cached_engine_instances:
                 cached_instance = self._cached_engine_instances[cache_key]
-                print(f"🔄 Reusing cached {engine_type} engine instance (preserves model state)")
+                # Update the cached instance's config with new dynamic parameters
+                cached_instance.config = config
+                print(f"🔄 Reusing cached {engine_type} engine instance (updated with new generation parameters)")
                 return cached_instance
             
             print(f"🔧 Creating new {engine_type} engine instance")
