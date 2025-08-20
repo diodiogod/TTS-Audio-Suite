@@ -5,7 +5,8 @@
 ## Architecture Overview
 
 This extension features a **unified modular architecture** supporting multiple TTS engines:
-- **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine
+- **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine via clean delegation
+- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio) handling engine-specific orchestration
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, and RVC voice conversion
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
@@ -126,7 +127,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/unified/tts_text_node.py** - Universal TTS text generation node working with any configured engine
 
-**nodes/unified/tts_srt_node.py** - Universal SRT subtitle processing with smart language grouping and timing
+**nodes/unified/tts_srt_node.py** - Universal SRT subtitle processing node - clean delegation layer that routes to engine-specific processors
 
 **nodes/unified/voice_changer_node.py** - Universal voice conversion node with multilingual model support and flexible audio inputs
 
@@ -135,6 +136,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/shared/character_voices_node.py** - Character voice management system providing NARRATOR_VOICE outputs for any TTS node
 
 ### Engine-Specific Nodes
+
+*Note: These are internal processors/engines used by the Unified nodes, not direct ComfyUI interface nodes. They handle engine-specific orchestration while the Unified nodes provide the user interface.*
 
 **nodes/chatterbox/** - ChatterBox engine implementation nodes (called by Unified nodes)
 - **chatterbox_tts_node.py** - ChatterBox TTS engine node with streaming batch processing and character switching
@@ -146,6 +149,9 @@ This extension features a **unified modular architecture** supporting multiple T
 - **f5tts_srt_node.py** - F5-TTS SRT processing with language grouping
 - **f5tts_edit_node.py** - F5-TTS speech editor for word replacement
 - **f5tts_edit_options_node.py** - Advanced F5-TTS editing configuration
+
+**nodes/higgs_audio/** - Higgs Audio 2 internal processors
+- **higgs_audio_srt_processor.py** - Higgs Audio SRT orchestrator with multi-speaker support, character switching, and timing modes (internal processor used by Unified SRT node)
 
 ### Audio Processing System
 
@@ -321,10 +327,11 @@ This extension features a **unified modular architecture** supporting multiple T
 The TTS Audio Suite follows a **unified modular architecture** where:
 
 1. **Engine Nodes** (`nodes/engines/`) provide user configuration interfaces
-2. **Unified Nodes** (`nodes/unified/`) offer consistent user experience across all engines  
-3. **Engine Implementations** (`engines/`) handle the actual TTS/VC processing
-4. **Adapters** (`engines/adapters/`) bridge engines to the unified interface
-5. **Utilities** (`utils/`) provide shared functionality across all components
-6. **Web Interface** (`web/`) enables interactive features like audio analysis
+2. **Unified Nodes** (`nodes/unified/`) serve as clean delegation layers routing to appropriate engine processors  
+3. **Engine Processors** (`nodes/chatterbox/`, `nodes/f5tts/`, `nodes/higgs_audio/`) handle engine-specific orchestration and workflow logic
+4. **Engine Implementations** (`engines/`) handle the actual TTS/VC processing and model inference
+5. **Adapters** (`engines/adapters/`) bridge low-level engines to higher-level processors
+6. **Utilities** (`utils/`) provide shared functionality across all components
+7. **Web Interface** (`web/`) enables interactive features like audio analysis
 
-This design allows easy addition of new engines while maintaining a consistent user experience and shared optimization features across all TTS engines.
+This layered design ensures consistent user experience while allowing engine-specific optimizations. The unified nodes act as thin delegation layers, eliminating code duplication and maintaining architectural consistency across all TTS engines.
