@@ -75,6 +75,13 @@ class HiggsAudioSRTProcessor:
             srt_segments = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
             print(f"📺 Higgs Audio SRT: Found {len(srt_segments)} SRT segments")
             
+            # Check for overlaps and handle smart_natural mode fallback using modular utility
+            from utils.timing.overlap_detection import SRTOverlapHandler
+            has_overlaps = SRTOverlapHandler.detect_overlaps(srt_segments)
+            current_timing_mode, mode_switched = SRTOverlapHandler.handle_smart_natural_fallback(
+                timing_mode, has_overlaps, "Higgs Audio SRT"
+            )
+            
             print(f"🎭 Higgs Audio SRT: Using mode '{multi_speaker_mode}'")
             
             # Analyze all text for character discovery
@@ -262,7 +269,7 @@ class HiggsAudioSRTProcessor:
             audio_tensors = [seg["waveform"] for seg in audio_segments]
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             
-            if timing_mode == "stretch_to_fit":
+            if current_timing_mode == "stretch_to_fit":
                 # Use the same modular approach as F5-TTS and ChatterBox
                 from utils.system.import_manager import import_manager
                 success, modules, source = import_manager.import_srt_modules()
@@ -287,7 +294,7 @@ class HiggsAudioSRTProcessor:
                 
                 # Assemble final audio
                 final_audio_tensor = assembler.assemble_stretch_to_fit(audio_tensors, target_timings, fade_for_StretchToFit)
-            elif timing_mode == "pad_with_silence":
+            elif current_timing_mode == "pad_with_silence":
                 final_audio_tensor = assembler.assemble_with_overlaps(audio_tensors, srt_segments, device)
                 # Generate basic adjustments for reporting
                 adjustments = []
@@ -300,7 +307,7 @@ class HiggsAudioSRTProcessor:
                         "needs_stretching": False,
                         "natural_duration": audio_tensors[i].size(-1) / self.sample_rate if i < len(audio_tensors) else 0.0
                     })
-            elif timing_mode == "concatenate":
+            elif current_timing_mode == "concatenate":
                 adjustments = timing_engine.calculate_concatenation_adjustments(audio_tensors, srt_segments)
                 final_audio_tensor = assembler.assemble_concatenation(audio_tensors, fade_for_StretchToFit)
             else:  # smart_natural
@@ -327,10 +334,10 @@ class HiggsAudioSRTProcessor:
             
             # Generate proper timing report using unified utilities  
             reporter = SRTReportGenerator()
-            timing_report = reporter.generate_timing_report(srt_segments, adjustments, timing_mode)
+            timing_report = reporter.generate_timing_report(srt_segments, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None)
             
             # Generate adjusted SRT string
-            adjusted_srt = reporter.generate_adjusted_srt_string(srt_segments, adjustments, timing_mode)
+            adjusted_srt = reporter.generate_adjusted_srt_string(srt_segments, adjustments, current_timing_mode)
             
             # Generate summary
             character_summary = f" with {len(all_characters)} characters ({', '.join(sorted(all_characters))})" if len(all_characters) > 1 else ""
