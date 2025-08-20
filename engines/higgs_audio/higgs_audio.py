@@ -37,7 +37,7 @@ from .boson_multimodal.dataset.chatml_dataset import ChatMLDatasetSample
 
 # Import utilities
 from utils.audio.processing import AudioProcessingUtils
-from utils.audio.cache import AudioCache, CacheKeyGenerator, GLOBAL_AUDIO_CACHE
+from utils.audio.cache import CacheKeyGenerator, GLOBAL_AUDIO_CACHE, get_audio_cache
 from utils.downloads.unified_downloader import unified_downloader
 from utils.text.chunking import ImprovedChatterBoxChunker
 from .higgs_audio_downloader import HiggsAudioDownloader
@@ -63,42 +63,6 @@ def tokens_to_chars(max_tokens: int) -> int:
     return int(max_tokens * 3.5)
 
 
-class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
-    """Cache key generator for Higgs Audio engine."""
-    
-    def generate_cache_key(self, **params) -> str:
-        """Generate Higgs Audio cache key from parameters."""
-        cache_data = {
-            'text': params.get('text', ''),
-            'voice_preset': params.get('voice_preset', 'voice_clone'),
-            'model_path': params.get('model_path', ''),
-            'tokenizer_path': params.get('tokenizer_path', ''),
-            'device': params.get('device', ''),
-            'reference_text': params.get('reference_text', ''),
-            'system_prompt': params.get('system_prompt', ''),
-            'temperature': params.get('temperature', 1.0),
-            'top_p': params.get('top_p', 0.95),
-            'top_k': params.get('top_k', 50),
-            'max_new_tokens': params.get('max_new_tokens', 2048),
-            'character': params.get('character', 'narrator'),
-            'engine': 'higgs_audio'
-        }
-        
-        # Add reference audio hash if present
-        if 'reference_audio' in params and params['reference_audio'] is not None:
-            audio_dict = params['reference_audio']
-            if isinstance(audio_dict, dict) and 'waveform' in audio_dict:
-                # Create hash of audio waveform
-                import hashlib
-                waveform = audio_dict['waveform']
-                if torch.is_tensor(waveform):
-                    audio_hash = hashlib.md5(waveform.cpu().numpy().tobytes()).hexdigest()[:8]
-                    cache_data['audio_hash'] = audio_hash
-        
-        import hashlib
-        cache_string = str(sorted(cache_data.items()))
-        return hashlib.md5(cache_string.encode()).hexdigest()
-
 
 class HiggsAudioEngine:
     """
@@ -112,11 +76,9 @@ class HiggsAudioEngine:
         self.model_path = None
         self.tokenizer_path = None
         self.device = None
-        self.cache = AudioCache()
+        # Use global shared cache (HiggsAudio generator already registered centrally)
+        self.cache = get_audio_cache()
         self.downloader = HiggsAudioDownloader()
-        
-        # Register cache key generator
-        self.cache.register_cache_key_generator('higgs_audio', HiggsAudioCacheKeyGenerator())
         
         # Voice presets cache
         self._voice_presets = None

@@ -69,13 +69,50 @@ class ChatterBoxCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Higgs Audio engine."""
+    
+    def generate_cache_key(self, **params) -> str:
+        """Generate Higgs Audio cache key from parameters."""
+        cache_data = {
+            'text': params.get('text', ''),
+            'voice_preset': params.get('voice_preset', 'voice_clone'),
+            'model_path': params.get('model_path', ''),
+            'tokenizer_path': params.get('tokenizer_path', ''),
+            'device': params.get('device', ''),
+            'reference_text': params.get('reference_text', ''),
+            'system_prompt': params.get('system_prompt', ''),
+            'temperature': params.get('temperature', 1.0),
+            'top_p': params.get('top_p', 0.95),
+            'top_k': params.get('top_k', 50),
+            'max_new_tokens': params.get('max_new_tokens', 2048),
+            'character': params.get('character', 'narrator'),
+            'engine': 'higgs_audio'
+        }
+        
+        # Add reference audio hash if present
+        if 'reference_audio' in params and params['reference_audio'] is not None:
+            audio_dict = params['reference_audio']
+            if isinstance(audio_dict, dict) and 'waveform' in audio_dict:
+                # Create hash of audio waveform
+                import hashlib
+                waveform = audio_dict['waveform']
+                if hasattr(waveform, 'cpu'):  # torch tensor
+                    audio_hash = hashlib.md5(waveform.cpu().numpy().tobytes()).hexdigest()[:8]
+                    cache_data['audio_hash'] = audio_hash
+        
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
     def __init__(self):
         self.cache_key_generators = {
             'f5tts': F5TTSCacheKeyGenerator(),
-            'chatterbox': ChatterBoxCacheKeyGenerator()
+            'chatterbox': ChatterBoxCacheKeyGenerator(),
+            'higgs_audio': HiggsAudioCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):
