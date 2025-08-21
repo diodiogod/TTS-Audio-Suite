@@ -444,8 +444,11 @@ Back to the main narrator voice for the conclusion.""",
             # The original nodes return (audio, generation_info)
             audio_output, generation_info = result
             
+            # Timing info is already included in generation_info from engines
+            enhanced_info = generation_info
+            
             # Add unified prefix to generation info
-            unified_info = f"🎤 TTS Text (Unified) - {engine_type.upper()} Engine:\n{generation_info}"
+            unified_info = f"🎤 TTS Text (Unified) - {engine_type.upper()} Engine:\n{enhanced_info}"
             
             print(f"✅ TTS Text: {engine_type} generation successful")
             return (audio_output, unified_info)
@@ -461,6 +464,7 @@ Back to the main narrator voice for the conclusion.""",
             empty_comfy = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             
             return (empty_comfy, error_msg)
+
 
 
 # Register the node class

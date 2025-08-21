@@ -283,14 +283,14 @@ class ChatterBoxEngineAdapter:
     
     def combine_audio_chunks(self, audio_segments: List[torch.Tensor], **params) -> torch.Tensor:
         """
-        Combine ChatterBox audio segments.
+        Combine ChatterBox audio segments using modular combination utility.
         
         Args:
             audio_segments: List of audio tensors to combine
             **params: Combination parameters
             
         Returns:
-            Combined audio tensor
+            Combined audio tensor, or tuple with timing info if requested
         """
         if len(audio_segments) == 1:
             return audio_segments[0]
@@ -301,6 +301,9 @@ class ChatterBoxEngineAdapter:
         method = params.get("combination_method", "auto")
         silence_ms = params.get("silence_ms", 100)
         text_length = params.get("text_length", 0)
+        original_text = params.get("original_text", "")
+        text_chunks = params.get("text_chunks", None)
+        return_info = params.get("return_timing_info", False)
         
         print(f"🔗 Combining {len(audio_segments)} ChatterBox chunks using '{method}' method")
         
@@ -311,8 +314,9 @@ class ChatterBoxEngineAdapter:
             crossfade_duration=0.1,
             sample_rate=44100,  # ChatterBox sample rate
             text_length=text_length,
-            original_text=params.get("original_text", ""),
-            text_chunks=params.get("text_chunks", None)
+            original_text=original_text,
+            text_chunks=text_chunks,
+            return_info=return_info
         )
     
     def generate_audio(self, text: str, voice_preset: str, voice_settings: dict,

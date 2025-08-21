@@ -356,41 +356,44 @@ Back to the main narrator voice for the conclusion.""",
         return validated
 
     def combine_audio_chunks(self, audio_segments: List[torch.Tensor], method: str, 
-                           silence_ms: int, text_length: int) -> torch.Tensor:
-        """Combine audio segments using specified method."""
+                           silence_ms: int, text_length: int, original_text: str = "",
+                           text_chunks: List[str] = None, return_info: bool = False):
+        """Combine audio segments using modular combination utility."""
         if len(audio_segments) == 1:
+            if return_info:
+                sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+                chunk_info = {
+                    "method_used": "none",
+                    "total_chunks": 1,
+                    "chunk_timings": [{"start": 0.0, "end": audio_segments[0].size(-1) / sr, 
+                                     "text": text_chunks[0] if text_chunks else ""}],
+                    "auto_selected": False
+                }
+                return audio_segments[0], chunk_info
             return audio_segments[0]
         
-        # Auto-select best method based on text length
-        if method == "auto":
-            if text_length > 1000:  # Very long text
-                method = "silence_padding"
-            elif text_length > 500:  # Medium text
-                method = "crossfade"
-            else:  # Short text
-                method = "concatenate"
+        print(f"🔗 Combining {len(audio_segments)} ChatterBox chunks using '{method}' method")
         
-        if method == "concatenate":
-            return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
+        # Use modular chunk combiner
+        from utils.audio.chunk_combiner import ChunkCombiner
+        sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
         
-        elif method == "silence_padding":
-            silence_duration = silence_ms / 1000.0  # Convert to seconds
-            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
-            return AudioProcessingUtils.concatenate_audio_segments(
-                audio_segments, "silence", silence_duration=silence_duration, 
-                sample_rate=sr
-            )
+        result = ChunkCombiner.combine_chunks(
+            audio_segments=audio_segments,
+            method=method,
+            silence_ms=silence_ms,
+            crossfade_duration=0.1,
+            sample_rate=sr,
+            text_length=text_length,
+            original_text=original_text,
+            text_chunks=text_chunks,
+            return_info=return_info
+        )
         
-        elif method == "crossfade":
-            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
-            return AudioProcessingUtils.concatenate_audio_segments(
-                audio_segments, "crossfade", crossfade_duration=0.1, 
-                sample_rate=sr
-            )
-        
+        if return_info:
+            return result  # (combined_audio, chunk_info)
         else:
-            # Fallback to concatenation
-            return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
+            return result  # combined_audio
     
     def _generate_stable_audio_component(self, reference_audio, audio_prompt_path: str) -> str:
         """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
@@ -752,10 +755,11 @@ Back to the main narrator voice for the conclusion.""",
                 audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
-                # Combine all character segments (PRESERVE EXISTING COMBINE LOGIC)
-                wav = self.combine_audio_chunks(
+                # Combine all character segments with timing info
+                wav, chunk_info = self.combine_audio_chunks(
                     audio_segments, inputs["chunk_combination_method"], 
-                    inputs["silence_between_chunks_ms"], len(inputs["text"])
+                    inputs["silence_between_chunks_ms"], len(inputs["text"]),
+                    original_text=inputs["text"], text_chunks=None, return_info=True
                 )
                 
                 # Generate info - handle case where streaming was used and tts_model is None
@@ -767,7 +771,11 @@ Back to the main narrator voice for the conclusion.""",
                 if has_multiple_languages:
                     language_info = f" across {len(languages)} languages ({', '.join(languages)})"
                 
-                info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} ({model_source} models)"
+                base_info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} ({model_source} models)"
+                
+                # Add chunk timing info if available
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                info = ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)
                 
             else:
                 # SINGLE CHARACTER MODE (PRESERVE ORIGINAL BEHAVIOR)
@@ -899,17 +907,22 @@ Back to the main narrator voice for the conclusion.""",
                         )
                         audio_segments.append(chunk_audio)
                     
-                    # Combine audio segments (UNCHANGED)
-                    wav = self.combine_audio_chunks(
+                    # Combine audio segments with timing info
+                    wav, chunk_info = self.combine_audio_chunks(
                         audio_segments, inputs["chunk_combination_method"], 
-                        inputs["silence_between_chunks_ms"], text_length
+                        inputs["silence_between_chunks_ms"], text_length,
+                        original_text=inputs["text"], text_chunks=None, return_info=True
                     )
                     
                     # Generate info (UNCHANGED)
                     total_duration = wav.size(-1) / self.tts_model.sr
                     avg_chunk_size = text_length // len(chunks)
                     model_source = f"chatterbox_{language.lower()}"
-                    info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, {model_source} models)"
+                    base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, {model_source} models)"
+                    
+                    # Add chunk timing info if available
+                    from utils.audio.chunk_timing import ChunkTimingHelper
+                    info = ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)
             
             # Return audio in ComfyUI format
             sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
