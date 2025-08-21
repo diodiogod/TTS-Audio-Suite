@@ -247,19 +247,19 @@ class HiggsAudioEngine:
             audio_segments.append(chunk_audio)
             total_tokens += chunk_tokens
         
-        # Combine audio chunks
-        if len(audio_segments) > 1:
-            combined_audio = self._combine_audio_chunks(
-                audio_segments, 
-                combination_method="auto",
-                silence_ms=silence_between_chunks_ms,
-                crossfade_duration=0.1,
-                text_length=len(text),
-                original_text=text,
-                text_chunks=chunks
-            )
-        else:
-            combined_audio = audio_segments[0]
+        # Combine audio chunks with timing info
+        from utils.audio.chunk_timing import ChunkTimingHelper
+        combined_audio, chunk_info = ChunkTimingHelper.combine_audio_with_timing(
+            audio_segments=audio_segments,
+            combination_method="auto",
+            silence_ms=silence_between_chunks_ms,
+            crossfade_duration=0.1,
+            sample_rate=24000,
+            text_length=len(text),
+            original_text=text,
+            text_chunks=chunks,
+            combiner_func=self._combine_audio_chunks
+        )
         
         # Calculate duration
         duration = combined_audio['waveform'].size(-1) / combined_audio['sample_rate']
@@ -268,12 +268,14 @@ class HiggsAudioEngine:
         if enable_cache and 'cache_key' in locals():
             self.cache.cache_audio(cache_key, combined_audio['waveform'], duration)
         
-        # Generate info string
+        # Generate enhanced info string with timing
         generation_time = time.time() - start_time
-        info = (f"Generated {duration:.1f}s audio from {total_tokens} tokens "
-                f"using {len(chunks)} chunk(s) in {generation_time:.1f}s")
+        base_info = (f"Generated {duration:.1f}s audio from {total_tokens} tokens "
+                    f"using {len(chunks)} chunk(s) in {generation_time:.1f}s")
         
-        return combined_audio, info
+        enhanced_info = ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)
+        
+        return combined_audio, enhanced_info
     
     def generate_native_multispeaker(self,
                                    text: str,
@@ -581,7 +583,8 @@ class HiggsAudioEngine:
                              crossfade_duration: float = 0.1,
                              text_length: int = 0,
                              original_text: str = "",
-                             text_chunks: List[str] = None) -> Dict[str, Any]:
+                             text_chunks: List[str] = None,
+                             return_info: bool = False) -> Dict[str, Any]:
         """Combine multiple audio chunks using modular combination utility"""
         if len(audio_segments) == 1:
             return audio_segments[0]
@@ -594,7 +597,7 @@ class HiggsAudioEngine:
         
         # Use modular chunk combiner
         from utils.audio.chunk_combiner import ChunkCombiner
-        combined_waveform = ChunkCombiner.combine_chunks(
+        result = ChunkCombiner.combine_chunks(
             audio_segments=waveforms,
             method=combination_method,
             silence_ms=silence_ms,
@@ -602,11 +605,18 @@ class HiggsAudioEngine:
             sample_rate=sample_rate,
             text_length=text_length,
             original_text=original_text,
-            text_chunks=text_chunks
+            text_chunks=text_chunks,
+            return_info=return_info
         )
         
-        print(f"  ✅ Combined waveform shape: {combined_waveform.shape}")
-        return {"waveform": combined_waveform, "sample_rate": sample_rate}
+        if return_info:
+            combined_waveform, chunk_info = result
+            print(f"  ✅ Combined waveform shape: {combined_waveform.shape}")
+            return {"waveform": combined_waveform, "sample_rate": sample_rate}, chunk_info
+        else:
+            combined_waveform = result
+            print(f"  ✅ Combined waveform shape: {combined_waveform.shape}")
+            return {"waveform": combined_waveform, "sample_rate": sample_rate}
     
     def cleanup(self):
         """Clean up resources"""

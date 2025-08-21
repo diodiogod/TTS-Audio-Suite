@@ -322,25 +322,43 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         return self.format_audio_output(audio_tensor, self.f5tts_sample_rate)
     
     def combine_f5tts_audio_chunks(self, audio_segments: List[torch.Tensor], method: str, 
-                                  silence_ms: int, text_length: int) -> torch.Tensor:
+                                  silence_ms: int, text_length: int, 
+                                  original_text: str = "", text_chunks: List[str] = None,
+                                  return_info: bool = False) -> torch.Tensor:
         """Combine F5-TTS audio segments using modular combination utility"""
         if len(audio_segments) == 1:
+            if return_info:
+                # Create basic info for single chunk
+                chunk_info = {
+                    "method_used": "none",
+                    "total_chunks": 1,
+                    "chunk_timings": [{"start": 0.0, "end": audio_segments[0].size(-1) / self.f5tts_sample_rate, 
+                                     "text": text_chunks[0] if text_chunks else ""}],
+                    "auto_selected": False
+                }
+                return audio_segments[0], chunk_info
             return audio_segments[0]
         
         print(f"🔗 Combining {len(audio_segments)} F5-TTS chunks using '{method}' method")
         
         # Use modular chunk combiner
         from utils.audio.chunk_combiner import ChunkCombiner
-        return ChunkCombiner.combine_chunks(
+        result = ChunkCombiner.combine_chunks(
             audio_segments=audio_segments,
             method=method,
             silence_ms=silence_ms,
             crossfade_duration=0.1,
             sample_rate=self.f5tts_sample_rate,
             text_length=text_length,
-            # Note: F5-TTS nodes need to pass original_text and text_chunks
-            # This will be updated when we refactor F5-TTS chunking calls
+            original_text=original_text,
+            text_chunks=text_chunks,
+            return_info=return_info
         )
+        
+        if return_info:
+            return result  # (combined_audio, chunk_info)
+        else:
+            return result  # combined_audio
     
     def get_f5tts_model_info(self) -> Dict[str, Any]:
         """Get information about loaded F5-TTS model"""

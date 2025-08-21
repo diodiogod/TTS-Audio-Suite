@@ -606,10 +606,11 @@ Back to the main narrator voice for the conclusion.""",
                 audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
-                # Combine all character segments
-                wav = self.combine_f5tts_audio_chunks(
+                # Combine all character segments with timing info
+                wav, chunk_info = self.combine_f5tts_audio_chunks(
                     audio_segments, inputs["chunk_combination_method"], 
-                    inputs["silence_between_chunks_ms"], len(inputs["text"])
+                    inputs["silence_between_chunks_ms"], len(inputs["text"]),
+                    original_text=inputs["text"], text_chunks=None, return_info=True
                 )
                 
                 # Generate info
@@ -620,7 +621,11 @@ Back to the main narrator voice for the conclusion.""",
                 if has_multiple_languages:
                     language_info = f" across {len(languages)} languages ({', '.join(languages)})"
                 
-                info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} (F5-TTS {model_info.get('model_name', 'unknown')})"
+                base_info = f"Generated {total_duration:.1f}s audio from {len(character_segments)} segments using {len(characters)} characters{language_info} (F5-TTS {model_info.get('model_name', 'unknown')})"
+                
+                # Add chunk timing info if available
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                info = ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)
                 
             else:
                 # SINGLE CHARACTER MODE (original behavior)
@@ -786,17 +791,22 @@ Back to the main narrator voice for the conclusion.""",
                         )
                         audio_segments.append(chunk_audio)
                     
-                    # Combine audio segments
-                    wav = self.combine_f5tts_audio_chunks(
+                    # Combine audio segments with timing info
+                    wav, chunk_info = self.combine_f5tts_audio_chunks(
                         audio_segments, inputs["chunk_combination_method"], 
-                        inputs["silence_between_chunks_ms"], text_length
+                        inputs["silence_between_chunks_ms"], text_length,
+                        original_text=inputs["text"], text_chunks=None, return_info=True
                     )
                     
                     # Generate info
                     total_duration = wav.size(-1) / self.f5tts_sample_rate
                     avg_chunk_size = text_length // len(chunks)
                     model_info = self.get_f5tts_model_info()
-                    info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
+                    base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters using {len(chunks)} chunks (avg {avg_chunk_size} chars/chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
+                    
+                    # Add chunk timing info if available
+                    from utils.audio.chunk_timing import ChunkTimingHelper
+                    info = ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)
             
             # Return audio in ComfyUI format
             return (

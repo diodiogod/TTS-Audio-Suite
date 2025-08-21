@@ -159,7 +159,7 @@ class F5TTSEngineAdapter:
             **params: Combination parameters
             
         Returns:
-            Combined audio tensor
+            Combined audio tensor, or tuple with timing info if requested
         """
         if len(audio_segments) == 1:
             return audio_segments[0]
@@ -167,9 +167,13 @@ class F5TTSEngineAdapter:
         method = params.get("combination_method", "auto")
         silence_ms = params.get("silence_ms", 100)
         text_length = params.get("text_length", 0)
+        original_text = params.get("original_text", "")
+        text_chunks = params.get("text_chunks", None)
+        return_info = params.get("return_timing_info", False)
         
         return self.node.combine_f5tts_audio_chunks(
-            audio_segments, method, silence_ms, text_length
+            audio_segments, method, silence_ms, text_length,
+            original_text=original_text, text_chunks=text_chunks, return_info=return_info
         )
     
     def _get_audio_duration(self, audio_tensor: torch.Tensor) -> float:

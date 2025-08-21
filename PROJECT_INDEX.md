@@ -207,6 +207,10 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/audio/cache.py** - Unified caching system for TTS engines with engine-specific cache management
 
+**utils/audio/chunk_combiner.py** - Modular chunk combination utility with smart auto-selection based on text analysis (sentence boundaries, commas, forced splits) and detailed timing information
+
+**utils/audio/chunk_timing.py** - Chunk combination timing information helper providing standardized timing info integration across all TTS engines
+
 ### Text Processing
 
 **utils/text/character_parser.py** - Universal character switching system with [CharacterName] tag parsing and language-aware processing
