@@ -57,6 +57,15 @@ class HiggsAudioTTSProcessor:
         try:
             print(f"🎭 Higgs Audio: Using mode '{multi_speaker_mode}'")
             
+            # Extract generation parameters from engine config to pass to all segment calls
+            generation_params = {
+                "temperature": self.engine_wrapper.config.get("temperature", 0.8),
+                "top_p": self.engine_wrapper.config.get("top_p", 0.6),
+                "top_k": self.engine_wrapper.config.get("top_k", 80),
+                "max_new_tokens": self.engine_wrapper.config.get("max_new_tokens", 2048),
+                "system_prompt": self.engine_wrapper.config.get("system_prompt", "Generate audio following instruction.")
+            }
+            
             if multi_speaker_mode == "Custom Character Switching":
                 # Use existing modular utilities - pause processing first, then character parsing (like ChatterBox)
                 print(f"🎭 Higgs Audio: Using character switching with pause support")
@@ -66,35 +75,76 @@ class HiggsAudioTTSProcessor:
                 from utils.voice.discovery import get_character_mapping
                 from utils.text.character_parser import parse_character_text
                 
-                # Discover characters and build voice mapping
+                # Discover characters and build voice mapping (include narrator for fallback)
                 character_segments = parse_character_text(text)
                 all_characters = set(char for char, _ in character_segments)
-                character_mapping = get_character_mapping(list(all_characters), engine_type="higgs_audio")
+                all_characters.add("narrator")  # Always include narrator for fallback mapping
+                character_mapping = get_character_mapping(list(all_characters), engine_type="f5tts")
                 
                 print(f"🎭 Higgs Audio: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
                 
-                # Build voice references - CRITICAL: Start with narrator using connected voice
+                # Build voice references with proper fallback hierarchy for narrator:
+                # 1. opt_narrator (already in audio_tensor/reference_text)
+                # 2. narrator_voice dropdown (handled by unified node)  
+                # 3. Mapped narrator (from character alias map - e.g., David Attenborough)
+                # 4. None (if user removed narrator from mapping)
+                
                 narrator_voice_dict = None
+                narrator_ref_text = ""
+                
                 if audio_tensor is not None:
+                    # Priority 1 & 2: Connected narrator (from Character Voices or dropdown)
                     narrator_voice_dict = {"waveform": audio_tensor["waveform"], "sample_rate": audio_tensor["sample_rate"]}
+                    narrator_ref_text = reference_text or ""
+                    ref_display = f"'{narrator_ref_text[:50]}...'" if narrator_ref_text else "No reference text"
+                    print(f"📖 Using connected narrator voice (Character Voices node or dropdown) | Ref: {ref_display}")
+                else:
+                    # Priority 3: Check mapped narrator (e.g., David Attenborough from alias map)
+                    mapped_narrator = character_mapping.get("narrator", (None, None))
+                    if mapped_narrator[0] and os.path.exists(mapped_narrator[0]):
+                        import torchaudio
+                        waveform, sample_rate = torchaudio.load(mapped_narrator[0])
+                        if waveform.shape[0] > 1:
+                            waveform = torch.mean(waveform, dim=0, keepdim=True)
+                        narrator_voice_dict = {"waveform": waveform, "sample_rate": sample_rate}
+                        narrator_ref_text = mapped_narrator[1] or ""
+                        ref_display = f"'{narrator_ref_text[:50]}...'" if narrator_ref_text else "No reference text"
+                        print(f"📖 Using mapped narrator voice: {mapped_narrator[0]} | Ref: {ref_display}")
+                    else:
+                        # Priority 4: No narrator available
+                        print(f"⚠️ No narrator voice available - characters will use basic TTS when no character voice found")
                 
                 voice_refs = {'narrator': narrator_voice_dict}
+                ref_texts = {'narrator': narrator_ref_text}
                 
                 for character in all_characters:
                     # Skip narrator - already set above with connected voice
                     if character.lower() == "narrator":
                         continue
                         
-                    audio_path, _ = character_mapping.get(character, (None, None))
+                    audio_path, char_ref_text = character_mapping.get(character, (None, None))
                     if audio_path and os.path.exists(audio_path):
                         import torchaudio
                         waveform, sample_rate = torchaudio.load(audio_path)
                         if waveform.shape[0] > 1:
                             waveform = torch.mean(waveform, dim=0, keepdim=True)
                         voice_refs[character] = {"waveform": waveform, "sample_rate": sample_rate}
+                        
+                        # Use character-specific reference text from mapping
+                        if char_ref_text and char_ref_text.strip():
+                            ref_texts[character] = char_ref_text.strip()
+                            print(f"🎭 {character}: Loaded voice + ref text: '{char_ref_text[:30]}...'")
+                        else:
+                            ref_texts[character] = ""  # Empty ref text for character's own voice
+                            print(f"🎭 {character}: Loaded voice, no ref text")  
                     else:
-                        # Use main narrator voice as fallback
+                        # Use main narrator voice and text as fallback
                         voice_refs[character] = narrator_voice_dict
+                        ref_texts[character] = reference_text or ""
+                        if narrator_voice_dict:
+                            print(f"🎭 {character}: Using narrator voice + ref text")
+                        else:
+                            print(f"⚠️ {character}: No voice available, using basic TTS")
                 
                 def tts_generate_func(text_content: str) -> torch.Tensor:
                     """TTS generation function for pause tag processor"""
@@ -105,7 +155,7 @@ class HiggsAudioTTSProcessor:
                         
                         for character, segment_text in char_segments:
                             char_audio_dict = voice_refs.get(character)
-                            char_ref_text = reference_text or ""
+                            char_ref_text = ref_texts.get(character, reference_text or "")
                             
                             segment_result = self.engine_wrapper.generate_tts_audio(
                                 text=segment_text,
@@ -115,7 +165,8 @@ class HiggsAudioTTSProcessor:
                                 seed=seed,
                                 enable_audio_cache=enable_audio_cache,
                                 max_chars_per_chunk=max_chars_per_chunk,
-                                silence_between_chunks_ms=0
+                                silence_between_chunks_ms=0,
+                                **generation_params  # Pass through all generation parameters
                             )
                             segment_audio_parts.append(segment_result)
                         
@@ -133,12 +184,13 @@ class HiggsAudioTTSProcessor:
                         return self.engine_wrapper.generate_tts_audio(
                             text=text_content,
                             char_audio=narrator_audio,
-                            char_text=reference_text or "",
+                            char_text=ref_texts.get("narrator", reference_text or ""),
                             character="narrator",
                             seed=seed,
                             enable_audio_cache=enable_audio_cache,
                             max_chars_per_chunk=max_chars_per_chunk,
-                            silence_between_chunks_ms=0
+                            silence_between_chunks_ms=0,
+                            **generation_params  # Pass through all generation parameters
                         )
                 
                 # Process with pause tag handling using existing utility
@@ -184,7 +236,7 @@ class HiggsAudioTTSProcessor:
                 result = self.engine_wrapper.generate_tts_audio(
                     text=text,  # Full conversation text
                     char_audio=reference_audio_dict,
-                    char_text="",  # Higgs Audio doesn't need reference text
+                    char_text=reference_text or "",  # Use reference text to improve voice cloning quality
                     character="SPEAKER0",
                     seed=seed,
                     enable_audio_cache=enable_audio_cache,
@@ -193,7 +245,8 @@ class HiggsAudioTTSProcessor:
                     # Native mode specific parameters
                     multi_speaker_mode=multi_speaker_mode,
                     second_narrator_audio=second_audio_dict,
-                    second_narrator_text=""  # Higgs Audio doesn't need reference text
+                    second_narrator_text=reference_text or "",  # Use reference text to improve voice cloning quality
+                    **generation_params  # Pass through all generation parameters
                 )
             
             # CRITICAL FIX: Ensure tensor has correct dimensions for ComfyUI

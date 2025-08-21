@@ -80,69 +80,7 @@ class HiggsAudioEngine:
         self.cache = get_audio_cache()
         self.downloader = HiggsAudioDownloader()
         
-        # Voice presets cache
-        self._voice_presets = None
-        self._voice_config = None
     
-    def load_voice_presets(self) -> Tuple[Dict[str, str], Dict[str, Any]]:
-        """
-        Load voice preset configuration
-        
-        Returns:
-            Tuple of (voice_presets dict, voice_config dict)
-        """
-        if self._voice_presets is not None:
-            return self._voice_presets, self._voice_config
-        
-        try:
-            # Get voice examples directory
-            voices_dir = os.path.join(project_root, "voices_examples", "higgs_audio")
-            config_path = os.path.join(voices_dir, "config.json")
-            
-            if not os.path.exists(config_path):
-                print(f"⚠️ Voice config not found at {config_path}")
-                default = {"voice_clone": "No reference voice (use custom audio)"}
-                return default, {}
-            
-            # Load configuration
-            with open(config_path, "r", encoding="utf-8") as f:
-                voice_dict = json.load(f)
-            
-            voice_presets = {}
-            for k, v in voice_dict.items():
-                voice_presets[k] = v["transcript"]
-            voice_presets["voice_clone"] = "No reference voice (use custom audio)"
-            
-            self._voice_presets = voice_presets
-            self._voice_config = voice_dict
-            
-            print(f"✅ Loaded {len(voice_presets)} voice presets for Higgs Audio")
-            return voice_presets, voice_dict
-            
-        except Exception as e:
-            print(f"❌ Error loading voice presets: {e}")
-            default = {"voice_clone": "No reference voice (use custom audio)"}
-            return default, {}
-    
-    def get_voice_preset_path(self, voice_preset: str) -> Optional[str]:
-        """
-        Get path to voice preset audio file
-        
-        Args:
-            voice_preset: Name of voice preset
-            
-        Returns:
-            Path to audio file or None
-        """
-        if voice_preset == "voice_clone":
-            return None
-        
-        voices_dir = os.path.join(project_root, "voices_examples", "higgs_audio")
-        voice_path = os.path.join(voices_dir, f"{voice_preset}.wav")
-        
-        if os.path.exists(voice_path):
-            return voice_path
-        return None
     
     def get_available_models(self) -> List[str]:
         """Get list of available Higgs Audio models"""
@@ -208,15 +146,14 @@ class HiggsAudioEngine:
     
     def generate(self,
                 text: str,
-                voice_preset: str = "voice_clone",
                 reference_audio: Optional[Dict[str, Any]] = None,
                 reference_text: str = "",
                 audio_priority: str = "auto",
                 system_prompt: str = "Generate audio following instruction.",
                 max_new_tokens: int = 2048,
-                temperature: float = 1.0,
-                top_p: float = 0.95,
-                top_k: int = 50,
+                temperature: float = 0.8,
+                top_p: float = 0.6,
+                top_k: int = 80,
                 enable_chunking: bool = True,
                 max_tokens_per_chunk: int = 225,
                 silence_between_chunks_ms: int = 100,
@@ -257,7 +194,6 @@ class HiggsAudioEngine:
             cache_key = self.cache.generate_cache_key(
                 engine_type='higgs_audio',
                 text=text,
-                voice_preset=voice_preset,
                 reference_audio=reference_audio,
                 reference_text=reference_text,
                 model_path=self.model_path,
@@ -298,10 +234,8 @@ class HiggsAudioEngine:
             # Process single chunk
             chunk_audio, voice_info = self._process_single_chunk(
                 chunk_text=chunk,
-                voice_preset=voice_preset,
                 reference_audio=reference_audio,
                 reference_text=reference_text,
-                audio_priority=audio_priority,
                 system_prompt=system_prompt,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
@@ -345,9 +279,9 @@ class HiggsAudioEngine:
                                    use_system_context: bool = True,
                                    system_prompt: str = "Generate audio following instruction.",
                                    max_new_tokens: int = 2048,
-                                   temperature: float = 1.0,
-                                   top_p: float = 0.95,
-                                   top_k: int = 50,
+                                   temperature: float = 0.8,
+                                   top_p: float = 0.6,
+                                   top_k: int = 80,
                                    enable_cache: bool = True,
                                    character: str = "SPEAKER0",
                                    seed: int = -1) -> Tuple[Dict[str, Any], str]:
@@ -476,7 +410,7 @@ class HiggsAudioEngine:
                 generation_time = time.time() - start_time
                 info = f"Native multi-speaker: {duration:.1f}s audio in {generation_time:.1f}s"
                 
-                print(f"  ✅ Generated native multi-speaker audio: {audio_tensor.shape}, sample_rate: {output.sampling_rate}")
+                print(f"  ✅ Generated {duration:.1f}s multi-speaker audio")
                 return audio_result, info
             else:
                 raise ValueError("Invalid audio output from Higgs Audio engine")
@@ -487,10 +421,8 @@ class HiggsAudioEngine:
     
     def _process_single_chunk(self,
                              chunk_text: str,
-                             voice_preset: str,
                              reference_audio: Optional[Dict[str, Any]],
                              reference_text: str,
-                             audio_priority: str,
                              system_prompt: str,
                              max_new_tokens: int,
                              temperature: float,
@@ -526,45 +458,8 @@ class HiggsAudioEngine:
             except:
                 pass
         
-        # Determine which audio source to use based on priority
-        use_preset = False
-        use_input = False
-        
-        if audio_priority == "preset_dropdown":
-            use_preset = voice_preset != "voice_clone"
-            use_input = not use_preset and has_valid_reference
-        elif audio_priority == "reference_input":
-            use_input = has_valid_reference
-            use_preset = not use_input and voice_preset != "voice_clone"
-        elif audio_priority == "force_preset":
-            use_preset = voice_preset != "voice_clone"
-            use_input = False
-        else:  # auto
-            if voice_preset != "voice_clone":
-                use_preset = True
-            else:
-                use_input = has_valid_reference
-        
-        # Load voice preset if needed
-        if use_preset:
-            voice_path = self.get_voice_preset_path(voice_preset)
-            if voice_path and os.path.exists(voice_path):
-                try:
-                    waveform, sample_rate = torchaudio.load(voice_path)
-                    if waveform.dim() == 2:
-                        waveform = waveform.unsqueeze(0)
-                    audio_for_cloning = {"waveform": waveform.float(), "sample_rate": sample_rate}
-                    
-                    # Get preset transcript
-                    voice_presets, _ = self.load_voice_presets()
-                    text_for_cloning = voice_presets.get(voice_preset, "")
-                    used_voice_info = f"Voice Preset: {voice_preset}"
-                    print(f"  Using voice preset: {voice_preset}")
-                except Exception as e:
-                    print(f"❌ Error loading voice preset {voice_preset}: {e}")
-        
-        # Use reference audio if needed
-        elif use_input:
+        # Use reference audio if available
+        if has_valid_reference:
             audio_for_cloning = reference_audio
             text_for_cloning = reference_text.strip() or "Reference audio for voice cloning."
             used_voice_info = "Reference Audio Input"
@@ -627,7 +522,8 @@ class HiggsAudioEngine:
                     "sample_rate": output.sampling_rate
                 }
                 
-                print(f"  ✅ Generated audio shape: {audio_tensor.shape}, sample_rate: {output.sampling_rate}")
+                duration = audio_tensor.size(-1) / output.sampling_rate
+                print(f"  ✅ Generated {duration:.1f}s audio")
                 return chunk_audio, used_voice_info
             else:
                 raise ValueError("Invalid audio output from Higgs Audio engine")

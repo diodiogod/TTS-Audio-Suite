@@ -76,7 +76,6 @@ class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
         """Generate Higgs Audio cache key from parameters."""
         cache_data = {
             'text': params.get('text', ''),
-            'voice_preset': params.get('voice_preset', 'voice_clone'),
             'model_path': params.get('model_path', ''),
             'tokenizer_path': params.get('tokenizer_path', ''),
             'device': params.get('device', ''),
@@ -86,6 +85,7 @@ class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
             'top_p': params.get('top_p', 0.95),
             'top_k': params.get('top_k', 50),
             'max_new_tokens': params.get('max_new_tokens', 2048),
+            'seed': params.get('seed', 0),
             'character': params.get('character', 'narrator'),
             'engine': 'higgs_audio'
         }
