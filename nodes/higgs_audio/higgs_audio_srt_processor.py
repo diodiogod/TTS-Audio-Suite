@@ -88,9 +88,19 @@ class HiggsAudioSRTProcessor:
             all_text = " ".join([seg.text for seg in srt_segments])
             character_segments = parse_character_text(all_text)
             all_characters = set(char for char, _ in character_segments)
+            all_characters.add("narrator")  # Always include narrator for fallback mapping
             
             if len(all_characters) > 1 or (len(all_characters) == 1 and "narrator" not in all_characters):
                 print(f"🎭 Higgs Audio SRT: Detected character switching - {', '.join(sorted(all_characters))}")
+            
+            # Extract generation parameters from engine config to pass to all segment calls
+            generation_params = {
+                "temperature": self.engine_wrapper.config.get("temperature", 0.8),
+                "top_p": self.engine_wrapper.config.get("top_p", 0.6),
+                "top_k": self.engine_wrapper.config.get("top_k", 80),
+                "max_new_tokens": self.engine_wrapper.config.get("max_new_tokens", 2048),
+                "system_prompt": self.engine_wrapper.config.get("system_prompt", "Generate audio following instruction.")
+            }
             
             # Generate audio for each SRT segment
             audio_segments = []
@@ -100,29 +110,69 @@ class HiggsAudioSRTProcessor:
             # Build voice references for character switching mode
             voice_refs = {}
             if multi_speaker_mode == "Custom Character Switching":
-                character_mapping = get_character_mapping(list(all_characters), engine_type="higgs_audio")
+                character_mapping = get_character_mapping(list(all_characters), engine_type="f5tts")
                 
-                # Start with narrator using connected voice
+                # Build voice references with proper fallback hierarchy for narrator:
+                # 1. opt_narrator (already in audio_tensor/reference_text)
+                # 2. narrator_voice dropdown (handled by unified node)  
+                # 3. Mapped narrator (from character alias map - e.g., David Attenborough)
+                # 4. None (if user removed narrator from mapping)
+                
                 narrator_voice_dict = None
+                narrator_ref_text = ""
+                
                 if audio_tensor is not None:
+                    # Priority 1 & 2: Connected narrator (from Character Voices or dropdown)
                     narrator_voice_dict = {"waveform": audio_tensor["waveform"], "sample_rate": audio_tensor["sample_rate"]}
+                    narrator_ref_text = reference_text or ""
+                    ref_display = f"'{narrator_ref_text[:50]}...'" if narrator_ref_text else "No reference text"
+                    print(f"📖 SRT: Using connected narrator voice (Character Voices node or dropdown) | Ref: {ref_display}")
+                else:
+                    # Priority 3: Check mapped narrator (e.g., David Attenborough from alias map)
+                    mapped_narrator = character_mapping.get("narrator", (None, None))
+                    if mapped_narrator[0] and os.path.exists(mapped_narrator[0]):
+                        import torchaudio
+                        waveform, sample_rate = torchaudio.load(mapped_narrator[0])
+                        if waveform.shape[0] > 1:
+                            waveform = torch.mean(waveform, dim=0, keepdim=True)
+                        narrator_voice_dict = {"waveform": waveform, "sample_rate": sample_rate}
+                        narrator_ref_text = mapped_narrator[1] or ""
+                        ref_display = f"'{narrator_ref_text[:50]}...'" if narrator_ref_text else "No reference text"
+                        print(f"📖 SRT: Using mapped narrator voice: {mapped_narrator[0]} | Ref: {ref_display}")
+                    else:
+                        # Priority 4: No narrator available
+                        print(f"⚠️ SRT: No narrator voice available - characters will use basic TTS when no character voice found")
                 
                 voice_refs = {'narrator': narrator_voice_dict}
+                ref_texts = {'narrator': narrator_ref_text}
                 
                 # Add character-specific voices
                 for character in all_characters:
                     if character.lower() == "narrator":
                         continue
                     
-                    audio_path, _ = character_mapping.get(character, (None, None))
+                    audio_path, char_ref_text = character_mapping.get(character, (None, None))
                     if audio_path and os.path.exists(audio_path):
                         import torchaudio
                         waveform, sample_rate = torchaudio.load(audio_path)
                         if waveform.shape[0] > 1:
                             waveform = torch.mean(waveform, dim=0, keepdim=True)
                         voice_refs[character] = {"waveform": waveform, "sample_rate": sample_rate}
+                        
+                        # Use character-specific reference text from mapping
+                        if char_ref_text and char_ref_text.strip():
+                            ref_texts[character] = char_ref_text.strip()
+                            print(f"🎭 {character}: Loaded voice + ref text: '{char_ref_text[:30]}...'")
+                        else:
+                            ref_texts[character] = ""  # Empty ref text for character's own voice
+                            print(f"🎭 {character}: Loaded voice, no ref text")
                     else:
                         voice_refs[character] = narrator_voice_dict
+                        ref_texts[character] = reference_text or ""
+                        if narrator_voice_dict:
+                            print(f"🎭 {character}: Using narrator voice + ref text")
+                        else:
+                            print(f"⚠️ {character}: No voice available, using basic TTS")
             
             for i, segment in enumerate(srt_segments):
                 segment_text = segment.text
@@ -143,7 +193,7 @@ class HiggsAudioSRTProcessor:
                             
                             for character, segment_text in char_segments:
                                 char_audio_dict = voice_refs.get(character, voice_refs.get("narrator"))
-                                char_ref_text = reference_text or ""
+                                char_ref_text = ref_texts.get(character, reference_text or "")
                                 
                                 segment_result = self.engine_wrapper.generate_srt_audio(
                                     srt_content="",  # Individual segment processing
@@ -152,7 +202,8 @@ class HiggsAudioSRTProcessor:
                                     char_text=char_ref_text,
                                     character=character,
                                     seed=seed + i,  # Vary seed per segment
-                                    enable_audio_cache=enable_audio_cache
+                                    enable_audio_cache=enable_audio_cache,
+                                    **generation_params  # Pass through all generation parameters
                                 )
                                 
                                 # Convert to tensor format
@@ -178,10 +229,11 @@ class HiggsAudioSRTProcessor:
                                 srt_content="",  # Individual segment processing
                                 text=text_content,
                                 char_audio=narrator_audio,
-                                char_text=reference_text or "",
+                                char_text=ref_texts.get("narrator", reference_text or ""),
                                 character="narrator",
                                 seed=seed + i,  # Vary seed per segment
-                                enable_audio_cache=enable_audio_cache
+                                enable_audio_cache=enable_audio_cache,
+                                **generation_params  # Pass through all generation parameters
                             )
                             
                             # Convert to tensor format
@@ -229,7 +281,8 @@ class HiggsAudioSRTProcessor:
                         enable_audio_cache=enable_audio_cache,
                         multi_speaker_mode=multi_speaker_mode,
                         second_narrator_audio=opt_second_narrator,
-                        second_narrator_text=""
+                        second_narrator_text="",
+                        **generation_params  # Pass through all generation parameters
                     )
                     
                     # Convert to tensor format

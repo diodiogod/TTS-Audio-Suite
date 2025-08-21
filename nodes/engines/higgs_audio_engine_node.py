@@ -53,14 +53,6 @@ class HiggsAudioEngineNode(BaseTTSNode):
         except ImportError:
             available_models = ["higgs-audio-v2-3B"]
         
-        # Load voice presets
-        try:
-            from engines.higgs_audio.higgs_audio import HiggsAudioEngine
-            engine = HiggsAudioEngine()
-            voice_presets, _ = engine.load_voice_presets()
-            voice_preset_list = list(voice_presets.keys())
-        except:
-            voice_preset_list = ["voice_clone", "en_woman", "en_man", "belinda"]
         
         return {
             "required": {
@@ -76,47 +68,43 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "default": "Custom Character Switching",
                     "tooltip": "IMPORTANT: Each mode requires different text formats!\n\n• Custom Character Switching: ⭐ MAIN METHOD - Use ANY character names like [Alice], [Bob], [Narrator]. Each segment generated separately with character-specific voice files from voices folder. Supports [pause:2] tags. Most flexible and reliable.\n\n• Native Multi-Speaker (Conversation): Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! Requires opt_second_narrator input. NO pause tag support.\n\n• Native Multi-Speaker (System Context): ⚠️ EXPERIMENTAL - Higgs Audio 2's native mode. MUST use [SPEAKER0] and [SPEAKER1] tags only! May produce audio artifacts. NO pause tag support."
                 }),
-                "voice_preset": (voice_preset_list, {
-                    "default": "voice_clone",
-                    "tooltip": "Voice style selection:\n• voice_clone: 🎯 RECOMMENDED - Clone the connected reference voice (from Character Voices or TTS Text narrator input)\n• en_woman/en_man: Built-in English voices (ignores reference audio)\n• belinda, chadwick, vex: Built-in character voices with distinct personalities\n\nFor best results, use 'voice_clone' with high-quality reference audio from Character Voices node."
-                }),
                 "system_prompt": ("STRING", {
                     "default": "Generate audio following instruction.",
                     "multiline": True,
                     "tooltip": "System instruction that guides how Higgs Audio 2 generates speech:\n\n• Default: 'Generate audio following instruction.' - Works for most cases\n• Custom examples:\n  - 'Speak clearly and slowly.' - For clearer pronunciation\n  - 'Generate dramatic, emotional speech.' - For expressive delivery\n  - 'Speak in a calm, professional tone.' - For business/formal content\n\nThis is an advanced parameter - the default usually works best unless you need specific speech characteristics."
                 }),
                 "temperature": ("FLOAT", {
-                    "default": 1.0,
+                    "default": 0.8,
                     "min": 0.0,
                     "max": 2.0,
                     "step": 0.1,
-                    "tooltip": "🌡️ Controls speech creativity and randomness:\n\n• 0.0-0.5: Very predictable, robotic speech (not recommended)\n• 0.6-0.8: 🎯 Conservative, natural speech with good consistency\n• 1.0: 🎯 RECOMMENDED - Balanced natural variation\n• 1.2-1.5: More expressive, varied pronunciation and pacing\n• 1.8-2.0: Highly creative but potentially unstable\n\nStart with 1.0. Lower for consistent corporate voices, raise for dramatic/character voices."
+                    "tooltip": "🌡️ Controls speech creativity and randomness:\n\n• 0.0-0.5: Very predictable, robotic speech (not recommended)\n• 0.6-0.8: 🎯 RECOMMENDED - Conservative, natural speech with excellent consistency\n• 1.0: Balanced natural variation but less consistent\n• 1.2-1.5: More expressive, varied pronunciation and pacing\n• 1.8-2.0: Highly creative but potentially unstable\n\n0.8 provides the best balance of natural speech and consistency."
                 }),
                 "top_p": ("FLOAT", {
-                    "default": 0.95,
+                    "default": 0.6,
                     "min": 0.1,
                     "max": 1.0,
                     "step": 0.05,
-                    "tooltip": "🎯 Nucleus sampling - controls vocabulary diversity:\n\n• 0.1-0.3: Very limited vocabulary, may sound repetitive\n• 0.7-0.85: 🎯 Conservative, clear pronunciation\n• 0.9-0.95: 🎯 RECOMMENDED - Good balance of clarity and natural variation\n• 0.98-1.0: Maximum vocabulary diversity, may include rare pronunciations\n\nHigher values = more varied speech patterns. 0.95 works well for most content."
+                    "tooltip": "🎯 Nucleus sampling - controls vocabulary diversity:\n\n• 0.1-0.3: Very limited vocabulary, may sound repetitive\n• 0.5-0.7: 🎯 RECOMMENDED - Focused vocabulary for consistent, clear pronunciation\n• 0.8-0.9: More varied speech patterns but less consistent\n• 0.95-1.0: Maximum vocabulary diversity, may include rare pronunciations\n\n0.6 provides excellent consistency while maintaining natural speech variation."
                 }),
                 "top_k": ("INT", {
-                    "default": 50,
+                    "default": 80,
                     "min": -1,
                     "max": 100,
                     "step": 1,
-                    "tooltip": "🔢 Limits vocabulary choices per word:\n\n• -1: Disabled (uses only top_p)\n• 10-30: 🎯 Very focused, consistent pronunciation\n• 40-60: 🎯 RECOMMENDED - Good balance of consistency and natural variation\n• 80-100: Maximum vocabulary freedom, more diverse but potentially inconsistent\n\nWorks together with top_p. Lower values = more predictable speech. 50 is ideal for most use cases."
+                    "tooltip": "🔢 Limits vocabulary choices per word:\n\n• -1: Disabled (uses only top_p)\n• 10-30: Very focused, consistent pronunciation\n• 40-60: Balanced consistency and variation\n• 70-90: 🎯 RECOMMENDED - Broader vocabulary pool for natural speech\n• 95-100: Maximum vocabulary freedom, more diverse but potentially inconsistent\n\nWorks with top_p (0.6) to provide good vocabulary range while maintaining consistency."
                 }),
                 "max_new_tokens": ("INT", {
                     "default": 2048,
-                    "min": 128,
+                    "min": 1,
                     "max": 4096,
-                    "step": 128,
-                    "tooltip": "🔤 Maximum AI tokens per text chunk - affects processing and quality:\n\n• 512-1024: 🎯 Short texts, faster processing, good for simple sentences\n• 1536-2048: 🎯 RECOMMENDED - Balanced processing speed and quality for most content\n• 2560-4096: Long texts, slower but better context understanding for complex passages\n\nHigher values allow longer coherent speech but increase processing time. 2048 handles most content well."
+                    "step": 1,
+                    "tooltip": "🔤 Maximum AI tokens per text chunk - affects processing and quality:\n\n• 1-50: Very short audio snippets, useful for testing or sound effects\n• 512-1024: Short texts, faster processing, good for simple sentences\n• 1536-2048: 🎯 RECOMMENDED - Balanced processing speed and quality for most content\n• 2560-4096: Long texts, slower but better context understanding for complex passages\n\nHigher values allow longer coherent speech but increase processing time. 2048 handles most content well."
                 })
             },
             "optional": {
                 "opt_second_narrator": ("AUDIO", {
-                    "tooltip": "Second narrator voice for native multi-speaker modes. Used as SPEAKER1 voice when multi_speaker_mode is set to Native Multi-Speaker. Only needed for native modes, ignored in Custom Character Switching mode. First narrator (from Character Voices or TTS Text) becomes SPEAKER0."
+                    "tooltip": "Second narrator voice for native multi-speaker modes. Used as SPEAKER1 voice when multi_speaker_mode is set to Native Multi-Speaker. Only needed for native modes, ignored in Custom Character Switching mode. First narrator (from Character Voices or TTS Text) becomes SPEAKER0.\\n\\n💡 TIP: Reference text significantly improves Higgs Audio voice cloning quality - always provide reference text with voice files."
                 })
             }
         }
@@ -125,9 +113,9 @@ class HiggsAudioEngineNode(BaseTTSNode):
     RETURN_NAMES = ("tts_engine",)
     FUNCTION = "create_engine_config"
     CATEGORY = "🎤 TTS Audio Suite/Engines"
-    DESCRIPTION = "Configure Higgs Audio 2 engine for TTS generation with voice cloning"
+    DESCRIPTION = "Configure Higgs Audio 2 engine for TTS generation with voice cloning. TIP: Reference text significantly improves voice cloning quality."
     
-    def create_engine_config(self, model, device, multi_speaker_mode, voice_preset, system_prompt,
+    def create_engine_config(self, model, device, multi_speaker_mode, system_prompt,
                            temperature, top_p, top_k, max_new_tokens, opt_second_narrator=None):
         """Create Higgs Audio engine configuration"""
         
@@ -137,7 +125,6 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "model": model,
             "device": device,
             "multi_speaker_mode": multi_speaker_mode,
-            "voice_preset": voice_preset,
             "system_prompt": system_prompt,
             "temperature": max(0.0, min(2.0, temperature)),
             "top_p": max(0.1, min(1.0, top_p)),

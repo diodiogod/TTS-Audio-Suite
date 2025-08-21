@@ -123,8 +123,7 @@ class HiggsAudioEngineAdapter:
         device = params.get("device", "auto")
         self.load_base_model(model, device)
         
-        # Extract Higgs Audio specific parameters
-        voice_preset = params.get("voice_preset", "voice_clone")
+        # Extract Higgs Audio specific parameters  
         system_prompt = params.get("system_prompt", "Generate audio following instruction.")
         temperature = params.get("temperature", 1.0)
         top_p = params.get("top_p", 0.95)
@@ -187,7 +186,6 @@ class HiggsAudioEngineAdapter:
                 # Use custom character switching mode (existing behavior)
                 audio_result, generation_info = self.higgs_engine.generate(
                     text=text,
-                    voice_preset=voice_preset,
                     reference_audio=reference_audio,
                     reference_text=char_text or "",
                     system_prompt=system_prompt,
@@ -277,15 +275,6 @@ class HiggsAudioEngineAdapter:
         """
         return True
     
-    def get_voice_presets(self) -> Dict[str, str]:
-        """
-        Get available voice presets.
-        
-        Returns:
-            Dictionary of voice preset names and descriptions
-        """
-        presets, _ = self.higgs_engine.load_voice_presets()
-        return presets
     
     def validate_parameters(self, **params) -> Dict[str, Any]:
         """
@@ -315,14 +304,6 @@ class HiggsAudioEngineAdapter:
         max_tokens = params.get("max_new_tokens", 2048)
         validated["max_new_tokens"] = max(128, min(4096, int(max_tokens)))
         
-        # Voice preset validation
-        voice_preset = params.get("voice_preset", "voice_clone")
-        available_presets = list(self.get_voice_presets().keys())
-        if voice_preset not in available_presets:
-            print(f"⚠️ Unknown voice preset '{voice_preset}', using 'voice_clone'")
-            validated["voice_preset"] = "voice_clone"
-        else:
-            validated["voice_preset"] = voice_preset
         
         # Audio priority validation
         audio_priority = params.get("audio_priority", "auto")

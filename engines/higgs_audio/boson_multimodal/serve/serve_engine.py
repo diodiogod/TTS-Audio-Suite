@@ -14,6 +14,7 @@ from dataclasses import asdict
 from loguru import logger
 import threading
 import librosa
+from tqdm import tqdm
 
 
 from ..dataset.chatml_dataset import ChatMLSample, ChatMLDatasetSample, prepare_chatml_sample
@@ -145,6 +146,70 @@ class AsyncHiggsAudioStreamer(BaseStreamer):
                 raise StopAsyncIteration()
             else:
                 return value
+
+
+class TqdmProgressStreamer(BaseStreamer):
+    """
+    Progress bar streamer that shows token-by-token generation progress using tqdm.
+    Displays progress like: "🗣️ Generating: 45%|████▌     | 234/512 tokens [00:12<00:15, 18.2it/s]"
+    """
+    
+    def __init__(self, tokenizer: "AutoTokenizer", max_new_tokens: int, skip_prompt: bool = True):
+        """
+        Initialize the progress bar streamer.
+        
+        Args:
+            tokenizer: The tokenizer used to decode tokens
+            max_new_tokens: Maximum number of new tokens to generate
+            skip_prompt: Whether to skip prompt tokens (default True)
+        """
+        self.tokenizer = tokenizer
+        self.max_new_tokens = max_new_tokens
+        self.skip_prompt = skip_prompt
+        self.generated_tokens = 0
+        self.progress_bar = None
+        self.next_tokens_are_prompt = True
+        
+    def put(self, value: torch.Tensor):
+        """
+        Process incoming tokens and update progress bar.
+        
+        Args:
+            value: Tensor containing new token IDs
+        """
+        if self.skip_prompt and self.next_tokens_are_prompt:
+            # Skip the first call which contains the prompt
+            self.next_tokens_are_prompt = False
+            return
+        
+        # Initialize progress bar on first non-prompt tokens
+        if self.progress_bar is None:
+            self.progress_bar = tqdm(
+                total=self.max_new_tokens,
+                desc="🗣️ Generating",
+                unit="token",
+                unit_scale=False,
+                dynamic_ncols=True,
+                leave=False  # Don't leave progress bar after completion
+            )
+        
+        # Count new tokens generated
+        if value.dim() > 1:
+            new_tokens = value.shape[-1]
+        else:
+            new_tokens = 1
+            
+        self.generated_tokens += new_tokens
+        
+        # Update progress bar
+        if self.progress_bar is not None:
+            self.progress_bar.update(new_tokens)
+    
+    def end(self):
+        """Clean up progress bar when generation ends."""
+        if self.progress_bar is not None:
+            self.progress_bar.close()
+            self.progress_bar = None
 
 
 class AsyncStoppingCriteria(StoppingCriteria):
@@ -376,6 +441,13 @@ class HiggsAudioServeEngine:
 
             self._prepare_kv_caches()
 
+            # Create progress bar streamer for token generation
+            progress_streamer = TqdmProgressStreamer(
+                tokenizer=self.tokenizer,
+                max_new_tokens=max_new_tokens,
+                skip_prompt=True
+            )
+
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
@@ -390,7 +462,11 @@ class HiggsAudioServeEngine:
                 ras_win_len=ras_win_len,
                 ras_win_max_num_repeat=ras_win_max_num_repeat,
                 seed=seed,
+                streamer=progress_streamer,  # Add progress bar streamer
             )
+            
+            # Clean up progress bar
+            progress_streamer.end()
 
             if len(outputs[1]) > 0:
                 wv_list = []

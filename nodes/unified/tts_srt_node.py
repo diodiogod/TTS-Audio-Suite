@@ -236,9 +236,6 @@ Hello! This is unified SRT TTS with character switching.
                         merged_params = self.config.copy()
                         merged_params.update(params)
                         
-                        # Debug: Check what temperature is being passed
-                        print(f"🔧 Wrapper config temp: {self.config.get('temperature')}, merged temp: {merged_params.get('temperature')}")
-                        
                         # Extract required parameters for adapter
                         text = merged_params.get('text', '')
                         char_audio = merged_params.get('char_audio')
