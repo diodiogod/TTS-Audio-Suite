@@ -129,7 +129,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "temperature": max(0.0, min(2.0, temperature)),
             "top_p": max(0.1, min(1.0, top_p)),
             "top_k": max(-1, min(100, top_k)),
-            "max_new_tokens": max(128, min(4096, max_new_tokens)),
+            "max_new_tokens": max(1, min(4096, max_new_tokens)),
             "opt_second_narrator": opt_second_narrator,
             "adapter_class": "HiggsAudioEngineAdapter"
         }

@@ -302,7 +302,7 @@ class HiggsAudioEngineAdapter:
         
         # Max tokens validation
         max_tokens = params.get("max_new_tokens", 2048)
-        validated["max_new_tokens"] = max(128, min(4096, int(max_tokens)))
+        validated["max_new_tokens"] = max(1, min(4096, int(max_tokens)))
         
         
         # Audio priority validation
