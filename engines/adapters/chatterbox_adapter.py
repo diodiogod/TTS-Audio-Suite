@@ -295,9 +295,25 @@ class ChatterBoxEngineAdapter:
         if len(audio_segments) == 1:
             return audio_segments[0]
         
-        # ChatterBox uses simple concatenation
-        from utils.audio.processing import AudioProcessingUtils
-        return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
+        # Use modular chunk combiner with ChatterBox settings
+        from utils.audio.chunk_combiner import ChunkCombiner
+        
+        method = params.get("combination_method", "auto")
+        silence_ms = params.get("silence_ms", 100)
+        text_length = params.get("text_length", 0)
+        
+        print(f"🔗 Combining {len(audio_segments)} ChatterBox chunks using '{method}' method")
+        
+        return ChunkCombiner.combine_chunks(
+            audio_segments=audio_segments,
+            method=method,
+            silence_ms=silence_ms,
+            crossfade_duration=0.1,
+            sample_rate=44100,  # ChatterBox sample rate
+            text_length=text_length,
+            original_text=params.get("original_text", ""),
+            text_chunks=params.get("text_chunks", None)
+        )
     
     def generate_audio(self, text: str, voice_preset: str, voice_settings: dict,
                       output_filename: str, language: str = "auto",

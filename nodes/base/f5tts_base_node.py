@@ -323,38 +323,24 @@ class BaseF5TTSNode(BaseChatterBoxNode):
     
     def combine_f5tts_audio_chunks(self, audio_segments: List[torch.Tensor], method: str, 
                                   silence_ms: int, text_length: int) -> torch.Tensor:
-        """Combine F5-TTS audio segments using specified method"""
+        """Combine F5-TTS audio segments using modular combination utility"""
         if len(audio_segments) == 1:
             return audio_segments[0]
         
-        # Auto-select best method based on text length
-        if method == "auto":
-            if text_length > 1000:  # Very long text
-                method = "silence_padding"
-            elif text_length > 500:  # Medium text
-                method = "crossfade"
-            else:  # Short text
-                method = "concatenate"
+        print(f"🔗 Combining {len(audio_segments)} F5-TTS chunks using '{method}' method")
         
-        if method == "concatenate":
-            return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
-        
-        elif method == "silence_padding":
-            silence_duration = silence_ms / 1000.0  # Convert to seconds
-            return AudioProcessingUtils.concatenate_audio_segments(
-                audio_segments, "silence", silence_duration=silence_duration, 
-                sample_rate=self.f5tts_sample_rate
-            )
-        
-        elif method == "crossfade":
-            return AudioProcessingUtils.concatenate_audio_segments(
-                audio_segments, "crossfade", crossfade_duration=0.1, 
-                sample_rate=self.f5tts_sample_rate
-            )
-        
-        else:
-            # Fallback to concatenation
-            return AudioProcessingUtils.concatenate_audio_segments(audio_segments, "simple")
+        # Use modular chunk combiner
+        from utils.audio.chunk_combiner import ChunkCombiner
+        return ChunkCombiner.combine_chunks(
+            audio_segments=audio_segments,
+            method=method,
+            silence_ms=silence_ms,
+            crossfade_duration=0.1,
+            sample_rate=self.f5tts_sample_rate,
+            text_length=text_length,
+            # Note: F5-TTS nodes need to pass original_text and text_chunks
+            # This will be updated when we refactor F5-TTS chunking calls
+        )
     
     def get_f5tts_model_info(self) -> Dict[str, Any]:
         """Get information about loaded F5-TTS model"""

@@ -251,7 +251,12 @@ class HiggsAudioEngine:
         if len(audio_segments) > 1:
             combined_audio = self._combine_audio_chunks(
                 audio_segments, 
-                silence_between_chunks_ms
+                combination_method="auto",
+                silence_ms=silence_between_chunks_ms,
+                crossfade_duration=0.1,
+                text_length=len(text),
+                original_text=text,
+                text_chunks=chunks
             )
         else:
             combined_audio = audio_segments[0]
@@ -571,30 +576,34 @@ class HiggsAudioEngine:
     
     def _combine_audio_chunks(self, 
                              audio_segments: List[Dict[str, Any]], 
-                             silence_ms: int) -> Dict[str, Any]:
-        """Combine multiple audio chunks with silence between them"""
+                             combination_method: str = "auto",
+                             silence_ms: int = 100,
+                             crossfade_duration: float = 0.1,
+                             text_length: int = 0,
+                             original_text: str = "",
+                             text_chunks: List[str] = None) -> Dict[str, Any]:
+        """Combine multiple audio chunks using modular combination utility"""
         if len(audio_segments) == 1:
             return audio_segments[0]
         
-        print(f"🔗 Combining {len(audio_segments)} chunks with {silence_ms}ms silence")
+        print(f"🔗 Combining {len(audio_segments)} chunks using '{combination_method}' method")
         
-        combined_waveform = audio_segments[0]["waveform"]
+        # Extract waveforms and sample rate
+        waveforms = [seg["waveform"] for seg in audio_segments]
         sample_rate = audio_segments[0]["sample_rate"]
         
-        # Calculate silence samples
-        silence_samples = int(silence_ms * sample_rate / 1000)
-        
-        for i in range(1, len(audio_segments)):
-            # Add silence if requested
-            if silence_ms > 0:
-                silence_shape = list(combined_waveform.shape)
-                silence_shape[-1] = silence_samples
-                silence = torch.zeros(*silence_shape)
-                combined_waveform = torch.cat([combined_waveform, silence], dim=-1)
-            
-            # Add next segment
-            next_waveform = audio_segments[i]["waveform"]
-            combined_waveform = torch.cat([combined_waveform, next_waveform], dim=-1)
+        # Use modular chunk combiner
+        from utils.audio.chunk_combiner import ChunkCombiner
+        combined_waveform = ChunkCombiner.combine_chunks(
+            audio_segments=waveforms,
+            method=combination_method,
+            silence_ms=silence_ms,
+            crossfade_duration=crossfade_duration,
+            sample_rate=sample_rate,
+            text_length=text_length,
+            original_text=original_text,
+            text_chunks=text_chunks
+        )
         
         print(f"  ✅ Combined waveform shape: {combined_waveform.shape}")
         return {"waveform": combined_waveform, "sample_rate": sample_rate}
