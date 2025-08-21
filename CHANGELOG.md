@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.0] - 2025-08-21
+
+### Added
+
+- 🎙️ Higgs Audio 2 Voice Cloning Integration
+
+## 🌟 Major New Features
+
+### 🎙️ Higgs Audio 2 Voice Cloning Engine
+- State-of-the-art voice cloning from 30+ second reference audio samples
+- Multi-speaker conversation support with seamless character switching
+- Real-time voice replication with exceptional audio quality
+- Universal integration - works with existing TTS Text and TTS SRT nodes
+- Advanced generation controls - fine-tune temperature, top-p, top-k, and token limits
+- Multi-language capabilities - English (tested), with potential support for Chinese, Korean, German, and Spanish
+
+### 🧠 Smart Audio Processing System
+- Intelligent chunk combination with automatic boundary detection
+- Per-junction analysis for optimal audio segment merging
+- Universal implementation across all TTS engines (ChatterBox, F5-TTS, Higgs Audio)
+- Enhanced audio quality through smart text structure analysis
+
+## 🏗️ Architecture Improvements
+
+### ⚙️ Modular Processor Architecture
+- Complete architectural consistency across all TTS engines
+- Unified delegation pattern - clean separation between user interface and engine processing
+- HiggsAudio SRT and TTS processors following established patterns
+- Simplified maintenance with modular, testable components
+
+### 🔄 Enhanced Processing Pipeline
+- Modular SRT overlap detection across all engines
+- Centralized cache management with improved invalidation
+- Smart model loading and initialization optimizations
+- Progress tracking with real-time feedback for long operations
+
+## 🎯 User Experience Enhancements
+
+### 📊 Improved Feedback and Documentation
+- Real-time progress bars for Higgs Audio generation
+- Enhanced tooltips with detailed parameter explanations
+- Optimized parameter ranges for better generation control
+- Voice reference management with flexible discovery system
+
+### 🚀 Performance Optimizations
+- Instant cache regeneration for previously processed content
+- Automatic model management with organized TTS/HiggsAudio/ structure
+- Memory-efficient processing with smart resource utilization
+- Seamless audio combination eliminating artifacts between segments
+
+## 🔧 Technical Improvements
+
+### 🎵 Audio Quality Enhancements
+- Advanced chunking algorithms with sentence boundary detection
+- Intelligent silence insertion between audio segments
+- Cache-optimized processing maintaining quality while improving speed
+- Professional-grade audio output across all supported engines
+
+### 🌐 Integration and Compatibility
+- Voice cloning compatibility with existing character switching system
+- Reference audio support for custom voice creation
+- Multi-engine harmony - all engines work consistently with unified nodes
+- Backward compatibility maintained for existing workflows
 ## [4.4.0] - 2025-08-16
 
 ### Added
