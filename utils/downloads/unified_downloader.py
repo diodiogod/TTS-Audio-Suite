@@ -94,6 +94,9 @@ class UnifiedDownloader:
             model_dir = os.path.join(self.tts_dir, engine_type, model_name)
         
         success = True
+        critical_files = ['config.json']  # These files are absolutely required
+        failed_files = []
+        
         for file_info in files:
             remote_path = file_info['remote']  # e.g., "F5TTS_v1_Base/model_1250000.safetensors"
             local_filename = file_info['local']  # e.g., "model_1250000.safetensors"
@@ -102,8 +105,19 @@ class UnifiedDownloader:
             target_path = os.path.join(model_dir, local_filename)
             
             if not self.download_file(url, target_path, f"{model_name}/{local_filename}"):
-                success = False
-                break
+                failed_files.append(local_filename)
+                # Only fail completely if critical files are missing
+                if local_filename in critical_files:
+                    success = False
+                    break
+        
+        if failed_files:
+            print(f"⚠️ Some files failed to download: {failed_files}")
+            
+        # For sharded models, we need either all shards OR none (to use cache fallback)
+        if any('model-' in f and '.safetensors' in f for f in failed_files):
+            print("❌ Sharded model files incomplete, using cache fallback")
+            success = False
         
         return model_dir if success else None
     

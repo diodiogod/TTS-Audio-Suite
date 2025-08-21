@@ -25,8 +25,15 @@ HIGGS_AUDIO_MODELS = {
         "description": "Higgs Audio v2 3B parameter model with audio tokenizer",
         "generation_files": [
             {"remote": "config.json", "local": "config.json"},
-            {"remote": "model.safetensors", "local": "model.safetensors"},
+            {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
+            {"remote": "model-00001-of-00003.safetensors", "local": "model-00001-of-00003.safetensors"},
+            {"remote": "model-00002-of-00003.safetensors", "local": "model-00002-of-00003.safetensors"},
+            {"remote": "model-00003-of-00003.safetensors", "local": "model-00003-of-00003.safetensors"},
             {"remote": "generation_config.json", "local": "generation_config.json"},
+            # Add tokenizer files to model directory
+            {"remote": "tokenizer.json", "local": "tokenizer.json"},
+            {"remote": "tokenizer_config.json", "local": "tokenizer_config.json"},
+            {"remote": "special_tokens_map.json", "local": "special_tokens_map.json"},
         ],
         "tokenizer_files": [
             {"remote": "config.json", "local": "config.json"},
@@ -127,9 +134,63 @@ class HiggsAudioDownloader:
             else:
                 raise RuntimeError(f"Failed to download generation model: {model_name_or_path}")
         
-        # Handle direct HuggingFace repo IDs
-        print(f"📥 Using HuggingFace model directly: {model_name_or_path}")
-        return model_name_or_path
+        # Handle direct HuggingFace repo IDs - download to organized structure
+        print(f"📥 Downloading HuggingFace model to organized structure: {model_name_or_path}")
+        
+        # Extract model name from repo ID for organization
+        model_name = model_name_or_path.split('/')[-1]  # e.g., "higgs-audio-v2-generation-3B-base"
+        local_path = os.path.join(self.base_path, model_name)
+        
+        # Check if already exists locally and is complete
+        if os.path.exists(local_path):
+            # Verify essential files exist for sharded models and tokenizer
+            essential_files = ["config.json", "model.safetensors.index.json", "tokenizer_config.json"]
+            if all(os.path.exists(os.path.join(local_path, f)) for f in essential_files):
+                print(f"📁 Using existing complete local model: {local_path}")
+                return local_path
+            else:
+                print(f"❌ INCOMPLETE DOWNLOAD DETECTED!")
+                print(f"   Location: {local_path}")
+                print(f"   Missing files: {[f for f in essential_files if not os.path.exists(os.path.join(local_path, f))]}")
+                print(f"   ACTION REQUIRED: Please manually delete this folder and restart ComfyUI")
+                print(f"   Falling back to HuggingFace cache for now...")
+                return model_name_or_path  # Return repo ID to use cache fallback
+        
+        
+        # Download using unified downloader to organized structure
+        try:
+            # Simple file list for unknown models (try both single and sharded formats)
+            common_files = [
+                {"remote": "config.json", "local": "config.json"},
+                {"remote": "generation_config.json", "local": "generation_config.json"},
+                # Try sharded format first (common for large models)
+                {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
+                {"remote": "model-00001-of-00003.safetensors", "local": "model-00001-of-00003.safetensors"},
+                {"remote": "model-00002-of-00003.safetensors", "local": "model-00002-of-00003.safetensors"},
+                {"remote": "model-00003-of-00003.safetensors", "local": "model-00003-of-00003.safetensors"},
+                # Add tokenizer files
+                {"remote": "tokenizer.json", "local": "tokenizer.json"},
+                {"remote": "tokenizer_config.json", "local": "tokenizer_config.json"},
+                {"remote": "special_tokens_map.json", "local": "special_tokens_map.json"},
+            ]
+            
+            downloaded_dir = self.downloader.download_huggingface_model(
+                repo_id=model_name_or_path,
+                model_name=model_name,
+                files=common_files,
+                engine_type="HiggsAudio"
+            )
+            
+            if downloaded_dir:
+                print(f"✅ Model downloaded to organized structure: {downloaded_dir}")
+                return downloaded_dir
+            else:
+                print(f"⚠️ Download failed, falling back to HuggingFace cache: {model_name_or_path}")
+                return model_name_or_path
+                
+        except Exception as e:
+            print(f"⚠️ Download error: {e}, falling back to HuggingFace cache: {model_name_or_path}")
+            return model_name_or_path
     
     def download_tokenizer(self, tokenizer_name_or_path: str) -> str:
         """
@@ -190,9 +251,43 @@ class HiggsAudioDownloader:
             else:
                 raise RuntimeError(f"Failed to download tokenizer model: {model_name}")
         
-        # Handle direct HuggingFace repo IDs
-        print(f"📥 Using HuggingFace tokenizer directly: {tokenizer_name_or_path}")
-        return tokenizer_name_or_path
+        # Handle direct HuggingFace repo IDs - download to organized structure
+        print(f"📥 Downloading HuggingFace tokenizer to organized structure: {tokenizer_name_or_path}")
+        
+        # Extract model name from repo ID for organization
+        model_name = tokenizer_name_or_path.split('/')[-1]  # e.g., "higgs-audio-v2-tokenizer"
+        local_path = os.path.join(self.base_path, model_name)
+        
+        # Check if already exists locally
+        if os.path.exists(local_path):
+            print(f"📁 Using existing local tokenizer: {local_path}")
+            return local_path
+        
+        # Download using unified downloader to organized structure
+        try:
+            # Simple file list for unknown tokenizers
+            common_files = [
+                {"remote": "config.json", "local": "config.json"},
+                {"remote": "model.pth", "local": "model.pth"},
+            ]
+            
+            downloaded_dir = self.downloader.download_huggingface_model(
+                repo_id=tokenizer_name_or_path,
+                model_name=model_name,
+                files=common_files,
+                engine_type="HiggsAudio"
+            )
+            
+            if downloaded_dir:
+                print(f"✅ Tokenizer downloaded to organized structure: {downloaded_dir}")
+                return downloaded_dir
+            else:
+                print(f"⚠️ Download failed, falling back to HuggingFace cache: {tokenizer_name_or_path}")
+                return tokenizer_name_or_path
+                
+        except Exception as e:
+            print(f"⚠️ Download error: {e}, falling back to HuggingFace cache: {tokenizer_name_or_path}")
+            return tokenizer_name_or_path
     
     def download_model_pair(self, model_name: str) -> Tuple[str, str]:
         """

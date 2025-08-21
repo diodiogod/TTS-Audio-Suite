@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.1] - 2025-08-21
+
+### Added
+
+- Fix critical Higgs Audio download and loading issues
+
+- Fix sharded model file downloads (model-00001-of-00003.safetensors, etc.)
+- Add missing tokenizer files (tokenizer.json, tokenizer_config.json, special_tokens_map.json) to model directory
+- Fix tokenizer loading from organized local structure instead of HuggingFace cache
+- Add proper completeness validation for downloaded model directories
+- Implement fallback tokenizer loading with LlamaTokenizer for custom configs
+- Ensure all Higgs Audio models load from organized TTS/HiggsAudio/ structure without cache duplication
 ## [4.5.0] - 2025-08-21
 
 ### Added
