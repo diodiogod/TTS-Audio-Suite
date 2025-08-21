@@ -30,7 +30,8 @@ except ImportError:
     print("Warning: soundfile not installed. Install with: pip install soundfile")
     sf = None
 
-# Import boson_multimodal modules
+# Import boson_multimodal modules (imports register HiggsAudioConfig with transformers)
+from .boson_multimodal.model.higgs_audio import HiggsAudioConfig, HiggsAudioModel  # Registers config first
 from .boson_multimodal.serve.serve_engine import HiggsAudioServeEngine, HiggsAudioResponse
 from .boson_multimodal.data_types import ChatMLSample, Message, AudioContent
 from .boson_multimodal.dataset.chatml_dataset import ChatMLDatasetSample

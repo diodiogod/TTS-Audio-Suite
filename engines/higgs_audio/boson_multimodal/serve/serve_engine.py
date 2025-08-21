@@ -279,7 +279,14 @@ class HiggsAudioServeEngine:
         if tokenizer_name_or_path is None:
             tokenizer_name_or_path = model_name_or_path
         logger.info(f"Loading tokenizer from {tokenizer_name_or_path}")
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path)
+        try:
+            # First try auto-detection
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path)
+        except (KeyError, OSError) as e:
+            # Fallback: explicitly use LlamaTokenizer for Higgs Audio models
+            logger.info(f"Auto-detection failed ({e}), using LlamaTokenizer explicitly")
+            from transformers import LlamaTokenizer
+            self.tokenizer = LlamaTokenizer.from_pretrained(tokenizer_name_or_path)
 
         logger.info(f"Initializing Higgs Audio Tokenizer")
         self.audio_tokenizer = load_higgs_audio_tokenizer(audio_tokenizer_name_or_path, device=device)
