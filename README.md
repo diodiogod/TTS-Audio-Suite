@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# TTS Audio Suite v4.4.0
+# TTS Audio Suite v4.5.0
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -14,7 +14,7 @@
   <img src="images/AllNodesShowcase.png" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
-A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS, F5-TTS, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
+A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
 
 <details>
 <summary><h2>📋 Table of Contents</h2></summary>
@@ -32,6 +32,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
   - [⏸️ Pause Tags System](#️-pause-tags-system)
   - [🌍 Multi-language ChatterBox Support](#-multi-language-chatterbox-support)
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
+  - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -94,7 +95,8 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS and F5-TTS with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, F5-TTS, and Higgs Audio 2 with voice cloning, reference audio synthesis, and production-grade quality
+- 🎙️ **Higgs Audio 2 Voice Cloning** - State-of-the-art voice cloning with 30+ second reference audio and multi-speaker conversation support
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
@@ -168,6 +170,44 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 - OpenSeeFace provider is experimental and not recommended for production use - MediaPipe is the stable solution
 - Viseme detection is experimental approximation - expect to manually edit both timing and content
 - Generated text placeholders are phonetic suggestions, not meaningful sentences
+
+</details>
+
+<details>
+<summary><h3>🎙️ Higgs Audio 2 Voice Cloning</h3></summary>
+
+**NEW in v4.5.0**: State-of-the-art voice cloning technology with advanced neural voice replication!
+
+* **High-Quality Voice Cloning**: Clone any voice from 30+ second reference audio with exceptional fidelity
+* **Multi-Speaker Conversations**: Native support for character switching within conversations
+* **Real-Time Processing**: Generate speech in cloned voices with minimal latency
+* **Universal Integration**: Works seamlessly with existing TTS Text and TTS SRT nodes
+
+**Key Capabilities:**
+- **Voice Cloning from Reference Audio**: Upload any 30+ second audio file for voice replication
+- **Multi-Language Support**: English (tested), with potential support for Chinese, Korean, German, and Spanish (based on model training data)
+- **Character Switching**: Use `[CharacterName]` syntax for multi-speaker dialogues
+- **Advanced Generation Control**: Fine-tune temperature, top-p, top-k, and token limits
+- **Smart Chunking**: Automatic handling of unlimited text length with seamless audio combination
+- **Intelligent Caching**: Instant regeneration of previously processed content
+
+**Technical Features:**
+- **Modular Architecture**: Clean integration with unified TTS system
+- **Automatic Model Management**: Downloads and organizes models in TTS/HiggsAudio/ structure
+- **Progress Tracking**: Real-time generation feedback with tqdm progress bars
+- **Voice Reference Discovery**: Flexible voice file management system
+
+**Quick Start:**
+1. Add `Higgs Audio Engine` node to configure voice cloning parameters
+2. Connect to `TTS Text` or `TTS SRT` node for generation
+3. Specify reference audio file or use voice discovery system
+4. Generate high-quality cloned speech with automatic optimization
+
+**Perfect for:**
+- Voice acting and character dialogue creation
+- Audiobook narration with consistent voice characteristics
+- Multi-speaker content with distinct voice personalities
+- Professional voice replication for content creation
 
 </details>
 
