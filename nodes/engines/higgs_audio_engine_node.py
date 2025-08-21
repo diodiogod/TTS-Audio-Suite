@@ -99,7 +99,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "min": 1,
                     "max": 4096,
                     "step": 1,
-                    "tooltip": "🔤 Maximum AI tokens per text chunk - affects processing and quality:\n\n• 1-50: Very short audio snippets, useful for testing or sound effects\n• 512-1024: Short texts, faster processing, good for simple sentences\n• 1536-2048: 🎯 RECOMMENDED - Balanced processing speed and quality for most content\n• 2560-4096: Long texts, slower but better context understanding for complex passages\n\nHigher values allow longer coherent speech but increase processing time. 2048 handles most content well."
+                    "tooltip": "🔤 Maximum token limit - safety cap on generation length:\n\n⚠️ This is a LIMIT, not a target. Model stops when audio is complete OR limit is reached.\n\n• <10 tokens: ⚠️ May cause errors or cut off mid-word\n• 200-500: Safe for short sentences, faster processing\n• 1000-2048: 🎯 RECOMMENDED - Handles most content safely\n• 3000-4096: For very long paragraphs only\n\nFor normal text like 'Hello Bob', 200 vs 2048 makes no difference - same quality and length. Only matters for very short limits (causes truncation) or very long text (needs higher limits)."
                 })
             },
             "optional": {

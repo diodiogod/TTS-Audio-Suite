@@ -139,6 +139,14 @@ class HiggsAudioEngineAdapter:
         second_narrator_audio = params.get("second_narrator_audio")
         second_narrator_text = params.get("second_narrator_text", "")
         
+        # Chunking parameters
+        max_chars_per_chunk = params.get("max_chars_per_chunk", 400)
+        silence_between_chunks_ms = params.get("silence_between_chunks_ms", 100)
+        enable_chunking = len(text) > max_chars_per_chunk  # Auto-enable chunking for long text
+        
+        # Convert chars to tokens for engine (Higgs Audio uses ~3.5 chars per token)
+        max_tokens_per_chunk = int(max_chars_per_chunk / 3.5)
+        
         # Initialize engine if not already done
         if not self.higgs_engine.engine:
             print(f"🚀 Initializing Higgs Audio engine with model: {model_name}")
@@ -193,7 +201,9 @@ class HiggsAudioEngineAdapter:
                     temperature=temperature,
                     top_p=top_p,
                     top_k=top_k,
-                    enable_chunking=False,  # Single segment, no chunking needed
+                    enable_chunking=enable_chunking,
+                    max_tokens_per_chunk=max_tokens_per_chunk,  # Now properly converted from chars to tokens
+                    silence_between_chunks_ms=silence_between_chunks_ms,
                     enable_cache=enable_cache,
                     character=character,
                     seed=seed

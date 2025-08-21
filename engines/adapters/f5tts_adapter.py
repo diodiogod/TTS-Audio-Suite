@@ -152,7 +152,7 @@ class F5TTSEngineAdapter:
     
     def combine_audio_chunks(self, audio_segments: List[torch.Tensor], **params) -> torch.Tensor:
         """
-        Combine F5-TTS audio segments.
+        Combine F5-TTS audio segments using modular combination utility.
         
         Args:
             audio_segments: List of audio tensors to combine

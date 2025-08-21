@@ -87,6 +87,8 @@ class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
             'max_new_tokens': params.get('max_new_tokens', 2048),
             'seed': params.get('seed', 0),
             'character': params.get('character', 'narrator'),
+            'max_chars_per_chunk': params.get('max_chars_per_chunk', 400),
+            # Note: silence_between_chunks_ms excluded - it's post-processing, doesn't affect generation
             'engine': 'higgs_audio'
         }
         
