@@ -1,5 +1,5 @@
 # Version and constants
-VERSION = "4.5.4"
+VERSION = "4.5.5"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
