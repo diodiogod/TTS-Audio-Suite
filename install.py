@@ -98,7 +98,12 @@ class TTSAudioInstaller:
             
             # Dependencies for --no-deps packages
             "lazy_loader",                 # Required by librosa when installed with --no-deps
-            "filelock"                     # Required by cached-path when installed with --no-deps
+            "filelock",                    # Required by cached-path when installed with --no-deps
+            "google-api-core",             # Required by cached-path when installed with --no-deps
+            "google-auth",                 # Required by google-api-core
+            "googleapis-common-protos",    # Required by google-api-core
+            "einops",                      # Required by descript-audio-codec when installed with --no-deps
+            "torch-audiomentations"        # Required by descript-audio-codec when installed with --no-deps
         ]
         
         for package in core_packages:
