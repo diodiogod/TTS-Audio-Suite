@@ -118,7 +118,7 @@ class TTSAudioInstaller:
             # For descript-audio-codec (when installed with --no-deps)
             "einops",                      # Required by descript-audio-codec
             "argbind>=0.3.7",             # Required by descript-audio-codec
-            "descript-audiotools>=0.7.2"   # Required by descript-audio-codec
+            # NOTE: descript-audiotools causes protobuf conflicts, installed via --no-deps
         ]
         
         for package in core_packages:
@@ -151,6 +151,7 @@ class TTSAudioInstaller:
         problematic_packages = [
             "librosa",              # Forces numpy downgrade
             "descript-audio-codec", # Pulls unnecessary deps, conflicts with protobuf
+            "descript-audiotools",  # Forces protobuf downgrade from 6.x to 3.19.x
             "cached-path",          # Forces package downgrades
             "torchcrepe",          # Conflicts via librosa dependency
             "onnxruntime"          # For OpenSeeFace, but forces numpy 2.3.x
