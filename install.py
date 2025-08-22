@@ -33,7 +33,12 @@ class TTSAudioInstaller:
             "INSTALL": "📦"
         }
         emoji = emoji_map.get(level, "ℹ️")
-        print(f"{emoji} {message}")
+        try:
+            print(f"{emoji} {message}")
+        except UnicodeEncodeError:
+            # Fallback for Windows systems that can't display emojis
+            level_text = f"[{level}]"
+            print(f"{level_text} {message}")
 
     def run_pip_command(self, args: List[str], description: str, ignore_errors: bool = False) -> bool:
         """Execute pip command with error handling"""
