@@ -80,8 +80,21 @@ class MediaPipeProvider(AbstractProvider):
     
     def _initialize(self):
         """Initialize MediaPipe components"""
+        import sys
+        
         if not MEDIAPIPE_AVAILABLE:
-            raise ImportError("MediaPipe is not installed. Please install with: pip install mediapipe opencv-python")
+            if sys.version_info >= (3, 13):
+                raise ImportError(
+                    "MediaPipe is not compatible with Python 3.13. "
+                    "OpenSeeFace is available as an experimental alternative, "
+                    "but results may be less accurate.\n\n"
+                    "📢 Help request Python 3.13 support! Vote/comment on:\n"
+                    "• https://github.com/google-ai-edge/mediapipe/issues/5708\n"
+                    "• https://github.com/google-ai-edge/mediapipe/issues/6025\n"
+                    "The more users request it, the higher priority it gets!"
+                )
+            else:
+                raise ImportError("MediaPipe is not installed. Please install with: pip install mediapipe opencv-python")
         
         self.mp_face_mesh = mp.solutions.face_mesh
         self.mp_drawing = mp.solutions.drawing_utils

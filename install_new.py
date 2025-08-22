@@ -123,26 +123,6 @@ class TTSAudioInstaller:
                 ignore_errors=True  # Some may already be satisfied
             )
 
-    def check_comfyui_environment(self):
-        """Check if running in likely ComfyUI environment and warn for system Python"""
-        python_path = sys.executable.lower()
-        
-        # Only warn for clearly identifiable system Python paths
-        system_python_patterns = [
-            "c:\\python",           # Windows system Python
-            "/usr/bin/python",      # Linux system Python  
-            "/usr/local/bin/python", # macOS Homebrew system Python
-            "system32",             # Windows system directory
-        ]
-        
-        if any(pattern in python_path for pattern in system_python_patterns):
-            self.log("⚠️  WARNING: Detected system-wide Python installation", "WARNING")
-            self.log(f"Current Python: {sys.executable}", "WARNING")
-            self.log("This may install packages to the wrong location", "WARNING")
-            self.log("💡 For best results, use ComfyUI Manager for automatic installation", "INFO")
-            return False
-        return True
-
     def handle_python_313_specific(self):
         """Handle Python 3.13 specific compatibility issues"""
         if not self.is_python_313:
@@ -258,9 +238,6 @@ def main():
     try:
         installer.log("Starting TTS Audio Suite installation", "INFO")
         installer.log(f"Python {installer.python_version.major}.{installer.python_version.minor}.{installer.python_version.micro} detected", "INFO")
-        
-        # Check environment before proceeding
-        installer.check_comfyui_environment()
         
         # Install in correct order to prevent conflicts
         installer.install_core_dependencies()
