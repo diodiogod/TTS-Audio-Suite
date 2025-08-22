@@ -6,7 +6,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
 
-# TTS Audio Suite v4.5.2
+# TTS Audio Suite v4.5.3
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -193,7 +193,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 **Technical Features:**
 - **Modular Architecture**: Clean integration with unified TTS system
-- **Automatic Model Management**: Downloads and organizes models in TTS/HiggsAudio/ structure
+- **Automatic Model Management**: Downloads and organizes models in `ComfyUI/models/TTS/HiggsAudio/` structure
 - **Progress Tracking**: Real-time generation feedback with tqdm progress bars
 - **Voice Reference Discovery**: Flexible voice file management system
 
@@ -382,12 +382,26 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 
 ## 🚀 Quick Start
 
-### Option 1: ComfyUI Manager (Recommended)
-Use ComfyUI Manager to install "TTS Audio Suite" - it handles dependencies automatically.
+### Option 1: ComfyUI Manager (Recommended) ✨
+**One-click installation with intelligent dependency management:**
+
+1. Use ComfyUI Manager to install **"TTS Audio Suite"**
+2. **That's it!** ComfyUI Manager automatically runs our install.py script which handles:
+   - ✅ **Python 3.13 compatibility** (MediaPipe → OpenSeeFace fallback)
+   - ✅ **Dependency conflicts** (NumPy, librosa, etc.)
+   - ✅ **All bundled engines** (ChatterBox, F5-TTS, Higgs Audio)
+   - ✅ **RVC voice conversion** dependencies
+   - ✅ **Intelligent conflict resolution** with --no-deps handling
+
+**Python 3.13 Support:**
+- 🟢 **All TTS engines**: ChatterBox, F5-TTS, Higgs Audio ✅ Working
+- 🟢 **RVC voice conversion**: ✅ Working  
+- 🟢 **OpenSeeFace mouth movement**: ✅ Working (experimental)
+- 🔴 **MediaPipe mouth movement**: ❌ Incompatible (use OpenSeeFace)
 
 ### Option 2: Manual Installation
 
-**Get running in 5 minutes:**
+**Same intelligent installer, manual setup:**
 
 1. **Clone the repository**
 
@@ -397,24 +411,24 @@ Use ComfyUI Manager to install "TTS Audio Suite" - it handles dependencies autom
    cd TTS-Audio-Suite
    ```
 
-2. **Install Dependencies** (⚠️ **Critical for Manual Install**):
+2. **Run the intelligent installer:**
    
    **ComfyUI Portable:**
    ```bash
    # Windows:
-   ..\..\..\python_embeded\python.exe -m pip install -r requirements.txt --no-user
+   ..\..\..\python_embeded\python.exe install.py
    
    # Linux/Mac:
-   ../../../python_embeded/python.exe -m pip install -r requirements.txt --no-user
+   ../../../python_embeded/python.exe install.py
    ```
    
    **ComfyUI with venv/conda:**
    ```bash
    # First activate your ComfyUI environment, then:
-   pip install -r TTS-Audio-Suite/requirements.txt
+   python install.py
    ```
 
-> ⚠️ **Important**: Manual installs require installing dependencies in your ComfyUI's Python environment. If you get missing dependency errors, see the [detailed installation guide](#installation) below.
+   The installer automatically handles all dependency conflicts and Python version compatibility.
 
 3. **Download Models** (Required)
 
@@ -426,7 +440,9 @@ Use ComfyUI Manager to install "TTS Audio Suite" - it handles dependencies autom
    - Download: [ChatterBox Integration Workflow](example_workflows/Chatterbox%20integration.json)
    - Drag into ComfyUI and start generating!
 
-4. **Restart ComfyUI** and look for 🎤 ChatterBox nodes
+4. **Restart ComfyUI** and look for 🎤 TTS Audio Suite nodes
+
+> **🧪 Python 3.13 Users**: Installation is fully supported! The system automatically uses OpenSeeFace for mouth movement analysis when MediaPipe is unavailable.
 
 > **Need F5-TTS?** Also download F5-TTS models to `ComfyUI/models/F5-TTS/` from the links in the detailed installation below.
 
@@ -788,7 +804,68 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 
 </details>
 
-### 7. RVC Models (Optional - NEW in v4.0.0+)
+### 7. Higgs Audio 2 Models (Optional - NEW in v4.5.0+)
+
+**For state-of-the-art voice cloning capabilities**, Higgs Audio 2 models are automatically downloaded to the organized structure:
+
+```
+ComfyUI/models/TTS/HiggsAudio/        ← Recommended (new structure)
+├── higgs-audio-v2-3B/               ← Main model directory
+│   ├── generation/                  ← Generation model files
+│   │   ├── config.json
+│   │   ├── model.safetensors.index.json
+│   │   ├── model-00001-of-00003.safetensors (~3GB)
+│   │   ├── model-00002-of-00003.safetensors (~3GB) 
+│   │   ├── model-00003-of-00003.safetensors (~3GB)
+│   │   ├── generation_config.json
+│   │   ├── tokenizer.json
+│   │   ├── tokenizer_config.json
+│   │   └── special_tokens_map.json
+│   └── tokenizer/                   ← Audio tokenizer files
+│       ├── config.json
+│       └── model.pth (~200MB)
+└── voices/                          ← Voice reference files
+    ├── character1.wav               ← 30+ second reference audio
+    ├── character1.txt               ← Exact transcription
+    ├── narrator.wav
+    └── narrator.txt
+```
+
+**Available Higgs Audio Models (Auto-Download):**
+
+| Model                  | Type                | Source                                           | Size    | Auto-Download |
+| ---------------------- | ------------------- | ------------------------------------------------ | ------- | ------------- |
+| higgs-audio-v2-3B      | Voice Cloning       | [bosonai/higgs-audio-v2-generation-3B-base](https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base) | ~9GB    | ✅ |
+| Audio Tokenizer        | Tokenization        | [bosonai/higgs-audio-v2-tokenizer](https://huggingface.co/bosonai/higgs-audio-v2-tokenizer) | ~200MB  | ✅ |
+
+**Voice Reference Requirements:**
+
+- **Audio files**: WAV format, 30+ seconds, clean speech, single speaker
+- **Text files**: Exact transcription of the reference audio
+- **Naming**: `filename.wav` + `filename.txt` (transcription)
+- **Quality**: Clear, noise-free audio for best voice cloning results
+
+**How Higgs Audio Auto-Download Works:**
+
+1. **Select Model**: Choose "higgs-audio-v2-3B" in Higgs Audio Engine node
+2. **Auto-Download**: Both generation model (~9GB) and tokenizer (~200MB) download automatically
+3. **Voice References**: Place reference audio and transcriptions in voices/ folder
+4. **Local Cache**: Once downloaded, models are used from local cache for fast loading
+
+**Manual Installation (Optional):**
+
+To pre-download models for offline use:
+```bash
+# Download generation model files to:
+# ComfyUI/models/TTS/HiggsAudio/higgs-audio-v2-3B/generation/
+
+# Download tokenizer files to:  
+# ComfyUI/models/TTS/HiggsAudio/higgs-audio-v2-3B/tokenizer/
+```
+
+**Usage**: Simply use the ⚙️ Higgs Audio 2 Engine node → Select model → All required files download automatically!
+
+### 8. RVC Models (Optional - NEW in v4.0.0+)
 
 **For Real-time Voice Conversion capabilities**, RVC models are automatically downloaded to the organized structure:
 

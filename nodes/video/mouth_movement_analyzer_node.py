@@ -83,12 +83,17 @@ class MouthMovementAnalyzerNode(BaseNode):
     
     @classmethod
     def INPUT_TYPES(cls):
+        import sys
+        
+        # Smart default provider selection based on Python version
+        default_provider = AnalysisProvider.OPENSEEFACE.value if sys.version_info >= (3, 13) else AnalysisProvider.MEDIAPIPE.value
+        
         return {
             "required": {
                 "video": ("VIDEO",),
                 "provider": ([p.value for p in AnalysisProvider], {
-                    "default": AnalysisProvider.MEDIAPIPE.value,
-                    "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework with 468 facial landmarks\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n  - Recommended for production use\n\n• OpenSeeFace: Real-time face tracking (EXPERIMENTAL)\n  - More detailed expression analysis\n  - Better for subtle movements\n  - Still being optimized, may have issues\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies\n  - Good for older hardware"
+                    "default": default_provider,
+                    "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework (preferred, incompatible with Python 3.13)\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n\n• OpenSeeFace: Real-time face tracking (experimental, Python 3.13 compatible)\n  - Alternative for newer Python versions\n  - Results may be less accurate than MediaPipe\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies"
                 }),
                 "sensitivity": ("FLOAT", {
                     "default": 1.0,

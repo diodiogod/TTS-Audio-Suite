@@ -61,6 +61,16 @@ Attempting uninstall: numpy 2.3.2 → 2.2.6
 ```
 **Solution**: Install with `--no-deps`, manually install dependencies except librosa (which is already installed)
 
+### 5. RVC Voice Conversion Dependencies
+**Issue Found**: Missing `monotonic-alignment-search` causes RVC conversion to fail
+```
+ModuleNotFoundError: No module named 'monotonic_alignment_search'
+```
+**Solution**: 
+- monotonic-alignment-search: Installs cleanly on Python 3.13 ✅
+- faiss-cpu>=1.7.4: Already available ✅  
+- torchcrepe: Install with --no-deps (due to numpy conflict) ✅
+
 ## 🚫 IMPOSSIBLE PACKAGES (Python 3.13 incompatible)
 
 ### mediapipe>=0.10.0
@@ -205,8 +215,44 @@ numba 0.61.2 requires numpy<2.3,>=1.24, but you have numpy 2.3.2
 - All ChatterBox dependencies working
 - No breaking version conflicts
 
+## 🎯 Complete Installation Guide for New Users
+
+### Core Dependencies (Safe - install normally):
+```bash
+pip install torch>=2.0.0 torchaudio>=2.0.0
+pip install soundfile>=0.12.0 sounddevice>=0.4.0
+pip install jieba pypinyin unidecode omegaconf>=2.3.0
+pip install transformers>=4.46.3 conformer>=0.3.2
+pip install x-transformers torchdiffeq wandb accelerate ema-pytorch datasets
+pip install requests dacite vocos
+pip install monotonic-alignment-search faiss-cpu>=1.7.4
+pip install opencv-python pillow
+pip install "numpy>=2.2.0,<2.3.0"  # Critical: maintain 2.2.x for compatibility
+```
+
+### Problematic Dependencies (install with --no-deps):
+```bash
+pip install librosa --no-deps
+pip install descript-audio-codec --no-deps  
+pip install cached-path --no-deps
+pip install torchcrepe --no-deps
+pip install onnxruntime --no-deps  # For OpenSeeFace mouth movement
+```
+
+### Features Working on Python 3.13:
+- ✅ **All TTS Engines**: ChatterBox, F5-TTS, Higgs Audio
+- ✅ **RVC Voice Conversion**: Full functionality
+- ✅ **OpenSeeFace Mouth Movement**: Using bundled components
+- ❌ **MediaPipe Mouth Movement**: Python 3.13 incompatible (use OpenSeeFace instead)
+
+### Manual Dependency Resolution Required:
+- **numba compatibility**: numpy must stay <2.3.0
+- **RVC support**: monotonic-alignment-search required
+- **Higgs Audio**: Custom transformers 4.46+ compatibility fixes applied
+
 ## 🎯 Next Steps
 
-1. ✅ Test final installation end-to-end - **COMPLETED**
-2. Update install.py with complete dependency handling
-3. Update requirements.txt to minimal safe set
+1. ✅ Test all engines end-to-end - **COMPLETED**
+2. ✅ Document complete installation procedure - **COMPLETED**
+3. Create automated install script with all workarounds
+4. Update requirements.txt to minimal safe set

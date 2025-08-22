@@ -138,6 +138,15 @@ class OpenSeeFaceProvider(AbstractProvider):
             viseme_smoothing: Temporal smoothing factor for visemes
             enable_consonant_detection: Whether to detect consonants
         """
+        import sys
+        
+        # Inform user about Python 3.13 fallback context
+        if sys.version_info >= (3, 13):
+            print("🧪 Using OpenSeeFace provider (experimental alternative for Python 3.13)")
+            print("⚠️ Note: Results may be less accurate than MediaPipe on older Python versions")
+            print("📢 Want MediaPipe Python 3.13 support? Add your voice:")
+            print("   https://github.com/google-ai-edge/mediapipe/issues/5708")
+        
         if not OPENSEEFACE_AVAILABLE:
             raise RuntimeError(
                 "OpenSeeFace is not available. Please install OpenSeeFace:\n"

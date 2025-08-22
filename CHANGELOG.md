@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.3] - 2025-08-22
+
+### Added
+
+- Add comprehensive installation system with intelligent dependency management
+Add Python 3.13 full compatibility support with MediaPipe to OpenSeeFace fallback
+Add intelligent install.py script with automatic conflict resolution
+Add environment detection and safety warnings for system Python usage
+Add NumPy version constraints to prevent Numba compatibility issues
+Add automatic RVC dependencies installation support
+Update requirements.txt with comprehensive dependency documentation
+Update README with detailed installation instructions and Python 3.13 compatibility notes
+Add dedicated Higgs Audio 2 model installation section with complete folder structure
+Verify ComfyUI Manager integration with automatic install.py execution
+Fix all bundled engines compatibility: ChatterBox, F5-TTS, Higgs Audio, RVC
 ## [4.5.2] - 2025-08-22
 
 ### Changed
