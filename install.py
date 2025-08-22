@@ -96,14 +96,29 @@ class TTSAudioInstaller:
             "audio-separator>=0.35.2",    # ✅ SAFE - Heavy dependencies but no conflicts
             "hydra-core>=1.3.0",          # ✅ SAFE - Clean install, minimal dependencies
             
-            # Dependencies for --no-deps packages
-            "lazy_loader",                 # Required by librosa when installed with --no-deps
-            "filelock",                    # Required by cached-path when installed with --no-deps
-            "google-api-core",             # Required by cached-path when installed with --no-deps
-            "google-auth",                 # Required by google-api-core
-            "googleapis-common-protos",    # Required by google-api-core
-            "einops",                      # Required by descript-audio-codec when installed with --no-deps
-            "torch-audiomentations"        # Required by descript-audio-codec when installed with --no-deps
+            # Dependencies for --no-deps packages based on PyPI metadata
+            
+            # For librosa (when installed with --no-deps)
+            "lazy_loader>=0.1",            # Required by librosa
+            "msgpack>=1.0",               # Required by librosa
+            "pooch>=1.1",                 # Required by librosa
+            "soxr>=0.3.2",                # Required by librosa
+            "typing_extensions>=4.1.1",   # Required by librosa
+            "decorator>=4.3.0",           # Required by librosa
+            "joblib>=1.0",                # Required by librosa
+            "scikit-learn>=1.1.0",        # Required by librosa
+            
+            # For cached-path (when installed with --no-deps)
+            "filelock>=3.4",              # Required by cached-path
+            "rich>=12.1",                 # Required by cached-path
+            "boto3",                      # Required by cached-path
+            "google-cloud-storage",       # Required by cached-path for F5-TTS
+            "huggingface-hub",            # Required by cached-path
+            
+            # For descript-audio-codec (when installed with --no-deps)
+            "einops",                      # Required by descript-audio-codec
+            "argbind>=0.3.7",             # Required by descript-audio-codec
+            "descript-audiotools>=0.7.2"   # Required by descript-audio-codec
         ]
         
         for package in core_packages:
