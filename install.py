@@ -59,29 +59,46 @@ class TTSAudioInstaller:
         self.log("Installing core dependencies (safe packages)", "INFO")
         
         core_packages = [
+            # Foundation packages
             "torch>=2.0.0",
             "torchaudio>=2.0.0", 
             "soundfile>=0.12.0",
             "sounddevice>=0.4.0",
+            
+            # Text processing (safe)
             "jieba",
             "pypinyin", 
             "unidecode",
             "omegaconf>=2.3.0",
             "transformers>=4.46.3",
-            "conformer>=0.3.2",
-            "x-transformers",
-            "torchdiffeq",
-            "wandb",
-            "accelerate",
-            "ema-pytorch",
-            "datasets",
+            
+            # Bundled engine dependencies (safe)
+            "conformer>=0.3.2",      # ChatterBox engine
+            "x-transformers",        # F5-TTS engine  
+            "torchdiffeq",          # F5-TTS differential equations
+            "wandb",                # F5-TTS logging
+            "accelerate",           # F5-TTS acceleration
+            "ema-pytorch",          # F5-TTS exponential moving average
+            "datasets",             # F5-TTS dataset loading
+            "vocos",                # F5-TTS vocoder
+            
+            # Basic utilities (safe)
             "requests",
             "dacite",
-            "vocos",
             "opencv-python",
             "pillow",
-            "lazy_loader",  # Required by librosa when installed with --no-deps
-            "audio_separator"  # Required for vocal/noise removal
+            
+            # SAFE packages from DEPENDENCY_TESTING_RESULTS.md
+            "s3tokenizer>=0.1.7",          # ✅ SAFE - Heavy dependencies but NO conflicts
+            "vector-quantize-pytorch",     # ✅ SAFE - Clean install
+            "resemble-perth",              # ✅ SAFE - Works in ChatterBox
+            "diffusers>=0.30.0",          # ✅ SAFE - Likely safe
+            "audio-separator>=0.35.2",    # ✅ SAFE - Heavy dependencies but no conflicts
+            "hydra-core>=1.3.0",          # ✅ SAFE - Clean install, minimal dependencies
+            
+            # Dependencies for --no-deps packages
+            "lazy_loader",                 # Required by librosa when installed with --no-deps
+            "filelock"                     # Required by cached-path when installed with --no-deps
         ]
         
         for package in core_packages:
