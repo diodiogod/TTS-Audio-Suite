@@ -26,7 +26,14 @@ import tqdm
 from huggingface_hub import hf_hub_download
 from pydub import AudioSegment, silence
 from transformers import pipeline
-from vocos import Vocos
+
+# Conditional vocos import
+try:
+    from vocos import Vocos
+    VOCOS_AVAILABLE = True
+except ImportError:
+    VOCOS_AVAILABLE = False
+    Vocos = None
 
 from ..model import CFM
 from ..model.utils import convert_char_to_pinyin, get_tokenizer
