@@ -418,8 +418,13 @@ class ModelManager:
             self.current_device == device and current_language == language):
             return self.vc_model
         
-        # Get available model paths
-        model_paths = self.find_chatterbox_models()
+        # For VC, try language-specific model first (like TTS does)
+        local_language_path = self.find_local_language_model(language)
+        if local_language_path:
+            model_paths = [("comfyui", local_language_path)]
+        else:
+            # Fall back to generic discovery
+            model_paths = self.find_chatterbox_models()
         
         model_loaded = False
         last_error = None
