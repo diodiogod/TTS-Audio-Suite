@@ -24,21 +24,17 @@ class TTSAudioInstaller:
         self.pip_cmd = [sys.executable, "-m", "pip"]
         
     def log(self, message: str, level: str = "INFO"):
-        """Log installation progress with emoji indicators"""
-        emoji_map = {
-            "INFO": "ℹ️",
-            "SUCCESS": "✅", 
-            "WARNING": "⚠️",
-            "ERROR": "❌",
-            "INSTALL": "📦"
+        """Log installation progress with safe visual indicators"""
+        # Use ASCII-safe symbols that work on all systems
+        symbol_map = {
+            "INFO": "[i]",
+            "SUCCESS": "[+]", 
+            "WARNING": "[!]",
+            "ERROR": "[X]",
+            "INSTALL": "[*]"
         }
-        emoji = emoji_map.get(level, "ℹ️")
-        try:
-            print(f"{emoji} {message}")
-        except UnicodeEncodeError:
-            # Fallback for Windows systems that can't display emojis
-            level_text = f"[{level}]"
-            print(f"{level_text} {message}")
+        symbol = symbol_map.get(level, "[i]")
+        print(f"{symbol} {message}")
 
     def run_pip_command(self, args: List[str], description: str, ignore_errors: bool = False) -> bool:
         """Execute pip command with error handling"""
@@ -83,7 +79,9 @@ class TTSAudioInstaller:
             "dacite",
             "vocos",
             "opencv-python",
-            "pillow"
+            "pillow",
+            "lazy_loader",  # Required by librosa when installed with --no-deps
+            "audio_separator"  # Required for vocal/noise removal
         ]
         
         for package in core_packages:
@@ -232,29 +230,37 @@ class TTSAudioInstaller:
 
     def print_installation_summary(self):
         """Print installation summary and next steps"""
-        self.log("Installation Summary", "INFO")
-        print("="*60)
+        print("\n" + "="*70)
+        print(" "*20 + "TTS AUDIO SUITE INSTALLATION")
+        print("="*70)
         
-        self.log("TTS Audio Suite installation completed!", "SUCCESS")
-        print(f"Python version: {self.python_version.major}.{self.python_version.minor}.{self.python_version.micro}")
+        self.log("Installation completed successfully!", "SUCCESS")
+        print(f"\n>>> Python version: {self.python_version.major}.{self.python_version.minor}.{self.python_version.micro}")
         
         if self.is_python_313:
-            print("\n🧪 Python 3.13 Compatibility Notes:")
-            print("• All TTS engines: ✅ Working (ChatterBox, F5-TTS, Higgs Audio)")
-            print("• RVC voice conversion: ✅ Working") 
-            print("• OpenSeeFace mouth movement: ✅ Working (experimental)")
-            print("• MediaPipe mouth movement: ❌ Incompatible (use OpenSeeFace)")
-            print("\n📢 Want MediaPipe Python 3.13 support? Vote on:")
+            print("\n" + "-"*50)
+            print("   PYTHON 3.13 COMPATIBILITY STATUS")
+            print("-"*50)
+            print("  [+] All TTS engines: WORKING")
+            print("      (ChatterBox, F5-TTS, Higgs Audio)")
+            print("  [+] RVC voice conversion: WORKING") 
+            print("  [+] OpenSeeFace mouth movement: WORKING (experimental)")
+            print("  [X] MediaPipe mouth movement: INCOMPATIBLE")
+            print("      -> Use OpenSeeFace alternative")
+            print("\n>> Want MediaPipe Python 3.13 support? Vote at:")
             print("   https://github.com/google-ai-edge/mediapipe/issues/5708")
         else:
-            print("\n✅ Full Compatibility:")
-            print("• All TTS engines: ✅ Working")
-            print("• RVC voice conversion: ✅ Working")
-            print("• MediaPipe mouth movement: ✅ Working") 
-            print("• OpenSeeFace mouth movement: ✅ Working")
+            print("\n" + "-"*50)
+            print("   FULL COMPATIBILITY STATUS")
+            print("-"*50)
+            print("  [+] All TTS engines: WORKING")
+            print("  [+] RVC voice conversion: WORKING")
+            print("  [+] MediaPipe mouth movement: WORKING") 
+            print("  [+] OpenSeeFace mouth movement: WORKING")
         
-        print("\n🚀 Ready to use TTS Audio Suite in ComfyUI!")
-        print("="*60)
+        print("\n" + "="*70)
+        print(" "*15 + "READY TO USE TTS AUDIO SUITE IN COMFYUI!")
+        print("="*70 + "\n")
 
 def main():
     """Main installation entry point"""
