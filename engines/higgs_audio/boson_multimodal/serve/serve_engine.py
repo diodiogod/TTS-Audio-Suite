@@ -248,7 +248,7 @@ class HiggsAudioServeEngine:
         tokenizer_name_or_path: Optional[str] = None,
         device: str = "cuda",
         torch_dtype: Union[torch.dtype, str] = "auto",
-        kv_cache_lengths: List[int] = [1024, 4096, 8192],  # Multiple KV cache sizes
+        kv_cache_lengths: List[int] = [2048, 8192, 16384],  # Larger cache sizes for newer transformers
     ):
         """
         Initialize the HiggsAudioServeEngine, a serving wrapper for the HiggsAudioModel.
@@ -273,7 +273,16 @@ class HiggsAudioServeEngine:
         self.torch_dtype = torch_dtype
 
         # Initialize model and tokenizer
-        self.model = HiggsAudioModel.from_pretrained(model_name_or_path, torch_dtype=torch_dtype).to(device)
+        # Load with attention implementation fix for newer transformers
+        self.model = HiggsAudioModel.from_pretrained(
+            model_name_or_path, 
+            torch_dtype=torch_dtype,
+            attn_implementation="eager"  # Force eager attention for compatibility
+        ).to(device)
+        
+        # Fix attention implementation for transformers compatibility
+        self._fix_attention_implementation()
+        
         logger.info(f"Loaded model from {model_name_or_path}, dtype: {self.model.dtype}")
 
         if tokenizer_name_or_path is None:
@@ -343,8 +352,35 @@ class HiggsAudioServeEngine:
 
         # Capture CUDA graphs for each KV cache length
         if device == "cuda":
-            logger.info(f"Capturing CUDA graphs for each KV cache length")
-            self.model.capture_model(self.kv_caches.values())
+            try:
+                logger.info(f"Attempting CUDA graph capture for each KV cache length")
+                self.model.capture_model(self.kv_caches.values())
+                logger.info("✅ CUDA graph capture successful")
+            except Exception as e:
+                logger.warning(f"⚠️ CUDA graph capture failed: {e}")
+                logger.info("Continuing without CUDA graphs (performance may be slower)")
+        else:
+            logger.info("CUDA graph capture skipped (not using CUDA device)")
+
+    def _fix_attention_implementation(self):
+        """Fix attention implementation for all LLaMA layers to avoid None errors"""
+        logger.info("Fixing attention implementation for transformers compatibility")
+        
+        # Fix the main config
+        if hasattr(self.model.config, 'text_config'):
+            if hasattr(self.model.config.text_config, '_attn_implementation'):
+                if self.model.config.text_config._attn_implementation is None:
+                    self.model.config.text_config._attn_implementation = "eager"
+        
+        # Fix all attention layers directly
+        if hasattr(self.model, 'language_model') and hasattr(self.model.language_model, 'model'):
+            llm_model = self.model.language_model.model
+            if hasattr(llm_model, 'layers'):
+                for layer in llm_model.layers:
+                    if hasattr(layer, 'self_attn') and hasattr(layer.self_attn, 'config'):
+                        if hasattr(layer.self_attn.config, '_attn_implementation'):
+                            if layer.self_attn.config._attn_implementation is None:
+                                layer.self_attn.config._attn_implementation = "eager"
 
     def _prepare_inputs(self, chat_ml_sample: ChatMLSample, force_audio_gen: bool = False):
         input_tokens, _, audio_contents, _ = prepare_chatml_sample(
