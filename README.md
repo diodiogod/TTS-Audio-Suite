@@ -430,10 +430,10 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 
    The installer automatically handles all dependency conflicts and Python version compatibility.
 
-3. **Download Models** (Required)
+3. **Manual Download Models** (OR It will auto-download on first run)
 
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
-   - Place in `ComfyUI/models/TTS/chatterbox/` (recommended) or `ComfyUI/models/chatterbox/` (legacy)
+   - Place in `ComfyUI/models/TTS/chatterbox/English/` (recommended) or `ComfyUI/models/chatterbox/` (legacy)
 
 3. **Try a Workflow**
 
