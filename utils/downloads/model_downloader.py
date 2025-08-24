@@ -17,6 +17,68 @@ try:
 except ImportError:
     MODELS_DIR = os.path.expanduser("~/ComfyUI/models")
 
+def _find_legacy_model_in_cache(model_filename: str, download_url: str) -> Optional[str]:
+    """
+    Find legacy RVC/UVR model in HuggingFace cache based on the download URL
+    
+    Args:
+        model_filename: Name of the model file
+        download_url: The download URL to extract repo information from
+        
+    Returns:
+        Path to the exact cached model if found, None otherwise
+    """
+    try:
+        # Only check HuggingFace URLs
+        if "huggingface.co" not in download_url:
+            return None
+        
+        # Extract repo ID from URL
+        # Format: https://huggingface.co/owner/repo/resolve/main/path/file.ext
+        parts = download_url.split("/")
+        if len(parts) < 5:
+            return None
+        
+        owner = parts[3]
+        repo = parts[4] 
+        repo_id = f"{owner}/{repo}"
+        
+        # Get HuggingFace cache directory
+        cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
+        
+        # Convert repo ID to cache format
+        cache_folder_name = f"models--{repo_id.replace('/', '--')}"
+        cache_path = os.path.join(cache_home, cache_folder_name)
+        
+        if os.path.exists(cache_path):
+            # Look for the snapshots directory
+            snapshots_dir = os.path.join(cache_path, "snapshots")
+            if os.path.exists(snapshots_dir):
+                try:
+                    snapshots = os.listdir(snapshots_dir)
+                    if snapshots:
+                        # Check each snapshot for the specific model file
+                        for snapshot in snapshots:
+                            snapshot_path = os.path.join(snapshots_dir, snapshot)
+                            
+                            # Try direct file path first
+                            model_path = os.path.join(snapshot_path, model_filename)
+                            if os.path.exists(model_path):
+                                return model_path
+                            
+                            # Try with subdirectory path (for models like RVC/model.pth)
+                            if "/" in model_filename:
+                                model_path = os.path.join(snapshot_path, model_filename)
+                                if os.path.exists(model_path):
+                                    return model_path
+                except OSError:
+                    pass
+        
+        return None
+    except Exception as e:
+        print(f"⚠️ Error checking HuggingFace cache for legacy model '{model_filename}': {e}")
+        return None
+
 # Download sources - Updated to use official RVC sources
 # RVC character models - using community models as reference implementation uses them
 RVC_DOWNLOAD_BASE = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
@@ -115,24 +177,30 @@ def download_model_from_url(model_name: str, target_path: str, download_url: str
         return None
 
 
-def download_model(model_name: str, target_path: str, base_url: str = RVC_DOWNLOAD_BASE) -> bool:
+def download_model(model_name: str, target_path: str, base_url: str = RVC_DOWNLOAD_BASE) -> str:
     """
-    Download a model file from remote source.
+    Download a model file from remote source or find in cache.
     
     Args:
         model_name: Name/path of model to download (e.g., "RVC/Claire.pth")
-        target_path: Local path where model should be saved
+        target_path: Local path where model should be saved (used if downloading)
         base_url: Base URL for downloads
         
     Returns:
-        True if download successful, False otherwise
+        Path to model (target_path if downloaded, cache_path if found in cache, None if failed)
     """
     if os.path.exists(target_path):
         print(f"📁 Model already exists: {os.path.basename(target_path)}")
-        return True
-        
+        return target_path
+    
+    # Check HuggingFace cache before downloading
+    download_url = f"{base_url}{model_name}"
+    cache_path = _find_legacy_model_in_cache(model_name, download_url)
+    if cache_path:
+        print(f"💾 Using HuggingFace cache for '{model_name}': {cache_path}")
+        return cache_path  # Return cache path directly - no copying
+    
     try:
-        download_url = f"{base_url}{model_name}"
         print(f"📥 Downloading {model_name} from {download_url}")
         
         # Create directory structure
@@ -156,7 +224,7 @@ def download_model(model_name: str, target_path: str, base_url: str = RVC_DOWNLO
                         print(f"\r📥 Downloading {os.path.basename(target_path)}: {progress:.1f}%", end='', flush=True)
         
         print(f"\n✅ Successfully downloaded: {os.path.basename(target_path)}")
-        return True
+        return target_path
         
     except Exception as e:
         print(f"\n❌ Download failed for {model_name}: {e}")
@@ -166,7 +234,7 @@ def download_model(model_name: str, target_path: str, base_url: str = RVC_DOWNLO
                 os.remove(target_path)
             except:
                 pass
-        return False
+        return None
 
 
 def download_rvc_model(model_name: str) -> Optional[str]:
@@ -191,9 +259,8 @@ def download_rvc_model(model_name: str) -> Optional[str]:
     
     target_path = os.path.join(MODELS_DIR, "TTS", "RVC", model_name)
     
-    if download_model(rvc_path, target_path):
-        return target_path
-    return None
+    downloaded_path = download_model(rvc_path, target_path)
+    return downloaded_path  # Could be target_path (downloaded) or cache_path (cached) or None (failed)
 
 
 def download_rvc_index(index_name: str) -> Optional[str]:
@@ -218,9 +285,8 @@ def download_rvc_index(index_name: str) -> Optional[str]:
     
     target_path = os.path.join(MODELS_DIR, "TTS", "RVC", ".index", index_name)
     
-    if download_model(index_path, target_path):
-        return target_path
-    return None
+    downloaded_path = download_model(index_path, target_path)
+    return downloaded_path  # Could be target_path (downloaded) or cache_path (cached) or None (failed)
 
 
 def download_base_model(model_name: str) -> Optional[str]:
@@ -246,8 +312,8 @@ def download_base_model(model_name: str) -> Optional[str]:
         return download_model_from_url(model_name, target_path, official_url)
     else:
         # Fallback to default base URL
-        if download_model(model_name, target_path):
-            return target_path
+        downloaded_path = download_model(model_name, target_path)
+        return downloaded_path  # Could be target_path (downloaded) or cache_path (cached) or None (failed)
     return None
 
 
@@ -275,9 +341,8 @@ def download_uvr_model(model_name: str) -> Optional[str]:
     tts_uvr_path = uvr_path.replace("UVR/", "TTS/UVR/")
     target_path = os.path.join(MODELS_DIR, tts_uvr_path)
     
-    if download_model(uvr_path, target_path):
-        return target_path
-    return None
+    downloaded_path = download_model(uvr_path, target_path)
+    return downloaded_path  # Could be target_path (downloaded) or cache_path (cached) or None (failed)
 
 
 def extract_zip_flat(zip_path: str, extract_to: str, cleanup: bool = False) -> List[str]:
