@@ -177,8 +177,8 @@ class MinimalRVCWrapper:
             print("📥 Attempting to download RVC-compatible model as fallback...")
             
             try:
-                from engines.rvc.hubert_downloader import download_hubert_model
-                fallback_path = download_hubert_model("content-vec-best", models_dir)
+                from engines.rvc.hubert_downloader import find_or_download_hubert
+                fallback_path = find_or_download_hubert("content-vec-best", models_dir)
                 if fallback_path:
                     print(f"✅ Downloaded RVC-compatible fallback: {fallback_path}")
                     return fallback_path
