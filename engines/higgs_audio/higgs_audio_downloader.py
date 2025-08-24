@@ -84,6 +84,7 @@ class HiggsAudioDownloader:
     def download_model(self, model_name_or_path: str) -> str:
         """
         Download or locate Higgs Audio generation model
+        Checks in order: local paths -> legacy paths -> HuggingFace cache -> download
         
         Args:
             model_name_or_path: Model name or HuggingFace repo ID or local path
@@ -112,11 +113,17 @@ class HiggsAudioDownloader:
             repo_id = model_config["generation_repo"]
             files = model_config["generation_files"]
             
-            # Check if already downloaded
+            # Check if already downloaded to organized structure
             model_dir = os.path.join(self.base_path, model_name_or_path, "generation")
             if self._check_model_files_exist(model_dir, [f["local"] for f in files]):
                 print(f"📁 Generation model already exists: {model_dir}")
                 return model_dir
+            
+            # Check HuggingFace cache for predefined models
+            cache_path = self._find_in_huggingface_cache(repo_id)
+            if cache_path:
+                print(f"💾 Using HuggingFace cache for generation model: {cache_path}")
+                return cache_path
             
             # Download model
             print(f"📥 Downloading Higgs Audio generation model: {model_name_or_path}")
@@ -134,17 +141,17 @@ class HiggsAudioDownloader:
             else:
                 raise RuntimeError(f"Failed to download generation model: {model_name_or_path}")
         
-        # Handle direct HuggingFace repo IDs - download to organized structure
-        print(f"📥 Downloading HuggingFace model to organized structure: {model_name_or_path}")
+        # Handle direct HuggingFace repo IDs
+        print(f"🔍 Checking for Higgs Audio model: {model_name_or_path}")
         
         # Extract model name from repo ID for organization
         model_name = model_name_or_path.split('/')[-1]  # e.g., "higgs-audio-v2-generation-3B-base"
         local_path = os.path.join(self.base_path, model_name)
         
-        # Check if already exists locally and is complete
+        # 1. Check if already exists locally and is complete
         if os.path.exists(local_path):
             # Verify essential files exist for sharded models and tokenizer
-            essential_files = ["config.json", "model.safetensors.index.json", "tokenizer_config.json"]
+            essential_files = ["config.json", "model.safetensors.index.json"]
             if all(os.path.exists(os.path.join(local_path, f)) for f in essential_files):
                 print(f"📁 Using existing complete local model: {local_path}")
                 return local_path
@@ -154,10 +161,37 @@ class HiggsAudioDownloader:
                 print(f"   Missing files: {[f for f in essential_files if not os.path.exists(os.path.join(local_path, f))]}")
                 print(f"   ACTION REQUIRED: Please manually delete this folder and restart ComfyUI")
                 print(f"   Falling back to HuggingFace cache for now...")
-                return model_name_or_path  # Return repo ID to use cache fallback
         
+        # 2. Check legacy paths (like F5-TTS implementation)
+        legacy_paths = [
+            os.path.join(folder_paths.models_dir, "HiggsAudio"),  # Legacy
+            os.path.join(folder_paths.models_dir, "Higgs_2"),    # Legacy
+            os.path.join(folder_paths.models_dir, "TTS", "HiggsAudio", model_name),  # Direct model folder
+        ]
         
-        # Download using unified downloader to organized structure
+        for legacy_path in legacy_paths:
+            if os.path.exists(legacy_path):
+                # Check if it contains essential model files
+                if os.path.isfile(legacy_path):
+                    # Single file - unlikely for Higgs Audio but check anyway
+                    if legacy_path.endswith(('.safetensors', '.bin')):
+                        print(f"📁 Using legacy model file: {legacy_path}")
+                        return legacy_path
+                else:
+                    # Directory - check for essential files
+                    essential_files = ["config.json"]
+                    if any(os.path.exists(os.path.join(legacy_path, f)) for f in essential_files):
+                        print(f"📁 Using legacy model directory: {legacy_path}")
+                        return legacy_path
+        
+        # 3. Check HuggingFace cache
+        cache_path = self._find_in_huggingface_cache(model_name_or_path)
+        if cache_path:
+            print(f"💾 Using HuggingFace cache: {cache_path}")
+            return cache_path
+        
+        # 4. Download using unified downloader to organized structure
+        print(f"📥 Downloading HuggingFace model to organized structure: {model_name_or_path}")
         try:
             # Simple file list for unknown models (try both single and sharded formats)
             common_files = [
@@ -195,6 +229,7 @@ class HiggsAudioDownloader:
     def download_tokenizer(self, tokenizer_name_or_path: str) -> str:
         """
         Download or locate Higgs Audio tokenizer model
+        Checks in order: local paths -> legacy paths -> HuggingFace cache -> download
         
         Args:
             tokenizer_name_or_path: Tokenizer name or HuggingFace repo ID or local path
@@ -229,11 +264,17 @@ class HiggsAudioDownloader:
             repo_id = model_config["tokenizer_repo"]
             files = model_config["tokenizer_files"]
             
-            # Check if already downloaded
+            # Check if already downloaded to organized structure
             tokenizer_dir = os.path.join(self.base_path, model_name, "tokenizer")
             if self._check_model_files_exist(tokenizer_dir, [f["local"] for f in files]):
                 print(f"📁 Tokenizer model already exists: {tokenizer_dir}")
                 return tokenizer_dir
+            
+            # Check HuggingFace cache for predefined models
+            cache_path = self._find_in_huggingface_cache(repo_id)
+            if cache_path:
+                print(f"💾 Using HuggingFace cache for tokenizer model: {cache_path}")
+                return cache_path
             
             # Download tokenizer
             print(f"📥 Downloading Higgs Audio tokenizer model: {model_name}")
@@ -251,19 +292,44 @@ class HiggsAudioDownloader:
             else:
                 raise RuntimeError(f"Failed to download tokenizer model: {model_name}")
         
-        # Handle direct HuggingFace repo IDs - download to organized structure
-        print(f"📥 Downloading HuggingFace tokenizer to organized structure: {tokenizer_name_or_path}")
+        # Handle direct HuggingFace repo IDs
+        print(f"🔍 Checking for Higgs Audio tokenizer: {tokenizer_name_or_path}")
         
         # Extract model name from repo ID for organization
         model_name = tokenizer_name_or_path.split('/')[-1]  # e.g., "higgs-audio-v2-tokenizer"
         local_path = os.path.join(self.base_path, model_name)
         
-        # Check if already exists locally
+        # 1. Check if already exists locally
         if os.path.exists(local_path):
-            print(f"📁 Using existing local tokenizer: {local_path}")
-            return local_path
+            # Verify essential files exist
+            essential_files = ["config.json", "model.pth"]
+            if all(os.path.exists(os.path.join(local_path, f)) for f in essential_files):
+                print(f"📁 Using existing complete local tokenizer: {local_path}")
+                return local_path
         
-        # Download using unified downloader to organized structure
+        # 2. Check legacy paths
+        legacy_paths = [
+            os.path.join(folder_paths.models_dir, "HiggsAudio", "tokenizer"),  # Legacy
+            os.path.join(folder_paths.models_dir, "Higgs_2", "tokenizer"),    # Legacy
+            os.path.join(folder_paths.models_dir, "TTS", "HiggsAudio", "tokenizer"),  # Legacy organized
+        ]
+        
+        for legacy_path in legacy_paths:
+            if os.path.exists(legacy_path):
+                # Check if it contains essential tokenizer files
+                essential_files = ["config.json", "model.pth"]
+                if any(os.path.exists(os.path.join(legacy_path, f)) for f in essential_files):
+                    print(f"📁 Using legacy tokenizer directory: {legacy_path}")
+                    return legacy_path
+        
+        # 3. Check HuggingFace cache
+        cache_path = self._find_in_huggingface_cache(tokenizer_name_or_path)
+        if cache_path:
+            print(f"💾 Using HuggingFace cache for tokenizer: {cache_path}")
+            return cache_path
+        
+        # 4. Download using unified downloader to organized structure
+        print(f"📥 Downloading HuggingFace tokenizer to organized structure: {tokenizer_name_or_path}")
         try:
             # Simple file list for unknown tokenizers
             common_files = [
@@ -332,6 +398,44 @@ class HiggsAudioDownloader:
         print(f"⚠️ Voice presets not found at {voices_dir}")
         print("Voice presets should be included with the extension installation")
         return False
+    
+    def _find_in_huggingface_cache(self, repo_id: str) -> Optional[str]:
+        """
+        Find model in HuggingFace cache directory
+        
+        Args:
+            repo_id: HuggingFace repository ID (e.g., "bosonai/higgs-audio-v2-tokenizer")
+            
+        Returns:
+            Path to cached model if found, None otherwise
+        """
+        try:
+            # Get HuggingFace cache directory
+            cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
+            
+            # Convert repo ID to cache format: "owner/repo" -> "models--owner--repo"
+            cache_folder_name = f"models--{repo_id.replace('/', '--')}"
+            cache_path = os.path.join(cache_home, cache_folder_name)
+            
+            if os.path.exists(cache_path):
+                # Look for the snapshots directory
+                snapshots_dir = os.path.join(cache_path, "snapshots")
+                if os.path.exists(snapshots_dir):
+                    # Get the most recent snapshot
+                    try:
+                        snapshots = os.listdir(snapshots_dir)
+                        if snapshots:
+                            # Use the first available snapshot (typically latest)
+                            latest_snapshot = os.path.join(snapshots_dir, snapshots[0])
+                            if os.path.exists(latest_snapshot):
+                                return latest_snapshot
+                    except OSError:
+                        pass
+            
+            return None
+        except Exception as e:
+            print(f"⚠️ Error checking HuggingFace cache: {e}")
+            return None
     
     def _check_model_files_exist(self, model_dir: str, required_files: List[str]) -> bool:
         """

@@ -47,11 +47,11 @@ import folder_paths
 # Global engine cache to avoid reloading models
 _ENGINE_CACHE = {}
 
-# Higgs Audio model configurations
+# Higgs Audio model configurations (matches downloader format)
 HIGGS_AUDIO_MODELS = {
     "higgs-audio-v2-3B": {
-        "generation_model": "bosonai/higgs-audio-v2-generation-3B-base",
-        "tokenizer_model": "bosonai/higgs-audio-v2-tokenizer",
+        "generation_repo": "bosonai/higgs-audio-v2-generation-3B-base",
+        "tokenizer_repo": "bosonai/higgs-audio-v2-tokenizer",
         "description": "Higgs Audio v2 3B parameter model"
     }
 }
@@ -120,15 +120,20 @@ class HiggsAudioEngine:
         print(f"   Tokenizer: {tokenizer_path}")
         print(f"   Device: {device}")
         
-        # Download models if needed
-        model_path = self.downloader.download_model(model_path)
-        tokenizer_path = self.downloader.download_tokenizer(tokenizer_path)
-        
+        # Use smart path resolution: local paths for verified local models,
+        # repo IDs otherwise (matches F5-TTS from_local vs from_pretrained pattern)
         try:
-            # Create engine
+            # Get smart paths that work with HiggsAudioServeEngine
+            model_path_for_engine = self._get_smart_model_path(model_path)
+            tokenizer_path_for_engine = self._get_smart_tokenizer_path(tokenizer_path)
+            
+            print(f"🔧 Using model: {model_path_for_engine}")
+            print(f"🔧 Using tokenizer: {tokenizer_path_for_engine}")
+            
+            # Create engine (HiggsAudioServeEngine handles both paths and repo IDs)
             engine = HiggsAudioServeEngine(
-                model_name_or_path=model_path,
-                audio_tokenizer_name_or_path=tokenizer_path,
+                model_name_or_path=model_path_for_engine,
+                audio_tokenizer_name_or_path=tokenizer_path_for_engine,
                 device=device
             )
             
@@ -618,6 +623,131 @@ class HiggsAudioEngine:
             combined_waveform = result
             print(f"  ✅ Combined waveform shape: {combined_waveform.shape}")
             return {"waveform": combined_waveform, "sample_rate": sample_rate}
+    
+    def _get_smart_model_path(self, model_path: str) -> str:
+        """
+        Get smart model path for HiggsAudioServeEngine:
+        - Return verified local paths for complete local models
+        - Download to TTS structure first, then return that path
+        - Only fallback to repo IDs if download fails
+        """
+        # If already a valid local path, use it
+        if os.path.exists(model_path) and os.path.isdir(model_path):
+            if self._verify_model_completeness(model_path):
+                return model_path
+        
+        # Check predefined models
+        if model_path in HIGGS_AUDIO_MODELS:
+            config = HIGGS_AUDIO_MODELS[model_path]
+            repo_id = config["generation_repo"]
+            
+            # Check if we have complete local organized structure
+            local_dir = os.path.join(self.downloader.base_path, model_path, "generation")
+            if os.path.exists(local_dir) and self._verify_model_completeness(local_dir):
+                print(f"✅ Using verified local model: {local_dir}")
+                return local_dir
+            
+            # Download to organized structure first using our downloader
+            print(f"📥 Ensuring model is in TTS structure: {repo_id}")
+            downloaded_path = self.downloader.download_model(repo_id)
+            
+            # If download succeeded and gave us a local path, use it
+            if downloaded_path != repo_id and os.path.exists(downloaded_path):
+                print(f"✅ Downloaded to TTS structure: {downloaded_path}")
+                return downloaded_path
+            
+            # Fallback to repo ID if download failed
+            print(f"🔄 Fallback to repo ID: {repo_id}")
+            return repo_id
+        
+        # For direct repo IDs, ensure download to organized structure
+        if "/" in model_path:  # Looks like repo ID
+            model_name = model_path.split('/')[-1]
+            local_path = os.path.join(self.downloader.base_path, model_name)
+            
+            if os.path.exists(local_path) and self._verify_model_completeness(local_path):
+                print(f"✅ Using verified local model: {local_path}")
+                return local_path
+            
+            # Download to organized structure first
+            print(f"📥 Ensuring model is in TTS structure: {model_path}")
+            downloaded_path = self.downloader.download_model(model_path)
+            
+            # If download succeeded and gave us a local path, use it
+            if downloaded_path != model_path and os.path.exists(downloaded_path):
+                print(f"✅ Downloaded to TTS structure: {downloaded_path}")
+                return downloaded_path
+            
+            # Fallback to repo ID
+            print(f"🔄 Fallback to repo ID: {model_path}")
+            return model_path
+        
+        # Default: return as-is
+        return model_path
+    
+    def _get_smart_tokenizer_path(self, tokenizer_path: str) -> str:
+        """
+        Get smart tokenizer path for HiggsAudioServeEngine following F5-TTS pattern:
+        - Return verified local paths for complete local tokenizers
+        - Return repo IDs otherwise (let HuggingFace handle cache/download)
+        """
+        # If already a valid local path, use it
+        if os.path.exists(tokenizer_path) and os.path.isdir(tokenizer_path):
+            if self._verify_tokenizer_completeness(tokenizer_path):
+                return tokenizer_path
+        
+        # Check predefined models
+        for model_name, config in HIGGS_AUDIO_MODELS.items():
+            if config["tokenizer_repo"] == tokenizer_path:
+                # Check if we have complete local organized structure
+                local_dir = os.path.join(self.downloader.base_path, model_name, "tokenizer")
+                if os.path.exists(local_dir) and self._verify_tokenizer_completeness(local_dir):
+                    print(f"✅ Using verified local tokenizer: {local_dir}")
+                    return local_dir
+                break
+        
+        # For direct repo IDs, check for local organized download
+        if "/" in tokenizer_path:  # Looks like repo ID
+            model_name = tokenizer_path.split('/')[-1]
+            local_path = os.path.join(self.downloader.base_path, model_name)
+            
+            if os.path.exists(local_path) and self._verify_tokenizer_completeness(local_path):
+                print(f"✅ Using verified local tokenizer: {local_path}")
+                return local_path
+            
+            # Return repo ID - HuggingFace will handle cache/download
+            print(f"🔄 Using repo ID (HF will handle cache): {tokenizer_path}")
+            return tokenizer_path
+        
+        # Default: return as-is (likely repo ID)
+        print(f"🔄 Using repo ID (HF will handle cache): {tokenizer_path}")
+        return tokenizer_path
+    
+    def _verify_model_completeness(self, model_dir: str) -> bool:
+        """Verify model directory has all essential files and they're not corrupted"""
+        try:
+            essential_files = ["config.json", "model.safetensors.index.json"]
+            # Check files exist
+            if not all(os.path.exists(os.path.join(model_dir, f)) for f in essential_files):
+                return False
+            
+            # Quick corruption check - just verify config.json is valid JSON
+            config_path = os.path.join(model_dir, "config.json")
+            with open(config_path, 'r') as f:
+                import json
+                json.load(f)  # Will raise if corrupted
+            
+            return True
+        except Exception:
+            return False
+    
+    def _verify_tokenizer_completeness(self, tokenizer_dir: str) -> bool:
+        """Verify tokenizer directory has all essential files"""
+        try:
+            essential_files = ["config.json", "model.pth"]
+            return all(os.path.exists(os.path.join(tokenizer_dir, f)) for f in essential_files)
+        except Exception:
+            return False
     
     def cleanup(self):
         """Clean up resources"""
