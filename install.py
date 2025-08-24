@@ -119,6 +119,29 @@ class TTSAudioInstaller:
             "einops",                      # Required by descript-audio-codec
             "argbind>=0.3.7",             # Required by descript-audio-codec
             # NOTE: descript-audiotools causes protobuf conflicts, installed via --no-deps
+            
+            # For F5-TTS engine
+            "matplotlib",                  # Required by F5-TTS utils_infer.py
+            
+            # Additional librosa dependencies for --no-deps installation
+            "audioread>=2.1.9",           # Required by librosa
+            "threadpoolctl>=3.1.0",       # Required by scikit-learn for librosa
+            "standard-aifc",              # Python 3.13 audio format support
+            "standard-sunau",             # Python 3.13 audio format support
+            "standard-chunk",             # Python 3.13 audio format support
+            "audioop-lts",                # Python 3.13 audio operations
+            
+            # Missing descript-audiotools dependencies for --no-deps installation
+            "flatten-dict",               # Required by descript-audiotools
+            "ffmpy",                      # Required by descript-audiotools
+            "importlib-resources",        # Required by descript-audiotools
+            "randomname",                 # Required by descript-audiotools
+            "markdown2",                  # Required by descript-audiotools
+            "pyloudnorm",                 # Required by descript-audiotools
+            "pystoi",                     # Required by descript-audiotools
+            "torch-stoi",                 # Required by descript-audiotools
+            "ipython",                    # Required by descript-audiotools
+            "tensorboard"                 # Required by descript-audiotools
         ]
         
         for package in core_packages:
