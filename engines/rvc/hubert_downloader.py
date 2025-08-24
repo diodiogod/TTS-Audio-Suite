@@ -23,82 +23,8 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
         Path to the downloaded model file, or None if failed
     """
     from .hubert_models import get_hubert_model_info, get_hubert_filename, get_hubert_download_url
-
-def _find_hubert_in_cache(model_key: str) -> Optional[str]:
-    """
-    Find the specific HuBERT model the user selected in HuggingFace cache
     
-    Args:
-        model_key: Specific HuBERT model key (e.g., "japanese-hubert-base")
-        
-    Returns:
-        Path to the exact cached model if found, None otherwise
-    """
-    try:
-        from .hubert_models import get_hubert_model_info
-        
-        # Get the model info to find the correct repo ID
-        model_info = get_hubert_model_info(model_key)
-        if not model_info or "url" not in model_info:
-            return None
-        
-        # Extract repo ID from URL for known HuggingFace models
-        url = model_info["url"]
-        repo_id = None
-        
-        if "huggingface.co" in url:
-            # Parse HuggingFace URL: https://huggingface.co/owner/repo/resolve/main/file.ext
-            parts = url.split("/")
-            if len(parts) >= 5:
-                owner = parts[3]  # e.g., "rinna" 
-                repo = parts[4]   # e.g., "japanese-hubert-base"
-                repo_id = f"{owner}/{repo}"
-        else:
-            # Not a HuggingFace model, no cache to check
-            return None
-        
-        if not repo_id:
-            return None
-        
-        # Get HuggingFace cache directory  
-        cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
-        
-        # Convert repo ID to cache format
-        cache_folder_name = f"models--{repo_id.replace('/', '--')}"
-        cache_path = os.path.join(cache_home, cache_folder_name)
-        
-        if os.path.exists(cache_path):
-            # Look for the snapshots directory
-            snapshots_dir = os.path.join(cache_path, "snapshots")
-            if os.path.exists(snapshots_dir):
-                try:
-                    snapshots = os.listdir(snapshots_dir)
-                    if snapshots:
-                        # Use the first available snapshot (typically latest)
-                        latest_snapshot = os.path.join(snapshots_dir, snapshots[0])
-                        if os.path.exists(latest_snapshot):
-                            # Check for the exact model file we need
-                            expected_filename = model_info.get("filename", "")
-                            if expected_filename:
-                                # Try to find the exact file first
-                                expected_path = os.path.join(latest_snapshot, expected_filename)
-                                if os.path.exists(expected_path):
-                                    return expected_path
-                            
-                            # Fallback: look for common HuBERT model files
-                            for model_file in ["pytorch_model.bin", "model.safetensors", "model.bin"]:
-                                model_path = os.path.join(latest_snapshot, model_file)
-                                if os.path.exists(model_path):
-                                    return model_path
-                except OSError:
-                    pass
-        
-        return None
-    except Exception as e:
-        print(f"⚠️ Error checking HuggingFace cache for HuBERT model '{model_key}': {e}")
-        return None
-    
-    # Get model information
+    # Get model information first
     info = get_hubert_model_info(model_key)
     if not info:
         print(f"❌ Unknown HuBERT model: {model_key}")
@@ -184,6 +110,80 @@ def _find_hubert_in_cache(model_key: str) -> Optional[str]:
             os.remove(temp_path)
         return None
 
+def _find_hubert_in_cache(model_key: str) -> Optional[str]:
+    """
+    Find the specific HuBERT model the user selected in HuggingFace cache
+    
+    Args:
+        model_key: Specific HuBERT model key (e.g., "japanese-hubert-base")
+        
+    Returns:
+        Path to the exact cached model if found, None otherwise
+    """
+    try:
+        from .hubert_models import get_hubert_model_info
+        
+        # Get the model info to find the correct repo ID
+        model_info = get_hubert_model_info(model_key)
+        if not model_info or "url" not in model_info:
+            return None
+        
+        # Extract repo ID from URL for known HuggingFace models
+        url = model_info["url"]
+        repo_id = None
+        
+        if "huggingface.co" in url:
+            # Parse HuggingFace URL: https://huggingface.co/owner/repo/resolve/main/file.ext
+            parts = url.split("/")
+            if len(parts) >= 5:
+                owner = parts[3]  # e.g., "rinna" 
+                repo = parts[4]   # e.g., "japanese-hubert-base"
+                repo_id = f"{owner}/{repo}"
+        else:
+            # Not a HuggingFace model, no cache to check
+            return None
+        
+        if not repo_id:
+            return None
+        
+        # Get HuggingFace cache directory  
+        cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
+        
+        # Convert repo ID to cache format
+        cache_folder_name = f"models--{repo_id.replace('/', '--')}"
+        cache_path = os.path.join(cache_home, cache_folder_name)
+        
+        if os.path.exists(cache_path):
+            # Look for the snapshots directory
+            snapshots_dir = os.path.join(cache_path, "snapshots")
+            if os.path.exists(snapshots_dir):
+                try:
+                    snapshots = os.listdir(snapshots_dir)
+                    if snapshots:
+                        # Use the first available snapshot (typically latest)
+                        latest_snapshot = os.path.join(snapshots_dir, snapshots[0])
+                        if os.path.exists(latest_snapshot):
+                            # Check for the exact model file we need
+                            expected_filename = model_info.get("filename", "")
+                            if expected_filename:
+                                # Try to find the exact file first
+                                expected_path = os.path.join(latest_snapshot, expected_filename)
+                                if os.path.exists(expected_path):
+                                    return expected_path
+                            
+                            # Fallback: look for common HuBERT model files
+                            for model_file in ["pytorch_model.bin", "model.safetensors", "model.bin"]:
+                                model_path = os.path.join(latest_snapshot, model_file)
+                                if os.path.exists(model_path):
+                                    return model_path
+                except OSError:
+                    pass
+        
+        return None
+    except Exception as e:
+        print(f"⚠️ Error checking HuggingFace cache for HuBERT model '{model_key}': {e}")
+        return None
+
 def find_or_download_hubert(model_key: str, models_dir: str) -> Optional[str]:
     """
     Find a HuBERT model locally or download if needed.
@@ -211,12 +211,19 @@ def find_or_download_hubert(model_key: str, models_dir: str) -> Optional[str]:
         if downloaded_path:
             return downloaded_path
     else:
-        # Model should already exist
+        # Model should already exist - check all possible locations
         filename = get_hubert_filename(model_key)
         if filename:
-            model_path = os.path.join(models_dir, "hubert", filename)
-            if os.path.exists(model_path):
-                return model_path
+            # Check all paths that should_download_hubert checks
+            search_paths = [
+                os.path.join(models_dir, "TTS", "hubert", filename),    # New TTS organization
+                os.path.join(models_dir, "hubert", filename),           # Legacy
+                os.path.join(models_dir, filename)                       # Direct in models/
+            ]
+            
+            for model_path in search_paths:
+                if os.path.exists(model_path):
+                    return model_path
     
     # Fallback to finding any available model
     print(f"⚠️ Could not get {model_key}, falling back to auto-detection")
