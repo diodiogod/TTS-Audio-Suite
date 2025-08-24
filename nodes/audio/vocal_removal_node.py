@@ -37,6 +37,51 @@ cache_dir = os.path.join(BASE_CACHE_DIR,"uvr")
 device = get_optimal_torch_device()
 is_half = True
 
+def _find_uvr_model_in_cache(model_filename: str) -> str:
+    """
+    Find the specific UVR/audio separation model in HuggingFace cache
+    Only checks for models that actually come from HuggingFace (RVC-Studio repo)
+    
+    Args:
+        model_filename: Name of the model file (e.g., "UVR-MDX-NET-vocal_FT.onnx")
+        
+    Returns:
+        Path to the exact cached model if found, None otherwise
+    """
+    try:
+        # Get HuggingFace cache directory
+        cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
+        
+        # Only check the actual HuggingFace repo we download from
+        # RVC_DOWNLOAD_LINK = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
+        # Note: ZFTurbo models come from GitHub releases, so no HF cache for those
+        repo = "SayanoAI/RVC-Studio"
+        cache_folder_name = f"models--{repo.replace('/', '--')}"
+        cache_path = os.path.join(cache_home, cache_folder_name)
+        
+        if os.path.exists(cache_path):
+            # Look for the snapshots directory
+            snapshots_dir = os.path.join(cache_path, "snapshots")
+            if os.path.exists(snapshots_dir):
+                try:
+                    snapshots = os.listdir(snapshots_dir)
+                    if snapshots:
+                        # Check each snapshot for the specific model file
+                        for snapshot in snapshots:
+                            snapshot_path = os.path.join(snapshots_dir, snapshot)
+                            # Model could be in a subfolder (like MDXNET/UVR-MDX-NET-vocal_FT.onnx)
+                            # or directly in the snapshot
+                            model_path = os.path.join(snapshot_path, model_filename)
+                            if os.path.exists(model_path):
+                                return model_path
+                except OSError:
+                    pass
+        
+        return None
+    except Exception as e:
+        print(f"⚠️ Error checking HuggingFace cache for UVR model '{model_filename}': {e}")
+        return None
+
 class VocalRemovalNode:
     
     @classmethod
@@ -181,18 +226,27 @@ Selects the audio format for separated stems:
             model_path = tts_model_path
         
         if not os.path.isfile(model_path):
-            # Check if it's a ZFTurbo model
+            # Check if it's a ZFTurbo model (GitHub releases - no HF cache)
             zfturbo_model = next((download_path for download_path, model_path_check in ZFTURBO_MODELS if model_path_check == model), None)
             
             if zfturbo_model:
+                # ZFTurbo models come from GitHub releases, no cache to check
                 download_link = f"{ZFTURBO_DOWNLOAD_LINK}{zfturbo_model}"
                 print(f"📥 Downloading SOTA model from ZFTurbo repository: {filename}")
+                params = model_path, download_link
+                if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
             else:
-                download_link = f"{RVC_DOWNLOAD_LINK}{model}"
-                print(f"📥 Downloading model from RVC Studio: {filename}")
-            
-            params = model_path, download_link
-            if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
+                # RVC Studio models - check HuggingFace cache first
+                cache_path = _find_uvr_model_in_cache(model)
+                if cache_path:
+                    print(f"💾 Using HuggingFace cache for UVR model '{model}': {cache_path}")
+                    model_path = cache_path  # Use cached model instead of downloading
+                else:
+                    # Download from RVC Studio
+                    download_link = f"{RVC_DOWNLOAD_LINK}{model}"
+                    print(f"📥 Downloading model from RVC Studio: {filename}")
+                    params = model_path, download_link
+                    if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
         
         input_audio = get_audio(audio)
         hash_name = get_hash(model, aggressiveness, format, audio_to_bytes(*input_audio))
