@@ -9,6 +9,9 @@ import torch
 import folder_paths
 from typing import Optional, List, Tuple, Dict, Any
 
+# Import unified model interface for ComfyUI integration
+from utils.models.unified_model_interface import load_tts_model
+
 
 class F5TTSModelManager:
     """
@@ -105,7 +108,7 @@ class F5TTSModelManager:
     def load_f5tts_model(self, model_name: str = "F5TTS_Base", device: str = "auto", 
                         force_reload: bool = False) -> Any:
         """
-        Load F5-TTS model with caching support.
+        Load F5-TTS model with ComfyUI-integrated caching support.
         
         Args:
             model_name: Name of the F5-TTS model to load
@@ -125,6 +128,22 @@ class F5TTSModelManager:
         # Resolve auto device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+            
+        # Try unified model interface for ComfyUI integration
+        try:
+            model = load_tts_model(
+                engine_name="f5tts",
+                model_name=model_name,
+                device=device,
+                force_reload=force_reload
+            )
+            
+            return model
+            
+        except Exception as e:
+            print(f"⚠️ Failed to load F5-TTS model via unified interface: {e}")
+            print(f"🔄 Falling back to direct loading...")
+            # Fall back to original logic if unified interface fails
         
         # Get available model paths for specific model
         model_paths = self.find_f5tts_models(model_name)

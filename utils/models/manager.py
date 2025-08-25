@@ -10,6 +10,9 @@ import folder_paths
 from typing import Optional, List, Tuple, Dict, Any
 from utils.system.import_manager import import_manager
 
+# Import ComfyUI model wrapper for integration
+from utils.models.comfyui_model_wrapper import tts_model_manager
+
 # Use ImportManager for robust dependency checking
 # Try imports first to populate availability status
 tts_success, ChatterboxTTS, tts_source = import_manager.import_chatterbox_tts()
@@ -202,7 +205,10 @@ class ModelManager:
     
     def load_tts_model(self, device: str = "auto", language: str = "English", force_reload: bool = False) -> Any:
         """
-        Load ChatterboxTTS model with caching and language support.
+        Load ChatterboxTTS model with ComfyUI-integrated caching and language support.
+        
+        This method now uses ComfyUI's model management system, enabling automatic
+        memory management, "Clear VRAM" button functionality, and proper integration.
         
         Args:
             device: Target device ('auto', 'cuda', 'cpu')
@@ -222,9 +228,29 @@ class ModelManager:
         # Resolve auto device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+            
+        # Use unified model interface for ComfyUI integration
+        from utils.models.unified_model_interface import load_tts_model
         
-        # Include language in cache check
-        cache_key_base = f"tts_{device}_{language}"
+        try:
+            model = load_tts_model(
+                engine_name="chatterbox",
+                model_name=language,
+                device=device,
+                language=language,
+                force_reload=force_reload
+            )
+            
+            # Update instance variables for backward compatibility
+            self.tts_model = model
+            self.current_device = device
+            
+            return model
+            
+        except Exception as e:
+            print(f"⚠️ Failed to load ChatterBox model via unified interface: {e}")
+            # Fallback to original logic if unified interface fails
+            pass
         
         # Check if we need to load/reload (including language check)
         if not force_reload and self.tts_model is not None and self.current_device == device:
@@ -232,6 +258,9 @@ class ModelManager:
             current_cache_key = getattr(self, '_current_tts_cache_key', None)
             if current_cache_key and language in current_cache_key:
                 return self.tts_model
+        
+        # Include language in cache check for fallback logic
+        cache_key_base = f"tts_{device}_{language}"
         
         # For English, also check the original model discovery paths
         if language == "English":

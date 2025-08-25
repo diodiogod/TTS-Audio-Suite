@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.10] - 2025-08-25
+
+### Added
+
+- Fix Higgs Audio seed parameter not affecting cache key - changing seeds now properly regenerates audio instead of hitting cache
+
+Implement comprehensive ComfyUI model management integration:
+- All TTS models now integrate with ComfyUI's native model management system
+- 'Clear VRAM' and 'Unload models' buttons now work with TTS models for automatic memory management
+- Create unified model loading interface standardizing all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation)
+- Replace static model caches with ComfyUI-managed dynamic loading
+- Add ComfyUI-compatible model wrapper enabling proper integration with ComfyUI's memory management
+- Standardize factory pattern for model creation across all engines
+- Enhance model fallback utilities with generic local-first loading behavior
 ## [4.5.9] - 2025-08-25
 
 ### Fixed
