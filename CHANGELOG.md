@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.9] - 2025-08-25
+
+### Fixed
+
+- Fix memory allocation issues when running Higgs Audio after other TTS models by reducing KV cache sizes from [2048, 8192, 16384] to [1024, 2048, 4096].
+- This prevents out-of-memory errors on 24GB GPUs while maintaining full functionality for typical TTS usage.
 ## [4.5.8] - 2025-08-25
 
 ### Added
