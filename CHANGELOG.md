@@ -5,9 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.8] - 2025-08-25
+
+### Added
+
+- Complete Python 3.13 compatibility by implementing comprehensive librosa fallback system for ChatterBox engine.
+- Replaces all librosa calls with safe fallbacks that try librosa first (for quality) then torchaudio (for Python 3.13 compatibility).
+- Fixes numba compilation errors in voice encoder melspec module.
 ## [4.5.7] - 2025-08-25
 
-### Changed
+### Fixed
 
 - Python 3.13 compatibility: Higgs Audio now works on Python 3.13 by using torchaudio instead of librosa (no quality impact, better performance)
 ## [4.5.6] - 2025-08-24
