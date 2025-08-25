@@ -105,7 +105,7 @@ def main():
         commit_description = args.legacy
         changelog_description = args.legacy
     else:
-        print("Error: Please provide both commit and changelog descriptions")
+        print("Error: Please provide both commit and changelog descriptions and read BUMP_SCRIPT_INSTRUCTIONS.md if you have not yet")
         print("Usage: python3 scripts/bump_version_enhanced.py <version> \"<commit_desc>\" \"<changelog_desc>\"")
         print("Legacy: python3 scripts/bump_version_enhanced.py <version> --legacy \"<description>\"")
         sys.exit(1)
