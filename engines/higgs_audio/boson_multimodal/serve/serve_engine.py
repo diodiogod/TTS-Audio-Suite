@@ -351,17 +351,28 @@ class HiggsAudioServeEngine:
             round_to=1,
         )
 
-        # Capture CUDA graphs for each KV cache length
+        # Defer CUDA graph creation until first inference to prevent corruption during model loading
+        self.device = device
+        self.cuda_graphs_initialized = False
+        self.enable_cuda_graphs = (device == "cuda")
+        
         if device == "cuda":
+            logger.info("📝 CUDA graph capture deferred until first inference (prevents memory corruption)")
+        else:
+            logger.info("CUDA graph capture skipped (not using CUDA device)")
+    
+    def _ensure_cuda_graphs(self):
+        """Initialize CUDA graphs on first use if needed"""
+        if self.device == "cuda" and self.enable_cuda_graphs and not self.cuda_graphs_initialized:
             try:
-                logger.info(f"Attempting CUDA graph capture for each KV cache length")
+                logger.info(f"🚀 Initializing CUDA graphs on first inference")
                 self.model.capture_model(self.kv_caches.values())
+                self.cuda_graphs_initialized = True
                 logger.info("✅ CUDA graph capture successful")
             except Exception as e:
                 logger.warning(f"⚠️ CUDA graph capture failed: {e}")
                 logger.info("Continuing without CUDA graphs (performance may be slower)")
-        else:
-            logger.info("CUDA graph capture skipped (not using CUDA device)")
+                self.enable_cuda_graphs = False
 
     def _fix_attention_implementation(self):
         """Fix attention implementation for all LLaMA layers to avoid None errors"""
@@ -485,6 +496,9 @@ class HiggsAudioServeEngine:
                 audio: The generated audio.
                 sampling_rate: The sampling rate of the generated audio.
         """
+        # Initialize CUDA graphs on first inference (deferred from __init__)
+        self._ensure_cuda_graphs()
+        
         # Default stop strings
         if stop_strings is None:
             stop_strings = ["<|end_of_text|>", "<|eot_id|>"]

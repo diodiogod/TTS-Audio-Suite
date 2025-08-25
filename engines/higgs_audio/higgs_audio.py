@@ -109,6 +109,12 @@ class HiggsAudioEngine:
         print(f"   Device: {device}")
         
         try:
+            # Check if global cache invalidation occurred (models were unloaded)
+            from utils.models.comfyui_model_wrapper import _global_cache_invalidation_flag
+            should_force_reload = _global_cache_invalidation_flag > getattr(self, '_last_load_time', 0.0)
+            if should_force_reload:
+                print(f"🔄 Forcing model reload due to global cache invalidation")
+            
             # Use unified model interface for ComfyUI integration
             engine = load_tts_model(
                 engine_name="higgs_audio",
@@ -116,8 +122,12 @@ class HiggsAudioEngine:
                 device=device,
                 model_path=self._get_smart_model_path(model_path),
                 tokenizer_path=self._get_smart_tokenizer_path(tokenizer_path),
-                force_reload=False
+                force_reload=should_force_reload
             )
+            
+            # Update last load time
+            import time
+            self._last_load_time = time.time()
             
             self.engine = engine
             self.model_path = model_path

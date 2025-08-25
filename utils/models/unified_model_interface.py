@@ -111,6 +111,7 @@ class UnifiedModelInterface:
             model_type=config.model_type,
             engine=config.engine_name,
             device=config.device,
+            force_reload=force_reload,
             **factory_kwargs
         )
         
@@ -157,7 +158,9 @@ class UnifiedModelInterface:
         elif config.repo_id:
             components.append(f"repo:{config.repo_id}")
         
-        return "_".join(components)
+        cache_key = "_".join(components)
+        print(f"🔑 Generated cache key: {cache_key}")
+        return cache_key
 
 
 # Global unified interface instance

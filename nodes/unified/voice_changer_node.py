@@ -323,9 +323,27 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             
             # Check if we have a cached instance with the same configuration
             if cache_key in self._cached_engine_instances:
-                cached_instance = self._cached_engine_instances[cache_key]
-                print(f"🔄 Reusing cached {engine_type} VC engine instance (preserves model state)")
-                return cached_instance
+                cached_data = self._cached_engine_instances[cache_key]
+                
+                # Handle both old (direct instance) and new (timestamped dict) cache formats
+                if isinstance(cached_data, dict) and 'instance' in cached_data:
+                    # New timestamped format
+                    cached_instance = cached_data['instance']
+                    cache_timestamp = cached_data['timestamp']
+                    
+                    # Check if cache is still valid (not invalidated by model unloading)
+                    from utils.models.comfyui_model_wrapper import is_engine_cache_valid
+                    if is_engine_cache_valid(cache_timestamp):
+                        print(f"🔄 Reusing cached {engine_type} VC engine instance (preserves model state)")
+                        return cached_instance
+                    else:
+                        # Cache invalidated by model unloading, remove it
+                        print(f"🗑️ Removing invalidated {engine_type} VC engine cache (models were unloaded)")
+                        del self._cached_engine_instances[cache_key]
+                else:
+                    # Old format (direct instance) - assume invalid and remove
+                    print(f"🗑️ Removing old-format {engine_type} VC engine cache (upgrading to timestamped format)")
+                    del self._cached_engine_instances[cache_key]
             
             if engine_type == "chatterbox":
                 print(f"🔧 Creating new {engine_type} VC engine instance")
@@ -343,8 +361,12 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     if hasattr(engine_instance, key):
                         setattr(engine_instance, key, value)
                 
-                # Cache the instance
-                self._cached_engine_instances[cache_key] = engine_instance
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
                 
             elif engine_type == "f5tts":

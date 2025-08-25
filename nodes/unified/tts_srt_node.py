@@ -174,11 +174,29 @@ Hello! This is unified SRT TTS with character switching.
             
             # Check if we have a cached instance with the same stable configuration
             if cache_key in self._cached_engine_instances:
-                cached_instance = self._cached_engine_instances[cache_key]
-                # Update the cached instance's config with new dynamic parameters
-                cached_instance.config = config
-                print(f"🔄 Reusing cached {engine_type} SRT engine instance (updated with new generation parameters)")
-                return cached_instance
+                cached_data = self._cached_engine_instances[cache_key]
+                
+                # Handle both old (direct instance) and new (timestamped dict) cache formats
+                if isinstance(cached_data, dict) and 'instance' in cached_data:
+                    # New timestamped format
+                    cached_instance = cached_data['instance']
+                    cache_timestamp = cached_data['timestamp']
+                    
+                    # Check if cache is still valid (not invalidated by model unloading)
+                    from utils.models.comfyui_model_wrapper import is_engine_cache_valid
+                    if is_engine_cache_valid(cache_timestamp):
+                        # Update the cached instance's config with new dynamic parameters
+                        cached_instance.config = config
+                        print(f"🔄 Reusing cached {engine_type} SRT engine instance (updated with new generation parameters)")
+                        return cached_instance
+                    else:
+                        # Cache invalidated by model unloading, remove it
+                        print(f"🗑️ Removing invalidated {engine_type} SRT engine cache (models were unloaded)")
+                        del self._cached_engine_instances[cache_key]
+                else:
+                    # Old format (direct instance) - assume invalid and remove
+                    print(f"🗑️ Removing old-format {engine_type} SRT engine cache (upgrading to timestamped format)")
+                    del self._cached_engine_instances[cache_key]
             
             print(f"🔧 Creating new {engine_type} SRT engine instance")
             
@@ -196,8 +214,12 @@ Hello! This is unified SRT TTS with character switching.
                     if hasattr(engine_instance, key):
                         setattr(engine_instance, key, value)
                 
-                # Cache the instance
-                self._cached_engine_instances[cache_key] = engine_instance
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
                 
             elif engine_type == "f5tts":
@@ -214,8 +236,12 @@ Hello! This is unified SRT TTS with character switching.
                     if hasattr(engine_instance, key):
                         setattr(engine_instance, key, value)
                 
-                # Cache the instance
-                self._cached_engine_instances[cache_key] = engine_instance
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
                 
             elif engine_type == "higgs_audio":
@@ -253,8 +279,12 @@ Hello! This is unified SRT TTS with character switching.
                         )
                 
                 engine_instance = HiggsAudioSRTWrapper(config)
-                # Cache the instance
-                self._cached_engine_instances[cache_key] = engine_instance
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
                 
             else:
