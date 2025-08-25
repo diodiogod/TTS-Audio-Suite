@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from pathlib import Path
 import os
 
-import librosa
 import torch
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
 import warnings
+
+# Use librosa fallback for Python 3.13 compatibility
+from utils.audio.librosa_fallback import safe_load, safe_resample
 # Import safetensors for multilanguage model support
 from safetensors.torch import load_file
 
@@ -374,10 +376,11 @@ class ChatterboxTTS:
         return cls.from_local(model_dir, device)
 
     def prepare_conditionals(self, wav_fpath, exaggeration=0.5):
-        ## Load reference wav
-        s3gen_ref_wav, _sr = librosa.load(wav_fpath, sr=S3GEN_SR)
-
-        ref_16k_wav = librosa.resample(s3gen_ref_wav, orig_sr=S3GEN_SR, target_sr=S3_SR)
+        # Load reference wav using fallback for Python 3.13 compatibility
+        s3gen_ref_wav, sample_rate = safe_load(wav_fpath, sr=S3GEN_SR, mono=True)
+        
+        # Resample to 16k for S3 tokenizer using fallback
+        ref_16k_wav = safe_resample(s3gen_ref_wav, S3GEN_SR, S3_SR)
 
         s3gen_ref_wav = s3gen_ref_wav[:self.DEC_COND_LEN]
         s3gen_ref_dict = self.s3gen.embed_ref(s3gen_ref_wav, S3GEN_SR, device=self.device)

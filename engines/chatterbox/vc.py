@@ -1,10 +1,12 @@
 from pathlib import Path
 import os
 
-import librosa
 import torch
 import warnings
 from huggingface_hub import hf_hub_download
+
+# Use librosa fallback for Python 3.13 compatibility
+from utils.audio.librosa_fallback import safe_load
 
 # Import folder_paths for model directory detection
 try:
@@ -166,8 +168,8 @@ class ChatterboxVC:
         return cls.from_local(model_dir, device)
 
     def set_target_voice(self, wav_fpath):
-        ## Load reference wav
-        s3gen_ref_wav, _sr = librosa.load(wav_fpath, sr=S3GEN_SR)
+        # Load reference wav using fallback for Python 3.13 compatibility
+        s3gen_ref_wav, sample_rate = safe_load(wav_fpath, sr=S3GEN_SR, mono=True)
 
         s3gen_ref_wav = s3gen_ref_wav[:self.DEC_COND_LEN]
         self.ref_dict = self.s3gen.embed_ref(s3gen_ref_wav, S3GEN_SR, device=self.device)
@@ -183,8 +185,10 @@ class ChatterboxVC:
             assert self.ref_dict is not None, "Please `prepare_conditionals` first or specify `target_voice_path`"
 
         with torch.inference_mode():
-            audio_16, _ = librosa.load(audio, sr=S3_SR)
-            audio_16 = torch.from_numpy(audio_16).float().to(self.device)[None, ]
+            # Load audio using fallback for Python 3.13 compatibility
+            audio_16_wav, _ = safe_load(audio, sr=S3_SR, mono=True)
+            # Convert to the expected format
+            audio_16 = torch.from_numpy(audio_16_wav).float().to(self.device)[None, ]
 
             s3_tokens, _ = self.s3gen.tokenizer(audio_16)
             wav, _ = self.s3gen.inference(

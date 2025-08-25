@@ -13,11 +13,13 @@ Key benefits:
 
 import torch
 import torch.nn.functional as F
-import librosa
 import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
 import warnings
+
+# Use librosa fallback for Python 3.13 compatibility
+from utils.audio.librosa_fallback import safe_load, safe_resample
 
 # Import ChatterBox components
 from engines.chatterbox.models.s3tokenizer import S3_SR, drop_invalid_tokens
@@ -164,11 +166,11 @@ class StatelessChatterBoxWrapper:
             if not wav_fpath:
                 return self._get_default_conditions(exaggeration)
             
-            # Load reference wav
-            s3gen_ref_wav, _sr = librosa.load(wav_fpath, sr=S3GEN_SR)
+            # Load reference wav using fallback for Python 3.13 compatibility
+            s3gen_ref_wav, sample_rate = safe_load(wav_fpath, sr=S3GEN_SR, mono=True)
             
-            # Resample to 16k for S3 tokenizer
-            ref_16k_wav = librosa.resample(s3gen_ref_wav, orig_sr=S3GEN_SR, target_sr=S3_SR)
+            # Resample to 16k for S3 tokenizer using fallback
+            ref_16k_wav = safe_resample(s3gen_ref_wav, S3GEN_SR, S3_SR)
             
             # Prepare S3Gen reference
             s3gen_ref_wav = s3gen_ref_wav[:self.DEC_COND_LEN]
