@@ -130,11 +130,13 @@ class HiggsAudioEngine:
             print(f"🔧 Using model: {model_path_for_engine}")
             print(f"🔧 Using tokenizer: {tokenizer_path_for_engine}")
             
-            # Create engine (HiggsAudioServeEngine handles both paths and repo IDs)
+            # Create engine with memory-efficient cache sizes for better VRAM compatibility
+            # Reduced cache sizes to prevent OOM when other models are loaded
             engine = HiggsAudioServeEngine(
                 model_name_or_path=model_path_for_engine,
                 audio_tokenizer_name_or_path=tokenizer_path_for_engine,
-                device=device
+                device=device,
+                kv_cache_lengths=[1024, 2048, 4096]  # Smaller cache sizes to reduce VRAM usage
             )
             
             # Cache engine
