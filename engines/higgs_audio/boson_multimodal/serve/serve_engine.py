@@ -14,6 +14,7 @@ from dataclasses import asdict
 from loguru import logger
 import threading
 import librosa
+import torchaudio
 from tqdm import tqdm
 
 
@@ -398,11 +399,23 @@ class HiggsAudioServeEngine:
         audio_ids_l = []
         for audio_content in audio_contents:
             if audio_content.audio_url not in ["placeholder", ""]:
-                raw_audio, _ = librosa.load(audio_content.audio_url, sr=self.audio_tokenizer.sampling_rate)
+                # Use torchaudio instead of librosa for Python 3.13 compatibility
+                raw_audio_tensor, sample_rate = torchaudio.load(audio_content.audio_url)
+                # Resample if needed
+                if sample_rate != self.audio_tokenizer.sampling_rate:
+                    resampler = torchaudio.transforms.Resample(sample_rate, self.audio_tokenizer.sampling_rate)
+                    raw_audio_tensor = resampler(raw_audio_tensor)
+                # Convert to numpy and squeeze to 1D if needed
+                raw_audio = raw_audio_tensor.squeeze().numpy()
             elif audio_content.raw_audio is not None:
-                raw_audio, _ = librosa.load(
-                    BytesIO(base64.b64decode(audio_content.raw_audio)), sr=self.audio_tokenizer.sampling_rate
-                )
+                # Use torchaudio instead of librosa for Python 3.13 compatibility
+                raw_audio_tensor, sample_rate = torchaudio.load(BytesIO(base64.b64decode(audio_content.raw_audio)))
+                # Resample if needed
+                if sample_rate != self.audio_tokenizer.sampling_rate:
+                    resampler = torchaudio.transforms.Resample(sample_rate, self.audio_tokenizer.sampling_rate)
+                    raw_audio_tensor = resampler(raw_audio_tensor)
+                # Convert to numpy and squeeze to 1D if needed
+                raw_audio = raw_audio_tensor.squeeze().numpy()
             else:
                 raw_audio = None
 

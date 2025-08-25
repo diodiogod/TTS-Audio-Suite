@@ -1,5 +1,18 @@
+# CRITICAL: Python 3.13 numba compatibility - must be first!
+import sys
+import os
+if sys.version_info >= (3, 13):
+    # Disable numba JIT compilation for Python 3.13 compatibility with librosa
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+    # Also try to set numba config if available
+    try:
+        import numba
+        numba.config.DISABLE_JIT = True
+    except ImportError:
+        pass
+
 # Version and constants
-VERSION = "4.5.6"
+VERSION = "4.5.7"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -15,12 +28,7 @@ warnings.filterwarnings('ignore', message='.*PerthNet.*')
 warnings.filterwarnings('ignore', message='.*LoRACompatibleLinear.*')
 warnings.filterwarnings('ignore', message='.*requires authentication.*')
 
-import os
 import folder_paths
-
-# Import unified node implementations
-import sys
-import os
 import importlib.util
 
 # Add current directory to path for absolute imports
@@ -384,6 +392,11 @@ if VISEME_OPTIONS_AVAILABLE:
 print(SEPARATOR)
 print(f"🚀 TTS Audio Suite {VERSION_DISPLAY}")
 print("Universal multi-engine TTS extension for ComfyUI")
+
+# Show Python 3.13 compatibility status
+if sys.version_info >= (3, 13):
+    print(f"🐍 Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} detected")
+    print("⚡ Numba JIT disabled for librosa compatibility")
 
 # Check for local models using updated model manager
 try:

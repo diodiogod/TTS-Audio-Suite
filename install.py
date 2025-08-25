@@ -172,7 +172,7 @@ class TTSAudioInstaller:
         self.log("Installing problematic packages with --no-deps to prevent conflicts", "WARNING")
         
         problematic_packages = [
-            "librosa",              # Forces numpy downgrade
+            "librosa",              # Forces numpy downgrade - compatibility handled by runtime numba disabling for Python 3.13
             "descript-audio-codec", # Pulls unnecessary deps, conflicts with protobuf
             "descript-audiotools",  # Forces protobuf downgrade from 6.x to 3.19.x
             "cached-path",          # Forces package downgrades
@@ -306,6 +306,8 @@ class TTSAudioInstaller:
             print("      (ChatterBox, F5-TTS, Higgs Audio)")
             print("  [+] RVC voice conversion: WORKING") 
             print("  [+] OpenSeeFace mouth movement: WORKING (experimental)")
+            print("  [+] Numba/Librosa compatibility: FIXED")
+            print("      -> Automatic JIT disabling for Python 3.13")
             print("  [X] MediaPipe mouth movement: INCOMPATIBLE")
             print("      -> Use OpenSeeFace alternative")
             print("\n>> Want MediaPipe Python 3.13 support? Vote at:")

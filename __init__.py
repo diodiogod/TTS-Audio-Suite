@@ -13,6 +13,26 @@ import importlib.util
 import os
 import sys
 
+# Python 3.13 compatibility: Disable numba JIT for librosa compatibility
+def setup_python313_compatibility():
+    """Setup Python 3.13 compatibility fixes for numba/librosa issues"""
+    if sys.version_info >= (3, 13):
+        # Disable numba JIT compilation to fix librosa compatibility issues
+        # This prevents numba compilation errors in librosa with Python 3.13
+        # Note: Higgs Audio now uses torchaudio instead of librosa for better compatibility
+        os.environ['NUMBA_DISABLE_JIT'] = '1'
+        
+        # Set this early, before any librosa imports
+        try:
+            import numba
+            numba.config.DISABLE_JIT = True
+        except ImportError:
+            # numba not yet installed, the environment variable will handle it
+            pass
+
+# Apply Python 3.13 compatibility fixes
+setup_python313_compatibility()
+
 # Check for old ChatterBox extension conflict
 def check_old_extension_conflict():
     """Check if the old ComfyUI_ChatterBox_SRT_Voice extension is installed"""
