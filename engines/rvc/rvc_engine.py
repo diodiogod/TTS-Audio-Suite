@@ -21,6 +21,9 @@ if project_root not in sys.path:
 from utils.audio.processing import AudioProcessingUtils
 import comfy.model_management as model_management
 
+# Import unified model interface for ComfyUI integration
+from utils.models.unified_model_interface import load_vc_model, load_auxiliary_model
+
 class RVCEngine:
     """
     Core RVC (Real-time Voice Conversion) Engine
@@ -306,7 +309,7 @@ class RVCEngine:
             return audio_data, sample_rate
     
     def _load_rvc_model_data(self, rvc_model_id: str):
-        """Load RVC model data for inference"""
+        """Load RVC model data for inference using ComfyUI model management"""
         try:
             if rvc_model_id not in self.rvc_models:
                 return None
@@ -315,20 +318,42 @@ class RVCEngine:
             
             # Load model if not already loaded
             if not model_info.get('loaded', False):
-                from .rvc_inference import get_rvc_model, RVCConfig
-                
-                config = RVCConfig()
                 model_path = model_info['model_path']
                 index_path = model_info.get('index_path')
                 
                 print(f"🔄 Loading RVC model: {os.path.basename(model_path)}")
                 
-                model_data = get_rvc_model(model_path, index_path, config, self.device)
-                
-                if model_data:
-                    model_info['model_obj'] = model_data
-                    model_info['loaded'] = True
-                    print(f"✅ RVC model loaded successfully")
+                try:
+                    # Use unified model interface for ComfyUI integration
+                    model_data = load_vc_model(
+                        engine_name="rvc",
+                        model_name=os.path.basename(model_path),
+                        device=self.device,
+                        model_path=model_path,
+                        index_path=index_path
+                    )
+                    
+                    if model_data:
+                        model_info['model_obj'] = model_data
+                        model_info['loaded'] = True
+                        print(f"✅ RVC model loaded successfully (ComfyUI managed)")
+                    else:
+                        raise Exception("Model loading returned None")
+                        
+                except Exception as e:
+                    print(f"⚠️ Failed to load via unified interface: {e}")
+                    print(f"🔄 Falling back to direct loading...")
+                    
+                    # Fallback to direct loading
+                    from .rvc_inference import get_rvc_model, RVCConfig
+                    
+                    config = RVCConfig()
+                    model_data = get_rvc_model(model_path, index_path, config, self.device)
+                    
+                    if model_data:
+                        model_info['model_obj'] = model_data
+                        model_info['loaded'] = True
+                        print(f"✅ RVC model loaded successfully (fallback)")
                 else:
                     print(f"❌ Failed to load RVC model")
                     return None
@@ -349,22 +374,44 @@ class RVCEngine:
             
             # Load model if not already loaded
             if not model_info.get('loaded', False):
-                from .rvc_inference import load_hubert_model, RVCConfig
-                
-                config = RVCConfig()
                 model_path = model_info['model_path']
                 
                 print(f"🔄 Loading Hubert model: {os.path.basename(model_path)}")
                 
-                model_obj = load_hubert_model(model_path, config)
-                
-                if model_obj:
-                    model_info['model_obj'] = model_obj
-                    model_info['loaded'] = True
-                    print(f"✅ Hubert model loaded successfully")
-                else:
-                    print(f"❌ Failed to load Hubert model")
-                    return None
+                try:
+                    # Use unified model interface for ComfyUI integration
+                    model_obj = load_auxiliary_model(
+                        engine_name="rvc",
+                        model_type="hubert",
+                        model_name=os.path.basename(model_path),
+                        device=self.device,
+                        model_path=model_path
+                    )
+                    
+                    if model_obj:
+                        model_info['model_obj'] = model_obj
+                        model_info['loaded'] = True
+                        print(f"✅ Hubert model loaded successfully (ComfyUI managed)")
+                    else:
+                        raise Exception("Model loading returned None")
+                        
+                except Exception as e:
+                    print(f"⚠️ Failed to load via unified interface: {e}")
+                    print(f"🔄 Falling back to direct loading...")
+                    
+                    # Fallback to direct loading
+                    from .rvc_inference import load_hubert_model, RVCConfig
+                    
+                    config = RVCConfig()
+                    model_obj = load_hubert_model(model_path, config)
+                    
+                    if model_obj:
+                        model_info['model_obj'] = model_obj
+                        model_info['loaded'] = True
+                        print(f"✅ Hubert model loaded successfully (fallback)")
+                    else:
+                        print(f"❌ Failed to load Hubert model")
+                        return None
             
             return model_info.get('model_obj')
             

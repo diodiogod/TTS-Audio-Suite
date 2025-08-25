@@ -6,6 +6,8 @@
 
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine via clean delegation
+- **ComfyUI Model Management Integration**: All TTS models now integrate with ComfyUI's native model management system, enabling "Clear VRAM" functionality and automatic memory management
+- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with fallback support
 - **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio) handling engine-specific orchestration
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, and RVC voice conversion
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
@@ -187,15 +189,19 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ### Model Management
 
-**utils/models/manager.py** - Intelligent model discovery and caching with multilingual support for both TTS and VC models
+**utils/models/manager.py** - Intelligent model discovery and caching with multilingual support for both TTS and VC models, now integrated with ComfyUI model management
 
 **utils/models/smart_loader.py** - Universal smart model loader preventing duplicate model loading across all engines and modes
 
-**utils/models/f5tts_manager.py** - F5-TTS specific model management extending base manager functionality
+**utils/models/f5tts_manager.py** - F5-TTS specific model management extending base manager functionality, now with ComfyUI integration
 
 **utils/models/language_mapper.py** - Language-to-model mapping system with fallback support
 
 **utils/models/fallback_utils.py** - Model fallback and error recovery utilities
+
+**utils/models/comfyui_model_wrapper.py** - ComfyUI-compatible model wrapper enabling TTS models to integrate with ComfyUI's native model management system for automatic memory management
+
+**utils/models/unified_model_interface.py** - Universal model loading interface providing standardized factory pattern for all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with ComfyUI integration
 
 ### Audio Processing
 

@@ -44,8 +44,8 @@ from utils.text.chunking import ImprovedChatterBoxChunker
 from .higgs_audio_downloader import HiggsAudioDownloader
 import folder_paths
 
-# Global engine cache to avoid reloading models
-_ENGINE_CACHE = {}
+# Import unified model interface for ComfyUI integration (replaces _ENGINE_CACHE)
+from utils.models.unified_model_interface import load_tts_model
 
 # Higgs Audio model configurations (matches downloader format)
 HIGGS_AUDIO_MODELS = {
@@ -92,37 +92,46 @@ class HiggsAudioEngine:
                          tokenizer_path: str = "bosonai/higgs-audio-v2-tokenizer",
                          device: str = "auto") -> None:
         """
-        Initialize or retrieve cached Higgs Audio engine
+        Initialize Higgs Audio engine using ComfyUI model management
         
         Args:
             model_path: Path or HuggingFace model ID for generation model
             tokenizer_path: Path or HuggingFace model ID for audio tokenizer
             device: Device to use (auto, cuda, cpu)
-        """
-        global _ENGINE_CACHE
-        
+        """        
         # Auto-detect device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        
-        # Check cache
-        cache_key = f"{model_path}_{tokenizer_path}_{device}"
-        if cache_key in _ENGINE_CACHE:
-            self.engine = _ENGINE_CACHE[cache_key]
-            self.model_path = model_path
-            self.tokenizer_path = tokenizer_path
-            self.device = device
-            print(f"💾 Using cached Higgs Audio engine")
-            return
         
         print(f"🚀 Loading Higgs Audio 2 engine...")
         print(f"   Model: {model_path}")
         print(f"   Tokenizer: {tokenizer_path}")
         print(f"   Device: {device}")
         
-        # Use smart path resolution: local paths for verified local models,
-        # repo IDs otherwise (matches F5-TTS from_local vs from_pretrained pattern)
         try:
+            # Use unified model interface for ComfyUI integration
+            engine = load_tts_model(
+                engine_name="higgs_audio",
+                model_name=model_path,
+                device=device,
+                model_path=self._get_smart_model_path(model_path),
+                tokenizer_path=self._get_smart_tokenizer_path(tokenizer_path),
+                force_reload=False
+            )
+            
+            self.engine = engine
+            self.model_path = model_path
+            self.tokenizer_path = tokenizer_path
+            self.device = device
+            
+            print(f"✅ Higgs Audio 2 engine loaded successfully (ComfyUI managed)")
+            return
+            
+        except Exception as e:
+            print(f"⚠️ Failed to load via unified interface: {e}")
+            print(f"🔄 Falling back to direct loading...")
+            # Fall back to direct loading if unified interface fails
+            
             # Get smart paths that work with HiggsAudioServeEngine
             model_path_for_engine = self._get_smart_model_path(model_path)
             tokenizer_path_for_engine = self._get_smart_tokenizer_path(tokenizer_path)
@@ -139,14 +148,13 @@ class HiggsAudioEngine:
                 kv_cache_lengths=[1024, 2048, 4096]  # Smaller cache sizes to reduce VRAM usage
             )
             
-            # Cache engine
-            _ENGINE_CACHE[cache_key] = engine
+            # Store engine (no manual caching - ComfyUI manages memory)
             self.engine = engine
             self.model_path = model_path
             self.tokenizer_path = tokenizer_path
             self.device = device
             
-            print(f"✅ Higgs Audio 2 engine loaded successfully")
+            print(f"✅ Higgs Audio 2 engine loaded successfully (fallback)")
             
         except Exception as e:
             print(f"❌ Failed to initialize Higgs Audio engine: {e}")
@@ -212,7 +220,8 @@ class HiggsAudioEngine:
                 top_p=top_p,
                 top_k=top_k,
                 max_new_tokens=max_new_tokens,
-                character=character
+                character=character,
+                seed=seed  # Include seed in cache key so different seeds generate different outputs
             )
             
             cached_result = self.cache.get_cached_audio(cache_key)
@@ -752,15 +761,10 @@ class HiggsAudioEngine:
             return False
     
     def cleanup(self):
-        """Clean up resources"""
-        global _ENGINE_CACHE
-        
+        """Clean up resources (now handled by ComfyUI model management)"""
         if self.engine:
-            # Clear from cache
-            cache_key = f"{self.model_path}_{self.tokenizer_path}_{self.device}"
-            if cache_key in _ENGINE_CACHE:
-                del _ENGINE_CACHE[cache_key]
-            
+            # Models are now managed by ComfyUI's model management system
+            # No manual cache cleanup needed - ComfyUI handles memory management
             self.engine = None
         
         # Run garbage collection
