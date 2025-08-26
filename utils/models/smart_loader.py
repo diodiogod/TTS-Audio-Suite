@@ -5,6 +5,7 @@ Prevents unnecessary model reloading and enables cross-engine resource sharing.
 """
 
 import hashlib
+import torch
 from typing import Any, Callable, Dict, Optional, Tuple
 from dataclasses import dataclass
 
@@ -58,13 +59,63 @@ class SmartModelLoader:
     def _check_cross_engine_cache(self, engine_type: str, model_name: str, device: str) -> Optional[Any]:
         """Check if model exists in global cache from any engine."""
         cache_key = self._generate_cache_key(engine_type, model_name, device)
+        print(f"🔍 SMART LOADER: Checking cache with key {cache_key} for {engine_type}/{model_name}/{device}")
         
         if cache_key in self._global_model_cache:
             model_info = self._global_model_cache[cache_key]
             print(f"♻️ SMART LOADER: Reusing {model_name} model from global cache (engine: {model_info.engine_type}, ID: {id(model_info.model_instance)})")
-            return model_info.model_instance
+            
+            # CRITICAL: Ensure model is on correct device after cache reuse
+            model_instance = model_info.model_instance
+            
+            # Convert "auto" to actual device
+            actual_device = "cuda" if device == "auto" and torch.cuda.is_available() else device
+            print(f"🔧 SMART LOADER: About to move model to device {device} (resolved: {actual_device})")
+            
+            if hasattr(model_instance, 'to'):
+                try:
+                    model_instance.to(actual_device)
+                    print(f"🔄 SMART LOADER: Moved reused model to {actual_device}")
+                except Exception as e:
+                    print(f"⚠️ SMART LOADER: Failed to move model to {actual_device}: {e}")
+            
+            # Also move nested components recursively (like ComfyUI wrapper does)
+            print(f"🔧 SMART LOADER: About to move nested components to {actual_device}")
+            self._ensure_all_components_on_device(model_instance, actual_device)
+            print(f"✅ SMART LOADER: Completed device moves for {model_name}")
+            
+            return model_instance
+        else:
+            print(f"🚫 SMART LOADER: No cached model found for key {cache_key}")
         
         return None
+    
+    def _ensure_all_components_on_device(self, obj, target_device: str, depth: int = 0, max_depth: int = 3):
+        """
+        Recursively ensure all PyTorch components are on the target device.
+        Similar to ComfyUI wrapper's device management.
+        """
+        if depth > max_depth or obj is None:
+            return
+            
+        # Move PyTorch modules
+        if hasattr(obj, 'to') and hasattr(obj, 'parameters') and callable(getattr(obj, 'to')):
+            try:
+                obj.to(target_device)
+            except Exception:
+                pass
+        
+        # Recurse through object attributes
+        if hasattr(obj, '__dict__'):
+            for attr_name, attr_value in obj.__dict__.items():
+                if not attr_name.startswith('_') and attr_value is not None:
+                    # Skip problematic attributes
+                    if attr_name in ['_modules', '_parameters', '_buffers']:
+                        continue
+                    try:
+                        self._ensure_all_components_on_device(attr_value, target_device, depth + 1, max_depth)
+                    except Exception:
+                        pass
     
     def _update_caches(self, engine_type: str, model_name: str, device: str, model_instance: Any) -> None:
         """Update both global cache and engine-specific tracking."""

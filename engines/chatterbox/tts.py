@@ -109,6 +109,9 @@ class Conditionals:
 
     def to(self, device):
         self.t3 = self.t3.to(device=device)
+        # CRITICAL: Also move s3gen model to device (fixes speaker_encoder device mismatch)
+        if hasattr(self, 's3gen') and self.s3gen is not None:
+            self.s3gen = self.s3gen.to(device=device)
         for k, v in self.gen.items():
             if torch.is_tensor(v):
                 self.gen[k] = v.to(device=device)

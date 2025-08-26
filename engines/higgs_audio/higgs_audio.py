@@ -114,6 +114,10 @@ class HiggsAudioEngine:
             should_force_reload = _global_cache_invalidation_flag > getattr(self, '_last_load_time', 0.0)
             if should_force_reload:
                 print(f"🔄 Forcing model reload due to global cache invalidation")
+                # Set flag to disable CUDA graphs for this reload cycle
+                force_disable_cuda_graphs = True
+            else:
+                force_disable_cuda_graphs = False
             
             # Use unified model interface for ComfyUI integration
             engine = load_tts_model(
@@ -134,7 +138,15 @@ class HiggsAudioEngine:
             self.tokenizer_path = tokenizer_path
             self.device = device
             
+            # Disable CUDA graphs if this was loaded after cache invalidation (memory pressure)
+            if force_disable_cuda_graphs and hasattr(self.engine, 'disable_cuda_graphs_for_memory_management'):
+                self.engine.disable_cuda_graphs_for_memory_management()
+            
             print(f"✅ Higgs Audio 2 engine loaded successfully (ComfyUI managed)")
+            print(f"⚠️  Memory Management Limitation: Higgs Audio uses CUDA graphs for performance")
+            print(f"   CUDA graphs lock GPU memory and cannot be safely unloaded without crashes")
+            print(f"   This model will stay in memory until ComfyUI restart")
+            print(f"📝 For dynamic memory management, use ChatterBox or F5-TTS engines instead")
             return
             
         except Exception as e:

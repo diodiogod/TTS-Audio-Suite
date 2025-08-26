@@ -315,28 +315,53 @@ class ComfyUIModelWrapper:
             return
             
         try:
-            # Move model back to GPU
+            # Move model back to GPU (comprehensive approach)
             if hasattr(model, 'to'):
                 model.to(target_device)
-                self.current_device = target_device
-                self._is_loaded_on_gpu = True
-                print(f"🔄 Moved {self.model_info.model_type} model ({self.model_info.engine}) back to {target_device}")
-                
-            # Handle nested models  
-            elif hasattr(model, '__dict__'):
-                for attr_name, attr_value in model.__dict__.items():
-                    if hasattr(attr_value, 'to') and hasattr(attr_value, 'parameters'):
-                        try:
-                            attr_value.to(target_device)
-                        except Exception:
-                            pass
-                            
-                self.current_device = target_device
-                self._is_loaded_on_gpu = True
-                print(f"🔄 Moved {self.model_info.model_type} model components ({self.model_info.engine}) back to {target_device}")
+                print(f"🔄 Moved main {self.model_info.model_type} model ({self.model_info.engine}) to {target_device}")
+            
+            # CRITICAL: Recursively move ALL nested components to ensure device consistency
+            self._move_all_components_to_device(model, target_device, depth=0)
+            
+            self.current_device = target_device
+            self._is_loaded_on_gpu = True
+            print(f"✅ Fully moved {self.model_info.model_type} model components ({self.model_info.engine}) back to {target_device}")
                 
         except Exception as e:
-            print(f"⚠️ Failed to load {self.model_info.model_type} model to {target_device}: {e}")
+            print(f"⚠️ Error moving model to {target_device}: {e}")
+    
+    def _move_all_components_to_device(self, obj, target_device: str, depth: int = 0, max_depth: int = 4):
+        """
+        Recursively move all PyTorch components to target device.
+        This ensures no CPU/GPU device mismatches after model reload.
+        """
+        if depth > max_depth:
+            return
+        
+        if obj is None:
+            return
+            
+        # Move PyTorch modules
+        if hasattr(obj, 'to') and hasattr(obj, 'parameters') and callable(getattr(obj, 'to')):
+            try:
+                obj.to(target_device)
+                if depth == 0:
+                    print(f"  📦 Moved {type(obj).__name__} to {target_device}")
+            except Exception as e:
+                if depth == 0:
+                    print(f"  ⚠️ Failed to move {type(obj).__name__}: {e}")
+        
+        # Recurse through object attributes
+        if hasattr(obj, '__dict__'):
+            for attr_name, attr_value in obj.__dict__.items():
+                if not attr_name.startswith('_') and attr_value is not None:
+                    # Skip certain problematic attributes
+                    if attr_name in ['_modules', '_parameters', '_buffers']:
+                        continue
+                    try:
+                        self._move_all_components_to_device(attr_value, target_device, depth + 1, max_depth)
+                    except Exception:
+                        pass
     
     def is_clone(self, other) -> bool:
         """Check if this model is a clone of another model"""
@@ -466,23 +491,7 @@ class ComfyUITTSModelManager:
         Returns:
             ComfyUI-wrapped model
         """
-        # Check for resurrection opportunity (Higgs Audio in shadow storage)
-        shadow_key = f"_shadow_{model_key}"
-        if engine == "higgs_audio" and shadow_key in self._model_cache:
-            print(f"👻 Resurrecting {engine} model from shadow storage (avoids CUDA corruption)")
-            wrapper = self._model_cache.pop(shadow_key)  # Remove from shadow
-            
-            # Reset CUDA graph state for fresh initialization
-            if hasattr(wrapper.model, 'engine') and hasattr(wrapper.model.engine, 'cuda_graphs_initialized'):
-                wrapper.model.engine.cuda_graphs_initialized = False
-                print(f"🔄 Reset CUDA graph state for resurrection")
-            
-            # Restore to active cache
-            self._model_cache[model_key] = wrapper
-            wrapper._is_valid_for_reuse = True
-            print(f"✨ Successfully resurrected {engine} model from shadow storage")
-            return wrapper
-        
+        # No more shadow storage - if model was destroyed, create completely fresh
         # Check if already cached
         if model_key in self._model_cache and not force_reload:
             wrapper = self._model_cache[model_key]
@@ -647,31 +656,15 @@ class ComfyUITTSModelManager:
         if model_key in self._model_cache:
             wrapper = self._model_cache[model_key]
             
-            # Never actually destroy Higgs Audio models - hide them in shadow storage
+            # For Higgs Audio: Skip memory management due to CUDA graph incompatibility
             if wrapper.model_info.engine == "higgs_audio":
-                print(f"🫥 Moving {wrapper.model_info.engine} model to shadow storage (prevents CUDA corruption)")
-                shadow_key = f"_shadow_{model_key}"
-                
-                # Remove from active cache but store in shadow
-                self._model_cache.pop(model_key)
-                self._model_cache[shadow_key] = wrapper
-                
-                # Remove from ComfyUI tracking to "free" memory
-                if COMFYUI_AVAILABLE and model_management is not None:
-                    try:
-                        if hasattr(model_management, 'current_loaded_models'):
-                            if wrapper in model_management.current_loaded_models:
-                                model_management.current_loaded_models.remove(wrapper)
-                                print(f"🗑️ Removed from ComfyUI tracking (hidden in shadow)")
-                    except Exception as e:
-                        print(f"⚠️ Failed to remove from ComfyUI tracking: {e}")
-                
-                # Don't actually unload - keep model alive
-                print(f"📦 {wrapper.model_info.engine} model preserved in shadow storage")
-                return True
+                print(f"🔒 Skipping unload for {wrapper.model_info.engine} (CUDA graphs prevent safe memory management)")
+                print(f"⚠️  Higgs Audio models cannot be unloaded due to PyTorch CUDA graph limitations")
+                print(f"📝 Model will remain in memory - use other engines for dynamic memory management")
+                return False  # Indicate model was not unloaded
             else:
                 # Normal destruction for other engines  
-                wrapper = self._model_cache.pop(model_key)
+                self._model_cache.pop(model_key)
                 
                 # Remove from ComfyUI tracking if available
                 if COMFYUI_AVAILABLE and model_management is not None:

@@ -271,6 +271,7 @@ class HiggsAudioServeEngine:
         """
         self.device = device
         self.model_name_or_path = model_name_or_path
+        self.audio_tokenizer_name_or_path = audio_tokenizer_name_or_path
         self.torch_dtype = torch_dtype
 
         # Initialize model and tokenizer
@@ -354,7 +355,7 @@ class HiggsAudioServeEngine:
         # Defer CUDA graph creation until first inference to prevent corruption during model loading
         self.device = device
         self.cuda_graphs_initialized = False
-        self.enable_cuda_graphs = (device == "cuda")
+        self.enable_cuda_graphs = (device == "cuda")  # Normal behavior by default
         
         if device == "cuda":
             logger.info("📝 CUDA graph capture deferred until first inference (prevents memory corruption)")
@@ -393,6 +394,67 @@ class HiggsAudioServeEngine:
                         if hasattr(layer.self_attn.config, '_attn_implementation'):
                             if layer.self_attn.config._attn_implementation is None:
                                 layer.self_attn.config._attn_implementation = "eager"
+
+    def disable_cuda_graphs_permanently(self):
+        """
+        Permanently disable CUDA graphs for models that have been corrupted by CPU moves.
+        This sacrifices performance but restores correct generation behavior.
+        """
+        try:
+            logger.info("🚫 Permanently disabling CUDA graphs for resurrected model")
+            
+            # Disable CUDA graph functionality completely
+            self.enable_cuda_graphs = False
+            self.cuda_graphs_initialized = False
+            
+            # Clear any existing CUDA graphs that might be corrupted
+            if hasattr(self.model, 'decode_graph_runners'):
+                logger.info("🗑️ Clearing corrupted CUDA graph runners")
+                for key in list(self.model.decode_graph_runners.keys()):
+                    del self.model.decode_graph_runners[key]
+                self.model.decode_graph_runners.clear()
+            
+            # Fix tensor tracking for the audio tokenizer components
+            if hasattr(self.audio_tokenizer, 'semantic_model'):
+                semantic_model = self.audio_tokenizer.semantic_model
+                
+                # Move to CPU and back to GPU to refresh tensor tracking
+                original_device = next(semantic_model.parameters()).device
+                semantic_model.cpu()
+                semantic_model.to(original_device)
+                semantic_model.eval()
+                
+                logger.info("✅ Fixed semantic model tensor tracking")
+            
+            # Fix encoder/decoder tensor tracking
+            if hasattr(self.audio_tokenizer, 'encoder'):
+                encoder = self.audio_tokenizer.encoder
+                original_device = next(encoder.parameters()).device
+                encoder.cpu()
+                encoder.to(original_device)
+                encoder.eval()
+                
+            if hasattr(self.audio_tokenizer, 'decoder_2'):
+                decoder = self.audio_tokenizer.decoder_2
+                original_device = next(decoder.parameters()).device
+                decoder.cpu()
+                decoder.to(original_device)
+                decoder.eval()
+            
+            logger.info("✅ CUDA graphs disabled permanently - model should work correctly but slower")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to disable CUDA graphs: {e}")
+            logger.info("Continuing with existing state - generation may be corrupted")
+
+    def disable_cuda_graphs_for_memory_management(self):
+        """
+        Disable CUDA graphs specifically for memory management scenarios.
+        Called when cache invalidation indicates models will be unloaded/reloaded.
+        """
+        logger.info("🚫 Disabling CUDA graphs for memory management cycle")
+        self.enable_cuda_graphs = False
+        self.cuda_graphs_initialized = False
 
     def _prepare_inputs(self, chat_ml_sample: ChatMLSample, force_audio_gen: bool = False):
         input_tokens, _, audio_contents, _ = prepare_chatml_sample(
