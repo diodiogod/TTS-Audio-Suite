@@ -82,7 +82,6 @@ class SmartModelLoader:
             # Also move nested components recursively (like ComfyUI wrapper does)
             print(f"🔧 SMART LOADER: About to move nested components to {actual_device}")
             self._ensure_all_components_on_device(model_instance, actual_device)
-            print(f"✅ SMART LOADER: Completed device moves for {model_name}")
             
             return model_instance
         else:

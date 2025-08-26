@@ -331,7 +331,6 @@ class ImportManager:
                 "source": "system_package",
                 "error": None
             }
-            self._log_debug("✅ SRT modules loaded from system package")
             return True, modules, "system_package"
             
         except ImportError as system_error:

@@ -53,7 +53,6 @@ class UnifiedModelInterface:
         """
         key = f"{engine_name}_{model_type}"
         self._model_factories[key] = factory_func
-        print(f"📝 Registered model factory: {key}")
     
     def load_model(self, config: UnifiedModelConfig, force_reload: bool = False) -> Any:
         """
@@ -393,7 +392,6 @@ def initialize_all_factories():
     register_f5tts_factory() 
     register_higgs_audio_factory()
     register_rvc_factory()
-    print("✅ All model factories registered with unified interface")
 
 
 # Auto-initialize on import

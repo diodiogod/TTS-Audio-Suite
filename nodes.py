@@ -12,7 +12,7 @@ if sys.version_info >= (3, 13):
         pass
 
 # Version and constants
-VERSION = "4.5.12"
+VERSION = "4.5.13"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -286,8 +286,6 @@ except Exception:
 # Register unified nodes
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
-
-print("🔧 Registering TTS Audio Suite nodes...")
 
 # Register engine nodes
 if CHATTERBOX_ENGINE_AVAILABLE:

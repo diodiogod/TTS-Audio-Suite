@@ -126,10 +126,6 @@ class TTSAudioInstaller:
             # Additional librosa dependencies for --no-deps installation
             "audioread>=2.1.9",           # Required by librosa
             "threadpoolctl>=3.1.0",       # Required by scikit-learn for librosa
-            "standard-aifc",              # Python 3.13 audio format support
-            "standard-sunau",             # Python 3.13 audio format support
-            "standard-chunk",             # Python 3.13 audio format support
-            "audioop-lts",                # Python 3.13 audio operations
             
             # Missing descript-audiotools dependencies for --no-deps installation
             "flatten-dict",               # Required by descript-audiotools
