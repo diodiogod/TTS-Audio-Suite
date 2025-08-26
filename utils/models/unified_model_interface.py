@@ -159,7 +159,7 @@ class UnifiedModelInterface:
             components.append(f"repo:{config.repo_id}")
         
         cache_key = "_".join(components)
-        print(f"🔑 Generated cache key: {cache_key}")
+        # print(f"🔑 Generated cache key: {cache_key}")  # Debug only when needed
         return cache_key
 
 

@@ -118,7 +118,6 @@ class ComfyUIModelWrapper:
     def loaded_size(self) -> int:
         """Return the memory size of the model in bytes"""
         size = self._memory_size if self._is_loaded_on_gpu else 0
-        print(f"📊 TTS Model loaded_size query: {self.model_info.engine} {self.model_info.model_type} = {size // 1024 // 1024}MB (GPU: {self._is_loaded_on_gpu})")
         return size
         
     def model_size(self) -> int:
@@ -131,7 +130,6 @@ class ComfyUIModelWrapper:
     
     def current_loaded_device(self) -> str:
         """Return the current device the model is loaded on"""
-        print(f"📍 TTS Model current_loaded_device query: {self.model_info.engine} {self.model_info.model_type} = {self.current_device}")
         return self.current_device
     
     def partially_unload(self, device: str, memory_to_free: int) -> int:
@@ -238,10 +236,9 @@ class ComfyUIModelWrapper:
     def _clear_cuda_graphs(self, model):
         """Clear CUDA graphs if the model supports it (prevents corruption when moving to CPU)"""
         try:
-            print(f"🔍 Checking for CUDA graphs in {self.model_info.engine} model...")
-            
             # Check if this is a Higgs Audio model with CUDA graphs
             if self.model_info.engine == "higgs_audio":
+                print(f"🔍 Checking for CUDA graphs in {self.model_info.engine} model...")
                 print(f"🔍 Found Higgs Audio model, searching for decode_graph_runners...")
                 
                 # The CUDA graphs are nested deeper in the Higgs Audio model structure
@@ -292,8 +289,6 @@ class ComfyUIModelWrapper:
                         print(f"📝 No CUDA graphs found in {self.model_info.engine} model")
                 else:
                     print(f"⚠️ Could not locate decode_graph_runners in {self.model_info.engine} model structure")
-            else:
-                print(f"📝 Not a Higgs Audio model ({self.model_info.engine}), skipping CUDA graph cleanup")
                         
         except Exception as e:
             print(f"⚠️ Failed to clear CUDA graphs: {e}")
@@ -447,10 +442,15 @@ class ComfyUIModelWrapper:
         elif hasattr(model, '__dict__'):
             # Complex model with multiple components
             total_size = 0
-            for attr_value in model.__dict__.values():
+            for attr_name, attr_value in model.__dict__.items():
                 if hasattr(attr_value, 'parameters'):
                     total_size += ComfyUIModelWrapper._estimate_model_memory(attr_value)
-            return total_size
+                elif attr_name == 'f5tts_model' and hasattr(attr_value, '__dict__'):
+                    # Special handling for ChatterBoxF5TTS wrapper
+                    for sub_attr_name, sub_attr_value in attr_value.__dict__.items():
+                        if hasattr(sub_attr_value, 'parameters'):
+                            total_size += ComfyUIModelWrapper._estimate_model_memory(sub_attr_value)
+            return total_size if total_size > 0 else 1024 * 1024 * 1024  # 1GB default if nothing found
         else:
             # Estimate based on common model sizes
             return 1024 * 1024 * 1024  # Default 1GB estimate
