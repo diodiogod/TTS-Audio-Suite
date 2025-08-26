@@ -54,14 +54,175 @@ class TTSAudioInstaller:
                 self.log(f"Error: {description} failed: {e.stderr.strip()}", "ERROR")
                 raise
 
+    def detect_cuda_version(self):
+        """Detect CUDA version and determine best PyTorch index"""
+        try:
+            # Try to detect CUDA version
+            result = subprocess.run(['nvidia-smi'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0 and 'CUDA Version:' in result.stdout:
+                # Extract CUDA version (e.g., "CUDA Version: 12.1")
+                import re
+                cuda_match = re.search(r'CUDA Version:\s*(\d+)\.(\d+)', result.stdout)
+                if cuda_match:
+                    major, minor = int(cuda_match.group(1)), int(cuda_match.group(2))
+                    self.log(f"Detected CUDA {major}.{minor}", "INFO")
+                    
+                    # Choose appropriate PyTorch CUDA build based on detected version
+                    if major == 12 and minor >= 8:
+                        return "cu124"  # CUDA 12.8+ → use cu124 index
+                    elif major >= 12:
+                        return "cu121"  # CUDA 12.1+ compatible
+                    elif major == 11 and minor >= 8:
+                        return "cu118"  # CUDA 11.8+ compatible
+                    else:
+                        self.log(f"CUDA {major}.{minor} detected - may need manual PyTorch installation", "WARNING")
+                        return "cu118"  # Fallback for older CUDA
+        except:
+            pass
+            
+        # No CUDA detected - check for AMD GPU (basic detection)
+        try:
+            if self.is_windows:
+                # Windows: check for AMD in device manager output
+                result = subprocess.run(['wmic', 'path', 'win32_VideoController', 'get', 'name'], 
+                                      capture_output=True, text=True, timeout=5)
+                if 'amd' in result.stdout.lower() or 'radeon' in result.stdout.lower():
+                    self.log("AMD GPU detected - will install CPU version (ROCm not yet supported)", "WARNING")
+                    return "cpu"
+        except:
+            pass
+            
+        self.log("No CUDA detected - installing CPU-only PyTorch", "WARNING")
+        return "cpu"
+
+    def check_pytorch_compatibility(self):
+        """Check if current PyTorch meets version and CUDA requirements"""
+        try:
+            import torch
+            current_version = torch.__version__
+            
+            # Parse version (e.g., "2.5.1+cu121" -> (2, 5, 1))
+            import re
+            version_match = re.match(r'(\d+)\.(\d+)\.(\d+)', current_version)
+            if version_match:
+                major, minor, patch = map(int, version_match.groups())
+                version_tuple = (major, minor, patch)
+                
+                # Check if version >= 2.6.0
+                if version_tuple >= (2, 6, 0):
+                    # Check CUDA availability if we detected CUDA
+                    cuda_available = torch.cuda.is_available()
+                    detected_cuda = self.detect_cuda_version() != "cpu"
+                    
+                    if detected_cuda and not cuda_available:
+                        self.log(f"PyTorch {current_version} found but no CUDA support - will reinstall with CUDA", "WARNING")
+                        return False
+                    elif not detected_cuda and cuda_available:
+                        self.log(f"PyTorch {current_version} has unnecessary CUDA support - keeping anyway", "INFO")
+                        return True
+                    else:
+                        self.log(f"PyTorch {current_version} is compatible - skipping installation", "SUCCESS")
+                        return True
+                else:
+                    self.log(f"PyTorch {current_version} < 2.6.0 - will upgrade for security fix", "WARNING")
+                    return False
+            else:
+                self.log(f"Could not parse PyTorch version: {current_version} - will reinstall", "WARNING")
+                return False
+                
+        except ImportError:
+            self.log("PyTorch not found - will install", "INFO")
+            return False
+        except Exception as e:
+            self.log(f"Error checking PyTorch: {e} - will reinstall", "WARNING")
+            return False
+
+    def install_pytorch_with_cuda(self):
+        """Install PyTorch with appropriate acceleration (2.6+ required for CVE-2025-32434 security fix)"""
+        # Check if current PyTorch is already compatible
+        if self.check_pytorch_compatibility():
+            return  # Skip installation
+            
+        cuda_version = self.detect_cuda_version()
+        
+        if cuda_version == "cpu":
+            self.log("Installing PyTorch 2.6+ (CPU-only)", "INFO")
+            index_url = "https://download.pytorch.org/whl/cpu"
+        else:
+            self.log(f"Installing PyTorch 2.6+ with CUDA {cuda_version} support", "INFO")
+            index_url = f"https://download.pytorch.org/whl/{cuda_version}"
+        
+        # Force uninstall if we need to switch between CPU/CUDA variants
+        try:
+            import torch
+            current_version = torch.__version__
+            if (cuda_version != "cpu" and not torch.cuda.is_available()) or \
+               (cuda_version == "cpu" and torch.cuda.is_available()):
+                self.log(f"Uninstalling existing PyTorch {current_version} to switch variants", "WARNING")
+                uninstall_cmd = ["uninstall", "-y", "torch", "torchvision", "torchaudio"]
+                self.run_pip_command(uninstall_cmd, "Uninstalling existing PyTorch")
+        except ImportError:
+            pass  # PyTorch not installed
+        
+        # Install PyTorch 2.6+ with detected acceleration
+        pytorch_packages = [
+            "torch>=2.6.0", 
+            "torchvision", 
+            "torchaudio>=2.6.0"
+        ]
+        
+        pytorch_cmd = [
+            "install", 
+            "--upgrade", 
+            "--force-reinstall"
+        ] + pytorch_packages + [
+            "--index-url", index_url
+        ]
+        
+        self.run_pip_command(pytorch_cmd, f"Installing PyTorch 2.6+ ({cuda_version} support)")
+
+    def check_package_installed(self, package_spec):
+        """Check if a package meets the version requirement"""
+        try:
+            # Parse package specification (e.g., "transformers>=4.46.3")
+            import re
+            match = re.match(r'^([a-zA-Z0-9\-_]+)([><=!]+)?(.+)?$', package_spec)
+            if not match:
+                return False
+                
+            package_name = match.group(1)
+            operator = match.group(2) if match.group(2) else None
+            required_version = match.group(3) if match.group(3) else None
+            
+            # Try to import and check version
+            import importlib
+            import pkg_resources
+            
+            try:
+                # Check if package is installed
+                distribution = pkg_resources.get_distribution(package_name)
+                installed_version = distribution.version
+                
+                if not operator or not required_version:
+                    # No version requirement, just check if installed
+                    return True
+                    
+                # Check version requirement
+                requirement = pkg_resources.Requirement.parse(package_spec)
+                return distribution in requirement
+                
+            except pkg_resources.DistributionNotFound:
+                return False
+                
+        except Exception:
+            return False
+
     def install_core_dependencies(self):
         """Install safe core dependencies that don't cause conflicts"""
-        self.log("Installing core dependencies (safe packages)", "INFO")
+        self.log("Checking and installing core dependencies (with smart checking)", "INFO")
         
         core_packages = [
-            # Foundation packages
-            "torch>=2.0.0",
-            "torchaudio>=2.0.0", 
+            # Audio and basic utilities (PyTorch installed separately with CUDA)
             "soundfile>=0.12.0",
             "sounddevice>=0.4.0",
             
@@ -140,8 +301,27 @@ class TTSAudioInstaller:
             "tensorboard"                 # Required by descript-audiotools
         ]
         
+        # Smart installation: check before installing (preserving all original packages and comments)
+        packages_to_install = []
+        skipped_packages = []
+        
         for package in core_packages:
-            self.run_pip_command(["install", package], f"Installing {package}")
+            if self.check_package_installed(package):
+                package_name = package.split('>=')[0].split('==')[0].split('<')[0]
+                skipped_packages.append(package_name)
+            else:
+                packages_to_install.append(package)
+                
+        if skipped_packages:
+            self.log(f"Already satisfied: {', '.join(skipped_packages[:5])}" + 
+                    (f" and {len(skipped_packages)-5} others" if len(skipped_packages) > 5 else ""), "SUCCESS")
+            
+        if packages_to_install:
+            self.log(f"Installing {len(packages_to_install)} missing core packages", "INFO")
+            for package in packages_to_install:
+                self.run_pip_command(["install", package], f"Installing {package}")
+        else:
+            self.log("All core dependencies already satisfied", "SUCCESS")
 
     def install_rvc_dependencies(self):
         """Install RVC voice conversion dependencies"""
@@ -333,6 +513,7 @@ def main():
         installer.check_comfyui_environment()
         
         # Install in correct order to prevent conflicts
+        installer.install_pytorch_with_cuda()  # Install PyTorch first with proper CUDA detection
         installer.install_core_dependencies()
         installer.install_numpy_with_constraints() 
         installer.install_rvc_dependencies()
