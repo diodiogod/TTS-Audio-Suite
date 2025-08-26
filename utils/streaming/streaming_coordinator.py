@@ -354,23 +354,42 @@ class StreamingCoordinator:
                         'start_time': segment.metadata.get('start_time', 0)
                     }
                 
-                # Sort segment indices by original subtitle order, then by start time
-                sorted_indices = sorted(results.keys(), key=lambda idx: (
-                    segment_to_subtitle.get(idx, {}).get('subtitle_index', 0),
-                    segment_to_subtitle.get(idx, {}).get('start_time', 0),
-                    idx  # Final fallback to segment index
-                ))
+                # Group segments by subtitle_index to handle character changes within subtitles
+                subtitle_groups = {}
+                for idx in results.keys():
+                    subtitle_idx = segment_to_subtitle.get(idx, {}).get('subtitle_index', 0)
+                    if subtitle_idx not in subtitle_groups:
+                        subtitle_groups[subtitle_idx] = []
+                    subtitle_groups[subtitle_idx].append(idx)
                 
-                print(f"🔄 Sorting audio segments by subtitle order: {sorted_indices}")
+                # Sort subtitle indices and concatenate audio for each subtitle
+                sorted_subtitle_indices = sorted(subtitle_groups.keys())
+                print(f"🔄 Consolidating segments by subtitle: {len(sorted_subtitle_indices)} subtitles from {len(results)} segments")
                 
-                for i in sorted_indices:
-                    audio = results.get(i)
-                    if audio is not None:
-                        audio_segments.append(audio)
-                        # Calculate duration from audio tensor
-                        sample_rate = kwargs.get('sample_rate', 22050)
-                        duration = float(audio.shape[-1]) / sample_rate
-                        natural_durations.append(duration)
+                for subtitle_idx in sorted_subtitle_indices:
+                    segment_indices = sorted(subtitle_groups[subtitle_idx], key=lambda idx: (
+                        segment_to_subtitle.get(idx, {}).get('start_time', 0),
+                        idx
+                    ))
+                    
+                    # Concatenate all audio segments for this subtitle
+                    subtitle_audio_parts = []
+                    total_duration = 0.0
+                    sample_rate = kwargs.get('sample_rate', 22050)
+                    
+                    for seg_idx in segment_indices:
+                        audio = results.get(seg_idx)
+                        if audio is not None:
+                            subtitle_audio_parts.append(audio)
+                            duration = float(audio.shape[-1]) / sample_rate
+                            total_duration += duration
+                    
+                    if subtitle_audio_parts:
+                        # Concatenate all audio parts for this subtitle
+                        import torch
+                        consolidated_audio = torch.cat(subtitle_audio_parts, dim=-1)
+                        audio_segments.append(consolidated_audio)
+                        natural_durations.append(total_duration)
                     else:
                         audio_segments.append(None)
                         natural_durations.append(0.0)
