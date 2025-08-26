@@ -220,6 +220,7 @@ class HiggsAudioTTSProcessor:
                 # Prepare reference audios for native mode
                 reference_audio_dict = None
                 second_audio_dict = None
+                second_narrator_ref_text = ""
                 
                 if audio_tensor is not None:
                     reference_audio_dict = {
@@ -228,7 +229,19 @@ class HiggsAudioTTSProcessor:
                     }
                 
                 if opt_second_narrator is not None:
-                    second_audio_dict = opt_second_narrator
+                    # Extract reference text from Character Voices data structure
+                    if isinstance(opt_second_narrator, dict) and "audio" in opt_second_narrator:
+                        # Character Voices node output
+                        second_audio_dict = opt_second_narrator.get("audio")
+                        second_narrator_ref_text = opt_second_narrator.get("reference_text", "")
+                        print(f"🎭 Using Character Voices reference text for second narrator: '{second_narrator_ref_text[:50]}...'")
+                    elif isinstance(opt_second_narrator, dict) and "waveform" in opt_second_narrator:
+                        # Direct audio input
+                        second_audio_dict = opt_second_narrator
+                        second_narrator_ref_text = ""
+                        print(f"🎭 Using direct audio input for second narrator (no reference text)")
+                    else:
+                        second_audio_dict = opt_second_narrator
                 
                 # Process entire conversation as single unit - let Higgs Audio handle pauses and speaker transitions
                 print(f"🎭 Processing full conversation: '{text[:100]}...'")
@@ -245,7 +258,7 @@ class HiggsAudioTTSProcessor:
                     # Native mode specific parameters
                     multi_speaker_mode=multi_speaker_mode,
                     second_narrator_audio=second_audio_dict,
-                    second_narrator_text=reference_text or "",  # Use reference text to improve voice cloning quality
+                    second_narrator_text=second_narrator_ref_text,  # Use extracted reference text from Character Voices
                     **generation_params  # Pass through all generation parameters
                 )
             
