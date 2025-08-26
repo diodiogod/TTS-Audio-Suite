@@ -368,15 +368,20 @@ class CharacterParser:
             mapper = get_language_mapper(engine_type)
             mappings = mapper.get_all_mappings().get(engine_type, {})
             
+            # Normalize model name for reverse lookup (remove local: prefix)
+            normalized_model = model_name
+            if normalized_model.startswith("local:"):
+                normalized_model = normalized_model[6:]
+            
             # Reverse lookup: find language code that maps to this model
             for lang_code, mapped_model in mappings.items():
-                if mapped_model == model_name:
+                if mapped_model == normalized_model:
                     return lang_code
             
             # Fallback for base models that aren't in specific language mappings
-            if engine_type == "f5tts" and any(x in model_name.lower() for x in ['f5tts_base', 'f5tts_v1_base', 'e2tts_base']):
+            if engine_type == "f5tts" and any(x in normalized_model.lower() for x in ['f5tts_base', 'f5tts_v1_base', 'e2tts_base']):
                 return 'en'
-            elif engine_type == "chatterbox" and 'english' in model_name.lower():
+            elif engine_type == "chatterbox" and 'english' in normalized_model.lower():
                 return 'en'
                 
         except ImportError:

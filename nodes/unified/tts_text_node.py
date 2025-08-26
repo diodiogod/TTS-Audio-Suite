@@ -145,17 +145,19 @@ Back to the main narrator voice for the conclusion.""",
         """
         try:
             engine_type = engine_data.get("engine_type")
-            # The engine_data IS the config - not nested under "config"
-            config = engine_data
+            # Extract config from engine_data - it's nested under "config"
+            config = engine_data.get("config", {})
             
             # Create cache key based only on stable parameters that affect engine instance creation
             stable_params = {
-                'engine_type': config.get('engine_type'),
+                'engine_type': engine_type,
                 'model': config.get('model'),
                 'device': config.get('device'),
-                'adapter_class': config.get('adapter_class')
+                'adapter_class': engine_data.get('adapter_class')
             }
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
+            
+            # Cache key now properly includes model name for correct differentiation
             
             # Check if we have a cached instance with the same stable configuration
             if cache_key in self._cached_engine_instances:

@@ -450,7 +450,15 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Process each language group with appropriate model
                 for lang_code, lang_segments in language_groups.items():
-                    required_model = get_f5tts_model_for_language(lang_code)
+                    # Check if this language group contains narrator segments
+                    has_narrator_segments = any(character == "narrator" for _, character, _, _ in lang_segments)
+                    
+                    if has_narrator_segments and len([seg for seg in lang_segments if seg[1] == "narrator"]) == len(lang_segments):
+                        # Pure narrator language group - use selected base model
+                        required_model = inputs["model"]
+                    else:
+                        # Mixed or character-only group - use language mapping for their specific languages
+                        required_model = get_f5tts_model_for_language(lang_code)
                     
                     # Check if ALL segments in this language group are cached
                     all_segments_cached = True
@@ -499,10 +507,14 @@ Back to the main narrator voice for the conclusion.""",
                     
                     # Only load model if we need to generate new audio
                     if not all_segments_cached:
-                        # Load base model if this is the first time we need to generate anything
-                        if not base_model_loaded:
+                        # Load base model if it's not the currently loaded model
+                        current_model = getattr(self, 'current_model_name', None)
+                        if current_model != inputs["model"]:
                             print(f"🔄 Loading base F5-TTS model '{inputs['model']}' for generation")
                             self.load_f5tts_model(inputs["model"], inputs["device"])
+                            base_model_loaded = True
+                        elif not base_model_loaded:
+                            # Model matches but base_model_loaded flag not set
                             base_model_loaded = True
                         
                         print(f"🌍 Loading F5-TTS model '{required_model}' for language '{lang_code}' ({len(lang_segments)} segments)")

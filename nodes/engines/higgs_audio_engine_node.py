@@ -8,6 +8,13 @@ import sys
 import importlib.util
 from typing import Dict, Any
 
+# AnyType for flexible input types (accepts any data type)
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+any_typ = AnyType("*")
+
 # Add project root directory to path for imports
 current_dir = os.path.dirname(__file__)
 nodes_dir = os.path.dirname(current_dir)  # nodes/
@@ -103,7 +110,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
                 })
             },
             "optional": {
-                "opt_second_narrator": ("AUDIO", {
+                "opt_second_narrator": (any_typ, {
                     "tooltip": "Second narrator voice for native multi-speaker modes. Used as SPEAKER1 voice when multi_speaker_mode is set to Native Multi-Speaker. Only needed for native modes, ignored in Custom Character Switching mode. First narrator (from Character Voices or TTS Text) becomes SPEAKER0.\\n\\n💡 TIP: Reference text significantly improves Higgs Audio voice cloning quality - always provide reference text with voice files."
                 })
             }
