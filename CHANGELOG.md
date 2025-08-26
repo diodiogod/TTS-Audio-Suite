@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.18] - 2025-08-26
+
+### Changed
+
+- Fix Higgs Audio 2 Engine Character Voices compatibility
+
+• Higgs Audio 2 Engine now accepts 🎭 Character Voices as secondary narrator input
+• Native multi-speaker modes properly use reference text from both Character Voices  
+• Improved voice cloning quality for SPEAKER1 in native multi-speaker conversations
+• Secondary narrator now uses dedicated reference text instead of sharing primary narrator text
 ## [4.5.17] - 2025-08-26
 
 ### Fixed
