@@ -48,7 +48,12 @@ class ImportManager:
     def _log_debug(self, message: str):
         """Log debug message if in dev mode."""
         if self.is_dev:
-            print(message)
+            try:
+                print(message)
+            except UnicodeEncodeError:
+                # Fallback for Windows console encoding issues
+                safe_message = message.encode('ascii', 'replace').decode('ascii')
+                print(safe_message)
     
     def import_chatterbox_tts(self) -> Tuple[bool, Optional[Any], str]:
         """
