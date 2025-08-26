@@ -990,12 +990,33 @@ The audio will match these exact timings.""",
             print(f"⚠️ SMART TIMING: {len(failed_indices)} segments failed and will be skipped")
             
         # Calculate smart adjustments and process segments (only successful ones)
-        adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+        filtered_adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
             filtered_audio, filtered_subtitles, tolerance, max_stretch_ratio, min_stretch_ratio, self.device
         )
         
+        # Map filtered adjustments back to original subtitle indices
+        adjustments = []
+        filtered_idx = 0
+        for i in range(len(subtitles)):
+            if i in failed_indices:
+                # Create dummy adjustment for failed segment
+                adjustments.append({
+                    'segment_index': i,
+                    'sequence': subtitles[i].sequence,
+                    'status': 'failed',
+                    'natural_duration': 0.0,
+                    'target_duration': subtitles[i].end_time - subtitles[i].start_time,
+                    'stretch_ratio': 1.0,
+                    'method': 'none'
+                })
+            else:
+                # Use adjustment from successful segment
+                if filtered_idx < len(filtered_adjustments):
+                    adjustments.append(filtered_adjustments[filtered_idx])
+                filtered_idx += 1
+        
         # Assemble the final audio (use filtered data)
-        final_audio = assembler.assemble_smart_natural(filtered_audio, processed_segments, adjustments, filtered_subtitles, self.device)
+        final_audio = assembler.assemble_smart_natural(filtered_audio, processed_segments, filtered_adjustments, filtered_subtitles, self.device)
         
         return final_audio, adjustments
     
