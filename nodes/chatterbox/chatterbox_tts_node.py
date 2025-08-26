@@ -434,8 +434,6 @@ Back to the main narrator voice for the conclusion.""",
         # Debug pause tag processing in streaming
         if pause_segments is not None:
             print(f"🏷️ PAUSE TAGS: Found in '{text[:50]}...' -> {len(pause_segments)} segments")
-        else:
-            print(f"🏷️ PAUSE TAGS: None found in '{text[:50]}...'")
         
         if pause_segments is None:
             # No pause tags, use regular generation with caching

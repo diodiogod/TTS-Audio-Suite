@@ -41,7 +41,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
         return {
             "required": {
                 "language": (cls.get_available_models_for_dropdown(), {
-                    "default": "F5TTS_Base",
+                    "default": "F5TTS_V1_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant. Note: This was previously called 'model' in individual nodes."
                 }),
                 "device": (["auto", "cuda", "cpu"], {

@@ -13,6 +13,9 @@ import base64
 import io
 import json
 import re
+import logging
+
+# boson_multimodal INFO logs now commented out directly in source
 import time
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
@@ -106,10 +109,7 @@ class HiggsAudioEngine:
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        print(f"🚀 Loading Higgs Audio 2 engine...")
-        print(f"   Model: {model_path}")
-        print(f"   Tokenizer: {tokenizer_path}")
-        print(f"   Device: {device}")
+        # Loading Higgs Audio 2 engine silently
         
         try:
             # Check if global cache invalidation occurred (models were unloaded)
@@ -145,7 +145,7 @@ class HiggsAudioEngine:
             if force_disable_cuda_graphs and hasattr(self.engine, 'disable_cuda_graphs_for_memory_management'):
                 self.engine.disable_cuda_graphs_for_memory_management()
             
-            print(f"✅ Higgs Audio 2 engine loaded successfully (ComfyUI managed)")
+            print(f"📦 Higgs Audio engine ready")
             
             # Show memory management warning only once per session
             if not HiggsAudioEngine._memory_warning_shown:
@@ -183,7 +183,7 @@ class HiggsAudioEngine:
             self.tokenizer_path = tokenizer_path
             self.device = device
             
-            print(f"✅ Higgs Audio 2 engine loaded successfully (fallback)")
+            print(f"📦 Higgs Audio engine ready")
             
         except Exception as e:
             print(f"❌ Failed to initialize Higgs Audio engine: {e}")
@@ -576,7 +576,7 @@ class HiggsAudioEngine:
                 }
                 
                 duration = audio_tensor.size(-1) / output.sampling_rate
-                print(f"  ✅ Generated {duration:.1f}s audio")
+                # Duration info is included in the generation info returned to caller
                 return chunk_audio, used_voice_info
             else:
                 raise ValueError("Invalid audio output from Higgs Audio engine")
@@ -684,7 +684,7 @@ class HiggsAudioEngine:
             # Check if we have complete local organized structure
             local_dir = os.path.join(self.downloader.base_path, model_path, "generation")
             if os.path.exists(local_dir) and self._verify_model_completeness(local_dir):
-                print(f"✅ Using verified local model: {local_dir}")
+                # print(f"✅ Using verified local model: {local_dir}")
                 return local_dir
             
             # Download to organized structure first using our downloader
@@ -706,7 +706,7 @@ class HiggsAudioEngine:
             local_path = os.path.join(self.downloader.base_path, model_name)
             
             if os.path.exists(local_path) and self._verify_model_completeness(local_path):
-                print(f"✅ Using verified local model: {local_path}")
+                # print(f"✅ Using verified local model: {local_path}")
                 return local_path
             
             # Download to organized structure first
@@ -742,7 +742,7 @@ class HiggsAudioEngine:
                 # Check if we have complete local organized structure
                 local_dir = os.path.join(self.downloader.base_path, model_name, "tokenizer")
                 if os.path.exists(local_dir) and self._verify_tokenizer_completeness(local_dir):
-                    print(f"✅ Using verified local tokenizer: {local_dir}")
+                    # print(f"✅ Using verified local tokenizer: {local_dir}")
                     return local_dir
                 break
         
@@ -752,7 +752,7 @@ class HiggsAudioEngine:
             local_path = os.path.join(self.downloader.base_path, model_name)
             
             if os.path.exists(local_path) and self._verify_tokenizer_completeness(local_path):
-                print(f"✅ Using verified local tokenizer: {local_path}")
+                # print(f"✅ Using verified local tokenizer: {local_path}")
                 return local_path
             
             # Return repo ID - HuggingFace will handle cache/download

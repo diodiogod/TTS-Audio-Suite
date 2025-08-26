@@ -81,6 +81,7 @@ class CharacterVoicesNode(BaseTTSNode):
             Tuple of (narrator_voice_data, character_name)
         """
         try:
+            used_folder_text = False
             # Determine audio source and character name
             if opt_audio_input is not None:
                 # Use direct audio input
@@ -107,9 +108,7 @@ class CharacterVoicesNode(BaseTTSNode):
                     # Use folder reference text if provided text is empty
                     if not reference_text.strip() and folder_reference_text:
                         reference_text = folder_reference_text
-                        print(f"🎭 Character Voices: Using reference text from {voice_name}")
-                    
-                    print(f"🎭 Character Voices: Loaded voice '{character_name}' from folder")
+                        used_folder_text = True
                 else:
                     print(f"⚠️ Character Voices: Voice file not found: {voice_name}")
                     return None, ""
@@ -139,7 +138,8 @@ class CharacterVoicesNode(BaseTTSNode):
             else:
                 compatibility = "Limited compatibility - missing audio"
             
-            print(f"🎭 Character Voices: Ready for {compatibility}")
+            ref_source = f" (text from {voice_name})" if used_folder_text else ""
+            print(f"💬 Narrator Voice: {character_name} ready for {compatibility}{ref_source}")
             
             return narrator_voice_data, character_name
             

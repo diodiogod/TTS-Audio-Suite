@@ -285,11 +285,11 @@ class HiggsAudioServeEngine:
         # Fix attention implementation for transformers compatibility
         self._fix_attention_implementation()
         
-        logger.info(f"Loaded model from {model_name_or_path}, dtype: {self.model.dtype}")
+        # logger.info(f"Loaded model from {model_name_or_path}, dtype: {self.model.dtype}")
 
         if tokenizer_name_or_path is None:
             tokenizer_name_or_path = model_name_or_path
-        logger.info(f"Loading tokenizer from {tokenizer_name_or_path}")
+        # logger.info(f"Loading tokenizer from {tokenizer_name_or_path}")
         try:
             # First try auto-detection
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path)
@@ -299,7 +299,7 @@ class HiggsAudioServeEngine:
             from transformers import LlamaTokenizer
             self.tokenizer = LlamaTokenizer.from_pretrained(tokenizer_name_or_path)
 
-        logger.info(f"Initializing Higgs Audio Tokenizer")
+        # logger.info(f"Initializing Higgs Audio Tokenizer")
         self.audio_tokenizer = load_higgs_audio_tokenizer(audio_tokenizer_name_or_path, device=device)
 
         self.audio_num_codebooks = self.model.config.audio_num_codebooks
@@ -358,18 +358,20 @@ class HiggsAudioServeEngine:
         self.enable_cuda_graphs = (device == "cuda")  # Normal behavior by default
         
         if device == "cuda":
-            logger.info("📝 CUDA graph capture deferred until first inference (prevents memory corruption)")
+            # logger.info("📝 CUDA graph capture deferred until first inference (prevents memory corruption)")
+            pass
         else:
-            logger.info("CUDA graph capture skipped (not using CUDA device)")
+            # logger.info("CUDA graph capture skipped (not using CUDA device)")
+            pass
     
     def _ensure_cuda_graphs(self):
         """Initialize CUDA graphs on first use if needed"""
         if self.device == "cuda" and self.enable_cuda_graphs and not self.cuda_graphs_initialized:
             try:
-                logger.info(f"🚀 Initializing CUDA graphs on first inference")
+                # logger.info(f"🚀 Initializing CUDA graphs on first inference")
                 self.model.capture_model(self.kv_caches.values())
                 self.cuda_graphs_initialized = True
-                logger.info("✅ CUDA graph capture successful")
+                # logger.info("✅ CUDA graph capture successful")
             except Exception as e:
                 logger.warning(f"⚠️ CUDA graph capture failed: {e}")
                 logger.info("Continuing without CUDA graphs (performance may be slower)")
@@ -377,7 +379,7 @@ class HiggsAudioServeEngine:
 
     def _fix_attention_implementation(self):
         """Fix attention implementation for all LLaMA layers to avoid None errors"""
-        logger.info("Fixing attention implementation for transformers compatibility")
+        # logger.info("Fixing attention implementation for transformers compatibility")
         
         # Fix the main config
         if hasattr(self.model.config, 'text_config'):

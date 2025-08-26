@@ -107,7 +107,7 @@ class ChatterBoxF5TTS:
             
             # Apply the monkey patch
             huggingface_hub.hf_hub_download = patched_hf_hub_download
-            print(f"📁 Redirecting Vocos downloads to: {vocos_dir}")
+            # Redirecting Vocos downloads to TTS folder
             
         except Exception as e:
             print(f"⚠️ Failed to setup Vocos redirect: {e}")
@@ -137,10 +137,6 @@ class ChatterBoxF5TTS:
                         vocab_file = os.path.join(self.ckpt_dir, file)
                 
                 if model_file:
-                    print(f"📁 Found local model: {model_file}")
-                    print(f"📁 Found local vocab: {vocab_file}")
-                    
-                    
                     # Load with explicit local files - determine correct config
                     model_config = "F5TTS_Base"  # Default config
                     if "v1" in self.model_name.lower() or "1.1" in self.model_name.lower():
@@ -153,14 +149,18 @@ class ChatterBoxF5TTS:
                         print(f"🔍 Detected Small model architecture for local '{self.model_name}'")
                     # Language models use base configs
                     
-                    print(f"📁 Using model config: {model_config}")
+                    # Get local Vocos path
+                    vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
+                    vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
+                    
                     self.f5tts_model = F5TTS(
                         model=model_config,
                         ckpt_file=model_file,
                         vocab_file=vocab_file,
+                        vocoder_local_path=vocoder_local_path,
                         device=self.device
                     )
-                    print(f"✅ Loaded F5-TTS completely from local files")
+                    print(f"📦 F5-TTS {model_config} loaded from local files")
                     return
             
             # Determine model configuration for HuggingFace models
@@ -195,9 +195,6 @@ class ChatterBoxF5TTS:
                 if not model_file:
                     raise FileNotFoundError(f"No model file found in {model_path}")
                 
-                print(f"📁 Found local model: {model_file}")
-                print(f"📁 Found local vocab: {vocab_file}")
-                
                 # Load local model - determine correct config based on folder name
                 model_config = "F5TTS_Base"  # Default config
                 if "v1" in local_name.lower() or "1.1" in local_name.lower():
@@ -210,14 +207,18 @@ class ChatterBoxF5TTS:
                     print(f"🔍 Detected Small model architecture for local folder '{local_name}'")
                 # Language models use base configs - they don't have their own
                 
-                print(f"📁 Using model config: {model_config}")
+                # Get local Vocos path
+                vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
+                vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
+                
                 self.f5tts_model = F5TTS(
                     model=model_config,
                     ckpt_file=model_file,
                     vocab_file=vocab_file,
+                    vocoder_local_path=vocoder_local_path,
                     device=self.device
                 )
-                print(f"✅ Loaded F5-TTS completely from local files")
+                print(f"📦 F5-TTS {model_config} loaded from local files")
                 
             elif self.model_name in F5TTS_MODELS:
                 # Pre-configured model from HuggingFace
@@ -282,13 +283,13 @@ class ChatterBoxF5TTS:
                     local_model_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, model_filename)
                     
                     if os.path.exists(local_model_path):
-                        print(f"📁 Using local F5-TTS model: {local_model_path}")
+                        # print(f"📁 Using local F5-TTS model: {local_model_path}")
                         model_file = local_model_path
                     else:
                         # Check legacy HuggingFace cache location
                         try:
                             hf_cached_file = hf_hub_download(repo_id=repo_id, filename=model_filename, local_files_only=True)
-                            print(f"📁 Using cached F5-TTS model: {hf_cached_file}")
+                            # Using cached model silently
                             model_file = hf_cached_file
                         except Exception:
                             # Download to local models directory
@@ -426,11 +427,16 @@ class ChatterBoxF5TTS:
                     
                     # Vocos redirect already setup in _load_f5tts()
                     
+                    # Get local Vocos path
+                    vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
+                    vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
+                    
                     # Load with base config but custom files
                     self.f5tts_model = F5TTS(
                         model=config_name,
                         ckpt_file=model_file,
                         vocab_file=vocab_file,
+                        vocoder_local_path=vocoder_local_path,
                         device=self.device
                     )
                     
@@ -461,7 +467,7 @@ class ChatterBoxF5TTS:
                     local_vocab_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, vocab_filename)
                     
                     if os.path.exists(local_model_path) and os.path.exists(local_vocab_path):
-                        print(f"📁 Using local F5-TTS model: {local_model_path}")
+                        # print(f"📁 Using local F5-TTS model: {local_model_path}")
                         model_file = local_model_path
                         vocab_file = local_vocab_path
                     else:
@@ -551,7 +557,10 @@ class ChatterBoxF5TTS:
                     )
                 
                 def load_hf_f5tts():
-                    return F5TTS(model="F5TTS_Base", device=self.device)
+                    # Get local Vocos path
+                    vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
+                    vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
+                    return F5TTS(model="F5TTS_Base", vocoder_local_path=vocoder_local_path, device=self.device)
                 
                 self.f5tts_model = try_local_first(
                     search_paths=search_paths,
@@ -571,7 +580,7 @@ class ChatterBoxF5TTS:
     @classmethod
     def from_local(cls, ckpt_dir: str, device: str, model_name: str = "F5TTS_Base"):
         """Load from local directory following ChatterBox pattern"""
-        print(f"📦 Loading local F5-TTS model from: {ckpt_dir}")
+        # Silent loading - only show errors
         return cls(model_name, device, ckpt_dir)
     
     @classmethod  

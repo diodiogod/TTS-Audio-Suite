@@ -183,7 +183,7 @@ Back to the main narrator voice for the conclusion.""",
                     print(f"🗑️ Removing old-format {engine_type} engine cache (upgrading to timestamped format)")
                     del self._cached_engine_instances[cache_key]
             
-            print(f"🔧 Creating new {engine_type} engine instance")
+            # print(f"🔧 Creating new {engine_type} engine instance")
             
             if engine_type == "chatterbox":
                 # Import and create the original ChatterBox node using absolute import
@@ -360,10 +360,15 @@ Back to the main narrator voice for the conclusion.""",
             if not engine_type:
                 raise ValueError("TTS engine missing engine_type")
             
-            print(f"🎤 TTS Text: Starting {engine_type} generation")
-            
             # Get voice reference (opt_narrator takes priority)
             audio_path, audio_tensor, reference_text, character_name = self._get_voice_reference(opt_narrator, narrator_voice)
+            
+            # Get language for consistent logging
+            language = config.get("language", "English")
+            lang_code = language.lower()[:2]  # en, fr, de, etc.
+            char_display = character_name if character_name else "default"
+            
+            print(f"🎤 Generating {engine_type.title()} for '{char_display}' (lang: {lang_code})")
             
             # Validate F5-TTS requirements: must have reference text
             if engine_type == "f5tts" and not reference_text.strip():
@@ -388,7 +393,7 @@ Back to the main narrator voice for the conclusion.""",
                 # ChatterBox TTS parameters - batch_size controls everything
                 result = engine_instance.generate_speech(
                     text=text,
-                    language=config.get("language", "English"),
+                    language=language,
                     device=config.get("device", "auto"),
                     exaggeration=config.get("exaggeration", 0.5),
                     temperature=config.get("temperature", 0.8),
@@ -480,7 +485,7 @@ Back to the main narrator voice for the conclusion.""",
             # Add unified prefix to generation info
             unified_info = f"🎤 TTS Text (Unified) - {engine_type.upper()} Engine:\n{enhanced_info}"
             
-            print(f"✅ TTS Text: {engine_type} generation successful")
+            print(f"✅ {engine_type.title()} generation complete for '{char_display}'")
             return (audio_output, unified_info)
                 
         except Exception as e:

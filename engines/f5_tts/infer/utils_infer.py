@@ -112,7 +112,7 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
     if vocoder_name == "vocos":
         # vocoder = Vocos.from_pretrained("charactr/vocos-mel-24khz").to(device)
         if is_local:
-            print(f"Load vocos from local path {local_path}")
+            # print(f"Load vocos from local path {local_path}")
             config_path = f"{local_path}/config.yaml"
             model_path = f"{local_path}/pytorch_model.bin"
         else:
@@ -254,9 +254,9 @@ def load_model(
         vocab_file = str(files(__package__ or "f5_tts").joinpath("infer/examples/vocab.txt"))
     tokenizer = "custom"
 
-    print("\nvocab : ", vocab_file)
-    print("token : ", tokenizer)
-    print("model : ", ckpt_path, "\n")
+    # print("\nvocab : ", vocab_file)
+    # print("token : ", tokenizer)
+    # print("model : ", ckpt_path, "\n")
 
     vocab_char_map, vocab_size = get_tokenizer(vocab_file, tokenizer)
     model = CFM(

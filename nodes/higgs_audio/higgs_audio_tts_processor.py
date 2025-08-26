@@ -55,7 +55,7 @@ class HiggsAudioTTSProcessor:
             Tuple of (formatted_audio, generation_info)
         """
         try:
-            print(f"🎭 Higgs Audio: Using mode '{multi_speaker_mode}'")
+            # print(f"🎭 Higgs Audio: Using mode '{multi_speaker_mode}'")
             
             # Extract generation parameters from engine config to pass to all segment calls
             generation_params = {
@@ -68,7 +68,7 @@ class HiggsAudioTTSProcessor:
             
             if multi_speaker_mode == "Custom Character Switching":
                 # Use existing modular utilities - pause processing first, then character parsing (like ChatterBox)
-                print(f"🎭 Higgs Audio: Using character switching with pause support")
+                # print(f"🎭 Higgs Audio: Using character switching with pause support")
                 
                 # Import modular utilities  
                 from utils.text.pause_processor import PauseTagProcessor
@@ -81,7 +81,7 @@ class HiggsAudioTTSProcessor:
                 all_characters.add("narrator")  # Always include narrator for fallback mapping
                 character_mapping = get_character_mapping(list(all_characters), engine_type="f5tts")
                 
-                print(f"🎭 Higgs Audio: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
+                # print(f"🎭 Higgs Audio: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
                 
                 # Build voice references with proper fallback hierarchy for narrator:
                 # 1. opt_narrator (already in audio_tensor/reference_text)
@@ -97,7 +97,7 @@ class HiggsAudioTTSProcessor:
                     narrator_voice_dict = {"waveform": audio_tensor["waveform"], "sample_rate": audio_tensor["sample_rate"]}
                     narrator_ref_text = reference_text or ""
                     ref_display = f"'{narrator_ref_text[:50]}...'" if narrator_ref_text else "No reference text"
-                    print(f"📖 Using connected narrator voice (Character Voices node or dropdown) | Ref: {ref_display}")
+                    # print(f"📖 Using connected narrator voice (Character Voices node or dropdown) | Ref: {ref_display}")
                 else:
                     # Priority 3: Check mapped narrator (e.g., David Attenborough from alias map)
                     mapped_narrator = character_mapping.get("narrator", (None, None))
@@ -251,10 +251,10 @@ class HiggsAudioTTSProcessor:
             
             # CRITICAL FIX: Ensure tensor has correct dimensions for ComfyUI
             if isinstance(result, torch.Tensor):
-                print(f"🔧 Higgs Audio tensor before fix: {result.shape}")
+                # print(f"🔧 Higgs Audio tensor before fix: {result.shape}")
                 if result.dim() == 3 and result.size(0) == 1:
                     result = result.squeeze(0)  # Remove batch dimension [1,1,N] -> [1,N]
-                    print(f"🔧 Higgs Audio tensor after fix: {result.shape}")
+                    # print(f"🔧 Higgs Audio tensor after fix: {result.shape}")
                 elif result.dim() == 1:
                     result = result.unsqueeze(0)  # Add channel dimension [N] -> [1,N]
             
@@ -283,8 +283,8 @@ class HiggsAudioTTSProcessor:
                 from utils.audio.processing import AudioProcessingUtils
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(result.cpu(), self.sample_rate)
                 
-                print(f"🔧 Higgs Audio raw tensor: {result.shape}")
-                print(f"🔧 After format_for_comfyui: {formatted_audio['waveform'].shape}")
+                # print(f"🔧 Higgs Audio raw tensor: {result.shape}")
+                # print(f"🔧 After format_for_comfyui: {formatted_audio['waveform'].shape}")
                 
                 generation_info = "Higgs Audio generation completed"
                 return (formatted_audio, generation_info)

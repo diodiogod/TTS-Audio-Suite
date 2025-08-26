@@ -176,7 +176,6 @@ class ChatterboxTTS:
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
-        print(f"📦 Loading local ChatterBox models from: {ckpt_dir}")
         ckpt_dir = Path(ckpt_dir)
         
         # Auto-detect model format
@@ -186,10 +185,8 @@ class ChatterboxTTS:
             pt_path = ckpt_dir / f"{base_name}.pt"
             
             if safetensors_path.exists():
-                print(f"📁 Loading {base_name} from safetensors format")
                 return load_file(safetensors_path, device=device)
             elif pt_path.exists():
-                print(f"📁 Loading {base_name} from pt format")
                 return torch.load(pt_path, map_location=device)
             else:
                 raise FileNotFoundError(f"Neither {base_name}.safetensors nor {base_name}.pt found in {ckpt_dir}")
@@ -237,7 +234,7 @@ class ChatterboxTTS:
                 conds = Conditionals.load(builtin_voice).to(device)
 
             instance = cls(t3, s3gen, ve, tokenizer, device, conds=conds)
-            print("✅ Successfully loaded all local ChatterBox models")
+            print(f"📦 ChatterBox models loaded from: {ckpt_dir}")
             return instance
 
     @classmethod
@@ -285,7 +282,7 @@ class ChatterboxTTS:
         repo_id = model_config.get("repo", REPO_ID)
         model_format = model_config.get("format", "pt")
         
-        print(f"📦 Loading ChatterBox model for {language} from {repo_id}")
+        # Silent loading unless errors occur
         
         # Define file extensions based on format
         if model_format == "safetensors":
@@ -304,14 +301,12 @@ class ChatterboxTTS:
             local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, os.path.basename(fpath))
             
             if os.path.exists(local_model_path):
-                print(f"📁 Using local Chatterbox model: {local_model_path}")
                 local_paths.append(local_model_path)
                 continue
             
             # Check HuggingFace cache first
             try:
                 hf_cached_file = hf_hub_download(repo_id=repo_id, filename=fpath, local_files_only=True)
-                print(f"📁 Using cached Chatterbox model: {hf_cached_file}")
                 local_paths.append(hf_cached_file)
                 continue
             except Exception:

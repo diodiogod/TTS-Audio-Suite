@@ -59,7 +59,6 @@ class SmartModelLoader:
     def _check_cross_engine_cache(self, engine_type: str, model_name: str, device: str) -> Optional[Any]:
         """Check if model exists in global cache from any engine."""
         cache_key = self._generate_cache_key(engine_type, model_name, device)
-        print(f"🔍 SMART LOADER: Checking cache with key {cache_key} for {engine_type}/{model_name}/{device}")
         
         if cache_key in self._global_model_cache:
             model_info = self._global_model_cache[cache_key]
@@ -70,22 +69,17 @@ class SmartModelLoader:
             
             # Convert "auto" to actual device
             actual_device = "cuda" if device == "auto" and torch.cuda.is_available() else device
-            print(f"🔧 SMART LOADER: About to move model to device {device} (resolved: {actual_device})")
             
             if hasattr(model_instance, 'to'):
                 try:
                     model_instance.to(actual_device)
-                    print(f"🔄 SMART LOADER: Moved reused model to {actual_device}")
                 except Exception as e:
                     print(f"⚠️ SMART LOADER: Failed to move model to {actual_device}: {e}")
             
             # Also move nested components recursively (like ComfyUI wrapper does)
-            print(f"🔧 SMART LOADER: About to move nested components to {actual_device}")
             self._ensure_all_components_on_device(model_instance, actual_device)
             
             return model_instance
-        else:
-            print(f"🚫 SMART LOADER: No cached model found for key {cache_key}")
         
         return None
     
@@ -181,11 +175,9 @@ class SmartModelLoader:
                 return cached_model, True
         
         # Load new model using provided callback
-        print(f"📦 SMART LOADER: Loading {model_name} for {engine_type} on {device}")
         try:
             new_model = load_callback(device, model_name)
             self._update_caches(engine_type, model_name, device, new_model)
-            print(f"✅ SMART LOADER: {model_name} loaded successfully for {engine_type} (ID: {id(new_model)})")
             return new_model, False
         except Exception as e:
             print(f"❌ SMART LOADER: Failed to load {model_name} for {engine_type}: {e}")

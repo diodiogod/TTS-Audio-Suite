@@ -580,7 +580,7 @@ class ComfyUITTSModelManager:
                             models_to_clear.append(cache_key)
                     
                     if models_to_clear:
-                        print(f"🗑️ Clearing {len(models_to_clear)} TTS models from other engines to free VRAM...")
+                        print(f"🗑️ Clearing {len(models_to_clear)} TTS models to free VRAM")
                         for key in models_to_clear:
                             self.remove_model(key)
                             
@@ -589,11 +589,11 @@ class ComfyUITTSModelManager:
                 pass
         
         # Create the model
-        print(f"🔧 Creating new {model_type} model ({engine}) on {device} - fresh instance after cache invalidation")
+        # print(f"🔧 Creating new {model_type} model ({engine}) on {device} - fresh instance after cache invalidation")
         
         # Higgs Audio now uses deferred CUDA graph initialization to prevent corruption
         if device.startswith('cuda') and engine == "higgs_audio":
-            print(f"📝 Creating fresh {engine} model (CUDA graphs deferred until first inference)")
+            # print(f"📝 Creating fresh {engine} model (CUDA graphs deferred until first inference)")
             import gc
             gc.collect()
         
@@ -642,7 +642,7 @@ class ComfyUITTSModelManager:
                     
                     model_management.current_loaded_models.insert(0, loaded_model)  # Insert at 0 like ComfyUI does
                     total_models = len(model_management.current_loaded_models)
-                    print(f"✅ Registered {model_type} model with ComfyUI model management via manual LoadedModel (#{total_models})")
+                    # print(f"📦 {model_type.title()} ready with ComfyUI integration (#{total_models})")
                 else:
                     print(f"⚠️ ComfyUI LoadedModel or current_loaded_models not available")
             except Exception as e:
@@ -661,12 +661,9 @@ class ComfyUITTSModelManager:
             
             # For Higgs Audio: Skip memory management due to CUDA graph incompatibility
             if wrapper.model_info.engine == "higgs_audio":
-                print(f"🔒 Skipping unload for {wrapper.model_info.engine} (CUDA graphs prevent safe memory management)")
-                
-                # Show detailed warning only once per session
+                # Show warning only once per session
                 if not ComfyUITTSModelManager._higgs_unload_warning_shown:
-                    print(f"⚠️  Higgs Audio models cannot be unloaded due to PyTorch CUDA graph limitations")
-                    print(f"📝 Model will remain in memory - use other engines for dynamic memory management")
+                    print(f"🔒 Higgs Audio models kept in memory (CUDA graph limitations)")
                     ComfyUITTSModelManager._higgs_unload_warning_shown = True
                     
                 return False  # Indicate model was not unloaded

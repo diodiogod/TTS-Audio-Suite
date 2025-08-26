@@ -346,7 +346,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     del self._cached_engine_instances[cache_key]
             
             if engine_type == "chatterbox":
-                print(f"🔧 Creating new {engine_type} VC engine instance")
+                # print(f"🔧 Creating new {engine_type} VC engine instance")
                 
                 # Import and create the original ChatterBox VC node using absolute import
                 chatterbox_vc_path = os.path.join(nodes_dir, "chatterbox", "chatterbox_vc_node.py")

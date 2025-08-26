@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.16] - 2025-08-26
+
+### Changed
+
+- Remove excessive debug messages and consolidate redundant logs for cleaner user experience
+
+Cleaned up verbose logging in:
+- ChatterBox engine: Consolidated model loading messages, removed cache debug spam
+- F5-TTS engine: Silenced path verbosity, fixed Vocos local detection, removed internal logs
+- Higgs Audio engine: Commented out boson_multimodal INFO logs, unified completion messages
+- Universal nodes: Removed engine creation debug messages
+- Smart Loader: Silenced routine cache operations
+- Character Voices: Consolidated multiple setup messages into single line
+- Model management: Removed technical integration details
+
+Result: Significantly reduced console noise while preserving important error and completion messages
 ## [4.5.15] - 2025-08-26
 
 ### Changed
