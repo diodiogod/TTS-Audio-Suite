@@ -424,20 +424,7 @@ Back to the main narrator voice for the conclusion.""",
                         # Note: Indian languages (as, bn, gu, kn, ml, mr, or, pa, ta, te) 
                         # fall back to base F5TTS models - IndicF5 was removed due to architecture incompatibility
                     }
-                    # Simple logic: Only switch if explicit language tag found
-                    # If no language tag (default/auto-detected), use selected model
-                    # If explicit language tag like [en:character], use that language's default model
-                    
-                    # Check if this is an explicitly tagged language segment or auto-detected
-                    # Auto-detected segments should use the selected model
-                    # Only switch for explicit language tags like [en:], [de:], etc.
-                    
-                    # If no explicit language switching tags were found in the original text,
-                    # use the selected model for everything
-                    if not ('[' in inputs["text"] and ':' in inputs["text"]):
-                        return inputs["model"]
-                    
-                    # For explicit language tags, use appropriate model
+                    # Use appropriate model for detected language (supports both explicit tags and character alias language switching)
                     return lang_model_map.get(lang_code.lower(), inputs["model"])
                 
                 # Group segments by language with original order tracking
