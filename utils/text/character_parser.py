@@ -414,12 +414,13 @@ class CharacterParser:
         # If it's already a language code or unknown, return as-is
         return normalized
     
-    def normalize_character_name(self, character_name: str) -> str:
+    def normalize_character_name(self, character_name: str, skip_narrator_alias: bool = False) -> str:
         """
         Normalize character name and apply alias resolution and fallback if needed.
         
         Args:
             character_name: Raw character name from tag
+            skip_narrator_alias: If True, skip alias resolution for "narrator" character
             
         Returns:
             Normalized character name or fallback
@@ -431,15 +432,18 @@ class CharacterParser:
         normalized = re.sub(r'[：:,，]', '', normalized)
         
         # First, try to resolve through alias system
-        try:
-            from utils.voice.discovery import voice_discovery
-            resolved = voice_discovery.resolve_character_alias(normalized)
-            if resolved != normalized:
-                # print(f"🗂️ Character Parser: '{character_name}' → '{resolved}' (alias)")
-                normalized = resolved
-        except Exception as e:
-            # If alias resolution fails, continue with original name
-            pass
+        # Skip alias resolution for "narrator" when it comes from language-only tags
+        # This preserves user's narrator voice priority (opt_narrator > dropdown > character map)
+        if not (skip_narrator_alias and normalized == "narrator"):
+            try:
+                from utils.voice.discovery import voice_discovery
+                resolved = voice_discovery.resolve_character_alias(normalized)
+                if resolved != normalized:
+                    # print(f"🗂️ Character Parser: '{character_name}' → '{resolved}' (alias)")
+                    normalized = resolved
+            except Exception as e:
+                # If alias resolution fails, continue with original name
+                pass
         
         # Check if character is available
         if normalized in self.available_characters:
@@ -555,7 +559,14 @@ class CharacterParser:
             # IMPORTANT: Resolve language using original alias name before character normalization
             current_language = self.resolve_character_language(raw_character, explicit_language)
             original_character = raw_character  # Store original before normalization
-            current_character = self.normalize_character_name(raw_character)
+            
+            # Detect language-only tags: if the original tag had empty character part and raw_character
+            # was defaulted to narrator, skip alias resolution to preserve narrator voice priority
+            is_language_only_tag = (raw_character == self.default_character and 
+                                   ':' in raw_tag_content and 
+                                   raw_tag_content.split(':', 1)[1].strip() == '')
+            
+            current_character = self.normalize_character_name(raw_character, skip_narrator_alias=is_language_only_tag)
             current_pos = match.end()
         
         # Add remaining text after last tag (or entire line if no tags)
