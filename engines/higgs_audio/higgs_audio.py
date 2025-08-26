@@ -71,6 +71,9 @@ class HiggsAudioEngine:
     Handles model loading, text generation, and voice cloning
     """
     
+    # Class-level flag to prevent repetitive memory management warnings
+    _memory_warning_shown = False
+    
     def __init__(self):
         """Initialize Higgs Audio engine"""
         self.engine = None
@@ -143,10 +146,14 @@ class HiggsAudioEngine:
                 self.engine.disable_cuda_graphs_for_memory_management()
             
             print(f"✅ Higgs Audio 2 engine loaded successfully (ComfyUI managed)")
-            print(f"⚠️  Memory Management Limitation: Higgs Audio uses CUDA graphs for performance")
-            print(f"   CUDA graphs lock GPU memory and cannot be safely unloaded without crashes")
-            print(f"   This model will stay in memory until ComfyUI restart")
-            print(f"📝 For dynamic memory management, use ChatterBox or F5-TTS engines instead")
+            
+            # Show memory management warning only once per session
+            if not HiggsAudioEngine._memory_warning_shown:
+                print(f"⚠️  Memory Management Limitation: Higgs Audio uses CUDA graphs for performance")
+                print(f"   CUDA graphs lock GPU memory and cannot be safely unloaded without crashes")
+                print(f"   This model will stay in memory until ComfyUI restart")
+                print(f"📝 For dynamic memory management, use ChatterBox or F5-TTS engines instead")
+                HiggsAudioEngine._memory_warning_shown = True
             return
             
         except Exception as e:

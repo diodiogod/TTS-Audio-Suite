@@ -466,6 +466,9 @@ class ComfyUITTSModelManager:
     This replaces static caches with ComfyUI-managed model loading/unloading.
     """
     
+    # Class-level flag to prevent repetitive Higgs Audio unload warnings
+    _higgs_unload_warning_shown = False
+    
     def __init__(self):
         self._model_cache: Dict[str, ComfyUIModelWrapper] = {}
         
@@ -659,8 +662,13 @@ class ComfyUITTSModelManager:
             # For Higgs Audio: Skip memory management due to CUDA graph incompatibility
             if wrapper.model_info.engine == "higgs_audio":
                 print(f"🔒 Skipping unload for {wrapper.model_info.engine} (CUDA graphs prevent safe memory management)")
-                print(f"⚠️  Higgs Audio models cannot be unloaded due to PyTorch CUDA graph limitations")
-                print(f"📝 Model will remain in memory - use other engines for dynamic memory management")
+                
+                # Show detailed warning only once per session
+                if not ComfyUITTSModelManager._higgs_unload_warning_shown:
+                    print(f"⚠️  Higgs Audio models cannot be unloaded due to PyTorch CUDA graph limitations")
+                    print(f"📝 Model will remain in memory - use other engines for dynamic memory management")
+                    ComfyUITTSModelManager._higgs_unload_warning_shown = True
+                    
                 return False  # Indicate model was not unloaded
             else:
                 # Normal destruction for other engines  
