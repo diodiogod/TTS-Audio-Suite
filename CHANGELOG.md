@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.11] - 2025-08-25
+
+### Added
+
+- Implement ComfyUI memory management integration for TTS models
+
+Add ComfyUI model management support:
+- ChatterBox and F5-TTS models can now be unloaded via ComfyUI Manager
+- Fix device assignment after memory cycles
+- Clean up debug message spam
+- Reduce repetitive Higgs Audio warnings
+
+Note: Higgs Audio models cannot be unloaded due to CUDA graph limitations
+
+Relates to #6
 ## [4.5.10] - 2025-08-25
 
 ### Added

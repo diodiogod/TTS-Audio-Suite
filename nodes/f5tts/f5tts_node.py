@@ -380,20 +380,27 @@ Back to the main narrator voice for the conclusion.""",
                 main_voices = []
                 
                 for character in characters:
-                    # PRIORITY: If a narrator voice was provided, always use it for "narrator" character
+                    # PRIORITY 1: If a narrator voice was provided, ALWAYS use it for "narrator" character
+                    # This ensures language-only tags like [fr:] use the selected narrator voice, not character aliases
                     if character == "narrator" and main_audio_prompt and main_ref_text:
                         voice_refs[character] = (main_audio_prompt, main_ref_text)
                         main_voices.append(character)
+                        print(f"✅ Using selected narrator voice for language-only tag (priority over character map)")
                     else:
-                        # For other characters, try character mapping first
+                        # PRIORITY 2: For other characters (non-narrator), try character mapping first
                         audio_path, ref_text = character_mapping.get(character, (None, None))
                         if audio_path and ref_text:
                             voice_refs[character] = (audio_path, ref_text)
                             character_voices.append(character)
                         else:
-                            # Fallback to provided narrator voice if available
-                            voice_refs[character] = (main_audio_prompt, main_ref_text)
-                            main_voices.append(character)
+                            # PRIORITY 3: Fallback to provided narrator voice if available
+                            if main_audio_prompt and main_ref_text:
+                                voice_refs[character] = (main_audio_prompt, main_ref_text)
+                                main_voices.append(character)
+                            else:
+                                # No voice available - this will cause an error later
+                                print(f"⚠️ No voice reference available for character '{character}'")
+                                voice_refs[character] = (None, None)
                 
                 # Consolidated voice summary logging
                 voice_summary = []

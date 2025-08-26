@@ -655,6 +655,22 @@ class ChatterBoxF5TTS:
         # F5-TTS handles preprocessing internally, so we just validate inputs
         return True
     
+    def to(self, device):
+        """
+        Move F5-TTS model to specified device for ComfyUI memory management.
+        """
+        self.device = device
+        
+        # Move underlying F5-TTS model components to device
+        if hasattr(self, 'f5tts_model') and self.f5tts_model is not None:
+            # F5-TTS model has multiple components that need to be moved
+            if hasattr(self.f5tts_model, 'ema_model') and self.f5tts_model.ema_model is not None:
+                self.f5tts_model.ema_model.to(device)
+            if hasattr(self.f5tts_model, 'vocoder') and self.f5tts_model.vocoder is not None:
+                self.f5tts_model.vocoder.to(device)
+        
+        return self
+    
     def edit_speech(self, audio_tensor: torch.Tensor, sample_rate: int,
                    original_text: str, target_text: str,
                    edit_regions: list, fix_durations: list = None,
