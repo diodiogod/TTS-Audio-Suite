@@ -973,13 +973,29 @@ The audio will match these exact timings.""",
         timing_engine = TimingEngine(sample_rate)
         assembler = AudioAssemblyEngine(sample_rate)
         
-        # Calculate smart adjustments and process segments
+        # Filter out failed segments (None audio) and their corresponding subtitles
+        filtered_audio = []
+        filtered_subtitles = []
+        failed_indices = []
+        
+        for i, (audio, subtitle) in enumerate(zip(audio_segments, subtitles)):
+            if audio is not None:
+                filtered_audio.append(audio)
+                filtered_subtitles.append(subtitle)
+            else:
+                failed_indices.append(i)
+                print(f"⚠️ SMART TIMING: Skipping failed segment {i} (subtitle: '{subtitle.text[:50]}...')")
+        
+        if failed_indices:
+            print(f"⚠️ SMART TIMING: {len(failed_indices)} segments failed and will be skipped")
+            
+        # Calculate smart adjustments and process segments (only successful ones)
         adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
-            audio_segments, subtitles, tolerance, max_stretch_ratio, min_stretch_ratio, self.device
+            filtered_audio, filtered_subtitles, tolerance, max_stretch_ratio, min_stretch_ratio, self.device
         )
         
-        # Assemble the final audio
-        final_audio = assembler.assemble_smart_natural(audio_segments, processed_segments, adjustments, subtitles, self.device)
+        # Assemble the final audio (use filtered data)
+        final_audio = assembler.assemble_smart_natural(filtered_audio, processed_segments, adjustments, filtered_subtitles, self.device)
         
         return final_audio, adjustments
     

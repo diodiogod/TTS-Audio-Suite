@@ -352,12 +352,13 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
         Returns:
             True if segment can be processed
         """
-        # Check language support
+        # Check language support - fallback to English for unsupported languages
         if segment.language not in self.supported_languages:
             # Check if it's a local model
             if not segment.language.startswith('local:'):
-                print(f"❌ ChatterBox doesn't support language: {segment.language}")
-                return False
+                print(f"⚠️ ChatterBox: Language '{segment.language}' not supported, falling back to English model")
+                # Modify segment language to English for fallback
+                segment.language = 'en'
         
         # Basic validation
         if not segment.text.strip():
