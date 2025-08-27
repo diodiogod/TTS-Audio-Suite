@@ -1166,7 +1166,7 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 | **Unified 📺 TTS SRT**       | Universal SRT processing with all TTS engines | • ChatterBox/F5-TTS/Higgs Audio 2<br>• Multiple timing modes<br>• Multi-character switching<br>• Overlap SRT support | ✅ **New in v4.5**      | [📁 JSON](example_workflows/Unified%20📺%20TTS%20SRT.json)                                  |
 | **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion                                            | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
 
-### Legacy Workflows
+### Specific Workflows
 
 | Workflow                   | Description                                      | Status           | Files                                                                      |
 | -------------------------- | ------------------------------------------------ | ---------------- | -------------------------------------------------------------------------- |
