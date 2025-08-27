@@ -125,124 +125,117 @@ class VersionManager:
         else:
             return "### Added"  # Default to Added for new features
     
-    def add_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> bool:
-        """Add entry to CHANGELOG.md with proper formatting"""
-        try:
-            changelog_path = os.path.join(self.project_root, 'CHANGELOG.md')
+    def _generate_changelog_content(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> str:
+        """Generate changelog entry content"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # Simple mode - use exact text with proper formatting
+        if simple_mode:
+            # Smart categorization for simple mode
+            change_type = self._categorize_simple_description(description)
             
-            with open(changelog_path, 'r') as f:
-                content = f.read()
+            # Split multi-sentence descriptions into proper bullet points
+            if '. ' in description and len(description) > 100:
+                # Break long descriptions into bullet points
+                sentences = [s.strip() for s in description.split('. ') if s.strip()]
+                items = []
+                for sentence in sentences:
+                    if not sentence.endswith('.') and sentence != sentences[-1]:
+                        sentence += '.'
+                    items.append(f"- {sentence}")
+                item_text = '\n'.join(items)
+            else:
+                # Single item
+                item_text = f"- {description}"
             
-            # Generate changelog entry
-            today = datetime.now().strftime('%Y-%m-%d')
-            
-            # Simple mode - use exact text with proper formatting
-            if simple_mode:
-                # Smart categorization for simple mode
-                change_type = self._categorize_simple_description(description)
-                
-                # Split multi-sentence descriptions into proper bullet points
-                if '. ' in description and len(description) > 100:
-                    # Break long descriptions into bullet points
-                    sentences = [s.strip() for s in description.split('. ') if s.strip()]
-                    items = []
-                    for sentence in sentences:
-                        if not sentence.endswith('.') and sentence != sentences[-1]:
-                            sentence += '.'
-                        items.append(f"- {sentence}")
-                    item_text = '\n'.join(items)
-                else:
-                    # Single item
-                    item_text = f"- {description}"
-                
-                new_entry = f"""## [{version}] - {today}
+            return f"""## [{version}] - {today}
 
 {change_type}
 
 {item_text}
 """
-            # Parse description for structured changelog
-            elif '\n' in description or (details and len(details) > 0):
-                # Multiline description - create detailed changelog with better parsing
-                lines = description.split('\n') if '\n' in description else [description]
-                if details:
-                    lines.extend(details)
+        # Parse description for structured changelog
+        elif '\n' in description or (details and len(details) > 0):
+            # Multiline description - create detailed changelog with better parsing
+            lines = description.split('\n') if '\n' in description else [description]
+            if details:
+                lines.extend(details)
+            
+            # Group by change type
+            added_items = []
+            fixed_items = []
+            changed_items = []
+            removed_items = []
+            
+            # Process each line with better formatting
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
                 
-                # Group by change type
-                added_items = []
-                fixed_items = []
-                changed_items = []
-                removed_items = []
+                # Clean up the line - remove existing bullet points for consistent formatting
+                clean_line = re.sub(r'^[-*•]\s*', '', line)
+                if not clean_line:
+                    continue
                 
-                # Process each line with better formatting
-                for line in lines:
-                    line = line.strip()
-                    if not line or line.startswith('#'):
-                        continue
-                    
-                    # Clean up the line - remove existing bullet points for consistent formatting
-                    clean_line = re.sub(r'^[-*•]\s*', '', line)
-                    if not clean_line:
-                        continue
-                    
-                    # Skip section headers or emoji-only lines
-                    if re.match(r'^[🌍📋🚀⚡🎯🔧🎭🎙️📺🎵🏗️]+\s*[\w\s]*:?\s*$', line):
-                        continue
-                    
-                    # Enhanced categorization based on keywords
-                    line_lower = clean_line.lower()
-                    
-                    # Check for specific patterns first
-                    if any(word in line_lower for word in [
-                        'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
-                        'crash', 'problem', 'fail', 'broken', 'dependency', 'missing',
-                        'compatibility', 'mismatch'
-                    ]):
-                        fixed_items.append(clean_line)
-                    elif any(word in line_lower for word in [
-                        'remove', 'delete', 'deprecate', 'drop', 'eliminate'
-                    ]):
-                        removed_items.append(clean_line)
-                    elif any(word in line_lower for word in [
-                        'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
-                        'performance', 'smart', 'efficient', 'better', 'cleaner',
-                        'reorganize', 'refactor', 'streamline'
-                    ]):
-                        changed_items.append(clean_line)
-                    else:
-                        # Default to Added for new features, documentation, etc.
-                        added_items.append(clean_line)
+                # Skip section headers or emoji-only lines
+                if re.match(r'^[🌍📋🚀⚡🎯🔧🎭🎙️📺🎵🏗️]+\s*[\w\s]*:?\s*$', line):
+                    continue
                 
-                # Build changelog entry with proper spacing
-                entry_parts = [f"## [{version}] - {today}"]
+                # Enhanced categorization based on keywords
+                line_lower = clean_line.lower()
                 
-                # Add sections in conventional order: Added, Changed, Fixed, Removed
-                if added_items:
-                    entry_parts.extend(["", "### Added", ""])
-                    for item in added_items:
-                        entry_parts.append(f"- {item}")
-                
-                if changed_items:
-                    entry_parts.extend(["", "### Changed", ""])
-                    for item in changed_items:
-                        entry_parts.append(f"- {item}")
-                
-                if fixed_items:
-                    entry_parts.extend(["", "### Fixed", ""])
-                    for item in fixed_items:
-                        entry_parts.append(f"- {item}")
-                
-                if removed_items:
-                    entry_parts.extend(["", "### Removed", ""])
-                    for item in removed_items:
-                        entry_parts.append(f"- {item}")
-                
-                # Ensure proper ending
-                entry_parts.append("")
-                new_entry = "\n".join(entry_parts)
-            else:
-                # Single line description - provide helpful error message
-                error_msg = f"""
+                # Check for specific patterns first
+                if any(word in line_lower for word in [
+                    'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
+                    'crash', 'problem', 'fail', 'broken', 'dependency', 'missing',
+                    'compatibility', 'mismatch'
+                ]):
+                    fixed_items.append(clean_line)
+                elif any(word in line_lower for word in [
+                    'remove', 'delete', 'deprecate', 'drop', 'eliminate'
+                ]):
+                    removed_items.append(clean_line)
+                elif any(word in line_lower for word in [
+                    'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
+                    'performance', 'smart', 'efficient', 'better', 'cleaner',
+                    'reorganize', 'refactor', 'streamline'
+                ]):
+                    changed_items.append(clean_line)
+                else:
+                    # Default to Added for new features, documentation, etc.
+                    added_items.append(clean_line)
+            
+            # Build changelog entry with proper spacing
+            entry_parts = [f"## [{version}] - {today}"]
+            
+            # Add sections in conventional order: Added, Changed, Fixed, Removed
+            if added_items:
+                entry_parts.extend(["", "### Added", ""])
+                for item in added_items:
+                    entry_parts.append(f"- {item}")
+            
+            if changed_items:
+                entry_parts.extend(["", "### Changed", ""])
+                for item in changed_items:
+                    entry_parts.append(f"- {item}")
+            
+            if fixed_items:
+                entry_parts.extend(["", "### Fixed", ""])
+                for item in fixed_items:
+                    entry_parts.append(f"- {item}")
+            
+            if removed_items:
+                entry_parts.extend(["", "### Removed", ""])
+                for item in removed_items:
+                    entry_parts.append(f"- {item}")
+            
+            # Ensure proper ending
+            entry_parts.append("")
+            return "\n".join(entry_parts)
+        else:
+            # Single line description - provide helpful error message
+            error_msg = f"""
 ❌ ERROR: Single-line descriptions are no longer supported for better changelog quality.
 
 Please use the proper format with detailed descriptions:
@@ -260,7 +253,25 @@ python3 scripts/bump_version_enhanced.py patch "Fix RVC dropdown" "Fix RVC model
 The Load RVC Character Model node now properly displays both downloadable character models and local models in the same dropdown.
 This matches the F5-TTS dropdown behavior for consistent user experience across all engines."
 """
-                print(error_msg)
+            raise ValueError(error_msg)
+    
+    def preview_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> str:
+        """Preview changelog entry content without writing to file (for dry-run)"""
+        return self._generate_changelog_content(version, description, details, simple_mode)
+    
+    def add_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> bool:
+        """Add entry to CHANGELOG.md with proper formatting"""
+        try:
+            changelog_path = os.path.join(self.project_root, 'CHANGELOG.md')
+            
+            with open(changelog_path, 'r') as f:
+                content = f.read()
+            
+            # Generate changelog entry content using extracted method
+            try:
+                new_entry = self._generate_changelog_content(version, description, details, simple_mode)
+            except ValueError as e:
+                print(str(e))
                 return False
             
             # Insert after the header (find first ## line)

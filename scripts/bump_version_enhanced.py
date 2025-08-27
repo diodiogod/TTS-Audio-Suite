@@ -177,7 +177,19 @@ def main():
                 print(f"  ✓ {file_path}")
             else:
                 print(f"  ✗ {file_path} (not found)")
-        print(f"[DRY RUN] Would add detailed changelog entry for v{args.version}")
+        
+        # Generate and show the changelog entry preview using the REAL extracted method
+        print(f"\n[DRY RUN] Changelog entry that would be added:")
+        print("=" * 50)
+        
+        try:
+            changelog_preview = vm.preview_changelog_entry(args.version, changelog_description)
+            print(changelog_preview.rstrip())
+        except Exception as e:
+            print(f"Error generating changelog preview: {e}")
+        
+        print("=" * 50)
+        
         if not args.no_commit:
             print(f"[DRY RUN] Would commit changes with detailed message")
         return

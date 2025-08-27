@@ -3,39 +3,124 @@
 ## Quick Reference for Future Version Bumps
 
 ### Recommended Command (Separate Commit & Changelog)
+
 ```bash
 python3 scripts/bump_version_enhanced.py <version> --commit "<commit_desc>" --changelog "<changelog_desc>"
 ```
 
 ### Examples
+
+#### Multiline Format (Recommended Standard)
+
 ```bash
-# Patch release (bug fixes)
+# Patch release (bug fixes) 
 python3 scripts/bump_version_enhanced.py 3.2.9 \
-  --commit "Fix character alias resolution and F5-TTS import issues" \
-  --changelog "Bug fixes and stability improvements"
+  --commit "Fix character alias resolution
+
+Technical details:
+- Fix parser bypassing character tags in single mode
+- Improve character name validation logic  
+- Add fallback handling for unrecognized tags" \
+  --changelog "Fix character name handling issues
+
+- Fix character tags not being removed from TTS output
+- Improve character name recognition accuracy
+- Better error handling for invalid character names"
 
 # Minor release (new features)  
 python3 scripts/bump_version_enhanced.py 3.3.0 \
-  --commit "Add character support system for F5-TTS generation" \
-  --changelog "Add character support for F5-TTS generation"
+  --commit "Add Higgs Audio 2 TTS engine
+
+Implementation details:
+- Integrate boson_multimodal voice cloning system
+- Add unified adapter for consistent interface
+- Implement voice preset management" \
+  --changelog "Add Higgs Audio 2 TTS engine with voice cloning
+
+- New realistic voice synthesis engine
+- Voice cloning from short audio samples
+- Multiple built-in voice presets available"
 
 # Major release (breaking changes)
 python3 scripts/bump_version_enhanced.py 4.0.0 \
-  --commit "Complete architecture refactoring with new modular structure" \
-  --changelog "Project restructure for better maintainability"
+  --commit "Complete unified architecture implementation
+
+Breaking changes:
+- Migrate all nodes to unified interface pattern
+- Consolidate engine adapters and processors
+- Remove deprecated standalone variants" \
+  --changelog "Major architecture upgrade to unified system
+
+- All TTS engines now use consistent interface
+- Better performance and memory management  
+- Simplified workflows with consolidated nodes
+- Breaking: old standalone nodes removed"
 ```
 
+#### Auto-Increment Examples (Recommended)
+```bash
+# Auto-increment patch version (4.5.25 → 4.5.26)
+python3 scripts/bump_version_enhanced.py patch \
+  --commit "Fix character parsing issues" \
+  --changelog "Fix character name handling in TTS generation"
+
+# Auto-increment minor version (4.5.25 → 4.6.0)  
+python3 scripts/bump_version_enhanced.py minor \
+  --commit "Add new TTS engine support" \
+  --changelog "Add Higgs Audio 2 TTS engine with voice cloning"
+```
+
+#### Single-Line Format (Only for Super Minor Changes)
+```bash
+python3 scripts/bump_version_enhanced.py patch \
+  --commit "Fix typo in node tooltip" \
+  --changelog "Fix typo in audio analyzer tooltip"
+```
+
+#### Dry-Run Preview (Test Before Committing)
+```bash
+python3 scripts/bump_version_enhanced.py patch \
+  --commit "Fix preview issues" \
+  --changelog "Fix preview not reflecting filter parameters" \
+  --dry-run
+```
+
+#### Auto-Categorization System
+**IMPORTANT**: The script automatically sorts each line of multiline changelog entries into categories based on keywords:
+
+**Keywords for each category:**
+- **Fixed** section: "fix", "bug", "error", "issue", "resolve", "correct", "patch", "crash", "problem", "broken", "compatibility"
+- **Added** section: "add", "new", "implement", "feature", "create", "introduce", "support" (also default for unmatched lines)
+- **Changed** section: "improve", "enhance", "optimize", "update", "modify", "better", "performance", "refactor"  
+- **Removed** section: "remove", "delete", "deprecate", "drop", "eliminate"
+
+**Writing Tips:**
+- **Be intentional with word choice** - start bullet points with appropriate keywords
+- **Line order doesn't matter** - script will reorganize lines by category automatically  
+- **Each line categorized individually** - mix different change types in one changelog description
+- **Commit vs Changelog focus:**
+  - **Commit**: Technical implementation details for developers
+  - **Changelog**: User-facing benefits and impacts
+
+**Bash Syntax Notes:**
+- Multiline strings need proper quoting (opening quote on first line, closing quote on last line)
+- Use `\` (backslash) for line continuation in bash commands
+- Don't add manual category prefixes like "Fixed:" - script handles categorization automatically!
+
 ### Interactive Mode (Recommended for Complex Changes)
+
 ```bash
 python3 scripts/bump_version_enhanced.py 3.2.9 --interactive
 ```
 
 ### Legacy Mode (Same Description for Both)
+
 ```bash
 python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 ```
 
 ### What the Script Does
+
 - Updates version in `nodes.py`, `README.md`, and `pyproject.toml` 
 - Updates changelog with user-focused description
 - Creates git commit with developer-focused description
@@ -45,36 +130,42 @@ python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 ### When to Bump Versions
 
 #### Patch (x.x.X)
+
 - Bug fixes
 - Documentation updates
 - Performance improvements
 - Security patches
 
 #### Minor (x.X.0)
+
 - New features
 - New node types
 - Enhanced functionality
 - Backward-compatible changes
 
 #### Major (X.0.0)
+
 - Breaking changes
 - API changes
 - Architecture refactoring
 - Incompatible updates
 
 ### Pre-Bump Checklist
+
 1. ✅ All changes tested and working
 2. ✅ User confirms functionality works
 3. ✅ Git working directory is clean
 4. ✅ All important changes committed
 
 ### Post-Bump Actions
+
 - Script handles git commit automatically
 - Consider pushing to remote if appropriate
 - Update any external documentation
 - Notify users of significant changes
 
 ### Important Notes
+
 - **Never manually edit version files** - always use the script
 - **Only bump when user confirms changes work**
 - **Read detailed guide**: `docs/Dev reports/CLAUDE_VERSION_MANAGEMENT_GUIDE.md`
@@ -83,16 +174,48 @@ python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 ### Commit vs Changelog Guidelines
 
 #### Commit Description (--commit)
+
 - **Developer diary**: What this specific version bump does
 - **Include internal details**: Bug fixes, refactoring, technical changes
 - **Development perspective**: "Fixed F5-TTS edit issues after refactoring"
 - **Can mention temporary problems**: "Restore functionality broken by restructure"
 
-#### Changelog Description (--changelog)  
+#### Changelog Description (--changelog)
+
 - **User perspective only**: Write for users upgrading from previous version
 - **Don't document internal fixes**: Skip temporary issues introduced and fixed during development
 - **Focus on net result**: What changed for the user, not the development process
 - **Example**: If refactoring broke something then fixed it, only mention the refactoring benefit
 
 #### Key Principle
+
 **Commit = Development diary, Changelog = User release notes**
+
+## Troubleshooting
+
+### Common Issues
+
+**"Git working directory is not clean"**
+```bash
+# Check what files are modified
+git status
+
+# Add/commit changes first, then run version bump
+git add .
+git commit -m "Prepare for version bump"
+```
+
+**"Error: Invalid version format"**
+- Use semantic versioning: `4.5.25` (not `v4.5.25` or `4.5`)
+- Or use auto-increment: `patch`, `minor`, `major`
+
+**Bash syntax errors with multiline**
+- Make sure opening quote is on same line as `--commit` or `--changelog`  
+- Make sure closing quote is on its own line
+- Use `\` for line continuation
+
+**Want to see what will happen before committing?**
+```bash
+# Add --dry-run to preview changelog categorization
+python3 scripts/bump_version_enhanced.py patch "description" "changelog" --dry-run
+```
