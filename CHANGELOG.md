@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enhanced Higgs Audio 2 language processing for better multilingual support
 
-Improved language tag processing for Higgs Audio 2 TTS engine:
+Unlike ChatterBox/F5-TTS which use separate models per language, Higgs Audio 2's base model supports multiple languages natively. Improved language tag processing:
 - Smart language hint conversion: `[En:Alice]` → `[English] Hello there` for better model context
 - Explicit language detection: Only adds hints when user specifies language prefix (not character defaults)
 - Character switching preservation: Maintains proper voice assignment while converting language tags
