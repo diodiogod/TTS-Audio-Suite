@@ -174,7 +174,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                            viseme_confidence_threshold: float = 0.04, 
                            viseme_smoothing: float = 0.3,
                            enable_consonant_detection: bool = False) -> str:
-        """Generate cache key for mouth movement analysis (excludes SRT format)"""
+        """Generate cache key for mouth movement analysis (excludes post-processing parameters)"""
         # Get video source path for cache key
         if hasattr(video_input, 'get_stream_source'):
             video_path = video_input.get_stream_source()
@@ -202,15 +202,12 @@ class MouthMovementAnalyzerNode(BaseNode):
         except:
             file_hash = "unknown_file"
         
-        # Create cache data (excludes output_format and srt_placeholder_format)
+        # Create cache data (excludes post-processing parameters like merge_threshold, min_duration, confidence_threshold)
         cache_data = {
             'video_path': video_path,
             'file_hash': file_hash,
             'provider': provider,
             'sensitivity': sensitivity,
-            'min_duration': min_duration,
-            'merge_threshold': merge_threshold,
-            'confidence_threshold': confidence_threshold,
             'preview_mode': preview_mode,
             'enable_viseme': enable_viseme,
             'viseme_sensitivity': viseme_sensitivity,
@@ -238,37 +235,6 @@ class MouthMovementAnalyzerNode(BaseNode):
         MOUTH_MOVEMENT_CACHE[cache_key] = cache_data
         logger.info(f"💾 Cached mouth movement analysis: {cache_key[:8]}...")
     
-    @classmethod
-    def IS_CHANGED(cls, video, provider, sensitivity, min_duration, output_format, 
-                   srt_placeholder_format, viseme_options=None, preview_mode=False, 
-                   merge_threshold=0.2, confidence_threshold=0.5, **kwargs):
-        """Cache invalidation - only invalidate for analysis parameters, not format"""
-        # Extract viseme settings from options or use defaults
-        if viseme_options is not None:
-            enable_viseme_detection = viseme_options.get("enable_viseme_detection", False)
-            viseme_sensitivity = viseme_options.get("viseme_sensitivity", 1.0)
-            viseme_confidence_threshold = viseme_options.get("viseme_confidence_threshold", 0.04)
-            viseme_smoothing = viseme_options.get("viseme_smoothing", 0.3)
-            enable_consonant_detection = viseme_options.get("enable_consonant_detection", False)
-        else:
-            enable_viseme_detection = False
-            viseme_sensitivity = 1.0
-            viseme_confidence_threshold = 0.04
-            viseme_smoothing = 0.3
-            enable_consonant_detection = False
-        
-        # Create temporary instance for cache key generation
-        temp_instance = cls()
-        cache_key = temp_instance._generate_cache_key(
-            video, provider, sensitivity, min_duration, 
-            merge_threshold, confidence_threshold, preview_mode,
-            enable_viseme_detection, viseme_sensitivity, 
-            viseme_confidence_threshold, viseme_smoothing,
-            enable_consonant_detection
-        )
-        
-        # Return cache key - ComfyUI will only re-execute if this changes
-        return cache_key
     
     def _register_providers(self):
         """Register available analysis providers"""
@@ -345,23 +311,71 @@ class MouthMovementAnalyzerNode(BaseNode):
         
         # Generate cache key for analysis (excludes format parameters)
         cache_key = self._generate_cache_key(
-            video, provider, sensitivity, min_duration,
-            merge_threshold, confidence_threshold, preview_mode,
+            video, provider, sensitivity, 0, 0, 0, preview_mode,
             enable_viseme_detection, viseme_sensitivity,
             viseme_confidence_threshold, viseme_smoothing,
             enable_consonant_detection
         )
         
-        # Check cache first
-        cached_result = self._get_cached_analysis(cache_key)
-        if cached_result:
-            logger.info(f"💾 CACHE HIT for mouth movement analysis: {cache_key[:8]}...")
-            timing_data = cached_result['timing_data']
-            movement_frames = cached_result['movement_frames']
-            confidence_scores = cached_result['confidence_scores']
-            preview_path = cached_result.get('preview_path')
+        # First check analysis cache (without post-processing parameters)
+        analysis_cached_result = self._get_cached_analysis(cache_key)
+        if analysis_cached_result:
+            logger.info(f"💾 CACHE HIT for analysis: {cache_key[:8]}...")
+            
+            # Check if we have filtered result cached with current parameters
+            full_cache_key = cache_key + f"_filter_{min_duration}_{merge_threshold}_{confidence_threshold}"
+            filtered_cached_result = self._get_cached_analysis(full_cache_key)
+            
+            if filtered_cached_result:
+                logger.info(f"💾 CACHE HIT for filtered result")
+                timing_data = filtered_cached_result['timing_data']
+                movement_frames = filtered_cached_result['movement_frames'] 
+                confidence_scores = filtered_cached_result['confidence_scores']
+                preview_path = filtered_cached_result.get('preview_path')
+            else:
+                logger.info(f"🔄 Re-filtering cached analysis with new parameters...")
+                # Get unfiltered segments from cached analysis
+                cached_timing_data = analysis_cached_result['timing_data']
+                unfiltered_segments = cached_timing_data.metadata.get('unfiltered_segments', [])
+                
+                if unfiltered_segments:
+                    # Re-apply filtering with current parameters
+                    provider_class = self.provider_registry[provider]
+                    temp_analyzer = provider_class(
+                        min_duration=min_duration,
+                        merge_threshold=merge_threshold,
+                        confidence_threshold=confidence_threshold
+                    )
+                    filtered_segments = temp_analyzer.filter_segments(unfiltered_segments)
+                    
+                    # Create new timing data with filtered segments
+                    timing_data = cached_timing_data
+                    timing_data.segments = filtered_segments
+                    timing_data.metadata.update({
+                        "total_segments_after_filter": len(filtered_segments)
+                    })
+                    
+                    # Reuse cached movement frames and confidence scores
+                    movement_frames = analysis_cached_result['movement_frames']
+                    confidence_scores = analysis_cached_result['confidence_scores'] 
+                    preview_path = analysis_cached_result.get('preview_path')
+                    
+                    # Cache the filtered result
+                    self._cache_analysis(full_cache_key, timing_data, movement_frames, confidence_scores, preview_path)
+                    
+                    logger.info(f"Re-filtered: {len(filtered_segments)} segments from {len(unfiltered_segments)} unfiltered")
+                else:
+                    # Fallback: no unfiltered segments available
+                    logger.warning("No unfiltered segments in cache, using cached filtered result")
+                    timing_data = cached_timing_data
+                    movement_frames = analysis_cached_result['movement_frames']
+                    confidence_scores = analysis_cached_result['confidence_scores']
+                    preview_path = analysis_cached_result.get('preview_path')
         else:
             logger.info(f"🔍 CACHE MISS - analyzing video: {cache_key[:8]}...")
+            
+            # Generate full cache key for storing results
+            full_cache_key = cache_key + f"_filter_{min_duration}_{merge_threshold}_{confidence_threshold}"
             
             # Validate provider availability
             if provider not in self.provider_registry:
@@ -414,8 +428,9 @@ class MouthMovementAnalyzerNode(BaseNode):
             # Get preview path if generated
             preview_path = analyzer.get_preview_video() if hasattr(analyzer, 'get_preview_video') else None
             
-            # Cache the analysis results
-            self._cache_analysis(cache_key, timing_data, movement_frames, confidence_scores, preview_path)
+            # Cache both analysis results (for reuse) and filtered results (for this specific parameter set)
+            self._cache_analysis(cache_key, timing_data, movement_frames, confidence_scores, preview_path)  # Analysis cache
+            self._cache_analysis(full_cache_key, timing_data, movement_frames, confidence_scores, preview_path)  # Filtered cache
         
         # Format outputs based on selected format
         srt_output = self._format_as_srt(timing_data, srt_placeholder_format, enable_word_prediction, clean_subtitle_output) if output_format == OutputFormat.SRT.value else ""

@@ -299,6 +299,7 @@ class MediaPipeProvider(AbstractProvider):
                 viseme_confidence = 0.0
                 geometric_features = None
                 consonant_scores = None
+                analyzer_method = 'basic'  # Default analyzer method
                 if enable_viseme and viseme_frames and frame_count < len(viseme_frames):
                     current_viseme = viseme_frames[-1].viseme  # Last added viseme
                     viseme_confidence = viseme_frames[-1].confidence
@@ -378,7 +379,8 @@ class MediaPipeProvider(AbstractProvider):
                 "video_resolution": f"{width}x{height}",
                 "total_segments_before_filter": len(segments),
                 "total_segments_after_filter": len(filtered_segments),
-                "viseme_detection_enabled": enable_viseme
+                "viseme_detection_enabled": enable_viseme,
+                "unfiltered_segments": segments  # Store unfiltered segments for re-filtering
             },
             viseme_frames=viseme_frames
         )
