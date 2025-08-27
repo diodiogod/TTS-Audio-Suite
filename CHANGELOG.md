@@ -12,13 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced Higgs Audio 2 language processing for better multilingual support
 
 Improved language tag processing for Higgs Audio 2 TTS engine:
-• Smart language hint conversion: `[En:Alice]` → `[English] Hello there` for better model context
-• Explicit language detection: Only adds hints when user specifies language prefix (not character defaults)
-• Character switching preservation: Maintains proper voice assignment while converting language tags
-• Console logging improvements: Shows actual processed text sent to engine instead of raw SRT content
-• Support for all language variations: English, German, Norwegian, French, Spanish, Portuguese, etc.
+- Smart language hint conversion: `[En:Alice]` → `[English] Hello there` for better model context
+- Explicit language detection: Only adds hints when user specifies language prefix (not character defaults)
+- Character switching preservation: Maintains proper voice assignment while converting language tags
+- Console logging improvements: Shows actual processed text sent to engine instead of raw SRT content
+- Support for all language variations: English, German, Norwegian, French, Spanish, Portuguese, etc.
 
-This gives Higgs Audio 2 meaningful language context for optimal multilingual performance while keeping processing clean and efficient.
+Result: Higgs Audio 2 receives meaningful language context for optimal multilingual performance while keeping processing clean and efficient.
 ## [4.5.19] - 2025-08-26
 
 ### Added
