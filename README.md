@@ -459,10 +459,21 @@ This section provides a detailed guide for installing TTS Audio Suite, covering 
 
 *   ComfyUI installation (Portable, Direct with venv, or through Manager)
 *   Python 3.12 or higher
-*   **PortAudio library** (required for voice recording features):
-    *   Linux: `sudo apt-get install portaudio19-dev`
-    *   macOS: `brew install portaudio`
-    *   Windows: Usually bundled with pip packages (no action needed)
+*   **System libraries** (Linux only):
+    ```bash
+    # Ubuntu/Debian - Required for audio processing
+    sudo apt-get install portaudio19-dev libsamplerate0-dev
+    
+    # Fedora/RHEL
+    sudo dnf install portaudio-devel libsamplerate-devel
+    ```
+    > **📋 Why needed?** `libsamplerate0-dev` provides audio resampling libraries for packages like `resampy` and `soxr`. `portaudio19-dev` enables voice recording features.
+    
+*   **macOS dependencies**:
+    ```bash
+    brew install portaudio
+    ```
+*   **Windows**: No additional system dependencies needed (libraries come pre-compiled)
 
 ### Installation Methods
 
@@ -542,6 +553,27 @@ If you have a direct installation with a virtual environment (venv), follow thes
 
 ### Troubleshooting Dependency Issues
 
+#### System Dependencies (Linux)
+**Our install script automatically detects missing system libraries** and will display helpful error messages like:
+```
+[!] Missing system dependencies detected!
+============================================================
+SYSTEM DEPENDENCIES REQUIRED
+============================================================
+• libsamplerate0-dev (for audio resampling)  
+• portaudio19-dev (for voice recording)
+
+Please install with:
+# Ubuntu/Debian:
+sudo apt-get install libsamplerate0-dev portaudio19-dev
+
+# Fedora/RHEL:
+sudo dnf install libsamplerate-devel portaudio-devel
+============================================================
+Then run this install script again.
+```
+
+#### Python Environment Issues
 A common problem is installing dependencies in the wrong Python environment. Always ensure you are installing dependencies within your ComfyUI's Python environment.
 
 *   **Verify your Python environment:** After activating your venv or navigating to your portable ComfyUI installation, check the Python executable being used:

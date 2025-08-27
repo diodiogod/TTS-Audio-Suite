@@ -35,6 +35,53 @@ class TTSAudioInstaller:
         }
         symbol = symbol_map.get(level, "[i]")
         print(f"{symbol} {message}")
+    
+    def check_system_dependencies(self):
+        """Check for required system libraries on Linux and provide helpful error messages"""
+        if self.is_windows:
+            return True  # Windows packages come pre-compiled
+        
+        self.log("Checking system dependencies...", "INFO")
+        missing_deps = []
+        
+        # Check for libsamplerate (needed by resampy/soxr)
+        try:
+            # Try importing a package that would fail if libsamplerate is missing
+            import ctypes.util
+            if not ctypes.util.find_library('samplerate'):
+                missing_deps.append(('libsamplerate0-dev', 'audio resampling'))
+        except:
+            pass
+        
+        # Check for portaudio (needed for sounddevice)
+        try:
+            import ctypes.util
+            if not ctypes.util.find_library('portaudio'):
+                missing_deps.append(('portaudio19-dev', 'voice recording'))
+        except:
+            pass
+        
+        if missing_deps:
+            self.log("Missing system dependencies detected!", "WARNING")
+            print("\n" + "="*60)
+            print("SYSTEM DEPENDENCIES REQUIRED")
+            print("="*60)
+            for dep, purpose in missing_deps:
+                print(f"• {dep} (for {purpose})")
+            
+            print("\nPlease install with:")
+            print("# Ubuntu/Debian:")
+            deps_list = " ".join([dep for dep, _ in missing_deps])
+            print(f"sudo apt-get install {deps_list}")
+            print("\n# Fedora/RHEL:")
+            fedora_deps = deps_list.replace('-dev', '-devel').replace('19', '')
+            print(f"sudo dnf install {fedora_deps}")
+            print("="*60)
+            print("Then run this install script again.\n")
+            return False
+        
+        self.log("System dependencies check passed", "SUCCESS")
+        return True
 
     def run_pip_command(self, args: List[str], description: str, ignore_errors: bool = False) -> bool:
         """Execute pip command with error handling"""
@@ -584,8 +631,13 @@ def main():
         installer.log("Starting TTS Audio Suite installation", "INFO")
         installer.log(f"Python {installer.python_version.major}.{installer.python_version.minor}.{installer.python_version.micro} detected", "INFO")
         
-        # Check environment before proceeding
+        # Check environment and system dependencies before proceeding
         installer.check_comfyui_environment()
+        
+        # Check system dependencies (Linux only)
+        if not installer.check_system_dependencies():
+            installer.log("System dependency check failed - aborting installation", "ERROR")
+            sys.exit(1)
         
         # Install in correct order to prevent conflicts
         installer.install_pytorch_with_cuda()  # Install PyTorch first with proper CUDA detection
