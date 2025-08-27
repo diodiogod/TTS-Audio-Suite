@@ -7,7 +7,7 @@ import torch
 import torchaudio
 import tempfile
 import os
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 from .audio_compositing import AudioCompositor, EditMaskGenerator
 
 
@@ -33,7 +33,8 @@ class F5TTSEditEngine:
                           temperature: float,
                           nfe_step: int, cfg_strength: float, sway_sampling_coef: float,
                           ode_method: str, seed: int, current_model_name: str = "F5TTS_v1_Base",
-                          edit_options: Optional[dict] = None) -> torch.Tensor:
+                          edit_options: Optional[dict] = None, 
+                          unified_model: Optional[Any] = None) -> torch.Tensor:
         """
         Perform F5-TTS speech editing - exact working implementation
         """
@@ -41,154 +42,150 @@ class F5TTSEditEngine:
         target_rms = 0.1
         
         try:
-            # Import F5-TTS modules
-            from engines.f5_tts.model import CFM
-            from engines.f5_tts.infer.utils_infer import load_checkpoint, load_vocoder
+            # Import all needed functions at the top to avoid scoping issues
             from engines.f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
-            from omegaconf import OmegaConf
-            from hydra.utils import get_class
             from importlib.resources import files
-            from cached_path import cached_path
+            from omegaconf import OmegaConf
             import torch.nn.functional as F
             
-            # Model configuration - get model name from current model or default
-            model_name = current_model_name
-            exp_name = model_name if model_name in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"] else "F5TTS_v1_Base"
-            ckpt_step = 1250000 if exp_name == "F5TTS_v1_Base" else 1200000
-            
-            # Load model config
-            model_cfg = OmegaConf.load(str(files("f5_tts").joinpath(f"configs/{exp_name}.yaml")))
-            model_cls = get_class(f"f5_tts.model.{model_cfg.model.backbone}")
-            model_arc = model_cfg.model.arch
-            
-            dataset_name = model_cfg.datasets.name
-            tokenizer = model_cfg.model.tokenizer
-            
-            mel_spec_type = model_cfg.model.mel_spec.mel_spec_type
-            target_sample_rate = model_cfg.model.mel_spec.target_sample_rate
-            n_mel_channels = model_cfg.model.mel_spec.n_mel_channels
-            hop_length = model_cfg.model.mel_spec.hop_length
-            win_length = model_cfg.model.mel_spec.win_length
-            n_fft = model_cfg.model.mel_spec.n_fft
-            
-            # Load checkpoint
-            ckpt_path = str(cached_path(f"hf://SWivid/F5-TTS/{exp_name}/model_{ckpt_step}.safetensors"))
-            
-            # Load vocoder
-            vocoder = load_vocoder(vocoder_name=mel_spec_type, is_local=False)
-            
-            # Get tokenizer with proper error handling for missing vocab file
-            try:
-                vocab_char_map, vocab_size = get_tokenizer(dataset_name, tokenizer)
-            except FileNotFoundError as e:
-                print(f"⚠️ Global vocab file not found: {e}")
-                print("📦 Attempting to use local vocab file from F5-TTS model...")
+            # Use unified model if provided, otherwise fall back to direct loading
+            if unified_model is not None:
+                # Extract the F5-TTS model from the unified wrapper
+                if hasattr(unified_model, 'f5tts_model'):
+                    f5tts_api = unified_model.f5tts_model
+                elif hasattr(unified_model, 'model'):
+                    f5tts_api = unified_model.model
+                else:
+                    f5tts_api = unified_model
                 
-                # Try to use the local vocab file that we already have
+                # Get model components from the unified F5-TTS instance
+                model = f5tts_api.ema_model
+                vocoder = f5tts_api.vocoder
+                target_sample_rate = f5tts_api.target_sample_rate
+                mel_spec_type = f5tts_api.mel_spec_type
+                
+                # Get config parameters - use standard E2TTS/F5TTS defaults since unified model doesn't expose these
+                # These are standard parameters for E2TTS_Base and F5TTS models
+                hop_length = 256
+                win_length = 1024
+                n_fft = 1024
+                n_mel_channels = 100
+                tokenizer = "pinyin"  # Default tokenizer for E2TTS and F5TTS
+                
+                # For E2TTS, we can also load the config to get exact values
                 try:
-                    import folder_paths
-                    # Try TTS path first, then legacy paths
-                    vocab_search_paths = [
-                        os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "F5TTS_Base", "vocab.txt"),
-                        os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt"),  # Legacy
-                        os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", "F5TTS_Base", "vocab.txt")  # Legacy
-                    ]
+                    # Determine model config based on current model name  
+                    exp_name = current_model_name if current_model_name in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"] else "F5TTS_v1_Base"
+                    model_cfg = OmegaConf.load(str(files("f5_tts").joinpath(f"configs/{exp_name}.yaml")))
                     
-                    local_vocab_path = None
-                    for path in vocab_search_paths:
-                        if os.path.exists(path):
-                            local_vocab_path = path
-                            break
-                    
-                    if local_vocab_path:
-                        print(f"✅ Found local vocab file: {local_vocab_path}")
-                        
-                        # Load vocab manually from local file
-                        with open(local_vocab_path, "r", encoding="utf-8") as f:
-                            vocab_char_map = {}
-                            for i, char in enumerate(f.read().strip().split('\n')):
-                                vocab_char_map[char] = i
-                        
-                        # Check if we need to add missing tokens (model expects 2546, we have 2544)
-                        vocab_size = len(vocab_char_map)
-                        expected_size = 2546  # Based on the error message
-                        
-                        if vocab_size < expected_size:
-                            print(f"⚠️ Vocab size mismatch: loaded {vocab_size}, model expects {expected_size}")
-                            print("🔧 Adding missing tokens...")
-                            
-                            # Add common missing tokens
-                            missing_tokens = ["<pad>", "<unk>"]
-                            for token in missing_tokens:
-                                if token not in vocab_char_map:
-                                    vocab_char_map[token] = vocab_size
-                                    vocab_size += 1
-                                    if vocab_size >= expected_size:
-                                        break
-                            
-                            # If still not enough, add placeholder tokens
-                            while vocab_size < expected_size:
-                                placeholder_token = f"<placeholder_{vocab_size}>"
-                                vocab_char_map[placeholder_token] = vocab_size
-                                vocab_size += 1
-                        
-                        print(f"✅ Final vocab size: {vocab_size} tokens")
-                        
-                        # Try to copy to expected location for future use (optional)
-                        try:
-                            import shutil
-                            import site
-                            
-                            # Find the site-packages directory
-                            site_packages = None
-                            for path in site.getsitepackages():
-                                if 'site-packages' in path:
-                                    site_packages = path
-                                    break
-                            
-                            if site_packages:
-                                target_vocab_dir = os.path.join(site_packages, "f5_tts", "..", "..", "data", "Emilia_ZH_EN_pinyin")
-                                target_vocab_dir = os.path.normpath(target_vocab_dir)
-                                os.makedirs(target_vocab_dir, exist_ok=True)
-                                target_vocab_path = os.path.join(target_vocab_dir, "vocab.txt")
-                                
-                                shutil.copy2(local_vocab_path, target_vocab_path)
-                                print(f"✅ Copied local vocab to expected location: {target_vocab_path}")
-                            else:
-                                print("⚠️ Could not find site-packages directory, skipping vocab copy")
-                        
-                        except Exception as copy_error:
-                            print(f"⚠️ Failed to copy vocab file (continuing anyway): {copy_error}")
-                            # Don't raise error - we already have the vocab loaded successfully
-                        
+                    # Override with actual config values
+                    hop_length = model_cfg.model.mel_spec.hop_length
+                    win_length = model_cfg.model.mel_spec.win_length
+                    n_fft = model_cfg.model.mel_spec.n_fft
+                    n_mel_channels = model_cfg.model.mel_spec.n_mel_channels
+                    tokenizer = model_cfg.model.tokenizer  # Also get tokenizer from config
+                except Exception as config_error:
+                    print(f"⚠️ Could not load model config, using defaults: {config_error}")
+                    # Keep the default values set above
+                
+                print("✅ Using unified model for F5-TTS speech editing")
+                
+            else:
+                # Fallback to direct model loading (legacy behavior)
+                print("⚠️ No unified model provided, falling back to direct loading")
+                
+                # Import F5-TTS modules
+                from engines.f5_tts.model import CFM
+                from engines.f5_tts.infer.utils_infer import load_checkpoint, load_vocoder
+                from engines.f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
+                from omegaconf import OmegaConf
+                from hydra.utils import get_class
+                from importlib.resources import files
+                from cached_path import cached_path
+                import torch.nn.functional as F
+                
+                # Model configuration - get model name from current model or default
+                model_name = current_model_name
+                exp_name = model_name if model_name in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"] else "F5TTS_v1_Base"
+                ckpt_step = 1250000 if exp_name == "F5TTS_v1_Base" else 1200000
+                
+                # Load model config
+                model_cfg = OmegaConf.load(str(files("f5_tts").joinpath(f"configs/{exp_name}.yaml")))
+                model_cls = get_class(f"f5_tts.model.{model_cfg.model.backbone}")
+                model_arc = model_cfg.model.arch
+                
+                dataset_name = model_cfg.datasets.name
+                tokenizer = model_cfg.model.tokenizer
+                
+                mel_spec_type = model_cfg.model.mel_spec.mel_spec_type
+                target_sample_rate = model_cfg.model.mel_spec.target_sample_rate
+                n_mel_channels = model_cfg.model.mel_spec.n_mel_channels
+                hop_length = model_cfg.model.mel_spec.hop_length
+                win_length = model_cfg.model.mel_spec.win_length
+                n_fft = model_cfg.model.mel_spec.n_fft
+                
+                # Load checkpoint - handle E2TTS vs F5TTS repository mapping
+                repo_name = "F5-TTS"  # Default repository
+                if exp_name == "E2TTS_Base":
+                    repo_name = "E2-TTS"  # E2TTS models are in E2-TTS repository
+                
+                ckpt_path = str(cached_path(f"hf://SWivid/{repo_name}/{exp_name}/model_{ckpt_step}.safetensors"))
+                
+                # Load vocoder
+                vocoder = load_vocoder(vocoder_name=mel_spec_type, is_local=False)
+                
+                # Get tokenizer using vocab file path like the working F5TTS API
+                # First try to get vocab file path from local model
+                vocab_file_path = None
+                import folder_paths
+                
+                # Try TTS path first, then legacy paths  
+                vocab_search_paths = [
+                    os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "F5TTS_Base", "vocab.txt"),
+                    os.path.join(folder_paths.models_dir, "F5-TTS", "F5TTS_Base", "vocab.txt"),  # Legacy
+                    os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", "F5TTS_Base", "vocab.txt")  # Legacy
+                ]
+                
+                for path in vocab_search_paths:
+                    if os.path.exists(path):
+                        vocab_file_path = path
+                        break
+                
+                # Try get_tokenizer with vocab file path like working F5TTS API does
+                try:
+                    if vocab_file_path:
+                        vocab_char_map, vocab_size = get_tokenizer(vocab_file_path, "custom")
                     else:
-                        print(f"❌ Local vocab file not found at: {local_vocab_path}")
-                        raise FileNotFoundError(f"Cannot find local vocab file: {local_vocab_path}")
-                        
-                except Exception as local_error:
-                    print(f"❌ Failed to use local vocab file: {local_error}")
-                    raise FileNotFoundError(f"Cannot find or use vocab file: {e}")
-            
-            # Create model
-            model = CFM(
-                transformer=model_cls(**model_arc, text_num_embeds=vocab_size, mel_dim=n_mel_channels),
-                mel_spec_kwargs=dict(
-                    n_fft=n_fft,
-                    hop_length=hop_length,
-                    win_length=win_length,
-                    n_mel_channels=n_mel_channels,
-                    target_sample_rate=target_sample_rate,
-                    mel_spec_type=mel_spec_type,
-                ),
-                odeint_kwargs=dict(
-                    method=ode_method,
-                ),
-                vocab_char_map=vocab_char_map,
-            ).to(self.device)
-            
-            # Load checkpoint
-            dtype = torch.float32 if mel_spec_type == "bigvgan" else None
-            model = load_checkpoint(model, ckpt_path, self.device, dtype=dtype, use_ema=True)
+                        # Fallback to original dataset name approach
+                        vocab_char_map, vocab_size = get_tokenizer(dataset_name, tokenizer)
+                except FileNotFoundError as e:
+                    print(f"⚠️ Vocab file not found: {e}")
+                    # Use the fallback approach like F5TTS API - let the library handle it with default vocab
+                    from importlib.resources import files
+                    default_vocab_file = str(files("f5_tts").joinpath("infer/examples/vocab.txt"))
+                    print(f"📦 Using F5-TTS default vocab: {default_vocab_file}")
+                    vocab_char_map, vocab_size = get_tokenizer(default_vocab_file, "custom")
+                
+                # Create model
+                model = CFM(
+                    transformer=model_cls(**model_arc, text_num_embeds=vocab_size, mel_dim=n_mel_channels),
+                    mel_spec_kwargs=dict(
+                        n_fft=n_fft,
+                        hop_length=hop_length,
+                        win_length=win_length,
+                        n_mel_channels=n_mel_channels,
+                        target_sample_rate=target_sample_rate,
+                        mel_spec_type=mel_spec_type,
+                    ),
+                    odeint_kwargs=dict(
+                        method=ode_method,
+                    ),
+                    vocab_char_map=vocab_char_map,
+                ).to(self.device)
+                
+                # Load checkpoint
+                dtype = torch.float32 if mel_spec_type == "bigvgan" else None
+                model = load_checkpoint(model, ckpt_path, self.device, dtype=dtype, use_ema=True)
             
             # Prepare audio - ensure consistent dimensions
             audio = audio_tensor.to(self.device)

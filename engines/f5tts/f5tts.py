@@ -116,6 +116,9 @@ class ChatterBoxF5TTS:
     def _load_f5tts(self):
         """Load F5-TTS model and vocoder"""
         try:
+            # Import os at the top to avoid scoping issues
+            import os
+            
             # Download and setup Vocos redirect BEFORE any F5-TTS operations
             from utils.downloads.unified_downloader import unified_downloader
             vocos_dir = unified_downloader.download_vocos_model()
@@ -152,6 +155,17 @@ class ChatterBoxF5TTS:
                     # Get local Vocos path
                     vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
                     vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
+                    
+                    # Handle missing vocab file by providing explicit path to default vocab
+                    if not vocab_file:
+                        # Use the bundled vocab file from our F5-TTS installation
+                        current_dir = os.path.dirname(__file__)
+                        default_vocab = os.path.join(current_dir, "..", "f5_tts", "infer", "examples", "vocab.txt")
+                        default_vocab = os.path.normpath(default_vocab)
+                        if os.path.exists(default_vocab):
+                            vocab_file = default_vocab
+                        else:
+                            vocab_file = ""  # Fall back to empty string
                     
                     self.f5tts_model = F5TTS(
                         model=model_config,
@@ -210,6 +224,17 @@ class ChatterBoxF5TTS:
                 # Get local Vocos path
                 vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
                 vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
+                
+                # Handle missing vocab file by providing explicit path to default vocab
+                if not vocab_file:
+                    # Use the bundled vocab file from our F5-TTS installation
+                    current_dir = os.path.dirname(__file__)
+                    default_vocab = os.path.join(current_dir, "..", "f5_tts", "infer", "examples", "vocab.txt")
+                    default_vocab = os.path.normpath(default_vocab)
+                    if os.path.exists(default_vocab):
+                        vocab_file = default_vocab
+                    else:
+                        vocab_file = ""  # Fall back to empty string
                 
                 self.f5tts_model = F5TTS(
                     model=model_config,
@@ -516,12 +541,24 @@ class ChatterBoxF5TTS:
                             vocab_file = None
                     
                     # Load using local files if we have them
-                    if model_file and vocab_file:
+                    # For E2TTS models, vocab_file may not exist (use empty string like F5TTS API)
+                    if model_file:
                         print(f"📁 Downloaded model: {model_file}")
-                        print(f"📁 Downloaded vocab: {vocab_file}")
+                        print(f"📁 Downloaded vocab: {vocab_file if vocab_file else 'None (using default)'}")
                         
                         # Vocos redirect already setup in _load_f5tts()
                         config_name = self.model_name
+                        
+                        # Handle missing vocab file by providing explicit path to default vocab
+                        if not vocab_file:
+                            # Use the bundled vocab file from our F5-TTS installation
+                            current_dir = os.path.dirname(__file__)
+                            default_vocab = os.path.join(current_dir, "..", "f5_tts", "infer", "examples", "vocab.txt")
+                            default_vocab = os.path.normpath(default_vocab)
+                            if os.path.exists(default_vocab):
+                                vocab_file = default_vocab
+                            else:
+                                vocab_file = ""  # Fall back to empty string
                         
                         self.f5tts_model = F5TTS(
                             model=config_name,

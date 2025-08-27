@@ -215,7 +215,8 @@ class F5TTSEditNode(BaseF5TTSNode):
                 ode_method=inputs["ode_method"],
                 seed=inputs["seed"],
                 current_model_name=self.current_model_name,
-                edit_options=edit_options
+                edit_options=edit_options,
+                unified_model=self.f5tts_model  # Pass the unified model
             )
             
             # Generate detailed info

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.23] - 2025-08-27
+
+### Added
+
+- Fix F5-TTS speech editing issues with E2TTS models and vocabulary handling
+
+Resolves compatibility problems when using E2TTS models with the F5-TTS speech editor.
+- Speech editing now works correctly with all supported F5-TTS model variants including:
+
+- Fixed vocab size mismatch issues between different model types
+- Integrated edit engine with unified model interface  
+- Eliminated duplicate model loading in edit operations
+- Improved error handling for missing vocabulary files
 ## [4.5.22] - 2025-08-27
 
 ### Added
