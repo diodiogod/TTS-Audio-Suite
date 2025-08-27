@@ -16,6 +16,36 @@
 
 A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
 
+## 🚀 Project Evolution Timeline
+
+```
+🎭 ChatterBox Voice Era                       🌟 Multi-Engine Era              
+|                                                      |                                
+v1.0 ───────────► v1.1 ────────► v2.0 ──────────► v3.0 ─────────┐
+Jun 25            Jun 25         Jun 25           Jul 25        │
+│                 │              │                │             │
+Foundation        SRT            Modular          F5-TTS +      │
+ChatterBox        Subtitles      Structure        Audio         │
+Voice Cloning     Timing Node    Refactor         Analyzer      │
+                                                                ▼
+v3.4 ◄──────────────── v3.2 ◄──────────────── v3.1 ◄────────────┘
+Jul 25                 Jul 25                 Jul 25              
+│                      │                      │                   
+Language               Pause                  Character           
+Switching              Tags                   Switching           
+[German:Bob]           [pause:1s]             [Alice]             
+│                                                  
+│         ⚙️ TTS Audio Suite Era                                                  
+▼         |                                   
+v4.0 ──────────► v4.3 ──────────► v4.4 ──────────► v4.5
+Aug 25           Aug 25           Aug 25           Aug 25
+│                │                │                │
+⚠️BREAKING        RVC +            Silent           Higgs Audio 2
+Project          Voice            Speech           3rd Engine
+Renamed          Conversion       Analyzer         Voice Cloning
+TTS Audio Suite  + Streaming
+```
+
 <details>
 <summary><h2>📋 Table of Contents</h2></summary>
 
@@ -53,7 +83,6 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 - [🔗 Links](#-links)
 
 </details>
-
 
 ## 🎥 Demo Videos
 
@@ -162,11 +191,13 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **TTS Integration**: SRT output designed for use with TTS SRT nodes after manual content editing
 
 **Perfect for:**
+
 - Creating base timing templates from silent video footage
 - Animation and VFX reference timing
 - Foundation for manual subtitle creation
 
 **Important Notes**: 
+
 - OpenSeeFace provider is experimental and not recommended for production use - MediaPipe is the stable solution
 - Viseme detection is experimental approximation - expect to manually edit both timing and content
 - Generated text placeholders are phonetic suggestions, not meaningful sentences
@@ -184,6 +215,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **Universal Integration**: Works seamlessly with existing TTS Text and TTS SRT nodes
 
 **Key Capabilities:**
+
 - **Voice Cloning from Reference Audio**: Upload any 30+ second audio file for voice replication
 - **Multi-Language Support**: English (tested), with potential support for Chinese, Korean, German, and Spanish (based on model training data)
 - **Character Switching**: Use `[CharacterName]` syntax for multi-speaker dialogues
@@ -192,18 +224,21 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 - **Intelligent Caching**: Instant regeneration of previously processed content
 
 **Technical Features:**
+
 - **Modular Architecture**: Clean integration with unified TTS system
 - **Automatic Model Management**: Downloads and organizes models in `ComfyUI/models/TTS/HiggsAudio/` structure
 - **Progress Tracking**: Real-time generation feedback with tqdm progress bars
 - **Voice Reference Discovery**: Flexible voice file management system
 
 **Quick Start:**
+
 1. Add `Higgs Audio Engine` node to configure voice cloning parameters
 2. Connect to `TTS Text` or `TTS SRT` node for generation
 3. Specify reference audio file or use voice discovery system
 4. Generate high-quality cloned speech with automatic optimization
 
 **Perfect for:**
+
 - Voice acting and character dialogue creation
 - Audiobook narration with consistent voice characteristics
 - Multi-speaker content with distinct voice personalities
@@ -227,6 +262,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 **📖 [Complete Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
 
 Example usage:
+
 ```
 Hello! This is the narrator speaking.
 [Alice] Hi there! I'm Alice, nice to meet you.
@@ -250,10 +286,12 @@ Back to the narrator for the conclusion.
 * **Alias Support**: Language defaults work with character alias system
 
 **Supported Languages:**
+
 * **F5-TTS**: English (en), German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt), Hindi (hi)
 * **ChatterBox**: English (en), German (de), Norwegian (no/nb/nn)
 
 Example usage:
+
 ```
 Hello! This is English text with the default model.
 [de:Alice] Hallo! Ich spreche Deutsch mit Alice's Stimme.
@@ -263,6 +301,7 @@ Back to English with the original model.
 ```
 
 **Advanced SRT Integration:**
+
 ```srt
 1
 00:00:01,000 --> 00:00:04,000
@@ -306,6 +345,7 @@ Hello! Welcome to our multilingual show.
 📖 **See [RVC Models Setup](#7-rvc-models-optional---new-in-v400) for detailed installation guide**
 
 **How it works:**
+
 1. Load your .pth RVC model with 🎭 Load RVC Character Model
 2. Connect to 🔄 Voice Changer, select "RVC" engine
 3. Process with iterative refinement for progressive quality improvement
@@ -329,6 +369,7 @@ Hello! Welcome to our multilingual show.
 * **Automatic Processing**: No additional parameters needed - just add tags to your text
 
 Example usage:
+
 ```
 Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 [Alice] I'm really excited! [wait:500ms] This will be great.
@@ -343,11 +384,13 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 **NEW in v3.3.0**: ChatterBox TTS and SRT nodes now support multiple languages with automatic model management!
 
 **Supported Languages:**
+
 - 🇺🇸 **English**: Original ResembleAI model (default)
 - 🇩🇪 **German**: High-quality German ChatterBox model (stlohrey/chatterbox_de)
 - 🇳🇴 **Norwegian**: Norwegian ChatterBox model (akhbar/chatterbox-tts-norwegian)
 
 **Key Features:**
+
 * **Language Dropdown**: Simple language selection in all ChatterBox nodes
 * **Auto-Download**: Models download automatically on first use (~1GB per language)
 * **Local Priority**: Prefers locally installed models over downloads for offline use
@@ -364,12 +407,14 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 **NEW in v4.3.0**: Complete architectural overhaul implementing universal streaming system with parallel processing capabilities!
 
 **Key Features:**
+
 * **Universal Streaming Infrastructure**: Unified processing system eliminating engine-specific code complexity
 * **Parallel Processing**: Configurable worker-based processing via `batch_size` parameter
 * **Thread-Safe Design**: Stateless wrapper architecture eliminates shared state corruption
 * **Future-Proof**: New engines require only adapter implementation
 
 **Performance Notes:**
+
 * **Sequential Recommended**: Use `batch_size=0` for optimal performance (sequential processing)
 * **Parallel Available**: `batch_size > 1` enables parallel workers but typically slower due to GPU inference characteristics
 * **Memory Efficiency**: Improved model sharing prevents memory exhaustion when switching modes
@@ -383,6 +428,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 ## 🚀 Quick Start
 
 ### Option 1: ComfyUI Manager (Recommended) ✨
+
 **One-click installation with intelligent dependency management:**
 
 1. Use ComfyUI Manager to install **"TTS Audio Suite"**
@@ -394,6 +440,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
    - ✅ **Intelligent conflict resolution** with --no-deps handling
 
 **Python 3.13 Support:**
+
 - 🟢 **All TTS engines**: ChatterBox, F5-TTS, Higgs Audio ✅ Working
 - 🟢 **RVC voice conversion**: ✅ Working  
 - 🟢 **OpenSeeFace mouth movement**: ✅ Working (experimental)
@@ -404,7 +451,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 **Same intelligent installer, manual setup:**
 
 1. **Clone the repository**
-
+   
    ```bash
    cd ComfyUI/custom_nodes
    git clone https://github.com/diodiogod/TTS-Audio-Suite.git
@@ -414,6 +461,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 2. **Run the intelligent installer:**
    
    **ComfyUI Portable:**
+   
    ```bash
    # Windows:
    ..\..\..\python_embeded\python.exe install.py
@@ -423,24 +471,25 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
    ```
    
    **ComfyUI with venv/conda:**
+   
    ```bash
    # First activate your ComfyUI environment, then:
    python install.py
    ```
-
+   
    The installer automatically handles all dependency conflicts and Python version compatibility.
 
 3. **Manual Download Models** (OR It will auto-download on first run)
-
+   
    - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
    - Place in `ComfyUI/models/TTS/chatterbox/English/` (recommended) or `ComfyUI/models/chatterbox/` (legacy)
 
-3. **Try a Workflow**
-
+4. **Try a Workflow**
+   
    - Download: [ChatterBox Integration Workflow](example_workflows/Chatterbox%20integration.json)
    - Drag into ComfyUI and start generating!
 
-4. **Restart ComfyUI** and look for 🎤 TTS Audio Suite nodes
+5. **Restart ComfyUI** and look for 🎤 TTS Audio Suite nodes
 
 > **🧪 Python 3.13 Users**: Installation is fully supported! The system automatically uses OpenSeeFace for mouth movement analysis when MediaPipe is unavailable.
 
@@ -457,23 +506,29 @@ This section provides a detailed guide for installing TTS Audio Suite, covering 
 
 ### Prerequisites
 
-*   ComfyUI installation (Portable, Direct with venv, or through Manager)
-*   Python 3.12 or higher
-*   **System libraries** (Linux only):
-    ```bash
-    # Ubuntu/Debian - Required for audio processing
-    sudo apt-get install portaudio19-dev libsamplerate0-dev
-    
-    # Fedora/RHEL
-    sudo dnf install portaudio-devel libsamplerate-devel
-    ```
-    > **📋 Why needed?** `libsamplerate0-dev` provides audio resampling libraries for packages like `resampy` and `soxr`. `portaudio19-dev` enables voice recording features.
-    
-*   **macOS dependencies**:
-    ```bash
-    brew install portaudio
-    ```
-*   **Windows**: No additional system dependencies needed (libraries come pre-compiled)
+* ComfyUI installation (Portable, Direct with venv, or through Manager)
+
+* Python 3.12 or higher
+
+* **System libraries** (Linux only):
+  
+  ```bash
+  # Ubuntu/Debian - Required for audio processing
+  sudo apt-get install portaudio19-dev libsamplerate0-dev
+  
+  # Fedora/RHEL
+  sudo dnf install portaudio-devel libsamplerate-devel
+  ```
+  
+  > **📋 Why needed?** `libsamplerate0-dev` provides audio resampling libraries for packages like `resampy` and `soxr`. `portaudio19-dev` enables voice recording features.
+
+* **macOS dependencies**:
+  
+  ```bash
+  brew install portaudio
+  ```
+
+* **Windows**: No additional system dependencies needed (libraries come pre-compiled)
 
 ### Installation Methods
 
@@ -481,80 +536,92 @@ This section provides a detailed guide for installing TTS Audio Suite, covering 
 
 For portable installations, follow these steps:
 
-1.  Clone the repository into the `ComfyUI/custom_nodes` folder:
+1. Clone the repository into the `ComfyUI/custom_nodes` folder:
+   
+   ```bash
+   cd ComfyUI/custom_nodes
+   git clone https://github.com/diodiogod/TTS-Audio-Suite.git
+   ```
 
-    ```bash
-    cd ComfyUI/custom_nodes
-    git clone https://github.com/diodiogod/TTS-Audio-Suite.git
-    ```
-2.  Navigate to the cloned directory:
+2. Navigate to the cloned directory:
+   
+   ```bash
+   cd TTS-Audio-Suite
+   ```
 
-    ```bash
-    cd TTS-Audio-Suite
-    ```
-3.  Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation with environment isolation flags.
-
-    ```bash
-    ../../../python_embeded/python.exe -m pip install -r requirements.txt --no-user
-    ```
-    
-    **Why the `--no-user` flag?**
-    - Prevents installing to your system Python's user directory, which can cause import conflicts
-    - Ensures packages install only to the portable environment for proper isolation
+3. Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation with environment isolation flags.
+   
+   ```bash
+   ../../../python_embeded/python.exe -m pip install -r requirements.txt --no-user
+   ```
+   
+   **Why the `--no-user` flag?**
+   
+   - Prevents installing to your system Python's user directory, which can cause import conflicts
+   - Ensures packages install only to the portable environment for proper isolation
 
 #### 2. Direct Installation with venv
 
 If you have a direct installation with a virtual environment (venv), follow these steps:
 
-1.  Clone the repository into the `ComfyUI/custom_nodes` folder:
+1. Clone the repository into the `ComfyUI/custom_nodes` folder:
+   
+   ```bash
+   cd ComfyUI/custom_nodes
+   git clone https://github.com/diodiogod/TTS-Audio-Suite.git
+   ```
 
-    ```bash
-    cd ComfyUI/custom_nodes
-    git clone https://github.com/diodiogod/TTS-Audio-Suite.git
-    ```
-2.  Activate your ComfyUI virtual environment.  This is crucial to ensure dependencies are installed in the correct environment. The method to activate the venv may vary depending on your setup.  Here's a common example:
+2. Activate your ComfyUI virtual environment.  This is crucial to ensure dependencies are installed in the correct environment. The method to activate the venv may vary depending on your setup.  Here's a common example:
+   
+   ```bash
+   cd ComfyUI
+   . ./venv/bin/activate
+   ```
+   
+   or on Windows:
+   
+   ```bash
+   ComfyUI\venv\Scripts\activate
+   ```
 
-    ```bash
-    cd ComfyUI
-    . ./venv/bin/activate
-    ```
+3. Navigate to the cloned directory:
+   
+   ```bash
+   cd custom_nodes/TTS-Audio-Suite
+   ```
 
-    or on Windows:
-
-    ```bash
-    ComfyUI\venv\Scripts\activate
-    ```
-3.  Navigate to the cloned directory:
-
-    ```bash
-    cd custom_nodes/TTS-Audio-Suite
-    ```
-4.  Install the required dependencies using `pip`:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
+4. Install the required dependencies using `pip`:
+   
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 #### 3. Installation through the ComfyUI Manager
 
-1.  Install the ComfyUI Manager if you haven't already.
-2.  Use the Manager to install the "TTS Audio Suite" node.
-3.  The manager might handle dependencies automatically, but it's still recommended to verify the installation.  Navigate to the node's directory:
+1. Install the ComfyUI Manager if you haven't already.
 
-    ```bash
-    cd ComfyUI/custom_nodes/TTS-Audio-Suite
-    ```
-4.  Activate your ComfyUI virtual environment (see instructions in "Direct Installation with venv").
-5.  If you encounter issues, manually install the dependencies:
+2. Use the Manager to install the "TTS Audio Suite" node.
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+3. The manager might handle dependencies automatically, but it's still recommended to verify the installation.  Navigate to the node's directory:
+   
+   ```bash
+   cd ComfyUI/custom_nodes/TTS-Audio-Suite
+   ```
+
+4. Activate your ComfyUI virtual environment (see instructions in "Direct Installation with venv").
+
+5. If you encounter issues, manually install the dependencies:
+   
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ### Troubleshooting Dependency Issues
 
 #### System Dependencies (Linux)
+
 **Our install script automatically detects missing system libraries** and will display helpful error messages like:
+
 ```
 [!] Missing system dependencies detected!
 ============================================================
@@ -574,43 +641,48 @@ Then run this install script again.
 ```
 
 #### Python Environment Issues
+
 A common problem is installing dependencies in the wrong Python environment. Always ensure you are installing dependencies within your ComfyUI's Python environment.
 
-*   **Verify your Python environment:** After activating your venv or navigating to your portable ComfyUI installation, check the Python executable being used:
+* **Verify your Python environment:** After activating your venv or navigating to your portable ComfyUI installation, check the Python executable being used:
+  
+  ```bash
+  which python
+  ```
+  
+  This should point to the Python executable within your ComfyUI installation (e.g., `ComfyUI/python_embeded/python.exe` or `ComfyUI/venv/bin/python`).
 
-    ```bash
-    which python
-    ```
+* **If `s3tokenizer` fails to install:** This dependency can be problematic. Try upgrading your pip and setuptools:
+  
+  ```bash
+  python -m pip install --upgrade pip setuptools wheel
+  ```
+  
+  Then, try installing the requirements again.
 
-    This should point to the Python executable within your ComfyUI installation (e.g., `ComfyUI/python_embeded/python.exe` or `ComfyUI/venv/bin/python`).
-*   **If `s3tokenizer` fails to install:** This dependency can be problematic. Try upgrading your pip and setuptools:
-
-    ```bash
-    python -m pip install --upgrade pip setuptools wheel
-    ```
-
-    Then, try installing the requirements again.
-*   **If you cloned the node manually (without the Manager):** Make sure you install the requirements.txt file.
+* **If you cloned the node manually (without the Manager):** Make sure you install the requirements.txt file.
 
 ### Updating the Node
 
 To update the node to the latest version:
 
-1.  Navigate to the node's directory:
+1. Navigate to the node's directory:
+   
+   ```bash
+   cd ComfyUI/custom_nodes/TTS-Audio-Suite
+   ```
 
-    ```bash
-    cd ComfyUI/custom_nodes/TTS-Audio-Suite
-    ```
-2.  Pull the latest changes from the repository:
+2. Pull the latest changes from the repository:
+   
+   ```bash
+   git pull
+   ```
 
-    ```bash
-    git pull
-    ```
-3.  Reinstall the dependencies (in case they have been updated):
-
-    ```bash
-    pip install -r requirements.txt
-    ```
+3. Reinstall the dependencies (in case they have been updated):
+   
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 </details>
 
@@ -676,6 +748,7 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended (new structure)
 ```
 
 Or use the legacy location (still supported):
+
 ```
 ComfyUI/models/chatterbox/        ← Legacy (still works)
 ```
@@ -722,11 +795,11 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 
 **Available ChatterBox Language Models:**
 
-| Language   | HuggingFace Repository                                              | Format       | Auto-Download |
-| ---------- | ------------------------------------------------------------------- | ------------ | ------------- |
-| English    | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | .pt          | ✅             |
-| German     | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de) | .safetensors | ✅             |
-| Norwegian  | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
+| Language  | HuggingFace Repository                                                                    | Format       | Auto-Download |
+| --------- | ----------------------------------------------------------------------------------------- | ------------ | ------------- |
+| English   | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox)                     | .pt          | ✅             |
+| German    | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de)                   | .safetensors | ✅             |
+| Norwegian | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
 
 **Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model (~1GB per language).
 
@@ -739,22 +812,23 @@ ComfyUI/models/TTS/F5-TTS/       ← Recommended (new structure)
 ```
 
 Or use the legacy location (still supported):
+
 ```
 ComfyUI/models/F5-TTS/           ← Legacy (still works)
 ```
 
 **Available F5-TTS Models:**
 
-| Model               | Language         | Download                                                                         | Size   |
-| ------------------- | ---------------- | -------------------------------------------------------------------------------- | ------ |
-| **F5TTS_Base**      | English          | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base)         | ~1.2GB |
-| **F5TTS_v1_Base**   | English (v1)     | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base)      | ~1.2GB |
-| **E2TTS_Base**      | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base)         | ~1.2GB |
-| **F5-DE**           | German           | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German)                        | ~1.2GB |
-| **F5-ES**           | Spanish          | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish)                     | ~1.2GB |
-| **F5-FR**           | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
-| **F5-JP**           | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
-| **F5-Hindi-Small**  | Hindi            | [HuggingFace](https://huggingface.co/SPRINGLab/F5-Hindi-24KHz)                   | ~632MB |
+| Model              | Language         | Download                                                                         | Size   |
+| ------------------ | ---------------- | -------------------------------------------------------------------------------- | ------ |
+| **F5TTS_Base**     | English          | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base)         | ~1.2GB |
+| **F5TTS_v1_Base**  | English (v1)     | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base)      | ~1.2GB |
+| **E2TTS_Base**     | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base)         | ~1.2GB |
+| **F5-DE**          | German           | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German)                        | ~1.2GB |
+| **F5-ES**          | Spanish          | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish)                     | ~1.2GB |
+| **F5-FR**          | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
+| **F5-JP**          | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
+| **F5-Hindi-Small** | Hindi            | [HuggingFace](https://huggingface.co/SPRINGLab/F5-Hindi-24KHz)                   | ~632MB |
 
 **Vocoder (Optional but Recommended):**
 
@@ -865,10 +939,10 @@ ComfyUI/models/TTS/HiggsAudio/        ← Recommended (new structure)
 
 **Available Higgs Audio Models (Auto-Download):**
 
-| Model                  | Type                | Source                                           | Size    | Auto-Download |
-| ---------------------- | ------------------- | ------------------------------------------------ | ------- | ------------- |
-| higgs-audio-v2-3B      | Voice Cloning       | [bosonai/higgs-audio-v2-generation-3B-base](https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base) | ~9GB    | ✅ |
-| Audio Tokenizer        | Tokenization        | [bosonai/higgs-audio-v2-tokenizer](https://huggingface.co/bosonai/higgs-audio-v2-tokenizer) | ~200MB  | ✅ |
+| Model             | Type          | Source                                                                                                        | Size   | Auto-Download |
+| ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------- | ------ | ------------- |
+| higgs-audio-v2-3B | Voice Cloning | [bosonai/higgs-audio-v2-generation-3B-base](https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base) | ~9GB   | ✅             |
+| Audio Tokenizer   | Tokenization  | [bosonai/higgs-audio-v2-tokenizer](https://huggingface.co/bosonai/higgs-audio-v2-tokenizer)                   | ~200MB | ✅             |
 
 **Voice Reference Requirements:**
 
@@ -887,6 +961,7 @@ ComfyUI/models/TTS/HiggsAudio/        ← Recommended (new structure)
 **Manual Installation (Optional):**
 
 To pre-download models for offline use:
+
 ```bash
 # Download generation model files to:
 # ComfyUI/models/TTS/HiggsAudio/higgs-audio-v2-3B/generation/
@@ -925,20 +1000,20 @@ ComfyUI/models/TTS/RVC/          ← Recommended (new structure)
 
 **Available RVC Character Models (Auto-Download):**
 
-| Model      | Type        | Source                                           | Auto-Download |
-| ---------- | ----------- | ------------------------------------------------ | ------------- |
-| Claire.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
-| Sayano.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
-| Mae_v2.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
-| Fuji.pth   | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
-| Monika.pth | Character   | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅ |
+| Model      | Type      | Source                                                                     | Auto-Download |
+| ---------- | --------- | -------------------------------------------------------------------------- | ------------- |
+| Claire.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
+| Sayano.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
+| Mae_v2.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
+| Fuji.pth   | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
+| Monika.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
 
 **Required Base Models (Auto-Download):**
 
-| Model                    | Purpose           | Source                                           | Size   |
-| ------------------------ | ----------------- | ------------------------------------------------ | ------ |
-| content-vec-best.safetensors | Voice features    | [lengyue233/content-vec-best](https://huggingface.co/lengyue233/content-vec-best) | ~300MB |
-| rmvpe.pt                 | Pitch extraction  | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | ~55MB  |
+| Model                        | Purpose          | Source                                                                            | Size   |
+| ---------------------------- | ---------------- | --------------------------------------------------------------------------------- | ------ |
+| content-vec-best.safetensors | Voice features   | [lengyue233/content-vec-best](https://huggingface.co/lengyue233/content-vec-best) | ~300MB |
+| rmvpe.pt                     | Pitch extraction | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | ~55MB  |
 
 **How RVC Auto-Download Works:**
 
@@ -1070,6 +1145,7 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
    - **Smart Caching**: Results cached up to 5 iterations for instant experimentation
 
 **🧠 Intelligent Caching Examples:**
+
 - Run **3 passes** → caches iterations 1, 2, 3
 - Change to **5 passes** → resumes from cached 3, runs 4, 5  
 - Change to **2 passes** → returns cached iteration 2 instantly
@@ -1085,20 +1161,20 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 
 ### 🆕 Unified Workflows (v4.5+)
 
-| Workflow | Description | Features | Status | Files |
-|----------|-------------|----------|---------|-------|
-| **Unified 📺 TTS SRT** | Universal SRT processing with all TTS engines | • ChatterBox/F5-TTS/Higgs Audio 2<br>• Multiple timing modes<br>• Multi-character switching<br>• Overlap SRT support | ✅ **New in v4.5** | [📁 JSON](example_workflows/Unified%20📺%20TTS%20SRT.json) |
-| **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
+| Workflow                     | Description                                   | Features                                                                                                             | Status                 | Files                                                                                       |
+| ---------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
+| **Unified 📺 TTS SRT**       | Universal SRT processing with all TTS engines | • ChatterBox/F5-TTS/Higgs Audio 2<br>• Multiple timing modes<br>• Multi-character switching<br>• Overlap SRT support | ✅ **New in v4.5**      | [📁 JSON](example_workflows/Unified%20📺%20TTS%20SRT.json)                                  |
+| **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion                                            | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
 
 ### Legacy Workflows
 
-| Workflow | Description | Status | Files |
-|----------|-------------|---------|-------|
-| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion | ✅ **Compatible** | [📁 JSON](example_workflows/Chatterbox%20integration.json) |
-| **F5-TTS Speech Editor** | Interactive waveform analysis for F5-TTS editing | ⚠️ Needs Update | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
+| Workflow                   | Description                                      | Status           | Files                                                                      |
+| -------------------------- | ------------------------------------------------ | ---------------- | -------------------------------------------------------------------------- |
+| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible** | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
+| **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ⚠️ Needs Update  | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
 
 > **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases all engines and features in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and supports ChatterBox, F5-TTS, and Higgs Audio 2 engines.
->
+> 
 > **📥 Usage:** Download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with proper node connections.
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
