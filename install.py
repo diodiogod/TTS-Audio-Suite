@@ -324,23 +324,98 @@ class TTSAudioInstaller:
             self.log("All core dependencies already satisfied", "SUCCESS")
 
     def install_rvc_dependencies(self):
-        """Install RVC voice conversion dependencies"""
+        """Install RVC voice conversion dependencies with smart GPU detection"""
         self.log("Installing RVC voice conversion dependencies", "INFO")
         
-        rvc_packages = [
-            "monotonic-alignment-search",  # Core RVC dependency
-            "faiss-cpu>=1.7.4"            # RVC model loading
-        ]
+        # Install core RVC dependency first
+        self.run_pip_command(["install", "monotonic-alignment-search"], "Installing monotonic-alignment-search")
         
-        for package in rvc_packages:
-            self.run_pip_command(["install", package], f"Installing {package}")
+        # Smart faiss installation: GPU on Linux with CUDA, CPU fallback for Windows/compatibility
+        cuda_version = self.detect_cuda_version()
+        
+        if not self.is_windows and cuda_version != "cpu":
+            # Linux with CUDA - try GPU acceleration
+            self.log("Linux + CUDA detected - attempting faiss-gpu for better RVC performance", "INFO")
+            
+            try:
+                # Determine CUDA version for faiss-gpu package
+                if cuda_version in ["cu121", "cu124"]:  # CUDA 12.x
+                    faiss_gpu_package = "faiss-gpu-cu12>=1.7.4"
+                elif cuda_version == "cu118":  # CUDA 11.x
+                    faiss_gpu_package = "faiss-gpu-cu11>=1.7.4"
+                else:
+                    # Fallback for other CUDA versions
+                    faiss_gpu_package = "faiss-gpu-cu12>=1.7.4"
+                
+                # Try GPU installation first
+                self.run_pip_command(["install", faiss_gpu_package], f"Installing {faiss_gpu_package} for GPU acceleration")
+                self.log("✅ faiss-gpu installed - RVC will use GPU acceleration for better performance", "SUCCESS")
+                
+            except subprocess.CalledProcessError:
+                # GPU installation failed - fallback to CPU
+                self.log("faiss-gpu installation failed - falling back to CPU version", "WARNING")
+                self.run_pip_command(["install", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback)")
+        else:
+            # Windows or no CUDA - use reliable CPU version
+            if self.is_windows and cuda_version != "cpu":
+                self.log("Windows + CUDA detected - faiss-gpu not available on Windows, using CPU version", "INFO")
+            else:
+                self.log("No CUDA detected - using faiss-cpu", "INFO")
+            
+            self.run_pip_command(["install", "faiss-cpu>=1.7.4"], "Installing faiss-cpu for RVC voice matching")
 
     def install_numpy_with_constraints(self):
         """Install numpy with version constraints for compatibility"""
-        self.log("Installing numpy with compatibility constraints", "INFO")
+        self.log("Installing numpy and numba with compatibility constraints", "INFO")
         
-        # Critical: numpy 2.2.x for numba compatibility, avoid 2.3.x
-        numpy_constraint = "numpy>=2.2.0,<2.3.0"
+        # Check current numba version to determine compatible numpy range
+        try:
+            import numba
+            numba_version = numba.__version__
+            self.log(f"Current numba version: {numba_version}", "INFO")
+            
+            # Parse numba version to determine numpy compatibility
+            import re
+            version_match = re.match(r'(\d+)\.(\d+)', numba_version)
+            if version_match:
+                major, minor = int(version_match.group(1)), int(version_match.group(2))
+                
+                if (major, minor) >= (0, 62):  # Numba 0.62+ supports NumPy 2.2+
+                    numpy_constraint = "numpy>=2.2.0,<2.3.0"
+                    self.log("Numba 0.62+ detected - using NumPy 2.2+", "INFO")
+                elif (major, minor) == (0, 61):
+                    # Check if it's 0.61.2+ (supports NumPy 2.2+) or 0.61.0-0.61.1 (needs NumPy 2.1)
+                    patch_match = re.search(r'0\.61\.(\d+)', numba_version)
+                    if patch_match and int(patch_match.group(1)) >= 2:
+                        numpy_constraint = "numpy>=2.2.0,<2.3.0"
+                        self.log(f"Numba {numba_version} supports NumPy 2.2+ - using modern NumPy", "INFO")
+                    else:
+                        # Numba 0.61.0-0.61.1 needs upgrade to 0.61.2+ for NumPy 2.2+ support
+                        self.log(f"Numba {numba_version} detected - upgrading to 0.61.2+ for NumPy 2.2+ support", "WARNING")
+                        self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to 0.61.2+ for NumPy 2.2+ compatibility")
+                        numpy_constraint = "numpy>=2.2.0,<2.3.0"
+                else:
+                    # Numba 0.60.x or older - upgrade to compatible version
+                    self.log(f"Numba {numba_version} detected - upgrading to 0.61.2+ for NumPy 2.2+ support", "WARNING")
+                    self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to 0.61.2+ for NumPy 2.2+ compatibility")
+                    numpy_constraint = "numpy>=2.2.0,<2.3.0"
+            else:
+                # Can't parse version - play it safe with known compatible version
+                numpy_constraint = "numpy>=2.2.0,<2.3.0" 
+                self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to compatible version for safety")
+                
+        except ImportError:
+            # No numba installed - install both with compatible versions
+            self.log("Numba not found - installing compatible numba with NumPy", "INFO")
+            numpy_constraint = "numpy>=2.2.0,<2.3.0"
+            self.run_pip_command(["install", "numba>=0.61.2"], "Installing compatible numba 0.61.2+")
+        except Exception as e:
+            # Numba import failed (likely due to numpy incompatibility)
+            self.log(f"Numba import failed ({e}) - upgrading numba first", "WARNING")
+            self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to 0.61.2+ for compatibility")
+            numpy_constraint = "numpy>=2.2.0,<2.3.0"
+        
+        # Install numpy with determined constraints
         self.run_pip_command(["install", numpy_constraint], "Installing numpy with version constraints")
 
     def install_problematic_packages(self):

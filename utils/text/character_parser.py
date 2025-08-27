@@ -18,6 +18,7 @@ class CharacterSegment:
     end_pos: int
     language: Optional[str] = None
     original_character: Optional[str] = None  # Original character before alias resolution
+    explicit_language: bool = False  # True if language was explicitly specified in tag (e.g., [German:Bob])
     
     def __str__(self) -> str:
         lang_info = f", lang='{self.language}'" if self.language else ""
@@ -505,7 +506,8 @@ class CharacterParser:
                 start_pos=0,
                 end_pos=len(text),
                 language=self.resolve_character_language(self.default_character),
-                original_character=self.default_character
+                original_character=self.default_character,
+                explicit_language=False
             ))
         
         return segments
@@ -538,7 +540,8 @@ class CharacterParser:
                     start_pos=line_start_pos,
                     end_pos=line_start_pos + len(line),
                     language=self.resolve_character_language(self.default_character),
-                    original_character=self.default_character
+                    original_character=self.default_character,
+                    explicit_language=False
                 ))
             return segments
         
@@ -553,7 +556,8 @@ class CharacterParser:
                     start_pos=line_start_pos + current_pos,
                     end_pos=line_start_pos + match.start(),
                     language=current_language,
-                    original_character=current_character  # Before this tag, it's already resolved
+                    original_character=current_character,  # Before this tag, it's already resolved
+                    explicit_language=False  # Text before tags doesn't have explicit language
                 ))
             
             # Parse language and character from the tag
@@ -564,6 +568,7 @@ class CharacterParser:
             # IMPORTANT: Resolve language using original alias name before character normalization
             current_language = self.resolve_character_language(raw_character, explicit_language)
             original_character = raw_character  # Store original before normalization
+            current_explicit_language = explicit_language is not None  # Track if language was explicit
             
             # Detect language-only tags: if the original tag had empty character part and raw_character
             # was defaulted to narrator, skip alias resolution to preserve narrator voice priority
@@ -583,7 +588,8 @@ class CharacterParser:
                 start_pos=line_start_pos + current_pos,
                 end_pos=line_start_pos + len(line),
                 language=current_language,
-                original_character=original_character
+                original_character=original_character,
+                explicit_language=current_explicit_language if 'current_explicit_language' in locals() else False
             ))
         elif not segments and line.strip():
             # Line with only tags and no text after - still need a segment for the line
@@ -594,7 +600,8 @@ class CharacterParser:
                 start_pos=line_start_pos,
                 end_pos=line_start_pos + len(line),
                 language=current_language,
-                original_character=original_character if 'original_character' in locals() else current_character
+                original_character=original_character if 'original_character' in locals() else current_character,
+                explicit_language=current_explicit_language if 'current_explicit_language' in locals() else False
             ))
         
         return segments
@@ -643,6 +650,105 @@ class CharacterParser:
             Text with character tags removed
         """
         return self.CHARACTER_TAG_PATTERN.sub('', text).strip()
+    
+    def convert_to_language_hints_for_higgs(self, text: str) -> str:
+        """
+        Convert character tags with language prefixes to language hints for Higgs Audio 2.
+        
+        Converts [En:Alice] Hello there -> [English] Hello there
+        This preserves language context for the smart Higgs model while removing character switching.
+        
+        Args:
+            text: Input text with [language:character] tags
+            
+        Returns:
+            Text with language hints for Higgs Audio 2
+        """
+        def replace_tag(match):
+            tag_content = match.group(1)
+            
+            # Parse language:character format
+            lang_match = self.LANGUAGE_CHARACTER_PATTERN.match(tag_content.strip())
+            if lang_match:
+                raw_language = lang_match.group(1).strip()
+                # Resolve to canonical form first, then get display name
+                canonical_lang = self.resolve_language_alias(raw_language)
+                
+                # Convert canonical codes to display names using existing alias system
+                # Find a human-readable alias that maps to this canonical code
+                display_name = None
+                for alias, canonical in self.language_aliases.items():
+                    if (canonical == canonical_lang and 
+                        alias.isalpha() and 
+                        len(alias) > 2 and  # Skip short codes like 'en', 'de'
+                        alias.islower()):   # Skip uppercase variations
+                        display_name = alias.title()
+                        break
+                
+                # Fallback to canonical code if no readable alias found
+                if not display_name:
+                    display_name = canonical_lang.upper()
+                
+                return f'[{display_name}]'
+            else:
+                # Not a language:character tag, remove entirely
+                return ''
+        
+        # Apply conversion
+        converted_text = self.CHARACTER_TAG_PATTERN.sub(replace_tag, text)
+        
+        # Clean up any double spaces
+        converted_text = ' '.join(converted_text.split())
+        
+        return converted_text
+    
+    def get_language_display_name(self, language_code: str) -> str:
+        """
+        Get readable display name for a language code using existing alias system.
+        
+        Args:
+            language_code: Language code (e.g., 'en', 'de', 'pt-br')
+            
+        Returns:
+            Readable language name (e.g., 'English', 'German', 'Portuguese')
+        """
+        # Resolve to canonical form first
+        canonical_lang = self.resolve_language_alias(language_code)
+        
+        # Preferred display names for better readability
+        preferred_names = {
+            'pt-br': 'Portuguese',
+            'pt-pt': 'Portuguese', 
+            'zh-cn': 'Chinese',
+            'zh-tw': 'Chinese'
+        }
+        
+        if canonical_lang in preferred_names:
+            return preferred_names[canonical_lang]
+        
+        # Find a human-readable alias that maps to this canonical code
+        # Prefer explicit common language names first
+        preferred_aliases = ['english', 'german', 'french', 'spanish', 'italian', 'norwegian', 'chinese', 'japanese', 'russian', 'portuguese', 'dutch', 'korean']
+        
+        for preferred in preferred_aliases:
+            if preferred in self.language_aliases and self.language_aliases[preferred] == canonical_lang:
+                return preferred.title()
+        
+        # Fallback: find any readable alias (avoid short codes and abbreviations)
+        best_alias = None
+        for alias, canonical in self.language_aliases.items():
+            if (canonical == canonical_lang and 
+                alias.isalpha() and 
+                len(alias) >= 4 and  # Skip short codes like 'en', 'de', 'usa', 'eng'
+                not alias.isupper()):  # Skip uppercase abbreviations
+                if not best_alias or len(alias) > len(best_alias):  # Prefer longer names
+                    best_alias = alias
+        
+        if best_alias:
+            return best_alias.title()
+        
+        # Fallback to canonical code if no readable alias found
+        return canonical_lang.upper()
     
     def split_by_character(self, text: str, include_language: bool = False) -> Union[List[Tuple[str, str]], List[Tuple[str, str, str]]]:
         """

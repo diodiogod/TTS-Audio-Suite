@@ -180,24 +180,41 @@ class HiggsAudioSRTProcessor:
                 segment_end = segment.end_time
                 expected_duration = segment_end - segment_start
                 
-                print(f"📺 Processing SRT segment {i+1}/{len(srt_segments)}: '{segment_text[:50]}...' ({expected_duration:.2f}s)")
-                
                 if multi_speaker_mode == "Custom Character Switching":
                     # Use character switching with pause tag support
                     def srt_tts_generate_func(text_content: str) -> torch.Tensor:
                         """TTS generation function for SRT segment with character switching"""
                         if '[' in text_content and ']' in text_content:
                             # Handle character switching within this SRT segment
-                            char_segments = parse_character_text(text_content)
+                            # Use character parser with language information
+                            from utils.text.character_parser import character_parser
+                            char_segments_with_lang = character_parser.split_by_character_with_language(text_content)
                             segment_audio_parts = []
                             
-                            for character, segment_text in char_segments:
+                            # Get full segment info with explicit language flag
+                            char_segments_full = character_parser.parse_text_segments(text_content)
+                            
+                            for segment in char_segments_full:
+                                character = segment.character
+                                segment_text = segment.text
+                                language = segment.language
+                                explicit_language = segment.explicit_language
+                                
                                 char_audio_dict = voice_refs.get(character, voice_refs.get("narrator"))
                                 char_ref_text = ref_texts.get(character, reference_text or "")
                                 
+                                # Add language hint for Higgs Audio 2 ONLY if language was explicit in tag
+                                higgs_text = segment_text
+                                if explicit_language and language:
+                                    display_name = character_parser.get_language_display_name(language)
+                                    higgs_text = f"[{display_name}] {segment_text}"
+                                
+                                # Log what's actually being processed
+                                print(f"📺 Processing SRT segment {i+1}/{len(srt_segments)} ({character}): '{higgs_text[:50]}...' ({expected_duration:.2f}s)")
+                                
                                 segment_result = self.engine_wrapper.generate_srt_audio(
                                     srt_content="",  # Individual segment processing
-                                    text=segment_text,
+                                    text=higgs_text,  # Use text with language hints
                                     char_audio=char_audio_dict,
                                     char_text=char_ref_text,
                                     character=character,
