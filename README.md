@@ -1171,7 +1171,7 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 | Workflow                   | Description                                      | Status           | Files                                                                      |
 | -------------------------- | ------------------------------------------------ | ---------------- | -------------------------------------------------------------------------- |
 | **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible** | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
-| **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ⚠️ Needs Update  | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
+| **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
 
 > **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases all engines and features in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and supports ChatterBox, F5-TTS, and Higgs Audio 2 engines.
 > 
