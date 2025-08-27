@@ -66,7 +66,7 @@ class CharacterVoicesNode(BaseTTSNode):
     RETURN_TYPES = ("NARRATOR_VOICE", "STRING")
     RETURN_NAMES = ("opt_narrator", "character_name")
     FUNCTION = "get_voice_reference"
-    CATEGORY = "TTS Audio Suite/Shared"
+    CATEGORY = "TTS Audio Suite/🎭 Voice & Character"
 
     def get_voice_reference(self, voice_name: str, reference_text: str, opt_audio_input=None):
         """

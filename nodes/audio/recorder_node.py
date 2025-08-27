@@ -99,7 +99,7 @@ class ChatterBoxVoiceCapture:
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("voice_audio",)
     FUNCTION = "capture_voice_audio"
-    CATEGORY = "TTS Audio Suite/Audio"
+    CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
 
     def capture_voice_audio(self, **kwargs):
         if not SOUNDDEVICE_AVAILABLE:

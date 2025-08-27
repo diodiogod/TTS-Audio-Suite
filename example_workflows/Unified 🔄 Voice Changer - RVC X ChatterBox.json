@@ -5,80 +5,104 @@
   "last_link_id": 19,
   "nodes": [
     {
-      "id": 8,
-      "type": "Reroute",
+      "id": 1,
+      "type": "UnifiedVoiceChangerNode",
       "pos": [
-        -1200,
-        1780
+        -1040,
+        1340
       ],
       "size": [
-        75,
-        26
+        273.111328125,
+        98
       ],
       "flags": {},
-      "order": 9,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
-          "name": "",
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 18
+        },
+        {
+          "name": "source_audio",
           "type": "*",
-          "link": 8
+          "link": 9
+        },
+        {
+          "name": "narrator_target",
+          "type": "*",
+          "link": 3
         }
       ],
       "outputs": [
         {
-          "name": "",
+          "name": "converted_audio",
           "type": "AUDIO",
           "links": [
-            9,
-            10
+            5
           ]
+        },
+        {
+          "name": "conversion_info",
+          "type": "STRING",
+          "links": null
         }
       ],
       "properties": {
-        "showOutputText": false,
-        "horizontal": false
+        "Node name for S&R": "UnifiedVoiceChangerNode",
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "4971b8fd0f92c29b108c2606ab8b79b00a590adf",
+        "widget_ue_connectable": {}
       },
-      "color": "#323",
-      "bgcolor": "#535"
+      "widgets_values": [
+        1
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
-      "id": 7,
-      "type": "ChatterBoxEngineNode",
+      "id": 4,
+      "type": "LoadRVCModelNode",
       "pos": [
-        -1610,
-        2060
+        -1550,
+        1590
       ],
       "size": [
-        305.416015625,
-        178
+        294.7310485839844,
+        126
       ],
       "flags": {},
-      "order": 0,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [
         {
-          "name": "TTS_engine",
-          "type": "TTS_ENGINE",
+          "name": "rvc_model",
+          "type": "RVC_MODEL",
           "links": [
-            12
+            3
           ]
+        },
+        {
+          "name": "model_info",
+          "type": "STRING",
+          "links": null
         }
       ],
       "properties": {
-        "Node name for S&R": "ChatterBoxEngineNode"
+        "Node name for S&R": "LoadRVCModelNode",
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "4971b8fd0f92c29b108c2606ab8b79b00a590adf",
+        "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "English",
-        "auto",
-        0.5,
-        0.8,
-        0.5,
-        "hmm ,, {seg} hmm ,,"
+        "Monika.pth",
+        "Monika_v2_40k.index",
+        true
       ],
-      "color": "#233",
-      "bgcolor": "#355"
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 5,
@@ -120,183 +144,110 @@
       "bgcolor": "#535"
     },
     {
-      "id": 11,
-      "type": "LoadAudio",
+      "id": 6,
+      "type": "PreviewAudio",
       "pos": [
-        -1570,
-        2350
+        -580,
+        1340
       ],
       "size": [
-        270,
-        136
+        390,
+        88
       ],
       "flags": {},
-      "order": 2,
+      "order": 16,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
+      "inputs": [
         {
-          "name": "AUDIO",
+          "name": "audio",
           "type": "AUDIO",
-          "links": [
-            17
-          ]
+          "link": 5
         }
       ],
+      "outputs": [],
       "properties": {
-        "Node name for S&R": "LoadAudio",
+        "Node name for S&R": "PreviewAudio",
         "cnr_id": "comfy-core",
         "ver": "0.3.48",
         "widget_ue_connectable": {}
       },
-      "widgets_values": [
-        "Aerith_original.wav",
-        null,
-        null
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
+      "widgets_values": []
     },
     {
-      "id": 18,
-      "type": "Reroute",
+      "id": 7,
+      "type": "ChatterBoxEngineNode",
       "pos": [
-        -1190,
-        2100
+        -1610,
+        2060
       ],
       "size": [
-        75,
-        26
+        305.416015625,
+        178
       ],
       "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 17
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "AUDIO",
-          "links": [
-            16
-          ]
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false
-      },
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 15,
-      "type": "CharacterVoicesNode",
-      "pos": [
-        -1570,
-        2570
-      ],
-      "size": [
-        270,
-        190
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "opt_audio_input",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "opt_narrator",
-          "type": "NARRATOR_VOICE",
-          "links": [
-            14
-          ]
-        },
-        {
-          "name": "character_name",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "CharacterVoicesNode"
-      },
-      "widgets_values": [
-        "voices_examples/Morgan_Freeman CC3.wav",
-        ""
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 17,
-      "type": "Reroute",
-      "pos": [
-        -1270,
-        2570
-      ],
-      "size": [
-        75,
-        26
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 14
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "NARRATOR_VOICE",
-          "links": []
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false
-      },
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 14,
-      "type": "MarkdownNote",
-      "pos": [
-        -1900,
-        2240
-      ],
-      "size": [
-        250,
-        200
-      ],
-      "flags": {},
-      "order": 4,
+      "order": 0,
       "mode": 0,
       "inputs": [],
-      "outputs": [],
-      "properties": {},
-      "widgets_values": [
-        "## Note\n### - Chatterbox don't need any trained model for the target voice. You just need to connect two audio files. One for conversion, the other for narrator_target.\n\n### - You can use the Voices from the '🎭 Character Voices' foler as well"
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            12
+          ]
+        }
       ],
-      "color": "#432",
-      "bgcolor": "#653"
+      "properties": {
+        "Node name for S&R": "ChatterBoxEngineNode"
+      },
+      "widgets_values": [
+        "English",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        "hmm ,, {seg} hmm ,,"
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 8,
+      "type": "Reroute",
+      "pos": [
+        -1200,
+        1780
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            9,
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      },
+      "color": "#323",
+      "bgcolor": "#535"
     },
     {
       "id": 9,
@@ -386,196 +337,42 @@
       "widgets_values": []
     },
     {
-      "id": 1,
-      "type": "UnifiedVoiceChangerNode",
+      "id": 11,
+      "type": "LoadAudio",
       "pos": [
-        -1040,
-        1340
+        -1570,
+        2350
       ],
       "size": [
-        273.111328125,
-        98
+        270,
+        136
       ],
       "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "TTS_engine",
-          "type": "TTS_ENGINE",
-          "link": 18
-        },
-        {
-          "name": "source_audio",
-          "type": "*",
-          "link": 9
-        },
-        {
-          "name": "narrator_target",
-          "type": "*",
-          "link": 3
-        }
-      ],
-      "outputs": [
-        {
-          "name": "converted_audio",
-          "type": "AUDIO",
-          "links": [
-            5
-          ]
-        },
-        {
-          "name": "conversion_info",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "UnifiedVoiceChangerNode",
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "4971b8fd0f92c29b108c2606ab8b79b00a590adf",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        1
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
-      "id": 21,
-      "type": "RVCPitchOptionsNode",
-      "pos": [
-        -1890,
-        1340
-      ],
-      "size": [
-        305.6070251464844,
-        202
-      ],
-      "flags": {},
-      "order": 5,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [
         {
-          "name": "rvc_pitch_options",
-          "type": "RVC_PITCH_OPTIONS",
-          "links": [
-            19
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RVCPitchOptionsNode"
-      },
-      "widgets_values": [
-        "crepe",
-        160,
-        3,
-        1,
-        false,
-        true,
-        1
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 4,
-      "type": "LoadRVCModelNode",
-      "pos": [
-        -1550,
-        1590
-      ],
-      "size": [
-        294.7310485839844,
-        126
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "rvc_model",
-          "type": "RVC_MODEL",
-          "links": [
-            3
-          ]
-        },
-        {
-          "name": "model_info",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadRVCModelNode",
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "4971b8fd0f92c29b108c2606ab8b79b00a590adf",
-        "widget_ue_connectable": {}
-      },
-      "widgets_values": [
-        "Monika.pth",
-        "Monika_v2_40k.index",
-        true
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 6,
-      "type": "PreviewAudio",
-      "pos": [
-        -580,
-        1340
-      ],
-      "size": [
-        390,
-        88
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
+          "name": "AUDIO",
           "type": "AUDIO",
-          "link": 5
+          "links": [
+            17
+          ]
         }
       ],
-      "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAudio",
+        "Node name for S&R": "LoadAudio",
         "cnr_id": "comfy-core",
         "ver": "0.3.48",
         "widget_ue_connectable": {}
       },
-      "widgets_values": []
-    },
-    {
-      "id": 13,
-      "type": "MarkdownNote",
-      "pos": [
-        -2380,
-        1280
-      ],
-      "size": [
-        440,
-        450
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {},
       "widgets_values": [
-        "# RVC Character Model Guide\n\n## Requirements\n\nFor RVC Voice Conversion, you **NEED** a Character Model to work with.\n\n## Auto-Download Models\n\nThe system will download some pre-defined characters for you if you select them from the dropdown. Select the corresponding \"index\" file for better quality conversion.\n\n## Additional Character Models\n\nYou may find many trained character models to download here: [voice-models.com](https://voice-models.com/)\n\n## Installation Path\n\nPut downloaded character models in this folder path:\n\n```\nComfyUI/models/RVC/\n```\n\nFor index files, place them in:\n\n```\nComfyUI/models/RVC/.index/\n```\n\n## Note\n\nLocal models will appear in the dropdown with a `local:` prefix to distinguish them from downloadable models."
+        "Aerith_original.wav",
+        null,
+        null
       ],
-      "color": "#432",
-      "bgcolor": "#653"
+      "color": "#323",
+      "bgcolor": "#535"
     },
     {
       "id": 12,
@@ -589,7 +386,7 @@
         88
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -599,6 +396,170 @@
       ],
       "color": "#223",
       "bgcolor": "#335"
+    },
+    {
+      "id": 13,
+      "type": "MarkdownNote",
+      "pos": [
+        -2380,
+        1280
+      ],
+      "size": [
+        440,
+        450
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# RVC Character Model Guide\n\n## Requirements\n\nFor RVC Voice Conversion, you **NEED** a Character Model to work with.\n\n## Auto-Download Models\n\nThe system will download some pre-defined characters for you if you select them from the dropdown. Select the corresponding \"index\" file for better quality conversion.\n\n## Additional Character Models\n\nYou may find many trained character models to download here: [voice-models.com](https://voice-models.com/)\n\n## Installation Path\n\nPut downloaded character models in this folder path:\n\n```\nComfyUI/models/TTS/RVC/\n```\n\nFor index files, place them in:\n\n```\nComfyUI/models/TTS/RVC/.index/\n```\n\n## Note\n\nLocal models will appear in the dropdown with a `local:` prefix to distinguish them from downloadable models."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 14,
+      "type": "MarkdownNote",
+      "pos": [
+        -1900,
+        2240
+      ],
+      "size": [
+        250,
+        200
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## Note\n### - Chatterbox don't need any trained model for the target voice. You just need to connect two audio files. One for conversion, the other for narrator_target.\n\n### - You can use the Voices from the '🎭 Character Voices' foler as well"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 15,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1570,
+        2570
+      ],
+      "size": [
+        270,
+        190
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            14
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode"
+      },
+      "widgets_values": [
+        "voices_examples/Morgan_Freeman CC3.wav",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 17,
+      "type": "Reroute",
+      "pos": [
+        -1270,
+        2570
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 18,
+      "type": "Reroute",
+      "pos": [
+        -1190,
+        2100
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            16
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      },
+      "color": "#323",
+      "bgcolor": "#535"
     },
     {
       "id": 20,
@@ -642,6 +603,45 @@
         "hubert-base-rvc: HuBERT Base RVC (Recommended)",
         0,
         "auto"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 21,
+      "type": "RVCPitchOptionsNode",
+      "pos": [
+        -1890,
+        1340
+      ],
+      "size": [
+        305.6070251464844,
+        202
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "rvc_pitch_options",
+          "type": "RVC_PITCH_OPTIONS",
+          "links": [
+            19
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RVCPitchOptionsNode"
+      },
+      "widgets_values": [
+        "crepe",
+        160,
+        3,
+        1,
+        false,
+        true,
+        1
       ],
       "color": "#432",
       "bgcolor": "#653"
@@ -776,10 +776,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 1.1671841070450293,
+      "scale": 1.2839025177495327,
       "offset": [
-        2538.088610523197,
-        -972.2174558062941
+        2469.412419572969,
+        -1287.3661942862516
       ]
     },
     "frontendVersion": "1.23.4",

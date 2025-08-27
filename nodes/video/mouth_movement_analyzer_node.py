@@ -158,7 +158,7 @@ class MouthMovementAnalyzerNode(BaseNode):
     RETURN_NAMES = ("video", "srt_output", "timing_data", "movement_frames", "confidence_scores")
     
     FUNCTION = "analyze_mouth_movement"
-    CATEGORY = "image/video"
+    CATEGORY = "TTS Audio Suite/🎬 Video Analysis"
     OUTPUT_NODE = True
     
     

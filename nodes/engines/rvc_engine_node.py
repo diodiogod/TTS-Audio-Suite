@@ -136,7 +136,7 @@ Models will auto-download if not present. Choose language-specific models for be
     RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("rvc_engine",)
     
-    CATEGORY = "🎵 TTS Audio Suite/Engines"
+    CATEGORY = "TTS Audio Suite/⚙️ Engines"
     
     FUNCTION = "create_engine"
     

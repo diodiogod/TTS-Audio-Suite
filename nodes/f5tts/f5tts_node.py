@@ -146,7 +146,7 @@ Back to the main narrator voice for the conclusion.""",
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("audio", "generation_info")
     FUNCTION = "generate_speech"
-    CATEGORY = "TTS Audio Suite/F5-TTS"
+    CATEGORY = "TTS Audio Suite/👄 F5-TTS"
 
     def __init__(self):
         super().__init__()

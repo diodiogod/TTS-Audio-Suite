@@ -192,7 +192,7 @@ Hello! This is F5-TTS SRT with character switching.
     RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
     FUNCTION = "generate_srt_speech"
-    CATEGORY = "TTS Audio Suite/F5-TTS"
+    CATEGORY = "TTS Audio Suite/👄 F5-TTS"
 
     @staticmethod
     def _get_companion_txt_file(audio_file_path):

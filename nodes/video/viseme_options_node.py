@@ -77,7 +77,7 @@ class VisemeDetectionOptionsNode:
     RETURN_TYPES = ("VISEME_OPTIONS",)
     RETURN_NAMES = ("viseme_options",)
     FUNCTION = "create_viseme_options"
-    CATEGORY = "image/video"
+    CATEGORY = "TTS Audio Suite/🎬 Video Analysis"
     
     def create_viseme_options(
         self,

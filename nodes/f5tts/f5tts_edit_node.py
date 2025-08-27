@@ -117,7 +117,7 @@ class F5TTSEditNode(BaseF5TTSNode):
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("edited_audio", "edit_info")
     FUNCTION = "edit_speech"
-    CATEGORY = "TTS Audio Suite/F5-TTS"
+    CATEGORY = "TTS Audio Suite/👄 F5-TTS"
 
     def __init__(self):
         super().__init__()

@@ -119,7 +119,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
     RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("tts_engine",)
     FUNCTION = "create_engine_config"
-    CATEGORY = "🎤 TTS Audio Suite/Engines"
+    CATEGORY = "TTS Audio Suite/⚙️ Engines"
     DESCRIPTION = "Configure Higgs Audio 2 engine for TTS generation with voice cloning. TIP: Reference text significantly improves voice cloning quality."
     
     def create_engine_config(self, model, device, multi_speaker_mode, system_prompt,

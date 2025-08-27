@@ -162,7 +162,7 @@ Choose how to combine multiple audio sources:
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("merged_audio", "merge_info")
     
-    CATEGORY = "🎵 TTS Audio Suite/Audio"
+    CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
     
     FUNCTION = "merge_audio"
     

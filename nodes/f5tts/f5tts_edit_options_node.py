@@ -71,7 +71,7 @@ class F5TTSEditOptionsNode:
     RETURN_TYPES = ("F5TTS_EDIT_OPTIONS",)
     RETURN_NAMES = ("edit_options",)
     FUNCTION = "create_options"
-    CATEGORY = "TTS Audio Suite/F5-TTS"
+    CATEGORY = "TTS Audio Suite/👄 F5-TTS"
     
     def create_options(self, crossfade_duration_ms=100, crossfade_curve="cosine", 
                       adaptive_crossfade=False, enable_cache=True, cache_size_limit=100,

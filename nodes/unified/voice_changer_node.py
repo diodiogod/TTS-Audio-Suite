@@ -80,7 +80,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("converted_audio", "conversion_info")
     FUNCTION = "convert_voice"
-    CATEGORY = "TTS Audio Suite"
+    CATEGORY = "TTS Audio Suite/🎤 Text to Speech"
 
     def __init__(self):
         super().__init__()

@@ -122,7 +122,7 @@ Back to the main narrator voice for the conclusion.""",
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("audio", "generation_info")
     FUNCTION = "generate_speech"
-    CATEGORY = "TTS Audio Suite"
+    CATEGORY = "TTS Audio Suite/🎤 Text to Speech"
 
     def __init__(self):
         super().__init__()

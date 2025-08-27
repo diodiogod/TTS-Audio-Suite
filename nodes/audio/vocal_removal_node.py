@@ -207,7 +207,7 @@ Selects the audio format for separated stems:
 
     FUNCTION = "split"
 
-    CATEGORY = "🎵 TTS Audio Suite/Audio"
+    CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
 
     def split(self, audio, model, use_cache=True, aggressiveness=10, format='flac'):
         filename = os.path.basename(model)

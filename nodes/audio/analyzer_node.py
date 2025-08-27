@@ -93,7 +93,7 @@ class AudioAnalyzerNode:
     RETURN_TYPES = ("AUDIO", "STRING", "STRING", "AUDIO")
     RETURN_NAMES = ("processed_audio", "timing_data", "analysis_info", "segmented_audio")
     FUNCTION = "analyze_audio"
-    CATEGORY = "TTS Audio Suite/Audio"
+    CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
     
     def __init__(self):
         self.analyzer = AudioAnalyzer()

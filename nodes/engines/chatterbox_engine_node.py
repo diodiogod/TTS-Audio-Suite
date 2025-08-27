@@ -86,7 +86,7 @@ class ChatterBoxEngineNode(BaseTTSNode):
     RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("TTS_engine",)
     FUNCTION = "create_engine_adapter"
-    CATEGORY = "TTS Audio Suite/Engines"
+    CATEGORY = "TTS Audio Suite/⚙️ Engines"
 
     def create_engine_adapter(self, language: str, device: str, exaggeration: float, 
                             temperature: float, cfg_weight: float, crash_protection_template: str):

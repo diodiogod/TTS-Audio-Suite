@@ -73,7 +73,7 @@ class LoadRVCModelNode(BaseTTSNode):
     RETURN_TYPES = ("RVC_MODEL", "STRING")
     RETURN_NAMES = ("rvc_model", "model_info")
     
-    CATEGORY = "🎵 TTS Audio Suite/Models"
+    CATEGORY = "TTS Audio Suite/🎭 Voice & Character"
     
     FUNCTION = "load_rvc_model"
     

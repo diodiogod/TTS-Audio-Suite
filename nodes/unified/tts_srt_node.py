@@ -140,7 +140,7 @@ Hello! This is unified SRT TTS with character switching.
     RETURN_TYPES = ("AUDIO", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("audio", "generation_info", "timing_report", "Adjusted_SRT")
     FUNCTION = "generate_srt_speech"
-    CATEGORY = "TTS Audio Suite"
+    CATEGORY = "TTS Audio Suite/🎤 Text to Speech"
 
     def __init__(self):
         super().__init__()

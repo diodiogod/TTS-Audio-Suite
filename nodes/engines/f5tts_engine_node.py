@@ -78,7 +78,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
     RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("TTS_engine",)
     FUNCTION = "create_engine_adapter"
-    CATEGORY = "TTS Audio Suite/Engines"
+    CATEGORY = "TTS Audio Suite/⚙️ Engines"
 
     def create_engine_adapter(self, language: str, device: str, temperature: float, 
                             speed: float, target_rms: float, cross_fade_duration: float,

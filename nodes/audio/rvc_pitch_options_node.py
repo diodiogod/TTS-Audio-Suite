@@ -113,7 +113,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
     RETURN_TYPES = ("RVC_PITCH_OPTIONS",)
     RETURN_NAMES = ("rvc_pitch_options",)
     
-    CATEGORY = "🎵 TTS Audio Suite/Audio"
+    CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
     
     FUNCTION = "create_pitch_options"
     
