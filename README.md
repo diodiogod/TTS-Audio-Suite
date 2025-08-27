@@ -1051,29 +1051,23 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 
 **Ready-to-use ComfyUI workflows** - Download and drag into ComfyUI:
 
-### Unified Workflows
+### 🆕 Unified Workflows (v4.5+)
 
-| Workflow                   | Description                                 | Status | Files                                                      |
-| -------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------- |
-| **Unified Voice Changer - RVC X ChatterBox** | Modern unified voice conversion with RVC and ChatterBox engines | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
+| Workflow | Description | Features | Status | Files |
+|----------|-------------|----------|---------|-------|
+| **Unified 📺 TTS SRT** | Universal SRT processing with all TTS engines | • ChatterBox/F5-TTS/Higgs Audio 2<br>• Multiple timing modes<br>• Multi-character switching<br>• Overlap SRT support | ✅ **New in v4.5** | [📁 JSON](example_workflows/Unified%20📺%20TTS%20SRT.json) |
+| **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
 
-### ChatterBox Workflows
+### Legacy Workflows
 
-| Workflow                   | Description                                 | Status | Files                                                      |
-| -------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------- |
-| **ChatterBox SRT**         | SRT subtitle timing and TTS generation      | ⚠️ Needs Update | [📁 JSON](example_workflows/📺%20Chatterbox%20SRT.json)    |
-| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion | ✅ **Updated for v4** | [📁 JSON](example_workflows/Chatterbox%20integration.json) |
+| Workflow | Description | Status | Files |
+|----------|-------------|---------|-------|
+| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion | ✅ **Compatible** | [📁 JSON](example_workflows/Chatterbox%20integration.json) |
+| **F5-TTS Speech Editor** | Interactive waveform analysis for F5-TTS editing | ⚠️ Needs Update | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
 
-### F5-TTS Workflows
-
-| Workflow                                 | Description                                             | Status | Files                                                                                |
-| ---------------------------------------- | ------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| **Audio Wave Analyzer + F5 Speech Edit** | Interactive waveform analysis for F5-TTS speech editing | ⚠️ Needs Update | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json)           |
-| **F5-TTS SRT and Normal Generation**     | F5-TTS integration with SRT subtitle processing         | ⚠️ Needs Update | [📁 JSON](example_workflows/🎤%20📺%20F5-TTS%20SRT%20and%20Normal%20Generation.json) |
-
-> **Note:** To use workflows, download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with the proper node connections.
+> **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases all engines and features in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and supports ChatterBox, F5-TTS, and Higgs Audio 2 engines.
 >
-> **⚠️ Workflow Status:** After the v4 architecture changes, most workflows need updates except ChatterBox Integration which has been verified and updated. The other workflows are available but may need node reconnections.
+> **📥 Usage:** Download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with proper node connections.
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
