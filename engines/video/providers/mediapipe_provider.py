@@ -226,7 +226,8 @@ class MediaPipeProvider(AbstractProvider):
         confidence_scores = []
         mar_values = []
         viseme_frames = [] if enable_viseme else None
-        preview_frames = [] if preview_mode else None
+        # Store frame data for preview generation
+        frame_data = [] if preview_mode else None
         
         # Store scaling factors for later coordinate conversion
         scale_x = original_width / width
@@ -292,7 +293,7 @@ class MediaPipeProvider(AbstractProvider):
                         metadata=None
                     ))
             
-            # Generate preview frame if requested (using processed frame for consistency)
+            # Store frame data for preview generation if requested
             if preview_mode:
                 # Get current viseme and geometric features if available
                 current_viseme = None
@@ -317,16 +318,19 @@ class MediaPipeProvider(AbstractProvider):
                     else:
                         analyzer_method = 'basic'
                 
-                annotated = self.annotate_frame(
-                    frame, landmarks, is_moving, confidence,
-                    current_viseme=current_viseme, 
-                    viseme_confidence=viseme_confidence,
-                    geometric_features=geometric_features,
-                    frame_number=frame_count,
-                    consonant_scores=consonant_scores,
-                    analyzer_method=analyzer_method
-                )
-                preview_frames.append(annotated)
+                # Store frame data for later preview generation
+                frame_data.append({
+                    'frame': frame.copy(),  # Store copy of frame
+                    'landmarks': landmarks,
+                    'is_moving': is_moving,
+                    'confidence': confidence,
+                    'frame_number': frame_count,
+                    'current_viseme': current_viseme,
+                    'viseme_confidence': viseme_confidence,
+                    'geometric_features': geometric_features,
+                    'consonant_scores': consonant_scores,
+                    'analyzer_method': analyzer_method
+                })
             
             frame_count += 1
             
@@ -346,21 +350,11 @@ class MediaPipeProvider(AbstractProvider):
         # Apply filtering
         filtered_segments = self.filter_segments(segments)
         
-        # Create preview video if requested
-        if preview_mode and preview_frames:
-            self.preview_frames = preview_frames
-            provider_dir = os.path.dirname(os.path.abspath(__file__))
-            utils_dir = os.path.join(os.path.dirname(provider_dir), "utils")
-            if utils_dir not in sys.path:
-                sys.path.insert(0, utils_dir)
-            from preview_creator import PreviewVideoCreator
-            preview_path = PreviewVideoCreator.create_preview_video(
-                preview_frames, fps, width, height, "MediaPipe"
-            )
-            if preview_path:
-                self.preview_video = preview_path
+        # Store frame data for preview generation (done separately)
+        if preview_mode and frame_data:
+            self.frame_data = frame_data
         else:
-            self.preview_frames = None
+            self.frame_data = None
         
         # Add viseme sequences to segments if enabled
         if enable_viseme and viseme_frames:
@@ -377,10 +371,13 @@ class MediaPipeProvider(AbstractProvider):
                 "mar_threshold": self.mar_threshold,
                 "sensitivity": self.sensitivity,
                 "video_resolution": f"{width}x{height}",
+                "video_width": width,
+                "video_height": height,
                 "total_segments_before_filter": len(segments),
                 "total_segments_after_filter": len(filtered_segments),
                 "viseme_detection_enabled": enable_viseme,
-                "unfiltered_segments": segments  # Store unfiltered segments for re-filtering
+                "unfiltered_segments": segments,  # Store unfiltered segments for re-filtering
+                "frame_data": frame_data if preview_mode else None  # Store frame data for preview generation
             },
             viseme_frames=viseme_frames
         )
@@ -946,6 +943,7 @@ class MediaPipeProvider(AbstractProvider):
                 filtered_confidences[idx] *= 0.1
         
         return filtered_visemes, filtered_confidences
+    
     
     def get_preview_video(self) -> Optional[str]:
         """Get the preview video file path if generated"""

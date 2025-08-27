@@ -235,6 +235,55 @@ class MouthMovementAnalyzerNode(BaseNode):
         MOUTH_MOVEMENT_CACHE[cache_key] = cache_data
         logger.info(f"💾 Cached mouth movement analysis: {cache_key[:8]}...")
     
+    def _create_filtered_preview(self, analyzer, cached_timing_data, filtered_segments) -> Optional[str]:
+        """Create preview video showing only filtered segments using cached frame data"""
+        frame_data = cached_timing_data.metadata.get('frame_data')
+        if not frame_data:
+            logger.warning("No frame data available for preview generation")
+            return None
+        
+        fps = cached_timing_data.fps
+        width = cached_timing_data.metadata.get('video_width')
+        height = cached_timing_data.metadata.get('video_height')
+        
+        if not all([fps, width, height]):
+            logger.error("Missing video properties for preview generation")
+            return None
+        
+        # Convert filtered segments to frame-based movement mapping
+        movement_by_frame = {}
+        for segment in filtered_segments:
+            start_frame = int(segment.start_time * fps)
+            end_frame = int(segment.end_time * fps)
+            for frame_num in range(start_frame, end_frame + 1):
+                movement_by_frame[frame_num] = True
+        
+        # Generate annotated frames using filtered segments
+        preview_frames = []
+        for frame_info in frame_data:
+            frame = frame_info['frame']
+            landmarks = frame_info['landmarks']
+            frame_number = frame_info['frame_number']
+            
+            # Determine if this frame should show movement based on filtered segments
+            is_moving = movement_by_frame.get(frame_number, False)
+            confidence = frame_info['confidence'] if is_moving else 0.0
+            
+            annotated = analyzer.annotate_frame(
+                frame, landmarks, is_moving, confidence,
+                current_viseme=frame_info['current_viseme'],
+                viseme_confidence=frame_info['viseme_confidence'],
+                geometric_features=frame_info['geometric_features'],
+                frame_number=frame_number,
+                consonant_scores=frame_info['consonant_scores'],
+                analyzer_method=frame_info['analyzer_method']
+            )
+            preview_frames.append(annotated)
+        
+        # Use the existing _create_preview_video method 
+        analyzer._create_preview_video(preview_frames, fps, width, height)
+        return analyzer.get_preview_video()
+    
     
     def _register_providers(self):
         """Register available analysis providers"""
@@ -358,7 +407,14 @@ class MouthMovementAnalyzerNode(BaseNode):
                     # Reuse cached movement frames and confidence scores
                     movement_frames = analysis_cached_result['movement_frames']
                     confidence_scores = analysis_cached_result['confidence_scores'] 
-                    preview_path = analysis_cached_result.get('preview_path')
+                    
+                    # Generate new preview with filtered segments if preview mode enabled
+                    preview_path = None
+                    if preview_mode:
+                        logger.info("🎬 Regenerating preview with filtered segments...")
+                        preview_path = self._create_filtered_preview(temp_analyzer, cached_timing_data, filtered_segments)
+                        if preview_path:
+                            logger.info(f"Preview created: {preview_path}")
                     
                     # Cache the filtered result
                     self._cache_analysis(full_cache_key, timing_data, movement_frames, confidence_scores, preview_path)
