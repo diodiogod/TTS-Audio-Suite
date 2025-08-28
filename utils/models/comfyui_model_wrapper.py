@@ -280,11 +280,40 @@ class ComfyUIModelWrapper:
                     cuda_model = find_cuda_model(model)
                 
                 if cuda_model:
-                    # Check for CUDA graphs but don't destroy them (causes corruption)
+                    # Check for CUDA graphs and try to safely release them
                     graph_count = sum(len(runners) for runners in cuda_model.decode_graph_runners.values())
                     if graph_count > 0:
-                        print(f"🔍 Found {graph_count} CUDA graphs - leaving them intact to prevent corruption")
-                        print(f"📝 CUDA graphs will be invalidated through cache management instead")
+                        print(f"🔍 Found {graph_count} CUDA graphs - attempting safe release")
+                        try:
+                            # Try to properly end/reset the CUDA graphs before clearing
+                            # This should release the captured allocations properly
+                            for key, runners in cuda_model.decode_graph_runners.items():
+                                print(f"  🔧 Releasing {len(runners)} graphs for {key}")
+                                for i, runner in enumerate(runners):
+                                    if hasattr(runner, 'graph') and runner.graph is not None:
+                                        # Try to reset/end the graph properly
+                                        try:
+                                            # Reset the graph state
+                                            if hasattr(runner.graph, 'reset'):
+                                                runner.graph.reset()
+                                            elif hasattr(runner, 'reset'):
+                                                runner.reset()
+                                            print(f"    ✅ Released graph {i+1}/{len(runners)}")
+                                        except Exception as e:
+                                            print(f"    ⚠️ Failed to reset graph {i+1}: {e}")
+                                
+                                # Now clear the runners
+                                runners.clear()
+                                
+                            print(f"🧹 Attempted to release {graph_count} CUDA graphs safely")
+                            
+                            # Force CUDA synchronization to ensure graphs are properly released
+                            if torch.cuda.is_available():
+                                torch.cuda.synchronize()
+                                print(f"🔄 CUDA synchronized after graph release")
+                                
+                        except Exception as e:
+                            print(f"⚠️ Failed to release CUDA graphs: {e}, proceeding with standard unload")
                     else:
                         print(f"📝 No CUDA graphs found in {self.model_info.engine} model")
                 else:
@@ -466,9 +495,6 @@ class ComfyUITTSModelManager:
     This replaces static caches with ComfyUI-managed model loading/unloading.
     """
     
-    # Class-level flag to prevent repetitive Higgs Audio unload warnings
-    _higgs_unload_warning_shown = False
-    
     def __init__(self):
         self._model_cache: Dict[str, ComfyUIModelWrapper] = {}
         
@@ -604,11 +630,17 @@ class ComfyUITTSModelManager:
         # Calculate memory usage
         memory_size = ComfyUIModelWrapper.calculate_model_memory(model)
         
-        # Create model info
+        # Create model info - for stateless wrappers, use a generic engine name to prevent CUDA graph handling
+        actual_engine = engine
+        if hasattr(model, '_wrapped_engine') and engine == "higgs_audio":
+            # This is a stateless wrapper - use generic name to prevent ComfyUI from doing special CUDA handling
+            actual_engine = "stateless_tts"
+            print(f"🔒 Treating {engine} stateless wrapper as generic TTS model to avoid CUDA graph interference")
+        
         model_info = ModelInfo(
             model=model,
             model_type=model_type,
-            engine=engine,
+            engine=actual_engine,  # Use generic name for stateless wrappers
             device=device,
             memory_size=memory_size,
             load_device=device
@@ -655,35 +687,29 @@ class ComfyUITTSModelManager:
         return self._model_cache.get(model_key)
         
     def remove_model(self, model_key: str) -> bool:
-        """Remove a model from cache and ComfyUI tracking (with special handling for Higgs Audio)"""
+        """Remove a model from cache and ComfyUI tracking"""
         if model_key in self._model_cache:
             wrapper = self._model_cache[model_key]
             
-            # For Higgs Audio: Skip memory management due to CUDA graph incompatibility
-            if wrapper.model_info.engine == "higgs_audio":
-                # Show warning only once per session
-                if not ComfyUITTSModelManager._higgs_unload_warning_shown:
-                    print(f"🔒 Higgs Audio models kept in memory (CUDA graph limitations)")
-                    ComfyUITTSModelManager._higgs_unload_warning_shown = True
-                    
-                return False  # Indicate model was not unloaded
-            else:
-                # Normal destruction for other engines  
-                self._model_cache.pop(model_key)
-                
-                # Remove from ComfyUI tracking if available
-                if COMFYUI_AVAILABLE and model_management is not None:
-                    try:
-                        if hasattr(model_management, 'current_loaded_models'):
-                            if wrapper in model_management.current_loaded_models:
-                                model_management.current_loaded_models.remove(wrapper)
-                                print(f"🗑️ Removed model from ComfyUI tracking")
-                    except Exception as e:
-                        print(f"⚠️ Failed to remove from ComfyUI tracking: {e}")
-                
-                # Unload from GPU
-                wrapper.model_unload()
-                return True
+            # With stateless wrapper, Higgs Audio models can now be safely unloaded
+            print(f"🗑️ Attempting to unload {wrapper.model_info.engine} model (stateless wrapper enabled)")
+            
+            # Normal destruction for all engines
+            self._model_cache.pop(model_key)
+            
+            # Remove from ComfyUI tracking if available
+            if COMFYUI_AVAILABLE and model_management is not None:
+                try:
+                    if hasattr(model_management, 'current_loaded_models'):
+                        if wrapper in model_management.current_loaded_models:
+                            model_management.current_loaded_models.remove(wrapper)
+                            print(f"🗑️ Removed model from ComfyUI tracking")
+                except Exception as e:
+                    print(f"⚠️ Failed to remove from ComfyUI tracking: {e}")
+            
+            # Unload from GPU
+            wrapper.model_unload()
+            return True
         return False
         
     def clear_cache(self, model_type: Optional[str] = None, engine: Optional[str] = None):

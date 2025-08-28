@@ -337,21 +337,84 @@ def register_f5tts_factory():
 
 
 def register_higgs_audio_factory():
-    """Register Higgs Audio model factories"""
+    """Register Higgs Audio model factories with stateless wrapper for ComfyUI integration"""
     def higgs_audio_factory(**kwargs):
         from engines.higgs_audio.boson_multimodal.serve.serve_engine import HiggsAudioServeEngine
+        from engines.higgs_audio.higgs_audio import HiggsAudioEngine
+        from engines.higgs_audio.stateless_wrapper import create_stateless_higgs_wrapper
         
         model_name = kwargs.get("model_name")
         device = kwargs.get("device", "cuda")
         model_path = kwargs.get("model_path", model_name)
         tokenizer_path = kwargs.get("tokenizer_path")
         
-        return HiggsAudioServeEngine(
-            model_name_or_path=model_path,
-            audio_tokenizer_name_or_path=tokenizer_path or model_path,
-            device=device,
+        # Create the base HiggsAudioEngine but initialize manually to avoid circular dependency
+        base_engine = HiggsAudioEngine()
+        
+        # Manually set up the engine properties to avoid calling initialize_engine
+        base_engine.model_path = model_path
+        base_engine.tokenizer_path = tokenizer_path
+        base_engine.device = device
+        
+        # Get smart paths using the engine's methods
+        model_path_for_engine = base_engine._get_smart_model_path(model_path)
+        tokenizer_path_for_engine = base_engine._get_smart_tokenizer_path(tokenizer_path)
+        
+        # Create HiggsAudioServeEngine on CPU first to avoid VRAM overflow, then move to target device
+        print(f"🚀 Loading Higgs Audio model on CPU first to prevent VRAM overflow...")
+        serve_engine = HiggsAudioServeEngine(
+            model_name_or_path=model_path_for_engine,
+            audio_tokenizer_name_or_path=tokenizer_path_for_engine,
+            device="cpu",  # Load on CPU first
             kv_cache_lengths=[1024, 2048, 4096]  # Memory-efficient cache sizes
         )
+        
+        # Now move to target device if it's not CPU
+        if device != "cpu":
+            print(f"🔄 Moving Higgs Audio model from CPU to {device}...")
+            
+            # Move all components to ensure complete device consistency
+            components_moved = []
+            
+            # Move main model
+            if hasattr(serve_engine, 'model') and hasattr(serve_engine.model, 'to'):
+                serve_engine.model.to(device)
+                components_moved.append("main_model")
+            
+            # Move audio tokenizer and its sub-components
+            if hasattr(serve_engine, 'audio_tokenizer'):
+                tokenizer = serve_engine.audio_tokenizer
+                
+                # Move the tokenizer itself
+                if hasattr(tokenizer, 'to'):
+                    tokenizer.to(device)
+                    components_moved.append("audio_tokenizer")
+                
+                # Move semantic model within tokenizer (this is what was missing!)
+                if hasattr(tokenizer, 'semantic_model') and hasattr(tokenizer.semantic_model, 'to'):
+                    tokenizer.semantic_model.to(device)
+                    components_moved.append("semantic_model")
+                
+                # Move any other tokenizer sub-components
+                for attr_name in ['encoder', 'decoder', 'quantizer']:
+                    if hasattr(tokenizer, attr_name):
+                        attr = getattr(tokenizer, attr_name)
+                        if hasattr(attr, 'to'):
+                            attr.to(device)
+                            components_moved.append(f"tokenizer_{attr_name}")
+            
+            print(f"  ✅ Moved components: {', '.join(components_moved)}")
+            
+            print(f"✅ Successfully moved complete engine to {device}")
+        
+        # Set the serve engine on the base engine
+        base_engine.engine = serve_engine
+        
+        # Wrap with stateless wrapper for ComfyUI model management compatibility
+        stateless_wrapper = create_stateless_higgs_wrapper(base_engine)
+        
+        print(f"📦 Higgs Audio engine ready (via unified interface)")
+        return stateless_wrapper
     
     unified_model_interface.register_model_factory("higgs_audio", "tts", higgs_audio_factory)
 

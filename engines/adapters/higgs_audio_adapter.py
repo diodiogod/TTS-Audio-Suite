@@ -166,57 +166,115 @@ class HiggsAudioEngineAdapter:
                     if waveform.dim() == 2 and waveform.size(0) > 1:
                         # Convert to mono if stereo
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
-                    reference_audio = {"waveform": waveform.float(), "sample_rate": sample_rate}
+                    
+                    # Move to same device as the model to prevent device mismatch
+                    target_device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+                    waveform = waveform.float().to(target_device)
+                    
+                    reference_audio = {"waveform": waveform, "sample_rate": sample_rate}
+                    print(f"  📁 Loaded reference audio on {target_device}")
                 except Exception as e:
                     print(f"⚠️ Failed to load reference audio {char_audio}: {e}")
             elif isinstance(char_audio, dict):
-                # Already in ComfyUI format
-                reference_audio = char_audio
+                # Already in ComfyUI format - ensure tensors are on correct device
+                reference_audio = {}
+                target_device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+                
+                for key, value in char_audio.items():
+                    if torch.is_tensor(value):
+                        reference_audio[key] = value.to(target_device)
+                        print(f"  📦 Moved ComfyUI {key} tensor to {target_device}")
+                    else:
+                        reference_audio[key] = value
         
-        # Generate audio using Higgs Audio engine
+        # Generate audio using Higgs Audio engine with stateless methods
         try:
             if multi_speaker_mode in ["Native Multi-Speaker (System Context)", "Native Multi-Speaker (Conversation)"]:
-                # Use native multi-speaker mode with multiple reference audios
-                audio_result, generation_info = self.higgs_engine.generate_native_multispeaker(
-                    text=text,
-                    primary_reference_audio=reference_audio,
-                    primary_reference_text=char_text or "",
-                    secondary_reference_audio=second_narrator_audio,
-                    secondary_reference_text=second_narrator_text,
-                    use_system_context=(multi_speaker_mode == "Native Multi-Speaker (System Context)"),
-                    system_prompt=system_prompt,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    top_k=top_k,
-                    force_audio_gen=force_audio_gen,
-                    ras_win_len=ras_win_len,
-                    ras_max_num_repeat=ras_max_num_repeat,
-                    enable_cache=enable_cache,
-                    character=character,
-                    seed=seed
-                )
+                # Use stateless native multi-speaker mode with multiple reference audios
+                if hasattr(self.higgs_engine, 'generate_native_multispeaker_stateless'):
+                    audio_result, generation_info = self.higgs_engine.generate_native_multispeaker_stateless(
+                        text=text,
+                        primary_reference_audio=reference_audio,
+                        primary_reference_text=char_text or "",
+                        secondary_reference_audio=second_narrator_audio,
+                        secondary_reference_text=second_narrator_text,
+                        use_system_context=(multi_speaker_mode == "Native Multi-Speaker (System Context)"),
+                        system_prompt=system_prompt,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
+                        force_audio_gen=force_audio_gen,
+                        ras_win_len=ras_win_len,
+                        ras_max_num_repeat=ras_max_num_repeat,
+                        enable_cache=enable_cache,
+                        character=character,
+                        seed=seed
+                    )
+                else:
+                    # Fallback to standard method if wrapper not available
+                    audio_result, generation_info = self.higgs_engine.generate_native_multispeaker(
+                        text=text,
+                        primary_reference_audio=reference_audio,
+                        primary_reference_text=char_text or "",
+                        secondary_reference_audio=second_narrator_audio,
+                        secondary_reference_text=second_narrator_text,
+                        use_system_context=(multi_speaker_mode == "Native Multi-Speaker (System Context)"),
+                        system_prompt=system_prompt,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
+                        force_audio_gen=force_audio_gen,
+                        ras_win_len=ras_win_len,
+                        ras_max_num_repeat=ras_max_num_repeat,
+                        enable_cache=enable_cache,
+                        character=character,
+                        seed=seed
+                    )
             else:
-                # Use custom character switching mode (existing behavior)
-                audio_result, generation_info = self.higgs_engine.generate(
-                    text=text,
-                    reference_audio=reference_audio,
-                    reference_text=char_text or "",
-                    system_prompt=system_prompt,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    top_k=top_k,
-                    force_audio_gen=force_audio_gen,
-                    ras_win_len=ras_win_len,
-                    ras_max_num_repeat=ras_max_num_repeat,
-                    enable_chunking=enable_chunking,
-                    max_tokens_per_chunk=max_tokens_per_chunk,  # Now properly converted from chars to tokens
-                    silence_between_chunks_ms=silence_between_chunks_ms,
-                    enable_cache=enable_cache,
-                    character=character,
-                    seed=seed
-                )
+                # Use stateless custom character switching mode (existing behavior)
+                if hasattr(self.higgs_engine, 'generate_stateless'):
+                    audio_result, generation_info = self.higgs_engine.generate_stateless(
+                        text=text,
+                        reference_audio=reference_audio,
+                        reference_text=char_text or "",
+                        system_prompt=system_prompt,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
+                        force_audio_gen=force_audio_gen,
+                        ras_win_len=ras_win_len,
+                        ras_max_num_repeat=ras_max_num_repeat,
+                        enable_chunking=enable_chunking,
+                        max_tokens_per_chunk=max_tokens_per_chunk,  # Now properly converted from chars to tokens
+                        silence_between_chunks_ms=silence_between_chunks_ms,
+                        enable_cache=enable_cache,
+                        character=character,
+                        seed=seed
+                    )
+                else:
+                    # Fallback to standard method if wrapper not available
+                    audio_result, generation_info = self.higgs_engine.generate(
+                        text=text,
+                        reference_audio=reference_audio,
+                        reference_text=char_text or "",
+                        system_prompt=system_prompt,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
+                        force_audio_gen=force_audio_gen,
+                        ras_win_len=ras_win_len,
+                        ras_max_num_repeat=ras_max_num_repeat,
+                        enable_chunking=enable_chunking,
+                        max_tokens_per_chunk=max_tokens_per_chunk,  # Now properly converted from chars to tokens
+                        silence_between_chunks_ms=silence_between_chunks_ms,
+                        enable_cache=enable_cache,
+                        character=character,
+                        seed=seed
+                    )
             
             # Return the waveform tensor with correct dimensions for ComfyUI
             waveform = audio_result["waveform"]

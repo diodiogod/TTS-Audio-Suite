@@ -7,14 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.5.26] - 2025-08-27
 
-### Added
+### Fixed
 
 - Fix Higgs Audio advanced RAS parameter support
+- Fix parameter cache invalidation for proper audio regeneration 
+- Fix configuration flow ensuring parameters reach underlying model correctly
+
+### Added
 
 - Add missing RAS (Repetition Avoidance Sampling) controls to Higgs Audio engine
-- Fix parameter cache invalidation for proper audio regeneration 
+
+### Changed
+
 - Improve speech quality control with force_audio_gen and repetition settings
-- Fix configuration flow ensuring parameters reach underlying model correctly
 ## [4.5.25] - 2025-08-27
 
 ### Fixed
