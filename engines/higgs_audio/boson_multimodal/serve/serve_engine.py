@@ -495,8 +495,10 @@ class HiggsAudioServeEngine:
                 raw_audio = None
 
             if raw_audio is not None:
+                # Encode the audio (tokenizer requires numpy on CPU)
                 audio_ids = self.audio_tokenizer.encode(raw_audio, self.audio_tokenizer.sampling_rate)
-                audio_ids_l.append(audio_ids.squeeze(0).cpu())
+                # Move encoded audio_ids to the same device as the model instead of forcing CPU
+                audio_ids_l.append(audio_ids.squeeze(0).to(self.device))
 
         if len(audio_ids_l) > 0:
             audio_ids_start = torch.tensor(
@@ -528,8 +530,12 @@ class HiggsAudioServeEngine:
         return inputs
 
     def _prepare_kv_caches(self):
+        model_device = next(self.model.parameters()).device
         for kv_cache in self.kv_caches.values():
             kv_cache.reset()
+            # Force all cache components to correct device
+            if hasattr(kv_cache, 'to'):
+                kv_cache.to(model_device)
 
     def generate(
         self,
@@ -582,6 +588,12 @@ class HiggsAudioServeEngine:
                 skip_prompt=True
             )
 
+            # Ensure all inputs are explicitly on the same device as the model before generation
+            model_device = next(self.model.parameters()).device
+            for k, v in inputs.items():
+                if isinstance(v, torch.Tensor):
+                    inputs[k] = v.to(model_device)
+            
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,

@@ -607,7 +607,7 @@ class HiggsAudioEngine:
             raise e
     
     def _audio_to_base64(self, comfy_audio: Dict[str, Any]) -> str:
-        """Convert ComfyUI audio format to base64 string"""
+        """Convert ComfyUI audio format to base64 string, preserving device for later processing"""
         if not sf:
             raise ImportError("soundfile is required for audio encoding")
         
@@ -626,13 +626,16 @@ class HiggsAudioEngine:
         if not hasattr(waveform, 'dim'):
             raise TypeError(f"Expected tensor with dim() method, got {type(waveform)}")
         
-        # Handle tensor dimensions
+        # Handle tensor dimensions and preserve device info
         if waveform.dim() == 3:
-            audio_np = waveform[0, 0].cpu().numpy()
+            audio_tensor = waveform[0, 0]
         elif waveform.dim() == 2:
-            audio_np = waveform[0].cpu().numpy()
+            audio_tensor = waveform[0]
         else:
-            audio_np = waveform.cpu().numpy()
+            audio_tensor = waveform
+        
+        # Convert to CPU for file operations (soundfile requires numpy)
+        audio_np = audio_tensor.cpu().numpy()
         
         # Write to buffer
         buffer = io.BytesIO()
@@ -641,6 +644,7 @@ class HiggsAudioEngine:
         
         # Encode to base64
         audio_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+        
         return audio_base64
     
     def _combine_audio_chunks(self, 
