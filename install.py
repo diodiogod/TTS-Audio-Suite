@@ -21,6 +21,8 @@ class TTSAudioInstaller:
         self.python_version = sys.version_info
         self.is_python_313 = self.python_version >= (3, 13)
         self.is_windows = platform.system() == "Windows"
+        self.is_macos = platform.system() == "Darwin"
+        self.is_m1_mac = self.is_macos and platform.machine() == "arm64"
         self.pip_cmd = [sys.executable, "-m", "pip"]
         
     def log(self, message: str, level: str = "INFO"):
@@ -37,11 +39,66 @@ class TTSAudioInstaller:
         print(f"{symbol} {message}")
     
     def check_system_dependencies(self):
-        """Check for required system libraries on Linux and provide helpful error messages"""
+        """Check for required system libraries and provide helpful error messages"""
         if self.is_windows:
             return True  # Windows packages come pre-compiled
+            
+        if self.is_macos:
+            return self.check_macos_dependencies()
+        else:
+            return self.check_linux_dependencies()
+    
+    def check_macos_dependencies(self):
+        """Check for required system libraries on macOS"""
+        self.log("Checking macOS system dependencies...", "INFO")
+        missing_deps = []
         
-        self.log("Checking system dependencies...", "INFO")
+        # Check for libsamplerate (needed by resampy/soxr)
+        try:
+            import ctypes.util
+            if not ctypes.util.find_library('samplerate'):
+                missing_deps.append(('libsamplerate', 'audio resampling'))
+        except:
+            pass
+        
+        # Check for portaudio (needed for sounddevice)
+        try:
+            import ctypes.util
+            if not ctypes.util.find_library('portaudio'):
+                missing_deps.append(('portaudio', 'voice recording'))
+        except:
+            pass
+        
+        if missing_deps:
+            self.log("Missing system dependencies detected!", "WARNING")
+            print("\n" + "="*60)
+            print("MACOS SYSTEM DEPENDENCIES REQUIRED")
+            print("="*60)
+            for dep, purpose in missing_deps:
+                print(f"• {dep} (for {purpose})")
+            
+            print("\nPlease install with Homebrew:")
+            deps_list = " ".join([dep for dep, _ in missing_deps])
+            print(f"brew install {deps_list}")
+            print("\n# If you don't have Homebrew:")
+            print('/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"')
+            
+            if self.is_m1_mac:
+                print("\n# M1/M2 Mac Note:")
+                print("Make sure you're using an ARM64 Python environment!")
+                print("Check with: python -c \"import platform; print(platform.machine())\"")
+                print("Should show: arm64 (not x86_64)")
+            
+            print("="*60)
+            print("Then run this install script again.\n")
+            return False
+        
+        self.log("macOS system dependencies check passed", "SUCCESS")
+        return True
+    
+    def check_linux_dependencies(self):
+        """Check for required system libraries on Linux"""
+        self.log("Checking Linux system dependencies...", "INFO")
         missing_deps = []
         
         # Check for libsamplerate (needed by resampy/soxr)
@@ -64,7 +121,7 @@ class TTSAudioInstaller:
         if missing_deps:
             self.log("Missing system dependencies detected!", "WARNING")
             print("\n" + "="*60)
-            print("SYSTEM DEPENDENCIES REQUIRED")
+            print("LINUX SYSTEM DEPENDENCIES REQUIRED")
             print("="*60)
             for dep, purpose in missing_deps:
                 print(f"• {dep} (for {purpose})")
@@ -80,7 +137,7 @@ class TTSAudioInstaller:
             print("Then run this install script again.\n")
             return False
         
-        self.log("System dependencies check passed", "SUCCESS")
+        self.log("Linux system dependencies check passed", "SUCCESS")
         return True
 
     def run_pip_command(self, args: List[str], description: str, ignore_errors: bool = False) -> bool:
@@ -263,6 +320,42 @@ class TTSAudioInstaller:
                 
         except Exception:
             return False
+
+    def install_macos_specific_packages(self):
+        """Install packages with Mac-specific requirements"""
+        if not self.is_macos:
+            return
+            
+        self.log("Installing macOS-specific audio packages", "INFO")
+        
+        # For M1 Macs, ensure we use compatible versions
+        if self.is_m1_mac:
+            self.log("M1 Mac detected - installing ARM64-compatible packages", "INFO")
+            
+            # Force reinstall samplerate with proper architecture
+            self.run_pip_command(
+                ["uninstall", "-y", "samplerate"], 
+                "Removing potentially x86_64 samplerate package", 
+                ignore_errors=True
+            )
+            
+            # Install with --no-cache to force ARM64 build
+            self.run_pip_command(
+                ["install", "--no-cache-dir", "--force-reinstall", "samplerate>=0.2.1"], 
+                "Installing ARM64-compatible samplerate package"
+            )
+            
+        # Install/reinstall audio packages that commonly have architecture issues on Mac
+        mac_audio_packages = [
+            "soundfile>=0.12.0",
+            "sounddevice>=0.4.0",
+        ]
+        
+        for package in mac_audio_packages:
+            self.run_pip_command(
+                ["install", "--force-reinstall", "--no-cache-dir", package], 
+                f"Reinstalling {package} for macOS compatibility"
+            )
 
     def install_core_dependencies(self):
         """Install safe core dependencies that don't cause conflicts"""
@@ -505,6 +598,44 @@ class TTSAudioInstaller:
             return False
         return True
 
+    def handle_wandb_issues(self):
+        """Fix wandb circular import issues that affect multiple nodes"""
+        self.log("Checking and fixing wandb import issues", "INFO")
+        
+        try:
+            # Try to import wandb to check for issues
+            import wandb
+            # Try to access the errors attribute that's causing the circular import
+            hasattr(wandb, 'errors')
+            self.log("wandb import test passed", "SUCCESS")
+        except (ImportError, AttributeError) as e:
+            self.log(f"wandb import issue detected: {e}", "WARNING")
+            self.log("Reinstalling wandb to fix circular import", "WARNING")
+            
+            # Uninstall and reinstall wandb cleanly
+            self.run_pip_command(
+                ["uninstall", "-y", "wandb"], 
+                "Uninstalling problematic wandb", 
+                ignore_errors=True
+            )
+            
+            # Clear any cached/partial installations
+            self.run_pip_command(
+                ["install", "--no-cache-dir", "--force-reinstall", "wandb>=0.17.0"], 
+                "Reinstalling wandb cleanly"
+            )
+            
+            # Test again after reinstallation
+            try:
+                import importlib
+                importlib.invalidate_caches()  # Clear import cache
+                import wandb
+                hasattr(wandb, 'errors')
+                self.log("wandb reinstallation successful", "SUCCESS")
+            except Exception as retry_error:
+                self.log(f"wandb reinstallation still has issues: {retry_error}", "ERROR")
+                self.log("Some F5-TTS and Higgs features may not work properly", "WARNING")
+
     def handle_python_313_specific(self):
         """Handle Python 3.13 specific compatibility issues"""
         if not self.is_python_313:
@@ -595,6 +726,8 @@ class TTSAudioInstaller:
         
         self.log("Installation completed successfully!", "SUCCESS")
         print(f"\n>>> Python version: {self.python_version.major}.{self.python_version.minor}.{self.python_version.micro}")
+        if self.is_macos:
+            print(f">>> Platform: macOS ({platform.machine()})")
         
         if self.is_python_313:
             print("\n" + "-"*50)
@@ -642,9 +775,11 @@ def main():
         # Install in correct order to prevent conflicts
         installer.install_pytorch_with_cuda()  # Install PyTorch first with proper CUDA detection
         installer.install_core_dependencies()
+        installer.install_macos_specific_packages()  # Mac-specific package fixes
         installer.install_numpy_with_constraints() 
         installer.install_rvc_dependencies()
         installer.install_problematic_packages()
+        installer.handle_wandb_issues()  # Fix wandb circular import
         installer.handle_python_313_specific()
         
         # Validation and summary

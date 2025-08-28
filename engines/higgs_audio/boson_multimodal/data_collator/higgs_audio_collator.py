@@ -353,9 +353,9 @@ class HiggsAudioSampleCollator:
                 else:
                     audio_codes = torch.cat(
                         [
-                            torch.full((ele.shape[0], 1), self.audio_stream_bos_id, dtype=torch.long),
+                            torch.full((ele.shape[0], 1), self.audio_stream_bos_id, dtype=torch.long, device=ele.device),
                             ele,
-                            torch.full((ele.shape[0], 1), self.audio_stream_eos_id, dtype=torch.long),
+                            torch.full((ele.shape[0], 1), self.audio_stream_eos_id, dtype=torch.long, device=ele.device),
                         ],
                         dim=1,
                     )
@@ -389,9 +389,9 @@ class HiggsAudioSampleCollator:
                 else:
                     audio_codes = torch.cat(
                         [
-                            torch.full((ele.shape[0], 1), self.audio_stream_bos_id, dtype=torch.long),
+                            torch.full((ele.shape[0], 1), self.audio_stream_bos_id, dtype=torch.long, device=ele.device),
                             ele,
-                            torch.full((ele.shape[0], 1), self.audio_stream_eos_id, dtype=torch.long),
+                            torch.full((ele.shape[0], 1), self.audio_stream_eos_id, dtype=torch.long, device=ele.device),
                         ],
                         dim=1,
                     )

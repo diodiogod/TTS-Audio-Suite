@@ -183,9 +183,10 @@ class HiggsAudioTokenizer(nn.Module):
     def get_regress_target(self, x):
         x = torchaudio.functional.resample(x, self.sample_rate, self.semantic_sample_rate)
         
-        # Ensure tensor is on the same device as the semantic model
+        # Only move tensor if it's not already on the semantic model's device
         semantic_device = next(self.semantic_model.parameters()).device
-        x = x.to(semantic_device)
+        if x.device != semantic_device:
+            x = x.to(semantic_device)
 
         if (
             self.semantic_techer == "hubert_base"
@@ -286,9 +287,10 @@ class HiggsAudioTokenizer(nn.Module):
     def _xcodec_encode(self, x: torch.Tensor, target_bw: Optional[int] = None) -> torch.Tensor:
         bw = target_bw
 
-        # Ensure x is on the same device as the encoder before using it
+        # Only move x if it's not already on the encoder's device
         encoder_device = next(self.encoder.parameters()).device
-        x = x.to(encoder_device)
+        if x.device != encoder_device:
+            x = x.to(encoder_device)
 
         e_semantic_input = self.get_regress_target(x).detach()
 

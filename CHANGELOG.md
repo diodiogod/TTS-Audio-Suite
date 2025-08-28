@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.27] - 2025-08-28
+
+### Added
+
+- Enable safe VRAM management in Memory Safe mode
+
+### Changed
+
+- Add CUDA Graph toggle: High Performance (55+ tok/s) vs Memory Safe (12 tok/s)
+
+### Fixed
+
+- Fix Higgs Audio model unloading crashes with performance toggle
+- Fix crashes when using 'Unload Models' with Higgs Audio engine
+- Fix multiple generation cycles and cache state issues
+- Resolve fundamental CUDA Graph vs ComfyUI memory management conflict
 ## [4.5.26] - 2025-08-27
 
 ### Fixed
