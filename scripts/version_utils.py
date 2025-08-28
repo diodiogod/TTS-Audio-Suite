@@ -99,28 +99,37 @@ class VersionManager:
     
     def _categorize_simple_description(self, description: str) -> str:
         """Categorize a simple description for changelog (legacy fallback)"""
+        import re
         desc_lower = description.lower()
         
+        # Helper function to check for whole words only (avoids "add" in "advanced")
+        def has_whole_word(text, words):
+            for word in words:
+                # Use word boundary \b to match whole words only
+                if re.search(rf'\b{re.escape(word)}\b', text):
+                    return True
+            return False
+        
         # Check Fixed FIRST (most important - fixes take priority)
-        if any(word in desc_lower for word in [
+        if has_whole_word(desc_lower, [
             'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
             'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
         ]):
             return "### Fixed"
         # Check Added second (for new features/documentation)
-        elif any(word in desc_lower for word in [
+        elif has_whole_word(desc_lower, [
             'add', 'new', 'implement', 'feature', 'create', 'introduce', 'support',
             'documentation', 'readme', 'guide', 'section', 'workflow', 'example'
         ]):
             return "### Added"
         # Check Changed third (for improvements/UI)
-        elif any(word in desc_lower for word in [
+        elif has_whole_word(desc_lower, [
             'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
             'ui', 'interface', 'slider', 'tooltip', 'dropdown', 'better', 'cleaner'
         ]):
             return "### Changed"
         # Check Removed last  
-        elif any(word in desc_lower for word in [
+        elif has_whole_word(desc_lower, [
             'remove', 'delete', 'deprecate', 'drop', 'eliminate'
         ]):
             return "### Removed"
@@ -184,21 +193,30 @@ class VersionManager:
                 if re.match(r'^[🌍📋🚀⚡🎯🔧🎭🎙️📺🎵🏗️]+\s*[\w\s]*:?\s*$', line):
                     continue
                 
-                # Enhanced categorization based on keywords
+                # Enhanced categorization based on keywords (whole words only)
                 line_lower = clean_line.lower()
                 
+                # Helper function for whole word matching in multiline context
+                def has_whole_word_in_line(text, words):
+                    import re
+                    for word in words:
+                        # Use word boundary \b to match whole words only
+                        if re.search(rf'\b{re.escape(word)}\b', text):
+                            return True
+                    return False
+                
                 # Check for specific patterns first
-                if any(word in line_lower for word in [
+                if has_whole_word_in_line(line_lower, [
                     'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
                     'crash', 'problem', 'fail', 'broken', 'dependency', 'missing',
                     'compatibility', 'mismatch'
                 ]):
                     fixed_items.append(clean_line)
-                elif any(word in line_lower for word in [
+                elif has_whole_word_in_line(line_lower, [
                     'remove', 'delete', 'deprecate', 'drop', 'eliminate'
                 ]):
                     removed_items.append(clean_line)
-                elif any(word in line_lower for word in [
+                elif has_whole_word_in_line(line_lower, [
                     'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
                     'performance', 'smart', 'efficient', 'better', 'cleaner',
                     'reorganize', 'refactor', 'streamline'
