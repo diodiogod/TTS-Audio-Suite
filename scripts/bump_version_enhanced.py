@@ -232,7 +232,7 @@ def main():
         
         # Add changelog entry with multiline support
         print("\nUpdating changelog...")
-        if not vm.add_changelog_entry(args.version, changelog_description, simple_mode=True):
+        if not vm.add_changelog_entry(args.version, changelog_description, simple_mode=False):
             print("Error: Failed to update changelog")
             print("Restoring backup...")
             vm.restore_files(backup)

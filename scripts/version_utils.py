@@ -101,26 +101,28 @@ class VersionManager:
         """Categorize a simple description for changelog (legacy fallback)"""
         desc_lower = description.lower()
         
-        # Check Added first (for new features/documentation)
+        # Check Fixed FIRST (most important - fixes take priority)
         if any(word in desc_lower for word in [
+            'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
+            'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
+        ]):
+            return "### Fixed"
+        # Check Added second (for new features/documentation)
+        elif any(word in desc_lower for word in [
             'add', 'new', 'implement', 'feature', 'create', 'introduce', 'support',
             'documentation', 'readme', 'guide', 'section', 'workflow', 'example'
         ]):
             return "### Added"
-        # Check Changed second (for improvements/UI)
+        # Check Changed third (for improvements/UI)
         elif any(word in desc_lower for word in [
             'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
             'ui', 'interface', 'slider', 'tooltip', 'dropdown', 'better', 'cleaner'
         ]):
             return "### Changed"
-        # Check Fixed last (for actual bug fixes)
+        # Check Removed last  
         elif any(word in desc_lower for word in [
-            'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
-            'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
+            'remove', 'delete', 'deprecate', 'drop', 'eliminate'
         ]):
-            return "### Fixed"
-        # Check Removed
-        elif any(word in desc_lower for word in ['remove', 'delete', 'deprecate', 'drop']):
             return "### Removed"
         else:
             return "### Added"  # Default to Added for new features
