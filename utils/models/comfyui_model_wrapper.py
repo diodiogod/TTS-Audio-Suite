@@ -220,6 +220,16 @@ class ComfyUIModelWrapper:
         """
         print(f"🔄 TTS Model unload requested: {self.model_info.engine} {self.model_info.model_type}")
         
+        # Check if this is a Higgs Audio model with CUDA Graphs enabled
+        if self.model_info.engine == "higgs_audio":
+            cuda_graphs_enabled = getattr(self.model, '_cuda_graphs_enabled', True)
+            if cuda_graphs_enabled:
+                print(f"⛔ CUDA Graph Mode: Unloading disabled to prevent crashes")
+                print(f"   Model uses CUDA Graph optimization - cannot be safely unloaded")
+                print(f"   To enable memory unloading, disable CUDA Graphs in engine settings")
+                print(f"   Or restart ComfyUI to fully free memory")
+                return False  # Refuse to unload
+        
         if memory_to_free is not None and memory_to_free < self.loaded_size():
             # Try partial unload first
             freed = self.partially_unload('cpu', memory_to_free)

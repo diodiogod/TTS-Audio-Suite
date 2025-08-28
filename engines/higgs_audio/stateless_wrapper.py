@@ -61,9 +61,10 @@ class StatelessHiggsAudioWrapper:
     def initialize_engine(self, 
                          model_path: str = "bosonai/higgs-audio-v2-generation-3B-base",
                          tokenizer_path: str = "bosonai/higgs-audio-v2-tokenizer", 
-                         device: str = "auto") -> None:
+                         device: str = "auto",
+                         enable_cuda_graphs: bool = True) -> None:
         """Pass-through initialization with state isolation"""
-        return self._wrapped_engine.initialize_engine(model_path, tokenizer_path, device)
+        return self._wrapped_engine.initialize_engine(model_path, tokenizer_path, device, enable_cuda_graphs)
     
     def generate_stateless(self,
                           text: str,
@@ -188,12 +189,12 @@ class StatelessHiggsAudioWrapper:
             # This is a direct call to HiggsAudioServeEngine.generate()
             # Pass through to the underlying serve engine with tensor isolation
             with torch.no_grad():
-                # Isolate any tensor parameters while preserving device
+                # Minimal tensor isolation for performance (only detach, no clone)
                 isolated_kwargs = {}
                 for key, value in kwargs.items():
                     if torch.is_tensor(value):
-                        # Preserve device when isolating tensors
-                        isolated_kwargs[key] = value.detach().clone()
+                        # Only detach to break gradients, avoid expensive clone()
+                        isolated_kwargs[key] = value.detach()
                     else:
                         isolated_kwargs[key] = value
                 
@@ -227,8 +228,8 @@ class StatelessHiggsAudioWrapper:
         isolated = {}
         for key, value in reference_audio.items():
             if torch.is_tensor(value):
-                # Create completely independent tensor copy while preserving device
-                isolated[key] = value.detach().clone()
+                # Only detach for performance, avoid expensive clone()
+                isolated[key] = value.detach()
             elif isinstance(value, dict):
                 # Handle nested dictionaries (like ComfyUI nested format)
                 isolated[key] = self._isolate_reference_audio(value)
@@ -248,9 +249,8 @@ class StatelessHiggsAudioWrapper:
         isolated = {}
         for key, value in audio_output.items():
             if torch.is_tensor(value):
-                # Create completely independent tensor copy while preserving device
-                # Only move to CPU for final output, not intermediate tensors
-                isolated[key] = value.detach().clone()
+                # Only detach for performance, avoid expensive clone()
+                isolated[key] = value.detach()
             else:
                 # Non-tensor values can be copied directly
                 isolated[key] = value
@@ -269,7 +269,7 @@ class StatelessHiggsAudioWrapper:
     
     def to(self, device):
         """
-        Move the underlying model to specified device.
+        Move the underlying model to specified device with conditional CUDA Graph cleanup.
         
         This is what ComfyUI calls to actually move models between GPU/CPU.
         """
@@ -278,6 +278,37 @@ class StatelessHiggsAudioWrapper:
             if self._wrapped_engine and self._wrapped_engine.engine:
                 # Get the underlying HiggsAudioServeEngine
                 serve_engine = self._wrapped_engine.engine
+                
+                # Check if CUDA Graphs are enabled - if not, skip cleanup entirely
+                cuda_graphs_enabled = getattr(serve_engine, '_cuda_graphs_enabled', True)
+                
+                if device == "cpu" and torch.cuda.is_available() and cuda_graphs_enabled:
+                    # CUDA Graphs enabled - show warning and skip cleanup to prevent crashes
+                    print(f"⚠️ CUDA Graph Mode: Memory cleanup disabled to prevent crashes")
+                    print(f"   This model will stay in memory - restart ComfyUI to fully free VRAM")
+                    print(f"   To enable safe memory unloading, disable CUDA Graphs in engine settings")
+                elif device == "cpu" and torch.cuda.is_available() and not cuda_graphs_enabled:
+                    # Memory Safe mode - safe to perform cleanup since no CUDA Graphs
+                    print(f"🛡️ Memory Safe Mode: Performing standard memory cleanup...")
+                    
+                    try:
+                        # Standard cleanup since no CUDA Graphs to worry about
+                        torch.cuda.synchronize()
+                        torch.cuda.empty_cache()
+                        
+                        # Clear caches safely 
+                        if hasattr(serve_engine, 'kv_caches'):
+                            serve_engine.kv_caches.clear()
+                        
+                        import gc
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        
+                        print(f"✅ Memory Safe cleanup completed")
+                        
+                    except Exception as safe_cleanup_error:
+                        print(f"⚠️ Memory Safe cleanup error: {safe_cleanup_error}")
+                
                 
                 # Try to move the entire serve engine first (most comprehensive)
                 if hasattr(serve_engine, 'to'):
@@ -318,6 +349,11 @@ class StatelessHiggsAudioWrapper:
                         print(f"✅ Moved {', '.join(moved_components)} to {device}")
                     else:
                         print(f"⚠️ No moveable components found in HiggsAudioServeEngine")
+                
+                # Final cleanup after CPU move
+                if device == "cpu" and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
                 
                 # Update device tracking
                 self.device = device

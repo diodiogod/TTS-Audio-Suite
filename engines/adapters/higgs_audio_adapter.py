@@ -55,19 +55,35 @@ class HiggsAudioEngineAdapter:
             print(f"⚠️ Language '{lang_code}' not specifically tested with Higgs Audio, using default model")
             return "higgs-audio-v2-3B"
     
-    def load_base_model(self, model_name: str, device: str):
+    def load_base_model(self, model_name: str, device: str, enable_cuda_graphs: bool = True):
         """
         Load base Higgs Audio model.
         
         Args:
             model_name: Model name to load
             device: Device to load model on
+            enable_cuda_graphs: Whether to enable CUDA Graph optimization
         """
         # Check if the model is already loaded AND engine is initialized
+        # Also check for corruption flags that require recreation
         current_model = getattr(self.node, 'current_model_name', None)
-        if current_model == model_name and self.higgs_engine.engine is not None:
+        cuda_graph_corrupted = getattr(self.higgs_engine, '_cuda_graph_corrupted', False)
+        needs_recreation = getattr(self.higgs_engine, '_needs_recreation', False)
+        
+        if (current_model == model_name and 
+            self.higgs_engine.engine is not None and 
+            not cuda_graph_corrupted and 
+            not needs_recreation):
             print(f"💾 Higgs Audio adapter: Model '{model_name}' already loaded - skipping base model load")
             return
+        
+        if cuda_graph_corrupted or needs_recreation:
+            print(f"🔥 Higgs Audio adapter: Engine corruption detected - forcing complete recreation")
+            # Clear the corruption flags
+            self.higgs_engine._cuda_graph_corrupted = False
+            self.higgs_engine._needs_recreation = False
+            # Force new engine creation by clearing current engine
+            self.higgs_engine.engine = None
         
         # Determine model paths based on model name
         if model_name in HIGGS_AUDIO_MODELS:
@@ -79,11 +95,12 @@ class HiggsAudioEngineAdapter:
             generation_model = "bosonai/higgs-audio-v2-generation-3B-base"
             tokenizer_model = "bosonai/higgs-audio-v2-tokenizer"
         
-        # Initialize the Higgs Audio engine
+        # Initialize the Higgs Audio engine with CUDA Graph setting
         self.higgs_engine.initialize_engine(
             model_path=generation_model,
             tokenizer_path=tokenizer_model,
-            device=device
+            device=device,
+            enable_cuda_graphs=enable_cuda_graphs
         )
         
         # Store current model for caching
@@ -121,7 +138,8 @@ class HiggsAudioEngineAdapter:
         # Ensure engine is initialized with current model/device
         model = params.get("model", "higgs-audio-v2-3B")
         device = params.get("device", "auto")
-        self.load_base_model(model, device)
+        enable_cuda_graphs = params.get("enable_cuda_graphs", True)  # Get CUDA Graph setting
+        self.load_base_model(model, device, enable_cuda_graphs)
         
         # Extract Higgs Audio specific parameters  
         system_prompt = params.get("system_prompt", "Generate audio following instruction.")
@@ -132,6 +150,7 @@ class HiggsAudioEngineAdapter:
         force_audio_gen = params.get("force_audio_gen", False)
         ras_win_len = params.get("ras_win_len", 7)  # Default from boson_multimodal
         ras_max_num_repeat = params.get("ras_max_num_repeat", 2)  # Default from boson_multimodal
+        enable_cuda_graphs = params.get("enable_cuda_graphs", True)  # CUDA Graph toggle
         seed = params.get("seed", -1)
         enable_cache = params.get("enable_audio_cache", True)
         model_name = params.get("model", "higgs-audio-v2-3B")

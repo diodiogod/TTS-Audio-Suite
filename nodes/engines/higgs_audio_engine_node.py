@@ -130,6 +130,10 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "optional": {
                 "opt_second_narrator": (any_typ, {
                     "tooltip": "Second narrator voice for native multi-speaker modes. Used as SPEAKER1 voice when multi_speaker_mode is set to Native Multi-Speaker. Only needed for native modes, ignored in Custom Character Switching mode. First narrator (from Character Voices or TTS Text) becomes SPEAKER0.\\n\\n💡 TIP: Reference text significantly improves Higgs Audio voice cloning quality - always provide reference text with voice files."
+                }),
+                "enable_cuda_graphs": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "⚡ CUDA Graph Optimization:\n\n• True (High Performance): 55+ tokens/sec generation speed, but memory cannot be unloaded safely (may crash on 'Unload Models'). Use for maximum speed in single-session workflows.\n\n• False (Memory Safe): ~12 tokens/sec generation speed (78% slower), but enables safe memory unloading with 'Unload Models' button. Use for dynamic workflows with multiple models.\n\n⚠️ IMPORTANT: When enabled, DO NOT use 'Unload Models' button - keep model loaded or restart ComfyUI to free memory.\n\n🔧 COMPATIBILITY: Added at bottom to maintain workflow compatibility."
                 })
             }
         }
@@ -142,7 +146,8 @@ class HiggsAudioEngineNode(BaseTTSNode):
     
     def create_engine_config(self, model, device, multi_speaker_mode, system_prompt,
                            temperature, top_p, top_k, max_new_tokens, force_audio_gen, 
-                           ras_win_len, ras_max_num_repeat, opt_second_narrator=None):
+                           ras_win_len, ras_max_num_repeat, opt_second_narrator=None, 
+                           enable_cuda_graphs=True):
         """Create Higgs Audio engine configuration"""
         
         # Validate parameters
@@ -160,6 +165,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "ras_win_len": max(0, min(20, ras_win_len)) if ras_win_len > 0 else None,  # None disables RAS
             "ras_max_num_repeat": max(1, min(5, ras_max_num_repeat)),
             "opt_second_narrator": opt_second_narrator,
+            "enable_cuda_graphs": bool(enable_cuda_graphs),
             "adapter_class": "HiggsAudioEngineAdapter"
         }
         

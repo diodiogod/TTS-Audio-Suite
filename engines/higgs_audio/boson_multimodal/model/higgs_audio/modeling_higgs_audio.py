@@ -66,8 +66,34 @@ def get_attention_class(attn_implementation):
     return LlamaAttention
 
 # Compatibility fix for StaticCache API changes
+def get_cache_seq_length(cache):
+    """Get cache sequence length with compatibility for different cache types"""
+    from transformers.cache_utils import DynamicCache
+    if isinstance(cache, DynamicCache):
+        # DynamicCache.get_seq_length() returns int directly
+        seq_len = cache.get_seq_length()
+        return seq_len if isinstance(seq_len, int) else seq_len
+    else:
+        # StaticCache.get_seq_length() returns tensor that needs .item()
+        seq_len = cache.get_seq_length()
+        return seq_len.item() if hasattr(seq_len, 'item') else seq_len
+
 def get_cache_max_length(cache):
     """Get cache max length with compatibility for different transformers versions"""
+    # Handle DynamicCache specifically - it doesn't have a fixed max length
+    from transformers.cache_utils import DynamicCache
+    if isinstance(cache, DynamicCache):
+        # DynamicCache grows dynamically, so return a very large max length
+        # or current sequence length if available
+        if hasattr(cache, 'get_seq_length') and len(cache.key_cache) > 0:
+            try:
+                return cache.get_seq_length(0)  # Get sequence length for first layer
+            except:
+                pass
+        # Return a very large number that won't limit DynamicCache
+        return 999999  # DynamicCache can grow as needed
+    
+    # Handle StaticCache and other cache types
     if hasattr(cache, 'get_max_length'):
         return cache.get_max_length()
     elif hasattr(cache, 'max_cache_len'):
@@ -1062,7 +1088,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
         # For SDPA, when possible, we will rely on its `is_causal` argument instead of its `attn_mask` argument, in
         # order to dispatch on Flash Attention 2. This feature is not compatible with static cache, as SDPA will fail
         # to infer the attention mask.
-        past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+        past_seen_tokens = get_cache_seq_length(past_key_values) if past_key_values is not None else 0
         using_static_cache = isinstance(past_key_values, StaticCache)
 
         # When output attentions is True, sdpa implementation's forward method calls the eager implementation's forward
@@ -1354,7 +1380,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
             past_key_values = DynamicCache()
 
         if cache_position is None:
-            past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+            past_seen_tokens = get_cache_seq_length(past_key_values) if past_key_values is not None else 0
             cache_position = torch.arange(
                 past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device
             )
@@ -1520,6 +1546,22 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
         if self.config.audio_dual_ffn_layers is not None:
             num_layers += len(self.config.audio_dual_ffn_layers)
         """ Copy the key-value pairs from one cache to another. """
+        
+        from transformers.cache_utils import DynamicCache
+        
+        # Handle DynamicCache to DynamicCache copying
+        if isinstance(from_cache, DynamicCache) and isinstance(to_cache, DynamicCache):
+            # For DynamicCache, just update the lists directly
+            to_cache.key_cache = from_cache.key_cache.copy()
+            to_cache.value_cache = from_cache.value_cache.copy()
+            return
+        
+        # Handle DynamicCache to StaticCache or vice versa - skip copying for now
+        if isinstance(from_cache, DynamicCache) or isinstance(to_cache, DynamicCache):
+            print(f"⚠️ Skipping KV cache copy between DynamicCache and StaticCache (incompatible structures)")
+            return
+        
+        # Original StaticCache to StaticCache copying
         for layer_idx in range(num_layers):
             from_cache_size = get_cache_max_length(from_cache)
             assert get_cache_max_length(to_cache) >= from_cache_size, (
@@ -1864,7 +1906,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
 
             # Update the actual sequence length after the first forward pass
             if init_model_input and past_key_values_buckets is not None:
-                cur_len = past_key_values_buckets[self.current_past_key_values_bucket].get_seq_length().item()
+                cur_len = get_cache_seq_length(past_key_values_buckets[self.current_past_key_values_bucket])
 
             # synced_gpus: don't waste resources running the code we don't need; kwargs must be updated before skipping
             model_kwargs = self._update_model_kwargs_for_generation(

@@ -96,7 +96,8 @@ class HiggsAudioEngine:
     def initialize_engine(self, 
                          model_path: str = "bosonai/higgs-audio-v2-generation-3B-base",
                          tokenizer_path: str = "bosonai/higgs-audio-v2-tokenizer",
-                         device: str = "auto") -> None:
+                         device: str = "auto",
+                         enable_cuda_graphs: bool = True) -> None:
         """
         Initialize Higgs Audio engine using ComfyUI model management
         
@@ -104,6 +105,7 @@ class HiggsAudioEngine:
             model_path: Path or HuggingFace model ID for generation model
             tokenizer_path: Path or HuggingFace model ID for audio tokenizer
             device: Device to use (auto, cuda, cpu)
+            enable_cuda_graphs: Whether to enable CUDA Graph optimization
         """        
         # Auto-detect device
         if device == "auto":
@@ -129,6 +131,7 @@ class HiggsAudioEngine:
                 device=device,
                 model_path=self._get_smart_model_path(model_path),
                 tokenizer_path=self._get_smart_tokenizer_path(tokenizer_path),
+                enable_cuda_graphs=enable_cuda_graphs,  # Pass CUDA Graph setting
                 force_reload=should_force_reload
             )
             

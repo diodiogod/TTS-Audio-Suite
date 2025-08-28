@@ -250,6 +250,7 @@ class HiggsAudioServeEngine:
         device: str = "cuda",
         torch_dtype: Union[torch.dtype, str] = "auto",
         kv_cache_lengths: List[int] = [2048, 8192, 16384],  # Larger cache sizes for newer transformers
+        enable_cuda_graphs: bool = True,  # NEW: Control CUDA Graph optimization
     ):
         """
         Initialize the HiggsAudioServeEngine, a serving wrapper for the HiggsAudioModel.
@@ -268,11 +269,20 @@ class HiggsAudioServeEngine:
                 The lengths of the KV caches to use for the model. Used for cuda graph capture when device is cuda.
             torch_dtype (Union[torch.dtype, str]):
                 The dtype to use for the model.
+            enable_cuda_graphs (bool):
+                Whether to enable CUDA Graph optimization. If False, uses DynamicCache for memory safety.
         """
         self.device = device
         self.model_name_or_path = model_name_or_path
         self.audio_tokenizer_name_or_path = audio_tokenizer_name_or_path
         self.torch_dtype = torch_dtype
+        
+        # Store CUDA Graph setting IMMEDIATELY for cache creation
+        self._cuda_graphs_enabled = enable_cuda_graphs
+        self._cache_type = "StaticCache" if enable_cuda_graphs else "DynamicCache"
+        
+        print(f"🔧 HiggsAudioServeEngine: CUDA Graphs {'ENABLED' if enable_cuda_graphs else 'DISABLED'}")
+        print(f"🔧 Cache Type: {self._cache_type}")
 
         # Initialize model and tokenizer
         # Load with attention implementation fix for newer transformers
@@ -315,17 +325,29 @@ class HiggsAudioServeEngine:
         cache_config.num_hidden_layers = self.model.config.text_config.num_hidden_layers
         if self.model.config.audio_dual_ffn_layers:
             cache_config.num_hidden_layers += len(self.model.config.audio_dual_ffn_layers)
-        # A list of KV caches for different lengths
-        self.kv_caches = {
-            length: StaticCache(
-                config=cache_config,
-                max_batch_size=1,
-                max_cache_len=length,
-                device=self.model.device,
-                dtype=self.model.dtype,
-            )
-            for length in sorted(kv_cache_lengths)
-        }
+            
+        # Create cache type based on CUDA Graph setting
+        if self._cuda_graphs_enabled:
+            # Use StaticCache for CUDA Graph optimization (high performance)
+            self.kv_caches = {
+                length: StaticCache(
+                    config=cache_config,
+                    max_batch_size=1,
+                    max_cache_len=length,
+                    device=self.model.device,
+                    dtype=self.model.dtype,
+                )
+                for length in sorted(kv_cache_lengths)
+            }
+            print(f"🔥 Created StaticCache buckets for CUDA Graph optimization")
+        else:
+            # Use DynamicCache for memory safety (no CUDA Graph capture)
+            from transformers.cache_utils import DynamicCache
+            self.kv_caches = {
+                length: DynamicCache()
+                for length in sorted(kv_cache_lengths)
+            }
+            print(f"🛡️ Created DynamicCache buckets for memory safety")
 
         if self.model.config.encode_whisper_embed:
             logger.info(f"Loading whisper processor")
@@ -530,12 +552,87 @@ class HiggsAudioServeEngine:
         return inputs
 
     def _prepare_kv_caches(self):
+        # Get current model device (fresh lookup to avoid stale cache)
         model_device = next(self.model.parameters()).device
+        
+        # Check if we need to recreate caches due to device change or forced cleanup
+        cache_device_mismatch = False
+        force_cache_recreation = getattr(self, '_force_cache_recreation', False)
+        
+        if self.kv_caches and not force_cache_recreation:
+            # Check if any cache is on wrong device
+            for kv_cache in self.kv_caches.values():
+                if hasattr(kv_cache, 'key_cache') and kv_cache.key_cache:
+                    try:
+                        cache_device = kv_cache.key_cache[0].device if kv_cache.key_cache[0] is not None else model_device
+                        if cache_device != model_device:
+                            cache_device_mismatch = True
+                            break
+                    except (AttributeError, IndexError):
+                        cache_device_mismatch = True
+                        break
+        
+        # Recreate caches if device mismatch detected or forced recreation requested
+        if cache_device_mismatch or force_cache_recreation:
+            print(f"🔄 Recreating KV caches for device: {model_device}")
+            # Get original cache lengths
+            cache_lengths = list(self.kv_caches.keys()) if self.kv_caches else [1024, 2048, 4096]
+            
+            # Recreate caches with correct device
+            from copy import deepcopy
+            cache_config = deepcopy(self.model.config.text_config)
+            cache_config.num_hidden_layers = self.model.config.text_config.num_hidden_layers
+            if self.model.config.audio_dual_ffn_layers:
+                cache_config.num_hidden_layers += len(self.model.config.audio_dual_ffn_layers)
+                
+            # Choose cache type based on CUDA Graph setting
+            cuda_graphs_enabled = getattr(self, '_cuda_graphs_enabled', True)
+            print(f"🔍 Debug: CUDA Graphs enabled = {cuda_graphs_enabled}")
+            
+            if cuda_graphs_enabled:
+                # Use StaticCache for CUDA Graph optimization
+                self.kv_caches = {
+                    length: StaticCache(
+                        config=cache_config,
+                        max_batch_size=1,
+                        max_cache_len=length,
+                        device=model_device,
+                        dtype=self.model.dtype,
+                    )
+                    for length in sorted(cache_lengths)
+                }
+                print(f"  🔥 Created StaticCache buckets for CUDA Graph optimization")
+            else:
+                # Use DynamicCache for memory safety (no pre-allocation)
+                from transformers.cache_utils import DynamicCache
+                self.kv_caches = {
+                    length: DynamicCache()
+                    for length in sorted(cache_lengths)
+                }
+                print(f"  🛡️ Created DynamicCache buckets for memory safety")
+            # Mark that we've created caches for this device to avoid recreation
+            self._cache_device = model_device
+            
+            # Clear force recreation flag if it was set
+            if force_cache_recreation:
+                self._force_cache_recreation = False
+                print(f"  ✅ Force cache recreation completed and flag cleared")
+        else:
+            # Store current device for future checks
+            if not hasattr(self, '_cache_device'):
+                self._cache_device = model_device
+        
+        # Reset all caches (StaticCache has reset(), DynamicCache needs manual clearing)
+        from transformers.cache_utils import DynamicCache
         for kv_cache in self.kv_caches.values():
-            kv_cache.reset()
-            # Force all cache components to correct device
-            if hasattr(kv_cache, 'to'):
-                kv_cache.to(model_device)
+            if hasattr(kv_cache, 'reset'):
+                # StaticCache has built-in reset method
+                kv_cache.reset()
+            elif isinstance(kv_cache, DynamicCache):
+                # DynamicCache needs manual clearing of cached keys/values
+                kv_cache.key_cache.clear()
+                kv_cache.value_cache.clear()
+                print(f"  🧹 Cleared DynamicCache state for fresh generation")
 
     def generate(
         self,
@@ -588,12 +685,13 @@ class HiggsAudioServeEngine:
                 skip_prompt=True
             )
 
-            # Ensure all inputs are explicitly on the same device as the model before generation
+            # Minimal device enforcement - only move inputs if needed
             model_device = next(self.model.parameters()).device
             for k, v in inputs.items():
-                if isinstance(v, torch.Tensor):
+                if isinstance(v, torch.Tensor) and v.device != model_device:
                     inputs[k] = v.to(model_device)
             
+            # Restore StaticCache for 50 it/s performance (with proper device handling)
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
@@ -604,7 +702,7 @@ class HiggsAudioServeEngine:
                 temperature=temperature,
                 top_k=top_k,
                 top_p=top_p,
-                past_key_values_buckets=self.kv_caches,
+                past_key_values_buckets=self.kv_caches,  # Restore high-performance StaticCache
                 ras_win_len=ras_win_len,
                 ras_win_max_num_repeat=ras_win_max_num_repeat,
                 seed=seed,

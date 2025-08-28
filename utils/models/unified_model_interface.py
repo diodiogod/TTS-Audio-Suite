@@ -347,6 +347,16 @@ def register_higgs_audio_factory():
         device = kwargs.get("device", "cuda")
         model_path = kwargs.get("model_path", model_name)
         tokenizer_path = kwargs.get("tokenizer_path")
+        enable_cuda_graphs = kwargs.get("enable_cuda_graphs", True)
+        
+        # Check if we need to force recreate due to CUDA Graph corruption
+        force_recreate = kwargs.get("_force_recreate", False)
+        if force_recreate:
+            print(f"🔥 Force recreating Higgs Audio engine due to CUDA Graph corruption")
+        
+        # Log CUDA Graph setting
+        perf_mode = "High Performance (CUDA Graphs ON)" if enable_cuda_graphs else "Memory Safe (CUDA Graphs OFF)"
+        print(f"🔧 Higgs Audio mode: {perf_mode}")
         
         # Create the base HiggsAudioEngine but initialize manually to avoid circular dependency
         base_engine = HiggsAudioEngine()
@@ -360,52 +370,33 @@ def register_higgs_audio_factory():
         model_path_for_engine = base_engine._get_smart_model_path(model_path)
         tokenizer_path_for_engine = base_engine._get_smart_tokenizer_path(tokenizer_path)
         
-        # Create HiggsAudioServeEngine on CPU first to avoid VRAM overflow, then move to target device
-        print(f"🚀 Loading Higgs Audio model on CPU first to prevent VRAM overflow...")
+        # Configure CUDA Graph settings based on toggle
+        if enable_cuda_graphs:
+            print(f"🚀 Loading Higgs Audio model directly on {device} for optimal performance...")
+            cache_type = "StaticCache"
+            kv_cache_lengths = [1024, 2048, 4096]  # StaticCache for CUDA Graph optimization
+        else:
+            print(f"🚀 Loading Higgs Audio model directly on {device} (CUDA Graphs disabled for memory safety)...")
+            cache_type = "DynamicCache" 
+            # Still need cache buckets but they won't use StaticCache
+            kv_cache_lengths = [1024, 2048, 4096]  # Same sizes but will use DynamicCache
+            
+            # Disable CUDA Graph compilation at environment level
+            import os
+            os.environ['PYTORCH_DISABLE_CUDA_GRAPH'] = '1'
+            os.environ['TORCH_COMPILE_DISABLE'] = '1'
+        
         serve_engine = HiggsAudioServeEngine(
             model_name_or_path=model_path_for_engine,
             audio_tokenizer_name_or_path=tokenizer_path_for_engine,
-            device="cpu",  # Load on CPU first
-            kv_cache_lengths=[1024, 2048, 4096]  # Memory-efficient cache sizes
+            device=device,
+            kv_cache_lengths=kv_cache_lengths,
+            enable_cuda_graphs=enable_cuda_graphs
         )
         
-        # Now move to target device if it's not CPU
-        if device != "cpu":
-            print(f"🔄 Moving Higgs Audio model from CPU to {device}...")
-            
-            # Move all components to ensure complete device consistency
-            components_moved = []
-            
-            # Move main model
-            if hasattr(serve_engine, 'model') and hasattr(serve_engine.model, 'to'):
-                serve_engine.model.to(device)
-                components_moved.append("main_model")
-            
-            # Move audio tokenizer and its sub-components
-            if hasattr(serve_engine, 'audio_tokenizer'):
-                tokenizer = serve_engine.audio_tokenizer
-                
-                # Move the tokenizer itself
-                if hasattr(tokenizer, 'to'):
-                    tokenizer.to(device)
-                    components_moved.append("audio_tokenizer")
-                
-                # Move semantic model within tokenizer (this is what was missing!)
-                if hasattr(tokenizer, 'semantic_model') and hasattr(tokenizer.semantic_model, 'to'):
-                    tokenizer.semantic_model.to(device)
-                    components_moved.append("semantic_model")
-                
-                # Move any other tokenizer sub-components
-                for attr_name in ['encoder', 'decoder', 'quantizer']:
-                    if hasattr(tokenizer, attr_name):
-                        attr = getattr(tokenizer, attr_name)
-                        if hasattr(attr, 'to'):
-                            attr.to(device)
-                            components_moved.append(f"tokenizer_{attr_name}")
-            
-            print(f"  ✅ Moved components: {', '.join(components_moved)}")
-            
-            print(f"✅ Successfully moved complete engine to {device}")
+        # Settings are already stored by the constructor
+        
+        print(f"✅ Higgs Audio model loaded directly on {device}")
         
         # Set the serve engine on the base engine
         base_engine.engine = serve_engine
