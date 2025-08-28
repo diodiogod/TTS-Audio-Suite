@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.29] - 2025-08-28
+
+### Added
+
+- Clearer messaging when local vs cloud models are used
+
+### Changed
+
+- Improve F5-TTS local model support and reduce Google dependencies
+- Better local model detection for E2-TTS variants
+
+### Fixed
+
+- Fix F5-TTS to use local models when available without requiring google-cloud-storage
+- Reduce dependency requirements for users with manual model downloads
 ## [4.5.28] - 2025-08-28
 
 ### Changed

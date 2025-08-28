@@ -468,11 +468,32 @@ class ChatterBoxF5TTS:
                 elif self.model_name.startswith("E2-"):
                     # E2 variants use E2 config
                     config_name = "E2TTS_Base"
-                    print(f"📦 Loading F5-TTS model '{self.model_name}' from HuggingFace using config '{config_name}'")
-                    self.f5tts_model = F5TTS(
-                        model=config_name,
-                        device=self.device
-                    )
+                    
+                    # Check for local E2 model first to avoid Google dependencies
+                    model_config = F5TTS_MODELS.get("E2TTS_Base", F5TTS_MODELS["E2TTS_Base"])
+                    step = model_config["step"]
+                    ext = model_config["ext"]
+                    
+                    model_filename = f"model_{step}.{ext}"
+                    vocab_filename = "vocab.txt"
+                    
+                    local_model_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "E2TTS_Base", model_filename)
+                    local_vocab_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "E2TTS_Base", vocab_filename)
+                    
+                    if os.path.exists(local_model_path) and os.path.exists(local_vocab_path):
+                        print(f"📁 Using local E2-TTS model: {local_model_path}")
+                        self.f5tts_model = F5TTS(
+                            model=config_name,
+                            ckpt_file=local_model_path,
+                            vocab_file=local_vocab_path,
+                            device=self.device
+                        )
+                    else:
+                        print(f"📦 Loading E2-TTS model '{self.model_name}' from HuggingFace")
+                        self.f5tts_model = F5TTS(
+                            model=config_name,
+                            device=self.device
+                        )
                 else:
                     # Standard models (F5TTS_Base, F5TTS_v1_Base, E2TTS_Base) - also organize to TTS/ folder
                     print(f"📦 Loading F5-TTS model '{self.model_name}' from HuggingFace")
@@ -594,6 +615,8 @@ class ChatterBoxF5TTS:
                     )
                 
                 def load_hf_f5tts():
+                    # This fallback only runs when local models aren't found
+                    print(f"⚠️  Local F5TTS_Base model not found - downloading from HuggingFace")
                     # Get local Vocos path
                     vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
                     vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
