@@ -179,7 +179,6 @@ Back to the main narrator voice for the conclusion.""",
                         # CRITICAL FIX: Update the cached instance's config with ALL current parameters
                         cached_instance.config = config.copy()  # Ensure deep update
                         print(f"🔄 Reusing cached {engine_type} engine instance (updated with new generation parameters)")
-                        print(f"🐛 DEBUG - Updated cached config keys: {list(cached_instance.config.keys())}")
                         return cached_instance
                     else:
                         # Cache invalidated by model unloading, remove it
@@ -247,8 +246,6 @@ Back to the main narrator voice for the conclusion.""",
                         # Don't cache adapter - create fresh each time to ensure config updates
                         # Store current model name for adapter caching
                         self.current_model_name = None
-                        # DEBUG: Check config in wrapper
-                        print(f"🐛 DEBUG - HiggsAudioWrapper created with config keys: {list(config.keys())}")
                     
                     def generate_tts_audio(self, text, char_audio, char_text, character="narrator", **params):
                         # Merge config with runtime params
@@ -365,12 +362,6 @@ Back to the main narrator voice for the conclusion.""",
             
             engine_type = TTS_engine.get("engine_type")
             config = TTS_engine.get("config", {})
-            
-            # DEBUG: Check what's in TTS_engine
-            print(f"🐛 DEBUG - TTS_engine keys: {list(TTS_engine.keys())}")
-            print(f"🐛 DEBUG - TTS_engine content: {TTS_engine}")
-            print(f"🐛 DEBUG - engine_type: {engine_type}")
-            print(f"🐛 DEBUG - config: {config}")
             
             
             if not engine_type:

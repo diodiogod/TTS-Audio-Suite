@@ -4,8 +4,10 @@
 
 ### Recommended Command (Separate Commit & Changelog)
 
+**⚠️ IMPORTANT: Use positional arguments, NOT --commit/--changelog flags**
+
 ```bash
-python3 scripts/bump_version_enhanced.py <version> --commit "<commit_desc>" --changelog "<changelog_desc>"
+python3 scripts/bump_version_enhanced.py <version> "<commit_desc>" "<changelog_desc>"
 ```
 
 ### Examples
@@ -13,43 +15,37 @@ python3 scripts/bump_version_enhanced.py <version> --commit "<commit_desc>" --ch
 #### Multiline Format (Recommended Standard)
 
 ```bash
-# Patch release (bug fixes) 
-python3 scripts/bump_version_enhanced.py 3.2.9 \
-  --commit "Fix character alias resolution
+# Patch release (bug fixes) - CORRECT FORMAT
+python3 scripts/bump_version_enhanced.py 3.2.9 "Fix character alias resolution
 
 Technical details:
 - Fix parser bypassing character tags in single mode
 - Improve character name validation logic  
-- Add fallback handling for unrecognized tags" \
-  --changelog "Fix character name handling issues
+- Add fallback handling for unrecognized tags" "Fix character name handling issues
 
 - Fix character tags not being removed from TTS output
 - Improve character name recognition accuracy
 - Better error handling for invalid character names"
 
-# Minor release (new features)  
-python3 scripts/bump_version_enhanced.py 3.3.0 \
-  --commit "Add Higgs Audio 2 TTS engine
+# Minor release (new features) - CORRECT FORMAT  
+python3 scripts/bump_version_enhanced.py 3.3.0 "Add Higgs Audio 2 TTS engine
 
 Implementation details:
 - Integrate boson_multimodal voice cloning system
 - Add unified adapter for consistent interface
-- Implement voice preset management" \
-  --changelog "Add Higgs Audio 2 TTS engine with voice cloning
+- Implement voice preset management" "Add Higgs Audio 2 TTS engine with voice cloning
 
 - New realistic voice synthesis engine
 - Voice cloning from short audio samples
 - Multiple built-in voice presets available"
 
-# Major release (breaking changes)
-python3 scripts/bump_version_enhanced.py 4.0.0 \
-  --commit "Complete unified architecture implementation
+# Major release (breaking changes) - CORRECT FORMAT
+python3 scripts/bump_version_enhanced.py 4.0.0 "Complete unified architecture implementation
 
 Breaking changes:
 - Migrate all nodes to unified interface pattern
 - Consolidate engine adapters and processors
-- Remove deprecated standalone variants" \
-  --changelog "Major architecture upgrade to unified system
+- Remove deprecated standalone variants" "Major architecture upgrade to unified system
 
 - All TTS engines now use consistent interface
 - Better performance and memory management  
@@ -59,30 +55,21 @@ Breaking changes:
 
 #### Auto-Increment Examples (Recommended)
 ```bash
-# Auto-increment patch version (4.5.25 → 4.5.26)
-python3 scripts/bump_version_enhanced.py patch \
-  --commit "Fix character parsing issues" \
-  --changelog "Fix character name handling in TTS generation"
+# Auto-increment patch version (4.5.25 → 4.5.26) - CORRECT FORMAT
+python3 scripts/bump_version_enhanced.py patch "Fix character parsing issues" "Fix character name handling in TTS generation"
 
-# Auto-increment minor version (4.5.25 → 4.6.0)  
-python3 scripts/bump_version_enhanced.py minor \
-  --commit "Add new TTS engine support" \
-  --changelog "Add Higgs Audio 2 TTS engine with voice cloning"
+# Auto-increment minor version (4.5.25 → 4.6.0) - CORRECT FORMAT  
+python3 scripts/bump_version_enhanced.py minor "Add new TTS engine support" "Add Higgs Audio 2 TTS engine with voice cloning"
 ```
 
 #### Single-Line Format (Only for Super Minor Changes)
 ```bash
-python3 scripts/bump_version_enhanced.py patch \
-  --commit "Fix typo in node tooltip" \
-  --changelog "Fix typo in audio analyzer tooltip"
+python3 scripts/bump_version_enhanced.py patch "Fix typo in node tooltip" "Fix typo in audio analyzer tooltip"
 ```
 
 #### Dry-Run Preview (Test Before Committing)
 ```bash
-python3 scripts/bump_version_enhanced.py patch \
-  --commit "Fix preview issues" \
-  --changelog "Fix preview not reflecting filter parameters" \
-  --dry-run
+python3 scripts/bump_version_enhanced.py patch "Fix preview issues" "Fix preview not reflecting filter parameters" --dry-run
 ```
 
 #### Auto-Categorization System
