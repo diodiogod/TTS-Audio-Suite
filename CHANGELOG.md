@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.28] - 2025-08-28
+
+### Changed
+
+- Better audio package installation for Mac users
+
+### Fixed
+
+- Fix Mac M1 compatibility and installation issues
+- Fix architecture mismatch errors on M1/M2 Macs
+- Resolve wandb circular import affecting all TTS nodes
+- Add automatic system dependency checking for macOS
+- Improve ARM64 package compatibility on Apple Silicon
 ## [4.5.27] - 2025-08-28
 
 ### Added
