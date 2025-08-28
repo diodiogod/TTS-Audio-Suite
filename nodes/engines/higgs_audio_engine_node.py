@@ -107,6 +107,24 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "max": 4096,
                     "step": 1,
                     "tooltip": "🔤 Maximum token limit - safety cap on generation length:\n\n⚠️ This is a LIMIT, not a target. Model stops when audio is complete OR limit is reached.\n\n• <10 tokens: ⚠️ May cause errors or cut off mid-word\n• 200-500: Safe for short sentences, faster processing\n• 1000-2048: 🎯 RECOMMENDED - Handles most content safely\n• 3000-4096: For very long paragraphs only\n\nFor normal text like 'Hello Bob', 200 vs 2048 makes no difference - same quality and length. Only matters for very short limits (causes truncation) or very long text (needs higher limits)."
+                }),
+                "force_audio_gen": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "🎵 Force Audio Generation:\n\n• False: 🎯 RECOMMENDED - Model naturally chooses to generate audio tokens\n• True: Force model to generate audio tokens rather than text tokens\n\n⚠️ Only enable if model is generating text instead of audio. Usually not needed as the model should naturally generate audio for TTS requests."
+                }),
+                "ras_win_len": ("INT", {
+                    "default": 7,
+                    "min": 0,
+                    "max": 20,
+                    "step": 1,
+                    "tooltip": "🪟 RAS Window Length - Repetition Avoidance Sampling window size:\n\n• 0: Disable RAS completely (may cause repetitive speech)\n• 3-5: Very strict repetition control (may sound unnatural)\n• 7: 🎯 RECOMMENDED - Good balance of natural speech and repetition control\n• 10-15: Looser repetition control, more natural but may repeat\n• 20: Very loose control, natural speech but potential repetition\n\nRAS prevents the model from repeating the same audio patterns within a sliding window."
+                }),
+                "ras_max_num_repeat": ("INT", {
+                    "default": 2,
+                    "min": 1,
+                    "max": 5,
+                    "step": 1,
+                    "tooltip": "🔄 RAS Max Repetitions - Maximum allowed repetitions within RAS window:\n\n• 1: No repetitions allowed (very strict, may sound choppy)\n• 2: 🎯 RECOMMENDED - Allow minimal repetition for natural speech flow\n• 3: Allow moderate repetition (more natural but some repetition)\n• 4-5: Allow significant repetition (natural speech but potential repetitive patterns)\n\nWorks with RAS Window Length to control speech repetition patterns."
                 })
             },
             "optional": {
@@ -123,7 +141,8 @@ class HiggsAudioEngineNode(BaseTTSNode):
     DESCRIPTION = "Configure Higgs Audio 2 engine for TTS generation with voice cloning. TIP: Reference text significantly improves voice cloning quality."
     
     def create_engine_config(self, model, device, multi_speaker_mode, system_prompt,
-                           temperature, top_p, top_k, max_new_tokens, opt_second_narrator=None):
+                           temperature, top_p, top_k, max_new_tokens, force_audio_gen, 
+                           ras_win_len, ras_max_num_repeat, opt_second_narrator=None):
         """Create Higgs Audio engine configuration"""
         
         # Validate parameters
@@ -137,6 +156,9 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "top_p": max(0.1, min(1.0, top_p)),
             "top_k": max(-1, min(100, top_k)),
             "max_new_tokens": max(1, min(4096, max_new_tokens)),
+            "force_audio_gen": bool(force_audio_gen),
+            "ras_win_len": max(0, min(20, ras_win_len)) if ras_win_len > 0 else None,  # None disables RAS
+            "ras_max_num_repeat": max(1, min(5, ras_max_num_repeat)),
             "opt_second_narrator": opt_second_narrator,
             "adapter_class": "HiggsAudioEngineAdapter"
         }

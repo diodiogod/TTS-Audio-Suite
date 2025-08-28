@@ -5,11 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.26] - 2025-08-27
+
+### Added
+
+- Fix Higgs Audio advanced RAS parameter support
+
+- Add missing RAS (Repetition Avoidance Sampling) controls to Higgs Audio engine
+- Fix parameter cache invalidation for proper audio regeneration 
+- Improve speech quality control with force_audio_gen and repetition settings
+- Fix configuration flow ensuring parameters reach underlying model correctly
 ## [4.5.25] - 2025-08-27
+
+### Fixed
+
+- Fix Silent Speech Analyzer preview not reflecting post-processing parameters
+- Fix cache invalidation causing unnecessary video re-analysis when adjusting merge threshold
 
 ### Changed
 
-- Optimize Silent Speech Analyzer with two-tier caching and filtered preview generation
+- Improve Silent Speech Analyzer performance with optimized caching system
 ## [4.5.24] - 2025-08-27
 
 ### Added

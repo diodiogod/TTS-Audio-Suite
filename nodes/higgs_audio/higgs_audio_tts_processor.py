@@ -63,8 +63,22 @@ class HiggsAudioTTSProcessor:
                 "top_p": self.engine_wrapper.config.get("top_p", 0.6),
                 "top_k": self.engine_wrapper.config.get("top_k", 80),
                 "max_new_tokens": self.engine_wrapper.config.get("max_new_tokens", 2048),
+                "force_audio_gen": self.engine_wrapper.config.get("force_audio_gen", False),
+                "ras_win_len": self.engine_wrapper.config.get("ras_win_len", 7),
+                "ras_max_num_repeat": self.engine_wrapper.config.get("ras_max_num_repeat", 2),
                 "system_prompt": self.engine_wrapper.config.get("system_prompt", "Generate audio following instruction.")
             }
+            
+            # DEBUG: Check what's actually in the engine wrapper config
+            print(f"🐛 DEBUG - TTS Processor config keys: {list(self.engine_wrapper.config.keys())}")
+            print(f"🐛 DEBUG - RAS params from config:")
+            print(f"   force_audio_gen: {self.engine_wrapper.config.get('force_audio_gen', 'NOT_FOUND')}")
+            print(f"   ras_win_len: {self.engine_wrapper.config.get('ras_win_len', 'NOT_FOUND')}")
+            print(f"   ras_max_num_repeat: {self.engine_wrapper.config.get('ras_max_num_repeat', 'NOT_FOUND')}")
+            print(f"🐛 DEBUG - generation_params being passed:")
+            print(f"   force_audio_gen: {generation_params['force_audio_gen']}")
+            print(f"   ras_win_len: {generation_params['ras_win_len']}")
+            print(f"   ras_max_num_repeat: {generation_params['ras_max_num_repeat']}")
             
             if multi_speaker_mode == "Custom Character Switching":
                 # Use existing modular utilities - pause processing first, then character parsing (like ChatterBox)

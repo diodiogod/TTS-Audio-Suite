@@ -199,6 +199,9 @@ class HiggsAudioEngine:
                 temperature: float = 0.8,
                 top_p: float = 0.6,
                 top_k: int = 80,
+                force_audio_gen: bool = False,
+                ras_win_len: Optional[int] = 7,
+                ras_max_num_repeat: int = 2,
                 enable_chunking: bool = True,
                 max_tokens_per_chunk: int = 225,
                 silence_between_chunks_ms: int = 100,
@@ -234,6 +237,13 @@ class HiggsAudioEngine:
         
         start_time = time.time()
         
+        # DEBUG: Print RAS parameters being used
+        print(f"🐛 DEBUG - Higgs Audio RAS Parameters:")
+        print(f"   force_audio_gen: {force_audio_gen}")
+        print(f"   ras_win_len: {ras_win_len}")
+        print(f"   ras_max_num_repeat: {ras_max_num_repeat}")
+        print(f"   temperature: {temperature}, top_p: {top_p}, top_k: {top_k}")
+        
         # Check cache if enabled
         if enable_cache:
             cache_key = self.cache.generate_cache_key(
@@ -249,15 +259,25 @@ class HiggsAudioEngine:
                 top_p=top_p,
                 top_k=top_k,
                 max_new_tokens=max_new_tokens,
+                force_audio_gen=force_audio_gen,
+                ras_win_len=ras_win_len,
+                ras_max_num_repeat=ras_max_num_repeat,
                 character=character,
                 seed=seed  # Include seed in cache key so different seeds generate different outputs
             )
+            
+            # DEBUG: Print cache key info
+            cache_key_short = cache_key[-12:] if len(cache_key) > 12 else cache_key
+            print(f"🐛 DEBUG - Cache key (last 12 chars): ...{cache_key_short}")
             
             cached_result = self.cache.get_cached_audio(cache_key)
             if cached_result:
                 audio_tensor, duration = cached_result
                 print(f"💾 Using cached audio for Higgs Audio generation")
+                print(f"🐛 DEBUG - CACHE HIT! Same RAS parameters as before")
                 return {"waveform": audio_tensor, "sample_rate": 24000}, f"Cached audio: {duration:.1f}s"
+            else:
+                print(f"🐛 DEBUG - CACHE MISS! Generating fresh audio with current RAS parameters")
         
         # Process text for chunking if needed using unified chunker
         if enable_chunking:
@@ -287,6 +307,9 @@ class HiggsAudioEngine:
                 temperature=temperature,
                 top_p=top_p,
                 top_k=top_k,
+                force_audio_gen=force_audio_gen,
+                ras_win_len=ras_win_len,
+                ras_max_num_repeat=ras_max_num_repeat,
                 seed=seed if seed >= 0 else None
             )
             
@@ -335,6 +358,9 @@ class HiggsAudioEngine:
                                    temperature: float = 0.8,
                                    top_p: float = 0.6,
                                    top_k: int = 80,
+                                   force_audio_gen: bool = False,
+                                   ras_win_len: Optional[int] = 7,
+                                   ras_max_num_repeat: int = 2,
                                    enable_cache: bool = True,
                                    character: str = "SPEAKER0",
                                    seed: int = -1) -> Tuple[Dict[str, Any], str]:
@@ -430,6 +456,12 @@ class HiggsAudioEngine:
         # Generate audio
         print(f"🗣️ Generating native multi-speaker audio...")
         
+        # DEBUG: Show parameters being passed to boson_multimodal (native mode)
+        print(f"🐛 DEBUG - Native mode passing to boson_multimodal:")
+        print(f"   force_audio_gen: {force_audio_gen}")
+        print(f"   ras_win_len: {ras_win_len}")  
+        print(f"   ras_win_max_num_repeat: {ras_max_num_repeat}")
+        
         try:
             output = self.engine.generate(
                 chat_ml_sample=chat_sample,
@@ -438,6 +470,9 @@ class HiggsAudioEngine:
                 top_p=top_p,
                 top_k=top_k if top_k > 0 else None,
                 stop_strings=["<|end_of_text|>", "<|eot_id|>"],
+                force_audio_gen=force_audio_gen,
+                ras_win_len=ras_win_len,
+                ras_win_max_num_repeat=ras_max_num_repeat,
                 seed=seed
             )
             
@@ -481,6 +516,9 @@ class HiggsAudioEngine:
                              temperature: float,
                              top_p: float,
                              top_k: int,
+                             force_audio_gen: bool,
+                             ras_win_len: Optional[int],
+                             ras_max_num_repeat: int,
                              seed: Optional[int] = None) -> Tuple[Dict[str, Any], str]:
         """
         Process a single text chunk to generate audio
@@ -547,6 +585,12 @@ class HiggsAudioEngine:
         # Generate audio
         print(f"🗣️ Generating audio...")
         
+        # DEBUG: Show parameters being passed to boson_multimodal
+        print(f"🐛 DEBUG - Passing to boson_multimodal:")
+        print(f"   force_audio_gen: {force_audio_gen}")
+        print(f"   ras_win_len: {ras_win_len}")  
+        print(f"   ras_win_max_num_repeat: {ras_max_num_repeat}")
+        
         try:
             output = self.engine.generate(
                 chat_ml_sample=chat_sample,
@@ -555,6 +599,9 @@ class HiggsAudioEngine:
                 top_p=top_p,
                 top_k=top_k if top_k > 0 else None,
                 stop_strings=["<|end_of_text|>", "<|eot_id|>"],
+                force_audio_gen=force_audio_gen,
+                ras_win_len=ras_win_len,
+                ras_win_max_num_repeat=ras_max_num_repeat,
                 seed=seed
             )
             

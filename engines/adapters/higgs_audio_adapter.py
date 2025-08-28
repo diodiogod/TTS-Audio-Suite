@@ -129,6 +129,9 @@ class HiggsAudioEngineAdapter:
         top_p = params.get("top_p", 0.95)
         top_k = params.get("top_k", 50)
         max_new_tokens = params.get("max_new_tokens", 2048)
+        force_audio_gen = params.get("force_audio_gen", False)
+        ras_win_len = params.get("ras_win_len", 7)  # Default from boson_multimodal
+        ras_max_num_repeat = params.get("ras_max_num_repeat", 2)  # Default from boson_multimodal
         seed = params.get("seed", -1)
         enable_cache = params.get("enable_audio_cache", True)
         model_name = params.get("model", "higgs-audio-v2-3B")
@@ -186,6 +189,9 @@ class HiggsAudioEngineAdapter:
                     temperature=temperature,
                     top_p=top_p,
                     top_k=top_k,
+                    force_audio_gen=force_audio_gen,
+                    ras_win_len=ras_win_len,
+                    ras_max_num_repeat=ras_max_num_repeat,
                     enable_cache=enable_cache,
                     character=character,
                     seed=seed
@@ -201,6 +207,9 @@ class HiggsAudioEngineAdapter:
                     temperature=temperature,
                     top_p=top_p,
                     top_k=top_k,
+                    force_audio_gen=force_audio_gen,
+                    ras_win_len=ras_win_len,
+                    ras_max_num_repeat=ras_max_num_repeat,
                     enable_chunking=enable_chunking,
                     max_tokens_per_chunk=max_tokens_per_chunk,  # Now properly converted from chars to tokens
                     silence_between_chunks_ms=silence_between_chunks_ms,
@@ -314,6 +323,19 @@ class HiggsAudioEngineAdapter:
         max_tokens = params.get("max_new_tokens", 2048)
         validated["max_new_tokens"] = max(1, min(4096, int(max_tokens)))
         
+        # Force audio gen validation
+        force_audio_gen = params.get("force_audio_gen", False)
+        validated["force_audio_gen"] = bool(force_audio_gen)
+        
+        # RAS parameters validation
+        ras_win_len = params.get("ras_win_len", 7)
+        if ras_win_len is not None and ras_win_len > 0:
+            validated["ras_win_len"] = max(1, min(20, int(ras_win_len)))
+        else:
+            validated["ras_win_len"] = None  # Disable RAS
+        
+        ras_max_num_repeat = params.get("ras_max_num_repeat", 2)
+        validated["ras_max_num_repeat"] = max(1, min(5, int(ras_max_num_repeat)))
         
         # Audio priority validation
         audio_priority = params.get("audio_priority", "auto")
