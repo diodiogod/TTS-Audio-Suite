@@ -45,6 +45,10 @@ class VibeVoiceProcessor:
         device = engine_config.get('device', 'auto')
         self.adapter.load_base_model(model_name, device)
     
+    def update_config(self, new_config: Dict[str, Any]):
+        """Update processor configuration with new parameters."""
+        self.config.update(new_config)
+    
     def process_text(self, 
                     text: str,
                     voice_mapping: Dict[str, Any],
