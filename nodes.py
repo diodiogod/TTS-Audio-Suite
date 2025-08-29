@@ -72,6 +72,14 @@ except Exception as e:
     print(f"❌ Higgs Audio Engine failed: {e}")
     HIGGS_AUDIO_ENGINE_AVAILABLE = False
 
+try:
+    vibevoice_engine_module = load_node_module("vibevoice_engine_node", "engines/vibevoice_engine_node.py")
+    VibeVoiceEngineNode = vibevoice_engine_module.VibeVoiceEngineNode
+    VIBEVOICE_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VibeVoice Engine failed: {e}")
+    VIBEVOICE_ENGINE_AVAILABLE = False
+
 # Load shared nodes
 try:
     character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
@@ -299,6 +307,10 @@ if F5TTS_ENGINE_AVAILABLE:
 if HIGGS_AUDIO_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["HiggsAudioEngineNode"] = HiggsAudioEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["HiggsAudioEngineNode"] = "⚙️ Higgs Audio 2 Engine"
+
+if VIBEVOICE_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VibeVoiceEngineNode"] = VibeVoiceEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["VibeVoiceEngineNode"] = "⚙️ VibeVoice Engine"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

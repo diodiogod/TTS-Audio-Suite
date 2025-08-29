@@ -7,9 +7,9 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine via clean delegation
 - **ComfyUI Model Management Integration**: All TTS models now integrate with ComfyUI's native model management system, enabling "Clear VRAM" functionality and automatic memory management
-- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with fallback support
-- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio) handling engine-specific orchestration
-- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, and RVC voice conversion
+- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, RVC, Audio Separation) with fallback support
+- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio, VibeVoice) handling engine-specific orchestration
+- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, and RVC voice conversion
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
 - **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
@@ -84,6 +84,10 @@ This extension features a **unified modular architecture** supporting multiple T
 - **higgs_audio_downloader.py** - Model auto-download system for generation and tokenizer models
 - **boson_multimodal/** - Complete boson_multimodal implementation from HiggsAudio team
 
+**engines/vibevoice_engine/** - VibeVoice engine implementation with multi-speaker and long-form capabilities
+- **vibevoice_engine.py** - Main VibeVoice wrapper with 90-minute generation and multi-speaker support
+- **vibevoice_downloader.py** - Model auto-download system for Microsoft VibeVoice models (1.5B and 7B)
+
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
 - **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
@@ -109,6 +113,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/adapters/higgs_audio_adapter.py** - Higgs Audio 2 engine adapter with voice cloning and parameter validation
 
+**engines/adapters/vibevoice_adapter.py** - VibeVoice engine adapter with multi-speaker format conversion and parameter mapping
+
 **engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
 
 **engines/adapters/f5tts_streaming_adapter.py** - F5-TTS streaming adapter enabling parallel processing with language model switching
@@ -122,6 +128,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/engines/f5tts_engine_node.py** - F5-TTS engine configuration node with model selection and generation settings
 
 **nodes/engines/higgs_audio_engine_node.py** - Higgs Audio 2 engine configuration node with voice cloning parameters and generation settings
+
+**nodes/engines/vibevoice_engine_node.py** - VibeVoice engine configuration node with multi-speaker modes and long-form generation settings
 
 **nodes/engines/rvc_engine_node.py** - RVC voice conversion node with pitch control and quality settings
 
@@ -154,6 +162,9 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/higgs_audio/** - Higgs Audio 2 internal processors
 - **higgs_audio_srt_processor.py** - Higgs Audio SRT orchestrator with multi-speaker support, character switching, and timing modes (internal processor used by Unified SRT node)
+
+**nodes/vibevoice/** - VibeVoice internal processors  
+- **vibevoice_processor.py** - VibeVoice TTS orchestrator with multi-speaker support and long-form generation handling (internal processor used by Unified TTS node)
 
 ### Audio Processing System
 

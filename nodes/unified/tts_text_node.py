@@ -264,6 +264,77 @@ Back to the main narrator voice for the conclusion.""",
                 }
                 return engine_instance
                 
+            elif engine_type == "vibevoice":
+                # Create a wrapper instance for VibeVoice using the adapter pattern
+                # Import using same pattern as other modules
+                vibevoice_processor_path = os.path.join(nodes_dir, "vibevoice", "vibevoice_processor.py")
+                vibevoice_processor_spec = importlib.util.spec_from_file_location("vibevoice_processor_module", vibevoice_processor_path)
+                vibevoice_processor_module = importlib.util.module_from_spec(vibevoice_processor_spec)
+                vibevoice_processor_spec.loader.exec_module(vibevoice_processor_module)
+                
+                VibeVoiceProcessor = vibevoice_processor_module.VibeVoiceProcessor
+                
+                # Create a minimal wrapper node for the processor
+                class VibeVoiceWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.current_model_name = None
+                        # Create processor instance with config
+                        self.processor = VibeVoiceProcessor(self, config)
+                    
+                    def generate_tts_audio(self, text, char_audio, char_text, character="narrator", **params):
+                        # Debug voice reference
+                        print(f"🔍 VibeVoice Debug: char_audio={type(char_audio)}, char_audio_content={char_audio}")
+                        
+                        # Build voice mapping - always include character even if no audio (for fallback handling)
+                        voice_mapping = {character: char_audio}
+                        print(f"🔍 VibeVoice Debug: voice_mapping={voice_mapping}")
+                        
+                        # Get seed from params
+                        seed = params.get('seed', 42)
+                        enable_chunking = params.get('enable_chunking', True)
+                        max_chars = params.get('max_chars_per_chunk', 400)
+                        
+                        # Process text and generate audio
+                        audio_segments = self.processor.process_text(
+                            text, voice_mapping, seed, enable_chunking, max_chars
+                        )
+                        
+                        # Combine segments
+                        if audio_segments:
+                            combined = self.processor.combine_audio_segments(
+                                audio_segments,
+                                params.get('chunk_combination_method', 'auto'),
+                                params.get('silence_between_chunks_ms', 100)
+                            )
+                            
+                            # Format as ComfyUI audio
+                            audio_output = {
+                                "waveform": combined,
+                                "sample_rate": 24000
+                            }
+                            
+                            # Generate info string
+                            generation_info = f"✅ VibeVoice generation complete\n📊 Generated {len(audio_segments)} segment(s)\n🎯 Combined using {params.get('chunk_combination_method', 'auto')} method"
+                            
+                            return (audio_output, generation_info)
+                            
+                        # Return empty audio if no segments
+                        empty_audio = {
+                            "waveform": torch.zeros(1, 1, 0),
+                            "sample_rate": 24000
+                        }
+                        return (empty_audio, "⚠️ No audio generated")
+                
+                engine_instance = VibeVoiceWrapper(config)
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+                
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -474,6 +545,19 @@ Back to the main narrator voice for the conclusion.""",
                     multi_speaker_mode=engine_instance.config.get("multi_speaker_mode", "Custom Character Switching"),
                     audio_tensor=audio_tensor,
                     reference_text=reference_text,
+                    seed=seed,
+                    enable_audio_cache=enable_audio_cache,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    silence_between_chunks_ms=silence_between_chunks_ms
+                )
+                
+            elif engine_type == "vibevoice":
+                # VibeVoice uses the wrapper pattern - call directly through the wrapper's method
+                result = engine_instance.generate_tts_audio(
+                    text=text,
+                    char_audio=audio_tensor,
+                    char_text=reference_text,
+                    character=char_display,
                     seed=seed,
                     enable_audio_cache=enable_audio_cache,
                     max_chars_per_chunk=max_chars_per_chunk,

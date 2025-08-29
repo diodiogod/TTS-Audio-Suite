@@ -407,6 +407,12 @@ class TTSAudioInstaller:
             "typing_extensions>=4.1.1",   # Required by librosa
             "decorator>=4.3.0",           # Required by librosa
             "joblib>=1.0",                # Required by librosa
+            
+            # For VibeVoice (when installed with --no-deps) - only safe dependencies
+            "ml-collections",             # Required by VibeVoice
+            "absl-py",                    # Required by VibeVoice (Google's Python utilities)
+            "gradio",                     # Required by VibeVoice (may already be available)
+            "av",                         # Required by VibeVoice (PyAV - audio/video processing)
             "scikit-learn>=1.1.0",        # Required by librosa
             
             # For cached-path (when installed with --no-deps)
@@ -568,7 +574,7 @@ class TTSAudioInstaller:
             "descript-audiotools",  # Forces protobuf downgrade from 6.x to 3.19.x
             "cached-path",          # Forces package downgrades
             "torchcrepe",          # Conflicts via librosa dependency
-            "onnxruntime"          # For OpenSeeFace, but forces numpy 2.3.x
+            "onnxruntime",         # For OpenSeeFace, but forces numpy 2.3.x
         ]
         
         for package in problematic_packages:
@@ -577,6 +583,36 @@ class TTSAudioInstaller:
                 f"Installing {package} (--no-deps)",
                 ignore_errors=True  # Some may already be satisfied
             )
+    
+    def install_vibevoice(self):
+        """Install VibeVoice with careful dependency management"""
+        self.log("Installing VibeVoice TTS engine", "INFO")
+        
+        # First ensure critical dependencies that VibeVoice needs but might downgrade
+        vibevoice_deps = [
+            "aiortc",      # Audio/video real-time communication - safe to install
+            "pyee",        # Event emitter - lightweight
+            "dnspython",   # DNS toolkit - safe
+            "ifaddr",      # Network interface addresses - safe
+            "pylibsrtp",   # SRTP library - safe
+            "pyopenssl",   # OpenSSL wrapper - safe
+        ]
+        
+        self.log("Installing VibeVoice safe dependencies first", "INFO")
+        for dep in vibevoice_deps:
+            self.run_pip_command(
+                ["install", dep], 
+                f"Installing {dep}",
+                ignore_errors=True
+            )
+        
+        # Now install VibeVoice with --no-deps to prevent downgrades
+        self.log("Installing VibeVoice with --no-deps to prevent package downgrades", "WARNING")
+        self.run_pip_command(
+            ["install", "git+https://github.com/microsoft/VibeVoice.git", "--no-deps"],
+            "Installing VibeVoice (--no-deps)",
+            ignore_errors=True
+        )
 
     def check_comfyui_environment(self):
         """Check if running in likely ComfyUI environment and warn for system Python"""
@@ -779,6 +815,7 @@ def main():
         installer.install_numpy_with_constraints() 
         installer.install_rvc_dependencies()
         installer.install_problematic_packages()
+        installer.install_vibevoice()  # Install VibeVoice with careful dependency management
         installer.handle_wandb_issues()  # Fix wandb circular import
         installer.handle_python_313_specific()
         
