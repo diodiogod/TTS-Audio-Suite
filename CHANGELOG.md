@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.30] - 2025-08-28
+
+### Added
+
+- Support case variations in model names
+
+### Fixed
+
+- Fix F5-TTS model compatibility issues
+- Fix F5TTS_V1_Base model name validation error
+- Improve backward compatibility with existing workflows
 ## [4.5.29] - 2025-08-28
 
 ### Added

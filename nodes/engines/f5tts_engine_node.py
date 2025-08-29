@@ -41,7 +41,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
         return {
             "required": {
                 "language": (cls.get_available_models_for_dropdown(), {
-                    "default": "F5TTS_V1_Base",
+                    "default": "F5TTS_v1_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant. Note: This was previously called 'model' in individual nodes."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
@@ -102,6 +102,11 @@ class F5TTSEngineNode(BaseF5TTSNode):
         try:
             # Import the adapter class
             from engines.adapters.f5tts_adapter import F5TTSEngineAdapter
+            
+            # Normalize model name for backward compatibility (case-insensitive matching)
+            # Convert V1, V2, etc. to v1, v2 for consistency
+            import re
+            language = re.sub(r'_V(\d+)_', r'_v\1_', language)
             
             # Validate and clamp nfe_step to prevent ODE solver issues
             safe_nfe_step = max(1, min(nfe_step, 71))

@@ -74,7 +74,7 @@ class F5TTSNode(BaseF5TTSNode):
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),
                 "model": (cls.get_available_models_for_dropdown(), {
-                    "default": "F5TTS_V1_Base",
+                    "default": "F5TTS_v1_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant."
                 }),
                 "seed": ("INT", {
@@ -312,6 +312,11 @@ Back to the main narrator voice for the conclusion.""",
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
             from utils.text.pause_processor import PauseTagProcessor
+            
+            # Normalize model name for backward compatibility (case-insensitive matching)
+            # Convert V1, V2, etc. to v1, v2 for consistency
+            import re
+            model = re.sub(r'_V(\d+)_', r'_v\1_', model)
             
             # Validate inputs
             inputs = self.validate_inputs(
