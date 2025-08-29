@@ -227,8 +227,11 @@ class VibeVoiceEngineAdapter:
         # Prepare voice samples
         voice_samples = self.vibevoice_engine._prepare_voice_samples([voice_ref])
         
-        # For single segment, format as Speaker 0
-        formatted_text = f"Speaker 0: {text}"
+        # For single segment, format as Speaker 1 (VibeVoice uses 1-based indexing)
+        formatted_text = f"Speaker 1: {text}"
+        print(f"🎭 SINGLE SEGMENT - Formatted text for VibeVoice:")
+        print(f"📝 {formatted_text}")
+        print(f"🎤 Character: '{character}', Voice ref: {type(voice_ref)} {'✅' if voice_ref else '❌'}")
         
         # Extract cache parameters
         enable_cache = params.get('enable_cache', True)
@@ -340,39 +343,35 @@ class VibeVoiceEngineAdapter:
         speaker_voices = []
         formatted_lines = []
         
-        # Get additional speaker voices from engine config
-        speaker2_voice = params.get('speaker2_voice')
-        speaker3_voice = params.get('speaker3_voice')
-        speaker4_voice = params.get('speaker4_voice')
-        additional_voices = [speaker2_voice, speaker3_voice, speaker4_voice]
+        print(f"🎭 Native multi-speaker: Processing {len(segments)} segments with characters: {[char for char, _ in segments]}")
+        print(f"🎭 Available voice_mapping keys: {list(voice_mapping.keys())}")
         
         for character, text in segments:
             if character not in character_map:
                 speaker_idx = len(character_map)
                 if speaker_idx >= 4:
-                    print(f"⚠️ VibeVoice: Limiting to 4 speakers, '{character}' will use Speaker 3")
-                    speaker_idx = 3
+                    print(f"⚠️ VibeVoice: Limiting to 4 speakers, '{character}' will use Speaker 4")
+                    speaker_idx = 3  # Use 0-based internally, will convert to 1-based for format
                 else:
                     character_map[character] = speaker_idx
                     
-                    # Get voice for this character
-                    if speaker_idx == 0:
-                        # First speaker uses narrator voice
-                        voice = voice_mapping.get(character)
-                    elif speaker_idx <= 3 and additional_voices[speaker_idx - 1] is not None:
-                        # Use configured additional voice
-                        voice = additional_voices[speaker_idx - 1]
-                    else:
-                        # Use character-specific voice if available
-                        voice = voice_mapping.get(character)
-                    
-                    speaker_voices.append(voice)
+                # Always use character-specific voice from voice_mapping
+                voice = voice_mapping.get(character)
+                print(f"🎭 Character '{character}' -> Speaker {speaker_idx + 1}, voice: {'✅ found' if voice else '❌ missing'}")
+                speaker_voices.append(voice)
             
             speaker_idx = character_map.get(character, 3)
-            formatted_lines.append(f"Speaker {speaker_idx}: {text.strip()}")
+            # Use 1-based Speaker format as per VibeVoice spec (Speaker 1:, Speaker 2:, etc.)
+            formatted_lines.append(f"Speaker {speaker_idx + 1}: {text.strip()}")
         
         # Join with newlines for multi-speaker format
         formatted_text = "\n".join(formatted_lines)
+        print(f"🎭 NATIVE MULTI-SPEAKER - Complete formatted text for VibeVoice:")
+        print("="*60)
+        print(formatted_text)
+        print("="*60)
+        print(f"🎤 Character mapping: {character_map}")
+        print(f"🎤 Using {len(speaker_voices)} voice samples for generation")
         
         # Prepare voice samples
         voice_samples = self.vibevoice_engine._prepare_voice_samples(speaker_voices)

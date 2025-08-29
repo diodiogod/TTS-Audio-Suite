@@ -5,8 +5,11 @@
 [![Issues][issues-shield]][issues-url]
 [![Forks][forks-shield]][forks-url]
 [![Dynamic TOML Badge][version-shield]][version-url]
+[![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
 # TTS Audio Suite v4.5.31
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
@@ -1030,6 +1033,16 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 **Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
 
 ### 8. Restart ComfyUI
+
+<div align="right"><a href="#-table-of-contents">Back to top</a></div>
+
+## 💖 Support This Project
+
+If TTS Audio Suite has been helpful for your projects, consider supporting its development:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
+
+Your support helps maintain and improve this project for the entire community!
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
