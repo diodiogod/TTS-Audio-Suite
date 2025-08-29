@@ -99,7 +99,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "min": 0,
                     "max": 90,
                     "step": 1,
-                    "tooltip": "⏱️ Time-based chunking:\n• 0: Disabled (generate entire text)\n• 5-10: Good for memory efficiency\n• 15-30: Balance between quality and memory\n\nSplits long text into manageable chunks. Converted to characters internally (~750 chars/min)."
+                    "tooltip": "⏱️ Time-based chunking (OVERRIDES TTS Text chunking settings):\n• 0: Disabled - uses TTS Text node chunking settings\n• 5-10: Good for memory efficiency\n• 15-30: Balance between quality and memory\n\nWhen > 0, ignores TTS Text enable_chunking and max_chars_per_chunk. Converted to ~750 chars/min internally."
                 }),
                 "max_new_tokens": ("INT", {
                     "default": 0,
