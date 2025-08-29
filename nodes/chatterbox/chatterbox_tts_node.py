@@ -397,6 +397,9 @@ Back to the main narrator voice for the conclusion.""",
     
     def _generate_stable_audio_component(self, reference_audio, audio_prompt_path: str) -> str:
         """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
+        # Ensure path is set up for lazy imports (fix for issue #12)
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
         from utils.audio.audio_hash import generate_stable_audio_component
         return generate_stable_audio_component(reference_audio, audio_prompt_path)
 

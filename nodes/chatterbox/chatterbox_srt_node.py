@@ -212,6 +212,9 @@ The audio will match these exact timings.""",
     
     def _get_stable_audio_component(self, voice_path, reference_audio=None):
         """Generate stable audio component identifier for cache consistency."""
+        # Ensure path is set up for lazy imports (fix for issue #12)
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
         from utils.audio.audio_hash import generate_stable_audio_component
         return generate_stable_audio_component(reference_audio, voice_path)
 
@@ -652,6 +655,9 @@ The audio will match these exact timings.""",
             
             # Determine audio prompt component for cache key generation (stable identifier)
             # This must be done BEFORE handle_reference_audio to avoid using temporary file paths
+            # Ensure path is set up for lazy imports (fix for issue #12)
+            if project_root not in sys.path:
+                sys.path.insert(0, project_root)
             from utils.audio.audio_hash import generate_stable_audio_component
             stable_audio_prompt_component = generate_stable_audio_component(reference_audio, audio_prompt_path)
             
