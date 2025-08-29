@@ -258,7 +258,8 @@ class VibeVoiceEngine:
                        top_p: float = 0.95,
                        max_new_tokens: Optional[int] = None,
                        enable_cache: bool = True,
-                       character: str = "narrator") -> Dict[str, Any]:
+                       character: str = "narrator",
+                       stable_audio_component: str = "") -> Dict[str, Any]:
         """
         Generate speech from text using VibeVoice.
         
@@ -281,24 +282,39 @@ class VibeVoiceEngine:
         # Handle caching if enabled (following ChatterBox pattern)
         if enable_cache:
             from utils.audio.cache import create_cache_function
+            print(f"🐛 VibeVoice ENGINE: Creating cache with audio_component='{stable_audio_component[:50]}...'")
+            
+            # Fix floating point precision issues by rounding to 3 decimal places
+            cfg_scale_rounded = round(float(cfg_scale), 3) if isinstance(cfg_scale, (int, float)) else cfg_scale
+            temperature_rounded = round(float(temperature), 3) if isinstance(temperature, (int, float)) else temperature
+            top_p_rounded = round(float(top_p), 3) if isinstance(top_p, (int, float)) else top_p
+            
+            print(f"🐛 VibeVoice ENGINE: Cache params - character='{character}', cfg_scale={cfg_scale_rounded}, use_sampling={use_sampling}")
             cache_fn = create_cache_function(
                 "vibevoice",
                 character=character,
-                cfg_scale=cfg_scale,
-                temperature=temperature,
-                top_p=top_p,
+                cfg_scale=cfg_scale_rounded,
+                temperature=temperature_rounded,
+                top_p=top_p_rounded,
                 use_sampling=use_sampling,
                 seed=seed,
                 model_source=self.current_model_name or "vibevoice-1.5B",
                 device=self.device,
-                voice_samples_count=len(voice_samples)
+                max_new_tokens=max_new_tokens,
+                audio_component=stable_audio_component
             )
             
             # Try cache first
             cached_audio = cache_fn(text)
             if cached_audio is not None:
                 print(f"💾 CACHE HIT for {character}: '{text[:30]}...'")
-                return cached_audio
+                print(f"🐛 VibeVoice ENGINE: CACHE HIT - audio_component was '{stable_audio_component[:50]}...'")
+                return {
+                    "waveform": cached_audio,
+                    "sample_rate": 24000
+                }
+            else:
+                print(f"🐛 VibeVoice ENGINE: CACHE MISS - generating new audio for audio_component '{stable_audio_component[:50]}...'")
         
         try:
             # Set seeds for reproducibility
@@ -307,14 +323,25 @@ class VibeVoiceEngine:
                 torch.cuda.manual_seed(seed)
                 torch.cuda.manual_seed_all(seed)
             np.random.seed(seed)
+            print(f"🐛 VibeVoice ENGINE: Starting generation with {len(voice_samples)} voice samples")
+            print(f"🐛 VibeVoice ENGINE: Generation params - cfg_scale={cfg_scale}, use_sampling={use_sampling}, seed={seed}")
+            print(f"🐛 VibeVoice ENGINE: Text length: {len(text)} chars")
             
             # Prepare inputs using processor
+            print(f"🐛 VibeVoice ENGINE: Processing inputs - text='{text[:100]}...', voice_samples count={len(voice_samples)}")
+            for i, vs in enumerate(voice_samples):
+                if vs is not None:
+                    print(f"🐛 VibeVoice ENGINE: Voice sample {i} shape: {vs.shape if hasattr(vs, 'shape') else type(vs)}")
+                else:
+                    print(f"🐛 VibeVoice ENGINE: Voice sample {i} is None - using synthetic")
+            
             inputs = self.processor(
                 [text],  # Wrap text in list
                 voice_samples=[voice_samples],  # Provide voice samples
                 return_tensors="pt",
                 return_attention_mask=True
             )
+            print(f"🐛 VibeVoice ENGINE: Processor inputs created - input_ids shape: {inputs['input_ids'].shape}")
             
             # Move to device
             device = next(self.model.parameters()).device
@@ -367,11 +394,10 @@ class VibeVoiceEngine:
                 # Cache result if enabled (following ChatterBox pattern)
                 if enable_cache:
                     # Clone tensor to avoid autograd issues like ChatterBox does
-                    result_clone = {
-                        "waveform": result["waveform"].detach().clone(),
-                        "sample_rate": result["sample_rate"]
-                    }
-                    cache_fn(text, audio_result=result_clone)
+                    # Cache only the waveform tensor, not the full dict
+                    waveform_clone = result["waveform"].detach().clone() if result["waveform"].requires_grad else result["waveform"]
+                    print(f"🐛 VibeVoice ENGINE: CACHING result for audio_component '{stable_audio_component[:50]}...'")
+                    cache_fn(text, audio_result=waveform_clone)
                 
                 return result
             else:

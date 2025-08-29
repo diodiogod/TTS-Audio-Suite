@@ -110,6 +110,43 @@ class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class VibeVoiceCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for VibeVoice engine."""
+    
+    def generate_cache_key(self, **params) -> str:
+        """Generate VibeVoice cache key from parameters."""
+        # Fix floating point precision issues by rounding to 3 decimal places
+        cfg_scale = params.get('cfg_scale', 1.3)
+        temperature = params.get('temperature', 0.95) 
+        top_p = params.get('top_p', 0.95)
+        
+        if isinstance(cfg_scale, (int, float)):
+            cfg_scale = round(float(cfg_scale), 3)
+        if isinstance(temperature, (int, float)):
+            temperature = round(float(temperature), 3)
+        if isinstance(top_p, (int, float)):
+            top_p = round(float(top_p), 3)
+        
+        cache_data = {
+            'text': params.get('text', ''),
+            'cfg_scale': cfg_scale,
+            'temperature': temperature,
+            'top_p': top_p,
+            'use_sampling': params.get('use_sampling', False),
+            'seed': params.get('seed', 42),
+            'model_source': params.get('model_source', 'vibevoice-1.5B'),
+            'device': params.get('device', 'auto'),
+            'max_new_tokens': params.get('max_new_tokens'),
+            'multi_speaker_mode': params.get('multi_speaker_mode', 'Custom Character Switching'),
+            'audio_component': params.get('audio_component', ''),
+            'character': params.get('character', 'narrator'),
+            'engine': 'vibevoice'
+        }
+        
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -117,7 +154,8 @@ class AudioCache:
         self.cache_key_generators = {
             'f5tts': F5TTSCacheKeyGenerator(),
             'chatterbox': ChatterBoxCacheKeyGenerator(),
-            'higgs_audio': HiggsAudioCacheKeyGenerator()
+            'higgs_audio': HiggsAudioCacheKeyGenerator(),
+            'vibevoice': VibeVoiceCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):

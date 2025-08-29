@@ -188,9 +188,8 @@ class VibeVoiceEngineAdapter:
         result = self.generate_segment(text, char_audio, {
             **params,
             'enable_cache': enable_cache,
-            'character': character,
             'seed': seed
-        })
+        }, character=character)
         
         # Extract tensor from result
         if isinstance(result, dict) and "waveform" in result:
@@ -204,7 +203,7 @@ class VibeVoiceEngineAdapter:
         
         return result
 
-    def generate_segment(self, text: str, voice_ref: Optional[Dict], params: Dict) -> Dict:
+    def generate_segment(self, text: str, voice_ref: Optional[Dict], params: Dict, character: str = None) -> Dict:
         """
         Generate audio for a text segment.
         
@@ -212,6 +211,7 @@ class VibeVoiceEngineAdapter:
             text: Text to generate
             voice_ref: Voice reference audio
             params: Generation parameters from engine config
+            character: Character name for cache isolation (required for proper caching)
             
         Returns:
             Audio dict with waveform and sample_rate
@@ -232,7 +232,25 @@ class VibeVoiceEngineAdapter:
         
         # Extract cache parameters
         enable_cache = params.get('enable_cache', True)
-        character = params.get('character', 'narrator')
+        # Use provided character or fall back to params, then default
+        if character is None:
+            character = params.get('character', 'narrator')
+        
+        # Generate stable audio component for cache consistency (like ChatterBox)
+        from utils.audio.audio_hash import generate_stable_audio_component
+        audio_component = params.get("stable_audio_component", "main_reference")
+        if character != "narrator":
+            audio_component = f"char_file_{character}"
+        else:
+            # Use voice content hash for narrator
+            audio_component = generate_stable_audio_component(voice_ref, None)
+        
+        # DEBUG: Print audio component to track cache invalidation
+        print(f"🐛 VibeVoice DEBUG: character='{character}', audio_component='{audio_component[:50]}...'")
+        if voice_ref:
+            print(f"🐛 VibeVoice DEBUG: voice_ref has keys: {list(voice_ref.keys()) if isinstance(voice_ref, dict) else 'not dict'}")
+        else:
+            print(f"🐛 VibeVoice DEBUG: voice_ref is None")
         
         # Generate audio
         return self.vibevoice_engine.generate_speech(
@@ -245,7 +263,8 @@ class VibeVoiceEngineAdapter:
             top_p=top_p,
             max_new_tokens=max_new_tokens,
             enable_cache=enable_cache,
-            character=character
+            character=character,
+            stable_audio_component=audio_component
         )
     
     def process_character_segments(self, segments: List[Tuple[str, str]], 
@@ -281,7 +300,7 @@ class VibeVoiceEngineAdapter:
                     for seg_type, content in pause_segments:
                         if seg_type == 'text':
                             voice_ref = voice_mapping.get(character)
-                            audio = self.generate_segment(content, voice_ref, params)
+                            audio = self.generate_segment(content, voice_ref, params, character=character)
                             audio_segments.append(audio)
                         elif seg_type == 'pause':
                             # Create silence segment
@@ -297,7 +316,7 @@ class VibeVoiceEngineAdapter:
                 else:
                     # Generate normally
                     voice_ref = voice_mapping.get(character)
-                    audio = self.generate_segment(text, voice_ref, params)
+                    audio = self.generate_segment(text, voice_ref, params, character=character)
                     audio_segments.append(audio)
         
         return audio_segments
@@ -358,6 +377,18 @@ class VibeVoiceEngineAdapter:
         # Prepare voice samples
         voice_samples = self.vibevoice_engine._prepare_voice_samples(speaker_voices)
         
+        # Generate stable audio component for multi-speaker (like ChatterBox)
+        from utils.audio.audio_hash import generate_stable_audio_component
+        
+        # For multi-speaker, use combined hash of all voices
+        combined_voice_hash = []
+        for voice in speaker_voices[:4]:  # Max 4 speakers
+            if voice is not None:
+                combined_voice_hash.append(generate_stable_audio_component(voice, None))
+            else:
+                combined_voice_hash.append("no_voice")
+        audio_component = f"multi_speaker_{'_'.join(combined_voice_hash)}"
+        
         # Generate with multi-speaker text
         return self.vibevoice_engine.generate_speech(
             text=formatted_text,
@@ -367,7 +398,10 @@ class VibeVoiceEngineAdapter:
             use_sampling=params.get('use_sampling', False),
             temperature=params.get('temperature', 0.95),
             top_p=params.get('top_p', 0.95),
-            max_new_tokens=params.get('max_new_tokens')
+            max_new_tokens=params.get('max_new_tokens'),
+            enable_cache=params.get('enable_cache', True),
+            character="multi_speaker",
+            stable_audio_component=audio_component
         )
     
     def handle_pause_tags(self, text: str) -> Tuple[str, Optional[List]]:
