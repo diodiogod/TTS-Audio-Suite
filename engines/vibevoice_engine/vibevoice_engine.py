@@ -290,6 +290,7 @@ class VibeVoiceEngine:
             top_p_rounded = round(float(top_p), 3) if isinstance(top_p, (int, float)) else top_p
             
             print(f"🐛 VibeVoice ENGINE: Cache params - character='{character}', cfg_scale={cfg_scale_rounded}, use_sampling={use_sampling}")
+            print(f"🐛 VibeVoice ENGINE: Original vs rounded - cfg_scale: {cfg_scale} -> {cfg_scale_rounded}, temp: {temperature} -> {temperature_rounded}, top_p: {top_p} -> {top_p_rounded}")
             cache_fn = create_cache_function(
                 "vibevoice",
                 character=character,
