@@ -291,8 +291,42 @@ Back to the main narrator voice for the conclusion.""",
                         self.processor.update_config(new_config)
                     
                     def generate_tts_audio(self, text, char_audio, char_text, character="narrator", **params):
-                        # Build voice mapping - always include character even if no audio (for fallback handling)
-                        voice_mapping = {character: char_audio}
+                        # Parse characters from text first (like F5 does)
+                        from utils.text.character_parser import parse_character_text
+                        from utils.voice.discovery import get_character_mapping
+                        
+                        character_segments = parse_character_text(text, None)  # Auto-discover characters
+                        characters = list(set(char for char, _ in character_segments))
+                        print(f"🎭 VibeVoice: Character switching mode - found characters: {', '.join(characters)}")
+                        
+                        # Get character voice mapping (like F5 does)
+                        character_mapping = get_character_mapping(characters, engine_type="vibevoice")
+                        
+                        # Build voice references with fallback to main voice (like F5 does)
+                        voice_mapping = {}
+                        for char in characters:
+                            if char == "narrator" and char_audio:
+                                # Use provided narrator voice for narrator character
+                                voice_mapping[char] = char_audio
+                            else:
+                                # Try character-specific voice first, then fallback
+                                audio_path, _ = character_mapping.get(char, (None, None))
+                                if audio_path:
+                                    # Load character-specific audio
+                                    try:
+                                        import torchaudio
+                                        waveform, sample_rate = torchaudio.load(audio_path)
+                                        voice_mapping[char] = {"waveform": waveform, "sample_rate": sample_rate}
+                                        print(f"🎭 VibeVoice: Using character-specific voice for '{char}'")
+                                    except Exception as e:
+                                        print(f"⚠️ Failed to load character audio for '{char}': {e}")
+                                        voice_mapping[char] = char_audio  # Fallback to main voice
+                                        print(f"🔄 VibeVoice: Using main voice fallback for '{char}'")
+                                else:
+                                    # Fallback to main voice
+                                    voice_mapping[char] = char_audio
+                                    print(f"🔄 VibeVoice: Using main voice fallback for '{char}'")
+                        
                         print(f"🐛 VIBEVOICE_WRAPPER: generate_tts_audio called with character='{character}'")
                         print(f"🐛 VIBEVOICE_WRAPPER: char_audio type: {type(char_audio)}")
                         if isinstance(char_audio, dict):

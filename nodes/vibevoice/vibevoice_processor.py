@@ -68,15 +68,6 @@ class VibeVoiceProcessor:
         Returns:
             List of audio segments
         """
-        print(f"🐛 VIBEVOICE_PROCESSOR: process_text called")
-        print(f"🐛 VIBEVOICE_PROCESSOR: voice_mapping keys: {list(voice_mapping.keys())}")
-        for char, voice in voice_mapping.items():
-            if voice:
-                print(f"🐛 VIBEVOICE_PROCESSOR: voice_mapping['{char}'] type: {type(voice)}")
-                if isinstance(voice, dict):
-                    print(f"🐛 VIBEVOICE_PROCESSOR: voice_mapping['{char}'] keys: {list(voice.keys())}")
-            else:
-                print(f"🐛 VIBEVOICE_PROCESSOR: voice_mapping['{char}'] is None/empty")
         
         # Add seed to params
         params = self.config.copy()
@@ -89,18 +80,8 @@ class VibeVoiceProcessor:
             enable_chunking = True
             max_chars_per_chunk = chunk_chars
         
-        # Parse character segments
-        print(f"🐛 VIBEVOICE_PROCESSOR: Parsing text: '{text[:100]}...'")
-        print(f"🐛 VIBEVOICE_PROCESSOR: Available characters in voice_mapping: {list(voice_mapping.keys())}")
-        character_segments = parse_character_text(text, list(voice_mapping.keys()))
-        print(f"🐛 VIBEVOICE_PROCESSOR: Parsed character_segments: {character_segments}")
-        
-        # Fix: If no character tags in text and we have a single character, use that character instead of 'narrator'
-        if len(character_segments) == 1 and character_segments[0][0] == 'narrator' and len(voice_mapping) == 1:
-            actual_character = list(voice_mapping.keys())[0]
-            print(f"🐛 VIBEVOICE_PROCESSOR: Fixing narrator -> {actual_character} for single character TTS")
-            character_segments = [(actual_character, character_segments[0][1])]
-            print(f"🐛 VIBEVOICE_PROCESSOR: Fixed character_segments: {character_segments}")
+        # Parse character segments (allow auto-discovery like ChatterBox)
+        character_segments = parse_character_text(text, None)  # Auto-discover all characters from text
         
         # Process based on mode
         multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
@@ -147,15 +128,21 @@ class VibeVoiceProcessor:
                 
                 for chunk in chunks:
                     # Fix: Call generate_segment directly with proper Dict parameter, not generate_segment_audio
-                    print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (no chunking)")
+                    print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (chunked)")
                     voice_ref = voice_mapping.get(character)
                     print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
-                    audio_dict = self.adapter.generate_segment(
-                        chunk, 
-                        voice_ref,  # voice_ref as Dict (correct)
-                        params,
-                        character=character  # Fix: Pass character explicitly
+                    # Use modular pause tag processing like F5 does
+                    audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                        chunk, voice_ref, params, True, character
                     )
+                    # Convert tensor back to dict format
+                    audio_dict = {
+                        'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
+                        'sample_rate': 24000,
+                        'character': character,
+                        'text': chunk
+                    }
+                    audio_segments.append(audio_dict)
                     # generate_segment already returns dict format
                     # (audio_dict already added above)
             else:
@@ -163,12 +150,17 @@ class VibeVoiceProcessor:
                 print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (no chunking)")
                 voice_ref = voice_mapping.get(character)
                 print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
-                audio_dict = self.adapter.generate_segment(
-                    text,
-                    voice_ref,  # voice_ref as Dict (correct)
-                    params,
-                    character=character  # Fix: Pass character explicitly
+                # Use modular pause tag processing like F5 does
+                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                    text, voice_ref, params, True, character
                 )
+                # Convert tensor back to dict format
+                audio_dict = {
+                    'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
+                    'sample_rate': 24000,
+                    'character': character,
+                    'text': text
+                }
                 # generate_segment already returns dict format
                 audio_segments.append(audio_dict)
         

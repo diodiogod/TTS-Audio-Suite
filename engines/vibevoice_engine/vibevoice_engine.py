@@ -221,25 +221,43 @@ class VibeVoiceEngine:
                 else:
                     audio_np = np.array(waveform)
                 
-                # Handle different audio shapes
+                # Handle different audio shapes and convert to mono (matches official VibeVoice)
                 if audio_np.ndim == 3:  # (batch, channels, samples)
-                    audio_np = audio_np[0, 0, :]  # Take first batch, first channel
-                elif audio_np.ndim == 2:  # (channels, samples)
-                    audio_np = audio_np[0, :]  # Take first channel
+                    audio_np = audio_np[0]  # Take first batch -> (channels, samples)
+                
+                if audio_np.ndim == 2:
+                    if audio_np.shape[0] == 2:  # (2, time) - stereo
+                        audio_np = np.mean(audio_np, axis=0)  # Average both channels
+                    elif audio_np.shape[1] == 2:  # (time, 2) - stereo
+                        audio_np = np.mean(audio_np, axis=1)  # Average both channels
+                    else:
+                        # If one dimension is 1, squeeze it
+                        if audio_np.shape[0] == 1:
+                            audio_np = audio_np.squeeze(0)
+                        elif audio_np.shape[1] == 1:
+                            audio_np = audio_np.squeeze(1)
+                        else:
+                            # Default: take first channel if not clear stereo format
+                            audio_np = audio_np[0, :]
                 
                 # Resample if needed
                 if input_sample_rate != 24000:
-                    target_length = int(len(audio_np) * 24000 / input_sample_rate)
-                    audio_np = np.interp(
-                        np.linspace(0, len(audio_np), target_length),
-                        np.arange(len(audio_np)), 
-                        audio_np
-                    )
+                    import librosa
+                    audio_np = librosa.resample(audio_np, orig_sr=input_sample_rate, target_sr=24000)
                 
-                # Normalize
-                audio_max = np.abs(audio_np).max()
-                if audio_max > 0:
-                    audio_np = audio_np / max(audio_max, 1.0)
+                # Normalize using dB FS (matches official VibeVoice)
+                target_dB_FS = -25
+                eps = 1e-6
+                
+                # First: normalize to target dB FS using RMS
+                rms = np.sqrt(np.mean(audio_np**2))
+                scalar = 10 ** (target_dB_FS / 20) / (rms + eps)
+                audio_np = audio_np * scalar
+                
+                # Then: avoid clipping
+                max_val = np.abs(audio_np).max()
+                if max_val > 1.0:
+                    audio_np = audio_np / (max_val + eps)
                 
                 voice_samples.append(audio_np.astype(np.float32))
             else:

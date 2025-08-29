@@ -880,6 +880,8 @@ def parse_character_text(text: str, available_characters: Optional[List[str]] = 
     if available_characters:
         character_parser.set_available_characters(available_characters)
     else:
+        # Clear any previous available_characters to allow auto-discovery
+        character_parser.available_characters = set()
         # Auto-discover characters if not provided
         try:
             from utils.voice.discovery import get_available_characters

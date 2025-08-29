@@ -419,6 +419,57 @@ class VibeVoiceEngineAdapter:
             return clean_text, segments
         return text, None
     
+    def generate_vibevoice_with_pause_tags(self, text: str, voice_ref: Optional[Dict], params: Dict,
+                                         enable_pause_tags: bool = True, character: str = "narrator") -> torch.Tensor:
+        """
+        Generate VibeVoice audio with pause tag support (like F5 does).
+        
+        Args:
+            text: Input text potentially with pause tags
+            voice_ref: Voice reference dict
+            params: Generation parameters
+            enable_pause_tags: Whether to process pause tags
+            character: Character name for logging
+            
+        Returns:
+            Generated audio tensor with pauses
+        """
+        from utils.text.pause_processor import PauseTagProcessor
+        
+        if not enable_pause_tags or not PauseTagProcessor.has_pause_tags(text):
+            # No pause tags, use normal generation
+            result = self.generate_segment(text, voice_ref, params, character)
+            waveform = result['waveform']
+            # Ensure proper tensor format
+            if waveform.dim() == 3:
+                waveform = waveform.squeeze(0)  # Remove batch dim
+            if waveform.dim() == 1:
+                waveform = waveform.unsqueeze(0)  # Add channel dim
+            return waveform
+        
+        print(f"🎵 VibeVoice: Processing pause tags in text")
+        
+        # Process pause tags
+        pause_segments, _ = PauseTagProcessor.parse_pause_tags(text)
+        
+        # TTS generation function for pause processor
+        def tts_generate_func(text_content: str) -> torch.Tensor:
+            result = self.generate_segment(text_content, voice_ref, params, character)
+            waveform = result['waveform']
+            # Ensure proper tensor format
+            if waveform.dim() == 3:
+                waveform = waveform.squeeze(0)  # Remove batch dim
+            if waveform.dim() == 1:
+                waveform = waveform.unsqueeze(0)  # Add channel dim
+            return waveform
+        
+        # Generate audio with pauses
+        combined_audio = PauseTagProcessor.generate_audio_with_pauses(
+            pause_segments, tts_generate_func, 24000  # VibeVoice sample rate
+        )
+        
+        return combined_audio
+    
     def cleanup(self):
         """Clean up resources"""
         if self.vibevoice_engine:
