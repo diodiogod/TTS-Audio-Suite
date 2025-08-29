@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0] - 2025-08-29
+
+### Added
+
+- Add VibeVoice TTS engine with long-form generation
+- New VibeVoice TTS engine provides advanced multi-speaker synthesis:
+- Support for Microsoft VibeVoice 1.5B and 7B models
+- Generate up to 90 minutes of continuous audio
+- Native multi-speaker mode supports up to 4 distinct voices
+- Custom character switching with [CharacterName] tag support
+- Time-based chunking interface for managing long-form content
+- Pause tag support with [pause:Xs] syntax
+- Seamless integration with existing Character Voices workflow
+- Technical features:
+- Unified cache system with proper character isolation
+- High-quality audio processing matching official implementation
+- Full integration with existing TTS Text and Character Voices nodes
+- Note: This is an initial implementation focused on core functionality.
+- SRT subtitle support and additional features will be added in upcoming releases.
+
+### Fixed
+
+- Automatic model downloading and dependency management
 ## [4.5.30] - 2025-08-28
 
 ### Added

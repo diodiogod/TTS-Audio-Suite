@@ -12,7 +12,7 @@ if sys.version_info >= (3, 13):
         pass
 
 # Version and constants
-VERSION = "4.5.31"
+VERSION = "4.6.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
