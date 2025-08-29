@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.4] - 2025-08-29
+
+### Added
+
+- Ensure cache invalidation triggers properly in all Python environments
+
+### Fixed
+
+- Fix module import errors in conda environments
+- Fix ModuleNotFoundError not being caught in import fallback logic
+- Improve conda environment compatibility for ChatterBox nodes
+- Complete fix for 'No module named utils.audio.audio_hash' error
 ## [4.6.3] - 2025-08-29
 
 ### Changed

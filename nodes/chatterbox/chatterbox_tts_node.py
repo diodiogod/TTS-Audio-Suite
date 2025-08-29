@@ -400,7 +400,7 @@ Back to the main narrator voice for the conclusion.""",
         # Robust import for all environments including conda (fix for issue #12)
         try:
             from utils.audio.audio_hash import generate_stable_audio_component
-        except ImportError:
+        except (ImportError, ModuleNotFoundError):
             # Conda/environment-specific fix: ensure path and clear cache
             import importlib
             if project_root not in sys.path:
