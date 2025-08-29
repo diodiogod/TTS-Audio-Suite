@@ -209,6 +209,7 @@ CLAUDE.md
 *CLAUDE.md
 docs/Dev reports/CLAUDE_VERSION_MANAGEMENT_GUIDE.md
 .claude-code.json
+.claude/
 
 IgnoredForGitHubDocs/
 
