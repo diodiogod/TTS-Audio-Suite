@@ -37,8 +37,6 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ### Developer Documentation
 
-**docs/Dev reports/CLAUDE_VERSION_MANAGEMENT_GUIDE.md** - Automated version management using enhanced scripts with changelog generation
-
 **docs/Dev reports/F5TTS_INTEGRATION_SPECIFICATION.md** - Technical specification for F5-TTS integration architecture
 
 **docs/Dev reports/F5TTS_STREAMING_INTEGRATION_PLAN.md** - Universal streaming architecture plan to eliminate spaghetti code and enable F5-TTS streaming
@@ -49,9 +47,9 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **docs/Dev reports/POST_V4.2.3_DEVELOPMENT_REVIEW.md** - Comprehensive analysis of 45 commits implementing universal streaming architecture and performance insights
 
-**docs/PAUSE_TAGS_IMPLEMENTATION_REPORT.md** - Implementation details for pause tag system with timing control syntax
+**docs/Dev reports/PAUSE_TAGS_IMPLEMENTATION_REPORT.md** - Implementation details for pause tag system with timing control syntax
 
-**docs/REFACTORING_PLAN.md** - Architectural refactoring plan and migration strategy documentation
+**docs/Dev reports/REFACTORING_PLAN.md** - Architectural refactoring plan and migration strategy documentation
 
 ## Core Architecture Files
 

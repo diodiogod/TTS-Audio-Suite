@@ -19,6 +19,9 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     import perth
 
+# Import safetensors for multilanguage model support
+from safetensors.torch import load_file
+
 from .models.s3tokenizer import S3_SR
 from .models.s3gen import S3GEN_SR, S3Gen
 
@@ -57,6 +60,19 @@ class ChatterboxVC:
         print(f"📦 Loading local ChatterBox VC models from: {ckpt_dir}")
         ckpt_dir = Path(ckpt_dir)
         
+        # Auto-detect model format (same as TTS implementation)
+        def load_model_file(base_name: str):
+            """Load model file with auto-detection of format (.safetensors preferred over .pt)"""
+            safetensors_path = ckpt_dir / f"{base_name}.safetensors"
+            pt_path = ckpt_dir / f"{base_name}.pt"
+            
+            if safetensors_path.exists():
+                return load_file(safetensors_path, device=device)
+            elif pt_path.exists():
+                return torch.load(pt_path, map_location=device)
+            else:
+                raise FileNotFoundError(f"Neither {base_name}.safetensors nor {base_name}.pt found in {ckpt_dir}")
+        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             
@@ -66,9 +82,10 @@ class ChatterboxVC:
                 ref_dict = states['gen']
 
             s3gen = S3Gen()
-            s3gen.load_state_dict(
-                torch.load(ckpt_dir / "s3gen.pt")
-            )
+            # Load s3gen with auto-format detection
+            s3gen_state = load_model_file("s3gen")
+            # Apply JaneDoe84's critical fix: strict=False to handle missing keys (like Norwegian model)
+            s3gen.load_state_dict(s3gen_state, strict=False)
             s3gen.to(device).eval()
 
             instance = cls(s3gen, device, ref_dict=ref_dict)
