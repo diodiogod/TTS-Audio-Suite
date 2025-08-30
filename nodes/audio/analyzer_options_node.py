@@ -84,7 +84,7 @@ class AudioAnalyzerOptionsNode:
             }
         }
     
-    RETURN_TYPES = ("OPTIONS",)
+    RETURN_TYPES = ("ADV_AUDIO_OPTIONS",)
     RETURN_NAMES = ("options",)
     FUNCTION = "create_options"
     CATEGORY = "TTS Audio Suite/🎵 Audio Processing"

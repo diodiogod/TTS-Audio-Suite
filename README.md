@@ -14,7 +14,7 @@
 *Universal multi-engine TTS extension for ComfyUI - evolved from the original [ChatterBox Voice project](https://github.com/diodiogod/ComfyUI_ChatterBox_SRT_Voice).*
 
 <div align="center">
-  <img src="images/AllNodesShowcase.png" alt="TTS Audio Suite Nodes Showcase" />
+  <img src="images/AllNodesShowcase.jpg" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
 A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
@@ -267,6 +267,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 * **Advanced Parameter Control**: CFG scale, sampling modes, temperature, and token limits for fine-tuned generation
 
 **Key Capabilities:**
+
 - **Long-Form Audio**: Break through traditional TTS length limitations with 90-minute generation
 - **Custom Character Switching**: Use `[Alice]`, `[Bob]` character tags with voice files from the voices folder - supports unlimited characters with pause tags and per-character control
 - **Native Multi-Speaker**: Efficient single-pass generation supporting both `[Character]` tag auto-conversion and manual "Speaker 1: Hello" format for up to 4 speakers  
@@ -275,18 +276,21 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 - **Priority System**: Connected speaker2/3/4_voice inputs override character aliases with intelligent warnings
 
 **Technical Features:**
+
 - **Dual Model Support**: Microsoft vibevoice-1.5B (2.7B params, faster) and community vibevoice-7B (9.3B params, higher quality)
 - **Intelligent Caching**: Advanced caching system with mode-aware invalidation for instant regeneration
 - **Memory Optimization**: Configurable chunking system balances quality with memory usage
 - **Unified Architecture**: Seamless integration with existing TTS Text and TTS SRT nodes
 
 **Quick Start:**
+
 1. Add `⚙️ VibeVoice Engine` node to configure model and multi-speaker mode  
 2. Connect to `TTS Text` or `TTS SRT` node for generation
 3. Choose between Custom Character Switching (recommended) or Native Multi-Speaker mode
 4. Generate long-form content with automatic voice cloning from your voices folder
 
 **Perfect for:**
+
 - Long-form audiobooks and narration with consistent voice quality
 - Multi-character dialogue and conversations with distinct speaker voices  
 - Extended podcast-style content with natural speech patterns
@@ -1045,12 +1049,13 @@ ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
 
 **Available VibeVoice Models (Auto-Download):**
 
-| Model           | Description                              | Size    | Source                                              | Auto-Download |
-| --------------- | ---------------------------------------- | ------- | --------------------------------------------------- | ------------- |
-| vibevoice-1.5B  | Microsoft official (2.7B params, faster) | ~5.4GB  | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) | ✅ |
-| vibevoice-7B    | Community preview (9.3B params, quality) | ~18GB   | [WestZhang/VibeVoice-Large-pt](https://huggingface.co/WestZhang/VibeVoice-Large-pt) | ✅ |
+| Model          | Description                              | Size   | Source                                                                              | Auto-Download |
+| -------------- | ---------------------------------------- | ------ | ----------------------------------------------------------------------------------- | ------------- |
+| vibevoice-1.5B | Microsoft official (2.7B params, faster) | ~5.4GB | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B)         | ✅             |
+| vibevoice-7B   | Community preview (9.3B params, quality) | ~18GB  | [WestZhang/VibeVoice-Large-pt](https://huggingface.co/WestZhang/VibeVoice-Large-pt) | ✅             |
 
 **Key Features:**
+
 - **90-Minute Generation**: Both models support up to 90 minutes of continuous audio
 - **Multi-Speaker Support**: Native dual-mode multi-speaker generation
 - **Voice Cloning**: Works with existing voices folder structure for character switching
@@ -1264,9 +1269,9 @@ Your support helps maintain and improve this project for the entire community!
 
 ### Specific Workflows
 
-| Workflow                   | Description                                      | Status           | Files                                                                      |
-| -------------------------- | ------------------------------------------------ | ---------------- | -------------------------------------------------------------------------- |
-| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible** | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
+| Workflow                   | Description                                      | Status               | Files                                                                      |
+| -------------------------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
+| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
 | **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
 
 > **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases all engines and features in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and supports ChatterBox, F5-TTS, and Higgs Audio 2 engines.

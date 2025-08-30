@@ -67,7 +67,7 @@ class AudioAnalyzerNode:
                 "audio": ("AUDIO", {
                     "tooltip": "Connect audio from another node instead of using audio_file path.\nThis input takes priority over the file path if connected."
                 }),
-                "options": ("OPTIONS", {
+                "options": ("ADV_AUDIO_OPTIONS", {
                     "tooltip": "Optional configuration from Audio Analyzer Options node.\nIf connected, uses these advanced settings for analysis.\nIf not connected, uses sensible default values for all analysis methods."
                 }),
                 "manual_regions": ("STRING", {
