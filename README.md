@@ -43,8 +43,8 @@ Switching              Tags                   Switching
 v4.0 ──────────► v4.3 ──────────► v4.4 ──────────► v4.5 ──────────► v4.6
 Aug 25           Aug 25           Aug 25           Aug 25           Aug 25
 │                │                │                │                │
-⚠️BREAKING        RVC +            Silent           Higgs Audio 2    VibeVoice
-Project          Voice            Speech           3rd Engine       4th Engine
+⚠️BREAKING       RVC +            Silent           Higgs Audio 2    VibeVoice
+Project          Voice            Speech           New TTS Engine   New TTS Engine
 Renamed          Conversion       Analyzer         Voice Cloning    90min Generation
 TTS Audio Suite  + Streaming
 ```
