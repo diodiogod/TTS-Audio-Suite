@@ -145,7 +145,8 @@ class ChatterboxVC:
                 print(f"📁 Using cached Chatterbox VC model: {hf_cached_file}")
                 local_paths.append(hf_cached_file)
                 continue
-            except Exception:
+            except Exception as cache_error:
+                print(f"📋 Cache check for {fpath}: {str(cache_error)[:100]}... - will download")
                 pass
             
             # Download to local directory
@@ -180,6 +181,17 @@ class ChatterboxVC:
                 local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
                 local_paths.append(local_path)
 
+        # Log final source summary
+        sources = []
+        for path in local_paths:
+            if "models/TTS/chatterbox" in str(path):
+                sources.append("local")
+            elif "cache" in str(path).lower():
+                sources.append("cache") 
+            else:
+                sources.append("downloaded")
+        print(f"📦 Loading ChatterBox VC using: {', '.join(set(sources))} sources")
+        
         # Use the directory of the first downloaded file
         model_dir = Path(local_paths[0]).parent
         return cls.from_local(model_dir, device)

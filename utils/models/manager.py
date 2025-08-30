@@ -450,9 +450,9 @@ class ModelManager:
         # For VC, try language-specific model first (like TTS does)
         local_language_path = self.find_local_language_model(language)
         if local_language_path:
-            model_paths = [("comfyui", local_language_path)]
+            model_paths = [("comfyui", local_language_path), ("huggingface", None)]
         else:
-            # Fall back to generic discovery
+            # Fall back to generic discovery (includes huggingface fallback)
             model_paths = self.find_chatterbox_models()
         
         model_loaded = False
