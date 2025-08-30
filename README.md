@@ -22,8 +22,8 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Con
 ## 🚀 Project Evolution Timeline
 
 ```
-🎭 ChatterBox Voice Era                       🌟 Multi-Engine Era              
-|                                                      |                                
+🎭 ChatterBox Voice Era                     🌟 Multi-Engine Era
+|                                                      |        
 v1.0 ───────────► v1.1 ────────► v2.0 ──────────► v3.0 ─────────┐
 Jun 25            Jun 25         Jun 25           Jul 25        │
 │                 │              │                │             │
@@ -32,21 +32,28 @@ ChatterBox        Subtitles      Structure        Audio         │
 Voice Cloning     Timing Node    Refactor         Analyzer      │
                                                                 ▼
 v3.4 ◄──────────────── v3.2 ◄──────────────── v3.1 ◄────────────┘
-Jul 25                 Jul 25                 Jul 25              
-│                      │                      │                   
-Language               Pause                  Character           
-Switching              Tags                   Switching           
-[German:Bob]           [pause:1s]             [Alice]             
+Jul 25                 Jul 25                 Jul 25             
+│                      │                      │                  
+Language               Pause                  Character          
+Switching              Tags                   Switching          
+[German:Bob]           [pause:1s]             [Alice]            
 │                                                  
-│         ⚙️ TTS Audio Suite Era                                                  
+│         ⚙️ TTS Audio Suite Era                                
 ▼         |                                   
-v4.0 ──────────► v4.3 ──────────► v4.4 ──────────► v4.5 ──────────► v4.6
-Aug 25           Aug 25           Aug 25           Aug 25           Aug 25
-│                │                │                │                │
-⚠️BREAKING       RVC +            Silent           Higgs Audio 2    VibeVoice
-Project          Voice            Speech           New TTS Engine   New TTS Engine
-Renamed          Conversion       Analyzer         Voice Cloning    90min Generation
-TTS Audio Suite  + Streaming
+v4.0 ──────────► v4.3 ──────────► v4.4 ────────► v4.5 ──────────┐
+Aug 25           Aug 25           Aug 25         Aug 25         │
+│                │                │              │              │
+BREAKING!        RVC +            Silent         Higgs Audio 2  │
+Project          Voice            Speech         New TTS Engine │
+Renamed          Conversion       Analyzer       Voice Cloning  │
+TTS Audio Suite  + Streaming                                    │
+                                                                ▼
+                                               v4.6 ◄───────────┘
+                                               Jul 25
+                                               │                 
+                                               VibeVoice          
+                                               New TTS Engine   
+                                               90min Generation 
 ```
 
 <details>
