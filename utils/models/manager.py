@@ -609,7 +609,7 @@ class ModelManager:
     
     def load_vibevoice_model(self, model_name: str = "vibevoice-1.5B", device: str = "auto", force_reload: bool = False):
         """
-        Load VibeVoice model with caching support.
+        Load VibeVoice model using ComfyUI model wrapper for consistency with other engines.
         
         Args:
             model_name: VibeVoice model name ("vibevoice-1.5B" or "vibevoice-7B")
@@ -626,6 +626,9 @@ class ModelManager:
         if not VIBEVOICE_AVAILABLE:
             raise ImportError("VibeVoice not available - check installation")
         
+        # Use ComfyUI model manager for consistent behavior
+        from utils.models.comfyui_model_wrapper import tts_model_manager
+        
         # Resolve auto device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -633,21 +636,16 @@ class ModelManager:
         # Create cache key for VibeVoice models
         cache_key = f"vibevoice_{model_name}_{device}"
         
-        # Check cache first
-        if not force_reload and cache_key in self._model_cache:
-            cached_model, cached_processor = self._model_cache[cache_key]
-            print(f"💾 VibeVoice model '{model_name}' already loaded from cache")
-            return cached_model, cached_processor
-        
-        # Get model path (downloads if necessary)
-        downloader = VibeVoiceDownloader()
-        model_path = downloader.get_model_path(model_name)
-        if not model_path:
-            raise RuntimeError(f"Failed to get VibeVoice model '{model_name}'")
-        
-        print(f"🔄 Loading VibeVoice model '{model_name}' on {device}...")
-        
-        try:
+        def vibevoice_factory(model_name, device):
+            """Factory function to create VibeVoice model and processor"""
+            # Get model path (downloads if necessary)
+            downloader = VibeVoiceDownloader()
+            model_path = downloader.get_model_path(model_name)
+            if not model_path:
+                raise RuntimeError(f"Failed to get VibeVoice model '{model_name}'")
+            
+            print(f"🔄 Creating VibeVoice model '{model_name}' on {device}...")
+            
             # Load model and processor
             model = VibeVoiceForConditionalGenerationInference.from_pretrained(
                 model_path,
@@ -661,111 +659,59 @@ class ModelManager:
             if device == "cuda" and torch.cuda.is_available():
                 model = model.cuda()
             
-            # Cache the model and processor
-            self._model_cache[cache_key] = (model, processor)
-            print(f"✅ VibeVoice model '{model_name}' loaded and cached successfully")
+            # Create container to hold both model and processor
+            class VibeVoiceModelContainer:
+                def __init__(self, model, processor):
+                    self.model = model
+                    self.processor = processor
+                    
+                def to(self, device):
+                    """Move both model and processor to device"""
+                    if hasattr(self.model, 'to'):
+                        self.model.to(device)
+                    # Note: processor typically doesn't need device movement
+                    return self
+                    
+                def parameters(self):
+                    """Return model parameters for memory calculation"""
+                    if hasattr(self.model, 'parameters'):
+                        return self.model.parameters()
+                    return iter([])
             
-            return model, processor
-            
-        except Exception as e:
-            raise RuntimeError(f"VibeVoice model loading failed: {e}")
+            return VibeVoiceModelContainer(model, processor)
+        
+        # Load using ComfyUI model manager
+        wrapper = tts_model_manager.load_model(
+            model_factory_func=vibevoice_factory,
+            model_key=cache_key,
+            model_type="tts",
+            engine="vibevoice",
+            device=device,
+            force_reload=force_reload,
+            model_name=model_name
+        )
+        
+        # Extract model and processor from container
+        container = wrapper.model
+        return container.model, container.processor
     
     def unload_vibevoice_models(self):
-        """Unload all VibeVoice models from cache and move to CPU to free VRAM."""
-        vibevoice_keys = [k for k in self._model_cache.keys() if k.startswith("vibevoice_")]
-        total_freed_mb = 0
+        """Unload all VibeVoice models using ComfyUI model wrapper system."""
+        from utils.models.comfyui_model_wrapper import tts_model_manager
         
+        # Find all VibeVoice models in the ComfyUI model manager
+        vibevoice_keys = []
+        for key, wrapper in tts_model_manager._model_cache.items():
+            if wrapper.model_info.engine == "vibevoice":
+                vibevoice_keys.append(key)
+        
+        # Remove them using the ComfyUI model manager (handles unloading automatically)
         for key in vibevoice_keys:
-            if key in self._model_cache:
-                model, processor = self._model_cache[key]
-                
-                # Move model to CPU to free VRAM (like ChatterBox does)
-                try:
-                    if hasattr(model, 'to'):
-                        model.to('cpu')
-                        # Estimate memory freed (rough calculation)
-                        if hasattr(model, 'parameters'):
-                            model_size = sum(p.numel() * p.element_size() for p in model.parameters()) // 1024 // 1024
-                            total_freed_mb += model_size
-                        print(f"🔄 Moved VibeVoice model to CPU")
-                    
-                    # Move processor components to CPU if they have parameters
-                    if hasattr(processor, '__dict__'):
-                        for attr_name, attr_value in processor.__dict__.items():
-                            if hasattr(attr_value, 'to') and hasattr(attr_value, 'parameters'):
-                                try:
-                                    attr_value.to('cpu')
-                                    print(f"🔄 Moved VibeVoice processor {attr_name} to CPU")
-                                except Exception:
-                                    pass
-                    
-                except Exception as e:
-                    print(f"⚠️ Failed to move VibeVoice model to CPU: {e}")
-                
-                # Clean up references
-                del model
-                del processor
-                self._model_cache.pop(key, None)
+            tts_model_manager.remove_model(key)
         
         if vibevoice_keys:
-            print(f"🧹 Unloaded {len(vibevoice_keys)} VibeVoice models from cache")
-            if total_freed_mb > 0:
-                print(f"💾 Estimated VRAM freed: ~{total_freed_mb}MB")
-            
-            # CRITICAL: Invalidate engine caches to prevent reuse of corrupted models
-            # Models moved to CPU lose tensor version tracking and cannot be reused
-            try:
-                from utils.models.comfyui_model_wrapper import _global_cache_invalidation_flag
-                import time
-                # Update global invalidation flag to force recreation of all engine instances
-                import utils.models.comfyui_model_wrapper as wrapper_module
-                wrapper_module._global_cache_invalidation_flag = time.time()
-                print(f"🗑️ Invalidated all engine caches - will recreate on next use")
-            except Exception as e:
-                print(f"⚠️ Failed to invalidate engine caches: {e}")
-            
-            # Force garbage collection
-            import gc
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                print(f"🧹 CUDA cache cleared")
+            print(f"🧹 Unloaded {len(vibevoice_keys)} VibeVoice models via ComfyUI model manager")
 
 
 # Global model manager instance
 model_manager = ModelManager()
-
-
-# Hook into ComfyUI's model unloading system for VibeVoice models
-def _hook_comfyui_unload_system():
-    """Hook VibeVoice model unloading into ComfyUI's global unload system."""
-    try:
-        import comfy.model_management as model_management
-        
-        # Store the original unload_all_models function
-        if not hasattr(model_management, '_original_unload_all_models'):
-            model_management._original_unload_all_models = model_management.unload_all_models
-            
-            def enhanced_unload_all_models():
-                """Enhanced unload function that includes VibeVoice models."""
-                # First unload ComfyUI's models
-                result = model_management._original_unload_all_models()
-                
-                # Then unload our custom VibeVoice models
-                model_manager.unload_vibevoice_models()
-                
-                return result
-            
-            # Replace ComfyUI's function with our enhanced version
-            model_management.unload_all_models = enhanced_unload_all_models
-            print("🔗 VibeVoice models hooked into ComfyUI's 'Unload Models' button")
-            
-    except ImportError:
-        # ComfyUI not available - this is fine for standalone usage
-        pass
-    except Exception as e:
-        print(f"⚠️ Failed to hook VibeVoice unload into ComfyUI system: {e}")
-
-
-# Initialize the hook when the module is imported
-_hook_comfyui_unload_system()

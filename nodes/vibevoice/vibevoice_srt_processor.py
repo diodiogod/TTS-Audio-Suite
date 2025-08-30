@@ -126,8 +126,9 @@ class VibeVoiceSRTProcessor:
         character_parser.reset_session_cache()
         character_parser.set_engine_aware_default_language(self.config.get('model', 'vibevoice-1.5B'), "vibevoice")
         
-        # Process subtitles and generate audio segments
-        print(f"🚀 VibeVoice SRT: Processing {len(subtitles)} subtitles in {self.config.get('multi_speaker_mode', 'Custom Character Switching')} mode")
+        # Process subtitles and generate audio segments  
+        current_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
+        print(f"🚀 VibeVoice SRT: Processing {len(subtitles)} subtitles in {current_mode} mode")
         
         audio_segments, natural_durations, any_segment_cached = self._process_all_subtitles(
             subtitles, voice_mapping, seed

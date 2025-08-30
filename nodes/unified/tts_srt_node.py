@@ -185,8 +185,11 @@ Hello! This is unified SRT TTS with character switching.
                     # Check if cache is still valid (not invalidated by model unloading)
                     from utils.models.comfyui_model_wrapper import is_engine_cache_valid
                     if is_engine_cache_valid(cache_timestamp):
-                        # Update the cached instance's config with new dynamic parameters
-                        cached_instance.config = config
+                        # CRITICAL FIX: Update the cached instance's config with ALL current parameters
+                        if hasattr(cached_instance, 'update_config'):
+                            cached_instance.update_config(config.copy())  # Propagate to processor
+                        else:
+                            cached_instance.config = config.copy()  # Fallback for other engines
                         print(f"🔄 Reusing cached {engine_type} SRT engine instance (updated with new generation parameters)")
                         return cached_instance
                     else:
@@ -301,6 +304,11 @@ Hello! This is unified SRT TTS with character switching.
                     def __init__(self, config):
                         self.config = config
                         self.processor = VibeVoiceSRTProcessor(self, config)
+                    
+                    def update_config(self, new_config):
+                        """Update configuration for both wrapper and processor"""
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
                     
                     def process_with_error_handling(self, func):
                         """Error handling wrapper to match node interface"""
