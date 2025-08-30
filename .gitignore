@@ -141,6 +141,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+comfyui_env/
 
 # Spyder project settings
 .spyderproject
