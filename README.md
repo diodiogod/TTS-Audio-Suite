@@ -136,8 +136,6 @@ TTS Audio Suite  + Streaming                                    │
 ## Features
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, F5-TTS, Higgs Audio 2, and VibeVoice with voice cloning, reference audio synthesis, and production-grade quality
-- 🎙️ **Higgs Audio 2 Voice Cloning** - State-of-the-art voice cloning with 30+ second reference audio and multi-speaker conversation support
-- 🎵 **VibeVoice Long-Form Generation** - Microsoft VibeVoice engine for 90-minute long-form audio with dual multi-speaker modes and native character switching
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
