@@ -671,23 +671,101 @@ class ModelManager:
             raise RuntimeError(f"VibeVoice model loading failed: {e}")
     
     def unload_vibevoice_models(self):
-        """Unload all VibeVoice models from cache."""
+        """Unload all VibeVoice models from cache and move to CPU to free VRAM."""
         vibevoice_keys = [k for k in self._model_cache.keys() if k.startswith("vibevoice_")]
+        total_freed_mb = 0
+        
         for key in vibevoice_keys:
             if key in self._model_cache:
                 model, processor = self._model_cache[key]
+                
+                # Move model to CPU to free VRAM (like ChatterBox does)
+                try:
+                    if hasattr(model, 'to'):
+                        model.to('cpu')
+                        # Estimate memory freed (rough calculation)
+                        if hasattr(model, 'parameters'):
+                            model_size = sum(p.numel() * p.element_size() for p in model.parameters()) // 1024 // 1024
+                            total_freed_mb += model_size
+                        print(f"🔄 Moved VibeVoice model to CPU")
+                    
+                    # Move processor components to CPU if they have parameters
+                    if hasattr(processor, '__dict__'):
+                        for attr_name, attr_value in processor.__dict__.items():
+                            if hasattr(attr_value, 'to') and hasattr(attr_value, 'parameters'):
+                                try:
+                                    attr_value.to('cpu')
+                                    print(f"🔄 Moved VibeVoice processor {attr_name} to CPU")
+                                except Exception:
+                                    pass
+                    
+                except Exception as e:
+                    print(f"⚠️ Failed to move VibeVoice model to CPU: {e}")
+                
+                # Clean up references
                 del model
                 del processor
                 self._model_cache.pop(key, None)
         
         if vibevoice_keys:
             print(f"🧹 Unloaded {len(vibevoice_keys)} VibeVoice models from cache")
+            if total_freed_mb > 0:
+                print(f"💾 Estimated VRAM freed: ~{total_freed_mb}MB")
+            
+            # CRITICAL: Invalidate engine caches to prevent reuse of corrupted models
+            # Models moved to CPU lose tensor version tracking and cannot be reused
+            try:
+                from utils.models.comfyui_model_wrapper import _global_cache_invalidation_flag
+                import time
+                # Update global invalidation flag to force recreation of all engine instances
+                import utils.models.comfyui_model_wrapper as wrapper_module
+                wrapper_module._global_cache_invalidation_flag = time.time()
+                print(f"🗑️ Invalidated all engine caches - will recreate on next use")
+            except Exception as e:
+                print(f"⚠️ Failed to invalidate engine caches: {e}")
+            
             # Force garbage collection
             import gc
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+                print(f"🧹 CUDA cache cleared")
 
 
 # Global model manager instance
 model_manager = ModelManager()
+
+
+# Hook into ComfyUI's model unloading system for VibeVoice models
+def _hook_comfyui_unload_system():
+    """Hook VibeVoice model unloading into ComfyUI's global unload system."""
+    try:
+        import comfy.model_management as model_management
+        
+        # Store the original unload_all_models function
+        if not hasattr(model_management, '_original_unload_all_models'):
+            model_management._original_unload_all_models = model_management.unload_all_models
+            
+            def enhanced_unload_all_models():
+                """Enhanced unload function that includes VibeVoice models."""
+                # First unload ComfyUI's models
+                result = model_management._original_unload_all_models()
+                
+                # Then unload our custom VibeVoice models
+                model_manager.unload_vibevoice_models()
+                
+                return result
+            
+            # Replace ComfyUI's function with our enhanced version
+            model_management.unload_all_models = enhanced_unload_all_models
+            print("🔗 VibeVoice models hooked into ComfyUI's 'Unload Models' button")
+            
+    except ImportError:
+        # ComfyUI not available - this is fine for standalone usage
+        pass
+    except Exception as e:
+        print(f"⚠️ Failed to hook VibeVoice unload into ComfyUI system: {e}")
+
+
+# Initialize the hook when the module is imported
+_hook_comfyui_unload_system()

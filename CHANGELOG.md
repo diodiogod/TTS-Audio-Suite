@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.15] - 2025-08-30
+
+### Added
+
+- VibeVoice models now properly unload when clicking 'Unload Models' button
+- VRAM is actually freed when unloading (not just cache cleared)
+- Models are properly recreated fresh after unload
+
+### Fixed
+
+- Fix VibeVoice unload button not freeing VRAM
+- Fix crash when generating after unloading models
 ## [4.6.14] - 2025-08-30
 
 ### Added
