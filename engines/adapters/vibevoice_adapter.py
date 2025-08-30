@@ -241,12 +241,22 @@ class VibeVoiceEngineAdapter:
         
         # Generate stable audio component for cache consistency (like ChatterBox)
         from utils.audio.audio_hash import generate_stable_audio_component
-        audio_component = params.get("stable_audio_component", "main_reference")
-        if character != "narrator":
-            audio_component = f"char_file_{character}"
-        else:
-            # Use voice content hash for narrator
-            audio_component = generate_stable_audio_component(voice_ref, None)
+        
+        # Use provided stable component, or generate from voice reference (like ChatterBox)
+        audio_component = params.get("stable_audio_component")
+        if not audio_component:
+            # Generate stable component like ChatterBox does
+            if voice_ref and isinstance(voice_ref, dict):
+                if 'waveform' in voice_ref:
+                    # Direct audio tensor format
+                    audio_component = generate_stable_audio_component(voice_ref, None)
+                elif 'audio_path' in voice_ref:
+                    # File path format  
+                    audio_component = generate_stable_audio_component(None, voice_ref['audio_path'])
+                else:
+                    audio_component = "main_reference"
+            else:
+                audio_component = "main_reference"
         
         # DEBUG: Print audio component to track cache invalidation
         print(f"🐛 VibeVoice DEBUG: character='{character}', audio_component='{audio_component[:50]}...'")
@@ -382,8 +392,15 @@ class VibeVoiceEngineAdapter:
         # For multi-speaker, use combined hash of all voices
         combined_voice_hash = []
         for voice in speaker_voices[:4]:  # Max 4 speakers
-            if voice is not None:
-                combined_voice_hash.append(generate_stable_audio_component(voice, None))
+            if voice is not None and isinstance(voice, dict):
+                if 'waveform' in voice:
+                    # Direct audio tensor format
+                    combined_voice_hash.append(generate_stable_audio_component(voice, None))
+                elif 'audio_path' in voice:
+                    # File path format
+                    combined_voice_hash.append(generate_stable_audio_component(None, voice['audio_path']))
+                else:
+                    combined_voice_hash.append("unknown_voice")
             else:
                 combined_voice_hash.append("no_voice")
         audio_component = f"multi_speaker_{'_'.join(combined_voice_hash)}"
