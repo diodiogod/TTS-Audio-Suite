@@ -26,7 +26,7 @@ from rvc_audio import audio_to_bytes, save_input_audio, load_input_audio, get_au
 import folder_paths
 from rvc_utils import get_filenames, get_hash, get_optimal_torch_device
 from lib import karafan
-from rvc_downloader import KARAFAN_MODELS, MDX_MODELS, RVC_DOWNLOAD_LINK, VR_MODELS, ZFTURBO_MODELS, ZFTURBO_DOWNLOAD_LINK, download_file
+from rvc_downloader import KARAFAN_MODELS, MDX_MODELS, RVC_DOWNLOAD_LINK, VR_MODELS, ZFTURBO_MODELS, ZFTURBO_DOWNLOAD_LINK, MELBAND_MODELS, MELBAND_DOWNLOAD_LINK, download_file
 
 # Define paths
 BASE_CACHE_DIR = folder_paths.get_temp_directory()
@@ -101,7 +101,7 @@ class VocalRemovalNode:
         tts_models = get_filenames(root=os.path.join(BASE_MODELS_DIR, "TTS"),format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"])
         legacy_models = get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"])
         
-        model_list = (MDX_MODELS + VR_MODELS + KARAFAN_MODELS + zfturbo_model_names + tts_models + legacy_models)
+        model_list = (MDX_MODELS + VR_MODELS + KARAFAN_MODELS + zfturbo_model_names + MELBAND_MODELS + tts_models + legacy_models)
         model_list = list(set(model_list)) # dedupe
         
         # Filter out non-model files (JSON configs, etc.)
@@ -117,26 +117,34 @@ class VocalRemovalNode:
                     "default": "MDXNET/UVR-MDX-NET-vocal_FT.onnx",
                     "tooltip": """🎵 AI AUDIO SEPARATION & PROCESSING
 
-🏆 TOP MODELS (2024-2025):
-• UVR-MDX-NET-vocal_FT.onnx - ⭐ DEFAULT (Reliable, Fast)
-• model_bs_roformer_ep_317_sdr_12.9755.ckpt - 🎵 ADVANCED (12.98 SDR)
+🏆 TOP MODELS BY CATEGORY:
 
-⚠️ EXPERIMENTAL (NOT WORKING):
-• denoise_mel_band_roformer_sdr_27.99.ckpt - 🥇 BEST DENOISING (27.99 SDR) - ❌ Architecture mismatch
-• model_vocals_mdx23c_sdr_10.17.ckpt - 🎤 BEST VOCALS (10.17 SDR) - ❌ Tensor alignment errors
-• model_scnet_xl_ihf_sdr_10.08.ckpt - SCNet SOTA (10.08 SDR) - ⚠️ Audio buzzing artifacts
+📀 STANDARD VOCAL SEPARATION:
+• UVR-MDX-NET-vocal_FT.onnx - ⭐ DEFAULT (Reliable, Fast, Well-tested)
+• model_bs_roformer_ep_317_sdr_12.9755.ckpt - 🎵 High Quality (12.98 SDR)
+• HP5-vocals+instrumentals.pth - 🏠 Beginner Friendly
 
-🎯 QUICK START:
-• 🏆 Best Overall: UVR-MDX-NET-vocal_FT.onnx (Proven reliability)
-• 🎵 Vocal Extraction: UVR-MDX-NET-vocal_FT (reliable, fast)
-• 🔧 Light Denoising: UVR-DeNoise + gentle aggressiveness (5-8)
-• 🏠 Beginner: HP5-vocals+instrumentals + moderate aggressiveness (10)
+🎯 MELBAND ROFORMER (State-of-the-Art):
+• MELBAND/MelBandRoformer_fp16.safetensors - 🚀 Kijai's Fast Version (456MB)
+• MELBAND/MelBandRoformer_fp32.safetensors - 💎 Kijai's Quality Version (913MB)
+• MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt - 🥇 BEST Denoising (27.99 SDR!)
+• MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt - 💪 Aggressive Denoising
 
-⚠️ SPECIAL MODELS:
+🔧 SPECIAL PURPOSE:
 • UVR-DeNoise - NOISE REMOVAL: "remaining" = clean audio ✅
-• UVR-DeEcho-DeReverb - ECHO REMOVAL: "remaining" = dry audio ✅
+• UVR-DeEcho-DeReverb - ECHO/REVERB REMOVAL: "remaining" = dry audio ✅
 
-📖 Complete guide with all models & workflows: docs/VOCAL_REMOVAL_GUIDE.md"""
+⚠️ EXPERIMENTAL (Issues):
+• model_vocals_mdx23c_sdr_10.17.ckpt - MDX23C architecture (tensor errors)
+• model_scnet_xl_ihf_sdr_10.08.ckpt - SCNet architecture (audio artifacts)
+
+💡 QUICK RECOMMENDATIONS:
+• General Use: UVR-MDX-NET-vocal_FT.onnx
+• Best Denoising: MELBAND models (27+ SDR!)
+• Fast Processing: MelBandRoformer_fp16
+• Maximum Quality: MelBandRoformer_fp32
+
+📖 Complete guide: docs/VOCAL_REMOVAL_GUIDE.md"""
                 }),
             },
             "optional": {
@@ -229,10 +237,19 @@ Selects the audio format for separated stems:
             # Check if it's a ZFTurbo model (GitHub releases - no HF cache)
             zfturbo_model = next((download_path for download_path, model_path_check in ZFTURBO_MODELS if model_path_check == model), None)
             
+            # Check if it's a MelBand model from Kijai's repo
+            melband_model = next((m for m in MELBAND_MODELS if m == model), None)
+            
             if zfturbo_model:
                 # ZFTurbo models come from GitHub releases, no cache to check
                 download_link = f"{ZFTURBO_DOWNLOAD_LINK}{zfturbo_model}"
                 print(f"📥 Downloading SOTA model from ZFTurbo repository: {filename}")
+                params = model_path, download_link
+                if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
+            elif melband_model:
+                # MelBand models from Kijai's HuggingFace repo
+                download_link = f"{MELBAND_DOWNLOAD_LINK}{filename}"
+                print(f"📥 Downloading MelBandRoFormer model from Kijai's repository: {filename}")
                 params = model_path, download_link
                 if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
             else:
@@ -269,6 +286,179 @@ Selects the audio format for separated stems:
                 if "karafan" in model_path: # try karafan implementation
                     print(f"🔧 Using Karafan separation engine")
                     primary, secondary, _ = karafan.inference.Process(audio_path,cache_dir=temp_path,format=format)
+                elif "mel_band_roformer" in model_path.lower() or "melband" in model_path.lower():
+                    # MelBandRoFormer implementation
+                    print(f"🔧 Using MelBandRoFormer separation engine")
+                    from lib.melband.mel_band_roformer import MelBandRoformer
+                    import torch
+                    import torch.nn.functional as F
+                    from tqdm import tqdm
+                    import librosa
+                    from comfy.utils import load_torch_file, ProgressBar
+                    from comfy import model_management as mm
+                    
+                    device = mm.get_torch_device()
+                    offload_device = mm.unet_offload_device()
+                    
+                    # MelBand model configuration
+                    model_config = {
+                        "dim": 384,
+                        "depth": 6,
+                        "stereo": True,
+                        "num_stems": 1,
+                        "time_transformer_depth": 1,
+                        "freq_transformer_depth": 1,
+                        "num_bands": 60,
+                        "dim_head": 64,
+                        "heads": 8,
+                        "attn_dropout": 0,
+                        "ff_dropout": 0,
+                        "flash_attn": True,
+                        "dim_freqs_in": 1025,
+                        "sample_rate": 44100,
+                        "stft_n_fft": 2048,
+                        "stft_hop_length": 441,
+                        "stft_win_length": 2048,
+                        "stft_normalized": False,
+                        "mask_estimator_depth": 2,
+                        "multi_stft_resolution_loss_weight": 1.0,
+                        "multi_stft_resolutions_window_sizes": (4096, 2048, 1024, 512, 256),
+                        "multi_stft_hop_size": 147,
+                        "multi_stft_normalized": False,
+                    }
+                    
+                    # Load MelBand model
+                    melband_model = MelBandRoformer(**model_config).eval()
+                    melband_model.load_state_dict(load_torch_file(model_path), strict=True)
+                    
+                    # Process audio with MelBand
+                    audio_waveform, sample_rate = input_audio
+                    
+                    # Ensure stereo
+                    if audio_waveform.ndim == 1:
+                        audio_waveform = np.stack([audio_waveform, audio_waveform], axis=0)
+                    elif audio_waveform.shape[0] == 1:
+                        audio_waveform = np.repeat(audio_waveform, 2, axis=0)
+                    
+                    # Resample to 44100 if needed
+                    if sample_rate != 44100:
+                        print(f"Resampling from {sample_rate} to 44100 Hz")
+                        audio_waveform = librosa.resample(audio_waveform, orig_sr=sample_rate, target_sr=44100, axis=-1)
+                        sample_rate = 44100
+                    
+                    # Convert to torch tensor
+                    audio_tensor = torch.from_numpy(audio_waveform).float()
+                    
+                    # Chunked processing with windowing
+                    C = 352800  # Chunk size
+                    N = 2
+                    step = C // N
+                    fade_size = C // 10
+                    border = C - step
+                    
+                    # Pad if necessary
+                    audio_length = audio_tensor.shape[1]
+                    if audio_length > 2 * border and border > 0:
+                        audio_tensor = F.pad(audio_tensor, (border, border), mode='reflect')
+                    
+                    # Create windowing array
+                    def get_windowing_array(window_size, fade_size, device):
+                        fadein = torch.linspace(0, 1, fade_size)
+                        fadeout = torch.linspace(1, 0, fade_size)
+                        window = torch.ones(window_size)
+                        window[-fade_size:] *= fadeout
+                        window[:fade_size] *= fadein
+                        return window.to(device)
+                    
+                    windowing_array = get_windowing_array(C, fade_size, device)
+                    
+                    audio_tensor = audio_tensor.to(device)
+                    vocals = torch.zeros_like(audio_tensor, dtype=torch.float32).to(device)
+                    counter = torch.zeros_like(audio_tensor, dtype=torch.float32).to(device)
+                    
+                    total_length = audio_tensor.shape[1]
+                    num_chunks = (total_length + step - 1) // step
+                    
+                    melband_model.to(device)
+                    
+                    comfy_pbar = ProgressBar(num_chunks)
+                    
+                    # Process chunks
+                    for i in tqdm(range(0, total_length, step), desc="Processing MelBand chunks"):
+                        part = audio_tensor[:, i:i + C]
+                        length = part.shape[-1]
+                        if length < C:
+                            if length > C // 2 + 1:
+                                part = F.pad(input=part, pad=(0, C - length), mode='reflect')
+                            else:
+                                part = F.pad(input=part, pad=(0, C - length, 0, 0), mode='constant', value=0)
+                        
+                        x = melband_model(part.unsqueeze(0))[0]
+                        
+                        window = windowing_array.clone()
+                        if i == 0:
+                            window[:fade_size] = 1
+                        elif i + C >= total_length:
+                            window[-fade_size:] = 1
+                        
+                        vocals[..., i:i+length] += x[..., :length] * window[..., :length]
+                        counter[..., i:i+length] += window[..., :length]
+                        comfy_pbar.update(1)
+                    
+                    melband_model.to(offload_device)
+                    
+                    estimated_sources = vocals / counter
+                    
+                    # Remove padding
+                    if audio_length > 2 * border and border > 0:
+                        estimated_sources = estimated_sources[..., border:-border]
+                    
+                    # Convert back to numpy - need to preserve original audio shape
+                    vocals_np = estimated_sources.cpu().numpy()
+                    
+                    # Use original audio tensor before padding for instrumentals calculation
+                    original_audio_tensor = torch.from_numpy(audio_waveform).float()
+                    if audio_length > 2 * border and border > 0:
+                        # Match the cropping we did to vocals
+                        instrumentals_np = (original_audio_tensor - estimated_sources.cpu()).numpy()
+                    else:
+                        instrumentals_np = (original_audio_tensor - estimated_sources.cpu()).numpy()
+                    
+                    # Save to files for caching
+                    import soundfile as sf
+                    os.makedirs(os.path.dirname(primary_path), exist_ok=True)
+                    
+                    if format == 'wav':
+                        sf.write(primary_path, vocals_np.T, sample_rate, subtype='PCM_16')
+                        sf.write(secondary_path, instrumentals_np.T, sample_rate, subtype='PCM_16')
+                    elif format == 'flac':
+                        sf.write(primary_path, vocals_np.T, sample_rate, format='FLAC', subtype='PCM_16')
+                        sf.write(secondary_path, instrumentals_np.T, sample_rate, format='FLAC', subtype='PCM_16')
+                    else:  # mp3
+                        # For MP3, we need to use a different method
+                        import subprocess
+                        # Save as WAV first, then convert
+                        temp_wav_primary = primary_path.replace('.mp3', '_temp.wav')
+                        temp_wav_secondary = secondary_path.replace('.mp3', '_temp.wav')
+                        sf.write(temp_wav_primary, vocals_np.T, sample_rate, subtype='PCM_16')
+                        sf.write(temp_wav_secondary, instrumentals_np.T, sample_rate, subtype='PCM_16')
+                        # Convert to MP3
+                        subprocess.run(['ffmpeg', '-i', temp_wav_primary, '-b:a', '320k', primary_path, '-y'], capture_output=True)
+                        subprocess.run(['ffmpeg', '-i', temp_wav_secondary, '-b:a', '320k', secondary_path, '-y'], capture_output=True)
+                        os.remove(temp_wav_primary)
+                        os.remove(temp_wav_secondary)
+                    
+                    # Kijai's MelBand models output instrumentals as primary, vocals as secondary (inverted)
+                    # ZFTurbo's denoise models output correctly (vocals as primary)
+                    if "melbandroformer_fp" in model_path.lower():
+                        # Kijai's models need swapping
+                        primary = (instrumentals_np, sample_rate)  # This is actually vocals
+                        secondary = (vocals_np, sample_rate)  # This is actually instrumentals
+                    else:
+                        # ZFTurbo's denoise models are correct
+                        primary = (vocals_np, sample_rate)
+                        secondary = (instrumentals_np, sample_rate)
+                    
                 else: # try python-audio-separator implementation
                     print(f"🔧 Using Audio-Separator engine")
                     model_dir = os.path.dirname(model_path)
@@ -281,7 +471,12 @@ Selects the audio format for separated stems:
                     primary = load_input_audio(os.path.join(temp_path,output_files[0]))
                     secondary = load_input_audio(os.path.join(temp_path,output_files[1]))
             except Exception as e: # try RVC implementation
-                print(f"⚠️ Primary engine failed (model not in supported list), switching to RVC fallback engine...")
+                # Don't use RVC fallback for MelBand models - they're incompatible
+                if "mel_band_roformer" in model_path.lower() or "melband" in model_path.lower():
+                    print(f"❌ MelBandRoFormer processing failed: {e}")
+                    raise RuntimeError(f"MelBandRoFormer processing failed: {e}")
+                
+                print(f"⚠️ Primary engine failed, switching to RVC fallback engine...")
                 print(f"💡 This is normal - downloading and using model with RVC implementation")
                 
                 from uvr5_cli import Separator

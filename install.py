@@ -423,9 +423,12 @@ class TTSAudioInstaller:
             "huggingface-hub",            # Required by cached-path
             
             # For descript-audio-codec (when installed with --no-deps)
-            "einops",                      # Required by descript-audio-codec
+            "einops",                      # Required by descript-audio-codec and MelBandRoFormer
             "argbind>=0.3.7",             # Required by descript-audio-codec
             # NOTE: descript-audiotools causes protobuf conflicts, installed via --no-deps
+            
+            # For MelBandRoFormer vocal separation
+            "rotary_embedding_torch",     # Required by MelBandRoFormer architecture
             
             # For F5-TTS engine
             "matplotlib",                  # Required by F5-TTS utils_infer.py

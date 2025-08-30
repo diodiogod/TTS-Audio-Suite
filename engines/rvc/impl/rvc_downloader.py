@@ -21,6 +21,8 @@ except ImportError:
 RVC_DOWNLOAD_LINK = 'https://huggingface.co/datasets/SayanoAI/RVC-Studio/resolve/main/'
 # ZFTurbo SOTA models from Music-Source-Separation-Training (2024-2025)
 ZFTURBO_DOWNLOAD_LINK = 'https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/'
+# Kijai's MelBandRoFormer models optimized for ComfyUI
+MELBAND_DOWNLOAD_LINK = 'https://huggingface.co/Kijai/MelBandRoFormer_comfy/resolve/main/'
 
 MDX_MODELS = ["MDXNET/UVR-MDX-NET-vocal_FT.onnx", "MDXNET/model_data.json"]
 KARAFAN_MODELS = ["karafan/MDX23C-8KFFT-InstVoc_HQ.ckpt"]
@@ -37,6 +39,12 @@ ZFTURBO_MODELS = [
     # Specialized denoising models (MelBand RoFormer - compatible with RoFormer architecture)
     ("v.1.0.7/denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt", "MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt"),
     ("v.1.0.7/denoise_mel_band_roformer_aufr33_aggr_sdr_27.9768.ckpt", "MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt"),
+]
+
+# Kijai's MelBandRoFormer models optimized for ComfyUI
+MELBAND_MODELS = [
+    "MELBAND/MelBandRoformer_fp16.safetensors",  # FP16 vocal separation model from Kijai (456 MB)
+    "MELBAND/MelBandRoformer_fp32.safetensors",  # FP32 vocal separation model from Kijai (913 MB)
 ]
 
 VR_MODELS = [

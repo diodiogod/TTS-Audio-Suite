@@ -15,8 +15,10 @@ The **🤐 Noise or Vocal Removal** node is a powerful audio processing tool tha
 ### 🏆 BEST MODELS (2024-2025)
 
 **Top Tier - State of the Art:**
-- ★★★ **model_bs_roformer_ep_317_sdr_12.9755.ckpt** - BEST OVERALL (12.97 dB SDR, Transformer-based SOTA)
-- ★★★ **MDX23C-8KFFT-InstVoc_HQ.ckpt** - Highest quality, minimal artifacts (Karafan architecture)
+- ★★★ **MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt** - BEST DENOISING (27.99 dB SDR!) 
+- ★★★ **MELBAND/MelBandRoformer_fp32.safetensors** - Kijai's high-quality vocal separation
+- ★★★ **model_bs_roformer_ep_317_sdr_12.9755.ckpt** - Reliable transformer-based (12.97 dB SDR)
+- ★★☆ **MDX23C-8KFFT-InstVoc_HQ.ckpt** - Minimal artifacts (Karafan architecture)
 - ★★☆ **UVR-MDX-NET-vocal_FT.onnx** - Professional vocal extraction (MDX architecture)
 
 ### 📂 VR MODELS (Convolutional Neural Networks)
@@ -37,6 +39,18 @@ The **🤐 Noise or Vocal Removal** node is a powerful audio processing tool tha
 
 - **MDX23C-8KFFT-InstVoc_HQ.ckpt** - ⭐ HIGHEST QUALITY (8K FFT, minimal artifacts)
 
+### 🎯 MELBAND ROFORMER MODELS (State-of-the-Art 2025)
+
+**Kijai's Models (Vocal Separation):**
+- **MELBAND/MelBandRoformer_fp16.safetensors** - Fast processing (456MB, FP16 precision)
+- **MELBAND/MelBandRoformer_fp32.safetensors** - Maximum quality (913MB, FP32 precision)
+
+**ZFTurbo's Models (Denoising Specialists):**
+- **MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt** - ⭐ BEST DENOISING (27.99 dB SDR!)
+- **MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt** - Aggressive denoising
+
+**Note:** MelBand models use advanced transformer architecture with rotary embeddings for superior separation quality
+
 ## Use Case Workflows
 
 ### 🎤 Karaoke Creation (Vocal Removal)
@@ -50,9 +64,10 @@ The **🤐 Noise or Vocal Removal** node is a powerful audio processing tool tha
 3. **Use:** "extracted voice/noise/echo" output (isolated vocals)
 
 ### 🔧 Audio Denoising
-1. **Primary:** `UVR-DeNoise.pth` (gentle: 5-8)
-2. **Use:** "remaining" output (clean audio)
-3. **Note:** "extracted" contains removed noise
+1. **Best Quality:** `MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt` (no aggressiveness setting)
+2. **Alternative:** `UVR-DeNoise.pth` (gentle: 5-8)
+3. **Use:** "remaining" output (clean audio)
+4. **Note:** "extracted" contains removed noise
 
 ### 💼 Professional Workflow
 1. **Separate:** `model_bs_roformer_ep_317_sdr_12.9755.ckpt`
@@ -71,7 +86,8 @@ The **🤐 Noise or Vocal Removal** node is a powerful audio processing tool tha
 - **VR (Vocal Remover):** Fast, magnitude-only processing, good for basic separation
 - **MDX (Multi-Dimensional eXtraction):** Hybrid spectrogram/waveform, better quality preservation  
 - **Karafan:** Multi-stage ensemble, state-of-the-art quality (highest CPU usage)
-- **RoFormer:** Transformer with rotary embeddings, current SOTA
+- **RoFormer:** Transformer with rotary embeddings, excellent quality
+- **MelBand RoFormer:** Advanced transformer with Mel-frequency bands, current SOTA (27+ dB SDR)
 
 ## Aggressiveness Settings (0-20)
 
@@ -122,12 +138,11 @@ The **🤐 Noise or Vocal Removal** node is a powerful audio processing tool tha
 
 ## Advanced Techniques
 
-### 🚀 NEWER MODELS (Consider adding)
-- **Mel-RoFormer** - Next-gen transformer architecture
-- **SCNet-XL** - Large-scale separation network
-- **VitLarge23** - Vision transformer adaptation
-- **Demucs v4 (htdemucs_ft)** - Hybrid transformer fine-tuned
-- **Kim Vocal models** - Highly regarded community favorites
+### 🚀 MODEL NOTES
+- **MelBand RoFormer** - ✅ NOW SUPPORTED! Best-in-class denoising (27+ dB SDR)
+- **SCNet models** - ⚠️ Architecture issues causing audio artifacts
+- **MDX23C models** - ⚠️ Tensor alignment errors in current implementation
+- **Note:** Aggressiveness setting only affects VR architecture models, not MelBand/MDX/Karafan
 
 ### 💡 PRO TIPS
 - **Use ensemble combinations** for best results

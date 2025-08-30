@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.13] - 2025-08-30
+
+### Added
+
+- Add support for Kijai's MelBandRoFormer models (.safetensors)
+
+### Changed
+
+- Improve model-specific output handling and inversion detection
+
+### Fixed
+
+- Fix MelBandRoFormer models now working properly
+- Fix denoise_mel_band_roformer models (27.99 SDR) compatibility
+- Fix architecture mismatch errors preventing model loading
 ## [4.6.12] - 2025-08-30
 
 ### Added
