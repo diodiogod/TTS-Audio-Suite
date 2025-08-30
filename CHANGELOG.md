@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.12] - 2025-08-30
+
+### Added
+
+- Add VibeVoice legacy path and cache support
+- Support models from original VibeVoice-ComfyUI extension
+- Reuse HuggingFace cached VibeVoice models when available
+- Avoid re-downloading models for users upgrading from other extensions
+
+### Changed
+
+- Improve model loading efficiency with multi-source fallback
 ## [4.6.11] - 2025-08-30
 
 ### Added

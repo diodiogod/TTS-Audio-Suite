@@ -93,7 +93,8 @@ class VibeVoiceDownloader:
     
     def get_model_path(self, model_name: str) -> Optional[str]:
         """
-        Get local path for a VibeVoice model, downloading if necessary.
+        Get local path for a VibeVoice model, checking multiple sources.
+        Priority: local > legacy > cache > download
         
         Args:
             model_name: Name of the model (e.g., "vibevoice-1.5B")
@@ -105,17 +106,39 @@ class VibeVoiceDownloader:
             print(f"❌ Unknown VibeVoice model: {model_name}")
             return None
         
+        model_info = VIBEVOICE_MODELS[model_name]
+        repo_id = model_info["repo"]
+        
+        # 1. Check current local path first
         model_dir = os.path.join(self.vibevoice_dir, model_name)
         config_path = os.path.join(model_dir, "config.json")
         
-        # Check if already downloaded
         if os.path.exists(config_path):
-            print(f"✅ VibeVoice model '{model_name}' already downloaded")
+            print(f"📁 Using local VibeVoice model: {model_dir}")
             return model_dir
         
-        # Download model
+        # 2. Check legacy VibeVoice-ComfyUI path
+        legacy_vibevoice_dir = os.path.join(self.models_dir, "vibevoice")
+        legacy_model_dir = os.path.join(legacy_vibevoice_dir, f"models--{repo_id.replace('/', '--')}")
+        legacy_config_path = os.path.join(legacy_model_dir, "config.json")
+        
+        if os.path.exists(legacy_config_path):
+            print(f"📁 Using legacy VibeVoice model: {legacy_model_dir}")
+            return legacy_model_dir
+        
+        # 3. Check HuggingFace cache
+        try:
+            from huggingface_hub import hf_hub_download
+            # Try to find config.json in cache (local_files_only=True means cache only)
+            cached_config = hf_hub_download(repo_id=repo_id, filename="config.json", local_files_only=True)
+            cached_model_dir = os.path.dirname(cached_config)
+            print(f"📁 Using cached VibeVoice model: {cached_model_dir}")
+            return cached_model_dir
+        except Exception as cache_error:
+            print(f"📋 Cache check for {model_name}: {str(cache_error)[:100]}... - will download")
+        
+        # 4. Download model to local directory
         print(f"📥 Downloading VibeVoice model '{model_name}'...")
-        model_info = VIBEVOICE_MODELS[model_name]
         
         result = self.downloader.download_huggingface_model(
             repo_id=model_info["repo"],
