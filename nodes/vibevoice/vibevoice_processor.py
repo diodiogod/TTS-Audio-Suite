@@ -128,9 +128,9 @@ class VibeVoiceProcessor:
                 
                 for chunk in chunks:
                     # Fix: Call generate_segment directly with proper Dict parameter, not generate_segment_audio
-                    print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (chunked)")
+                    # print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (chunked)")
                     voice_ref = voice_mapping.get(character)
-                    print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
+                    # print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
                     # Use modular pause tag processing like F5 does
                     audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
                         chunk, voice_ref, params, True, character
@@ -147,9 +147,9 @@ class VibeVoiceProcessor:
                     # (audio_dict already added above)
             else:
                 # Generate without chunking
-                print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (no chunking)")
+                # print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (no chunking)")
                 voice_ref = voice_mapping.get(character)
-                print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
+                # print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
                 # Use modular pause tag processing like F5 does
                 audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
                     text, voice_ref, params, True, character

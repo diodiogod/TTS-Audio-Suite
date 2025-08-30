@@ -28,37 +28,37 @@ def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = 
     if reference_audio is not None:
         # For direct audio input, hash the waveform data
         try:
-            print(f"🐛 AUDIO_HASH: Hashing reference_audio with keys: {list(reference_audio.keys())}")
+            # print(f"🐛 AUDIO_HASH: Hashing reference_audio with keys: {list(reference_audio.keys())}")
             waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
             result = f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
-            print(f"🐛 AUDIO_HASH: Generated hash: {result}")
+            # print(f"🐛 AUDIO_HASH: Generated hash: {result}")
             return result
         except Exception as e:
             print(f"⚠️ Failed to hash reference audio: {e}")
-            print(f"🐛 AUDIO_HASH: ERROR - returning 'ref_audio_error'")
+            # print(f"🐛 AUDIO_HASH: ERROR - returning 'ref_audio_error'")
             return "ref_audio_error"
     
     elif audio_file_path and audio_file_path != "none" and os.path.exists(audio_file_path):
         # For file paths (dropdown selections or temp files), hash file content
         try:
-            print(f"🐛 AUDIO_HASH: Hashing file path: {audio_file_path}")
+            # print(f"🐛 AUDIO_HASH: Hashing file path: {audio_file_path}")
             import librosa
             # Load audio file and create hash from content
             waveform, sample_rate = librosa.load(audio_file_path, sr=None)
             waveform_hash = hashlib.md5(waveform.tobytes()).hexdigest()
             result = f"file_audio_{waveform_hash}_{sample_rate}"
-            print(f"🐛 AUDIO_HASH: Generated file hash: {result}")
+            # print(f"🐛 AUDIO_HASH: Generated file hash: {result}")
             return result
         except Exception as e:
             # Fallback to path if file reading fails
             print(f"⚠️ Failed to hash audio file {audio_file_path}: {e}, using path fallback")
             fallback = f"path_{os.path.basename(audio_file_path)}"
-            print(f"🐛 AUDIO_HASH: Using fallback: {fallback}")
+            # print(f"🐛 AUDIO_HASH: Using fallback: {fallback}")
             return fallback
     
     else:
         # No voice file (default voice)
-        print(f"🐛 AUDIO_HASH: No audio provided - using 'default_voice'")
+        # print(f"🐛 AUDIO_HASH: No audio provided - using 'default_voice'")
         return "default_voice"
 
 

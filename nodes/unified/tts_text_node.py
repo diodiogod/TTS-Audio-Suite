@@ -327,11 +327,9 @@ Back to the main narrator voice for the conclusion.""",
                                     voice_mapping[char] = char_audio
                                     print(f"🔄 VibeVoice: Using main voice fallback for '{char}'")
                         
-                        print(f"🐛 VIBEVOICE_WRAPPER: generate_tts_audio called with character='{character}'")
-                        print(f"🐛 VIBEVOICE_WRAPPER: char_audio type: {type(char_audio)}")
-                        if isinstance(char_audio, dict):
-                            print(f"🐛 VIBEVOICE_WRAPPER: char_audio keys: {list(char_audio.keys())}")
-                        print(f"🐛 VIBEVOICE_WRAPPER: voice_mapping: {list(voice_mapping.keys())}")
+                        # print(f"🐛 VIBEVOICE_WRAPPER: generate_tts_audio called with character='{character}'")
+                        # print(f"🐛 VIBEVOICE_WRAPPER: char_audio type: {type(char_audio)}")
+                        # print(f"🐛 VIBEVOICE_WRAPPER: voice_mapping: {list(voice_mapping.keys())}")
                         
                         # Get seed from params
                         seed = params.get('seed', 42)
@@ -408,9 +406,7 @@ Back to the main narrator voice for the conclusion.""",
                     character_name = opt_narrator.get("character_name", "narrator")
                     
                     print(f"🎤 TTS Text: Using voice reference from Character Voices node ({character_name})")
-                    print(f"🐛 TTS_TEXT: Character Voices - character_name='{character_name}', has_audio={audio is not None}")
-                    if audio:
-                        print(f"🐛 TTS_TEXT: Audio keys: {list(audio.keys()) if isinstance(audio, dict) else 'not dict'}")
+                    # print(f"🐛 TTS_TEXT: Character Voices - character_name='{character_name}', has_audio={audio is not None}")
                     return audio_path, audio, reference_text, character_name
                 
                 # Check if it's a direct audio input (dict with waveform and sample_rate)
@@ -426,9 +422,9 @@ Back to the main narrator voice for the conclusion.""",
             
             # Priority 2: narrator_voice dropdown (fallback)
             elif narrator_voice != "none":
-                print(f"🐛 TTS_TEXT: Trying narrator_voice dropdown: {narrator_voice}")
+                # print(f"🐛 TTS_TEXT: Trying narrator_voice dropdown: {narrator_voice}")
                 audio_path, reference_text = load_voice_reference(narrator_voice)
-                print(f"🐛 TTS_TEXT: Dropdown - audio_path={audio_path}, exists={os.path.exists(audio_path) if audio_path else False}")
+                # print(f"🐛 TTS_TEXT: Dropdown - audio_path={audio_path}, exists={os.path.exists(audio_path) if audio_path else False}")
                 
                 if audio_path and os.path.exists(audio_path):
                     # Load audio tensor
@@ -441,11 +437,11 @@ Back to the main narrator voice for the conclusion.""",
                     character_name = os.path.splitext(os.path.basename(narrator_voice))[0]
                     
                     print(f"🎤 TTS Text: Using voice reference from folder ({character_name})")
-                    print(f"🐛 TTS_TEXT: Dropdown loaded - character_name='{character_name}', waveform_shape={waveform.shape}")
+                    # print(f"🐛 TTS_TEXT: Dropdown loaded - character_name='{character_name}', waveform_shape={waveform.shape}")
                     return audio_path, audio_tensor, reference_text or "", character_name
             
             print("⚠️ TTS Text: No voice reference provided - this may cause issues with some engines")
-            print(f"🐛 TTS_TEXT: Final fallback - opt_narrator={opt_narrator is not None}, narrator_voice='{narrator_voice}'")
+            # print(f"🐛 TTS_TEXT: Final fallback - opt_narrator={opt_narrator is not None}, narrator_voice='{narrator_voice}'")
             return None, None, "", "narrator"
             
         except Exception as e:

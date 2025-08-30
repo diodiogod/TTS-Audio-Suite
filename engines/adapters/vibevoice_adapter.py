@@ -259,12 +259,7 @@ class VibeVoiceEngineAdapter:
                 audio_component = "main_reference"
         
         # DEBUG: Print audio component to track cache invalidation
-        print(f"🐛 VibeVoice DEBUG: character='{character}', audio_component='{audio_component[:50]}...'")
-        if voice_ref:
-            print(f"🐛 VibeVoice DEBUG: voice_ref has keys: {list(voice_ref.keys()) if isinstance(voice_ref, dict) else 'not dict'}")
-        else:
-            print(f"🐛 VibeVoice DEBUG: voice_ref is None")
-        
+        # print(f"🐛 VibeVoice DEBUG: character='{character}', audio_component='{audio_component[:50]}...'")
         # Generate audio
         return self.vibevoice_engine.generate_speech(
             text=formatted_text,
@@ -358,10 +353,7 @@ class VibeVoiceEngineAdapter:
             # If no 'narrator' key, get it from any available voice (fallback for manual Speaker format)
             available_voices = [v for v in voice_mapping.values() if v is not None]
             main_narrator_voice = available_voices[0] if available_voices else None
-            print(f"🐛 Debug: No 'narrator' key, using fallback voice: {'✅ found' if main_narrator_voice else '❌ none available'}")
-        else:
-            print(f"🐛 Debug: Found 'narrator' key in voice_mapping: ✅")
-        
+            # print(f"🐛 Debug: No 'narrator' key, using fallback voice: {'✅ found' if main_narrator_voice else '❌ none available'}")
         speaker_inputs = {
             1: main_narrator_voice,  # Speaker 1 uses main narrator from TTS Text
             2: params.get('speaker2_voice'),
@@ -369,7 +361,7 @@ class VibeVoiceEngineAdapter:
             4: params.get('speaker4_voice')
         }
         
-        print(f"🐛 Debug: speaker_inputs[1] (main narrator): {'✅ has voice' if speaker_inputs[1] else '❌ no voice'}")
+        # print(f"🐛 Debug: speaker_inputs[1] (main narrator): {'✅ has voice' if speaker_inputs[1] else '❌ no voice'}")
         
         # Build speaker mapping and format text
         character_map = {}
