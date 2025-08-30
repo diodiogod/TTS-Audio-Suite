@@ -658,7 +658,8 @@ class HiggsAudioEngine:
                              text_length: int = 0,
                              original_text: str = "",
                              text_chunks: List[str] = None,
-                             return_info: bool = False) -> Dict[str, Any]:
+                             return_info: bool = False,
+                             sample_rate: int = None) -> Dict[str, Any]:
         """Combine multiple audio chunks using modular combination utility"""
         if len(audio_segments) == 1:
             return audio_segments[0]
