@@ -43,6 +43,10 @@ class VibeVoiceEngineAdapter:
         self.current_processor = None
         self.current_model_name = None
         
+        # Create permanent engine instance for generation logic
+        from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
+        self.vibevoice_engine = VibeVoiceEngine()
+        
         # Track character to speaker mapping for native multi-speaker mode
         self._character_speaker_map = {}
         self._speaker_voices = []
@@ -85,6 +89,11 @@ class VibeVoiceEngineAdapter:
             force_reload=False
         )
         self.current_model_name = model_name
+        
+        # Update engine instance with cached model/processor
+        self.vibevoice_engine.model = self.current_model
+        self.vibevoice_engine.processor = self.current_processor
+        self.vibevoice_engine.current_model_name = model_name
     
     def _parse_language_tags(self, text: str) -> Tuple[str, Optional[str]]:
         """
@@ -219,6 +228,10 @@ class VibeVoiceEngineAdapter:
         temperature = params.get('temperature', 0.95)
         top_p = params.get('top_p', 0.95)
         max_new_tokens = params.get('max_new_tokens')
+        
+        # Check if model and processor are loaded
+        if self.current_model is None or self.current_processor is None:
+            raise RuntimeError("VibeVoice model not loaded. Call load_base_model() first.")
         
         # Prepare voice samples
         voice_samples = self.vibevoice_engine._prepare_voice_samples([voice_ref])
@@ -432,6 +445,10 @@ class VibeVoiceEngineAdapter:
         print(f"🎤 Character mapping: {character_map}")
         print(f"🎤 Using {len(speaker_voices)} voice samples for generation")
         
+        # Check if model and processor are loaded
+        if self.current_model is None or self.current_processor is None:
+            raise RuntimeError("VibeVoice model not loaded. Call load_base_model() first.")
+        
         # Prepare voice samples
         voice_samples = self.vibevoice_engine._prepare_voice_samples(speaker_voices)
         
@@ -556,8 +573,7 @@ class VibeVoiceEngineAdapter:
         return None
     
     def cleanup(self):
-        """Clean up resources"""
-        if self.vibevoice_engine:
-            self.vibevoice_engine.cleanup()
+        """Clean up resources - models are now managed by ModelManager"""
         self._character_speaker_map.clear()
         self._speaker_voices.clear()
+        # Don't clean up vibevoice_engine - it just holds references to cached models
