@@ -397,17 +397,10 @@ Back to the main narrator voice for the conclusion.""",
     
     def _generate_stable_audio_component(self, reference_audio, audio_prompt_path: str) -> str:
         """Generate stable identifier for audio prompt to prevent cache invalidation from temp file paths."""
-        # Robust import for all environments including conda (fix for issue #12)
-        try:
-            from utils.audio.audio_hash import generate_stable_audio_component
-        except (ImportError, ModuleNotFoundError):
-            # Conda/environment-specific fix: ensure path and clear cache
-            import importlib
-            if project_root not in sys.path:
-                sys.path.insert(0, project_root)
-            # Force cache invalidation for conda environments
-            importlib.invalidate_caches()
-            from utils.audio.audio_hash import generate_stable_audio_component
+        # Use robust import system (fix for issue #12)
+        from utils.robust_import import robust_from_import
+        attrs = robust_from_import('utils.audio.audio_hash', ['generate_stable_audio_component'])
+        generate_stable_audio_component = attrs['generate_stable_audio_component']
         return generate_stable_audio_component(reference_audio, audio_prompt_path)
 
 

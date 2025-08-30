@@ -212,17 +212,10 @@ The audio will match these exact timings.""",
     
     def _get_stable_audio_component(self, voice_path, reference_audio=None):
         """Generate stable audio component identifier for cache consistency."""
-        # Robust import for all environments including conda (fix for issue #12)
-        try:
-            from utils.audio.audio_hash import generate_stable_audio_component
-        except (ImportError, ModuleNotFoundError):
-            # Conda/environment-specific fix: ensure path and clear cache
-            import importlib
-            if project_root not in sys.path:
-                sys.path.insert(0, project_root)
-            # Force cache invalidation for conda environments
-            importlib.invalidate_caches()
-            from utils.audio.audio_hash import generate_stable_audio_component
+        # Use robust import system (fix for issue #12)
+        from utils.robust_import import robust_from_import
+        attrs = robust_from_import('utils.audio.audio_hash', ['generate_stable_audio_component'])
+        generate_stable_audio_component = attrs['generate_stable_audio_component']
         return generate_stable_audio_component(reference_audio, voice_path)
 
     def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight):
@@ -662,17 +655,10 @@ The audio will match these exact timings.""",
             
             # Determine audio prompt component for cache key generation (stable identifier)
             # This must be done BEFORE handle_reference_audio to avoid using temporary file paths
-            # Robust import for all environments including conda (fix for issue #12)
-            try:
-                from utils.audio.audio_hash import generate_stable_audio_component
-            except (ImportError, ModuleNotFoundError):
-                # Conda/environment-specific fix: ensure path and clear cache
-                import importlib
-                if project_root not in sys.path:
-                    sys.path.insert(0, project_root)
-                # Force cache invalidation for conda environments
-                importlib.invalidate_caches()
-                from utils.audio.audio_hash import generate_stable_audio_component
+            # Use robust import system (fix for issue #12)
+            from utils.robust_import import robust_from_import
+            attrs = robust_from_import('utils.audio.audio_hash', ['generate_stable_audio_component'])
+            generate_stable_audio_component = attrs['generate_stable_audio_component']
             stable_audio_prompt_component = generate_stable_audio_component(reference_audio, audio_prompt_path)
             
             # Handle reference audio (this may create temporary files, but we don't use them in cache key)
