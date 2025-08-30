@@ -1033,11 +1033,11 @@ ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
 │   ├── model.safetensors.index.json
 │   ├── config.json
 │   └── preprocessor_config.json
-└── vibevoice-7B/                    ← Community preview model (9.3B params)
-    ├── model-00001-of-00004.safetensors (~2.5GB)
-    ├── model-00002-of-00004.safetensors (~2.5GB)
-    ├── model-00003-of-00004.safetensors (~2.5GB)
-    ├── model-00004-of-00004.safetensors (~2.5GB)
+└── vibevoice-7B/                    ← Community preview model (9.3B params, 18GB)
+    ├── model-00001-of-00010.safetensors (~1.9GB)
+    ├── model-00002-of-00010.safetensors (~1.9GB)
+    ├── ... (10 model files total)
+    ├── model-00010-of-00010.safetensors (~1.7GB)
     ├── model.safetensors.index.json
     ├── config.json
     └── preprocessor_config.json
@@ -1048,7 +1048,7 @@ ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
 | Model           | Description                              | Size    | Source                                              | Auto-Download |
 | --------------- | ---------------------------------------- | ------- | --------------------------------------------------- | ------------- |
 | vibevoice-1.5B  | Microsoft official (2.7B params, faster) | ~5.4GB  | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) | ✅ |
-| vibevoice-7B    | Community preview (9.3B params, quality) | ~9.3GB  | [WestZhang/VibeVoice-Large-pt](https://huggingface.co/WestZhang/VibeVoice-Large-pt) | ✅ |
+| vibevoice-7B    | Community preview (9.3B params, quality) | ~18GB   | [WestZhang/VibeVoice-Large-pt](https://huggingface.co/WestZhang/VibeVoice-Large-pt) | ✅ |
 
 **Key Features:**
 - **90-Minute Generation**: Both models support up to 90 minutes of continuous audio

@@ -18,8 +18,8 @@ if parent_dir not in sys.path:
 from utils.models.language_mapper import get_model_for_language
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.character_parser import CharacterParser
-from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
 from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
+from utils.models.manager import model_manager
 
 
 class VibeVoiceEngineAdapter:
@@ -34,9 +34,14 @@ class VibeVoiceEngineAdapter:
         """
         self.node = node_instance
         self.engine_type = "vibevoice"
-        self.vibevoice_engine = VibeVoiceEngine()
+        self.model_manager = model_manager
         self.character_parser = CharacterParser()
         self.pause_processor = PauseTagProcessor()
+        
+        # VibeVoice model and processor (loaded via ModelManager)
+        self.current_model = None
+        self.current_processor = None
+        self.current_model_name = None
         
         # Track character to speaker mapping for native multi-speaker mode
         self._character_speaker_map = {}
@@ -67,28 +72,19 @@ class VibeVoiceEngineAdapter:
     
     def load_base_model(self, model_name: str, device: str):
         """
-        Load base VibeVoice model.
+        Load base VibeVoice model through ModelManager.
         
         Args:
-            model_name: Model name to load
+            model_name: Model name to load ("vibevoice-1.5B" or "vibevoice-7B")
             device: Device to load model on
         """
-        # Check if model is already loaded
-        current_model = getattr(self.node, 'current_model_name', None)
-        
-        if current_model == model_name and self.vibevoice_engine.model is not None:
-            print(f"💾 VibeVoice adapter: Model '{model_name}' already loaded")
-            return
-        
-        # Initialize the VibeVoice engine
-        self.vibevoice_engine.initialize_engine(
-            model_name=model_name,
-            device=device
+        # Use ModelManager to load and cache VibeVoice models
+        self.current_model, self.current_processor = self.model_manager.load_vibevoice_model(
+            model_name=model_name, 
+            device=device, 
+            force_reload=False
         )
-        
-        # Store current model name on node
-        self.node.current_model_name = model_name
-        print(f"✅ VibeVoice adapter: Model '{model_name}' loaded on {device}")
+        self.current_model_name = model_name
     
     def _parse_language_tags(self, text: str) -> Tuple[str, Optional[str]]:
         """

@@ -170,9 +170,23 @@ python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 #### Changelog Description (--changelog)
 
 - **User perspective only**: Write for users upgrading from previous version
+- **Use layman terms**: Explain WHAT the feature does, not just technical names
 - **Don't document internal fixes**: Skip temporary issues introduced and fixed during development
 - **Focus on net result**: What changed for the user, not the development process
 - **Example**: If refactoring broke something then fixed it, only mention the refactoring benefit
+
+**User-Friendly Language Rules:**
+- ❌ "Add support for MelBandRoFormer models" 
+- ✅ "Add support for advanced audio separation models (vocal/instrumental isolation)"
+- ❌ "Fix VibeVoice parameter propagation to cached engine instances"
+- ✅ "Fix VibeVoice voice settings not applying correctly in some cases"
+- ❌ "Resolve ChatterboxVC loading with .safetensors format"
+- ✅ "Fix voice conversion failing to load newer model formats"
+
+**Always explain obscure terms:**
+- Model names → What they do (e.g., "audio separation", "voice conversion", "text-to-speech")
+- Technical errors → User impact (e.g., "crashes when...", "fails to generate audio")
+- Internal components → User-facing features (e.g., "character voice switching", "long audio generation")
 
 #### Key Principle
 

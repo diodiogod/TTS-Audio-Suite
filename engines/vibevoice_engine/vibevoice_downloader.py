@@ -38,13 +38,19 @@ VIBEVOICE_MODELS = {
     "vibevoice-7B": {
         "repo": "WestZhang/VibeVoice-Large-pt",
         "description": "VibeVoice 7B Preview - Microsoft-endorsed community model (actually 9.3B params)",
-        "size": "9.3GB",
+        "size": "18GB",
         "files": [
-            # Required model files
-            {"remote": "model-00001-of-00004.safetensors", "local": "model-00001-of-00004.safetensors"},
-            {"remote": "model-00002-of-00004.safetensors", "local": "model-00002-of-00004.safetensors"},
-            {"remote": "model-00003-of-00004.safetensors", "local": "model-00003-of-00004.safetensors"},
-            {"remote": "model-00004-of-00004.safetensors", "local": "model-00004-of-00004.safetensors"},
+            # Required model files (10 shards)
+            {"remote": "model-00001-of-00010.safetensors", "local": "model-00001-of-00010.safetensors"},
+            {"remote": "model-00002-of-00010.safetensors", "local": "model-00002-of-00010.safetensors"},
+            {"remote": "model-00003-of-00010.safetensors", "local": "model-00003-of-00010.safetensors"},
+            {"remote": "model-00004-of-00010.safetensors", "local": "model-00004-of-00010.safetensors"},
+            {"remote": "model-00005-of-00010.safetensors", "local": "model-00005-of-00010.safetensors"},
+            {"remote": "model-00006-of-00010.safetensors", "local": "model-00006-of-00010.safetensors"},
+            {"remote": "model-00007-of-00010.safetensors", "local": "model-00007-of-00010.safetensors"},
+            {"remote": "model-00008-of-00010.safetensors", "local": "model-00008-of-00010.safetensors"},
+            {"remote": "model-00009-of-00010.safetensors", "local": "model-00009-of-00010.safetensors"},
+            {"remote": "model-00010-of-00010.safetensors", "local": "model-00010-of-00010.safetensors"},
             {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
             {"remote": "config.json", "local": "config.json"},
             {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"}
@@ -114,8 +120,20 @@ class VibeVoiceDownloader:
         config_path = os.path.join(model_dir, "config.json")
         
         if os.path.exists(config_path):
-            print(f"📁 Using local VibeVoice model: {model_dir}")
-            return model_dir
+            # Verify all required model files exist
+            all_files_exist = True
+            for file_info in model_info["files"]:
+                file_path = os.path.join(model_dir, file_info["local"])
+                if not os.path.exists(file_path):
+                    print(f"⚠️ Missing local file: {file_info['local']}")
+                    all_files_exist = False
+                    break
+            
+            if all_files_exist:
+                print(f"📁 Using local VibeVoice model: {model_dir}")
+                return model_dir
+            else:
+                print(f"🔄 Local model incomplete, will re-download: {model_dir}")
         
         # 2. Check legacy VibeVoice-ComfyUI path
         legacy_vibevoice_dir = os.path.join(self.models_dir, "vibevoice")

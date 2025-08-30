@@ -59,7 +59,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "required": {
                 "model": (available_models, {
                     "default": "vibevoice-1.5B",
-                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params) - Better quality, 45-min generation\n\nBoth support multi-speaker and long-form generation."
+                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n\nBoth support multi-speaker and long-form generation."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",

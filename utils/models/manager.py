@@ -19,6 +19,18 @@ tts_success, ChatterboxTTS, tts_source = import_manager.import_chatterbox_tts()
 vc_success, ChatterboxVC, vc_source = import_manager.import_chatterbox_vc()
 f5tts_success, F5TTS, f5tts_source = import_manager.import_f5tts()
 
+# Try VibeVoice imports
+try:
+    from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
+    from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+    from engines.vibevoice_engine.vibevoice_downloader import VibeVoiceDownloader
+    VIBEVOICE_AVAILABLE = True
+except ImportError as e:
+    VibeVoiceForConditionalGenerationInference = None
+    VibeVoiceProcessor = None
+    VibeVoiceDownloader = None
+    VIBEVOICE_AVAILABLE = False
+
 # Set availability flags
 CHATTERBOX_TTS_AVAILABLE = tts_success
 CHATTERBOX_VC_AVAILABLE = vc_success
@@ -591,8 +603,90 @@ class ModelManager:
             "tts": CHATTERBOX_TTS_AVAILABLE,
             "vc": CHATTERBOX_VC_AVAILABLE,
             "bundled": USING_BUNDLED_CHATTERBOX,
-            "any": CHATTERBOX_TTS_AVAILABLE or CHATTERBOX_VC_AVAILABLE
+            "any": CHATTERBOX_TTS_AVAILABLE or CHATTERBOX_VC_AVAILABLE,
+            "vibevoice": VIBEVOICE_AVAILABLE
         }
+    
+    def load_vibevoice_model(self, model_name: str = "vibevoice-1.5B", device: str = "auto", force_reload: bool = False):
+        """
+        Load VibeVoice model with caching support.
+        
+        Args:
+            model_name: VibeVoice model name ("vibevoice-1.5B" or "vibevoice-7B")
+            device: Target device ('cuda', 'cpu', 'auto')
+            force_reload: Force reload even if cached
+            
+        Returns:
+            Tuple of (model, processor) for VibeVoice
+            
+        Raises:
+            ImportError: If VibeVoice is not available
+            RuntimeError: If model loading fails
+        """
+        if not VIBEVOICE_AVAILABLE:
+            raise ImportError("VibeVoice not available - check installation")
+        
+        # Resolve auto device
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        # Create cache key for VibeVoice models
+        cache_key = f"vibevoice_{model_name}_{device}"
+        
+        # Check cache first
+        if not force_reload and cache_key in self._model_cache:
+            cached_model, cached_processor = self._model_cache[cache_key]
+            print(f"💾 VibeVoice model '{model_name}' already loaded from cache")
+            return cached_model, cached_processor
+        
+        # Get model path (downloads if necessary)
+        downloader = VibeVoiceDownloader()
+        model_path = downloader.get_model_path(model_name)
+        if not model_path:
+            raise RuntimeError(f"Failed to get VibeVoice model '{model_name}'")
+        
+        print(f"🔄 Loading VibeVoice model '{model_name}' on {device}...")
+        
+        try:
+            # Load model and processor
+            model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                torch_dtype=torch.bfloat16,
+                device_map=device if device != "auto" else None
+            )
+            processor = VibeVoiceProcessor.from_pretrained(model_path)
+            
+            # Move to device if needed
+            if device == "cuda" and torch.cuda.is_available():
+                model = model.cuda()
+            
+            # Cache the model and processor
+            self._model_cache[cache_key] = (model, processor)
+            print(f"✅ VibeVoice model '{model_name}' loaded and cached successfully")
+            
+            return model, processor
+            
+        except Exception as e:
+            raise RuntimeError(f"VibeVoice model loading failed: {e}")
+    
+    def unload_vibevoice_models(self):
+        """Unload all VibeVoice models from cache."""
+        vibevoice_keys = [k for k in self._model_cache.keys() if k.startswith("vibevoice_")]
+        for key in vibevoice_keys:
+            if key in self._model_cache:
+                model, processor = self._model_cache[key]
+                del model
+                del processor
+                self._model_cache.pop(key, None)
+        
+        if vibevoice_keys:
+            print(f"🧹 Unloaded {len(vibevoice_keys)} VibeVoice models from cache")
+            # Force garbage collection
+            import gc
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
 
 # Global model manager instance
