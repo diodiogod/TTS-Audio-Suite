@@ -287,6 +287,45 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
                 
+            elif engine_type == "vibevoice":
+                # Import and create the VibeVoice SRT processor using absolute import
+                vibevoice_srt_processor_path = os.path.join(nodes_dir, "vibevoice", "vibevoice_srt_processor.py")
+                vibevoice_srt_spec = importlib.util.spec_from_file_location("vibevoice_srt_processor_module", vibevoice_srt_processor_path)
+                vibevoice_srt_module = importlib.util.module_from_spec(vibevoice_srt_spec)
+                vibevoice_srt_spec.loader.exec_module(vibevoice_srt_module)
+                
+                VibeVoiceSRTProcessor = vibevoice_srt_module.VibeVoiceSRTProcessor
+                
+                # Create a minimal wrapper node for the processor
+                class VibeVoiceSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = VibeVoiceSRTProcessor(self, config)
+                    
+                    def process_with_error_handling(self, func):
+                        """Error handling wrapper to match node interface"""
+                        try:
+                            return func()
+                        except Exception as e:
+                            raise e
+                    
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        """Format audio for ComfyUI output"""
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        if audio_tensor.dim() == 2:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        return {"waveform": audio_tensor, "sample_rate": sample_rate}
+                
+                engine_instance = VibeVoiceSRTWrapper(config)
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+                
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -502,6 +541,27 @@ Hello! This is unified SRT TTS with character switching.
                     min_stretch_ratio=min_stretch_ratio,
                     timing_tolerance=timing_tolerance,
                     enable_audio_cache=enable_audio_cache
+                )
+                
+            elif engine_type == "vibevoice":
+                # Use the VibeVoice SRT processor from the wrapper instance
+                voice_mapping = {"narrator": audio_tensor} if audio_tensor else {}
+                
+                # Prepare timing parameters
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+                
+                # Use the processor's main entry point
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params
                 )
                 
             else:

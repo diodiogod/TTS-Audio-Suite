@@ -47,8 +47,15 @@ class LanguageModelMapper:
                     return default_model  # Use engine's configured model
                 else:
                     return 'F5TTS_v1_Base'  # Use v1 for better quality as fallback
-            else:  # chatterbox
+            elif self.engine_type == 'chatterbox':
                 return 'English'
+            elif self.engine_type == 'vibevoice':
+                # VibeVoice uses same model for both EN/ZH, so use configured model
+                vibevoice_models = ['vibevoice-1.5B', 'vibevoice-7B']
+                if default_model in vibevoice_models:
+                    return default_model  # Use engine's configured model
+                else:
+                    return 'vibevoice-1.5B'  # Default fallback
         
         # Check if language is supported
         if lang_code in engine_mappings:
@@ -91,6 +98,13 @@ class LanguageModelMapper:
                 "no": "Norwegian",   # Norwegian
                 "nb": "Norwegian",   # Norwegian Bokmål
                 "nn": "Norwegian",   # Norwegian Nynorsk
+            },
+            "vibevoice": {
+                "en": "vibevoice-1.5B",  # This will be overridden by default_model
+                "zh": "vibevoice-1.5B",  # Chinese - same model supports both EN/ZH
+                "zh-cn": "vibevoice-1.5B",  # Simplified Chinese
+                "chinese": "vibevoice-1.5B",  # Alternative format
+                # VibeVoice models support both English and Chinese with the same model
             }
         }
     
@@ -125,6 +139,7 @@ class LanguageModelMapper:
 # Global instances for easy access
 f5tts_language_mapper = LanguageModelMapper("f5tts")
 chatterbox_language_mapper = LanguageModelMapper("chatterbox")
+vibevoice_language_mapper = LanguageModelMapper("vibevoice")
 
 
 def get_language_mapper(engine_type: str) -> LanguageModelMapper:
@@ -132,7 +147,7 @@ def get_language_mapper(engine_type: str) -> LanguageModelMapper:
     Get language mapper instance for specified engine.
     
     Args:
-        engine_type: "f5tts" or "chatterbox"
+        engine_type: "f5tts", "chatterbox", or "vibevoice"
         
     Returns:
         LanguageModelMapper instance
@@ -141,6 +156,8 @@ def get_language_mapper(engine_type: str) -> LanguageModelMapper:
         return f5tts_language_mapper
     elif engine_type == "chatterbox":
         return chatterbox_language_mapper
+    elif engine_type == "vibevoice":
+        return vibevoice_language_mapper
     else:
         raise ValueError(f"Unknown engine type: {engine_type}")
 
@@ -150,7 +167,7 @@ def get_model_for_language(engine_type: str, lang_code: str, default_model: str)
     Convenience function to get model for language.
     
     Args:
-        engine_type: "f5tts" or "chatterbox"
+        engine_type: "f5tts", "chatterbox", or "vibevoice"
         lang_code: Language code
         default_model: Default model for base language
         
