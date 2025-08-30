@@ -284,6 +284,7 @@ class VibeVoiceSRTProcessor:
         """
         params = self.config.copy()
         params['seed'] = seed
+        params['multi_speaker_mode'] = self.config.get('multi_speaker_mode', 'Custom Character Switching')
         
         audio_parts = []
         

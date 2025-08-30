@@ -296,7 +296,8 @@ class VibeVoiceEngine:
                        max_new_tokens: Optional[int] = None,
                        enable_cache: bool = True,
                        character: str = "narrator",
-                       stable_audio_component: str = "") -> Dict[str, Any]:
+                       stable_audio_component: str = "",
+                       multi_speaker_mode: str = "Custom Character Switching") -> Dict[str, Any]:
         """
         Generate speech from text using VibeVoice.
         
@@ -326,7 +327,7 @@ class VibeVoiceEngine:
             temperature_rounded = round(float(temperature), 3) if isinstance(temperature, (int, float)) else temperature
             top_p_rounded = round(float(top_p), 3) if isinstance(top_p, (int, float)) else top_p
             
-            print(f"🐛 VibeVoice ENGINE: Cache params - character='{character}', cfg_scale={cfg_scale_rounded}, use_sampling={use_sampling}")
+            print(f"🐛 VibeVoice ENGINE: Cache params - character='{character}', cfg_scale={cfg_scale_rounded}, use_sampling={use_sampling}, multi_speaker_mode='{multi_speaker_mode}'")
             print(f"🐛 VibeVoice ENGINE: Original vs rounded - cfg_scale: {cfg_scale} -> {cfg_scale_rounded}, temp: {temperature} -> {temperature_rounded}, top_p: {top_p} -> {top_p_rounded}")
             cache_fn = create_cache_function(
                 "vibevoice",
@@ -339,7 +340,8 @@ class VibeVoiceEngine:
                 model_source=self.current_model_name or "vibevoice-1.5B",
                 device=self.device,
                 max_new_tokens=max_new_tokens,
-                audio_component=stable_audio_component
+                audio_component=stable_audio_component,
+                multi_speaker_mode=multi_speaker_mode
             )
             
             # Try cache first

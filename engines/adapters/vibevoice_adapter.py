@@ -277,7 +277,8 @@ class VibeVoiceEngineAdapter:
             max_new_tokens=max_new_tokens,
             enable_cache=enable_cache,
             character=character,
-            stable_audio_component=audio_component
+            stable_audio_component=audio_component,
+            multi_speaker_mode=params.get('multi_speaker_mode', 'Custom Character Switching')
         )
     
     def process_character_segments(self, segments: List[Tuple[str, str]], 
@@ -417,7 +418,8 @@ class VibeVoiceEngineAdapter:
             max_new_tokens=params.get('max_new_tokens'),
             enable_cache=params.get('enable_cache', True),
             character="multi_speaker",
-            stable_audio_component=audio_component
+            stable_audio_component=audio_component,
+            multi_speaker_mode=params.get('multi_speaker_mode', 'Native Multi-Speaker')
         )
     
     def handle_pause_tags(self, text: str) -> Tuple[str, Optional[List]]:
