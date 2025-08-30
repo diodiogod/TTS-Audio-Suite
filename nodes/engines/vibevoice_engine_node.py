@@ -67,7 +67,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
                 }),
                 "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker"], {
                     "default": "Custom Character Switching",
-                    "tooltip": "Speaker generation mode:\n\n• Custom Character Switching: ⭐ RECOMMENDED - Use [Alice], [Bob] tags. Each character generated separately with voice files. Supports pause tags, per-character control.\n\n• Native Multi-Speaker: VibeVoice's native mode for up to 4 speakers. More efficient but requires Speaker 0/1/2/3 format. Single generation pass."
+                    "tooltip": "Speaker generation mode - SUPPORTS BOTH FORMATS!\n\n• Custom Character Switching: ⭐ RECOMMENDED - Use [Alice], [Bob] character tags. Each character generated separately with voice files from voices folder. Supports pause tags, per-character control, unlimited characters.\n\n• Native Multi-Speaker: ✅ TWO FORMAT OPTIONS:\n  1. [Alice], [Bob] tags → auto-converted to Speaker format\n  2. Manual 'Speaker 1: Hello\\nSpeaker 2: Hi there' format\n\nUp to 4 speakers. More efficient single-pass generation.\n\n🔧 PRIORITY: Connected speaker2_voice/3/4 inputs override character aliases with warnings!"
                 }),
                 "cfg_scale": ("FLOAT", {
                     "default": 1.3,

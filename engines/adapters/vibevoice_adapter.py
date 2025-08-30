@@ -340,6 +340,7 @@ class VibeVoiceEngineAdapter:
                                      params: Dict) -> Dict:
         """
         Generate using VibeVoice's native multi-speaker mode.
+        Supports both [Character] tags and manual "Speaker N:" format.
         
         Args:
             segments: List of (character, text) tuples
@@ -349,6 +350,27 @@ class VibeVoiceEngineAdapter:
         Returns:
             Combined audio dict
         """
+        # Get speaker voice inputs from engine config for priority system
+        # For manual Speaker format, the main narrator voice comes from the TTS Text node
+        # We need to get it from a different source since voice_mapping may not have 'narrator' key
+        main_narrator_voice = voice_mapping.get('narrator')  # Try narrator first
+        if main_narrator_voice is None:
+            # If no 'narrator' key, get it from any available voice (fallback for manual Speaker format)
+            available_voices = [v for v in voice_mapping.values() if v is not None]
+            main_narrator_voice = available_voices[0] if available_voices else None
+            print(f"🐛 Debug: No 'narrator' key, using fallback voice: {'✅ found' if main_narrator_voice else '❌ none available'}")
+        else:
+            print(f"🐛 Debug: Found 'narrator' key in voice_mapping: ✅")
+        
+        speaker_inputs = {
+            1: main_narrator_voice,  # Speaker 1 uses main narrator from TTS Text
+            2: params.get('speaker2_voice'),
+            3: params.get('speaker3_voice'), 
+            4: params.get('speaker4_voice')
+        }
+        
+        print(f"🐛 Debug: speaker_inputs[1] (main narrator): {'✅ has voice' if speaker_inputs[1] else '❌ no voice'}")
+        
         # Build speaker mapping and format text
         character_map = {}
         speaker_voices = []
@@ -356,24 +378,62 @@ class VibeVoiceEngineAdapter:
         
         print(f"🎭 Native multi-speaker: Processing {len(segments)} segments with characters: {[char for char, _ in segments]}")
         print(f"🎭 Available voice_mapping keys: {list(voice_mapping.keys())}")
+        print(f"🎤 Speaker inputs connected: {[f'Speaker {k}' for k, v in speaker_inputs.items() if v is not None]}")
         
         for character, text in segments:
-            if character not in character_map:
-                speaker_idx = len(character_map)
-                if speaker_idx >= 4:
-                    print(f"⚠️ VibeVoice: Limiting to 4 speakers, '{character}' will use Speaker 4")
-                    speaker_idx = 3  # Use 0-based internally, will convert to 1-based for format
-                else:
-                    character_map[character] = speaker_idx
-                    
-                # Always use character-specific voice from voice_mapping
-                voice = voice_mapping.get(character)
-                print(f"🎭 Character '{character}' -> Speaker {speaker_idx + 1}, voice: {'✅ found' if voice else '❌ missing'}")
-                speaker_voices.append(voice)
+            # Check if this is already a manual "Speaker N:" format
+            manual_speaker = self._detect_manual_speaker_format(character)
             
-            speaker_idx = character_map.get(character, 3)
-            # Use 1-based Speaker format as per VibeVoice spec (Speaker 1:, Speaker 2:, etc.)
-            formatted_lines.append(f"Speaker {speaker_idx + 1}: {text.strip()}")
+            if manual_speaker is not None:
+                # Manual "Speaker N:" format - use speaker input directly
+                speaker_idx = manual_speaker - 1  # Convert to 0-based
+                if speaker_idx >= 4:
+                    speaker_idx = 3
+                    
+                # Get the appropriate voice based on speaker number
+                voice = speaker_inputs.get(manual_speaker)
+                if manual_speaker == 1:
+                    print(f"🎤 Manual format 'Speaker {manual_speaker}' -> using {'✅ main narrator (Tony)' if voice else '❌ no narrator, using default'}")
+                else:
+                    print(f"🎤 Manual format 'Speaker {manual_speaker}' -> using {'✅ connected input' if voice else '❌ no input, using default'}")
+                
+                # Ensure we have enough speaker_voices slots
+                while len(speaker_voices) <= speaker_idx:
+                    speaker_voices.append(None)
+                speaker_voices[speaker_idx] = voice
+                
+                formatted_lines.append(f"Speaker {manual_speaker}: {text.strip()}")
+                
+            else:
+                # Character tag format - check priority system
+                if character not in character_map:
+                    speaker_idx = len(character_map)
+                    if speaker_idx >= 4:
+                        print(f"⚠️ VibeVoice: Limiting to 4 speakers, '{character}' will use Speaker 4")
+                        speaker_idx = 3  # Use 0-based internally, will convert to 1-based for format
+                    else:
+                        character_map[character] = speaker_idx
+                        
+                    # Priority system: speaker inputs override character aliases
+                    speaker_num = speaker_idx + 1
+                    connected_voice = speaker_inputs.get(speaker_num)
+                    character_voice = voice_mapping.get(character)
+                    
+                    if connected_voice is not None and character_voice is not None:
+                        print(f"⚠️ Priority: Speaker {speaker_num} input overrides ['{character}'] alias - using connected voice")
+                        voice = connected_voice
+                    elif connected_voice is not None:
+                        print(f"🎤 Speaker {speaker_num}: Using connected voice input")
+                        voice = connected_voice
+                    else:
+                        print(f"🎭 Character '{character}' -> Speaker {speaker_num}, using character voice")
+                        voice = character_voice
+                        
+                    speaker_voices.append(voice)
+                
+                speaker_idx = character_map.get(character, 3)
+                # Use 1-based Speaker format as per VibeVoice spec (Speaker 1:, Speaker 2:, etc.)
+                formatted_lines.append(f"Speaker {speaker_idx + 1}: {text.strip()}")
         
         # Join with newlines for multi-speaker format
         formatted_text = "\n".join(formatted_lines)
@@ -487,6 +547,25 @@ class VibeVoiceEngineAdapter:
         )
         
         return combined_audio
+    
+    def _detect_manual_speaker_format(self, character: str) -> Optional[int]:
+        """
+        Detect if character is already in manual "Speaker N:" format.
+        
+        Args:
+            character: Character name to check
+            
+        Returns:
+            Speaker number (1-4) if manual format, None otherwise
+        """
+        import re
+        # Match "Speaker N" (case insensitive, with optional trailing colon/whitespace)
+        match = re.match(r'^speaker\s*(\d+)\s*:?\s*$', character.strip(), re.IGNORECASE)
+        if match:
+            speaker_num = int(match.group(1))
+            if 1 <= speaker_num <= 4:
+                return speaker_num
+        return None
     
     def cleanup(self):
         """Clean up resources"""

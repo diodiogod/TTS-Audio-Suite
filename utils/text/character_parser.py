@@ -531,6 +531,22 @@ class CharacterParser:
         # IMPORTANT: Each line starts fresh with narrator as default
         # If the line doesn't start with a character tag, everything is narrator
         
+        # Check for manual "Speaker N:" format before processing character tags
+        speaker_match = self._parse_speaker_format_line(line)
+        if speaker_match:
+            speaker_name, speaker_text = speaker_match
+            if speaker_text.strip():
+                segments.append(CharacterSegment(
+                    character=speaker_name,  # Use "speaker 1", "speaker 2", etc.
+                    text=speaker_text.strip(),
+                    start_pos=line_start_pos,
+                    end_pos=line_start_pos + len(line),
+                    language=self.resolve_character_language(speaker_name),
+                    original_character=speaker_name,
+                    explicit_language=False
+                ))
+            return segments
+        
         # Quick check: if line doesn't contain any character tags, it's all narrator
         if not self.CHARACTER_TAG_PATTERN.search(line):
             if line.strip():
@@ -605,6 +621,27 @@ class CharacterParser:
             ))
         
         return segments
+    
+    def _parse_speaker_format_line(self, line: str) -> Optional[Tuple[str, str]]:
+        """
+        Parse a line for manual "Speaker N:" format.
+        
+        Args:
+            line: Single line to check
+            
+        Returns:
+            Tuple of (speaker_name, text) if found, None otherwise
+        """
+        import re
+        # Match "Speaker N: text" (case insensitive)
+        match = re.match(r'^(speaker\s*\d+)\s*:\s*(.*)$', line.strip(), re.IGNORECASE)
+        if match:
+            speaker_name = match.group(1).lower().strip()  # Normalize to "speaker 1", "speaker 2", etc.
+            speaker_text = match.group(2)
+            # Normalize speaker name format
+            speaker_name = re.sub(r'\s+', ' ', speaker_name)  # "speaker  1" -> "speaker 1"
+            return speaker_name, speaker_text
+        return None
     
     def parse_character_mapping(self, text: str) -> Dict[str, List[str]]:
         """
