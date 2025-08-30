@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.6.8
+# TTS Audio Suite v4.6.9
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -40,12 +40,12 @@ Switching              Tags                   Switching
 │                                                  
 │         ⚙️ TTS Audio Suite Era                                                  
 ▼         |                                   
-v4.0 ──────────► v4.3 ──────────► v4.4 ──────────► v4.5
-Aug 25           Aug 25           Aug 25           Aug 25
-│                │                │                │
-⚠️BREAKING        RVC +            Silent           Higgs Audio 2
-Project          Voice            Speech           3rd Engine
-Renamed          Conversion       Analyzer         Voice Cloning
+v4.0 ──────────► v4.3 ──────────► v4.4 ──────────► v4.5 ──────────► v4.6
+Aug 25           Aug 25           Aug 25           Aug 25           Aug 25
+│                │                │                │                │
+⚠️BREAKING        RVC +            Silent           Higgs Audio 2    VibeVoice
+Project          Voice            Speech           3rd Engine       4th Engine
+Renamed          Conversion       Analyzer         Voice Cloning    90min Generation
 TTS Audio Suite  + Streaming
 ```
 
@@ -66,6 +66,7 @@ TTS Audio Suite  + Streaming
   - [🌍 Multi-language ChatterBox Support](#-multi-language-chatterbox-support)
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
+  - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -127,8 +128,9 @@ TTS Audio Suite  + Streaming
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, F5-TTS, and Higgs Audio 2 with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, F5-TTS, Higgs Audio 2, and VibeVoice with voice cloning, reference audio synthesis, and production-grade quality
 - 🎙️ **Higgs Audio 2 Voice Cloning** - State-of-the-art voice cloning with 30+ second reference audio and multi-speaker conversation support
+- 🎵 **VibeVoice Long-Form Generation** - Microsoft VibeVoice engine for 90-minute long-form audio with dual multi-speaker modes and native character switching
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
@@ -246,6 +248,44 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 - Audiobook narration with consistent voice characteristics
 - Multi-speaker content with distinct voice personalities
 - Professional voice replication for content creation
+
+</details>
+
+<details>
+<summary><h3>🎵 VibeVoice Long-Form Generation</h3></summary>
+
+**NEW in v4.6.0**: Microsoft VibeVoice engine for unprecedented long-form audio generation!
+
+* **90-Minute Generation Capability**: Generate up to 90 minutes of continuous audio in a single session
+* **Dual Multi-Speaker Modes**: Choose between Custom Character Switching and Native Multi-Speaker for different workflow needs
+* **Microsoft Quality**: Official Microsoft VibeVoice models (1.5B and 7B parameter variants) with production-grade output
+* **Advanced Parameter Control**: CFG scale, sampling modes, temperature, and token limits for fine-tuned generation
+
+**Key Capabilities:**
+- **Long-Form Audio**: Break through traditional TTS length limitations with 90-minute generation
+- **Custom Character Switching**: Use `[Alice]`, `[Bob]` character tags with voice files from the voices folder - supports unlimited characters with pause tags and per-character control
+- **Native Multi-Speaker**: Efficient single-pass generation supporting both `[Character]` tag auto-conversion and manual "Speaker 1: Hello" format for up to 4 speakers  
+- **Voice File Integration**: Seamless compatibility with existing voice folder structure and Character Voices node
+- **Smart Chunking**: Automatic text chunking with configurable time-based limits for memory efficiency
+- **Priority System**: Connected speaker2/3/4_voice inputs override character aliases with intelligent warnings
+
+**Technical Features:**
+- **Dual Model Support**: Microsoft vibevoice-1.5B (2.7B params, faster) and community vibevoice-7B (9.3B params, higher quality)
+- **Intelligent Caching**: Advanced caching system with mode-aware invalidation for instant regeneration
+- **Memory Optimization**: Configurable chunking system balances quality with memory usage
+- **Unified Architecture**: Seamless integration with existing TTS Text and TTS SRT nodes
+
+**Quick Start:**
+1. Add `⚙️ VibeVoice Engine` node to configure model and multi-speaker mode  
+2. Connect to `TTS Text` or `TTS SRT` node for generation
+3. Choose between Custom Character Switching (recommended) or Native Multi-Speaker mode
+4. Generate long-form content with automatic voice cloning from your voices folder
+
+**Perfect for:**
+- Long-form audiobooks and narration with consistent voice quality
+- Multi-character dialogue and conversations with distinct speaker voices  
+- Extended podcast-style content with natural speech patterns
+- Educational content requiring extended generation without quality degradation
 
 </details>
 
@@ -975,7 +1015,45 @@ To pre-download models for offline use:
 
 **Usage**: Simply use the ⚙️ Higgs Audio 2 Engine node → Select model → All required files download automatically!
 
-### 8. RVC Models (Optional - NEW in v4.0.0+)
+### 8. VibeVoice Models (NEW in v4.6.0+)
+
+**For Microsoft VibeVoice Long-Form TTS**, models are automatically downloaded to:
+
+```
+ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
+├── vibevoice-1.5B/                  ← Microsoft official model (2.7B params)
+│   ├── model-00001-of-00003.safetensors (~2GB)
+│   ├── model-00002-of-00003.safetensors (~2GB)
+│   ├── model-00003-of-00003.safetensors (~2GB)
+│   ├── model.safetensors.index.json
+│   ├── config.json
+│   └── preprocessor_config.json
+└── vibevoice-7B/                    ← Community preview model (9.3B params)
+    ├── model-00001-of-00004.safetensors (~2.5GB)
+    ├── model-00002-of-00004.safetensors (~2.5GB)
+    ├── model-00003-of-00004.safetensors (~2.5GB)
+    ├── model-00004-of-00004.safetensors (~2.5GB)
+    ├── model.safetensors.index.json
+    ├── config.json
+    └── preprocessor_config.json
+```
+
+**Available VibeVoice Models (Auto-Download):**
+
+| Model           | Description                              | Size    | Source                                              | Auto-Download |
+| --------------- | ---------------------------------------- | ------- | --------------------------------------------------- | ------------- |
+| vibevoice-1.5B  | Microsoft official (2.7B params, faster) | ~5.4GB  | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) | ✅ |
+| vibevoice-7B    | Community preview (9.3B params, quality) | ~9.3GB  | [WestZhang/VibeVoice-Large-pt](https://huggingface.co/WestZhang/VibeVoice-Large-pt) | ✅ |
+
+**Key Features:**
+- **90-Minute Generation**: Both models support up to 90 minutes of continuous audio
+- **Multi-Speaker Support**: Native dual-mode multi-speaker generation
+- **Voice Cloning**: Works with existing voices folder structure for character switching
+- **Automatic Management**: Models download automatically on first use
+
+**Usage**: Simply use the ⚙️ VibeVoice Engine node → Select model → Connect to TTS Text/SRT → All files download automatically!
+
+### 9. RVC Models (Optional - NEW in v4.0.0+)
 
 **For Real-time Voice Conversion capabilities**, RVC models are automatically downloaded to the organized structure:
 
@@ -1032,7 +1110,7 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 
 **Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
 
-### 8. Restart ComfyUI
+### 10. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
