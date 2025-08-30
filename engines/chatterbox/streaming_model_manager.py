@@ -116,6 +116,16 @@ class StreamingModelManager:
             return stateless_wrapper
         return None
     
+    def load_vc_model(self, device: str = "auto", force_reload: bool = False, language: str = "English"):
+        """
+        Voice Conversion not supported in StreamingModelManager.
+        This method exists to prevent signature errors when VC nodes try to call it.
+        """
+        raise NotImplementedError(
+            "Voice Conversion is not supported with StreamingModelManager. "
+            "StreamingModelManager is for TTS only. VC requires the main ModelManager from utils.models.manager."
+        )
+    
     def cleanup(self):
         """Clean up pre-loaded models to free memory."""
         print(f"🧹 Cleaning up {len(self.preloaded_models)} pre-loaded models")
