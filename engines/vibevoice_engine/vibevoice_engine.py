@@ -229,8 +229,8 @@ class VibeVoiceEngine:
                     # Load audio file from path (like TTS Text does)
                     audio_path = voice_ref["audio_path"]
                     try:
-                        import librosa
-                        audio_np, input_sample_rate = librosa.load(audio_path, sr=None)
+                        from utils.audio.librosa_fallback import safe_load
+                        audio_np, input_sample_rate = safe_load(audio_path, sr=None, mono=True)
                         print(f"🎵 VibeVoice ENGINE: Loaded audio from {audio_path} - shape: {audio_np.shape}, sr: {input_sample_rate}")
                     except Exception as e:
                         print(f"⚠️ VibeVoice ENGINE: Failed to load audio from {audio_path}: {e}")
@@ -258,8 +258,8 @@ class VibeVoiceEngine:
                     
                     # Resample if needed
                     if input_sample_rate != 24000:
-                        import librosa
-                        audio_np = librosa.resample(audio_np, orig_sr=input_sample_rate, target_sr=24000)
+                        from utils.audio.librosa_fallback import safe_resample
+                        audio_np = safe_resample(audio_np, orig_sr=input_sample_rate, target_sr=24000)
                     
                     # Normalize using dB FS (matches official VibeVoice)
                     target_dB_FS = -25
