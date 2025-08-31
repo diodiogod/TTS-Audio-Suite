@@ -123,7 +123,7 @@ class VibeVoiceProcessor:
         for character, text in segments:
             # Apply chunking if enabled and text is long
             if enable_chunking and len(text) > max_chars:
-                chunks = self.chunker.chunk_text(text, max_chars)
+                chunks = self.chunker.split_into_chunks(text, max_chars)
                 print(f"📝 Chunking {character}'s text into {len(chunks)} chunks")
                 
                 for chunk in chunks:
