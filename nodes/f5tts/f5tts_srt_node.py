@@ -467,15 +467,24 @@ Hello! This is F5-TTS SRT with character switching.
                         continue
                 
                 # Load model for this language group (only if we have non-cached segments)
+                # Smart model selection:
+                # - If the language is from a character's language mapping (not 'en'), use language-appropriate model
+                # - Otherwise, use the user's explicitly chosen model
                 from utils.models.language_mapper import get_model_for_language
-                required_model = get_model_for_language("f5tts", lang_code, model)
+                if lang_code != 'en':
+                    # This is likely a character with language mapping (e.g., Alice -> German)
+                    # Use the appropriate language model
+                    required_model = get_model_for_language("f5tts", lang_code, model)
+                else:
+                    # Default/unmapped character - use user's chosen model
+                    required_model = model
                 
                 current_model = getattr(self, 'current_model_name', None)
                 if current_model != required_model:
-                    print(f"🎯 SRT: Loading {required_model} model for {len(lang_segments)} segment(s) in '{lang_code}' language group")
+                    print(f"🎯 SRT: Loading {required_model} model for {len(lang_segments)} segment(s)")
                     self.load_f5tts_model(required_model, device)
                 else:
-                    print(f"✅ SRT: Using {required_model} model for {len(lang_segments)} segment(s) in '{lang_code}' (already loaded)")
+                    print(f"✅ SRT: Using {required_model} model for {len(lang_segments)} segment(s) (already loaded)")
                 
                 # Process each character segment in this language group
                 for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:

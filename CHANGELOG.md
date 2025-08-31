@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.19] - 2025-08-31
+
+### Added
+
+- Untagged text now correctly uses the engine's selected model
+
+### Changed
+
+- Only tagged characters or alias-mapped characters change models
+
+### Fixed
+
+- Fix F5-TTS not using selected model and language issues
+- Fix F5-TTS generation failing due to variable scope error
+- Fix F5-TTS SRT ignoring user's model selection (e.g., Hindi model)
 ## [4.6.18] - 2025-08-31
 
 ### Added

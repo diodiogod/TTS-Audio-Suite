@@ -309,14 +309,14 @@ Back to the main narrator voice for the conclusion.""",
                        cross_fade_duration=0.15, nfe_step=32, cfg_strength=2.0, 
                        enable_audio_cache=True):
         
+        # Normalize model name for backward compatibility (case-insensitive matching)
+        # Convert V1, V2, etc. to v1, v2 for consistency
+        import re
+        model = re.sub(r'_V(\d+)_', r'_v\1_', model)
+        
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
             from utils.text.pause_processor import PauseTagProcessor
-            
-            # Normalize model name for backward compatibility (case-insensitive matching)
-            # Convert V1, V2, etc. to v1, v2 for consistency
-            import re
-            model = re.sub(r'_V(\d+)_', r'_v\1_', model)
             
             # Validate inputs
             inputs = self.validate_inputs(
