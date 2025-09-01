@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.6.23
+# TTS Audio Suite v4.6.24
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -1052,7 +1052,7 @@ ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
 | Model          | Description                              | Size   | Source                                                                              | Auto-Download |
 | -------------- | ---------------------------------------- | ------ | ----------------------------------------------------------------------------------- | ------------- |
 | vibevoice-1.5B | Microsoft official (2.7B params, faster) | ~5.4GB | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B)         | ✅             |
-| vibevoice-7B   | Community preview (9.3B params, quality) | ~18GB  | [WestZhang/VibeVoice-Large-pt](https://huggingface.co/WestZhang/VibeVoice-Large-pt) | ✅             |
+| vibevoice-7B   | Official Microsoft model (9.3B params, quality) | ~18GB  | [microsoft/VibeVoice-Large](https://huggingface.co/microsoft/VibeVoice-Large) | ✅             |
 
 **Key Features:**
 

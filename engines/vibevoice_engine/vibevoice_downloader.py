@@ -36,8 +36,8 @@ VIBEVOICE_MODELS = {
         ]
     },
     "vibevoice-7B": {
-        "repo": "WestZhang/VibeVoice-Large-pt",
-        "description": "VibeVoice 7B Preview - Microsoft-endorsed community model (actually 9.3B params)",
+        "repo": "microsoft/VibeVoice-Large",
+        "description": "Microsoft VibeVoice Large - Official 7B model (actually 9.3B params)",
         "size": "18GB",
         "files": [
             # Required model files (10 shards)

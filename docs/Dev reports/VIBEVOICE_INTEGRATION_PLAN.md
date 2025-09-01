@@ -30,7 +30,7 @@ VIBEVOICE_MODELS = {
         "files": [...],  # 5.4GB total
     },
     "vibevoice-7B": {
-        "repo": "WestZhang/VibeVoice-Large-pt",
+        "repo": "microsoft/VibeVoice-Large",
         "files": [...],  # 9.3GB total
     }
 }
