@@ -31,7 +31,12 @@ from engines.adapters.rvc_adapter import RVCEngineAdapter
 
 class RVCEngineNode(BaseTTSNode):
     """
-    RVC Engine configuration node.
+    RVC Engine configuration node - VOICE CONVERSION ONLY.
+    
+    ⚠️ IMPORTANT: RVC is for voice conversion only - it converts existing audio to a different voice.
+    This engine CANNOT generate speech from text and will NOT work with TTS Text or TTS SRT nodes.
+    Use only with the Voice Changer node to convert audio files or microphone recordings.
+    
     Consolidates RVC model loading, Hubert model loading, and core voice conversion parameters
     into single user-friendly interface following TTS Suite patterns.
     """
@@ -142,6 +147,9 @@ Models will auto-download if not present. Choose language-specific models for be
     
     DESCRIPTION = """
     RVC Engine - Real-time Voice Conversion
+    
+    ⚠️ Voice conversion only - does NOT generate speech from text.
+    Will not work with TTS Text or TTS SRT nodes. Use with Voice Changer node only.
     
     Consolidates RVC model loading and voice conversion parameters into unified interface.
     Supports pitch shifting, advanced quality controls, and multiple pitch extraction algorithms.
