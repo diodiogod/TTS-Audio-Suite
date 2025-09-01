@@ -489,7 +489,15 @@ Back to the main narrator voice for the conclusion.""",
             
             # Get language for consistent logging
             language = config.get("language", "English")
-            lang_code = language.lower()[:2]  # en, fr, de, etc.
+            
+            # Determine language code for display
+            if language.startswith("local:"):
+                # For local models, show "local" as the language code
+                lang_code = "local"
+            else:
+                # Standard language codes - take first 2 chars
+                lang_code = language.lower()[:2]  # en, fr, de, etc.
+            
             char_display = character_name if character_name else "default"
             
             print(f"🎤 Generating {engine_type.title()} for '{char_display}' (lang: {lang_code})")

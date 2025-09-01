@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.22] - 2025-09-01
+
+### Changed
+
+- Improve clarity when using custom downloaded language models
+- Better support for unidentified local language models
+
+### Fixed
+
+- Fix local F5-TTS model language display issue
+- Fix confusing language code display for local F5-TTS models
 ## [4.6.21] - 2025-09-01
 
 ### Added
