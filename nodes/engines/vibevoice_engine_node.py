@@ -45,8 +45,13 @@ class VibeVoiceEngineNode(BaseTTSNode):
     
     @classmethod
     def INPUT_TYPES(cls):
-        # Import VibeVoice models for dropdown
+        # Check VibeVoice availability first
         try:
+            from engines.vibevoice_engine import VIBEVOICE_AVAILABLE
+            if not VIBEVOICE_AVAILABLE:
+                raise ImportError("VibeVoice package not available")
+            
+            # Import VibeVoice models for dropdown
             from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
             from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
             
