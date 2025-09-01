@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.21] - 2025-09-01
+
+### Added
+
+- Add clear warnings that RVC is for voice conversion only (not text-to-speech)
+
+### Changed
+
+- Improve RVC voice conversion clarity and connections
+
+### Fixed
+
+- Fix RVC Engine connection suggestions in ComfyUI interface
+- Improve node connection compatibility between RVC and Voice Changer
 ## [4.6.20] - 2025-09-01
 
 ### Changed
