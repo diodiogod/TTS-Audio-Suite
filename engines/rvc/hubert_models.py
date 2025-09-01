@@ -27,6 +27,7 @@ HUBERT_MODELS = {
 • Size: 378MB
 • Most reliable choice for RVC""",
         "url": "https://huggingface.co/SayanoAI/RVC-models/resolve/main/content-vec-best.safetensors",
+        "fallback_url": "https://huggingface.co/lengyue233/content-vec-best/resolve/main/pytorch_model.bin",
         "size": "378MB",
         "filename": "content-vec-best.safetensors"
     },

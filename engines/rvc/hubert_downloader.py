@@ -32,6 +32,7 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
     
     filename = get_hubert_filename(model_key)
     url = get_hubert_download_url(model_key)
+    fallback_url = info.get('fallback_url')  # Get fallback URL if available
     
     if not filename or not url:
         print(f"❌ No download information for {model_key}")
@@ -60,27 +61,99 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
             print(f"✅ HuBERT model found in legacy location: {legacy_path}")
             return legacy_path
     
+    # Check if we have a .bin version that needs conversion to .safetensors
+    if filename.endswith('.safetensors'):
+        bin_filename = filename.replace('.safetensors', '.bin')
+        bin_paths = [
+            os.path.join(hubert_dir, bin_filename),
+            os.path.join(models_dir, "hubert", bin_filename),
+            os.path.join(models_dir, bin_filename)
+        ]
+        
+        for bin_path in bin_paths:
+            if os.path.exists(bin_path):
+                print(f"📦 Found .bin model, converting to .safetensors format...")
+                if _convert_bin_to_safetensors(bin_path, model_path):
+                    print(f"✅ Successfully converted {bin_filename} to {filename}")
+                    return model_path
+                else:
+                    print(f"⚠️ Conversion failed, will download .safetensors version")
+                    break
+    
     # Check HuggingFace cache for the specific model
     cache_path = _find_hubert_in_cache(model_key)
     if cache_path:
         print(f"💾 Using HuggingFace cache for HuBERT model '{model_key}': {cache_path}")
         return cache_path
     
-    # Download the model
+    # Download the model - try primary URL first, then fallback if needed
     print(f"📥 Downloading HuBERT model: {info['description']}")
+    
+    # Try primary URL first
+    download_result = _try_download(url, model_path, filename, info.get('size', 'Unknown'), progress_callback)
+    
+    if download_result:
+        return download_result
+    
+    # If primary failed and we have a fallback URL, try it
+    if fallback_url:
+        print(f"⚠️ Primary download failed, trying fallback source...")
+        print(f"   Fallback URL: {fallback_url}")
+        
+        # For .bin files, we'll need to convert to .safetensors
+        needs_conversion = fallback_url.endswith('.bin') and filename.endswith('.safetensors')
+        temp_filename = filename.replace('.safetensors', '.bin') if needs_conversion else filename
+        temp_path = os.path.join(hubert_dir, temp_filename)
+        
+        download_result = _try_download(fallback_url, temp_path, temp_filename, info.get('size', 'Unknown'), progress_callback)
+        
+        if download_result and needs_conversion:
+            # Convert .bin to .safetensors
+            print(f"🔄 Converting {temp_filename} to {filename}...")
+            if _convert_bin_to_safetensors(temp_path, model_path):
+                # Remove the .bin file after successful conversion
+                os.remove(temp_path)
+                print(f"✅ Successfully converted to: {filename}")
+                return model_path
+            else:
+                print(f"❌ Failed to convert {temp_filename} to safetensors format")
+                # Clean up the downloaded .bin file
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                return None
+        
+        return download_result
+    
+    print(f"❌ Failed to download {filename} from all sources")
+    return None
+
+def _try_download(url: str, file_path: str, filename: str, size: str, progress_callback=None) -> Optional[str]:
+    """
+    Try to download a file from a URL.
+    
+    Args:
+        url: URL to download from
+        file_path: Path to save the file
+        filename: Display name for progress bar
+        size: File size for display
+        progress_callback: Optional progress callback
+        
+    Returns:
+        Path to downloaded file if successful, None otherwise
+    """
     print(f"   URL: {url}")
-    print(f"   Size: {info.get('size', 'Unknown')}")
+    print(f"   Size: {size}")
     
     temp_path = None
     try:
         # Download with progress bar
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=30)
         response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
         
         # Use temporary file during download
-        temp_path = model_path + ".downloading"
+        temp_path = file_path + ".downloading"
         
         with open(temp_path, 'wb') as f:
             with tqdm(total=total_size, unit='B', unit_scale=True, desc=filename) as pbar:
@@ -92,11 +165,11 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
                             progress_callback(pbar.n, total_size)
         
         # Move temp file to final location
-        os.rename(temp_path, model_path)
+        os.rename(temp_path, file_path)
         
         print(f"✅ Successfully downloaded: {filename}")
-        print(f"📁 Downloaded to: {model_path}")
-        return model_path
+        print(f"📁 Downloaded to: {file_path}")
+        return file_path
         
     except requests.RequestException as e:
         print(f"❌ Failed to download {filename}: {e}")
@@ -109,6 +182,38 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
         return None
+
+def _convert_bin_to_safetensors(bin_path: str, safetensors_path: str) -> bool:
+    """
+    Convert a .bin PyTorch model to .safetensors format.
+    
+    Args:
+        bin_path: Path to the .bin file
+        safetensors_path: Path to save the .safetensors file
+        
+    Returns:
+        True if conversion successful, False otherwise
+    """
+    try:
+        import torch
+        from safetensors.torch import save_file
+        
+        # Load the .bin file
+        print(f"📂 Loading {os.path.basename(bin_path)}...")
+        state_dict = torch.load(bin_path, map_location="cpu")
+        
+        # Save as .safetensors
+        print(f"💾 Saving as {os.path.basename(safetensors_path)}...")
+        save_file(state_dict, safetensors_path)
+        
+        return True
+    except ImportError as e:
+        print(f"❌ Missing required library for conversion: {e}")
+        print("   Please install: pip install safetensors")
+        return False
+    except Exception as e:
+        print(f"❌ Failed to convert model: {e}")
+        return False
 
 def _find_hubert_in_cache(model_key: str) -> Optional[str]:
     """
