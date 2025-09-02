@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.25] - 2025-09-01
+
+### Added
+
+- Add 4-bit quantization option for VRAM savings (helpful when VRAM is limited)
+- Add inference steps control for quality vs speed adjustment
+
+### Changed
+
+- Enhance VibeVoice engine with advanced parameters and fixes
+- Add attention mode selection for performance optimization
+- Realistic performance expectations in parameter descriptions
+
+### Fixed
+
+- Fix compatibility issues with newer Transformers library versions
+- Better device handling and error messages for quantization
 ## [4.6.24] - 2025-09-01
 
 ### Added

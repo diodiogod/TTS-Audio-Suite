@@ -98,7 +98,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
                 }),
                 "quantize_llm_4bit": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "🗜️ 4-bit LLM quantization (requires bitsandbytes):\n• False: Full precision (better quality, more VRAM)\n• True: 4-bit quantization (significant VRAM savings)\n\n💾 VRAM Impact:\n• 7B model: 12GB → 7.6GB (88.5% speed boost)\n• 1.5B model: 8.7GB → 3.2GB (slight speed reduction)\n\nOnly quantizes LLM component, diffusion stays full precision."
+                    "tooltip": "🗜️ 4-bit LLM quantization (requires bitsandbytes):\n• False: Full precision (better quality, faster with sufficient VRAM)\n• True: 4-bit quantization (significant VRAM savings)\n\n💾 VRAM Trade-offs:\n• 7B model: 12GB → 7.6GB VRAM savings\n• 1.5B model: 8.7GB → 3.2GB VRAM savings\n• ⚡ Speed: Faster if model doesn't fit in VRAM, slower if it does\n• 🎯 Recommended: Only enable if you need VRAM savings\n\nOnly quantizes LLM component, diffusion stays full precision."
                 }),
                 "temperature": ("FLOAT", {
                     "default": 0.95,
