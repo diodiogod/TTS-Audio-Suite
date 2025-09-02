@@ -157,8 +157,17 @@ class VibeVoiceEngine:
             model_kwargs = {
                 "trust_remote_code": True,
                 "torch_dtype": torch.bfloat16 if quant_config else torch.bfloat16,
-                "device_map": "auto" if quant_config else (device if device != "auto" else None)
             }
+            
+            # Set device_map based on quantization and device
+            if quant_config:
+                # For quantization, use explicit device mapping to avoid buffer issues
+                if device == "cuda" or device == "auto":
+                    model_kwargs["device_map"] = {"": 0}  # Put everything on GPU 0
+                else:
+                    model_kwargs["device_map"] = {"": "cpu"}
+            else:
+                model_kwargs["device_map"] = device if device != "auto" else None
             
             # Add attention implementation if not auto
             if final_attention_mode != "auto":
