@@ -437,7 +437,11 @@ class VibeVoiceEngine:
                 device=self.device,
                 max_new_tokens=max_new_tokens,
                 audio_component=stable_audio_component,
-                multi_speaker_mode=multi_speaker_mode
+                multi_speaker_mode=multi_speaker_mode,
+                # New parameters that should invalidate cache
+                attention_mode=getattr(self, '_attention_mode', 'auto'),
+                inference_steps=inference_steps,
+                quantize_llm_4bit=getattr(self, '_quantize_llm_4bit', False)
             )
             
             # Try cache first
