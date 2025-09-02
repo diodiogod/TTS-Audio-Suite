@@ -12,6 +12,11 @@ try:
         # Test the specific imports we need
         from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
         from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+        
+        # Apply compatibility patches for Transformers 4.56+
+        from .transformers_compatibility import apply_all_compatibility_patches
+        apply_all_compatibility_patches()
+        
         # If imports work, load our engine components
         from .vibevoice_engine import VibeVoiceEngine
         from .vibevoice_downloader import VibeVoiceDownloader, VIBEVOICE_MODELS

@@ -85,6 +85,21 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "default": False,
                     "tooltip": "Sampling mode:\n• False: 🎯 RECOMMENDED - Deterministic generation for consistency\n• True: Sampling with temperature/top_p for more variation\n\nDeterministic mode provides more reliable results."
                 }),
+                "attention_mode": (["auto", "eager", "sdpa", "flash_attention_2"], {
+                    "default": "auto",
+                    "tooltip": "Attention implementation:\n• auto: 🎯 RECOMMENDED - Automatically select best available\n• eager: Standard attention (safest, slower)\n• sdpa: PyTorch SDPA optimized (balanced)\n• flash_attention_2: Fastest but may cause issues on some GPUs\n\nAuto mode provides best compatibility and performance balance."
+                }),
+                "inference_steps": ("INT", {
+                    "default": 20,
+                    "min": 5,
+                    "max": 100,
+                    "step": 1,
+                    "tooltip": "🔄 Diffusion inference steps:\n• 5-10: Fast but lower quality\n• 15-25: 🎯 RECOMMENDED - Balanced quality/speed\n• 30-50: Higher quality but slower\n• 50+: Diminishing returns\n\nMore steps improve quality but increase generation time."
+                }),
+                "quantize_llm_4bit": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "🗜️ 4-bit LLM quantization (requires bitsandbytes):\n• False: Full precision (better quality, more VRAM)\n• True: 4-bit quantization (significant VRAM savings)\n\n💾 VRAM Impact:\n• 7B model: 12GB → 7.6GB (88.5% speed boost)\n• 1.5B model: 8.7GB → 3.2GB (slight speed reduction)\n\nOnly quantizes LLM component, diffusion stays full precision."
+                }),
                 "temperature": ("FLOAT", {
                     "default": 0.95,
                     "min": 0.1,
@@ -134,7 +149,8 @@ class VibeVoiceEngineNode(BaseTTSNode):
     DESCRIPTION = "Configure VibeVoice engine for multi-speaker TTS with 90-minute generation capability. Supports both custom character switching and native multi-speaker modes."
     
     def create_engine_config(self, model, device, multi_speaker_mode, cfg_scale,
-                           use_sampling, temperature, top_p, chunk_minutes, max_new_tokens,
+                           use_sampling, attention_mode, inference_steps, quantize_llm_4bit, 
+                           temperature, top_p, chunk_minutes, max_new_tokens,
                            speaker2_voice=None, speaker3_voice=None, speaker4_voice=None):
         """Create VibeVoice engine configuration"""
         
@@ -150,6 +166,9 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "multi_speaker_mode": multi_speaker_mode,
             "cfg_scale": max(1.0, min(2.0, cfg_scale)),
             "use_sampling": bool(use_sampling),
+            "attention_mode": attention_mode,
+            "inference_steps": max(5, min(100, inference_steps)),
+            "quantize_llm_4bit": bool(quantize_llm_4bit),
             "temperature": max(0.1, min(2.0, temperature)),
             "top_p": max(0.1, min(1.0, top_p)),
             "chunk_chars": chunk_chars,  # Backend uses characters
@@ -166,6 +185,9 @@ class VibeVoiceEngineNode(BaseTTSNode):
         print(f"   Model: {model} on {device}")
         print(f"   Mode: {multi_speaker_mode}")
         print(f"   CFG Scale: {cfg_scale}, Sampling: {use_sampling}")
+        print(f"   Attention: {attention_mode}, Steps: {inference_steps}")
+        if quantize_llm_4bit:
+            print(f"   🗜️ 4-bit LLM quantization enabled")
         if chunk_minutes > 0:
             print(f"   Chunking: Every {chunk_minutes} minutes (~{chunk_chars} chars)")
         

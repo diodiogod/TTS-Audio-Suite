@@ -40,10 +40,14 @@ class VibeVoiceProcessor:
         self.adapter = VibeVoiceEngineAdapter(node_instance)
         self.chunker = ImprovedChatterBoxChunker()
         
-        # Load model
+        # Load model with enhanced parameters
         model_name = engine_config.get('model', 'vibevoice-1.5B')
         device = engine_config.get('device', 'auto')
-        self.adapter.load_base_model(model_name, device)
+        attention_mode = engine_config.get('attention_mode', 'auto')
+        quantize_llm_4bit = engine_config.get('quantize_llm_4bit', False)
+        
+        # Load model with new parameters (Credits: based on wildminder/ComfyUI-VibeVoice enhancements)
+        self.adapter.load_base_model(model_name, device, attention_mode, quantize_llm_4bit)
     
     def update_config(self, new_config: Dict[str, Any]):
         """Update processor configuration with new parameters."""

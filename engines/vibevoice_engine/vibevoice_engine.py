@@ -78,17 +78,24 @@ class VibeVoiceEngine:
     
     def initialize_engine(self, 
                          model_name: str = "vibevoice-1.5B",
-                         device: str = "auto") -> None:
+                         device: str = "auto",
+                         attention_mode: str = "auto",
+                         quantize_llm_4bit: bool = False) -> None:
         """
         Initialize VibeVoice engine with specified model.
         
         Args:
             model_name: Model to load ("vibevoice-1.5B" or "vibevoice-7B")
-            device: Device to use ("auto", "cuda", or "cpu")
+            device: Device to use ("auto", "cuda", or "cpu")  
+            attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
+            quantize_llm_4bit: Enable 4-bit LLM quantization for VRAM savings
         """
-        # Check if already loaded
-        if self.model is not None and self.current_model_name == model_name:
-            print(f"💾 VibeVoice model '{model_name}' already loaded")
+        # Check if already loaded with same config
+        current_config = (model_name, device, attention_mode, quantize_llm_4bit)
+        if (self.model is not None and 
+            hasattr(self, '_current_config') and 
+            self._current_config == current_config):
+            print(f"💾 VibeVoice model '{model_name}' already loaded with same config")
             return
         
         # Ensure package is installed
@@ -113,37 +120,80 @@ class VibeVoiceEngine:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
         print(f"🔄 Loading VibeVoice model '{model_name}' on {device}...")
+        if attention_mode != "auto":
+            print(f"   🧠 Using {attention_mode} attention")
+        if quantize_llm_4bit:
+            print(f"   🗜️ 4-bit LLM quantization enabled")
         
         try:
-            # Load model using unified interface
-            config = {
-                "engine_name": "vibevoice",
-                "model_type": "tts",
-                "model_name": model_name,
-                "device": device,
-                "model_path": model_path
+            # Import required modules  
+            from transformers import BitsAndBytesConfig
+            
+            # Build quantization config if requested
+            # Based on wildminder/ComfyUI-VibeVoice implementation
+            quant_config = None
+            if quantize_llm_4bit:
+                quant_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                )
+                print(f"   📊 Quantization config: NF4, double_quant, bfloat16")
+            
+            # Determine final attention mode
+            final_attention_mode = attention_mode
+            if attention_mode == "auto":
+                # Auto-select best available attention
+                try:
+                    import flash_attn
+                    final_attention_mode = "flash_attention_2"
+                    print(f"   ✨ Auto-selected flash_attention_2")
+                except ImportError:
+                    final_attention_mode = "sdpa"  # PyTorch SDPA as fallback
+                    print(f"   ⚡ Auto-selected sdpa (flash_attention_2 not available)")
+            
+            # Build model kwargs
+            model_kwargs = {
+                "trust_remote_code": True,
+                "torch_dtype": torch.bfloat16 if quant_config else torch.bfloat16,
+                "device_map": "auto" if quant_config else (device if device != "auto" else None)
             }
             
-            # For now, load directly until unified interface is updated
+            # Add attention implementation if not auto
+            if final_attention_mode != "auto":
+                model_kwargs["attn_implementation"] = final_attention_mode
+                
+            # Add quantization config if enabled
+            if quant_config:
+                model_kwargs["quantization_config"] = quant_config
+            
+            # Load model with enhanced configuration
+            # Credits: Based on drbaph's implementation in wildminder/ComfyUI-VibeVoice
             self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
                 model_path,
-                trust_remote_code=True,
-                torch_dtype=torch.bfloat16,
-                device_map=device if device != "auto" else None
+                **model_kwargs
             )
             
             # Load processor
             self.processor = VibeVoiceProcessor.from_pretrained(model_path)
             
-            # Move to device if needed
-            if device == "cuda" and torch.cuda.is_available():
+            # Move to device if needed (only if not using quantization which handles device_map)
+            if not quant_config and device == "cuda" and torch.cuda.is_available():
                 self.model = self.model.cuda()
             
+            # Store configuration and model info
             self.model_path = model_path
             self.device = device
             self.current_model_name = model_name
+            self._current_config = current_config
+            self._attention_mode = final_attention_mode
+            self._quantize_llm_4bit = quantize_llm_4bit
             
-            print(f"✅ VibeVoice model '{model_name}' loaded successfully on {device}")
+            print(f"✅ VibeVoice model '{model_name}' loaded successfully")
+            print(f"   Device: {device}, Attention: {final_attention_mode}")
+            if quantize_llm_4bit:
+                print(f"   🗜️ LLM quantized to 4-bit (VRAM savings expected)")
             
         except Exception as e:
             logger.error(f"Failed to load VibeVoice model: {e}")
@@ -293,6 +343,7 @@ class VibeVoiceEngine:
                        use_sampling: bool = False,
                        temperature: float = 0.95,
                        top_p: float = 0.95,
+                       inference_steps: int = 20,
                        max_new_tokens: Optional[int] = None,
                        enable_cache: bool = True,
                        character: str = "narrator",
@@ -309,6 +360,7 @@ class VibeVoiceEngine:
             use_sampling: Whether to use sampling mode
             temperature: Temperature for sampling
             top_p: Top-p for sampling
+            inference_steps: Number of diffusion inference steps (5-100)
             max_new_tokens: Maximum tokens to generate
             
         Returns:
@@ -379,6 +431,11 @@ class VibeVoiceEngine:
             device = next(self.model.parameters()).device
             inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
                      for k, v in inputs.items()}
+            
+            # Set diffusion inference steps (based on wildminder implementation)
+            # Credits: drbaph's implementation for inference steps control
+            self.model.set_ddpm_inference_steps(num_steps=inference_steps)
+            print(f"🔄 VibeVoice: Using {inference_steps} diffusion inference steps")
             
             # Generate with appropriate mode
             with torch.no_grad():

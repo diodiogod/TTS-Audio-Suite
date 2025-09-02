@@ -74,26 +74,47 @@ class VibeVoiceEngineAdapter:
             print(f"⚠️ VibeVoice: Language '{lang_code}' not officially supported (EN/ZH only)")
             return default_model
     
-    def load_base_model(self, model_name: str, device: str):
+    def load_base_model(self, model_name: str, device: str, attention_mode: str = "auto", quantize_llm_4bit: bool = False):
         """
-        Load base VibeVoice model through ModelManager.
+        Load base VibeVoice model with enhanced parameters.
         
         Args:
             model_name: Model name to load ("vibevoice-1.5B" or "vibevoice-7B")
             device: Device to load model on
+            attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
+            quantize_llm_4bit: Enable 4-bit LLM quantization
         """
-        # Use ModelManager to load and cache VibeVoice models
-        self.current_model, self.current_processor = self.model_manager.load_vibevoice_model(
-            model_name=model_name, 
-            device=device, 
-            force_reload=False
-        )
-        self.current_model_name = model_name
-        
-        # Update engine instance with cached model/processor
-        self.vibevoice_engine.model = self.current_model
-        self.vibevoice_engine.processor = self.current_processor
-        self.vibevoice_engine.current_model_name = model_name
+        # Use direct engine loading for enhanced parameter support
+        # Credits: Enhanced loading based on wildminder/ComfyUI-VibeVoice implementation
+        try:
+            self.vibevoice_engine.initialize_engine(
+                model_name=model_name,
+                device=device,
+                attention_mode=attention_mode,
+                quantize_llm_4bit=quantize_llm_4bit
+            )
+            
+            # Store references for compatibility
+            self.current_model = self.vibevoice_engine.model
+            self.current_processor = self.vibevoice_engine.processor
+            self.current_model_name = model_name
+            
+            print(f"✅ VibeVoice adapter: Model '{model_name}' loaded with enhanced parameters")
+            
+        except Exception as e:
+            print(f"❌ VibeVoice adapter: Failed to load model with enhanced parameters: {e}")
+            # Fallback to basic ModelManager loading
+            self.current_model, self.current_processor = self.model_manager.load_vibevoice_model(
+                model_name=model_name, 
+                device=device, 
+                force_reload=False
+            )
+            self.current_model_name = model_name
+            
+            # Update engine instance with cached model/processor
+            self.vibevoice_engine.model = self.current_model
+            self.vibevoice_engine.processor = self.current_processor
+            self.vibevoice_engine.current_model_name = model_name
     
     def _parse_language_tags(self, text: str) -> Tuple[str, Optional[str]]:
         """
@@ -221,12 +242,13 @@ class VibeVoiceEngineAdapter:
         Returns:
             Audio dict with waveform and sample_rate
         """
-        # Extract parameters
+        # Extract parameters including new inference_steps
         cfg_scale = params.get('cfg_scale', 1.3)
         seed = params.get('seed', 42)
         use_sampling = params.get('use_sampling', False)
         temperature = params.get('temperature', 0.95)
         top_p = params.get('top_p', 0.95)
+        inference_steps = params.get('inference_steps', 20)  # New parameter
         max_new_tokens = params.get('max_new_tokens')
         
         # Check if model and processor are loaded
@@ -269,7 +291,7 @@ class VibeVoiceEngineAdapter:
         
         # DEBUG: Print audio component to track cache invalidation
         # print(f"🐛 VibeVoice DEBUG: character='{character}', audio_component='{audio_component[:50]}...'")
-        # Generate audio
+        # Generate audio with inference_steps parameter
         return self.vibevoice_engine.generate_speech(
             text=formatted_text,
             voice_samples=voice_samples,
@@ -278,6 +300,7 @@ class VibeVoiceEngineAdapter:
             use_sampling=use_sampling,
             temperature=temperature,
             top_p=top_p,
+            inference_steps=inference_steps,  # New parameter
             max_new_tokens=max_new_tokens,
             enable_cache=enable_cache,
             character=character,
@@ -471,7 +494,7 @@ class VibeVoiceEngineAdapter:
                 combined_voice_hash.append("no_voice")
         audio_component = f"multi_speaker_{'_'.join(combined_voice_hash)}"
         
-        # Generate with multi-speaker text
+        # Generate with multi-speaker text and inference_steps
         return self.vibevoice_engine.generate_speech(
             text=formatted_text,
             voice_samples=voice_samples,
@@ -480,6 +503,7 @@ class VibeVoiceEngineAdapter:
             use_sampling=params.get('use_sampling', False),
             temperature=params.get('temperature', 0.95),
             top_p=params.get('top_p', 0.95),
+            inference_steps=params.get('inference_steps', 20),  # New parameter
             max_new_tokens=params.get('max_new_tokens'),
             enable_cache=params.get('enable_cache', True),
             character="multi_speaker",
