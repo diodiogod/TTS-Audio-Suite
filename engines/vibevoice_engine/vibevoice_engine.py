@@ -170,10 +170,33 @@ class VibeVoiceEngine:
             
             # Load model with enhanced configuration
             # Credits: Based on drbaph's implementation in wildminder/ComfyUI-VibeVoice
-            self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
-                model_path,
-                **model_kwargs
-            )
+            try:
+                self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                    model_path,
+                    **model_kwargs
+                )
+                
+                # Set model to evaluation mode and mark quantization status
+                self.model.eval()
+                if quant_config:
+                    setattr(self.model, "_llm_4bit", True)
+                    
+            except Exception as e:
+                # If quantization fails, try fallback without quantization
+                if quant_config:
+                    print(f"⚠️ Quantization failed, falling back to full precision: {e}")
+                    model_kwargs_fallback = model_kwargs.copy()
+                    model_kwargs_fallback.pop("quantization_config", None)
+                    model_kwargs_fallback["device_map"] = device if device != "auto" else None
+                    
+                    self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                        model_path,
+                        **model_kwargs_fallback
+                    )
+                    self.model.eval()
+                    quant_config = None  # Mark as no quantization for later logic
+                else:
+                    raise
             
             # Load processor
             self.processor = VibeVoiceProcessor.from_pretrained(model_path)
@@ -181,6 +204,16 @@ class VibeVoiceEngine:
             # Move to device if needed (only if not using quantization which handles device_map)
             if not quant_config and device == "cuda" and torch.cuda.is_available():
                 self.model = self.model.cuda()
+                
+            # Ensure all model parameters are on the same device (fix for speech_bias_factor issue)
+            if quant_config and hasattr(self.model, 'speech_bias_factor'):
+                try:
+                    # Find the device of the main model components
+                    main_device = next(self.model.parameters()).device
+                    if hasattr(self.model.speech_bias_factor, 'to'):
+                        self.model.speech_bias_factor = self.model.speech_bias_factor.to(main_device)
+                except Exception as device_fix_error:
+                    print(f"⚠️ Device placement fix attempt failed (non-critical): {device_fix_error}")
             
             # Store configuration and model info
             self.model_path = model_path
@@ -192,8 +225,10 @@ class VibeVoiceEngine:
             
             print(f"✅ VibeVoice model '{model_name}' loaded successfully")
             print(f"   Device: {device}, Attention: {final_attention_mode}")
-            if quantize_llm_4bit:
+            if quantize_llm_4bit and quant_config:
                 print(f"   🗜️ LLM quantized to 4-bit (VRAM savings expected)")
+            elif quantize_llm_4bit and not quant_config:
+                print(f"   ⚠️ Quantization failed, using full precision")
             
         except Exception as e:
             logger.error(f"Failed to load VibeVoice model: {e}")
