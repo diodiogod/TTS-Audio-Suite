@@ -70,6 +70,14 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "default": "auto",
                     "tooltip": "Computation device:\n• auto: Automatically choose best available\n• cuda: Force GPU (requires NVIDIA GPU, ~7GB VRAM)\n• cpu: Force CPU processing (slower)\n\nRecommended: 'auto' for automatic selection."
                 }),
+                "quantize_llm_4bit": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "🗜️ 4-bit LLM quantization (requires bitsandbytes):\n• False: Full precision (better quality, faster with sufficient VRAM)\n• True: 4-bit quantization (significant VRAM savings)\n\n💾 VRAM Trade-offs:\n• 7B model: 12GB → 7.6GB VRAM savings\n• 1.5B model: 8.7GB → 3.2GB VRAM savings\n• ⚡ Speed: Faster if model doesn't fit in VRAM, slower if it does\n• 🎯 Recommended: Only enable if you need VRAM savings\n\nOnly quantizes LLM component, diffusion stays full precision."
+                }),
+                "attention_mode": (["auto", "eager", "sdpa", "flash_attention_2"], {
+                    "default": "auto",
+                    "tooltip": "Attention implementation:\n• auto: 🎯 RECOMMENDED - Automatically select best available\n• eager: Standard attention (safest, slower)\n• sdpa: PyTorch SDPA optimized (balanced)\n• flash_attention_2: Fastest but may cause issues on some GPUs\n\nAuto mode provides best compatibility and performance balance."
+                }),
                 "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker"], {
                     "default": "Custom Character Switching",
                     "tooltip": "Speaker generation mode - SUPPORTS BOTH FORMATS!\n\n• Custom Character Switching: ⭐ RECOMMENDED - Use [Alice], [Bob] character tags. Each character generated separately with voice files from voices folder. Supports pause tags, per-character control, unlimited characters.\n\n• Native Multi-Speaker: ✅ TWO FORMAT OPTIONS:\n  1. [Alice], [Bob] tags → auto-converted to Speaker format\n  2. Manual 'Speaker 1: Hello\nSpeaker 2: Hi there' format\n\nUp to 4 speakers. More efficient single-pass generation.\n\n🔧 PRIORITY: Connected speaker2_voice/3/4 inputs override character aliases with warnings!"
@@ -81,14 +89,6 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "step": 0.05,
                     "tooltip": "Classifier-free guidance scale:\n• 1.0: Minimal guidance\n• 1.3: 🎯 RECOMMENDED - Balanced guidance\n• 1.5-2.0: Stronger text adherence\n\nHigher values follow text more closely but may sound less natural."
                 }),
-                "use_sampling": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Sampling mode:\n• False: 🎯 RECOMMENDED - Deterministic generation for consistency\n• True: Sampling with temperature/top_p for more variation\n\nDeterministic mode provides more reliable results."
-                }),
-                "attention_mode": (["auto", "eager", "sdpa", "flash_attention_2"], {
-                    "default": "auto",
-                    "tooltip": "Attention implementation:\n• auto: 🎯 RECOMMENDED - Automatically select best available\n• eager: Standard attention (safest, slower)\n• sdpa: PyTorch SDPA optimized (balanced)\n• flash_attention_2: Fastest but may cause issues on some GPUs\n\nAuto mode provides best compatibility and performance balance."
-                }),
                 "inference_steps": ("INT", {
                     "default": 20,
                     "min": 5,
@@ -96,9 +96,9 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "step": 1,
                     "tooltip": "🔄 Diffusion inference steps:\n• 5-10: Fast but lower quality\n• 15-25: 🎯 RECOMMENDED - Balanced quality/speed\n• 30-50: Higher quality but slower\n• 50+: Diminishing returns\n\nMore steps improve quality but increase generation time."
                 }),
-                "quantize_llm_4bit": ("BOOLEAN", {
+                "use_sampling": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "🗜️ 4-bit LLM quantization (requires bitsandbytes):\n• False: Full precision (better quality, faster with sufficient VRAM)\n• True: 4-bit quantization (significant VRAM savings)\n\n💾 VRAM Trade-offs:\n• 7B model: 12GB → 7.6GB VRAM savings\n• 1.5B model: 8.7GB → 3.2GB VRAM savings\n• ⚡ Speed: Faster if model doesn't fit in VRAM, slower if it does\n• 🎯 Recommended: Only enable if you need VRAM savings\n\nOnly quantizes LLM component, diffusion stays full precision."
+                    "tooltip": "Sampling mode:\n• False: 🎯 RECOMMENDED - Deterministic generation for consistency\n• True: Sampling with temperature/top_p for more variation\n\nDeterministic mode provides more reliable results."
                 }),
                 "temperature": ("FLOAT", {
                     "default": 0.95,

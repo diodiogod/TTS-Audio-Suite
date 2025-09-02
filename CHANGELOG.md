@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.26] - 2025-09-01
+
+### Added
+
+- Hardware settings grouped at top (device, quantization, attention mode)
+- Quality controls placed together for intuitive workflow
+- More logical parameter flow from hardware to generation settings
+
+### Changed
+
+- Improve VibeVoice Engine parameter layout
+- Better parameter organization for easier configuration
 ## [4.6.25] - 2025-09-01
 
 ### Added
