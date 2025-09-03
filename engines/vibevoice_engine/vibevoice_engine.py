@@ -13,6 +13,9 @@ import logging
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 
+# Global singleton instance to prevent multiple engine creations
+_vibevoice_engine_instance = None
+
 # Add parent directory for imports
 current_dir = os.path.dirname(__file__)
 engines_dir = os.path.dirname(current_dir)
@@ -40,6 +43,13 @@ def tokens_to_chars(max_tokens: int) -> int:
     # VibeVoice uses ~4 chars per token, but we use conservative 3.5 for safety
     return int(max_tokens * 3.5)
 
+def get_vibevoice_engine():
+    """Get singleton VibeVoice engine instance"""
+    global _vibevoice_engine_instance
+    if _vibevoice_engine_instance is None:
+        _vibevoice_engine_instance = VibeVoiceEngine()
+    return _vibevoice_engine_instance
+
 
 class VibeVoiceEngine:
     """
@@ -54,6 +64,7 @@ class VibeVoiceEngine:
         self.model_path = None
         self.device = None
         self.current_model_name = None
+        self._initialization_lock = False  # Prevent multiple concurrent initializations
         
         # Use global shared cache
         self.cache = get_audio_cache()
@@ -91,13 +102,21 @@ class VibeVoiceEngine:
             attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
             quantize_llm_4bit: Enable 4-bit LLM quantization for VRAM savings
         """
+        # Prevent multiple initializations with lock
+        if self._initialization_lock:
+            print(f"⏳ VibeVoice initialization already in progress, skipping")
+            return
+            
         # Check if already loaded with same config
         current_config = (model_name, device, attention_mode, quantize_llm_4bit)
-        if (self.model is not None and 
-            hasattr(self, '_current_config') and 
-            self._current_config == current_config):
+        if (hasattr(self, '_current_config') and 
+            self._current_config == current_config and
+            hasattr(self, 'model') and self.model is not None):
             print(f"💾 VibeVoice model '{model_name}' already loaded with same config")
             return
+            
+        # Set lock to prevent concurrent initializations
+        self._initialization_lock = True
         
         # Ensure package is installed
         if not self._ensure_package():
@@ -248,6 +267,19 @@ class VibeVoiceEngine:
             # Load processor
             self.processor = VibeVoiceProcessor.from_pretrained(model_path)
             
+            # Verify model and processor are actually set + keep strong references
+            if self.model is None:
+                raise RuntimeError("Model loading completed but self.model is None")
+            if self.processor is None:
+                raise RuntimeError("Processor loading completed but self.processor is None")
+            
+            # Keep additional strong references to prevent garbage collection
+            self._model_ref = self.model
+            self._processor_ref = self.processor
+            
+            print(f"✅ Engine validation: model={self.model is not None}, processor={self.processor is not None}")
+            print(f"✅ Strong refs: model={self._model_ref is not None}, processor={self._processor_ref is not None}")
+            
             # Move to device if needed (only if not using quantization which handles device_map)
             if not quant_config and device == "cuda" and torch.cuda.is_available():
                 self.model = self.model.cuda()
@@ -284,7 +316,12 @@ class VibeVoiceEngine:
             elif quantize_llm_4bit and not quant_config:
                 print(f"   ⚠️ Quantization failed, using full precision")
             
+            # Release lock after successful initialization
+            self._initialization_lock = False
+            
         except Exception as e:
+            # Release lock on error
+            self._initialization_lock = False
             logger.error(f"Failed to load VibeVoice model: {e}")
             raise RuntimeError(f"Model loading failed: {e}")
     
@@ -455,8 +492,30 @@ class VibeVoiceEngine:
         Returns:
             Dict with "waveform" and "sample_rate"
         """
-        if self.model is None or self.processor is None:
-            raise RuntimeError("Model not initialized. Call initialize_engine first.")
+        # Check model reference and try to recover from strong refs
+        if not hasattr(self, 'model') or self.model is None:
+            # Try to restore from strong reference first
+            if hasattr(self, '_model_ref') and self._model_ref is not None:
+                print(f"🔄 Restoring model from strong reference")
+                self.model = self._model_ref
+            else:
+                # Try to recover from current_model_name if available
+                if hasattr(self, 'current_model_name') and self.current_model_name:
+                    print(f"⚠️ Model reference lost, attempting recovery for '{self.current_model_name}'")
+                    try:
+                        self.initialize_engine(self.current_model_name, getattr(self, 'device', 'auto'))
+                    except Exception as recovery_error:
+                        raise RuntimeError(f"Model not initialized and recovery failed: {recovery_error}")
+                else:
+                    raise RuntimeError("Model not initialized. Call initialize_engine first.")
+        
+        if not hasattr(self, 'processor') or self.processor is None:
+            # Try to restore from strong reference first
+            if hasattr(self, '_processor_ref') and self._processor_ref is not None:
+                print(f"🔄 Restoring processor from strong reference")
+                self.processor = self._processor_ref
+            else:
+                raise RuntimeError("Processor not initialized. Call initialize_engine first.")
         
         # Handle caching if enabled (following ChatterBox pattern)
         if enable_cache:
@@ -520,8 +579,8 @@ class VibeVoiceEngine:
             )
             # print(f"🐛 VibeVoice ENGINE: Processor inputs created - input_ids shape: {inputs['input_ids'].shape}")
             
-            # Move to device
-            device = next(self.model.parameters()).device
+            # Use stored device instead of trying to get from model (which is None)
+            device = getattr(self, 'device', 'cuda' if torch.cuda.is_available() else 'cpu')
             inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
                      for k, v in inputs.items()}
             
@@ -626,21 +685,16 @@ class VibeVoiceEngine:
         return self.generate_speech(formatted_text, speaker_voices, **kwargs)
     
     def cleanup(self):
-        """Clean up resources"""
-        if self.model is not None:
-            del self.model
-            self.model = None
-        
-        if self.processor is not None:
-            del self.processor
-            self.processor = None
-        
-        # Force garbage collection
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        
-        print("🧹 VibeVoice engine cleaned up")
+        """Clean up resources - DISABLED to prevent model clearing during generation"""
+        print("⚠️ VibeVoice cleanup called but DISABLED to prevent model clearing")
+        # DON'T clear model/processor during generation
+        # if self.model is not None:
+        #     del self.model
+        #     self.model = None
+        # 
+        # if self.processor is not None:
+        #     del self.processor
+        #     self.processor = None
     
     def unload_models(self):
         """Unload models (called by ComfyUI's unload button)"""

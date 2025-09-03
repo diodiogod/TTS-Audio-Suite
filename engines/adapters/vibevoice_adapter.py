@@ -43,9 +43,9 @@ class VibeVoiceEngineAdapter:
         self.current_processor = None
         self.current_model_name = None
         
-        # Create permanent engine instance for generation logic
-        from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
-        self.vibevoice_engine = VibeVoiceEngine()
+        # Use singleton engine instance to prevent multiple instances
+        from engines.vibevoice_engine.vibevoice_engine import get_vibevoice_engine
+        self.vibevoice_engine = get_vibevoice_engine()
         
         # Track character to speaker mapping for native multi-speaker mode
         self._character_speaker_map = {}
@@ -94,27 +94,45 @@ class VibeVoiceEngineAdapter:
                 quantize_llm_4bit=quantize_llm_4bit
             )
             
-            # Store references for compatibility
-            self.current_model = self.vibevoice_engine.model
-            self.current_processor = self.vibevoice_engine.processor
+            # Store references for compatibility - ensure engine attributes are set
+            if hasattr(self.vibevoice_engine, 'model') and self.vibevoice_engine.model is not None:
+                self.current_model = self.vibevoice_engine.model
+            if hasattr(self.vibevoice_engine, 'processor') and self.vibevoice_engine.processor is not None:
+                self.current_processor = self.vibevoice_engine.processor
             self.current_model_name = model_name
             
             print(f"✅ VibeVoice adapter: Model '{model_name}' loaded with enhanced parameters")
             
         except Exception as e:
             print(f"❌ VibeVoice adapter: Failed to load model with enhanced parameters: {e}")
-            # Fallback to basic ModelManager loading
-            self.current_model, self.current_processor = self.model_manager.load_vibevoice_model(
-                model_name=model_name, 
-                device=device, 
-                force_reload=False
-            )
-            self.current_model_name = model_name
+            print(f"❌ Full error traceback:")
+            import traceback
+            traceback.print_exc()
             
-            # Update engine instance with cached model/processor
-            self.vibevoice_engine.model = self.current_model
-            self.vibevoice_engine.processor = self.current_processor
-            self.vibevoice_engine.current_model_name = model_name
+            # Fallback to basic ModelManager loading
+            try:
+                self.current_model, self.current_processor = self.model_manager.load_vibevoice_model(
+                    model_name=model_name, 
+                    device=device, 
+                    force_reload=False
+                )
+                
+                # Validate that model and processor were actually loaded
+                if self.current_model is None or self.current_processor is None:
+                    raise RuntimeError(f"ModelManager failed to load model '{model_name}' - returned None")
+                
+                self.current_model_name = model_name
+                
+                # Update engine instance with cached model/processor
+                self.vibevoice_engine.model = self.current_model
+                self.vibevoice_engine.processor = self.current_processor
+                self.vibevoice_engine.current_model_name = model_name
+                
+                print(f"✅ VibeVoice adapter: Fallback loading successful for '{model_name}'")
+                
+            except Exception as fallback_error:
+                print(f"❌ VibeVoice adapter: Fallback loading also failed: {fallback_error}")
+                raise RuntimeError(f"Both enhanced and fallback loading failed for '{model_name}'. Enhanced error: {e}, Fallback error: {fallback_error}")
     
     def _parse_language_tags(self, text: str) -> Tuple[str, Optional[str]]:
         """
@@ -251,9 +269,24 @@ class VibeVoiceEngineAdapter:
         inference_steps = params.get('inference_steps', 20)  # New parameter
         max_new_tokens = params.get('max_new_tokens')
         
-        # Check if model and processor are loaded
-        if self.current_model is None or self.current_processor is None:
-            raise RuntimeError("VibeVoice model not loaded. Call load_base_model() first.")
+        # Ensure engine is initialized - bypass adapter model references entirely
+        model_name = params.get('model', 'vibevoice-1.5B')
+        device = params.get('device', 'auto')
+        
+        # Simple check - only initialize if truly not loaded
+        if not hasattr(self.vibevoice_engine, 'model') or self.vibevoice_engine.model is None:
+            try:
+                self.vibevoice_engine.initialize_engine(model_name, device, 'auto', False)
+            except Exception as init_error:
+                raise RuntimeError(f"VibeVoice engine initialization failed: {init_error}")
+        
+        # Update adapter references after successful engine init
+        self.current_model = getattr(self.vibevoice_engine, 'model', None)
+        self.current_processor = getattr(self.vibevoice_engine, 'processor', None)
+        
+        # Skip adapter model check - use engine directly for generation
+        if not hasattr(self.vibevoice_engine, 'generate_speech'):
+            raise RuntimeError("VibeVoice engine missing generate_speech method")
         
         # Prepare voice samples
         voice_samples = self.vibevoice_engine._prepare_voice_samples([voice_ref])
@@ -291,6 +324,8 @@ class VibeVoiceEngineAdapter:
         
         # DEBUG: Print audio component to track cache invalidation
         # print(f"🐛 VibeVoice DEBUG: character='{character}', audio_component='{audio_component[:50]}...'")
+        # Engine should be initialized at this point
+        
         # Generate audio with inference_steps parameter
         return self.vibevoice_engine.generate_speech(
             text=formatted_text,
