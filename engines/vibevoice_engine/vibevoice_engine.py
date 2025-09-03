@@ -25,6 +25,7 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.audio.cache import CacheKeyGenerator, get_audio_cache
 from utils.text.chunking import ImprovedChatterBoxChunker
 from .vibevoice_downloader import VibeVoiceDownloader, VIBEVOICE_MODELS
+from .gguf_loader import gguf_loader
 import folder_paths
 
 # Import unified model interface for ComfyUI integration
@@ -115,6 +116,10 @@ class VibeVoiceEngine:
         if not model_path:
             raise RuntimeError(f"Failed to get VibeVoice model '{model_name}'")
         
+        # Check if this is a GGUF model and handle accordingly
+        is_gguf = self.downloader.is_gguf_model(model_name)
+        is_quantized = self.downloader.is_quantized_model(model_name)
+        
         # Determine device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -178,34 +183,67 @@ class VibeVoiceEngine:
                 model_kwargs["quantization_config"] = quant_config
             
             # Load model with enhanced configuration
-            # Credits: Based on drbaph's implementation in wildminder/ComfyUI-VibeVoice
-            try:
-                self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
-                    model_path,
-                    **model_kwargs
-                )
+            # Handle GGUF models differently
+            if is_gguf:
+                print(f"🔄 Loading GGUF model from: {model_path}")
                 
-                # Set model to evaluation mode and mark quantization status
-                self.model.eval()
-                if quant_config:
-                    setattr(self.model, "_llm_4bit", True)
+                # Load GGUF model using our custom loader
+                gguf_file = os.path.join(model_path, "model.gguf")
+                config_file = os.path.join(model_path, "config.json")
+                
+                try:
+                    # Try truly lazy loading first - no model construction at all
+                    from .vibevoice_lazy_model import create_lazy_vibevoice_from_gguf
                     
-            except Exception as e:
-                # If quantization fails, try fallback without quantization
-                if quant_config:
-                    print(f"⚠️ Quantization failed, falling back to full precision: {e}")
-                    model_kwargs_fallback = model_kwargs.copy()
-                    model_kwargs_fallback.pop("quantization_config", None)
-                    model_kwargs_fallback["device_map"] = device if device != "auto" else None
+                    print(f"💨 Attempting lazy GGUF loading (instant, no construction)...")
                     
+                    # Create lazy model - should be instant
+                    self.model, success = create_lazy_vibevoice_from_gguf(
+                        model_path=model_path,
+                        device=self.device
+                    )
+                    
+                    if not success:
+                        raise RuntimeError("Lazy GGUF loading failed")
+                    
+                    print(f"✅ Lazy GGUF model ready (modules load on demand)!")
+                    
+                except Exception as gguf_error:
+                    print(f"❌ GGUF loading failed: {gguf_error}")
+                    print(f"🔄 Falling back to standard loading...")
+                    # Fall back to standard loading
+                    is_gguf = False
+            
+            if not is_gguf:
+                # Standard loading path
+                # Credits: Based on drbaph's implementation in wildminder/ComfyUI-VibeVoice
+                try:
                     self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
                         model_path,
-                        **model_kwargs_fallback
+                        **model_kwargs
                     )
+                    
+                    # Set model to evaluation mode and mark quantization status
                     self.model.eval()
-                    quant_config = None  # Mark as no quantization for later logic
-                else:
-                    raise
+                    if quant_config:
+                        setattr(self.model, "_llm_4bit", True)
+                        
+                except Exception as e:
+                    # If quantization fails, try fallback without quantization
+                    if quant_config:
+                        print(f"⚠️ Quantization failed, falling back to full precision: {e}")
+                        model_kwargs_fallback = model_kwargs.copy()
+                        model_kwargs_fallback.pop("quantization_config", None)
+                        model_kwargs_fallback["device_map"] = device if device != "auto" else None
+                        
+                        self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                            model_path,
+                            **model_kwargs_fallback
+                        )
+                        self.model.eval()
+                        quant_config = None  # Mark as no quantization for later logic
+                    else:
+                        raise
             
             # Load processor
             self.processor = VibeVoiceProcessor.from_pretrained(model_path)
@@ -231,10 +269,17 @@ class VibeVoiceEngine:
             self._current_config = current_config
             self._attention_mode = final_attention_mode
             self._quantize_llm_4bit = quantize_llm_4bit
+            self._is_gguf = is_gguf
+            self._is_quantized = is_quantized
             
             print(f"✅ VibeVoice model '{model_name}' loaded successfully")
             print(f"   Device: {device}, Attention: {final_attention_mode}")
-            if quantize_llm_4bit and quant_config:
+            
+            if is_gguf:
+                print(f"   📦 GGUF format model (experimental)")
+            elif is_quantized:
+                print(f"   🗜️ Pre-quantized model (VRAM optimized)")
+            elif quantize_llm_4bit and quant_config:
                 print(f"   🗜️ LLM quantized to 4-bit (VRAM savings expected)")
             elif quantize_llm_4bit and not quant_config:
                 print(f"   ⚠️ Quantization failed, using full precision")

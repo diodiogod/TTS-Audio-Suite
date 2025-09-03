@@ -64,7 +64,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "required": {
                 "model": (available_models, {
                     "default": "vibevoice-1.5B",
-                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n\nBoth support multi-speaker and long-form generation."
+                    "tooltip": "VibeVoice model selection:\n\n📦 STANDARD MODELS:\n• vibevoice-1.5B: Official Microsoft (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Official Microsoft (9.3B params, ~18GB) - Better quality, 45-min generation\n\n🗜️ QUANTIZED MODELS (VRAM Optimized):\n• vibevoice-7B-4bit: 7B model quantized to 4-bit (~6GB vs 18GB)\n• vibevoice-7B-8bit: 7B model quantized to 8-bit (~9GB vs 18GB)\n\n📦 GGUF MODELS (Experimental):\n• vibevoice-7B-Q8-gguf: GGUF format Q8_0 quantized (10.1GB)\n• vibevoice-7B-BF16-gguf: GGUF format BF16 (18.7GB)\n\nAll models support multi-speaker and long-form generation. Quantized models offer same quality with VRAM savings."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
