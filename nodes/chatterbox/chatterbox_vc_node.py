@@ -172,27 +172,30 @@ class ChatterboxVCNode(BaseVCNode):
                     
                     # Create 1-second silent audio with same format as source
                     import torch
-                    sample_rate = source_audio["sample_rate"]
-                    source_waveform = source_audio["waveform"]
+                    # Normalize source audio first to get proper format
+                    normalized_source = self._get_audio(source_audio, "source_audio")
+                    sample_rate = normalized_source["sample_rate"]
+                    source_waveform = normalized_source["waveform"]
                     
-                    print(f"🔍 DEBUG: Source audio shape: {source_waveform.shape}")
                     
-                    # Create silent audio with proper ComfyUI format: (channels, samples)
+                    # Create 1-second silent audio tensor matching source format
+                    if len(source_waveform.shape) >= 3:
+                        # If has batch dimension, remove it for processing
+                        source_waveform = source_waveform.squeeze(0)
+                    
                     if len(source_waveform.shape) == 1:
-                        # If 1D, make it (1, samples) for mono
-                        silent_waveform = torch.zeros((1, sample_rate), dtype=torch.float32)
+                        # If 1D, create mono silent audio
+                        silent_tensor = torch.zeros(sample_rate, dtype=torch.float32)
                     elif len(source_waveform.shape) == 2:
                         # If 2D, match the channel count but make it 1 second
                         num_channels = source_waveform.shape[0]
-                        silent_waveform = torch.zeros((num_channels, sample_rate), dtype=torch.float32)
+                        silent_tensor = torch.zeros(num_channels, sample_rate, dtype=torch.float32)
                     else:
-                        # Fallback: use source shape but fill with zeros
-                        silent_waveform = torch.zeros_like(source_waveform)
+                        # Fallback: create mono silent audio
+                        silent_tensor = torch.zeros(sample_rate, dtype=torch.float32)
                     
-                    silent_audio = {
-                        "waveform": silent_waveform,
-                        "sample_rate": sample_rate
-                    }
+                    # Use base class method to properly format for ComfyUI
+                    silent_audio = self.format_audio_output(silent_tensor, sample_rate)
                     return (silent_audio,)
                 else:
                     # Re-raise other types of RuntimeError

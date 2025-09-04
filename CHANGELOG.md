@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.2] - 2025-09-04
+
+### Added
+
+- Voice conversion now works properly with custom local models
+- Fixes #36
+
+### Fixed
+
+- Fix voice conversion failing on Windows with local models
+- Fix Windows path errors when using local ChatterBox models
+- Better cross-platform compatibility for model loading
 ## [4.7.1] - 2025-09-04
 
 ### Added

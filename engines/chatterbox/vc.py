@@ -128,6 +128,9 @@ class ChatterboxVC:
         
         print(f"📦 Loading ChatterBox VC model for {language} from {repo_id}")
         
+        # Sanitize language name for path construction (strip "local:" prefix)
+        clean_language = language[6:] if language.startswith("local:") else language
+        
         # Download VC models to local directory (use dynamic requirements like TTS)
         try:
             from .language_models import get_model_requirements, get_model_config
@@ -153,8 +156,8 @@ class ChatterboxVC:
         all_vc_files = required_files + optional_files
         
         for fpath in all_vc_files:
-            # Define local path in TTS organization
-            local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, fpath)
+            # Define local path in TTS organization (use clean language name)
+            local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", clean_language, fpath)
             
             if os.path.exists(local_model_path):
                 print(f"📁 Using local Chatterbox VC model: {local_model_path}")
@@ -191,7 +194,7 @@ class ChatterboxVC:
                 
                 downloaded_dir = unified_downloader.download_huggingface_model(
                     repo_id=repo_id,
-                    model_name=language,
+                    model_name=clean_language,
                     files=files_to_download,
                     engine_type="chatterbox"
                 )
