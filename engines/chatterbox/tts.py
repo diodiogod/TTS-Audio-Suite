@@ -392,26 +392,28 @@ class ChatterboxTTS:
             s3gen.load_state_dict(checkpoint['s3gen_state_dict'], strict=False)
             s3gen.to(device).eval()
             
-            # Create a basic English tokenizer (Italian model extends English vocab)
+            # Load tokenizer for Italian model (fallback to English tokenizer)
             # The Italian model uses language prefixes like [it] for Italian text
             from .models.tokenizers import EnTokenizer
+            from .language_models import find_local_model_path
             
-            # Create a temporary tokenizer file path (fallback to English tokenizer logic)
-            # Italian model should work with English tokenizer + language prefixes
-            english_tokenizer_content = '{"vocab": {}, "model": "ByteLevelBPE"}'
-            temp_tokenizer_path = ckpt_dir / "temp_tokenizer.json"
-            
-            # Try to use existing tokenizer if available, otherwise create minimal one
+            # Try to use existing tokenizer if available in Italian model
             tokenizer_path = ckpt_dir / "tokenizer.json"
             if tokenizer_path.exists():
                 tokenizer = EnTokenizer(str(tokenizer_path))
+                print(f"🔤 Using Italian model tokenizer: tokenizer.json")
             else:
-                # Create minimal tokenizer file for compatibility
-                with open(temp_tokenizer_path, 'w') as f:
-                    f.write(english_tokenizer_content)
-                tokenizer = EnTokenizer(str(temp_tokenizer_path))
-                # Clean up temp file
-                temp_tokenizer_path.unlink(missing_ok=True)
+                # Fallback: use English model tokenizer (Italian extends English vocab)
+                english_model_path = find_local_model_path("English")
+                if english_model_path:
+                    english_tokenizer_path = Path(english_model_path) / "tokenizer.json"
+                    if english_tokenizer_path.exists():
+                        tokenizer = EnTokenizer(str(english_tokenizer_path))
+                        print(f"🔤 Using English tokenizer fallback: {english_tokenizer_path}")
+                    else:
+                        raise FileNotFoundError(f"No tokenizer found for Italian model and no English fallback available")
+                else:
+                    raise FileNotFoundError(f"No tokenizer available for Italian model and no English model found for fallback")
             
             # Check for conditional voices
             conds = None
