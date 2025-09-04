@@ -265,6 +265,18 @@ class ChatterboxTTS:
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
             
+            # Handle Japanese/Korean model state dict format (keys have "t3." prefix)
+            # Check if keys have "t3." prefix and need to be remapped
+            sample_keys = list(t3_state.keys())[:5]  # Check first few keys
+            if sample_keys and all(key.startswith("t3.") for key in sample_keys):
+                print(f"🔧 Remapping state dict keys (removing 't3.' prefix) for incomplete model compatibility")
+                # Remove "t3." prefix from all keys
+                new_state_dict = {}
+                for key, value in t3_state.items():
+                    new_key = key[3:] if key.startswith("t3.") else key  # Remove "t3." prefix
+                    new_state_dict[new_key] = value
+                t3_state = new_state_dict
+            
             # Create config with proper settings
             from .models.t3.t3 import T3Config
             config = T3Config()
