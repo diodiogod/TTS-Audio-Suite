@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.27] - 2025-09-03
+
+### Changed
+
+- Improve installation reliability across different Python versions
+- Better handling of audio separation dependencies
+
+### Fixed
+
+- Fix numpy compatibility issues with other ComfyUI nodes
+- Support numpy 1.26.4 for better compatibility with other custom nodes
+- Fix VibeVoice installation failing due to missing Microsoft repository
 ## [4.6.26] - 2025-09-01
 
 ### Added
