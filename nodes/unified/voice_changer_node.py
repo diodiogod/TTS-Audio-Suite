@@ -89,36 +89,31 @@ class UnifiedVoiceChangerNode(BaseVCNode):
 
     def _extract_audio_from_input(self, audio_input, input_name: str):
         """
-        Extract audio tensor from either AUDIO input or NARRATOR_VOICE input.
+        Extract audio tensor using base class universal normalizer.
+        Supports AUDIO dict, Character Voices output, VideoHelper LazyAudioMap, etc.
         
         Args:
-            audio_input: Either AUDIO dict or NARRATOR_VOICE dict
+            audio_input: Audio input in any supported format
             input_name: Name of input for error messages
             
         Returns:
-            Audio dict suitable for voice conversion engines
+            Standard AUDIO dict suitable for voice conversion engines
         """
         try:
-            if audio_input is None:
-                raise ValueError(f"{input_name} input is required")
+            # Use base class audio normalizer (handles all formats)
+            normalized_audio = self.normalize_audio_input(audio_input, input_name)
             
-            # Check if it's a Character Voices node output (NARRATOR_VOICE)
+            # Log the source type for debugging
             if isinstance(audio_input, dict) and "audio" in audio_input:
-                # NARRATOR_VOICE input - extract the audio component
-                audio_data = audio_input.get("audio")
                 character_name = audio_input.get("character_name", "unknown")
                 print(f"🔄 Voice Changer: Using {input_name} from Character Voices node ({character_name})")
-                return audio_data
-            
-            # Check if it's a direct audio input (AUDIO)
-            elif isinstance(audio_input, dict) and "waveform" in audio_input:
-                # Direct AUDIO input
+            elif hasattr(audio_input, "get"):
                 print(f"🔄 Voice Changer: Using direct audio input for {input_name}")
-                return audio_input
-            
             else:
-                raise ValueError(f"Invalid {input_name} format - expected AUDIO or Character Voices node output")
-                
+                print(f"🔄 Voice Changer: Using VideoHelper-compatible audio input for {input_name}")
+            
+            return normalized_audio
+            
         except Exception as e:
             raise ValueError(f"Failed to process {input_name}: {e}")
 

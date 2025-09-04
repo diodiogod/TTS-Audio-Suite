@@ -303,9 +303,11 @@ Choose how to combine multiple audio sources:
     def _convert_input_audio(self, audio) -> Tuple:
         """Convert ComfyUI audio to processing format."""
         try:
+            # Use _get_audio for VideoHelper compatibility
+            normalized_audio = self._get_audio(audio, "input_audio")
             
-            waveform = audio["waveform"]
-            sample_rate = audio.get("sample_rate", 44100)
+            waveform = normalized_audio["waveform"]
+            sample_rate = normalized_audio.get("sample_rate", 44100)
             
             # Convert to numpy
             if isinstance(waveform, torch.Tensor):

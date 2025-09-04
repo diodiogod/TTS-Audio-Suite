@@ -369,6 +369,62 @@ class AudioProcessingUtils:
         }
     
     @staticmethod
+    def normalize_audio_input(audio_input, input_name: str = "audio") -> Dict[str, Any]:
+        """
+        Universal audio input normalizer - handles all ComfyUI audio formats.
+        Supports: AUDIO dict, Character Voices output, VideoHelper LazyAudioMap, etc.
+        
+        Args:
+            audio_input: Audio input in any supported format
+            input_name: Name for error messages
+            
+        Returns:
+            Standard AUDIO dict with 'waveform' and 'sample_rate' keys
+            
+        Raises:
+            ValueError: If audio format is not supported
+        """
+        if audio_input is None:
+            raise ValueError(f"{input_name} input is required")
+        
+        try:
+            # Character Voices node output (NARRATOR_VOICE)
+            if isinstance(audio_input, dict) and "audio" in audio_input:
+                # Extract the nested audio component
+                return AudioProcessingUtils.normalize_audio_input(audio_input["audio"], input_name)
+            
+            # Standard AUDIO format or VideoHelper LazyAudioMap
+            elif hasattr(audio_input, "__getitem__"):
+                # Check for required keys
+                if "waveform" in audio_input and "sample_rate" in audio_input:
+                    # Already in correct format - just ensure it's a dict
+                    return {
+                        "waveform": audio_input["waveform"], 
+                        "sample_rate": audio_input["sample_rate"]
+                    }
+                else:
+                    # Try to find missing keys in mapping-like objects
+                    available_keys = []
+                    if hasattr(audio_input, "keys"):
+                        try:
+                            available_keys = list(audio_input.keys())
+                        except:
+                            pass
+                    
+                    raise ValueError(f"Audio input missing required keys. Expected 'waveform' and 'sample_rate', found: {available_keys}")
+            
+            else:
+                # Unknown format
+                audio_type = type(audio_input).__name__
+                raise ValueError(f"Unsupported audio format: {audio_type}")
+                
+        except Exception as e:
+            if "Audio input missing required keys" in str(e) or "Unsupported audio format" in str(e):
+                raise  # Re-raise our specific errors
+            else:
+                raise ValueError(f"Failed to normalize {input_name}: {e}")
+    
+    @staticmethod
     def apply_volume(audio: torch.Tensor, volume: float) -> torch.Tensor:
         """
         Apply volume scaling to audio.

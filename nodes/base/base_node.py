@@ -119,13 +119,69 @@ class BaseChatterBoxNode:
         if model_management.interrupt_processing:
             raise InterruptedError(f"{operation_name} interrupted by user")
     
+    def _get_audio(self, audio_input, input_name: str = "audio") -> Dict[str, Any]:
+        """
+        Simple audio input getter - handles all formats (AUDIO, Character Voices, VideoHelper).
+        Use this instead of direct audio["waveform"] access for VideoHelper compatibility.
+        
+        Args:
+            audio_input: Audio input in any supported format
+            input_name: Name for error messages
+            
+        Returns:
+            Standard AUDIO dict with 'waveform' and 'sample_rate' keys
+        """
+        return self.normalize_audio_input(audio_input, input_name)
+    
+    def normalize_audio_input(self, audio_input, input_name: str = "audio") -> Dict[str, Any]:
+        """
+        Universal audio input normalizer - handles all ComfyUI audio formats.
+        Supports: AUDIO dict, Character Voices output, VideoHelper LazyAudioMap, etc.
+        
+        Args:
+            audio_input: Audio input in any supported format
+            input_name: Name for error messages
+            
+        Returns:
+            Standard AUDIO dict with 'waveform' and 'sample_rate' keys
+            
+        Raises:
+            ValueError: If audio format is not supported
+        """
+        # Import here to avoid circular imports
+        try:
+            from utils.audio.processing import AudioProcessingUtils
+            return AudioProcessingUtils.normalize_audio_input(audio_input, input_name)
+        except ImportError:
+            # Fallback implementation if utils not available
+            if audio_input is None:
+                raise ValueError(f"{input_name} input is required")
+            
+            # Character Voices node output (NARRATOR_VOICE)
+            if isinstance(audio_input, dict) and "audio" in audio_input:
+                return self.normalize_audio_input(audio_input["audio"], input_name)
+            
+            # Standard AUDIO format or VideoHelper LazyAudioMap
+            elif hasattr(audio_input, "__getitem__"):
+                if "waveform" in audio_input and "sample_rate" in audio_input:
+                    return {
+                        "waveform": audio_input["waveform"], 
+                        "sample_rate": audio_input["sample_rate"]
+                    }
+                else:
+                    available_keys = list(audio_input.keys()) if hasattr(audio_input, "keys") else []
+                    raise ValueError(f"Audio input missing required keys. Expected 'waveform' and 'sample_rate', found: {available_keys}")
+            else:
+                audio_type = type(audio_input).__name__
+                raise ValueError(f"Unsupported audio format: {audio_type}")
+
     def handle_reference_audio(self, reference_audio: Optional[Dict[str, Any]], 
                              audio_prompt_path: str = "") -> Optional[str]:
         """
         Handle reference audio input, creating temporary files as needed.
         
         Args:
-            reference_audio: Audio tensor from ComfyUI
+            reference_audio: Audio tensor from ComfyUI (any supported format)
             audio_prompt_path: Path to audio file on disk
             
         Returns:
@@ -134,17 +190,20 @@ class BaseChatterBoxNode:
         audio_prompt = None
         
         if reference_audio is not None:
+            # Normalize audio input to handle all formats (VideoHelper, Character Voices, etc.)
+            normalized_audio = self.normalize_audio_input(reference_audio, "reference_audio")
+            
             # Create temporary file for reference audio
             temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
             temp_file.close()
             
             # Save waveform to temporary file
-            waveform = reference_audio["waveform"]
+            waveform = normalized_audio["waveform"]
             if waveform.dim() == 3:
                 waveform = waveform.squeeze(0)  # Remove batch dimension
             
             import torchaudio
-            torchaudio.save(temp_file.name, waveform, reference_audio["sample_rate"])
+            torchaudio.save(temp_file.name, waveform, normalized_audio["sample_rate"])
             
             audio_prompt = temp_file.name
             self._temp_files.append(temp_file.name)

@@ -67,6 +67,10 @@ class ChatterboxVCNode(BaseVCNode):
 
     def _generate_vc_cache_key(self, source_audio: Dict[str, Any], target_audio: Dict[str, Any], device: str) -> str:
         """Generate cache key for voice conversion iterations"""
+        # Normalize audio inputs for VideoHelper compatibility
+        source_audio = self._get_audio(source_audio, "source_audio")
+        target_audio = self._get_audio(target_audio, "target_audio")
+        
         # Create hash from source and target audio characteristics
         source_hash = hashlib.md5(source_audio["waveform"].cpu().numpy().tobytes()).hexdigest()[:16]
         target_hash = hashlib.md5(target_audio["waveform"].cpu().numpy().tobytes()).hexdigest()[:16]
@@ -105,12 +109,16 @@ class ChatterboxVCNode(BaseVCNode):
         Prepare audio files for voice conversion by saving to temporary files.
         
         Args:
-            source_audio: Source audio dictionary from ComfyUI
-            target_audio: Target audio dictionary from ComfyUI
+            source_audio: Source audio dictionary from ComfyUI (any format)
+            target_audio: Target audio dictionary from ComfyUI (any format)
             
         Returns:
             Tuple of (source_path, target_path)
         """
+        # Normalize audio inputs for VideoHelper compatibility
+        source_audio = self._get_audio(source_audio, "source_audio")
+        target_audio = self._get_audio(target_audio, "target_audio")
+        
         # Save source audio to temporary file
         source_temp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         source_temp.close()
@@ -177,7 +185,7 @@ class ChatterboxVCNode(BaseVCNode):
             
             # Start from the highest cached iteration or from beginning
             start_iteration = 0
-            current_audio = source_audio
+            current_audio = source_audio  # source_audio already normalized in prepare_audio_files()
             
             # Find the highest cached iteration we can start from
             for i in range(refinement_passes, 0, -1):

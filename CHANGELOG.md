@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.28] - 2025-09-03
+
+### Added
+
+- Add universal audio format support for VideoHelper LazyAudioMap objects
+- All audio-processing nodes now work with VideoHelper audio without workarounds
+
+### Fixed
+
+- Fix VideoHelper Suite audio compatibility
+- Fix Voice Changer not detecting audio from VideoHelper Suite Load Video nodes
+- Improve compatibility with Character Voices and standard AUDIO inputs
 ## [4.6.27] - 2025-09-03
 
 ### Changed
