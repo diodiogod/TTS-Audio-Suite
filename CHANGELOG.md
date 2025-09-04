@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix numpy compatibility issues with other ComfyUI nodes
 - Support numpy 1.26.4 for better compatibility with other custom nodes
-- Fix VibeVoice installation failing due to missing Microsoft repository
+- Fix VibeVoice installation failing due to missing Microsoft repository (for whataver reason the repo is now gone)
 ## [4.6.26] - 2025-09-01
 
 ### Added
