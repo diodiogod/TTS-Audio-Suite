@@ -48,12 +48,12 @@ Project          Voice            Speech         New TTS Engine │
 Renamed          Conversion       Analyzer       Voice Cloning  │
 TTS Audio Suite  + Streaming                                    │
                                                                 ▼
-                                               v4.6 ◄───────────┘
-                                               Jul 25
-                                               │                 
-                                               VibeVoice          
-                                               New TTS Engine   
-                                               90min Generation 
+                              v4.7 ◄────────── v4.6 ◄───────────┘
+                              Sep 25           Jul 25
+                              │                │                 
+                              ChatterBox       VibeVoice          
+                              11 Languages     New TTS Engine   
+                              Italian + more   90min Generation 
 ```
 
 <details>
@@ -857,20 +857,20 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 
 **Available ChatterBox Language Models:**
 
-| Language | HuggingFace Repository | Format | Auto-Download |
-| --------- | ----------------------------------------------------------------------------------------- | ------------ | ------------- |
-| English | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | .pt | ✅ |
-| German | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de) | .safetensors | ✅ |
-| German (havok2) | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| German (SebastianBodza) | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| Italian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .pt | ✅ |
-| French | [Thomcles/ChatterBox-fr](https://huggingface.co/Thomcles/ChatterBox-fr) | .safetensors | ✅ |
-| Russian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| Armenian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| Georgian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| Japanese | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| Korean | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
-| Norwegian | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅ |
+| Language                | HuggingFace Repository                                                                    | Format       | Auto-Download |
+| ----------------------- | ----------------------------------------------------------------------------------------- | ------------ | ------------- |
+| English                 | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox)                     | .pt          | ✅             |
+| German                  | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de)                   | .safetensors | ✅             |
+| German (havok2)         | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| German (SebastianBodza) | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| Italian                 | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .pt          | ✅             |
+| French                  | [Thomcles/ChatterBox-fr](https://huggingface.co/Thomcles/ChatterBox-fr)                   | .safetensors | ✅             |
+| Russian                 | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| Armenian                | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| Georgian                | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| Japanese                | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| Korean                  | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
+| Norwegian               | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
 
 **Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model (~1GB per language).
 
@@ -1068,9 +1068,9 @@ ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
 
 **Available VibeVoice Models (Auto-Download):**
 
-| Model          | Description                              | Size   | Source                                                                              | Auto-Download |
-| -------------- | ---------------------------------------- | ------ | ----------------------------------------------------------------------------------- | ------------- |
-| vibevoice-1.5B | Microsoft official (2.7B params, faster) | ~5.4GB | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B)         | ✅             |
+| Model          | Description                                     | Size   | Source                                                                        | Auto-Download |
+| -------------- | ----------------------------------------------- | ------ | ----------------------------------------------------------------------------- | ------------- |
+| vibevoice-1.5B | Microsoft official (2.7B params, faster)        | ~5.4GB | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B)   | ✅             |
 | vibevoice-7B   | Official Microsoft model (9.3B params, quality) | ~18GB  | [microsoft/VibeVoice-Large](https://huggingface.co/microsoft/VibeVoice-Large) | ✅             |
 
 **Key Features:**
