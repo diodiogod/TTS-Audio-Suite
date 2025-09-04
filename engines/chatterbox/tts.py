@@ -32,7 +32,7 @@ from .models.t3.modules.cond_enc import T3Cond
 
 # Import language model registry
 try:
-    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness, get_tokenizer_filename
+    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness, get_tokenizer_filename, is_model_incomplete
 except ImportError:
     # Fallback if language_models not available
     CHATTERBOX_MODELS = {"English": {"repo": "ResembleAI/chatterbox", "format": "pt"}}
@@ -44,6 +44,8 @@ except ImportError:
         return True, []
     def get_tokenizer_filename(language):
         return "tokenizer.json"
+    def is_model_incomplete(language):
+        return False
 
 # Import modular processors
 from .overlapping_processor import OverlappingBatchProcessor, BatchingStrategy
@@ -181,11 +183,21 @@ class ChatterboxTTS:
                 self.enable_watermarking = False
 
     @classmethod
-    def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
+    def from_local(cls, ckpt_dir, device, language=None) -> 'ChatterboxTTS':
         ckpt_dir = Path(ckpt_dir)
         
-        # Auto-detect model format
-        def load_model_file(base_name: str):
+        # Determine if this is an incomplete model by checking language or directory structure
+        is_incomplete_model = False
+        if language:
+            is_incomplete_model = is_model_incomplete(language)
+        else:
+            # Check if critical files are missing (indicates incomplete model)
+            ve_exists = any((ckpt_dir / f"ve.{ext}").exists() for ext in ["safetensors", "pt"])
+            s3gen_exists = any((ckpt_dir / f"s3gen.{ext}").exists() for ext in ["safetensors", "pt"])
+            is_incomplete_model = not (ve_exists and s3gen_exists)
+        
+        # Auto-detect model format with fallback support for incomplete models
+        def load_model_file(base_name: str, required: bool = True):
             """Load model file with auto-detection of format (.safetensors preferred over .pt)"""
             safetensors_path = ckpt_dir / f"{base_name}.safetensors"
             pt_path = ckpt_dir / f"{base_name}.pt"
@@ -194,19 +206,61 @@ class ChatterboxTTS:
                 return load_file(safetensors_path, device=device)
             elif pt_path.exists():
                 return torch.load(pt_path, map_location=device)
+            elif not required:
+                return None
             else:
                 raise FileNotFoundError(f"Neither {base_name}.safetensors nor {base_name}.pt found in {ckpt_dir}")
+        
+        def load_from_english_fallback(base_name: str):
+            """Load component from English model when missing in incomplete model"""
+            from utils.downloads.unified_downloader import UnifiedModelDownloader
+            from .language_models import find_local_model_path
+            
+            # Try to find local English model first
+            english_path = find_local_model_path("English")
+            if english_path:
+                english_dir = Path(english_path)
+                safetensors_path = english_dir / f"{base_name}.safetensors"
+                pt_path = english_dir / f"{base_name}.pt"
+                
+                if safetensors_path.exists():
+                    print(f"📁 Loading {base_name} from local English model: {safetensors_path}")
+                    return load_file(safetensors_path, device=device)
+                elif pt_path.exists():
+                    print(f"📁 Loading {base_name} from local English model: {pt_path}")
+                    return torch.load(pt_path, map_location=device)
+            
+            # Download English model if not available locally
+            print(f"📦 Downloading English model components for incomplete language model...")
+            downloader = UnifiedModelDownloader()
+            english_dir = downloader.download_chatterbox_model("ResembleAI/chatterbox", "English")
+            if english_dir:
+                english_path = Path(english_dir)
+                safetensors_path = english_path / f"{base_name}.safetensors"
+                pt_path = english_path / f"{base_name}.pt"
+                
+                if safetensors_path.exists():
+                    print(f"📁 Loading {base_name} from downloaded English model: {safetensors_path}")
+                    return load_file(safetensors_path, device=device)
+                elif pt_path.exists():
+                    print(f"📁 Loading {base_name} from downloaded English model: {pt_path}")
+                    return torch.load(pt_path, map_location=device)
+            
+            raise FileNotFoundError(f"Could not load {base_name} from English fallback")
         
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             
-            # Load VoiceEncoder
+            # Load VoiceEncoder (use English fallback for incomplete models)
             ve = VoiceEncoder()
-            ve_state = load_model_file("ve")
+            ve_state = load_model_file("ve", required=not is_incomplete_model)
+            if ve_state is None and is_incomplete_model:
+                print(f"📎 Loading VoiceEncoder from English model (incomplete model fallback)")
+                ve_state = load_from_english_fallback("ve")
             ve.load_state_dict(ve_state)
             ve.to(device).eval()
 
-            # Load T3 config
+            # Load T3 config (always required)
             t3_state = load_model_file("t3_cfg")
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
@@ -224,9 +278,12 @@ class ChatterboxTTS:
             
             t3.to(device).eval()
 
-            # Load S3Gen
+            # Load S3Gen (use English fallback for incomplete models)
             s3gen = S3Gen()
-            s3gen_state = load_model_file("s3gen")
+            s3gen_state = load_model_file("s3gen", required=not is_incomplete_model)
+            if s3gen_state is None and is_incomplete_model:
+                print(f"📎 Loading S3Gen from English model (incomplete model fallback)")
+                s3gen_state = load_from_english_fallback("s3gen")
             # Apply JaneDoe84's critical fix: strict=False to handle missing keys
             s3gen.load_state_dict(s3gen_state, strict=False)
             s3gen.to(device).eval()
@@ -284,7 +341,7 @@ class ChatterboxTTS:
                 try:
                     return try_local_first(
                         search_paths=search_paths,
-                        local_loader=lambda path: cls.from_local(path, device),
+                        local_loader=lambda path: cls.from_local(path, device, language),
                         fallback_loader=lambda: cls.from_pretrained(device, language="English"),
                         fallback_name="English",
                         original_request=language
@@ -306,7 +363,7 @@ class ChatterboxTTS:
             is_complete, missing_files = validate_model_completeness(model_dir, language)
             if is_complete:
                 print(f"📁 Using existing local model: {model_dir}")
-                return cls.from_local(model_dir, device)
+                return cls.from_local(model_dir, device, language)
             else:
                 print(f"⚠️ Local model incomplete, missing: {missing_files}")
 
@@ -334,7 +391,7 @@ class ChatterboxTTS:
         
         if downloaded_dir:
             print(f"✅ Downloaded ChatterBox model: {language}")
-            return cls.from_local(downloaded_dir, device)
+            return cls.from_local(downloaded_dir, device, language)
         else:
             # Fallback to English if download fails
             print(f"❌ Failed to download {language} model, falling back to English")
