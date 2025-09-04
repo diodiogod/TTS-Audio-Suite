@@ -213,7 +213,7 @@ class ChatterboxTTS:
         
         def load_from_english_fallback(base_name: str):
             """Load component from English model when missing in incomplete model"""
-            from utils.downloads.unified_downloader import UnifiedModelDownloader
+            from utils.downloads.unified_downloader import UnifiedDownloader
             from .language_models import find_local_model_path
             
             # Try to find local English model first
@@ -232,7 +232,7 @@ class ChatterboxTTS:
             
             # Download English model if not available locally
             print(f"📦 Downloading English model components for incomplete language model...")
-            downloader = UnifiedModelDownloader()
+            downloader = UnifiedDownloader()
             english_dir = downloader.download_chatterbox_model("ResembleAI/chatterbox", "English")
             if english_dir:
                 english_path = Path(english_dir)
