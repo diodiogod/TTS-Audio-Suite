@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.6.28
+# TTS Audio Suite v4.7.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -139,7 +139,7 @@ TTS Audio Suite  + Streaming                                    │
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
-- 🌍 **Multi-language Support** - ChatterBox (English, German, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
+- 🌍 **Multi-language Support** - ChatterBox (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
@@ -340,7 +340,7 @@ Back to the narrator for the conclusion.
 **Supported Languages:**
 
 * **F5-TTS**: English (en), German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt), Hindi (hi)
-* **ChatterBox**: English (en), German (de), Norwegian (no/nb/nn)
+* **ChatterBox**: English (en), German (de, de-best, de-expressive), Italian (it), French (fr), Russian (ru), Armenian (hy), Georgian (ka), Japanese (ja), Korean (ko), Norwegian (no/nb/nn)
 
 Example usage:
 
@@ -433,12 +433,22 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 <details>
 <summary><h3>🌍 Multi-language ChatterBox Support</h3></summary>
 
-**NEW in v3.3.0**: ChatterBox TTS and SRT nodes now support multiple languages with automatic model management!
+**NEW in v4.6.29**: ChatterBox TTS now supports 11 languages with automatic model management!
 
 **Supported Languages:**
 
 - 🇺🇸 **English**: Original ResembleAI model (default)
-- 🇩🇪 **German**: High-quality German ChatterBox model (stlohrey/chatterbox_de)
+- 🇩🇪 **German**: Three variants available:
+  - Standard German (stlohrey/chatterbox_de)
+  - German Best (havok2) - Multi-speaker hybrid, best quality
+  - German Expressive (SebastianBodza) - Emotion control with `<haha>`, `<wow>` tags
+- 🇮🇹 **Italian**: Bilingual Italian/English model with `[it]` prefix for Italian text
+- 🇫🇷 **French**: 1,400 hours Emilia dataset with zero-shot voice cloning
+- 🇷🇺 **Russian**: Complete model with training artifacts
+- 🇦🇲 **Armenian**: Complete model with unique architecture
+- 🇬🇪 **Georgian**: Complete model with specialized features
+- 🇯🇵 **Japanese**: Uses shared English components with Japanese text processing
+- 🇰🇷 **Korean**: Uses shared English components with Korean text processing
 - 🇳🇴 **Norwegian**: Norwegian ChatterBox model (akhbar/chatterbox-tts-norwegian)
 
 **Key Features:**
@@ -847,11 +857,20 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 
 **Available ChatterBox Language Models:**
 
-| Language  | HuggingFace Repository                                                                    | Format       | Auto-Download |
+| Language | HuggingFace Repository | Format | Auto-Download |
 | --------- | ----------------------------------------------------------------------------------------- | ------------ | ------------- |
-| English   | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox)                     | .pt          | ✅             |
-| German    | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de)                   | .safetensors | ✅             |
-| Norwegian | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
+| English | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | .pt | ✅ |
+| German | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de) | .safetensors | ✅ |
+| German (havok2) | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| German (SebastianBodza) | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| Italian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .pt | ✅ |
+| French | [Thomcles/ChatterBox-fr](https://huggingface.co/Thomcles/ChatterBox-fr) | .safetensors | ✅ |
+| Russian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| Armenian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| Georgian | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| Japanese | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| Korean | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS) | .safetensors | ✅ |
+| Norwegian | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅ |
 
 **Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model (~1GB per language).
 

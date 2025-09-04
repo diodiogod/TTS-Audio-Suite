@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.0] - 2025-09-04
+
+### Added
+
+- Add ChatterBox support for 9 new languages
+- NEW: Italian bilingual model with automatic [it] prefix for Italian text
+- NEW: French model with 1400+ hours training and voice cloning
+- NEW: Russian complete model with training artifacts
+- NEW: Armenian and Georgian models with unique architectures
+- NEW: Japanese and Korean support with shared components
+- NEW: Three German variants (Standard, Best quality, Expressive with emotion tags)
 ## [4.6.28] - 2025-09-03
 
 ### Added
