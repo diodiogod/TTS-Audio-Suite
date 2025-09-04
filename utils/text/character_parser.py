@@ -39,8 +39,9 @@ class CharacterParser:
     - Language-aware character switching
     """
     
-    # Regex pattern for character tags: [CharacterName] or [language:CharacterName] (excludes pause tags)
-    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)([^\]]+)\]')
+    # Regex pattern for character tags: [CharacterName] or [language:CharacterName] 
+    # Excludes: pause tags, standalone Italian tags [it]/[italian] (but allows [it:]/[italian:])
+    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
     
     # Regex to parse language:character format (supports flexible language names)
     LANGUAGE_CHARACTER_PATTERN = re.compile(r'^([a-zA-Z0-9\-_À-ÿ\s]+):(.*)$')
@@ -825,6 +826,68 @@ class CharacterParser:
         """
         segments = self.parse_text_segments(text)
         return [(segment.character, segment.text, segment.language) for segment in segments]
+    
+    def split_by_character_with_language_and_explicit_flag(self, text: str) -> List[Tuple[str, str, str, bool]]:
+        """
+        Split text by character, returning (character, text, language, explicit_language) tuples.
+        Extended method that includes explicit language flag for Italian prefix handling.
+        
+        Args:
+            text: Input text with [Character] or [language:Character] tags
+            
+        Returns:
+            List of (character_name, text_content, language_code, explicit_language) tuples
+        """
+        segments = self.parse_text_segments(text)
+        
+        # Apply Italian prefix directly to segments before returning
+        processed_segments = []
+        for segment in segments:
+            processed_text = self.apply_italian_prefix_if_needed(
+                segment.text, segment.character, segment.language, segment.explicit_language
+            )
+            processed_segments.append((segment.character, processed_text, segment.language, segment.explicit_language))
+        
+        return processed_segments
+    
+    def apply_italian_prefix_if_needed(self, text: str, character: str, language: str, explicit_language: bool) -> str:
+        """
+        Apply [it] prefix to text if Italian language is detected.
+        
+        The Italian ChatterBox model requires [it] prefix for Italian text but only when:
+        - User uses [it:Alice] or [italian:Bob] syntax (explicit_language=True with language='it')
+        - User uses [it:] or [italian:] language switching (explicit_language=True with language='it')
+        - Character is mapped as Italian in alias system (language='it' from character defaults)
+        
+        NOT when just using Italian model globally (it's bilingual Italian/English).
+        
+        Args:
+            text: Text content to potentially prefix (should be clean text without character tags)
+            character: Character name
+            language: Resolved language code
+            explicit_language: Whether language was explicitly specified in tag
+            
+        Returns:
+            Text with [it] prefix added if Italian requirements are met
+        """
+        # Only apply Italian prefix if language is Italian
+        if language != 'it':
+            return text
+        
+        # Apply prefix if:
+        # 1. Language was explicitly set via [it:Alice] or [italian:] syntax
+        # 2. Character has Italian as default language from alias system (not explicit but character-mapped)
+        should_apply_prefix = (
+            explicit_language or  # User explicitly used [it:] or [italian:] syntax
+            (not explicit_language and language == 'it')  # Character mapped to Italian via alias system
+        )
+        
+        if should_apply_prefix:
+            # Avoid double-prefixing - check if [it] is already at the start
+            if not text.strip().startswith('[it]'):
+                return f"[it] {text.strip()}"
+        
+        return text
     
     def validate_character_tags(self, text: str) -> Tuple[bool, List[str]]:
         """

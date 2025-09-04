@@ -694,8 +694,11 @@ The audio will match these exact timings.""",
                     all_subtitle_segments.append((i, subtitle, 'empty', None, None))
                     continue
                 
-                # Parse character segments with language awareness
-                character_segments_with_lang = character_parser.split_by_character_with_language(subtitle.text)
+                # Parse character segments with language awareness (with Italian prefix automatically applied)
+                character_segments_with_lang_and_explicit = character_parser.split_by_character_with_language_and_explicit_flag(subtitle.text)
+                
+                # Create backward-compatible segments (Italian prefix already applied in parser)
+                character_segments_with_lang = [(char, segment_text, lang) for char, segment_text, lang, explicit_lang in character_segments_with_lang_and_explicit]
                 
                 # Check if we have character switching or language switching
                 characters = list(set(char for char, _, _ in character_segments_with_lang))

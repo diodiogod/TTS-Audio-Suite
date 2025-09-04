@@ -205,6 +205,9 @@ class MultilingualEngine:
                 current_model = getattr(engine_adapter.node, 'current_language', 'unknown')
                 print(f"🔧 ACTUAL MODEL: Generating segment {segment_display_idx} using '{current_model}' model")
                 
+                # Show the final text that will go to the TTS model
+                print(f"🔤 Final text to {self.engine_type.upper()} via multilingual engine ({character}): '{segment_text}'")
+                
                 # CRITICAL FIX: For language-only tags, use "narrator" as character for cache consistency
                 cache_character = character
                 if self.engine_type == "chatterbox" and original_character == "narrator":

@@ -447,6 +447,9 @@ Back to the main narrator voice for the conclusion.""",
                 # Apply crash protection first for consistency
                 protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
                 
+                # Show final text going into the TTS model
+                print(f"🔤 Final text to ChatterBox TTS model ({character}): '{protected_text}'")
+                
                 # Use centralized cache system
                 from utils.audio.cache import create_cache_function
                 cache_fn = create_cache_function(
@@ -476,6 +479,8 @@ Back to the main narrator voice for the conclusion.""",
                 return audio_clone
             else:
                 protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                # Show final text going into the TTS model
+                print(f"🔤 Final text to ChatterBox TTS model ({character}): '{protected_text}'")
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 return audio.detach().clone() if audio.requires_grad else audio
@@ -491,6 +496,9 @@ Back to the main narrator voice for the conclusion.""",
                 protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                
+                # Show final text going into the TTS model
+                print(f"🔤 Final text to ChatterBox TTS model ({character}, pause segment): '{protected_text}'")
                 
                 # Use centralized cache system
                 from utils.audio.cache import create_cache_function
@@ -524,6 +532,9 @@ Back to the main narrator voice for the conclusion.""",
                 protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                
+                # Show final text going into the TTS model
+                print(f"🔤 Final text to ChatterBox TTS model ({character}, pause segment, no cache): '{protected_text}'")
                 
                 audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
@@ -608,8 +619,11 @@ Back to the main narrator voice for the conclusion.""",
             # Set engine-aware default language to prevent unnecessary model switching
             character_parser.set_engine_aware_default_language(inputs["language"], "chatterbox")
             
-            # Parse character segments from original text for all modes
-            character_segments_with_lang = character_parser.split_by_character_with_language(inputs["text"])
+            # Parse character segments from original text for all modes (with Italian prefix automatically applied)
+            character_segments_with_lang_and_explicit = character_parser.split_by_character_with_language_and_explicit_flag(inputs["text"])
+            
+            # Create backward-compatible segments (Italian prefix already applied in parser)
+            character_segments_with_lang = [(char, segment_text, lang) for char, segment_text, lang, explicit_lang in character_segments_with_lang_and_explicit]
             
             # Check if we have pause tags, character switching, or language switching
             has_pause_tags = pause_segments is not None
@@ -756,11 +770,15 @@ Back to the main narrator voice for the conclusion.""",
                 audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
+                # Create processed text for timing display (character tags removed, Italian prefixes applied)
+                processed_text_segments = [segment_text for _, segment_text, _ in character_segments_with_lang]
+                processed_text = ' '.join(processed_text_segments)
+                
                 # Combine all character segments with timing info
                 wav, chunk_info = self.combine_audio_chunks(
                     audio_segments, inputs["chunk_combination_method"], 
-                    inputs["silence_between_chunks_ms"], len(inputs["text"]),
-                    original_text=inputs["text"], text_chunks=None, return_info=True
+                    inputs["silence_between_chunks_ms"], len(processed_text),
+                    original_text=processed_text, text_chunks=None, return_info=True
                 )
                 
                 # Generate info - handle case where streaming was used and tts_model is None
@@ -908,11 +926,15 @@ Back to the main narrator voice for the conclusion.""",
                         )
                         audio_segments.append(chunk_audio)
                     
+                    # Create processed text for timing display (character tags removed, Italian prefixes applied)
+                    processed_text_segments = [segment_text for _, segment_text, _ in character_segments_with_lang]
+                    processed_text = ' '.join(processed_text_segments)
+                    
                     # Combine audio segments with timing info
                     wav, chunk_info = self.combine_audio_chunks(
                         audio_segments, inputs["chunk_combination_method"], 
-                        inputs["silence_between_chunks_ms"], text_length,
-                        original_text=inputs["text"], text_chunks=None, return_info=True
+                        inputs["silence_between_chunks_ms"], len(processed_text),
+                        original_text=processed_text, text_chunks=None, return_info=True
                     )
                     
                     # Generate info (UNCHANGED)
