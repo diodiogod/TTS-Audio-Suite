@@ -300,13 +300,25 @@ class ChatterboxTTS:
             s3gen.load_state_dict(s3gen_state, strict=False)
             s3gen.to(device).eval()
 
-            # Find the correct tokenizer file (handles Japanese/Korean special cases)
+            # Find the correct tokenizer file (prioritize language-specific tokenizer)
             tokenizer_file = None
-            for possible_tokenizer in ["tokenizer.json", "tokenizer_jp.json", "tokenizer_en_ko.json"]:
-                tokenizer_path = ckpt_dir / possible_tokenizer
-                if tokenizer_path.exists():
-                    tokenizer_file = str(tokenizer_path)
-                    break
+            
+            # First try the language-specific tokenizer based on language parameter
+            if language:
+                expected_tokenizer = get_tokenizer_filename(language)
+                expected_path = ckpt_dir / expected_tokenizer
+                if expected_path.exists():
+                    tokenizer_file = str(expected_path)
+                    print(f"🔤 Using language-specific tokenizer: {expected_tokenizer}")
+            
+            # If language-specific not found, try available tokenizers
+            if not tokenizer_file:
+                for possible_tokenizer in ["tokenizer_jp.json", "tokenizer_en_ko.json", "tokenizer.json"]:
+                    tokenizer_path = ckpt_dir / possible_tokenizer
+                    if tokenizer_path.exists():
+                        tokenizer_file = str(tokenizer_path)
+                        print(f"🔤 Using available tokenizer: {possible_tokenizer}")
+                        break
             
             if not tokenizer_file:
                 raise FileNotFoundError(f"No tokenizer file found in {ckpt_dir}")
