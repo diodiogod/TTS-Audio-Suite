@@ -38,7 +38,8 @@ CHATTERBOX_MODELS = {
     "French": {
         "repo": "Thomcles/Chatterbox-TTS-French",
         "format": "safetensors",
-        "description": "French model trained on 1,400 hours of Emilia dataset with zero-shot voice cloning"
+        "description": "French model trained on 1,400 hours of Emilia dataset - t3_cfg only, uses shared English components",
+        "incomplete": True
     },
     "Russian": {
         "repo": "niobures/Chatterbox-TTS",
@@ -215,9 +216,14 @@ def get_tokenizer_filename(language: str) -> str:
 def get_model_requirements(language: str) -> List[str]:
     """Get list of required files for a ChatterBox model"""
     
-    # Handle special tokenizer names for incomplete models
-    tokenizer_file = get_tokenizer_filename(language)
-    base_requirements = ["t3_cfg.safetensors", tokenizer_file]
+    # Handle special cases for incomplete models
+    if language == "French":
+        # French model only has t3_cfg.safetensors, no tokenizer in repo
+        base_requirements = ["t3_cfg.safetensors"]
+    else:
+        # Other models have tokenizers
+        tokenizer_file = get_tokenizer_filename(language)
+        base_requirements = ["t3_cfg.safetensors", tokenizer_file]
     
     # Complete models need all components
     if not is_model_incomplete(language):
