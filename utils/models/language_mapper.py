@@ -117,52 +117,33 @@ class LanguageModelMapper:
             # Create mappings from language codes to model names
             mappings = {}
             
-            # Language code mappings for supported models
+            # Map canonical language codes (from character_parser alias resolution) to ChatterBox models
+            # Character parser handles alias resolution: [Brasil:] -> 'pt-br', [USA:] -> 'en', etc.
+            # This maps the resolved canonical codes to actual model names
             language_mappings = {
-                # English variants
-                "en": "English",
-                "english": "English",
+                # Canonical codes to ChatterBox models
+                "en": "English",                # [USA:], [America:], [English:] -> en -> English
+                "de": "German",                 # [German:], [Deutschland:] -> de -> German  
+                "no": "Norwegian",              # [Norway:], [Norsk:] -> no -> Norwegian
+                "nb": "Norwegian",              # Norwegian Bokmål
+                "nn": "Norwegian",              # Norwegian Nynorsk
+                "fr": "French",                 # [France:], [Français:] -> fr -> French
+                "ru": "Russian",                # [Russia:], [русский:] -> ru -> Russian
+                "hy": "Armenian",               # Armenian
+                "ka": "Georgian",               # Georgian  
+                "ja": "Japanese",               # [Japan:], [日本語:] -> ja -> Japanese
+                "ko": "Korean",                 # [Korea:], [한국어:] -> ko -> Korean
                 
-                # German variants  
-                "de": "German",
-                "german": "German",
-                "de-expressive": "German (SebastianBodza)",
-                "de-kartoffel": "German (SebastianBodza)", 
-                "de-multi": "German (havok2)",
-                "de-hybrid": "German (havok2)",
-                "de-best": "German (havok2)",  # User reported as best
+                # ChatterBox-specific model variants (these bypass character_parser aliases)
+                "de-expressive": "German (SebastianBodza)",    # Direct model selection
+                "de-kartoffel": "German (SebastianBodza)",     # Direct model selection
+                "de-multi": "German (havok2)",                 # Direct model selection
+                "de-hybrid": "German (havok2)",                # Direct model selection 
+                "de-best": "German (havok2)",                  # Direct model selection - user rated best
                 
-                # Norwegian variants
-                "no": "Norwegian",
-                "nb": "Norwegian",  # Norwegian Bokmål
-                "nn": "Norwegian",  # Norwegian Nynorsk
-                "norwegian": "Norwegian",
-                
-                # French
-                "fr": "French",
-                "french": "French",
-                
-                # Russian  
-                "ru": "Russian",
-                "russian": "Russian",
-                
-                # Armenian
-                "hy": "Armenian", 
-                "armenian": "Armenian",
-                
-                # Georgian
-                "ka": "Georgian",
-                "georgian": "Georgian",
-                
-                # Japanese
-                "ja": "Japanese",
-                "jp": "Japanese", 
-                "japanese": "Japanese",
-                
-                # Korean
-                "ko": "Korean",
-                "kr": "Korean",
-                "korean": "Korean",
+                # Future expansion when we get Portuguese models:
+                # "pt-br": "Portuguese (Brazil)",  # [Brasil:], [BR:] -> pt-br -> Portuguese (Brazil)
+                # "pt-pt": "Portuguese (Portugal)", # [Portugal:] -> pt-pt -> Portuguese (Portugal)
             }
             
             # Only add mappings for models that actually exist in registry
