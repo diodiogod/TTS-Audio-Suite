@@ -47,6 +47,9 @@ vocos                # F5-TTS vocoder
 monotonic-alignment-search
 faiss-cpu>=1.7.4
 
+# Optional performance enhancements
+# sageattention  # Optional: GPU-optimized mixed-precision attention for VibeVoice (requires CUDA SM80+)
+
 # Computer vision (safe)
 opencv-python
 pillow

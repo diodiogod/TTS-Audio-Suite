@@ -18,12 +18,18 @@ if project_root not in sys.path:
 from utils.downloads.unified_downloader import unified_downloader
 import folder_paths
 
-# VibeVoice model configurations
+# VibeVoice model configurations with fallback sources
+# Microsoft removed some official repos, so we include community mirrors
 VIBEVOICE_MODELS = {
     "vibevoice-1.5B": {
-        "repo": "microsoft/VibeVoice-1.5B",
+        "repo": "microsoft/VibeVoice-1.5B",  # Primary: Microsoft official (still available)
+        "fallback_repos": [  # Fallback sources if primary fails
+            "Shinku/VibeVoice-1.5B",
+            "callgg/vibevoice-bf16"
+        ],
         "description": "Microsoft VibeVoice 1.5B - Official model (actually 2.7B params)",
         "size": "5.4GB",
+        "tokenizer_repo": "Qwen/Qwen2.5-1.5B",  # Tokenizer source for this model
         "files": [
             # Required model files
             {"remote": "model-00001-of-00003.safetensors", "local": "model-00001-of-00003.safetensors"},
@@ -36,9 +42,15 @@ VIBEVOICE_MODELS = {
         ]
     },
     "vibevoice-7B": {
-        "repo": "microsoft/VibeVoice-Large",
-        "description": "Microsoft VibeVoice Large - Official 7B model (actually 9.3B params)",
+        "repo": "aoi-ot/VibeVoice-Large",  # Primary: Community mirror (Microsoft's is blocked)
+        "fallback_repos": [  # Additional fallback sources
+            "aoi-ot/VibeVoice-7B",
+            "DevParker/VibeVoice7b-low-vram",
+            "SassyDiffusion/VibeVoice-Large-pt"
+        ],
+        "description": "VibeVoice Large - 7B model (actually 9.3B params) from community mirror",
         "size": "18GB",
+        "tokenizer_repo": "Qwen/Qwen2.5-7B",  # Tokenizer source for this model
         "files": [
             # Required model files (10 shards)
             {"remote": "model-00001-of-00010.safetensors", "local": "model-00001-of-00010.safetensors"},
@@ -131,6 +143,8 @@ class VibeVoiceDownloader:
             
             if all_files_exist:
                 print(f"📁 Using local VibeVoice model: {model_dir}")
+                # Ensure tokenizer.json exists (download if missing)
+                self._ensure_tokenizer(model_name, model_dir)
                 return model_dir
             else:
                 print(f"🔄 Local model incomplete, will re-download: {model_dir}")
@@ -142,6 +156,8 @@ class VibeVoiceDownloader:
         
         if os.path.exists(legacy_config_path):
             print(f"📁 Using legacy VibeVoice model: {legacy_model_dir}")
+            # Ensure tokenizer.json exists (download if missing)
+            self._ensure_tokenizer(model_name, legacy_model_dir)
             return legacy_model_dir
         
         # 3. Check HuggingFace cache
@@ -151,27 +167,40 @@ class VibeVoiceDownloader:
             cached_config = hf_hub_download(repo_id=repo_id, filename="config.json", local_files_only=True)
             cached_model_dir = os.path.dirname(cached_config)
             print(f"📁 Using cached VibeVoice model: {cached_model_dir}")
+            # Ensure tokenizer.json exists (download if missing)
+            self._ensure_tokenizer(model_name, cached_model_dir)
             return cached_model_dir
         except Exception as cache_error:
             print(f"📋 Cache check for {model_name}: {str(cache_error)[:100]}... - will download")
         
-        # 4. Download model to local directory
+        # 4. Download model to local directory with fallback repos
         print(f"📥 Downloading VibeVoice model '{model_name}'...")
         
-        result = self.downloader.download_huggingface_model(
-            repo_id=model_info["repo"],
-            model_name=model_name,
-            files=model_info["files"],
-            engine_type="vibevoice",
-            subfolder=None
-        )
+        # Try primary repo first
+        repos_to_try = [model_info["repo"]] + model_info.get("fallback_repos", [])
         
-        if result:
-            print(f"✅ VibeVoice model '{model_name}' downloaded successfully")
-            return result
-        else:
-            print(f"❌ Failed to download VibeVoice model '{model_name}'")
-            return None
+        for repo_id in repos_to_try:
+            print(f"🔄 Trying repository: {repo_id}")
+            
+            result = self.downloader.download_huggingface_model(
+                repo_id=repo_id,
+                model_name=model_name,
+                files=model_info["files"],
+                engine_type="vibevoice",
+                subfolder=None
+            )
+            
+            if result:
+                print(f"✅ VibeVoice model '{model_name}' downloaded successfully from {repo_id}")
+                # Ensure tokenizer.json exists (download if missing)
+                self._ensure_tokenizer(model_name, result)
+                return result
+            else:
+                print(f"⚠️ Failed to download from {repo_id}, trying next...")
+        
+        print(f"❌ Failed to download VibeVoice model '{model_name}' from all sources")
+        print(f"   Tried repos: {', '.join(repos_to_try)}")
+        return None
     
     def ensure_vibevoice_package(self) -> bool:
         """
@@ -198,6 +227,42 @@ class VibeVoiceDownloader:
             print("📦 If the issue persists, try reinstalling the node via ComfyUI Manager")
             print("   or manually: pip install git+https://github.com/microsoft/VibeVoice.git")
             return False
+    
+    def _ensure_tokenizer(self, model_name: str, model_path: str) -> None:
+        """
+        Ensure tokenizer.json exists in model folder, download if missing.
+        
+        Args:
+            model_name: Name of the model
+            model_path: Path to model directory
+        """
+        tokenizer_path = os.path.join(model_path, "tokenizer.json")
+        
+        if not os.path.exists(tokenizer_path):
+            model_info = VIBEVOICE_MODELS.get(model_name)
+            if not model_info:
+                return
+            
+            tokenizer_repo = model_info.get("tokenizer_repo")
+            if not tokenizer_repo:
+                return
+            
+            print(f"📥 Downloading tokenizer.json from {tokenizer_repo}...")
+            try:
+                from huggingface_hub import hf_hub_download
+                
+                # Download directly to model folder
+                hf_hub_download(
+                    repo_id=tokenizer_repo,
+                    filename="tokenizer.json",
+                    local_dir=model_path,
+                    local_dir_use_symlinks=False
+                )
+                print(f"✅ Tokenizer downloaded to {model_path}")
+            except Exception as e:
+                print(f"⚠️ Failed to download tokenizer.json: {e}")
+                print(f"   You can manually download it from {tokenizer_repo}")
+                print(f"   and place it in {model_path}")
     
     def get_model_info(self, model_name: str) -> Optional[Dict]:
         """

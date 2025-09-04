@@ -74,9 +74,9 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "default": False,
                     "tooltip": "🗜️ 4-bit LLM quantization (requires bitsandbytes):\n• False: Full precision (better quality, faster with sufficient VRAM)\n• True: 4-bit quantization (significant VRAM savings)\n\n💾 VRAM Trade-offs:\n• 7B model: 12GB → 7.6GB VRAM savings\n• 1.5B model: 8.7GB → 3.2GB VRAM savings\n• ⚡ Speed: Faster if model doesn't fit in VRAM, slower if it does\n• 🎯 Recommended: Only enable if you need VRAM savings\n\nOnly quantizes LLM component, diffusion stays full precision."
                 }),
-                "attention_mode": (["auto", "eager", "sdpa", "flash_attention_2"], {
+                "attention_mode": (["auto", "eager", "sdpa", "flash_attention_2", "sage"], {
                     "default": "auto",
-                    "tooltip": "Attention implementation:\n• auto: 🎯 RECOMMENDED - Automatically select best available\n• eager: Standard attention (safest, slower)\n• sdpa: PyTorch SDPA optimized (balanced)\n• flash_attention_2: Fastest but may cause issues on some GPUs\n\nAuto mode provides best compatibility and performance balance."
+                    "tooltip": "Attention implementation:\n• auto: 🎯 RECOMMENDED - Automatically select best available\n• eager: Standard attention (safest, slower)\n• sdpa: PyTorch SDPA optimized (balanced)\n• flash_attention_2: Fastest but may cause issues on some GPUs\n• sage: 🚀 SageAttention - GPU-optimized mixed-precision (INT8/FP16/FP8)\n  Requires sageattention package and CUDA GPU (SM80+)\n  2-4x faster for long sequences, automatic GPU kernel selection\n\nAuto mode selects: sage > flash_attention_2 > sdpa based on availability."
                 }),
                 "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker"], {
                     "default": "Custom Character Switching",

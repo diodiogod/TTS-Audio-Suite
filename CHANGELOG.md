@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.1] - 2025-09-04
+
+### Added
+
+- Add backup model sources for reliable downloads
+- Add SageAttention GPU-optimized attention for 2-4x speed boost
+- SageAttention implementation based on https://github.com/wildminder/ComfyUI-VibeVoice
+
+### Changed
+
+- Better GPU memory optimization with mixed-precision kernels
+
+### Fixed
+
+- Fix VibeVoice compatibility and performance improvements
+- Fix compatibility with newer transformers library versions
+- Fix tokenizer downloads to avoid cache conflicts
 ## [4.7.0] - 2025-09-04
 
 ### Added

@@ -12,6 +12,8 @@ import gc
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
+from packaging import version
+import transformers
 
 # Add parent directory for imports
 current_dir = os.path.dirname(__file__)
@@ -32,6 +34,22 @@ from utils.models.unified_model_interface import load_tts_model
 
 # Setup logging
 logger = logging.getLogger("VibeVoice")
+
+# Check transformers version for dtype parameter compatibility
+_transformers_version = version.parse(transformers.__version__)
+_DTYPE_ARG_SUPPORTED = _transformers_version >= version.parse("4.56.0")
+
+# Try importing SageAttention support
+try:
+    from .sage_attention_patch import (
+        SAGE_ATTENTION_AVAILABLE,
+        set_sage_attention,
+        SAGE_ATTENTION_FUNCTION
+    )
+except ImportError:
+    SAGE_ATTENTION_AVAILABLE = False
+    set_sage_attention = None
+    SAGE_ATTENTION_FUNCTION = None
 
 # Convert token-based limits to character-based for unified chunker
 def tokens_to_chars(max_tokens: int) -> int:
@@ -129,35 +147,67 @@ class VibeVoiceEngine:
             # Import required modules  
             from transformers import BitsAndBytesConfig
             
+            # Determine base dtype
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+                model_dtype = torch.bfloat16
+            else:
+                model_dtype = torch.float16
+            
             # Build quantization config if requested
-            # Based on wildminder/ComfyUI-VibeVoice implementation
             quant_config = None
+            final_load_dtype = model_dtype
+            
             if quantize_llm_4bit:
+                # Default compute dtype for quantization
+                bnb_compute_dtype = model_dtype
+                
+                # SageAttention requires fp32 compute dtype for stability with 4-bit
+                if attention_mode == 'sage':
+                    print(f"   🎯 Using SageAttention with 4-bit: forcing fp32 compute dtype for stability")
+                    bnb_compute_dtype = torch.float32
+                    final_load_dtype = torch.float32
+                else:
+                    print(f"   📊 Using {attention_mode} with 4-bit: using {model_dtype} compute dtype")
+                
                 quant_config = BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_quant_type="nf4",
                     bnb_4bit_use_double_quant=True,
-                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_compute_dtype=bnb_compute_dtype,
                 )
-                print(f"   📊 Quantization config: NF4, double_quant, bfloat16")
+                print(f"   🗜️ 4-bit quantization enabled")
             
             # Determine final attention mode
             final_attention_mode = attention_mode
             if attention_mode == "auto":
                 # Auto-select best available attention
-                try:
-                    import flash_attn
-                    final_attention_mode = "flash_attention_2"
-                    print(f"   ✨ Auto-selected flash_attention_2")
-                except ImportError:
-                    final_attention_mode = "sdpa"  # PyTorch SDPA as fallback
-                    print(f"   ⚡ Auto-selected sdpa (flash_attention_2 not available)")
+                # Check SageAttention first
+                if SAGE_ATTENTION_AVAILABLE and SAGE_ATTENTION_FUNCTION is not None:
+                    final_attention_mode = "sage"
+                    print(f"   🚀 Auto-selected SageAttention (GPU-optimized mixed-precision)")
+                else:
+                    # Try flash attention
+                    try:
+                        import flash_attn
+                        final_attention_mode = "flash_attention_2"
+                        print(f"   ✨ Auto-selected flash_attention_2")
+                    except ImportError:
+                        final_attention_mode = "sdpa"  # PyTorch SDPA as fallback
+                        print(f"   ⚡ Auto-selected sdpa (flash_attention_2 not available)")
             
-            # Build model kwargs
+            # For SageAttention, we need to load with SDPA and patch later
+            attn_implementation_for_load = "sdpa" if final_attention_mode == "sage" else final_attention_mode
+            
+            # Build model kwargs with version-compatible dtype parameter
             model_kwargs = {
                 "trust_remote_code": True,
-                "torch_dtype": torch.bfloat16 if quant_config else torch.bfloat16,
             }
+            
+            # Use correct dtype parameter based on transformers version
+            if _DTYPE_ARG_SUPPORTED:
+                model_kwargs['dtype'] = final_load_dtype
+            else:
+                model_kwargs['torch_dtype'] = final_load_dtype
             
             # Set device_map based on quantization and device
             if quant_config:
@@ -169,21 +219,35 @@ class VibeVoiceEngine:
             else:
                 model_kwargs["device_map"] = device if device != "auto" else None
             
-            # Add attention implementation if not auto
-            if final_attention_mode != "auto":
-                model_kwargs["attn_implementation"] = final_attention_mode
+            # Add attention implementation (use SDPA for SageAttention, patch later)
+            if attn_implementation_for_load != "auto":
+                model_kwargs["attn_implementation"] = attn_implementation_for_load
                 
             # Add quantization config if enabled
             if quant_config:
                 model_kwargs["quantization_config"] = quant_config
             
             # Load model with enhanced configuration
-            # Credits: Based on drbaph's implementation in wildminder/ComfyUI-VibeVoice
             try:
                 self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
                     model_path,
                     **model_kwargs
                 )
+                
+                # Apply SageAttention if selected
+                if final_attention_mode == "sage":
+                    if SAGE_ATTENTION_AVAILABLE and set_sage_attention:
+                        print(f"   🎯 Applying SageAttention patch to model...")
+                        try:
+                            set_sage_attention(self.model)
+                            print(f"   ✅ SageAttention successfully applied")
+                        except Exception as sage_error:
+                            print(f"   ⚠️ Failed to apply SageAttention: {sage_error}")
+                            print(f"   📌 Falling back to SDPA")
+                            final_attention_mode = "sdpa"
+                    else:
+                        print(f"   ⚠️ SageAttention not available, using SDPA")
+                        final_attention_mode = "sdpa"
                 
                 # Set model to evaluation mode and mark quantization status
                 self.model.eval()
@@ -191,8 +255,33 @@ class VibeVoiceEngine:
                     setattr(self.model, "_llm_4bit", True)
                     
             except Exception as e:
-                # If quantization fails, try fallback without quantization
-                if quant_config:
+                # Fallback logic for attention modes
+                if final_attention_mode in ["sage", "flash_attention_2"]:
+                    print(f"⚠️ Failed with {final_attention_mode}, trying SDPA fallback: {e}")
+                    # Retry with SDPA
+                    model_kwargs["attn_implementation"] = "sdpa"
+                    try:
+                        self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                            model_path,
+                            **model_kwargs
+                        )
+                        self.model.eval()
+                        if quant_config:
+                            setattr(self.model, "_llm_4bit", True)
+                        final_attention_mode = "sdpa"
+                    except Exception as sdpa_error:
+                        print(f"⚠️ SDPA also failed, trying eager: {sdpa_error}")
+                        model_kwargs["attn_implementation"] = "eager"
+                        self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                            model_path,
+                            **model_kwargs
+                        )
+                        self.model.eval()
+                        if quant_config:
+                            setattr(self.model, "_llm_4bit", True)
+                        final_attention_mode = "eager"
+                elif quant_config:
+                    # If quantization fails, try without it
                     print(f"⚠️ Quantization failed, falling back to full precision: {e}")
                     model_kwargs_fallback = model_kwargs.copy()
                     model_kwargs_fallback.pop("quantization_config", None)
