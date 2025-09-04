@@ -394,7 +394,7 @@ class TTSAudioInstaller:
             "vector-quantize-pytorch",     # ✅ SAFE - Clean install
             "resemble-perth",              # ✅ SAFE - Works in ChatterBox
             "diffusers>=0.30.0",          # ✅ SAFE - Likely safe
-            "audio-separator>=0.35.2",    # ✅ SAFE - Heavy dependencies but no conflicts
+            # "audio-separator>=0.35.2",    # ⚠️ MOVED - Requires numpy>=2, installed conditionally
             "hydra-core>=1.3.0",          # ✅ SAFE - Clean install, minimal dependencies
             
             # Dependencies for --no-deps packages based on PyPI metadata
@@ -515,57 +515,102 @@ class TTSAudioInstaller:
 
     def install_numpy_with_constraints(self):
         """Install numpy with version constraints for compatibility"""
-        self.log("Installing numpy and numba with compatibility constraints", "INFO")
+        self.log("Checking numpy compatibility", "INFO")
         
-        # Check current numba version to determine compatible numpy range
+        # Python 3.13+ requires numpy 2.1.0 or newer (no wheels for 1.26.x)
+        if self.python_version >= (3, 13):
+            minimum_numpy = "numpy>=2.1.0,<2.3.0"
+            self.log("Python 3.13+ detected - requires NumPy 2.1.0 or newer", "INFO")
+        else:
+            minimum_numpy = "numpy>=1.26.4,<2.3.0"
+        
+        # Check if numpy is already installed and what version
         try:
-            import numba
-            numba_version = numba.__version__
-            self.log(f"Current numba version: {numba_version}", "INFO")
+            import numpy
+            numpy_version = numpy.__version__
+            self.log(f"Current numpy version: {numpy_version}", "INFO")
             
-            # Parse numba version to determine numpy compatibility
+            # Parse numpy version
             import re
-            version_match = re.match(r'(\d+)\.(\d+)', numba_version)
+            version_match = re.match(r'(\d+)\.(\d+)', numpy_version)
             if version_match:
                 major, minor = int(version_match.group(1)), int(version_match.group(2))
                 
-                if (major, minor) >= (0, 62):  # Numba 0.62+ supports NumPy 2.2+
-                    numpy_constraint = "numpy>=2.2.0,<2.3.0"
-                    self.log("Numba 0.62+ detected - using NumPy 2.2+", "INFO")
-                elif (major, minor) == (0, 61):
-                    # Check if it's 0.61.2+ (supports NumPy 2.2+) or 0.61.0-0.61.1 (needs NumPy 2.1)
-                    patch_match = re.search(r'0\.61\.(\d+)', numba_version)
-                    if patch_match and int(patch_match.group(1)) >= 2:
-                        numpy_constraint = "numpy>=2.2.0,<2.3.0"
-                        self.log(f"Numba {numba_version} supports NumPy 2.2+ - using modern NumPy", "INFO")
-                    else:
-                        # Numba 0.61.0-0.61.1 needs upgrade to 0.61.2+ for NumPy 2.2+ support
-                        self.log(f"Numba {numba_version} detected - upgrading to 0.61.2+ for NumPy 2.2+ support", "WARNING")
-                        self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to 0.61.2+ for NumPy 2.2+ compatibility")
-                        numpy_constraint = "numpy>=2.2.0,<2.3.0"
+                # Python 3.13+ specific check
+                if self.python_version >= (3, 13) and major < 2:
+                    self.log(f"NumPy {numpy_version} is incompatible with Python 3.13+", "ERROR")
+                    self.log("Python 3.13 requires NumPy 2.1.0 or newer (no wheels for 1.26.x)", "WARNING")
+                    numpy_constraint = minimum_numpy
+                # Accept both numpy 1.26.x and 2.x.x (but not 2.3.x) for older Python
+                elif major == 1 and minor >= 26 and self.python_version < (3, 13):
+                    self.log(f"NumPy {numpy_version} is compatible - keeping current version", "INFO")
+                    return  # NumPy 1.26.x is fine for Python < 3.13
+                elif major == 2 and minor < 3:
+                    self.log(f"NumPy {numpy_version} is compatible - keeping current version", "INFO")
+                    return  # NumPy 2.0.x, 2.1.x, 2.2.x are fine
+                elif major >= 2 and minor >= 3:
+                    # Only numpy 2.3+ needs downgrading
+                    self.log(f"NumPy {numpy_version} may cause issues - constraining to <2.3.0", "WARNING")
+                    numpy_constraint = minimum_numpy
                 else:
-                    # Numba 0.60.x or older - upgrade to compatible version
-                    self.log(f"Numba {numba_version} detected - upgrading to 0.61.2+ for NumPy 2.2+ support", "WARNING")
-                    self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to 0.61.2+ for NumPy 2.2+ compatibility")
-                    numpy_constraint = "numpy>=2.2.0,<2.3.0"
+                    # Very old numpy needs updating
+                    self.log(f"NumPy {numpy_version} is too old", "WARNING")
+                    numpy_constraint = minimum_numpy
             else:
-                # Can't parse version - play it safe with known compatible version
-                numpy_constraint = "numpy>=2.2.0,<2.3.0" 
-                self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to compatible version for safety")
+                # Can't parse version - install safe range
+                numpy_constraint = minimum_numpy
                 
         except ImportError:
-            # No numba installed - install both with compatible versions
-            self.log("Numba not found - installing compatible numba with NumPy", "INFO")
-            numpy_constraint = "numpy>=2.2.0,<2.3.0"
-            self.run_pip_command(["install", "numba>=0.61.2"], "Installing compatible numba 0.61.2+")
+            # No numpy installed - install with appropriate constraints
+            self.log("NumPy not found - installing with appropriate constraints", "INFO")
+            numpy_constraint = minimum_numpy
         except Exception as e:
-            # Numba import failed (likely due to numpy incompatibility)
-            self.log(f"Numba import failed ({e}) - upgrading numba first", "WARNING")
-            self.run_pip_command(["install", "--upgrade", "numba>=0.61.2"], "Upgrading numba to 0.61.2+ for compatibility")
-            numpy_constraint = "numpy>=2.2.0,<2.3.0"
+            # NumPy import failed
+            self.log(f"NumPy check failed ({e}) - installing safe version", "WARNING")
+            numpy_constraint = minimum_numpy
         
-        # Install numpy with determined constraints
-        self.run_pip_command(["install", numpy_constraint], "Installing numpy with version constraints")
+        # Only install/upgrade numpy if needed
+        if 'numpy_constraint' in locals():
+            self.run_pip_command(["install", numpy_constraint], "Installing numpy with version constraints")
+        
+        # Note: We're not forcing numba installation anymore since we disable JIT anyway
+        self.log("NumPy compatibility check complete", "INFO")
+    
+    def install_audio_separator_if_compatible(self):
+        """Install audio-separator only if numpy version supports it"""
+        try:
+            import numpy
+            numpy_version = numpy.__version__
+            
+            # Parse numpy version
+            import re
+            version_match = re.match(r'(\d+)\.(\d+)', numpy_version)
+            if version_match:
+                major, minor = int(version_match.group(1)), int(version_match.group(2))
+                
+                if major >= 2:
+                    # NumPy 2.x can use audio-separator
+                    self.log(f"NumPy {numpy_version} supports audio-separator - installing", "INFO")
+                    self.run_pip_command(
+                        ["install", "audio-separator>=0.35.2"], 
+                        "Installing audio-separator for enhanced vocal removal",
+                        ignore_errors=True  # It's optional, so don't fail if it doesn't install
+                    )
+                else:
+                    # NumPy 1.x - skip audio-separator, will use bundled implementations
+                    self.log(f"NumPy {numpy_version} detected - skipping audio-separator (will use bundled vocal removal)", "INFO")
+                    self.log("Vocal removal will use bundled RVC/MelBand/MDX23C implementations", "INFO")
+            else:
+                # Can't determine version - skip to be safe
+                self.log("Could not determine NumPy version - skipping audio-separator", "WARNING")
+                
+        except ImportError:
+            # NumPy not installed? This shouldn't happen at this point
+            self.log("NumPy not found - skipping audio-separator installation", "WARNING")
+        except Exception as e:
+            # Any other error - skip audio-separator
+            self.log(f"Error checking NumPy compatibility for audio-separator: {e}", "WARNING")
+            self.log("Skipping audio-separator - vocal removal will use bundled implementations", "INFO")
 
     def install_problematic_packages(self):
         """Install packages that cause conflicts using --no-deps"""
@@ -610,9 +655,12 @@ class TTSAudioInstaller:
             )
         
         # Now install VibeVoice with --no-deps to prevent downgrades
+        # NOTE: Using FushionHub fork temporarily - Microsoft removed the official repo
+        # Original: https://github.com/microsoft/VibeVoice.git (no longer exists)
+        # This fork maintains the same API and should work identically
         self.log("Installing VibeVoice with --no-deps to prevent package downgrades", "WARNING")
         self.run_pip_command(
-            ["install", "git+https://github.com/microsoft/VibeVoice.git", "--no-deps"],
+            ["install", "git+https://github.com/FushionHub/VibeVoice.git", "--no-deps"],
             "Installing VibeVoice (--no-deps)",
             ignore_errors=True
         )
@@ -815,7 +863,8 @@ def main():
         installer.install_pytorch_with_cuda()  # Install PyTorch first with proper CUDA detection
         installer.install_core_dependencies()
         installer.install_macos_specific_packages()  # Mac-specific package fixes
-        installer.install_numpy_with_constraints() 
+        installer.install_numpy_with_constraints()
+        installer.install_audio_separator_if_compatible()  # Install audio-separator only if numpy>=2
         installer.install_rvc_dependencies()
         installer.install_problematic_packages()
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
