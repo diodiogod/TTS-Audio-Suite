@@ -151,11 +151,18 @@ class UnifiedDownloader:
                 "tokenizer.json"
             ]
         
-        # Create target directory
-        model_dir = os.path.join(self.tts_dir, "chatterbox", model_name)
+        # Create target directory - use different paths for different ChatterBox variants
+        if "Official 23-Lang" in model_name:
+            model_dir = os.path.join(self.tts_dir, "chatterbox_official_23lang", model_name)
+        else:
+            model_dir = os.path.join(self.tts_dir, "chatterbox", model_name)
         
         success = True
-        critical_files = ["t3_cfg.safetensors", "tokenizer.json"]  # Minimum required files
+        # Different critical files for Official 23-Lang model
+        if "Official 23-Lang" in model_name:
+            critical_files = ["t3_23lang.safetensors", "mtl_tokenizer.json"]  # Multilingual requirements
+        else:
+            critical_files = ["t3_cfg.safetensors", "tokenizer.json"]  # Standard ChatterBox requirements
         failed_files = []
         
         for filename in files:
@@ -237,6 +244,10 @@ class UnifiedDownloader:
         elif engine_type == "chatterbox":
             legacy_paths = [
                 os.path.join(self.models_dir, "chatterbox", model_name or "")
+            ]
+        elif engine_type == "chatterbox_official_23lang":
+            legacy_paths = [
+                os.path.join(self.models_dir, "chatterbox_official_23lang", model_name or "")
             ]
         elif engine_type == "RVC":
             legacy_paths = [
