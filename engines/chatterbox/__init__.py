@@ -58,7 +58,8 @@ except ImportError:
 try:
     from .language_models import (
         get_chatterbox_models, get_model_config, get_model_files_for_language,
-        find_local_model_path, detect_model_format, get_available_languages
+        find_local_model_path, detect_model_format, get_available_languages,
+        is_model_incomplete, get_model_requirements, validate_model_completeness
     )
     LANGUAGE_MODELS_AVAILABLE = True
 except ImportError:
@@ -76,6 +77,12 @@ except ImportError:
         return ("pt", "ResembleAI/chatterbox")
     def detect_model_format(model_path):
         return "pt"
+    def is_model_incomplete(language):
+        return False
+    def get_model_requirements(language):
+        return []
+    def validate_model_completeness(model_path, language):
+        return True, []
 
 # SRT subtitle support modules - import independently
 try:
@@ -90,6 +97,7 @@ try:
         'ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS',
         'get_chatterbox_models', 'get_model_config', 'get_model_files_for_language',
         'find_local_model_path', 'detect_model_format', 'get_available_languages',
+        'is_model_incomplete', 'get_model_requirements', 'validate_model_completeness',
         'SRTParser', 'SRTSubtitle', 'SRTParseError', 'validate_srt_timing_compatibility',
         'AudioTimingUtils', 'PhaseVocoderTimeStretcher', 'TimedAudioAssembler',
         'calculate_timing_adjustments', 'AudioTimingError'
@@ -100,5 +108,6 @@ except ImportError:
     __all__ = [
         'ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS',
         'get_chatterbox_models', 'get_model_config', 'get_model_files_for_language',
-        'find_local_model_path', 'detect_model_format', 'get_available_languages'
+        'find_local_model_path', 'detect_model_format', 'get_available_languages',
+        'is_model_incomplete', 'get_model_requirements', 'validate_model_completeness'
     ]

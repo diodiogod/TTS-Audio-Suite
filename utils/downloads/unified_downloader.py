@@ -121,6 +121,61 @@ class UnifiedDownloader:
         
         return model_dir if success else None
     
+    def download_chatterbox_model(self, repo_id: str, model_name: str, subdirectory: str = None, 
+                                files: List[str] = None) -> Optional[str]:
+        """
+        Download ChatterBox model with optional subdirectory support.
+        
+        Args:
+            repo_id: HuggingFace repository ID (e.g., "niobures/Chatterbox-TTS")
+            model_name: Model name for folder organization (e.g., "Russian")
+            subdirectory: Optional subdirectory in repo (e.g., "ru")
+            files: Optional list of specific files to download
+            
+        Returns:
+            Path to model directory if successful, None otherwise
+        """
+        # Default ChatterBox files
+        if files is None:
+            files = [
+                "t3_cfg.safetensors",
+                "s3gen.safetensors", 
+                "ve.safetensors",
+                "conds.pt",
+                "tokenizer.json"
+            ]
+        
+        # Create target directory
+        model_dir = os.path.join(self.tts_dir, "chatterbox", model_name)
+        
+        success = True
+        critical_files = ["t3_cfg.safetensors", "tokenizer.json"]  # Minimum required files
+        failed_files = []
+        
+        for filename in files:
+            # Build URL with optional subdirectory
+            if subdirectory:
+                url = f"https://huggingface.co/{repo_id}/resolve/main/{subdirectory}/{filename}"
+            else:
+                url = f"https://huggingface.co/{repo_id}/resolve/main/{filename}"
+            
+            target_path = os.path.join(model_dir, filename)
+            
+            if not self.download_file(url, target_path, f"{model_name}/{filename}"):
+                failed_files.append(filename)
+                # Only fail completely if critical files are missing
+                if filename in critical_files:
+                    success = False
+                    break
+        
+        if failed_files:
+            print(f"⚠️ Some files failed to download for {model_name}: {failed_files}")
+            # For incomplete models (Japanese, Korean), missing optional files is okay
+            if not any(f in critical_files for f in failed_files):
+                print(f"ℹ️ {model_name} model will use shared English components for missing files")
+        
+        return model_dir if success else None
+
     def download_direct_url_model(self, base_url: str, model_path: str, target_dir: str) -> bool:
         """
         Download model from direct URL to target directory.

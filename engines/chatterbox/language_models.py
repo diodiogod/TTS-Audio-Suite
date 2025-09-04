@@ -19,10 +19,58 @@ CHATTERBOX_MODELS = {
         "format": "safetensors",
         "description": "German ChatterBox model with high quality"
     },
+    "German (SebastianBodza)": {
+        "repo": "SebastianBodza/Kartoffelbox-v0.1",
+        "format": "mixed",
+        "description": "German model with emotion control features (<haha>, <wow> tags) - 600K samples"
+    },
+    "German (havok2)": {
+        "repo": "havok2/Kartoffelbox-v0.1_0.65h2",
+        "format": "safetensors",
+        "subdirectory": "merged_model_v2",
+        "description": "Hybrid German model (65% multi-speaker + 35% Kartoffelbox) - User-rated best quality"
+    },
     "Norwegian": {
         "repo": "akhbar/chatterbox-tts-norwegian", 
         "format": "safetensors",
         "description": "Norwegian ChatterBox model (Bokmål and Nynorsk dialects) - 532M parameters"
+    },
+    "French": {
+        "repo": "Thomcles/Chatterbox-TTS-French",
+        "format": "safetensors",
+        "description": "French model trained on 1,400 hours of Emilia dataset with zero-shot voice cloning"
+    },
+    "Russian": {
+        "repo": "niobures/Chatterbox-TTS",
+        "format": "safetensors",
+        "subdirectory": "ru",
+        "description": "Russian model with training artifacts - Complete fine-tuned model"
+    },
+    "Armenian": {
+        "repo": "niobures/Chatterbox-TTS",
+        "format": "safetensors", 
+        "subdirectory": "hy",
+        "description": "Armenian model with training artifacts - Complete fine-tuned model"
+    },
+    "Georgian": {
+        "repo": "niobures/Chatterbox-TTS",
+        "format": "safetensors",
+        "subdirectory": "ka", 
+        "description": "Georgian model - Complete fine-tuned model with unique architecture"
+    },
+    "Japanese": {
+        "repo": "niobures/Chatterbox-TTS",
+        "format": "safetensors",
+        "subdirectory": "ja",
+        "description": "Japanese model - t3_cfg only, uses shared English components",
+        "incomplete": True
+    },
+    "Korean": {
+        "repo": "niobures/Chatterbox-TTS", 
+        "format": "safetensors",
+        "subdirectory": "ko",
+        "description": "Korean model - t3_cfg only, uses shared English components",
+        "incomplete": True
     },
 }
 
@@ -80,7 +128,14 @@ def get_model_config(language: str) -> Optional[Dict]:
             "description": f"Local ChatterBox model: {local_name}"
         }
     
-    return CHATTERBOX_MODELS.get(language)
+    config = CHATTERBOX_MODELS.get(language)
+    if config and config.get("subdirectory"):
+        # Create a copy with the subdirectory information for download handling
+        config_copy = config.copy()
+        config_copy["download_path"] = f"{config['repo']}/{config['subdirectory']}"
+        return config_copy
+    
+    return config
 
 def get_model_files_for_language(language: str) -> Tuple[str, str]:
     """
@@ -142,6 +197,46 @@ def detect_model_format(model_path: str) -> str:
         return "safetensors"
     else:
         return "pt"
+
+def is_model_incomplete(language: str) -> bool:
+    """Check if a model is marked as incomplete (missing components)"""
+    config = CHATTERBOX_MODELS.get(language)
+    return config.get("incomplete", False) if config else False
+
+def get_model_requirements(language: str) -> List[str]:
+    """Get list of required files for a ChatterBox model"""
+    base_requirements = ["t3_cfg.safetensors", "tokenizer.json"]
+    
+    # Complete models need all components
+    if not is_model_incomplete(language):
+        base_requirements.extend(["s3gen.safetensors", "ve.safetensors", "conds.pt"])
+    
+    return base_requirements
+
+def validate_model_completeness(model_path: str, language: str) -> Tuple[bool, List[str]]:
+    """
+    Validate if a model has all required components.
+    Returns (is_complete, missing_files)
+    """
+    if not os.path.exists(model_path):
+        return False, ["Model directory not found"]
+    
+    required_files = get_model_requirements(language)
+    missing_files = []
+    
+    existing_files = os.listdir(model_path)
+    for required_file in required_files:
+        # Check for file with correct extension
+        file_found = False
+        for existing_file in existing_files:
+            if existing_file == required_file or existing_file.startswith(required_file.split('.')[0] + '.'):
+                file_found = True
+                break
+        
+        if not file_found:
+            missing_files.append(required_file)
+    
+    return len(missing_files) == 0, missing_files
 
 def get_available_languages() -> List[str]:
     """Get list of available language names for display"""

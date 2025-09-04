@@ -32,12 +32,16 @@ from .models.t3.modules.cond_enc import T3Cond
 
 # Import language model registry
 try:
-    from .language_models import get_model_config, CHATTERBOX_MODELS
+    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness
 except ImportError:
     # Fallback if language_models not available
     CHATTERBOX_MODELS = {"English": {"repo": "ResembleAI/chatterbox", "format": "pt"}}
     def get_model_config(language):
         return CHATTERBOX_MODELS.get(language, CHATTERBOX_MODELS["English"])
+    def get_model_requirements(language):
+        return ["t3_cfg.safetensors", "s3gen.safetensors", "ve.safetensors", "conds.pt", "tokenizer.json"]
+    def validate_model_completeness(model_path, language):
+        return True, []
 
 # Import modular processors
 from .overlapping_processor import OverlappingBatchProcessor, BatchingStrategy
@@ -284,109 +288,49 @@ class ChatterboxTTS:
         
         # Silent loading unless errors occur
         
-        # Define file extensions based on format
-        if model_format == "safetensors":
-            file_extensions = ["ve.safetensors", "t3_cfg.safetensors", "s3gen.safetensors", "tokenizer.json", "conds.pt"]
-        elif model_format == "pt":
-            file_extensions = ["ve.pt", "t3_cfg.pt", "s3gen.pt", "tokenizer.json", "conds.pt"]
-        else:
-            # Auto format - try both, safetensors preferred
-            print("🔍 Auto-detecting model format...")
-            file_extensions = ["ve.safetensors", "t3_cfg.safetensors", "s3gen.safetensors", "tokenizer.json", "conds.pt"]
-        
-        # Download files to local models directory
-        local_paths = []
-        for fpath in file_extensions:
-            # Define local path in TTS organization
-            local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, os.path.basename(fpath))
-            
-            if os.path.exists(local_model_path):
-                local_paths.append(local_model_path)
-                continue
-            
-            # Check HuggingFace cache first
-            try:
-                hf_cached_file = hf_hub_download(repo_id=repo_id, filename=fpath, local_files_only=True)
-                local_paths.append(hf_cached_file)
-                continue
-            except Exception:
-                pass
-            
-            # Download to local directory
-            print(f"📥 Downloading Chatterbox model to local directory: {fpath}")
-            os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
-            
-            try:
-                # Use unified downloader
-                from utils.downloads.unified_downloader import unified_downloader
-                
-                files_to_download = [{
-                    'remote': fpath,
-                    'local': os.path.basename(fpath)
-                }]
-                
-                downloaded_dir = unified_downloader.download_huggingface_model(
-                    repo_id=repo_id,
-                    model_name=language,
-                    files=files_to_download,
-                    engine_type="chatterbox"
-                )
-                
-                if downloaded_dir:
-                    local_model_path = os.path.join(downloaded_dir, os.path.basename(fpath))
-                    local_paths.append(local_model_path)
-                    print(f"✅ Downloaded Chatterbox model to: {local_model_path}")
-                else:
-                    raise Exception("Unified download failed")
-            except Exception as e:
-                # If safetensors fails, try .pt format
-                if fpath.endswith('.safetensors'):
-                    fallback_fpath = fpath.replace('.safetensors', '.pt')
-                    fallback_local_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, os.path.basename(fallback_fpath))
-                    
-                    print(f"⚠️ {fpath} not found, trying {fallback_fpath}")
-                    try:
-                        # Use unified downloader for fallback
-                        files_to_download = [{
-                            'remote': fallback_fpath,
-                            'local': os.path.basename(fallback_fpath)
-                        }]
-                        
-                        downloaded_dir = unified_downloader.download_huggingface_model(
-                            repo_id=repo_id,
-                            model_name=language,
-                            files=files_to_download,
-                            engine_type="chatterbox"
-                        )
-                        
-                        if downloaded_dir:
-                            fallback_local_path = os.path.join(downloaded_dir, os.path.basename(fallback_fpath))
-                            local_paths.append(fallback_local_path)
-                            print(f"✅ Downloaded Chatterbox fallback model to: {fallback_local_path}")
-                        else:
-                            raise Exception("Unified fallback download failed")
-                    except Exception as e2:
-                        # Final fallback to HuggingFace cache
-                        print(f"⚠️ Failed to download to local directory, using HF cache: {e2}")
-                        try:
-                            local_path = hf_hub_download(repo_id=repo_id, filename=fallback_fpath)
-                            local_paths.append(local_path)
-                        except Exception as e3:
-                            print(f"❌ Failed to download both {fpath} and {fallback_fpath}: {e3}")
-                            raise e3
-                else:
-                    # Final fallback to HuggingFace cache
-                    print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
-                    try:
-                        local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
-                        local_paths.append(local_path)
-                    except Exception as e2:
-                        print(f"❌ Failed to download {fpath}: {e2}")
-                        raise e2
+        # Check if local model exists first
+        model_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language)
+        if os.path.exists(model_dir):
+            # Validate model completeness
+            is_complete, missing_files = validate_model_completeness(model_dir, language)
+            if is_complete:
+                print(f"📁 Using existing local model: {model_dir}")
+                return cls.from_local(model_dir, device)
+            else:
+                print(f"⚠️ Local model incomplete, missing: {missing_files}")
 
-        # Use the directory of the first downloaded file
-        model_dir = Path(local_paths[0]).parent
-        return cls.from_local(model_dir, device)
+        # Use new unified ChatterBox downloader
+        from utils.downloads.unified_downloader import unified_downloader
+        
+        # Get files to download based on model completeness
+        files_to_download = get_model_requirements(language)
+        
+        # Handle mixed format models (try safetensors first, fallback to pt)
+        if model_format == "mixed":
+            # Try safetensors first
+            files_to_download = [f.replace('.pt', '.safetensors') if f.endswith('.pt') else f for f in files_to_download]
+        elif model_format == "pt":
+            files_to_download = [f.replace('.safetensors', '.pt') if f.endswith('.safetensors') else f for f in files_to_download]
+        
+        # Download model using new method with subdirectory support
+        subdirectory = model_config.get("subdirectory")
+        downloaded_dir = unified_downloader.download_chatterbox_model(
+            repo_id=repo_id,
+            model_name=language,
+            subdirectory=subdirectory,
+            files=files_to_download
+        )
+        
+        if downloaded_dir:
+            print(f"✅ Downloaded ChatterBox model: {language}")
+            return cls.from_local(downloaded_dir, device)
+        else:
+            # Fallback to English if download fails
+            print(f"❌ Failed to download {language} model, falling back to English")
+            if language != "English":
+                return cls.from_pretrained(device, language="English")
+            else:
+                raise Exception("Failed to download English ChatterBox model")
 
     def prepare_conditionals(self, wav_fpath, exaggeration=0.5):
         # Load reference wav using fallback for Python 3.13 compatibility
