@@ -253,31 +253,103 @@ def load_auxiliary_model(engine_name: str,
 
 # Factory registration helpers
 def register_chatterbox_factory():
-    """Register ChatterBox model factories"""
+    """Register ChatterBox model factories with universal component mixing logic"""
+    
+    def load_chatterbox_with_mixing(target_class, device, language, model_path):
+        """Universal ChatterBox loading with component mixing fallback"""
+        from engines.chatterbox.language_models import find_local_model_path
+        
+        # Try provided path first
+        if model_path:
+            try:
+                return target_class.from_local(model_path, device)
+            except Exception as e:
+                print(f"⚠️ Failed to load from provided path {model_path}: {e}")
+                # Continue to fallback logic
+        
+        # Try language-specific local model
+        try:
+            local_path = find_local_model_path(language)
+            if local_path:
+                return target_class.from_local(local_path, device)
+        except Exception as e:
+            print(f"⚠️ Failed to load local {language} model: {e}")
+        
+        # Try HuggingFace download for requested language
+        try:
+            return target_class.from_pretrained(device, language)
+        except Exception as e:
+            error_str = str(e)
+            print(f"⚠️ Failed to download {language} model: {e}")
+            
+            # Check for 401 authorization errors (gated/private repos)
+            if "401" in error_str or "Unauthorized" in error_str:
+                print(f"🔒 {language} model requires manual download due to authentication requirements")
+                print(f"   Please visit the model repository and download manually to use this model")
+                
+                # For German variants, fall back to base German model instead of English
+                if language.startswith("German (") and language != "German":
+                    print(f"🔄 Falling back to base German model for ChatterBox")
+                    # Try the complete fallback sequence for German
+                    try:
+                        german_local = find_local_model_path("German")
+                        if german_local:
+                            return target_class.from_local(german_local, device)
+                    except Exception as local_error:
+                        print(f"⚠️ German local model failed: {local_error}")
+                        
+                    # If local German fails, try downloading German
+                    try:
+                        print(f"📥 Attempting to download base German model")
+                        return target_class.from_pretrained(device, "German")
+                    except Exception as german_error:
+                        print(f"⚠️ German download also failed: {german_error}")
+                        # Continue to English fallback
+            
+            # Final fallback: English model if not already trying English
+            if language != "English":
+                print(f"🔄 Falling back to English model for ChatterBox")
+                try:
+                    # Try English local first
+                    english_local = find_local_model_path("English")
+                    if english_local:
+                        return target_class.from_local(english_local, device)
+                    else:
+                        return target_class.from_pretrained(device, "English")
+                except Exception as english_error:
+                    print(f"❌ English fallback also failed: {english_error}")
+                    raise e  # Raise original error
+            else:
+                raise e  # Already trying English, fail
+    
     def chatterbox_tts_factory(**kwargs):
-        # Import here to avoid circular imports
         from engines.chatterbox.tts import ChatterboxTTS
         
         device = kwargs.get("device", "auto")
         language = kwargs.get("language", "English")
         model_path = kwargs.get("model_path")
         
-        if model_path:
-            return ChatterboxTTS.from_local(model_path, device)
-        else:
-            return ChatterboxTTS.from_pretrained(device, language)
+        return load_chatterbox_with_mixing(ChatterboxTTS, device, language, model_path)
     
     def chatterbox_vc_factory(**kwargs):
         from engines.chatterbox.vc import ChatterboxVC
+        from engines.chatterbox.language_models import supports_voice_conversion, get_vc_supported_languages
         
         device = kwargs.get("device", "auto")
         language = kwargs.get("language", "English")
         model_path = kwargs.get("model_path")
         
-        if model_path:
-            return ChatterboxVC.from_local(model_path, device)
-        else:
-            return ChatterboxVC.from_pretrained(device, language)
+        # Check if language supports VC before attempting to load
+        if not supports_voice_conversion(language):
+            print(f"❌ {language} model does not support voice conversion")
+            print(f"   Voice conversion requires s3gen component which is missing from this model")  
+            print(f"   Try English model (confirmed working) or German models (tested working)")
+            print(f"   Other language models may not have VC components")
+            
+            raise RuntimeError(f"Voice conversion not supported for {language} model. "
+                             f"Try English or German models instead.")
+        
+        return load_chatterbox_with_mixing(ChatterboxVC, device, language, model_path)
     
     unified_model_interface.register_model_factory("chatterbox", "tts", chatterbox_tts_factory)
     unified_model_interface.register_model_factory("chatterbox", "vc", chatterbox_vc_factory)

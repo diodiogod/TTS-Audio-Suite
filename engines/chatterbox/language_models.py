@@ -272,6 +272,46 @@ def validate_model_completeness(model_path: str, language: str) -> Tuple[bool, L
     
     return len(missing_files) == 0, missing_files
 
+def supports_voice_conversion(language: str) -> bool:
+    """
+    Check if a language model supports voice conversion (has s3gen component).
+    
+    Args:
+        language: Language model name
+        
+    Returns:
+        True if VC is supported, False otherwise
+    """
+    # Check if model is marked as incomplete
+    if is_model_incomplete(language):
+        return False
+    
+    # Check if model requirements include s3gen (required for VC)
+    requirements = get_model_requirements(language)
+    has_s3gen = any(req.startswith("s3gen") for req in requirements)
+    
+    # For local models, check if s3gen file actually exists
+    if language.startswith("local:"):
+        local_path = find_local_model_path(language)
+        if local_path and os.path.exists(local_path):
+            # Check if s3gen file exists in the directory
+            for ext in [".safetensors", ".pt"]:
+                if os.path.exists(os.path.join(local_path, f"s3gen{ext}")):
+                    return True
+            return False
+    
+    return has_s3gen
+
+def get_vc_supported_languages() -> List[str]:
+    """Get list of languages that support voice conversion"""
+    all_languages = get_chatterbox_models()
+    return [lang for lang in all_languages if supports_voice_conversion(lang)]
+
+def get_vc_unsupported_languages() -> List[str]:
+    """Get list of languages that do NOT support voice conversion"""
+    all_languages = get_chatterbox_models()
+    return [lang for lang in all_languages if not supports_voice_conversion(lang)]
+
 def get_available_languages() -> List[str]:
     """Get list of available language names for display"""
     models = get_chatterbox_models()

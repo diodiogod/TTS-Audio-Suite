@@ -70,6 +70,12 @@ class UnifiedDownloader:
                     os.remove(target_path)
                 except:
                     pass
+            
+            # Re-raise authentication errors so they can be handled upstream
+            error_str = str(e)
+            if "401" in error_str or "Unauthorized" in error_str:
+                raise RuntimeError(f"401 Unauthorized: Authentication required for {desc} - {e}")
+            
             return False
     
     def download_huggingface_model(self, repo_id: str, model_name: str, files: List[Dict[str, str]], 

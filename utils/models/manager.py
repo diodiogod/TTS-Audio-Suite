@@ -432,7 +432,10 @@ class ModelManager:
     
     def load_vc_model(self, device: str = "auto", force_reload: bool = False, language: str = "English") -> Any:
         """
-        Load ChatterboxVC model with caching and multilingual support.
+        Load ChatterboxVC model with ComfyUI-integrated caching and language support.
+        
+        This method now uses ComfyUI's model management system, enabling automatic
+        memory management, "Clear VRAM" button functionality, and proper integration.
         
         Args:
             device: Target device ('auto', 'cuda', 'cpu')
@@ -452,6 +455,40 @@ class ModelManager:
         # Resolve auto device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+            
+        # Use unified model interface for ComfyUI integration
+        from utils.models.unified_model_interface import load_vc_model
+        
+        try:
+            # Resolve local model path first (same logic as find_local_language_model)
+            local_model_path = self.find_local_language_model(language)
+            
+            model = load_vc_model(
+                engine_name="chatterbox",
+                model_name=language,
+                device=device,
+                language=language,
+                model_path=local_model_path,  # Pass resolved local path
+                force_reload=force_reload
+            )
+            
+            # Update instance variables for backward compatibility
+            self.vc_model = model
+            self.current_device = device
+            self.current_vc_language = language
+            
+            return model
+            
+        except Exception as e:
+            error_str = str(e)
+            print(f"⚠️ Failed to load ChatterBox VC model via unified interface: {e}")
+            
+            # Re-raise clear errors about unsupported languages instead of falling back
+            if "Voice conversion not supported" in error_str:
+                raise e  # Re-raise the clear error message
+            
+            # Only fallback to legacy logic for other types of errors
+            pass
         
         # Check if we need to load/reload (include language in check)
         current_language = getattr(self, 'current_vc_language', None)

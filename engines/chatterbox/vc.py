@@ -128,9 +128,31 @@ class ChatterboxVC:
         
         print(f"📦 Loading ChatterBox VC model for {language} from {repo_id}")
         
-        # Download VC models to local directory
+        # Download VC models to local directory (use dynamic requirements like TTS)
+        try:
+            from .language_models import get_model_requirements, get_model_config
+            # Get VC-specific files (filter out TTS-only files) 
+            all_files = get_model_requirements(language)
+            vc_files = [f for f in all_files if any(f.startswith(component) for component in ["s3gen", "conds"])]
+            
+            # Separate required vs optional files (like TTS does)
+            required_files = [f for f in vc_files if f.startswith("s3gen")]  # s3gen is required
+            optional_files = [f for f in vc_files if f.startswith("conds")]   # conds is optional
+            
+            # Get subdirectory info like TTS does
+            model_config = get_model_config(language)
+            subdirectory = model_config.get("subdirectory") if model_config else None
+            
+        except ImportError:
+            # Fallback for older systems
+            required_files = ["s3gen.pt"]
+            optional_files = ["conds.pt"]
+            subdirectory = None
+        
         local_paths = []
-        for fpath in ["s3gen.pt", "conds.pt"]:
+        all_vc_files = required_files + optional_files
+        
+        for fpath in all_vc_files:
             # Define local path in TTS organization
             local_model_path = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language, fpath)
             
@@ -154,12 +176,17 @@ class ChatterboxVC:
             os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
             
             try:
-                # Use unified downloader
+                # Use unified downloader with subdirectory support
                 from utils.downloads.unified_downloader import unified_downloader
                 
+                # Build correct remote path with subdirectory
+                remote_path = fpath
+                if subdirectory:
+                    remote_path = f"{subdirectory}/{fpath}"
+                
                 files_to_download = [{
-                    'remote': fpath,
-                    'local': os.path.basename(fpath)
+                    'remote': remote_path,
+                    'local': os.path.basename(fpath)  # Save directly to language folder
                 }]
                 
                 downloaded_dir = unified_downloader.download_huggingface_model(
@@ -174,12 +201,37 @@ class ChatterboxVC:
                     local_paths.append(local_model_path)
                     print(f"✅ Downloaded Chatterbox VC model to: {local_model_path}")
                 else:
-                    raise Exception("Unified download failed")
+                    # Check if this is an optional file before raising error
+                    is_optional = fpath in optional_files
+                    if is_optional:
+                        print(f"ℹ️ Optional file {fpath} not available in {language} model - continuing without it")
+                        continue
+                    else:
+                        raise Exception("Unified download failed")
             except Exception as e:
-                # Fallback to HuggingFace cache
+                # Check for 401 authorization errors - these should be propagated
+                error_str = str(e)
+                if "401" in error_str or "Unauthorized" in error_str:
+                    raise RuntimeError(f"401 Unauthorized: {language} model requires authentication - {e}")
+                
+                # Fallback to HuggingFace cache for other errors
                 print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
-                local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
-                local_paths.append(local_path)
+                try:
+                    local_path = hf_hub_download(repo_id=repo_id, filename=fpath)
+                    local_paths.append(local_path)
+                except Exception as hf_error:
+                    # Check HF cache error for 401 as well
+                    hf_error_str = str(hf_error)
+                    if "401" in hf_error_str or "Unauthorized" in hf_error_str:
+                        raise RuntimeError(f"401 Unauthorized: {language} model requires authentication - {hf_error}")
+                    else:
+                        # Handle missing files based on whether they're required or optional
+                        is_optional = fpath in optional_files
+                        if is_optional and ("404" in hf_error_str or "Not Found" in hf_error_str):
+                            print(f"ℹ️ Optional file {fpath} not available in {language} model - continuing without it")
+                            continue  # Skip optional files that are missing
+                        else:
+                            raise hf_error  # Re-raise errors for required files
 
         # Log final source summary
         sources = []

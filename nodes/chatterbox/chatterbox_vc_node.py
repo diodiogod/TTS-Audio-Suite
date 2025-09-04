@@ -159,7 +159,44 @@ class ChatterboxVCNode(BaseVCNode):
         """
         def _process():
             # Load model with language support
-            self.load_vc_model(device, language=language)
+            try:
+                self.load_vc_model(device, language=language)
+            except RuntimeError as e:
+                error_str = str(e)
+                # Handle unsupported language gracefully
+                if "Voice conversion not supported" in error_str:
+                    print(f"❌ Voice Conversion Error: {language} model does not support voice conversion")
+                    print(f"   Please use a model with s3gen component (English, German, etc.)")
+                    # Return silent audio to clearly indicate failure
+                    print(f"🔇 Returning silent audio to indicate VC failure")
+                    
+                    # Create 1-second silent audio with same format as source
+                    import torch
+                    sample_rate = source_audio["sample_rate"]
+                    source_waveform = source_audio["waveform"]
+                    
+                    print(f"🔍 DEBUG: Source audio shape: {source_waveform.shape}")
+                    
+                    # Create silent audio with proper ComfyUI format: (channels, samples)
+                    if len(source_waveform.shape) == 1:
+                        # If 1D, make it (1, samples) for mono
+                        silent_waveform = torch.zeros((1, sample_rate), dtype=torch.float32)
+                    elif len(source_waveform.shape) == 2:
+                        # If 2D, match the channel count but make it 1 second
+                        num_channels = source_waveform.shape[0]
+                        silent_waveform = torch.zeros((num_channels, sample_rate), dtype=torch.float32)
+                    else:
+                        # Fallback: use source shape but fill with zeros
+                        silent_waveform = torch.zeros_like(source_waveform)
+                    
+                    silent_audio = {
+                        "waveform": silent_waveform,
+                        "sample_rate": sample_rate
+                    }
+                    return (silent_audio,)
+                else:
+                    # Re-raise other types of RuntimeError
+                    raise e
             
             # Generate cache key for this conversion
             cache_key = self._generate_vc_cache_key(source_audio, target_audio, device)
