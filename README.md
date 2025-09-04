@@ -872,7 +872,7 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 | Korean                  | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
 | Norwegian               | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
 
-**Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model (~1GB per language).
+**Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model.
 
 ### 5. F5-TTS Models (Optional)
 
