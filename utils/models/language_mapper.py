@@ -133,6 +133,7 @@ class LanguageModelMapper:
                 "ka": "Georgian",               # Georgian  
                 "ja": "Japanese",               # [Japan:], [日本語:] -> ja -> Japanese
                 "ko": "Korean",                 # [Korea:], [한국어:] -> ko -> Korean
+                "it": "Italian",                # [Italy:], [Italia:] -> it -> Italian
                 
                 # ChatterBox-specific model variants (these bypass character_parser aliases)
                 "de-expressive": "German (SebastianBodza)",    # Direct model selection

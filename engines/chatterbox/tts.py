@@ -32,7 +32,7 @@ from .models.t3.modules.cond_enc import T3Cond
 
 # Import language model registry
 try:
-    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness, get_tokenizer_filename, is_model_incomplete
+    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness, get_tokenizer_filename, is_model_incomplete, is_unified_model
 except ImportError:
     # Fallback if language_models not available
     CHATTERBOX_MODELS = {"English": {"repo": "ResembleAI/chatterbox", "format": "pt"}}
@@ -45,6 +45,8 @@ except ImportError:
     def get_tokenizer_filename(language):
         return "tokenizer.json"
     def is_model_incomplete(language):
+        return False
+    def is_unified_model(language):
         return False
 
 # Import modular processors
@@ -185,6 +187,10 @@ class ChatterboxTTS:
     @classmethod
     def from_local(cls, ckpt_dir, device, language=None) -> 'ChatterboxTTS':
         ckpt_dir = Path(ckpt_dir)
+        
+        # Handle Italian unified model (special architecture)
+        if language and is_unified_model(language):
+            return cls._load_unified_model(ckpt_dir, device, language)
         
         # Determine if this is an incomplete model by checking language or directory structure
         is_incomplete_model = False
@@ -331,6 +337,89 @@ class ChatterboxTTS:
 
             instance = cls(t3, s3gen, ve, tokenizer, device, conds=conds)
             print(f"📦 ChatterBox models loaded from: {ckpt_dir}")
+            return instance
+
+    @classmethod
+    def _load_unified_model(cls, ckpt_dir, device, language) -> 'ChatterboxTTS':
+        """
+        Load unified model (like Italian) that contains all components in a single checkpoint file.
+        Based on the deployment script from niobures/Chatterbox-TTS/it,en/deploy_italian_tts.py
+        """
+        ckpt_dir = Path(ckpt_dir)
+        print(f"🇮🇹 Loading unified {language} ChatterBox model from: {ckpt_dir}")
+        
+        # Load the unified model file
+        unified_model_path = ckpt_dir / "chatterbox_italian_final.pt"
+        if not unified_model_path.exists():
+            raise FileNotFoundError(f"Unified model file not found: {unified_model_path}")
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            
+            print(f"📦 Loading checkpoint: {unified_model_path.name}")
+            checkpoint = torch.load(unified_model_path, map_location=device)
+            
+            # Extract model configuration
+            model_config = checkpoint.get('model_config', {})
+            vocab_size = model_config.get('vocab_size', 1500)
+            frozen_embeddings = model_config.get('frozen_embeddings', 704)
+            trainable_tokens = model_config.get('trainable_tokens', 796)
+            
+            print(f"🎯 Vocab size: {vocab_size}")
+            print(f"🔒 Frozen tokens: {frozen_embeddings}")
+            print(f"🔥 Trainable tokens: {trainable_tokens}")
+            
+            # Load base English ChatterBox components first
+            print(f"📦 Loading base English model components...")
+            
+            # Initialize components with standard ChatterBox architecture
+            ve = VoiceEncoder()
+            ve.load_state_dict(checkpoint['ve_state_dict'], strict=False)
+            ve.to(device).eval()
+            
+            # Load T3 config
+            from .models.t3.t3 import T3Config
+            config = T3Config()
+            t3 = T3(config)
+            t3.load_state_dict(checkpoint['t3_state_dict'], strict=False)
+            t3.tfmr.output_attentions = False
+            t3.to(device).eval()
+            
+            # Load S3Gen
+            s3gen = S3Gen()
+            s3gen.load_state_dict(checkpoint['s3gen_state_dict'], strict=False)
+            s3gen.to(device).eval()
+            
+            # Create a basic English tokenizer (Italian model extends English vocab)
+            # The Italian model uses language prefixes like [it] for Italian text
+            from .models.tokenizers import EnTokenizer
+            
+            # Create a temporary tokenizer file path (fallback to English tokenizer logic)
+            # Italian model should work with English tokenizer + language prefixes
+            english_tokenizer_content = '{"vocab": {}, "model": "ByteLevelBPE"}'
+            temp_tokenizer_path = ckpt_dir / "temp_tokenizer.json"
+            
+            # Try to use existing tokenizer if available, otherwise create minimal one
+            tokenizer_path = ckpt_dir / "tokenizer.json"
+            if tokenizer_path.exists():
+                tokenizer = EnTokenizer(str(tokenizer_path))
+            else:
+                # Create minimal tokenizer file for compatibility
+                with open(temp_tokenizer_path, 'w') as f:
+                    f.write(english_tokenizer_content)
+                tokenizer = EnTokenizer(str(temp_tokenizer_path))
+                # Clean up temp file
+                temp_tokenizer_path.unlink(missing_ok=True)
+            
+            # Check for conditional voices
+            conds = None
+            if (builtin_voice := ckpt_dir / "conds.pt").exists():
+                conds = Conditionals.load(builtin_voice).to(device)
+            
+            instance = cls(t3, s3gen, ve, tokenizer, device, conds=conds)
+            print(f"✅ Italian TTS model loaded successfully!")
+            print(f"💡 Use '[it]' prefix for Italian text, no prefix for English")
+            print(f"📦 Model loaded from: {ckpt_dir}")
             return instance
 
     @classmethod

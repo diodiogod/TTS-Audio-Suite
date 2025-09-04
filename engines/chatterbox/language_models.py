@@ -73,6 +73,13 @@ CHATTERBOX_MODELS = {
         "description": "Korean model - t3_cfg only, uses shared English components",
         "incomplete": True
     },
+    "Italian": {
+        "repo": "niobures/Chatterbox-TTS",
+        "format": "pt",
+        "subdirectory": "it,en",
+        "description": "Bilingual Italian/English model - complete model in single file, extended vocabulary (1500 tokens)",
+        "special": "unified_model"
+    },
 }
 
 def get_chatterbox_models() -> List[str]:
@@ -204,6 +211,11 @@ def is_model_incomplete(language: str) -> bool:
     config = CHATTERBOX_MODELS.get(language)
     return config.get("incomplete", False) if config else False
 
+def is_unified_model(language: str) -> bool:
+    """Check if a model uses unified/special architecture (like Italian)"""
+    config = CHATTERBOX_MODELS.get(language)
+    return config.get("special") == "unified_model" if config else False
+
 def get_tokenizer_filename(language: str) -> str:
     """Get the correct tokenizer filename for a language model"""
     if language == "Japanese":
@@ -215,6 +227,10 @@ def get_tokenizer_filename(language: str) -> str:
 
 def get_model_requirements(language: str) -> List[str]:
     """Get list of required files for a ChatterBox model"""
+    
+    # Handle special Italian unified model
+    if language == "Italian":
+        return ["chatterbox_italian_final.pt", "config.json"]
     
     # Handle special cases for incomplete models
     if language == "French":
