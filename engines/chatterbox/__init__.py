@@ -59,7 +59,8 @@ try:
     from .language_models import (
         get_chatterbox_models, get_model_config, get_model_files_for_language,
         find_local_model_path, detect_model_format, get_available_languages,
-        is_model_incomplete, get_model_requirements, validate_model_completeness
+        is_model_incomplete, get_model_requirements, validate_model_completeness,
+        get_tokenizer_filename
     )
     LANGUAGE_MODELS_AVAILABLE = True
 except ImportError:
@@ -83,6 +84,8 @@ except ImportError:
         return []
     def validate_model_completeness(model_path, language):
         return True, []
+    def get_tokenizer_filename(language):
+        return "tokenizer.json"
 
 # SRT subtitle support modules - import independently
 try:
@@ -98,6 +101,7 @@ try:
         'get_chatterbox_models', 'get_model_config', 'get_model_files_for_language',
         'find_local_model_path', 'detect_model_format', 'get_available_languages',
         'is_model_incomplete', 'get_model_requirements', 'validate_model_completeness',
+        'get_tokenizer_filename',
         'SRTParser', 'SRTSubtitle', 'SRTParseError', 'validate_srt_timing_compatibility',
         'AudioTimingUtils', 'PhaseVocoderTimeStretcher', 'TimedAudioAssembler',
         'calculate_timing_adjustments', 'AudioTimingError'
@@ -109,5 +113,6 @@ except ImportError:
         'ChatterboxTTS', 'ChatterboxVC', 'ChatterBoxF5TTS',
         'get_chatterbox_models', 'get_model_config', 'get_model_files_for_language',
         'find_local_model_path', 'detect_model_format', 'get_available_languages',
-        'is_model_incomplete', 'get_model_requirements', 'validate_model_completeness'
+        'is_model_incomplete', 'get_model_requirements', 'validate_model_completeness',
+        'get_tokenizer_filename'
     ]

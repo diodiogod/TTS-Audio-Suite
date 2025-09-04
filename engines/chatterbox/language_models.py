@@ -203,9 +203,21 @@ def is_model_incomplete(language: str) -> bool:
     config = CHATTERBOX_MODELS.get(language)
     return config.get("incomplete", False) if config else False
 
+def get_tokenizer_filename(language: str) -> str:
+    """Get the correct tokenizer filename for a language model"""
+    if language == "Japanese":
+        return "tokenizer_jp.json"
+    elif language == "Korean":
+        return "tokenizer_en_ko.json"
+    else:
+        return "tokenizer.json"
+
 def get_model_requirements(language: str) -> List[str]:
     """Get list of required files for a ChatterBox model"""
-    base_requirements = ["t3_cfg.safetensors", "tokenizer.json"]
+    
+    # Handle special tokenizer names for incomplete models
+    tokenizer_file = get_tokenizer_filename(language)
+    base_requirements = ["t3_cfg.safetensors", tokenizer_file]
     
     # Complete models need all components
     if not is_model_incomplete(language):

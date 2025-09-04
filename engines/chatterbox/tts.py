@@ -32,7 +32,7 @@ from .models.t3.modules.cond_enc import T3Cond
 
 # Import language model registry
 try:
-    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness
+    from .language_models import get_model_config, CHATTERBOX_MODELS, get_model_requirements, validate_model_completeness, get_tokenizer_filename
 except ImportError:
     # Fallback if language_models not available
     CHATTERBOX_MODELS = {"English": {"repo": "ResembleAI/chatterbox", "format": "pt"}}
@@ -42,6 +42,8 @@ except ImportError:
         return ["t3_cfg.safetensors", "s3gen.safetensors", "ve.safetensors", "conds.pt", "tokenizer.json"]
     def validate_model_completeness(model_path, language):
         return True, []
+    def get_tokenizer_filename(language):
+        return "tokenizer.json"
 
 # Import modular processors
 from .overlapping_processor import OverlappingBatchProcessor, BatchingStrategy
@@ -229,9 +231,18 @@ class ChatterboxTTS:
             s3gen.load_state_dict(s3gen_state, strict=False)
             s3gen.to(device).eval()
 
-            tokenizer = EnTokenizer(
-                str(ckpt_dir / "tokenizer.json")
-            )
+            # Find the correct tokenizer file (handles Japanese/Korean special cases)
+            tokenizer_file = None
+            for possible_tokenizer in ["tokenizer.json", "tokenizer_jp.json", "tokenizer_en_ko.json"]:
+                tokenizer_path = ckpt_dir / possible_tokenizer
+                if tokenizer_path.exists():
+                    tokenizer_file = str(tokenizer_path)
+                    break
+            
+            if not tokenizer_file:
+                raise FileNotFoundError(f"No tokenizer file found in {ckpt_dir}")
+            
+            tokenizer = EnTokenizer(tokenizer_file)
 
             conds = None
             if (builtin_voice := ckpt_dir / "conds.pt").exists():
