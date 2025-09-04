@@ -77,6 +77,9 @@ class LanguageModelMapper:
     @staticmethod
     def _load_mappings() -> Dict[str, Dict[str, str]]:
         """Load language mappings from config."""
+        # Dynamic ChatterBox language mappings
+        chatterbox_mappings = LanguageModelMapper._get_dynamic_chatterbox_mappings()
+        
         return {
             "f5tts": {
                 "en": "F5TTS_Base",  # This will be overridden by default_model
@@ -92,13 +95,7 @@ class LanguageModelMapper:
                 # Note: Other Indian languages (as, bn, gu, kn, ml, mr, or, pa, ta, te) fall back to base F5TTS models
                 # IndicF5 was removed due to architecture incompatibility
             },
-            "chatterbox": {
-                "en": "English",     # This will be overridden by default_model
-                "de": "German",      # German
-                "no": "Norwegian",   # Norwegian
-                "nb": "Norwegian",   # Norwegian Bokmål
-                "nn": "Norwegian",   # Norwegian Nynorsk
-            },
+            "chatterbox": chatterbox_mappings,
             "vibevoice": {
                 "en": "vibevoice-1.5B",  # This will be overridden by default_model
                 "zh": "vibevoice-1.5B",  # Chinese - same model supports both EN/ZH
@@ -107,6 +104,83 @@ class LanguageModelMapper:
                 # VibeVoice models support both English and Chinese with the same model
             }
         }
+    
+    @staticmethod
+    def _get_dynamic_chatterbox_mappings() -> Dict[str, str]:
+        """
+        Generate dynamic ChatterBox language mappings from the language registry.
+        Maps language codes to ChatterBox model names.
+        """
+        try:
+            from engines.chatterbox.language_models import CHATTERBOX_MODELS
+            
+            # Create mappings from language codes to model names
+            mappings = {}
+            
+            # Language code mappings for supported models
+            language_mappings = {
+                # English variants
+                "en": "English",
+                "english": "English",
+                
+                # German variants  
+                "de": "German",
+                "german": "German",
+                "de-expressive": "German (SebastianBodza)",
+                "de-kartoffel": "German (SebastianBodza)", 
+                "de-multi": "German (havok2)",
+                "de-hybrid": "German (havok2)",
+                "de-best": "German (havok2)",  # User reported as best
+                
+                # Norwegian variants
+                "no": "Norwegian",
+                "nb": "Norwegian",  # Norwegian Bokmål
+                "nn": "Norwegian",  # Norwegian Nynorsk
+                "norwegian": "Norwegian",
+                
+                # French
+                "fr": "French",
+                "french": "French",
+                
+                # Russian  
+                "ru": "Russian",
+                "russian": "Russian",
+                
+                # Armenian
+                "hy": "Armenian", 
+                "armenian": "Armenian",
+                
+                # Georgian
+                "ka": "Georgian",
+                "georgian": "Georgian",
+                
+                # Japanese
+                "ja": "Japanese",
+                "jp": "Japanese", 
+                "japanese": "Japanese",
+                
+                # Korean
+                "ko": "Korean",
+                "kr": "Korean",
+                "korean": "Korean",
+            }
+            
+            # Only add mappings for models that actually exist in registry
+            for lang_code, model_name in language_mappings.items():
+                if model_name in CHATTERBOX_MODELS:
+                    mappings[lang_code] = model_name
+            
+            return mappings
+            
+        except ImportError:
+            # Fallback to static mappings if ChatterBox not available
+            return {
+                "en": "English",
+                "de": "German", 
+                "no": "Norwegian",
+                "nb": "Norwegian",
+                "nn": "Norwegian",
+            }
     
     def get_all_mappings(self) -> Dict[str, Dict[str, str]]:
         """Get all language mappings for all engines."""
