@@ -377,9 +377,11 @@ class ChatterboxTTS:
             ve.load_state_dict(checkpoint['ve_state_dict'], strict=False)
             ve.to(device).eval()
             
-            # Load T3 config
+            # Load T3 config with Italian vocabulary size
             from .models.t3.t3 import T3Config
             config = T3Config()
+            # Override text token dictionary size for Italian extended vocab
+            config.text_tokens_dict_size = vocab_size  # Use the 1500 tokens from checkpoint
             t3 = T3(config)
             t3.load_state_dict(checkpoint['t3_state_dict'], strict=False)
             t3.tfmr.output_attentions = False
