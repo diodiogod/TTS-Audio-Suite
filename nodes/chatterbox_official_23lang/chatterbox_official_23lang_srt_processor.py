@@ -85,16 +85,8 @@ class ChatterboxOfficial23LangSRTProcessor:
             if len(all_characters) > 1 or (len(all_characters) == 1 and "narrator" not in all_characters):
                 print(f"🎭 ChatterBox Official 23-Lang SRT: Detected character switching - {', '.join(sorted(all_characters))}")
             
-            # Extract generation parameters from engine config to pass to all segment calls
-            generation_params = {
-                "temperature": self.config.get("temperature", 0.8),
-                "exaggeration": self.config.get("exaggeration", 0.5),
-                "cfg_weight": self.config.get("cfg_weight", 0.5),
-                "repetition_penalty": self.config.get("repetition_penalty", 1.2),
-                "min_p": self.config.get("min_p", 0.05),
-                "top_p": self.config.get("top_p", 1.0),
-                "language": self.config.get("language", "English")
-            }
+            # Note: Extract generation parameters fresh from current config each time
+            # This ensures that if config was updated via update_config(), we use the new values
             
             # Generate audio for each SRT segment
             audio_segments = []
@@ -177,17 +169,17 @@ class ChatterboxOfficial23LangSRTProcessor:
                             char_voice_path = char_voice_ref if isinstance(char_voice_ref, str) else ""
                             
                             
-                            # Generate audio using the TTS node with individual parameters
+                            # Generate audio using the TTS node with current config parameters
                             char_audio, _ = self.tts_node.generate_speech(
                                 text=char_text,
                                 language=char_language,  # Use language from character parser
                                 device=self.config.get("device", "auto"),
-                                exaggeration=generation_params["exaggeration"],
-                                temperature=generation_params["temperature"],
-                                cfg_weight=generation_params["cfg_weight"],
-                                repetition_penalty=generation_params["repetition_penalty"],
-                                min_p=generation_params["min_p"],
-                                top_p=generation_params["top_p"],
+                                exaggeration=self.config.get("exaggeration", 0.5),
+                                temperature=self.config.get("temperature", 0.8),
+                                cfg_weight=self.config.get("cfg_weight", 0.5),
+                                repetition_penalty=self.config.get("repetition_penalty", 1.2),
+                                min_p=self.config.get("min_p", 0.05),
+                                top_p=self.config.get("top_p", 1.0),
                                 seed=seed,
                                 reference_audio=None,
                                 audio_prompt_path=char_voice_path,
@@ -221,17 +213,17 @@ class ChatterboxOfficial23LangSRTProcessor:
                         narrator_voice_path = narrator_voice_ref if isinstance(narrator_voice_ref, str) else ""
                         
                         
-                        # Generate audio using the TTS node with individual parameters
+                        # Generate audio using the TTS node with current config parameters
                         narrator_audio, _ = self.tts_node.generate_speech(
                             text=text_content,
-                            language=generation_params["language"],
+                            language=self.config.get("language", "English"),
                             device=self.config.get("device", "auto"),
-                            exaggeration=generation_params["exaggeration"],
-                            temperature=generation_params["temperature"],
-                            cfg_weight=generation_params["cfg_weight"],
-                            repetition_penalty=generation_params["repetition_penalty"],
-                            min_p=generation_params["min_p"],
-                            top_p=generation_params["top_p"],
+                            exaggeration=self.config.get("exaggeration", 0.5),
+                            temperature=self.config.get("temperature", 0.8),
+                            cfg_weight=self.config.get("cfg_weight", 0.5),
+                            repetition_penalty=self.config.get("repetition_penalty", 1.2),
+                            min_p=self.config.get("min_p", 0.05),
+                            top_p=self.config.get("top_p", 1.0),
                             seed=seed,
                             reference_audio=None,
                             audio_prompt_path=narrator_voice_path,
@@ -305,45 +297,50 @@ class ChatterboxOfficial23LangSRTProcessor:
                     audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
                     adjustments=adjustments, processed_segments=processed_segments
                 )
+            elif current_timing_mode == "concatenate":
+                # Use existing modular timing engine for concatenate mode
+                adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, srt_segments)
+                final_audio = assembly_engine.assemble_by_timing_mode(
+                    audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
+                    fade_duration=timing_params.get("fade_for_StretchToFit", 0.01)
+                )
             else:
-                # For other modes (pad_with_silence, stretch_to_fit, concatenate)
-                # No preprocessing needed - use unified assembly method
+                # For other modes (pad_with_silence, stretch_to_fit) - use unified assembly
                 final_audio = assembly_engine.assemble_by_timing_mode(
                     audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
                     fade_duration=timing_params.get("fade_for_StretchToFit", 0.01)
                 )
                 
-                # Create simple adjustments for reporting with all required fields
-                adjustments = []
-                for i, (segment, subtitle) in enumerate(zip(audio_segments, srt_segments)):
-                    natural_duration = len(segment) / self.sample_rate
-                    
-                    # Create base adjustment record with all required fields
-                    adjustment = {
-                        'segment_index': i,
-                        'sequence': subtitle.sequence,
-                        'start_time': subtitle.start_time,
-                        'end_time': subtitle.start_time + natural_duration,
-                        'natural_audio_duration': natural_duration,
-                        'original_srt_start': subtitle.start_time,
-                        'original_srt_end': subtitle.end_time,
-                        'original_srt_duration': subtitle.end_time - subtitle.start_time,
-                        'original_text': subtitle.text,
-                        'final_srt_start': subtitle.start_time,
-                        'final_srt_end': subtitle.start_time + natural_duration,
-                        'actions': [f"Natural audio ({natural_duration:.2f}s) processed with {current_timing_mode} mode"],
+                # Use existing overlap timing calculation for pad_with_silence
+                if current_timing_mode == "pad_with_silence":
+                    _, adjustments = timing_engine.calculate_overlap_timing(audio_segments, srt_segments)
+                else:
+                    # For stretch_to_fit - create minimal adjustments (stretch logic handled by assembly)
+                    adjustments = []
+                    for i, (segment, subtitle) in enumerate(zip(audio_segments, srt_segments)):
+                        natural_duration = len(segment) / self.sample_rate
+                        target_duration = subtitle.end_time - subtitle.start_time
+                        stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
                         
-                        # Add fields required by timing report generator
-                        'needs_stretching': current_timing_mode == "stretch_to_fit",
-                        'stretch_factor_applied': 1.0,
-                        'next_segment_shifted_by': 0.0,
-                        'padding_added': 0.0,
-                        'truncated_by': 0.0,
-                        'final_segment_duration': natural_duration,
-                        'stretch_type': 'none' if current_timing_mode != "stretch_to_fit" else 'time_stretch',
-                        'placement': f'{current_timing_mode}_mode'
-                    }
-                    adjustments.append(adjustment)
+                        adjustments.append({
+                            'segment_index': i,
+                            'sequence': subtitle.sequence,
+                            'start_time': subtitle.start_time,
+                            'end_time': subtitle.end_time,
+                            'natural_audio_duration': natural_duration,
+                            'original_srt_start': subtitle.start_time,
+                            'original_srt_end': subtitle.end_time,
+                            'original_srt_duration': target_duration,
+                            'original_text': subtitle.text,
+                            'final_srt_start': subtitle.start_time,
+                            'final_srt_end': subtitle.end_time,
+                            'needs_stretching': True,
+                            'stretch_factor_applied': stretch_factor,
+                            'stretch_factor': stretch_factor,
+                            'stretch_type': 'time_stretch' if abs(stretch_factor - 1.0) > 0.01 else 'none',
+                            'final_segment_duration': target_duration,
+                            'actions': [f"Audio stretched from {natural_duration:.2f}s to {target_duration:.2f}s (factor: {stretch_factor:.2f}x)"]
+                        })
             
             # Map adjustment keys for report generator compatibility
             mapped_adjustments = []
