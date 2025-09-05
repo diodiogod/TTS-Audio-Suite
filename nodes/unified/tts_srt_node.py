@@ -228,17 +228,33 @@ Hello! This is unified SRT TTS with character switching.
             elif engine_type == "chatterbox_official_23lang":
                 # ChatterBox Official 23-Lang can reuse the standard ChatterBox SRT processor architecture
                 # The multilingual model works the same way for SRT processing
-                from nodes.chatterbox_official_23lang.chatterbox_official_23lang_processor import ChatterboxOfficial23LangProcessor
+                # Import using absolute path like other engines in this file
+                chatterbox_official_23lang_processor_path = os.path.join(nodes_dir, "chatterbox_official_23lang", "chatterbox_official_23lang_processor.py")
+                chatterbox_official_23lang_spec = importlib.util.spec_from_file_location("chatterbox_official_23lang_processor_module", chatterbox_official_23lang_processor_path)
+                chatterbox_official_23lang_module = importlib.util.module_from_spec(chatterbox_official_23lang_spec)
+                chatterbox_official_23lang_spec.loader.exec_module(chatterbox_official_23lang_module)
                 
-                # Create a minimal wrapper that mimics ChatterBox SRT interface
+                ChatterboxOfficial23LangTTSNode = chatterbox_official_23lang_module.ChatterboxOfficial23LangTTSNode
+                
+                # Create SRT processor wrapper
+                chatterbox_official_23lang_srt_processor_path = os.path.join(nodes_dir, "chatterbox_official_23lang", "chatterbox_official_23lang_srt_processor.py")
+                chatterbox_official_23lang_srt_spec = importlib.util.spec_from_file_location("chatterbox_official_23lang_srt_processor_module", chatterbox_official_23lang_srt_processor_path)
+                chatterbox_official_23lang_srt_module = importlib.util.module_from_spec(chatterbox_official_23lang_srt_spec)
+                chatterbox_official_23lang_srt_spec.loader.exec_module(chatterbox_official_23lang_srt_module)
+                
+                ChatterboxOfficial23LangSRTProcessor = chatterbox_official_23lang_srt_module.ChatterboxOfficial23LangSRTProcessor
+                
+                # Create a minimal wrapper node for the processor (following VibeVoice pattern)
                 class ChatterboxOfficial23LangSRTWrapper:
                     def __init__(self, config):
                         self.config = config.copy()
-                        self.processor = ChatterboxOfficial23LangProcessor()
+                        self.tts_node = ChatterboxOfficial23LangTTSNode()
+                        self.processor = ChatterboxOfficial23LangSRTProcessor(self.tts_node, config)
                         
                     def update_config(self, new_config):
                         """Update configuration for reused instances"""
                         self.config.update(new_config)
+                        self.processor.config.update(new_config)
                     
                     def generate_srt_speech(self, srt_content, language, device, model, 
                                           narrator_voice, seed, temperature, exaggeration, cfg_weight,
@@ -246,31 +262,22 @@ Hello! This is unified SRT TTS with character switching.
                                           timing_mode, fade_for_StretchToFit, max_stretch_ratio,
                                           min_stretch_ratio, timing_tolerance, batch_size=0):
                         """SRT speech generation for ChatterBox Official 23-Lang"""
-                        # Use the same interface as ChatterBox but with multilingual support
-                        return self.processor.generate_speech(
-                            inputs={
-                                "text": srt_content,  # SRT content will be processed as text
-                                "language": language,
-                                "device": device,
-                                "model": model,
-                                "narrator_voice": narrator_voice,
-                                "seed": seed,
-                                "temperature": temperature,
-                                "exaggeration": exaggeration,
-                                "cfg_weight": cfg_weight,
-                                "repetition_penalty": repetition_penalty,
-                                "min_p": min_p,
-                                "top_p": top_p,
-                                "enable_audio_cache": enable_audio_cache,
-                                # SRT-specific parameters
-                                "timing_mode": timing_mode,
-                                "fade_for_StretchToFit": fade_for_StretchToFit,
-                                "max_stretch_ratio": max_stretch_ratio,
-                                "min_stretch_ratio": min_stretch_ratio,
-                                "timing_tolerance": timing_tolerance,
-                                "batch_size": batch_size,
-                                "is_srt_mode": True  # Flag to indicate SRT processing mode
-                            }
+                        # Use the processor's main entry point
+                        voice_mapping = {"narrator": narrator_voice} if narrator_voice else {}
+                        
+                        timing_params = {
+                            "fade_for_StretchToFit": fade_for_StretchToFit,
+                            "max_stretch_ratio": max_stretch_ratio, 
+                            "min_stretch_ratio": min_stretch_ratio,
+                            "timing_tolerance": timing_tolerance
+                        }
+                        
+                        return self.processor.process_srt_content(
+                            srt_content=srt_content,
+                            voice_mapping=voice_mapping,
+                            seed=seed,
+                            timing_mode=timing_mode,
+                            timing_params=timing_params
                         )
                 
                 engine_instance = ChatterboxOfficial23LangSRTWrapper(config)
