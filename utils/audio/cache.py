@@ -63,7 +63,11 @@ class ChatterBoxCacheKeyGenerator(CacheKeyGenerator):
             'device': params.get('device', ''),
             'language': params.get('language', 'English'),
             'character': params.get('character', 'narrator'),
-            'engine': 'chatterbox'
+            'engine': 'chatterbox',
+            # ChatterBox Official 23-Lang specific parameters
+            'repetition_penalty': params.get('repetition_penalty', 1.0),
+            'min_p': params.get('min_p', 0.0),
+            'top_p': params.get('top_p', 1.0)
         }
         cache_string = str(sorted(cache_data.items()))
         return hashlib.md5(cache_string.encode()).hexdigest()
