@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.2] - 2025-09-05
+
+### Added
+
+- All timing modes now work properly with character switching and overlaps
+
+### Changed
+
+- Better audio processing for pause tags and mixed audio formats
+
+### Fixed
+
+- Fix SRT overlapping and caching issues
+- Fix overlapping subtitles not playing simultaneously across all TTS engines
+- Fix audio parameter changes not invalidating cache in ChatterBox Official 23-Lang
+- Fix crashes when using concatenate and stretch-to-fit timing modes
 ## [4.8.1] - 2025-09-05
 
 ### Added
