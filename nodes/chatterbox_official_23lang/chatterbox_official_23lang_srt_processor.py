@@ -313,11 +313,13 @@ class ChatterboxOfficial23LangSRTProcessor:
                     fade_duration=timing_params.get("fade_for_StretchToFit", 0.01)
                 )
                 
-                # Create simple adjustments for reporting
+                # Create simple adjustments for reporting with all required fields
                 adjustments = []
                 for i, (segment, subtitle) in enumerate(zip(audio_segments, srt_segments)):
                     natural_duration = len(segment) / self.sample_rate
-                    adjustments.append({
+                    
+                    # Create base adjustment record with all required fields
+                    adjustment = {
                         'segment_index': i,
                         'sequence': subtitle.sequence,
                         'start_time': subtitle.start_time,
@@ -326,11 +328,22 @@ class ChatterboxOfficial23LangSRTProcessor:
                         'original_srt_start': subtitle.start_time,
                         'original_srt_end': subtitle.end_time,
                         'original_srt_duration': subtitle.end_time - subtitle.start_time,
-                        'original_text': subtitle.text,  # Add missing original_text field
+                        'original_text': subtitle.text,
                         'final_srt_start': subtitle.start_time,
                         'final_srt_end': subtitle.start_time + natural_duration,
-                        'actions': [f"Natural audio ({natural_duration:.2f}s) processed with {current_timing_mode} mode"]
-                    })
+                        'actions': [f"Natural audio ({natural_duration:.2f}s) processed with {current_timing_mode} mode"],
+                        
+                        # Add fields required by timing report generator
+                        'needs_stretching': current_timing_mode == "stretch_to_fit",
+                        'stretch_factor_applied': 1.0,
+                        'next_segment_shifted_by': 0.0,
+                        'padding_added': 0.0,
+                        'truncated_by': 0.0,
+                        'final_segment_duration': natural_duration,
+                        'stretch_type': 'none' if current_timing_mode != "stretch_to_fit" else 'time_stretch',
+                        'placement': f'{current_timing_mode}_mode'
+                    }
+                    adjustments.append(adjustment)
             
             # Map adjustment keys for report generator compatibility
             mapped_adjustments = []
