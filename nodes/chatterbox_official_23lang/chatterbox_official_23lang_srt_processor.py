@@ -151,7 +151,7 @@ class ChatterboxOfficial23LangSRTProcessor:
                         
                         # Set up character parser for this engine
                         character_parser.set_available_characters(list(all_characters))
-                        character_parser.set_engine_aware_default_language(generation_params["language"], "chatterbox")
+                        character_parser.set_engine_aware_default_language(self.config.get("language", "English"), "chatterbox")
                         
                         # Parse character segments with language support
                         char_segments = character_parser.split_by_character_with_language(text_content)
