@@ -148,6 +148,41 @@ class CharacterParser:
             # Telugu variations
             'te': 'te', 'telugu': 'te', 'తెలుగు': 'te', 'andhra pradesh': 'te',
             'andhra': 'te', 'telangana': 'te',
+            
+            # === ChatterBox Official 23-Lang Additional Languages ===
+            
+            # Arabic variations
+            'ar': 'ar', 'arabic': 'ar', 'العربية': 'ar', 'arab': 'ar', 'middle east': 'ar',
+            
+            # Danish variations  
+            'da': 'da', 'danish': 'da', 'dansk': 'da', 'denmark': 'da', 'danmark': 'da',
+            
+            # Greek variations
+            'el': 'el', 'greek': 'el', 'ελληνικά': 'el', 'greece': 'el', 'hellenic': 'el',
+            'gr': 'el',  # Common abbreviation for Greece -> Greek language
+            
+            # Finnish variations
+            'fi': 'fi', 'finnish': 'fi', 'suomi': 'fi', 'finland': 'fi', 'suomalainen': 'fi',
+            
+            # Hebrew variations
+            'he': 'he', 'hebrew': 'he', 'עברית': 'he', 'israel': 'he', 'israeli': 'he',
+            'iw': 'he',  # Legacy ISO code
+            
+            # Malay variations
+            'ms': 'ms', 'malay': 'ms', 'bahasa melayu': 'ms', 'malaysia': 'ms', 'melayu': 'ms',
+            
+            # Polish variations
+            'pl': 'pl', 'polish': 'pl', 'polski': 'pl', 'poland': 'pl', 'polska': 'pl',
+            
+            # Swedish variations
+            'sv': 'sv', 'swedish': 'sv', 'svenska': 'sv', 'sweden': 'sv', 'sverige': 'sv',
+            
+            # Swahili variations
+            'sw': 'sw', 'swahili': 'sw', 'kiswahili': 'sw', 'tanzania': 'sw', 'kenya': 'sw',
+            
+            # Turkish variations
+            'tr': 'tr', 'turkish': 'tr', 'türkçe': 'tr', 'turkce': 'tr', 'turkey': 'tr',
+            'türkiye': 'tr', 'turkiye': 'tr',
         }
     
     def resolve_language_alias(self, language_input: str) -> str:
@@ -408,18 +443,33 @@ class CharacterParser:
         
         # Map ChatterBox model names to language codes
         chatterbox_language_map = {
+            # Legacy ChatterBox models
             "english": "en",
             "german": "de", 
-            "norwegian": "no"
+            "norwegian": "no",
+            "french": "fr",
+            "italian": "it", 
+            "russian": "ru",
+            "korean": "ko",
+            "japanese": "ja",
+            "armenian": "hy",
+            "georgian": "ka",
+            
+            # ChatterBox Official 23-Lang (single model name resolves to default language)
+            "chatterbox official 23-lang": None,  # Will use actual language selection from UI
         }
         
         # Check if it's a ChatterBox model name
         normalized = language_input.lower()
         if normalized in chatterbox_language_map:
-            return chatterbox_language_map[normalized]
+            mapped = chatterbox_language_map[normalized]
+            if mapped is not None:
+                return mapped
         
-        # If it's already a language code or unknown, return as-is
-        return normalized
+        # For ChatterBox Official 23-Lang or unknown languages, resolve using language aliases
+        # This handles language names like "Arabic", "Turkish", "Chinese", etc.
+        resolved = self.resolve_language_alias(language_input)
+        return resolved
     
     def normalize_character_name(self, character_name: str, skip_narrator_alias: bool = False) -> str:
         """

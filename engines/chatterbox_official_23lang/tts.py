@@ -286,10 +286,7 @@ class ChatterboxOfficial23LangTTS:
             # Create instance
             instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds)
             
-            # Print supported languages
-            supported_langs = ', '.join(list(SUPPORTED_LANGUAGES.values()))
-            print(f"✅ ChatterBox Official 23-Lang model loaded successfully!")
-            print(f"🌍 Supported languages: {supported_langs}")
+            # Show model path info
             print(f"📦 Model loaded from: {ckpt_dir}")
             
             return instance

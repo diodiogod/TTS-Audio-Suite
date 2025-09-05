@@ -225,6 +225,63 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
                 
+            elif engine_type == "chatterbox_official_23lang":
+                # ChatterBox Official 23-Lang can reuse the standard ChatterBox SRT processor architecture
+                # The multilingual model works the same way for SRT processing
+                from nodes.chatterbox_official_23lang.chatterbox_official_23lang_processor import ChatterboxOfficial23LangProcessor
+                
+                # Create a minimal wrapper that mimics ChatterBox SRT interface
+                class ChatterboxOfficial23LangSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config.copy()
+                        self.processor = ChatterboxOfficial23LangProcessor()
+                        
+                    def update_config(self, new_config):
+                        """Update configuration for reused instances"""
+                        self.config.update(new_config)
+                    
+                    def generate_srt_speech(self, srt_content, language, device, model, 
+                                          narrator_voice, seed, temperature, exaggeration, cfg_weight,
+                                          repetition_penalty, min_p, top_p, enable_audio_cache,
+                                          timing_mode, fade_for_StretchToFit, max_stretch_ratio,
+                                          min_stretch_ratio, timing_tolerance, batch_size=0):
+                        """SRT speech generation for ChatterBox Official 23-Lang"""
+                        # Use the same interface as ChatterBox but with multilingual support
+                        return self.processor.generate_speech(
+                            inputs={
+                                "text": srt_content,  # SRT content will be processed as text
+                                "language": language,
+                                "device": device,
+                                "model": model,
+                                "narrator_voice": narrator_voice,
+                                "seed": seed,
+                                "temperature": temperature,
+                                "exaggeration": exaggeration,
+                                "cfg_weight": cfg_weight,
+                                "repetition_penalty": repetition_penalty,
+                                "min_p": min_p,
+                                "top_p": top_p,
+                                "enable_audio_cache": enable_audio_cache,
+                                # SRT-specific parameters
+                                "timing_mode": timing_mode,
+                                "fade_for_StretchToFit": fade_for_StretchToFit,
+                                "max_stretch_ratio": max_stretch_ratio,
+                                "min_stretch_ratio": min_stretch_ratio,
+                                "timing_tolerance": timing_tolerance,
+                                "batch_size": batch_size,
+                                "is_srt_mode": True  # Flag to indicate SRT processing mode
+                            }
+                        )
+                
+                engine_instance = ChatterboxOfficial23LangSRTWrapper(config)
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+                
             elif engine_type == "f5tts":
                 # Import and create the original F5-TTS SRT node using absolute import
                 f5tts_srt_path = os.path.join(nodes_dir, "f5tts", "f5tts_srt_node.py")
@@ -482,6 +539,30 @@ Hello! This is unified SRT TTS with character switching.
                     min_stretch_ratio=min_stretch_ratio,
                     timing_tolerance=timing_tolerance,
                     crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                    batch_size=batch_size
+                )
+                
+            elif engine_type == "chatterbox_official_23lang":
+                # ChatterBox Official 23-Lang SRT parameters with multilingual support
+                result = engine_instance.generate_srt_speech(
+                    srt_content=srt_content,
+                    language=config.get("language", "English"),  # Language name (e.g. "Turkish", "Arabic")
+                    device=config.get("device", "auto"),
+                    model=config.get("model", "ChatterBox Official 23-Lang"),
+                    narrator_voice=audio_path or "",  # Audio reference path
+                    seed=seed,
+                    temperature=config.get("temperature", 0.8),
+                    exaggeration=config.get("exaggeration", 0.5),
+                    cfg_weight=config.get("cfg_weight", 0.5),
+                    repetition_penalty=config.get("repetition_penalty", 1.2),
+                    min_p=config.get("min_p", 0.05),
+                    top_p=config.get("top_p", 1.0),
+                    enable_audio_cache=enable_audio_cache,
+                    timing_mode=timing_mode,
+                    fade_for_StretchToFit=fade_for_StretchToFit,
+                    max_stretch_ratio=max_stretch_ratio,
+                    min_stretch_ratio=min_stretch_ratio,
+                    timing_tolerance=timing_tolerance,
                     batch_size=batch_size
                 )
                 

@@ -215,39 +215,47 @@ Back to the main narrator voice for the conclusion.""",
         
         self.device = device
         self.current_language = language
-        print(f"✅ ChatterBox Official 23-Lang {language} model loaded successfully!")
         
         # Return the model for smart_model_loader
         return self.tts_model
     
-    def _language_name_to_code(self, language_name: str) -> str:
-        """Convert language name to language code for ChatterBox."""
-        language_mapping = {
-            "english": "en",
-            "italian": "it", 
-            "spanish": "es",
-            "french": "fr",
-            "german": "de",
+    def _language_name_to_code(self, language_input: str) -> str:
+        """Convert language name or code to language code compatible with ChatterBox Official 23-Lang."""
+        from utils.text.character_parser import CharacterParser
+        parser = CharacterParser()
+        
+        # First resolve using the centralized character parser
+        resolved_code = parser.resolve_language_alias(language_input)
+        
+        # Map to ChatterBox Official 23-Lang supported codes
+        # Import supported languages from our language models
+        from engines.chatterbox_official_23lang.language_models import SUPPORTED_LANGUAGES
+        
+        # If it's already a supported language code, return it
+        if resolved_code in SUPPORTED_LANGUAGES:
+            return resolved_code
+            
+        # Handle special cases where character parser codes don't match Official 23-Lang
+        code_mapping = {
+            # Portuguese variations -> single pt
+            "pt-br": "pt",  # Brazilian Portuguese -> Portuguese
+            "pt-pt": "pt",  # European Portuguese -> Portuguese  
+            "ptbr": "pt",
             "portuguese": "pt",
-            "russian": "ru",
-            "chinese": "zh",
-            "japanese": "ja",
-            "korean": "ko",
-            "arabic": "ar",
-            "hindi": "hi",
-            "dutch": "nl",
-            "swedish": "sv",
-            "norwegian": "no",
-            "danish": "da",
-            "finnish": "fi",
+            # Greek
+            "gr": "el",     # Greece -> Greek
             "greek": "el",
-            "hebrew": "he",
-            "polish": "pl",
-            "turkish": "tr",
-            "malay": "ms",
-            "swahili": "sw"
+            # Any other unmapped codes
         }
-        return language_mapping.get(language_name.lower(), "en")
+        
+        mapped_code = code_mapping.get(resolved_code, resolved_code)
+        
+        # If still not supported, default to English
+        if mapped_code not in SUPPORTED_LANGUAGES:
+            print(f"⚠️ Language '{language_input}' (resolved to '{resolved_code}') not supported by ChatterBox Official 23-Lang. Using English.")
+            return "en"
+            
+        return mapped_code
     
     def generate_tts_audio(self, text: str, audio_prompt: str, exaggeration: float = 0.5, temperature: float = 0.8, cfg_weight: float = 0.5, repetition_penalty: float = 1.2, min_p: float = 0.05, top_p: float = 1.0, language_id: str = "en"):
         """
@@ -258,6 +266,9 @@ Back to the main narrator voice for the conclusion.""",
         
         # Use torch.no_grad() to ensure no gradients are tracked during inference
         with torch.no_grad():
+            # Debug: Show the language_id being passed to the model
+            print(f"🌍 ChatterBox Official 23-Lang TTS: language_id='{language_id}' for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
+            
             # ChatterBox generate method with correct parameters including language_id
             audio = self.tts_model.generate(
                 text,
@@ -596,7 +607,7 @@ Back to the main narrator voice for the conclusion.""",
                 # Use centralized cache system
                 from utils.audio.cache import create_cache_function
                 cache_fn = create_cache_function(
-                    "chatterbox",
+                    "chatterbox_official_23lang",
                     character=character,
                     exaggeration=exaggeration,
                     temperature=temperature,
@@ -648,7 +659,7 @@ Back to the main narrator voice for the conclusion.""",
                 # Use centralized cache system
                 from utils.audio.cache import create_cache_function
                 cache_fn = create_cache_function(
-                    "chatterbox",
+                    "chatterbox_official_23lang",
                     character=character,
                     exaggeration=exaggeration,
                     temperature=temperature,
@@ -832,27 +843,6 @@ Back to the main narrator voice for the conclusion.""",
                     print(f"🎭 Voice mapping - {' | '.join(voice_summary)}")
                 
                 # Map language codes to ChatterBox model names
-                def get_chatterbox_model_for_language(lang_code: str) -> str:
-                    """Map language codes to ChatterBox model names"""
-                    lang_model_map = {
-                        'en': 'English',          # English (always use English model)
-                        'de': 'German',           # German
-                        'es': 'Spanish',          # Spanish
-                        'fr': 'French',           # French
-                        'it': 'Italian',          # Italian
-                        'pt': 'Portuguese',       # Portuguese
-                        'pt-br': 'Portuguese',    # Brazilian Portuguese (use Portuguese model)
-                        'pt-pt': 'Portuguese',    # European Portuguese (use Portuguese model)
-                        'no': 'Norwegian',        # Norwegian
-                        'nb': 'Norwegian',        # Norwegian Bokmål
-                        'nn': 'Norwegian',        # Norwegian Nynorsk
-                    }
-                    # For the main model language, use the selected model; for others, use language-specific models
-                    selected_lang = inputs["language"].lower()
-                    if lang_code.lower() == selected_lang:
-                        return inputs["language"]  # Use selected model for main language
-                    else:
-                        return lang_model_map.get(lang_code.lower(), inputs["language"])
                 
                 # Preprocess pause tags in character segments before streaming
                 expanded_segments_with_lang = []
