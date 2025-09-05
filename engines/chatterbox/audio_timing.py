@@ -607,13 +607,28 @@ class TimedAudioAssembler:
             fade_in = torch.linspace(0, 1, fade_samples, device=segment.device)
             fade_out = torch.linspace(1, 0, fade_samples, device=segment.device)
             
-            # Fade in the beginning of new segment
-            if segment.dim() == 1:
-                segment[:fade_samples] *= fade_in
+            # Fade in the beginning of new segment and fade out existing content
+            if output.dim() == 1:
+                # 1D output (mono)
+                if segment.dim() == 1:
+                    segment[:fade_samples] *= fade_in
+                else:
+                    # Convert 2D segment to 1D for compatibility
+                    segment = torch.mean(segment, dim=0)
+                    segment[:fade_samples] *= fade_in
+                
                 # Fade out existing content at the beginning
                 output[start_sample:start_sample + fade_samples] *= fade_out
             else:
-                segment[:, :fade_samples] *= fade_in.unsqueeze(0)
+                # 2D output (stereo/multi-channel)
+                if segment.dim() == 1:
+                    # Convert 1D segment to 2D to match output
+                    segment = segment.unsqueeze(0).repeat(output.size(0), 1)
+                    segment[:, :fade_samples] *= fade_in.unsqueeze(0)
+                else:
+                    segment[:, :fade_samples] *= fade_in.unsqueeze(0)
+                
+                # Fade out existing content at the beginning
                 output[:, start_sample:start_sample + fade_samples] *= fade_out.unsqueeze(0)
             
             # Fade out the end of new segment if there's content after
@@ -622,16 +637,33 @@ class TimedAudioAssembler:
             
             if output.dim() == 1:
                 if end_check_start < end_check_end and torch.any(output[end_check_start:end_check_end] != 0):
-                    segment[-fade_samples:] *= fade_out
+                    if segment.dim() == 1:
+                        segment[-fade_samples:] *= fade_out
+                    else:
+                        segment[:, -fade_samples:] *= fade_out.unsqueeze(0)
             else:
                 if end_check_start < end_check_end and torch.any(output[:, end_check_start:end_check_end] != 0):
-                    segment[:, -fade_samples:] *= fade_out.unsqueeze(0)
+                    if segment.dim() == 1:
+                        # segment was already converted to 2D above, so this shouldn't happen
+                        pass
+                    else:
+                        segment[:, -fade_samples:] *= fade_out.unsqueeze(0)
         
-        # Add segment to output
+        # Add segment to output (segment dimensions should now match output)
         if output.dim() == 1:
-            output[start_sample:end_sample] += segment
+            if segment.dim() == 1:
+                output[start_sample:end_sample] += segment
+            else:
+                # This shouldn't happen after normalization above, but handle it
+                segment = torch.mean(segment, dim=0)
+                output[start_sample:end_sample] += segment
         else:
-            output[:, start_sample:end_sample] += segment
+            if segment.dim() == 2:
+                output[:, start_sample:end_sample] += segment
+            else:
+                # This shouldn't happen after normalization above, but handle it
+                segment = segment.unsqueeze(0).repeat(output.size(0), 1)
+                output[:, start_sample:end_sample] += segment
 
 
 def calculate_timing_adjustments(natural_durations: List[float], 
