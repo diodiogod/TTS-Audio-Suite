@@ -47,8 +47,37 @@ class AudioAssemblyEngine:
         if fade_duration > 0.0:
             return self._concatenate_with_crossfade(audio_segments, fade_duration)
         else:
-            # Simple concatenation
-            return torch.cat(audio_segments, dim=1)
+            # Simple concatenation - handle tensor dimensions properly
+            if not audio_segments:
+                return torch.empty(0)
+            
+            # Determine target dimension from first segment
+            first_segment = audio_segments[0]
+            target_dim = first_segment.dim()
+            
+            # Normalize all segments to same dimension
+            normalized_segments = []
+            for segment in audio_segments:
+                if segment.dim() == target_dim:
+                    normalized_segments.append(segment)
+                elif target_dim == 1 and segment.dim() == 2:
+                    # Convert 2D to 1D (average channels if multi-channel)
+                    if segment.shape[0] > 1:
+                        normalized_segments.append(torch.mean(segment, dim=0))
+                    else:
+                        normalized_segments.append(segment.squeeze(0))
+                elif target_dim == 2 and segment.dim() == 1:
+                    # Convert 1D to 2D
+                    normalized_segment = segment.unsqueeze(0)
+                    if first_segment.shape[0] > 1:
+                        normalized_segment = normalized_segment.repeat(first_segment.shape[0], 1)
+                    normalized_segments.append(normalized_segment)
+            
+            # Concatenate on appropriate dimension
+            if target_dim == 1:
+                return torch.cat(normalized_segments, dim=0)
+            else:
+                return torch.cat(normalized_segments, dim=1)
     
     def _concatenate_with_crossfade(self, audio_segments: List[torch.Tensor], 
                                   fade_duration: float) -> torch.Tensor:
@@ -59,27 +88,65 @@ class AudioAssemblyEngine:
         for i in range(1, len(audio_segments)):
             current_segment = audio_segments[i]
             
-            if fade_samples > 0 and result.size(1) >= fade_samples and current_segment.size(1) >= fade_samples:
+            # Handle tensor dimensions properly - check last dimension regardless of tensor shape
+            result_samples = result.size(-1)
+            current_samples = current_segment.size(-1)
+            
+            if fade_samples > 0 and result_samples >= fade_samples and current_samples >= fade_samples:
                 # Create fade out for end of previous segment
                 fade_out = torch.linspace(1.0, 0.0, fade_samples, device=result.device)
                 fade_in = torch.linspace(0.0, 1.0, fade_samples, device=current_segment.device)
                 
-                # Apply fades
-                result_end = result[:, -fade_samples:] * fade_out
-                current_start = current_segment[:, :fade_samples] * fade_in
-                
-                # Crossfade by overlapping
-                crossfaded = result_end + current_start
-                
-                # Combine: previous audio (minus fade region) + crossfaded region + rest of current segment
-                result = torch.cat([
-                    result[:, :-fade_samples],
-                    crossfaded,
-                    current_segment[:, fade_samples:]
-                ], dim=1)
+                # Apply fades based on tensor dimensions
+                if result.dim() == 1:
+                    # 1D tensors (mono)
+                    result_end = result[-fade_samples:] * fade_out
+                    current_start = current_segment[:fade_samples] * fade_in
+                    
+                    # Crossfade by overlapping
+                    crossfaded = result_end + current_start
+                    
+                    # Combine: previous audio (minus fade region) + crossfaded region + rest of current segment
+                    result = torch.cat([
+                        result[:-fade_samples],
+                        crossfaded,
+                        current_segment[fade_samples:]
+                    ], dim=0)
+                else:
+                    # 2D tensors (multi-channel)
+                    result_end = result[:, -fade_samples:] * fade_out
+                    current_start = current_segment[:, :fade_samples] * fade_in
+                    
+                    # Crossfade by overlapping
+                    crossfaded = result_end + current_start
+                    
+                    # Combine: previous audio (minus fade region) + crossfaded region + rest of current segment
+                    result = torch.cat([
+                        result[:, :-fade_samples],
+                        crossfaded,
+                        current_segment[:, fade_samples:]
+                    ], dim=1)
             else:
-                # No crossfading, just concatenate
-                result = torch.cat([result, current_segment], dim=1)
+                # No crossfading, just concatenate on the appropriate dimension
+                if result.dim() == 1 and current_segment.dim() == 1:
+                    result = torch.cat([result, current_segment], dim=0)
+                elif result.dim() == 2 and current_segment.dim() == 2:
+                    result = torch.cat([result, current_segment], dim=1)
+                else:
+                    # Mixed dimensions - normalize to match result's dimensions
+                    if result.dim() == 1 and current_segment.dim() == 2:
+                        # Convert current_segment to 1D (average channels if multi-channel)
+                        if current_segment.shape[0] > 1:
+                            current_segment = torch.mean(current_segment, dim=0)
+                        else:
+                            current_segment = current_segment.squeeze(0)
+                        result = torch.cat([result, current_segment], dim=0)
+                    elif result.dim() == 2 and current_segment.dim() == 1:
+                        # Convert current_segment to 2D to match result
+                        current_segment = current_segment.unsqueeze(0)
+                        if result.shape[0] > 1:
+                            current_segment = current_segment.repeat(result.shape[0], 1)
+                        result = torch.cat([result, current_segment], dim=1)
         
         return result
         
