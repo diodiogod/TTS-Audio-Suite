@@ -51,13 +51,18 @@ class AudioAssemblyEngine:
             if not audio_segments:
                 return torch.empty(0)
             
-            # Determine target dimension from first segment
-            first_segment = audio_segments[0]
+            # Filter out empty segments first
+            non_empty_segments = [seg for seg in audio_segments if seg.numel() > 0]
+            if not non_empty_segments:
+                return torch.empty(0)
+            
+            # Determine target dimension from first non-empty segment
+            first_segment = non_empty_segments[0]
             target_dim = first_segment.dim()
             
             # Normalize all segments to same dimension
             normalized_segments = []
-            for segment in audio_segments:
+            for segment in non_empty_segments:
                 if segment.dim() == target_dim:
                     normalized_segments.append(segment)
                 elif target_dim == 1 and segment.dim() == 2:
@@ -82,11 +87,18 @@ class AudioAssemblyEngine:
     def _concatenate_with_crossfade(self, audio_segments: List[torch.Tensor], 
                                   fade_duration: float) -> torch.Tensor:
         """Concatenate audio segments with crossfading between them"""
-        fade_samples = int(fade_duration * self.sample_rate)
-        result = audio_segments[0]
+        # Filter out empty segments first
+        non_empty_segments = [seg for seg in audio_segments if seg.numel() > 0]
+        if not non_empty_segments:
+            return torch.empty(0)
+        if len(non_empty_segments) == 1:
+            return non_empty_segments[0]
         
-        for i in range(1, len(audio_segments)):
-            current_segment = audio_segments[i]
+        fade_samples = int(fade_duration * self.sample_rate)
+        result = non_empty_segments[0]
+        
+        for i in range(1, len(non_empty_segments)):
+            current_segment = non_empty_segments[i]
             
             # Handle tensor dimensions properly - check last dimension regardless of tensor shape
             result_samples = result.size(-1)
@@ -97,7 +109,21 @@ class AudioAssemblyEngine:
                 fade_out = torch.linspace(1.0, 0.0, fade_samples, device=result.device)
                 fade_in = torch.linspace(0.0, 1.0, fade_samples, device=current_segment.device)
                 
-                # Apply fades based on tensor dimensions
+                # Normalize both tensors to same dimension before applying fades
+                if result.dim() != current_segment.dim():
+                    if result.dim() == 1 and current_segment.dim() == 2:
+                        # Convert current_segment to 1D (average channels if multi-channel)
+                        if current_segment.shape[0] > 1:
+                            current_segment = torch.mean(current_segment, dim=0)
+                        else:
+                            current_segment = current_segment.squeeze(0)
+                    elif result.dim() == 2 and current_segment.dim() == 1:
+                        # Convert current_segment to 2D to match result
+                        current_segment = current_segment.unsqueeze(0)
+                        if result.shape[0] > 1:
+                            current_segment = current_segment.repeat(result.shape[0], 1)
+                
+                # Apply fades based on result tensor dimensions (both are now same dimension)
                 if result.dim() == 1:
                     # 1D tensors (mono)
                     result_end = result[-fade_samples:] * fade_out
