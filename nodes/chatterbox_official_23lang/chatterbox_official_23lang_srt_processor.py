@@ -326,6 +326,7 @@ class ChatterboxOfficial23LangSRTProcessor:
                         'original_srt_start': subtitle.start_time,
                         'original_srt_end': subtitle.end_time,
                         'original_srt_duration': subtitle.end_time - subtitle.start_time,
+                        'original_text': subtitle.text,  # Add missing original_text field
                         'final_srt_start': subtitle.start_time,
                         'final_srt_end': subtitle.start_time + natural_duration,
                         'actions': [f"Natural audio ({natural_duration:.2f}s) processed with {current_timing_mode} mode"]
