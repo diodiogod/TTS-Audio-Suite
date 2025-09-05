@@ -616,7 +616,11 @@ Back to the main narrator voice for the conclusion.""",
                     audio_component=audio_component,
                     model_source=f"chatterbox_{language.lower()}",
                     device=self.device,
-                    language=language
+                    language=language,
+                    # Add ChatterBox Official 23-Lang specific parameters to cache key
+                    repetition_penalty=repetition_penalty,
+                    min_p=min_p,
+                    top_p=top_p
                 )
                 
                 # Try cache first
@@ -668,7 +672,11 @@ Back to the main narrator voice for the conclusion.""",
                     audio_component=audio_component,
                     model_source=f"chatterbox_{language.lower()}",
                     device=self.device,
-                    language=language
+                    language=language,
+                    # Add ChatterBox Official 23-Lang specific parameters to cache key
+                    repetition_penalty=repetition_penalty,
+                    min_p=min_p,
+                    top_p=top_p
                 )
                 
                 # Try cache first
@@ -716,7 +724,7 @@ Back to the main narrator voice for the conclusion.""",
             inputs["text"], main_audio_prompt, inputs["exaggeration"], 
             inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
             inputs["min_p"], inputs["top_p"], inputs["language"],
-            True, character="narrator", seed=inputs["seed"], 
+            True, character=character, seed=inputs["seed"], 
             enable_cache=inputs.get("enable_audio_cache", True),
             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
             stable_audio_component=stable_audio_component
@@ -727,7 +735,7 @@ Back to the main narrator voice for the conclusion.""",
                        reference_audio=None, audio_prompt_path="",
                        enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
-                       enable_audio_cache=True, batch_size=4):
+                       enable_audio_cache=True, batch_size=4, character="narrator"):
         
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
@@ -956,7 +964,7 @@ Back to the main narrator voice for the conclusion.""",
                             from utils.audio.cache import create_cache_function
                             cache_fn = create_cache_function(
                                 "chatterbox",
-                                character="narrator",
+                                character=character,
                                 exaggeration=inputs["exaggeration"],
                                 temperature=inputs["temperature"],
                                 cfg_weight=inputs["cfg_weight"],
@@ -988,7 +996,7 @@ Back to the main narrator voice for the conclusion.""",
                                 from utils.audio.cache import create_cache_function
                                 cache_fn = create_cache_function(
                                     "chatterbox",
-                                    character="narrator",
+                                    character=character,
                                     exaggeration=inputs["exaggeration"],
                                     temperature=inputs["temperature"],
                                     cfg_weight=inputs["cfg_weight"],
@@ -1033,7 +1041,7 @@ Back to the main narrator voice for the conclusion.""",
                         clean_text, main_audio_prompt, inputs["exaggeration"], 
                         inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                         inputs["min_p"], inputs["top_p"], inputs["language"],
-                        True, character="narrator", seed=inputs["seed"], 
+                        True, character=character, seed=inputs["seed"], 
                         enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=stable_audio_component
@@ -1060,7 +1068,7 @@ Back to the main narrator voice for the conclusion.""",
                             chunk, main_audio_prompt, inputs["exaggeration"], 
                             inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                             inputs["min_p"], inputs["top_p"], inputs["language"],
-                            True, character="narrator", seed=inputs["seed"], 
+                            True, character=character, seed=inputs["seed"], 
                             enable_cache=inputs.get("enable_audio_cache", True),
                             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                             stable_audio_component=stable_audio_component

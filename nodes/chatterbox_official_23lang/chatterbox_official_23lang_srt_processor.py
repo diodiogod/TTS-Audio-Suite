@@ -183,7 +183,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                                 seed=seed,
                                 reference_audio=None,
                                 audio_prompt_path=char_voice_path,
-                                enable_audio_cache=True
+                                enable_audio_cache=True,
+                                character=char_name  # Pass character name for pause tag processing
                             )
                             
                             
@@ -227,7 +228,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                             seed=seed,
                             reference_audio=None,
                             audio_prompt_path=narrator_voice_path,
-                            enable_audio_cache=True
+                            enable_audio_cache=True,
+                            character="narrator"  # Default narrator character
                         )
                         
                         

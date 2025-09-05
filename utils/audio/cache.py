@@ -73,6 +73,32 @@ class ChatterBoxCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class ChatterBoxOfficial23LangCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for ChatterBox Official 23-Lang engine."""
+    
+    def generate_cache_key(self, **params) -> str:
+        """Generate ChatterBox Official 23-Lang cache key from parameters."""
+        cache_data = {
+            'text': params.get('text', ''),
+            'exaggeration': params.get('exaggeration', 0.5),
+            'temperature': params.get('temperature', 0.8),
+            'cfg_weight': params.get('cfg_weight', 0.5),
+            'seed': params.get('seed', 0),
+            'audio_component': params.get('audio_component', ''),
+            'model_source': params.get('model_source', ''),
+            'device': params.get('device', ''),
+            'language': params.get('language', 'English'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'chatterbox_official_23lang',
+            # ChatterBox Official 23-Lang specific parameters
+            'repetition_penalty': params.get('repetition_penalty', 1.0),
+            'min_p': params.get('min_p', 0.0),
+            'top_p': params.get('top_p', 1.0)
+        }
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for Higgs Audio engine."""
     
@@ -158,7 +184,7 @@ class AudioCache:
         self.cache_key_generators = {
             'f5tts': F5TTSCacheKeyGenerator(),
             'chatterbox': ChatterBoxCacheKeyGenerator(),
-            'chatterbox_official_23lang': ChatterBoxCacheKeyGenerator(),  # Uses same cache logic as chatterbox
+            'chatterbox_official_23lang': ChatterBoxOfficial23LangCacheKeyGenerator(),  # Uses specialized generator with advanced params
             'higgs_audio': HiggsAudioCacheKeyGenerator(),
             'vibevoice': VibeVoiceCacheKeyGenerator()
         }
