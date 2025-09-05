@@ -238,7 +238,7 @@ Back to the main narrator voice for the conclusion.""",
             print(f"🛡️ Generating silence to prevent ChatterBox CUDA crash and avoid ComfyUI reboot")
             # Return silence instead of attempting generation
             silence_duration = max(1.0, len(text) * 0.05)  # Rough estimate
-            silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050))
+            silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000))
             return torch.zeros(1, silence_samples)
         
         # If prediction says it's safe, try generation with fallback
@@ -255,7 +255,7 @@ Back to the main narrator voice for the conclusion.""",
                 print(f"🛡️ Crash detection missed this pattern - returning silence to prevent ComfyUI reboot")
                 # Return silence instead of crashing
                 silence_duration = max(1.0, len(text) * 0.05)  # Rough estimate
-                silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050))
+                silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000))
                 return torch.zeros(1, silence_samples)
             else:
                 raise
@@ -361,7 +361,7 @@ Back to the main narrator voice for the conclusion.""",
         """Combine audio segments using modular combination utility."""
         if len(audio_segments) == 1:
             if return_info:
-                sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+                sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000
                 chunk_info = {
                     "method_used": "none",
                     "total_chunks": 1,
@@ -376,7 +376,7 @@ Back to the main narrator voice for the conclusion.""",
         
         # Use modular chunk combiner
         from utils.audio.chunk_combiner import ChunkCombiner
-        sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+        sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000
         
         result = ChunkCombiner.combine_chunks(
             audio_segments=audio_segments,
@@ -541,7 +541,7 @@ Back to the main narrator voice for the conclusion.""",
                 return audio.detach().clone() if audio.requires_grad else audio
         
         return PauseTagProcessor.generate_audio_with_pauses(
-            pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+            pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000
         )
 
     def _generate_with_pause_tags(self, pause_segments, inputs, main_audio_prompt):
@@ -782,7 +782,7 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
                 # Generate info - handle case where streaming was used and tts_model is None
-                sample_rate = self.tts_model.sr if self.tts_model else 22050  # ChatterBox default
+                sample_rate = self.tts_model.sr if self.tts_model else 24000  # ChatterBox default
                 total_duration = wav.size(-1) / sample_rate
                 model_source = f"chatterbox_{language.lower()}"
                 
@@ -948,7 +948,7 @@ Back to the main narrator voice for the conclusion.""",
                     info = ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)
             
             # Return audio in ComfyUI format
-            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+            sr = self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000
             return (
                 self.format_audio_output(wav, sr),
                 info
@@ -1114,7 +1114,7 @@ Back to the main narrator voice for the conclusion.""",
                     
                     if pause_key in pause_info:
                         pause_duration = pause_info[pause_key]
-                        sample_rate = 22050  # ChatterBox default
+                        sample_rate = 24000  # ChatterBox default
                         silence = AudioProcessingUtils.create_silence(pause_duration, sample_rate)
                         combined_audio_parts.append(silence)
                         print(f"⏸️ Added {pause_duration}s pause after segment {part_id}")
@@ -1256,7 +1256,7 @@ Back to the main narrator voice for the conclusion.""",
             if hasattr(self, 'tts_model') and self.tts_model:
                 sr = self.tts_model.sr
             else:
-                sr = 22050  # Default sample rate
+                sr = 24000  # Default sample rate
             return torch.zeros(1, int(sr * 1.0))  # 1 second of silence
 
     def _preload_language_models(self, language_codes, device):

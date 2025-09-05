@@ -35,7 +35,7 @@ class ChatterboxOfficial23LangSRTProcessor:
         """
         self.tts_node = tts_node
         self.config = engine_config.copy()
-        self.sample_rate = 22050  # ChatterBox uses 22050 Hz
+        self.sample_rate = 24000  # ChatterBox Official 23-Lang uses 24000 Hz (S3GEN_SR)
     
     def process_srt_content(self, srt_content: str, voice_mapping: Dict[str, Any],
                            seed: int, timing_mode: str, timing_params: Dict[str, Any]) -> Tuple[torch.Tensor, str, str, str]:

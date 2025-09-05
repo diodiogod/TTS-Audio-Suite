@@ -354,7 +354,7 @@ The audio will match these exact timings.""",
                 return self._safe_generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
         
         return PauseTagProcessor.generate_audio_with_pauses(
-            pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 22050
+            pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000
         )
 
     def _generate_segment_cache_key(self, subtitle_text: str, exaggeration: float, temperature: float, 
@@ -546,7 +546,7 @@ The audio will match these exact timings.""",
                                 audio_segments.append(audio)
                             elif segment_type == 'pause':
                                 # Generate silence for pause segment
-                                silence_samples = int(content * 22050)  # content is duration in seconds
+                                silence_samples = int(content * 24000)  # content is duration in seconds
                                 silence = torch.zeros(1, silence_samples)
                                 audio_segments.append(silence)
                         
@@ -815,7 +815,7 @@ The audio will match these exact timings.""",
                     node_type='srt',
                     results=results,
                     original_data=subtitles,
-                    sample_rate=22050,
+                    sample_rate=24000,
                     enable_audio_cache=enable_audio_cache,
                     segments=segments  # Pass segments for proper subtitle ordering
                 )

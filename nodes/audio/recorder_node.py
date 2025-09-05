@@ -109,7 +109,7 @@ class ChatterBoxVoiceCapture:
             print("   macOS: brew install portaudio")
             print("   Windows: Usually bundled with sounddevice")
             # Return empty audio tensor
-            return (torch.zeros(1, 1, 22050),)
+            return (torch.zeros(1, 1, 24000),)
         
         # Extract parameters with defaults for graceful fallback
         voice_device = kwargs.get('voice_device', '')

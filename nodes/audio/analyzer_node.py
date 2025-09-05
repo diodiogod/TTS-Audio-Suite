@@ -117,12 +117,12 @@ class AudioAnalyzerNode:
         if isinstance(audio_input, dict):
             if 'waveform' in audio_input:
                 audio_tensor = audio_input['waveform']
-                sample_rate = audio_input.get('sample_rate', 22050)
+                sample_rate = audio_input.get('sample_rate', 24000)
             else:
                 raise ValueError("Invalid audio format. Expected dictionary with 'waveform' key.")
         elif isinstance(audio_input, torch.Tensor):
             audio_tensor = audio_input
-            sample_rate = 22050  # Default sample rate
+            sample_rate = 24000  # Default sample rate (matches TTS engines)
         else:
             raise ValueError("Invalid audio input type. Expected dict or torch.Tensor.")
         
@@ -620,7 +620,7 @@ class AudioAnalyzerNode:
             
             # Return error data
             empty_audio = torch.zeros(1, 1000)  # 1 second of silence
-            processed_audio = AudioProcessingUtils.format_for_comfyui(empty_audio, 22050)
+            processed_audio = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             segmented_audio = processed_audio  # Same as processed for errors
             
             return (

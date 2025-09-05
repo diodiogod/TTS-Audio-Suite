@@ -67,7 +67,7 @@ class MergeAudioNode(BaseTTSNode):
         ]
         
         # Sample rate options
-        sample_rates = ["auto", 16000, 22050, 44100, 48000]
+        sample_rates = ["auto", 16000, 22050, 24000, 44100, 48000]
         
         
         return {

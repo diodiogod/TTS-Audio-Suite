@@ -238,7 +238,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 raise ValueError("Invalid audio format for RVC conversion")
             
             waveform = audio_dict["waveform"]
-            sample_rate = audio_dict.get("sample_rate", 22050)
+            sample_rate = audio_dict.get("sample_rate", 24000)
             
             # Convert tensor to numpy if needed
             if hasattr(waveform, 'numpy'):
