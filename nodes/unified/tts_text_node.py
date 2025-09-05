@@ -267,6 +267,28 @@ Back to the main narrator voice for the conclusion.""",
                 }
                 return engine_instance
                 
+            elif engine_type == "chatterbox_official_23lang":
+                # Import and create the ChatterBox Official 23-Lang node using absolute import
+                chatterbox_official_23lang_node_path = os.path.join(nodes_dir, "chatterbox_official_23lang", "chatterbox_official_23lang_processor.py")
+                chatterbox_official_23lang_spec = importlib.util.spec_from_file_location("chatterbox_official_23lang_processor_module", chatterbox_official_23lang_node_path)
+                chatterbox_official_23lang_module = importlib.util.module_from_spec(chatterbox_official_23lang_spec)
+                chatterbox_official_23lang_spec.loader.exec_module(chatterbox_official_23lang_module)
+                
+                ChatterboxOfficial23LangTTSNode = chatterbox_official_23lang_module.ChatterboxOfficial23LangTTSNode
+                engine_instance = ChatterboxOfficial23LangTTSNode()
+                # Apply configuration
+                for key, value in config.items():
+                    if hasattr(engine_instance, key):
+                        setattr(engine_instance, key, value)
+                
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+                
             elif engine_type == "vibevoice":
                 # Create a wrapper instance for VibeVoice using the adapter pattern
                 # Import using same pattern as other modules
@@ -538,6 +560,29 @@ Back to the main narrator voice for the conclusion.""",
                     chunk_combination_method=chunk_combination_method,
                     silence_between_chunks_ms=silence_between_chunks_ms,
                     crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                    enable_audio_cache=enable_audio_cache,
+                    batch_size=batch_size
+                )
+                
+            elif engine_type == "chatterbox_official_23lang":
+                # ChatterBox Official 23-Lang TTS parameters - includes multilingual parameters
+                result = engine_instance.generate_speech(
+                    text=text,
+                    language=language,
+                    device=config.get("device", "auto"),
+                    exaggeration=config.get("exaggeration", 0.5),
+                    temperature=config.get("temperature", 0.8),
+                    cfg_weight=config.get("cfg_weight", 0.5),
+                    repetition_penalty=config.get("repetition_penalty", 2.0),
+                    min_p=config.get("min_p", 0.05),
+                    top_p=config.get("top_p", 1.0),
+                    seed=seed,
+                    reference_audio=audio_tensor,
+                    audio_prompt_path=audio_path or "",
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
                     enable_audio_cache=enable_audio_cache,
                     batch_size=batch_size
                 )

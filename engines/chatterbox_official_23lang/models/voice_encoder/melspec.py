@@ -2,14 +2,13 @@ from functools import lru_cache
 
 from scipy import signal
 import numpy as np
-# Use librosa fallback for Python 3.13 compatibility
-from utils.audio.librosa_fallback import safe_mel_filters, safe_stft
+import librosa
 
 
 @lru_cache()
 def mel_basis(hp):
     assert hp.fmax <= hp.sample_rate // 2
-    return safe_mel_filters(
+    return librosa.filters.mel(
         sr=hp.sample_rate,
         n_fft=hp.n_fft,
         n_mels=hp.num_mels,
@@ -55,7 +54,7 @@ def melspectrogram(wav, hp, pad=True):
 def _stft(y, hp, pad=True):
     # NOTE: after 0.8, pad mode defaults to constant, setting this to reflect for
     #   historical consistency and streaming-version consistency
-    return safe_stft(
+    return librosa.stft(
         y,
         n_fft=hp.n_fft,
         hop_length=hp.hop_size,

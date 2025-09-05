@@ -80,6 +80,14 @@ except Exception as e:
     print(f"❌ VibeVoice Engine failed: {e}")
     VIBEVOICE_ENGINE_AVAILABLE = False
 
+try:
+    chatterbox_official_23lang_engine_module = load_node_module("chatterbox_official_23lang_engine_node", "engines/chatterbox_official_23lang_engine_node.py")
+    ChatterBoxOfficial23LangEngineNode = chatterbox_official_23lang_engine_module.ChatterBoxOfficial23LangEngineNode
+    CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ ChatterBox Official 23-Lang Engine failed: {e}")
+    CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE = False
+
 # Load shared nodes
 try:
     character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
@@ -311,6 +319,10 @@ if HIGGS_AUDIO_ENGINE_AVAILABLE:
 if VIBEVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["VibeVoiceEngineNode"] = VibeVoiceEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["VibeVoiceEngineNode"] = "⚙️ VibeVoice Engine"
+
+if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = ChatterBoxOfficial23LangEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = "⚙️ ChatterBox Official 23-Lang Engine"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

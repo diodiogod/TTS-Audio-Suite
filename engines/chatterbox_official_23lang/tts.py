@@ -198,6 +198,22 @@ class ChatterboxOfficial23LangTTS:
         ckpt_dir = Path(ckpt_dir)
         print(f"📦 Loading ChatterBox Official 23-Lang model from: {ckpt_dir}")
         
+        # Resolve "auto" device to actual device
+        if device == "auto":
+            if torch.cuda.is_available():
+                actual_device = "cuda"
+            else:
+                actual_device = "cpu"
+        else:
+            actual_device = device
+        
+        # Always load to CPU first for non-CUDA devices to handle CUDA-saved models
+        # (Following official ResembleAI implementation)
+        if actual_device in ["cpu", "mps"]:
+            map_location = torch.device('cpu')
+        else:
+            map_location = None
+        
         # Check model completeness
         if model_name:
             is_complete, missing_files = validate_model_completeness(str(ckpt_dir), model_name)
@@ -215,9 +231,10 @@ class ChatterboxOfficial23LangTTS:
                 raise FileNotFoundError(f"Voice encoder not found: {ve_path}")
             
             ve = VoiceEncoder()
-            ve_state = torch.load(ve_path, map_location=device, weights_only=True)
+            # Use same loading approach as official implementation
+            ve_state = torch.load(ve_path, map_location=map_location, weights_only=False)
             ve.load_state_dict(ve_state)
-            ve.to(device).eval()
+            ve.to(actual_device).eval()
             
             # Load T3 multilingual model (t3_23lang.safetensors)
             print("📦 Loading T3 23-Lang model...")
@@ -230,12 +247,12 @@ class ChatterboxOfficial23LangTTS:
             config = T3Config.multilingual()  # Use multilingual configuration
             t3 = T3(config)
             
-            t3_state = load_file(t3_path, device=device)
+            t3_state = load_file(t3_path, device=actual_device)
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
             
             t3.load_state_dict(t3_state)
-            t3.to(device).eval()
+            t3.to(actual_device).eval()
             
             # Load S3Gen (s3gen.pt)
             print("📦 Loading S3Gen model...")
@@ -244,9 +261,10 @@ class ChatterboxOfficial23LangTTS:
                 raise FileNotFoundError(f"S3Gen model not found: {s3gen_path}")
             
             s3gen = S3Gen()
-            s3gen_state = torch.load(s3gen_path, map_location=device, weights_only=True)
+            # Use same loading approach as official implementation
+            s3gen_state = torch.load(s3gen_path, map_location=map_location, weights_only=False)
             s3gen.load_state_dict(s3gen_state)
-            s3gen.to(device).eval()
+            s3gen.to(actual_device).eval()
             
             # Load multilingual tokenizer (mtl_tokenizer.json)
             print("📦 Loading multilingual tokenizer...")
@@ -261,12 +279,12 @@ class ChatterboxOfficial23LangTTS:
             conds_path = ckpt_dir / "conds.pt"
             if conds_path.exists():
                 print("📦 Loading conditioning...")
-                conds = Conditionals.load(conds_path).to(device)
+                conds = Conditionals.load(conds_path).to(actual_device)
             else:
                 print("⚠️ No conditioning found - using None")
             
             # Create instance
-            instance = cls(t3, s3gen, ve, tokenizer, device, conds=conds)
+            instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds)
             
             # Print supported languages
             supported_langs = ', '.join(list(SUPPORTED_LANGUAGES.values()))
@@ -285,6 +303,15 @@ class ChatterboxOfficial23LangTTS:
         ckpt_dir = Path(ckpt_dir)
         print(f"🇮🇹 Loading unified {language} ChatterBox model from: {ckpt_dir}")
         
+        # Resolve "auto" device to actual device
+        if device == "auto":
+            if torch.cuda.is_available():
+                actual_device = "cuda"
+            else:
+                actual_device = "cpu"
+        else:
+            actual_device = device
+        
         # Load the unified model file
         unified_model_path = ckpt_dir / "chatterbox_italian_final.pt"
         if not unified_model_path.exists():
@@ -294,7 +321,7 @@ class ChatterboxOfficial23LangTTS:
             warnings.simplefilter("ignore")
             
             print(f"📦 Loading checkpoint: {unified_model_path.name}")
-            checkpoint = torch.load(unified_model_path, map_location=device)
+            checkpoint = torch.load(unified_model_path, map_location=actual_device)
             
             # Extract model configuration
             model_config = checkpoint.get('model_config', {})
@@ -312,7 +339,7 @@ class ChatterboxOfficial23LangTTS:
             # Initialize components with standard ChatterBox architecture
             ve = VoiceEncoder()
             ve.load_state_dict(checkpoint['ve_state_dict'], strict=False)
-            ve.to(device).eval()
+            ve.to(actual_device).eval()
             
             # Load T3 config with Italian vocabulary size
             from .models.t3.t3 import T3Config
@@ -322,12 +349,12 @@ class ChatterboxOfficial23LangTTS:
             t3 = T3(config)
             t3.load_state_dict(checkpoint['t3_state_dict'], strict=False)
             t3.tfmr.output_attentions = False
-            t3.to(device).eval()
+            t3.to(actual_device).eval()
             
             # Load S3Gen
             s3gen = S3Gen()
             s3gen.load_state_dict(checkpoint['s3gen_state_dict'], strict=False)
-            s3gen.to(device).eval()
+            s3gen.to(actual_device).eval()
             
             # Load tokenizer for Italian model (fallback to English tokenizer)
             # The Italian model uses language prefixes like [it] for Italian text
@@ -355,9 +382,9 @@ class ChatterboxOfficial23LangTTS:
             # Check for conditional voices
             conds = None
             if (builtin_voice := ckpt_dir / "conds.pt").exists():
-                conds = Conditionals.load(builtin_voice).to(device)
+                conds = Conditionals.load(builtin_voice).to(actual_device)
             
-            instance = cls(t3, s3gen, ve, tokenizer, device, conds=conds)
+            instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds)
             print(f"✅ Italian TTS model loaded successfully!")
             print(f"💡 Use '[it]' prefix for Italian text, no prefix for English")
             print(f"📦 Model loaded from: {ckpt_dir}")
