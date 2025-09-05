@@ -288,20 +288,48 @@ class ChatterboxOfficial23LangSRTProcessor:
             timing_engine = TimingEngine(sample_rate=self.sample_rate)
             assembly_engine = AudioAssemblyEngine(sample_rate=self.sample_rate)
             
-            # Calculate timing adjustments using correct parameter order
-            adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
-                audio_segments, 
-                srt_segments,
-                timing_params.get("timing_tolerance", 2.0),
-                timing_params.get("max_stretch_ratio", 1.0),
-                timing_params.get("min_stretch_ratio", 0.5),
-                torch.device('cpu')
-            )
-            
-            # Assemble final audio using smart natural timing
-            final_audio = assembly_engine.assemble_smart_natural(
-                audio_segments, processed_segments, adjustments, srt_segments, torch.device('cpu')
-            )
+            # Handle timing mode routing properly
+            if current_timing_mode == "smart_natural":
+                # Calculate smart timing adjustments
+                adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+                    audio_segments, 
+                    srt_segments,
+                    timing_params.get("timing_tolerance", 2.0),
+                    timing_params.get("max_stretch_ratio", 1.0),
+                    timing_params.get("min_stretch_ratio", 0.5),
+                    torch.device('cpu')
+                )
+                
+                # Use unified assembly method with proper routing
+                final_audio = assembly_engine.assemble_by_timing_mode(
+                    audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
+                    adjustments=adjustments, processed_segments=processed_segments
+                )
+            else:
+                # For other modes (pad_with_silence, stretch_to_fit, concatenate)
+                # No preprocessing needed - use unified assembly method
+                final_audio = assembly_engine.assemble_by_timing_mode(
+                    audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
+                    fade_duration=timing_params.get("fade_for_StretchToFit", 0.01)
+                )
+                
+                # Create simple adjustments for reporting
+                adjustments = []
+                for i, (segment, subtitle) in enumerate(zip(audio_segments, srt_segments)):
+                    natural_duration = len(segment) / self.sample_rate
+                    adjustments.append({
+                        'segment_index': i,
+                        'sequence': subtitle.sequence,
+                        'start_time': subtitle.start_time,
+                        'end_time': subtitle.start_time + natural_duration,
+                        'natural_audio_duration': natural_duration,
+                        'original_srt_start': subtitle.start_time,
+                        'original_srt_end': subtitle.end_time,
+                        'original_srt_duration': subtitle.end_time - subtitle.start_time,
+                        'final_srt_start': subtitle.start_time,
+                        'final_srt_end': subtitle.start_time + natural_duration,
+                        'actions': [f"Natural audio ({natural_duration:.2f}s) processed with {current_timing_mode} mode"]
+                    })
             
             # Map adjustment keys for report generator compatibility
             mapped_adjustments = []

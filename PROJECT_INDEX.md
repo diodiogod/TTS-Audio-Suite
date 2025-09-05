@@ -13,7 +13,7 @@ This extension features a **unified modular architecture** supporting multiple T
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
 - **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
-- **Multilingual Support**: German and Norwegian models for both ChatterBox TTS and Voice Conversion
+- **Multilingual Support**: German and Norwegian models for ChatterBox, plus ChatterBox Official 23-Lang supporting 23 languages including Arabic, Chinese, Danish, Dutch, English, Finnish, French, German, Greek, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Norwegian, Polish, Portuguese, Russian, Spanish, Swedish, Swahili, and Turkish
 - **Smart Language Grouping**: SRT processing by language groups to minimize model switching
 - **Character Voice Management**: Centralized character voice system with flexible input types
 - **Comprehensive Audio Processing**: Interactive waveform analyzer, vocal separation, and audio mixing
@@ -71,6 +71,14 @@ This extension features a **unified modular architecture** supporting multiple T
 - **character_grouper.py** - Character grouping utilities for batch processing optimization
 - **stateless_wrapper.py** - Thread-safe stateless wrapper eliminating shared state corruption in parallel generation
 - **models/** - Complete ChatterBox model architecture (S3Gen, T3, tokenizers, voice encoder)
+
+**engines/chatterbox_official_23lang/** - ChatterBox Official 23-Lang multilingual engine implementation
+- **tts.py** - Main ChatterBox Official 23-Lang TTS engine with 23-language support
+- **vc.py** - Voice conversion engine supporting all 23 languages with refinement passes
+- **language_models.py** - Language model configuration and multilingual support definitions
+- **stateless_wrapper.py** - Thread-safe wrapper for multilingual parallel processing
+- **batch_processor.py**, **adaptive_processor.py**, **gpu_aware_processor.py** - Advanced processing systems
+- **models/** - Complete multilingual model architecture (S3Gen, T3, tokenizers, voice encoder) optimized for 23-language generation
 
 **engines/f5tts/** - F5-TTS engine implementation and editing capabilities
 - **f5tts.py** - Main F5-TTS wrapper with ComfyUI integration
@@ -151,6 +159,11 @@ This extension features a **unified modular architecture** supporting multiple T
 - **chatterbox_tts_node.py** - ChatterBox TTS engine node with streaming batch processing and character switching
 - **chatterbox_srt_node.py** - ChatterBox SRT engine node with streaming parallel processing and timing modes  
 - **chatterbox_vc_node.py** - ChatterBox voice conversion engine with iterative refinement
+
+**nodes/chatterbox_official_23lang/** - ChatterBox Official 23-Lang multilingual processors
+- **chatterbox_official_23lang_processor.py** - Main TTS processor supporting all 23 languages with character switching
+- **chatterbox_official_23lang_srt_processor.py** - SRT subtitle processor with multilingual timing and audio assembly
+- **chatterbox_official_23lang_vc_processor.py** - Voice conversion processor supporting all 23 languages with refinement passes
 
 **nodes/f5tts/** - F5-TTS specific nodes
 - **f5tts_node.py** - Direct F5-TTS generation node

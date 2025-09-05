@@ -111,7 +111,7 @@ class AudioAssemblyEngine:
             return self._basic_stretch_assembly(audio_segments, target_timings, fade_duration)
     
     def assemble_with_overlaps(self, audio_segments: List[torch.Tensor],
-                              subtitles: List, device: str) -> torch.Tensor:
+                              subtitles: List, device) -> torch.Tensor:
         """
         ORIGINAL: Assemble audio by placing segments at their SRT start times, allowing audible overlaps.
         Silence is implicitly added in gaps. EXACT COPY FROM ORIGINAL LINES 1776-1875
@@ -510,3 +510,49 @@ class AudioAssemblyEngine:
             pass
         
         return methods
+    
+    def assemble_by_timing_mode(self, audio_segments: List[torch.Tensor], 
+                               subtitles: List, timing_mode: str, device,
+                               adjustments: Optional[List[Dict]] = None,
+                               processed_segments: Optional[List[torch.Tensor]] = None,
+                               fade_duration: float = 0.01) -> torch.Tensor:
+        """
+        Route to the correct assembly method based on timing mode
+        
+        Args:
+            audio_segments: Raw audio segments
+            subtitles: SRT subtitle objects
+            timing_mode: The timing mode to use
+            device: Target device
+            adjustments: Timing adjustments (for smart_natural mode)
+            processed_segments: Processed segments (for smart_natural mode)  
+            fade_duration: Fade duration for stretch modes
+            
+        Returns:
+            Assembled audio tensor
+        """
+        if timing_mode == "pad_with_silence":
+            # Use overlap assembly - places audio at SRT start times with overlaps allowed
+            print(f"🔧 Assembly: Using overlap assembly for {timing_mode} mode")
+            return self.assemble_with_overlaps(audio_segments, subtitles, device)
+            
+        elif timing_mode == "smart_natural":
+            # Use smart natural assembly with processed segments and adjustments
+            if processed_segments is None or adjustments is None:
+                raise ValueError("smart_natural mode requires processed_segments and adjustments")
+            print(f"🔧 Assembly: Using smart natural assembly for {timing_mode} mode")
+            return self.assemble_smart_natural(audio_segments, processed_segments, adjustments, subtitles, device)
+            
+        elif timing_mode == "stretch_to_fit":
+            # Use stretch-to-fit assembly
+            target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
+            print(f"🔧 Assembly: Using stretch-to-fit assembly for {timing_mode} mode")
+            return self.assemble_stretch_to_fit(audio_segments, target_timings, fade_duration)
+            
+        elif timing_mode == "concatenate":
+            # Use simple concatenation
+            print(f"🔧 Assembly: Using concatenation assembly for {timing_mode} mode")
+            return self.assemble_concatenation(audio_segments, fade_duration)
+            
+        else:
+            raise ValueError(f"Unknown timing mode: {timing_mode}")

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.1] - 2025-09-05
+
+### Added
+
+- All TTS engines now handle overlapping dialogue correctly
+
+### Changed
+
+- Improve timing accuracy for conversations with multiple speakers
+- Better audio synchronization for complex subtitle files
+
+### Fixed
+
+- Fix SRT audio overlapping not working properly
+- Fix overlapping subtitles being cut off instead of playing simultaneously
 ## [4.8.0] - 2025-09-05
 
 ### Added
