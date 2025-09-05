@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.0] - 2025-09-05
+
+### Added
+
+- Add ChatterBox Official 23-Lang multilingual TTS engine
+- New advanced text-to-speech engine with support for 23 languages
+- Generate high-quality speech in Arabic, Chinese, Danish, Dutch, English, Finnish, French, German, Greek, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Norwegian, Polish, Portuguese, Russian, Spanish, Swedish, Swahili, and Turkish
+- SRT subtitle timing support for synchronized audio generation
+- Voice conversion capabilities supporting all 23 languages
+- Improved audio quality and consistency across all features
+
+### Changed
+
+- Better voice reference processing and character switching
+
+### Fixed
+
+- Fix audio pitch issues that made voices sound unnaturally deep
 ## [4.7.2] - 2025-09-04
 
 ### Added

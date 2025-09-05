@@ -364,6 +364,28 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 }
                 return engine_instance
                 
+            elif engine_type == "chatterbox_official_23lang":
+                # Import and create the ChatterBox Official 23-Lang VC processor
+                chatterbox_23lang_vc_path = os.path.join(nodes_dir, "chatterbox_official_23lang", "chatterbox_official_23lang_vc_processor.py")
+                chatterbox_23lang_vc_spec = importlib.util.spec_from_file_location("chatterbox_official_23lang_vc_module", chatterbox_23lang_vc_path)
+                chatterbox_23lang_vc_module = importlib.util.module_from_spec(chatterbox_23lang_vc_spec)
+                chatterbox_23lang_vc_spec.loader.exec_module(chatterbox_23lang_vc_module)
+                
+                ChatterboxOfficial23LangVCProcessor = chatterbox_23lang_vc_module.ChatterboxOfficial23LangVCProcessor
+                engine_instance = ChatterboxOfficial23LangVCProcessor()
+                # Apply configuration
+                for key, value in config.items():
+                    if hasattr(engine_instance, key):
+                        setattr(engine_instance, key, value)
+                
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+                
             elif engine_type == "f5tts":
                 # F5-TTS doesn't have voice conversion capability
                 raise ValueError("F5-TTS engine does not support voice conversion. Use ChatterBox engine for voice conversion.")
@@ -409,8 +431,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             print(f"🔄 Voice Changer: Starting {engine_type} voice conversion")
             
             # Validate engine supports voice conversion
-            if engine_type not in ["chatterbox", "rvc"]:
-                raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox, RVC")
+            if engine_type not in ["chatterbox", "chatterbox_official_23lang", "rvc"]:
+                raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox, ChatterBox Official 23-Lang, RVC")
             
             # Extract audio data from flexible inputs (support both AUDIO and NARRATOR_VOICE types)
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
@@ -459,6 +481,52 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 
                 conversion_info = (
                     f"🔄 Voice Changer (Unified) - CHATTERBOX Engine:\n"
+                    f"Language Model: {language}\n"
+                    f"Model Source: {model_source}\n"
+                    + (f"Repository: {model_repo}\n" if model_source == "huggingface" else "") +
+                    f"Refinement passes: {refinement_passes}\n"
+                    f"Device: {config.get('device', 'auto')}\n"
+                    f"Conversion completed successfully"
+                )
+                
+            elif engine_type == "chatterbox_official_23lang":
+                # Extract language from engine config for multilingual VC support
+                language = config.get("language", "English")
+                print(f"🔄 Voice Changer: Using {language} language model for ChatterBox Official 23-Lang conversion")
+                
+                # ChatterBox Official 23-Lang VC parameters with language support
+                result = engine_instance.convert_voice(
+                    source_audio=processed_source_audio,
+                    target_audio=processed_narrator_target,  # Map narrator_target to target_audio for processor
+                    refinement_passes=refinement_passes,
+                    device=config.get("device", "auto"),
+                    language=language  # Pass language parameter to VC processor
+                )
+                
+                # ChatterBox Official 23-Lang VC processor returns only (converted_audio,)
+                converted_audio = result[0]
+                
+                # Get detailed model information for debugging
+                model_source = "unknown"
+                model_repo = "unknown"
+                if hasattr(engine_instance, 'model_manager') and hasattr(engine_instance.model_manager, 'get_model_source'):
+                    model_source = engine_instance.model_manager.get_model_source("vc") or "local/bundled"
+                
+                # Get repository information for HuggingFace models (if available)
+                if model_source == "huggingface":
+                    try:
+                        # ChatterBox Official 23-Lang uses same language model configs
+                        from engines.chatterbox.language_models import get_model_config
+                        model_config = get_model_config(language)
+                        if model_config:
+                            model_repo = model_config.get("repo", "unknown")
+                        else:
+                            model_repo = "ResembleAI/chatterbox"  # Default English repo
+                    except ImportError:
+                        model_repo = "ResembleAI/chatterbox"  # Fallback
+                
+                conversion_info = (
+                    f"🔄 Voice Changer (Unified) - CHATTERBOX OFFICIAL 23-LANG Engine:\n"
                     f"Language Model: {language}\n"
                     f"Model Source: {model_source}\n"
                     + (f"Repository: {model_repo}\n" if model_source == "huggingface" else "") +
