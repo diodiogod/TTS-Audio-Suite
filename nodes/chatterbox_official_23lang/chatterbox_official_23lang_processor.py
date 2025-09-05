@@ -154,6 +154,11 @@ Back to the main narrator voice for the conclusion.""",
         # Override to use ChatterBox Official 23-Lang engine instead of regular ChatterBox
         self.engine_type = "chatterbox_official_23lang"
         
+        # Initialize model variable
+        self.tts_model = None
+        self.device = None
+        self.current_language = None
+        
         # Initialize ChatterBox Official 23-Lang model manager
         from engines.chatterbox_official_23lang import ChatterboxOfficial23LangTTS, ChatterboxOfficial23LangVC
         self.ChatterboxTTS = ChatterboxOfficial23LangTTS
@@ -209,7 +214,11 @@ Back to the main narrator voice for the conclusion.""",
         )
         
         self.device = device
+        self.current_language = language
         print(f"✅ ChatterBox Official 23-Lang {language} model loaded successfully!")
+        
+        # Return the model for smart_model_loader
+        return self.tts_model
     
     def _language_name_to_code(self, language_name: str) -> str:
         """Convert language name to language code for ChatterBox."""
