@@ -154,6 +154,7 @@ class AudioCache:
         self.cache_key_generators = {
             'f5tts': F5TTSCacheKeyGenerator(),
             'chatterbox': ChatterBoxCacheKeyGenerator(),
+            'chatterbox_official_23lang': ChatterBoxCacheKeyGenerator(),  # Uses same cache logic as chatterbox
             'higgs_audio': HiggsAudioCacheKeyGenerator(),
             'vibevoice': VibeVoiceCacheKeyGenerator()
         }

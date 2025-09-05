@@ -173,20 +173,27 @@ class ChatterboxOfficial23LangSRTProcessor:
                             # Get voice reference for this character
                             char_voice_ref = voice_refs.get(char_name, voice_refs.get('narrator'))
                             
-                            # Prepare inputs for ChatterBox Official 23-Lang
-                            char_inputs = {
-                                "text": char_text,
-                                "language": char_language,  # Use language from character parser
-                                "device": self.config.get("device", "auto"),
-                                "model": self.config.get("model", "ChatterBox Official 23-Lang"),
-                                "narrator_voice": char_voice_ref,
-                                "seed": seed,
-                                **generation_params,
-                                "enable_audio_cache": True
-                            }
+                            # Get voice reference file path for ChatterBox
+                            char_voice_path = char_voice_ref if isinstance(char_voice_ref, str) else ""
                             
-                            # Generate audio using the TTS node
-                            char_audio, _ = self.tts_node.generate_speech(char_inputs)
+                            
+                            # Generate audio using the TTS node with individual parameters
+                            char_audio, _ = self.tts_node.generate_speech(
+                                text=char_text,
+                                language=char_language,  # Use language from character parser
+                                device=self.config.get("device", "auto"),
+                                exaggeration=generation_params["exaggeration"],
+                                temperature=generation_params["temperature"],
+                                cfg_weight=generation_params["cfg_weight"],
+                                repetition_penalty=generation_params["repetition_penalty"],
+                                min_p=generation_params["min_p"],
+                                top_p=generation_params["top_p"],
+                                seed=seed,
+                                reference_audio=None,
+                                audio_prompt_path=char_voice_path,
+                                enable_audio_cache=True
+                            )
+                            
                             
                             # Extract waveform from ComfyUI format
                             if isinstance(char_audio, dict) and "waveform" in char_audio:
@@ -211,21 +218,26 @@ class ChatterboxOfficial23LangSRTProcessor:
                     else:
                         # No character switching - use default narrator
                         narrator_voice_ref = voice_refs.get('narrator')
+                        narrator_voice_path = narrator_voice_ref if isinstance(narrator_voice_ref, str) else ""
                         
-                        # Prepare inputs for ChatterBox Official 23-Lang
-                        narrator_inputs = {
-                            "text": text_content,
-                            "language": generation_params["language"],
-                            "device": self.config.get("device", "auto"),
-                            "model": self.config.get("model", "ChatterBox Official 23-Lang"),
-                            "narrator_voice": narrator_voice_ref,
-                            "seed": seed,
-                            **generation_params,
-                            "enable_audio_cache": True
-                        }
                         
-                        # Generate audio using the TTS node
-                        narrator_audio, _ = self.tts_node.generate_speech(narrator_inputs)
+                        # Generate audio using the TTS node with individual parameters
+                        narrator_audio, _ = self.tts_node.generate_speech(
+                            text=text_content,
+                            language=generation_params["language"],
+                            device=self.config.get("device", "auto"),
+                            exaggeration=generation_params["exaggeration"],
+                            temperature=generation_params["temperature"],
+                            cfg_weight=generation_params["cfg_weight"],
+                            repetition_penalty=generation_params["repetition_penalty"],
+                            min_p=generation_params["min_p"],
+                            top_p=generation_params["top_p"],
+                            seed=seed,
+                            reference_audio=None,
+                            audio_prompt_path=narrator_voice_path,
+                            enable_audio_cache=True
+                        )
+                        
                         
                         # Extract waveform from ComfyUI format
                         if isinstance(narrator_audio, dict) and "waveform" in narrator_audio:
@@ -241,10 +253,20 @@ class ChatterboxOfficial23LangSRTProcessor:
                         
                         return narrator_waveform
                 
-                # Generate audio for this SRT segment with pause tag support
-                segment_audio = PauseTagProcessor.generate_audio_with_pauses(
-                    segment_text, srt_tts_generate_func, self.sample_rate
+                # Preprocess segment text for pause tags first
+                processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+                    segment_text, enable_pause_tags=True
                 )
+                
+                # Generate audio for this SRT segment with pause tag support
+                if pause_segments is None:
+                    # No pause tags - generate audio directly
+                    segment_audio = srt_tts_generate_func(segment_text)
+                else:
+                    # Has pause tags - use pause processor
+                    segment_audio = PauseTagProcessor.generate_audio_with_pauses(
+                        pause_segments, srt_tts_generate_func, self.sample_rate
+                    )
                 
                 # Calculate actual duration
                 actual_duration = len(segment_audio) / self.sample_rate
@@ -266,24 +288,37 @@ class ChatterboxOfficial23LangSRTProcessor:
             timing_engine = TimingEngine(sample_rate=self.sample_rate)
             assembly_engine = AudioAssemblyEngine(sample_rate=self.sample_rate)
             
-            # Calculate timing adjustments
-            adjustments = timing_engine.calculate_timing_adjustments(
-                [(seg['actual'], seg['expected'], seg['start'], seg['end']) for seg in timing_segments],
-                current_timing_mode
+            # Calculate timing adjustments using correct parameter order
+            adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+                audio_segments, 
+                srt_segments,
+                timing_params.get("timing_tolerance", 2.0),
+                timing_params.get("max_stretch_ratio", 1.0),
+                timing_params.get("min_stretch_ratio", 0.5),
+                torch.device('cpu')
             )
             
-            # Assemble final audio
-            final_audio = assembly_engine.assemble_audio_segments(
-                audio_segments, adjustments, current_timing_mode, timing_params
+            # Assemble final audio using smart natural timing
+            final_audio = assembly_engine.assemble_smart_natural(
+                audio_segments, processed_segments, adjustments, srt_segments, torch.device('cpu')
             )
+            
+            # Map adjustment keys for report generator compatibility
+            mapped_adjustments = []
+            for adj in adjustments:
+                mapped_adj = adj.copy()
+                mapped_adj['start_time'] = adj.get('final_srt_start', adj.get('original_srt_start', 0))
+                mapped_adj['end_time'] = adj.get('final_srt_end', adj.get('original_srt_end', 0))  
+                mapped_adj['natural_duration'] = adj.get('natural_audio_duration', 0)
+                mapped_adjustments.append(mapped_adj)
             
             # Generate reports
             report_generator = SRTReportGenerator()
             timing_report = report_generator.generate_timing_report(
-                srt_segments, adjustments, current_timing_mode, has_overlaps, mode_switched
+                srt_segments, mapped_adjustments, current_timing_mode, has_overlaps, mode_switched
             )
             adjusted_srt = report_generator.generate_adjusted_srt_string(
-                srt_segments, adjustments, current_timing_mode
+                srt_segments, mapped_adjustments, current_timing_mode
             )
             
             # Generate info
