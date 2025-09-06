@@ -272,12 +272,25 @@ Hello! This is unified SRT TTS with character switching.
                             "timing_tolerance": timing_tolerance
                         }
                         
+                        # Pass current TTS parameters for proper cache invalidation
+                        tts_params = {
+                            'exaggeration': exaggeration,
+                            'temperature': temperature,
+                            'cfg_weight': cfg_weight,
+                            'repetition_penalty': repetition_penalty,
+                            'min_p': min_p,
+                            'top_p': top_p,
+                            'language': language,
+                            'device': device
+                        }
+                        
                         return self.processor.process_srt_content(
                             srt_content=srt_content,
                             voice_mapping=voice_mapping,
                             seed=seed,
                             timing_mode=timing_mode,
-                            timing_params=timing_params
+                            timing_params=timing_params,
+                            tts_params=tts_params
                         )
                 
                 engine_instance = ChatterboxOfficial23LangSRTWrapper(config)

@@ -964,7 +964,7 @@ Back to the main narrator voice for the conclusion.""",
                             # Check centralized cache system
                             from utils.audio.cache import create_cache_function
                             cache_fn = create_cache_function(
-                                "chatterbox",
+                                "chatterbox_official_23lang",
                                 character=inputs["character"],
                                 exaggeration=inputs["exaggeration"],
                                 temperature=inputs["temperature"],
@@ -996,7 +996,7 @@ Back to the main narrator voice for the conclusion.""",
                                 # Check centralized cache system
                                 from utils.audio.cache import create_cache_function
                                 cache_fn = create_cache_function(
-                                    "chatterbox",
+                                    "chatterbox_official_23lang",
                                     character=inputs["character"],
                                     exaggeration=inputs["exaggeration"],
                                     temperature=inputs["temperature"],
@@ -1348,7 +1348,7 @@ Back to the main narrator voice for the conclusion.""",
                     if enable_cache:
                         from utils.audio.cache import create_cache_function
                         cache_fn = create_cache_function(
-                            "chatterbox",
+                            "chatterbox_official_23lang",
                             character=inputs["character"],
                             exaggeration=inputs.get("exaggeration", 0.5),
                             temperature=inputs.get("temperature", 0.8),

@@ -38,7 +38,8 @@ class ChatterboxOfficial23LangSRTProcessor:
         self.sample_rate = 24000  # ChatterBox Official 23-Lang uses 24000 Hz (S3GEN_SR)
     
     def process_srt_content(self, srt_content: str, voice_mapping: Dict[str, Any],
-                           seed: int, timing_mode: str, timing_params: Dict[str, Any]) -> Tuple[torch.Tensor, str, str, str]:
+                           seed: int, timing_mode: str, timing_params: Dict[str, Any],
+                           tts_params: Optional[Dict[str, Any]] = None) -> Tuple[torch.Tensor, str, str, str]:
         """
         Process SRT content with ChatterBox Official 23-Lang TTS engine
         
@@ -48,10 +49,25 @@ class ChatterboxOfficial23LangSRTProcessor:
             seed: Random seed for generation
             timing_mode: How to align audio with SRT timings
             timing_params: Additional timing parameters (fade, stretch ratios, etc.)
+            tts_params: Current TTS parameters from UI (exaggeration, temperature, etc.)
             
         Returns:
             Tuple of (audio_output, generation_info, timing_report, adjusted_srt)
         """
+        # Use actual runtime TTS parameters instead of config defaults
+        if tts_params is None:
+            tts_params = {}
+            
+        # Get current parameters with proper fallbacks
+        current_exaggeration = tts_params.get('exaggeration', self.config.get("exaggeration", 0.5))
+        current_temperature = tts_params.get('temperature', self.config.get("temperature", 0.8))
+        current_cfg_weight = tts_params.get('cfg_weight', self.config.get("cfg_weight", 0.5))
+        current_repetition_penalty = tts_params.get('repetition_penalty', self.config.get("repetition_penalty", 1.2))
+        current_min_p = tts_params.get('min_p', self.config.get("min_p", 0.05))
+        current_top_p = tts_params.get('top_p', self.config.get("top_p", 1.0))
+        current_language = tts_params.get('language', self.config.get("language", "English"))
+        current_device = tts_params.get('device', self.config.get("device", "auto"))
+        
         try:
             # Import required utilities
             from utils.timing.parser import SRTParser
@@ -180,13 +196,13 @@ class ChatterboxOfficial23LangSRTProcessor:
                                 char_audio, _ = self.tts_node.generate_speech(
                                     text=char_text,
                                     language=char_language,  # Use language from character parser
-                                    device=self.config.get("device", "auto"),
-                                    exaggeration=self.config.get("exaggeration", 0.5),
-                                    temperature=self.config.get("temperature", 0.8),
-                                    cfg_weight=self.config.get("cfg_weight", 0.5),
-                                    repetition_penalty=self.config.get("repetition_penalty", 1.2),
-                                    min_p=self.config.get("min_p", 0.05),
-                                    top_p=self.config.get("top_p", 1.0),
+                                    device=current_device,
+                                    exaggeration=current_exaggeration,
+                                    temperature=current_temperature,
+                                    cfg_weight=current_cfg_weight,
+                                    repetition_penalty=current_repetition_penalty,
+                                    min_p=current_min_p,
+                                    top_p=current_top_p,
                                     seed=seed,
                                     reference_audio=None,
                                     audio_prompt_path=char_voice_path,
@@ -200,13 +216,13 @@ class ChatterboxOfficial23LangSRTProcessor:
                                     segment_audio, _ = self.tts_node.generate_speech(
                                         text=text_segment,
                                         language=char_language,  # Use language from character parser
-                                        device=self.config.get("device", "auto"),
-                                        exaggeration=self.config.get("exaggeration", 0.5),
-                                        temperature=self.config.get("temperature", 0.8),
-                                        cfg_weight=self.config.get("cfg_weight", 0.5),
-                                        repetition_penalty=self.config.get("repetition_penalty", 1.2),
-                                        min_p=self.config.get("min_p", 0.05),
-                                        top_p=self.config.get("top_p", 1.0),
+                                        device=current_device,
+                                        exaggeration=current_exaggeration,
+                                        temperature=current_temperature,
+                                        cfg_weight=current_cfg_weight,
+                                        repetition_penalty=current_repetition_penalty,
+                                        min_p=current_min_p,
+                                        top_p=current_top_p,
                                         seed=seed,
                                         reference_audio=None,
                                         audio_prompt_path=char_voice_path,  # Maintain character's voice
@@ -260,14 +276,14 @@ class ChatterboxOfficial23LangSRTProcessor:
                             # No pause tags - generate directly
                             narrator_audio, _ = self.tts_node.generate_speech(
                                 text=text_content,
-                                language=self.config.get("language", "English"),
-                                device=self.config.get("device", "auto"),
-                                exaggeration=self.config.get("exaggeration", 0.5),
-                                temperature=self.config.get("temperature", 0.8),
-                                cfg_weight=self.config.get("cfg_weight", 0.5),
-                                repetition_penalty=self.config.get("repetition_penalty", 1.2),
-                                min_p=self.config.get("min_p", 0.05),
-                                top_p=self.config.get("top_p", 1.0),
+                                language=current_language,
+                                device=current_device,
+                                exaggeration=current_exaggeration,
+                                temperature=current_temperature,
+                                cfg_weight=current_cfg_weight,
+                                repetition_penalty=current_repetition_penalty,
+                                min_p=current_min_p,
+                                top_p=current_top_p,
                                 seed=seed,
                                 reference_audio=None,
                                 audio_prompt_path=narrator_voice_path,
@@ -280,14 +296,14 @@ class ChatterboxOfficial23LangSRTProcessor:
                                 """Narrator-aware TTS function that maintains voice context"""
                                 segment_audio, _ = self.tts_node.generate_speech(
                                     text=text_segment,
-                                    language=self.config.get("language", "English"),
-                                    device=self.config.get("device", "auto"),
-                                    exaggeration=self.config.get("exaggeration", 0.5),
-                                    temperature=self.config.get("temperature", 0.8),
-                                    cfg_weight=self.config.get("cfg_weight", 0.5),
-                                    repetition_penalty=self.config.get("repetition_penalty", 1.2),
-                                    min_p=self.config.get("min_p", 0.05),
-                                    top_p=self.config.get("top_p", 1.0),
+                                    language=current_language,
+                                    device=current_device,
+                                    exaggeration=current_exaggeration,
+                                    temperature=current_temperature,
+                                    cfg_weight=current_cfg_weight,
+                                    repetition_penalty=current_repetition_penalty,
+                                    min_p=current_min_p,
+                                    top_p=current_top_p,
                                     seed=seed,
                                     reference_audio=None,
                                     audio_prompt_path=narrator_voice_path,  # Maintain narrator's voice
