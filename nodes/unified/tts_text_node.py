@@ -152,13 +152,19 @@ Back to the main narrator voice for the conclusion.""",
             if not config:  # If config is empty, engine_data itself is the config
                 config = engine_data
             
-            # Create cache key based only on stable parameters that affect engine instance creation
+            # Create cache key based on stable parameters that affect engine instance creation
+            # For VibeVoice, include chunk_minutes since it fundamentally changes behavior
             stable_params = {
                 'engine_type': engine_type,
                 'model': config.get('model'),
                 'device': config.get('device'),
                 'adapter_class': engine_data.get('adapter_class')
             }
+            
+            # For VibeVoice, include chunk_minutes in cache key as it overrides all chunking
+            if engine_type == "vibevoice" and 'chunk_minutes' in config:
+                stable_params['chunk_minutes'] = config.get('chunk_minutes', 0)
+            
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Cache key now properly includes model name for correct differentiation

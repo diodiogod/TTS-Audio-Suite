@@ -79,10 +79,18 @@ class VibeVoiceProcessor:
         
         # Check for time-based chunking from config
         chunk_chars = self.config.get('chunk_chars', 0)
-        if chunk_chars > 0:
-            # Override with time-based chunking
+        chunk_minutes = self.config.get('chunk_minutes', 0)
+        
+        # IMPORTANT: chunk_minutes from VibeVoice Engine overrides TTS Text chunking
+        if chunk_minutes > 0:
+            # Use time-based chunking
             enable_chunking = True
             max_chars_per_chunk = chunk_chars
+        elif chunk_minutes == 0:
+            # chunk_minutes=0 means NO CHUNKING AT ALL (override TTS Text settings)
+            enable_chunking = False
+            max_chars_per_chunk = 999999  # Effectively disable chunking
+        # Note: If chunk_minutes is not set (None), fall back to TTS Text settings
         
         # Parse character segments (allow auto-discovery like ChatterBox)
         character_segments = parse_character_text(text, None)  # Auto-discover all characters from text
