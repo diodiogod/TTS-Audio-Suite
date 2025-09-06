@@ -104,6 +104,17 @@ class ChatterboxVC:
         Returns:
             ChatterboxVC model instance
         """
+        # Handle local models first - redirect to from_local
+        if language.startswith("local:"):
+            from .language_models import find_local_model_path
+            local_path = find_local_model_path(language)
+            if local_path and os.path.exists(local_path):
+                print(f"📁 Redirecting to local model at: {local_path}")
+                return cls.from_local(local_path, device)
+            else:
+                print(f"⚠️ Local model path not found for {language}, falling back to English")
+                language = "English"
+        
         # Import language model support
         try:
             from .language_models import get_model_config
