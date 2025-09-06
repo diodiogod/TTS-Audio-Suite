@@ -6,7 +6,29 @@ import torch, pdb
 import numpy as np
 import torch.nn.functional as F
 from scipy.signal import get_window
-from librosa.util import pad_center, tiny, normalize
+# Librosa compatibility layer for different versions
+try:
+    from librosa.util import pad_center, tiny, normalize
+except ImportError:
+    try:
+        # Try alternative import path
+        from librosa import pad_center, tiny, normalize
+    except ImportError:
+        # Manual implementation for newer librosa versions
+        import numpy as np
+        from librosa.util import tiny, normalize
+        
+        def pad_center(data, size, axis=-1, **kwargs):
+            """Manual implementation of librosa's pad_center for compatibility"""
+            n = data.shape[axis]
+            lpad = int((size - n) // 2)
+            rpad = int(size - n - lpad)
+            
+            pad_widths = [(0, 0)] * data.ndim
+            pad_widths[axis] = (lpad, rpad)
+            
+            return np.pad(data, pad_widths, mode=kwargs.get('mode', 'constant'), 
+                         constant_values=kwargs.get('constant_values', 0))
 
 
 ###stft codes from https://github.com/pseeth/torch-stft/blob/master/torch_stft/util.py

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.15] - 2025-09-06
+
+### Added
+
+- Support both old and new librosa library versions automatically
+- RVC voice conversion now works regardless of librosa version
+
+### Fixed
+
+- Fix RVC voice conversion failing with newer librosa versions
+- Fix RVC failing with 'cannot import name pad_center from librosa.util' error
+- Resolve issues caused by manual dependency updates bypassing our install script
 ## [4.8.14] - 2025-09-06
 
 ### Added
