@@ -14,10 +14,15 @@ try:
 except ImportError:
     folder_paths = None
 
-# Import perth with warnings disabled
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import perth
+# Import perth with warnings disabled and graceful fallback
+try:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import perth
+    PERTH_AVAILABLE = True
+except ImportError:
+    perth = None
+    PERTH_AVAILABLE = False
 
 # Import safetensors for multilanguage model support
 from safetensors.torch import load_file
@@ -43,9 +48,12 @@ class ChatterboxVC:
         self.s3gen = s3gen
         self.device = device
         # Initialize watermarker silently (but disabled by default)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self.watermarker = perth.PerthImplicitWatermarker()
+        if PERTH_AVAILABLE:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self.watermarker = perth.PerthImplicitWatermarker()
+        else:
+            self.watermarker = None
         self.enable_watermarking = False  # Disabled by default for maximum compatibility
         if ref_dict is None:
             self.ref_dict = None
@@ -291,7 +299,7 @@ class ChatterboxVC:
                 ref_dict=self.ref_dict,
             )
             wav = wav.squeeze(0).detach().cpu().numpy()
-            if self.enable_watermarking:
+            if self.enable_watermarking and self.watermarker is not None:
                 watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
                 return torch.from_numpy(watermarked_wav).unsqueeze(0)
             else:

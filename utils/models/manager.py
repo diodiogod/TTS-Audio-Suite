@@ -522,6 +522,10 @@ class ModelManager:
                 
                 # Load model based on source
                 if source in ["bundled", "comfyui"]:
+                    # Ensure ChatterboxVC is available before attempting to use it
+                    if ChatterboxVC is None:
+                        raise RuntimeError(f"ChatterboxVC not available - cannot load local model from {path}")
+                    
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         # Note: Local models currently don't support language selection
@@ -530,6 +534,10 @@ class ModelManager:
                             print(f"⚠️ Local VC model at {path} may not support {language} - using existing model")
                         model = ChatterboxVC.from_local(path, device)
                 elif source == "huggingface":
+                    # Ensure ChatterboxVC is available before attempting to use it
+                    if ChatterboxVC is None:
+                        raise RuntimeError(f"ChatterboxVC not available - cannot load model from HuggingFace")
+                    
                     model = ChatterboxVC.from_pretrained(device, language)
                 else:
                     continue

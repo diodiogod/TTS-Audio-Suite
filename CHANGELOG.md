@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.17] - 2025-09-06
+
+### Fixed
+
+- Fix voice conversion crashes on Python 3.13 systems
+- Fix voice changer failing with 'NoneType' object error
+- Improve Python 3.13 compatibility for voice conversion
+- Better error handling when watermarking library is unavailable
+- Resolve custom model loading issues (e.g. local:German-KB-H2-Merge-v2)
 ## [4.8.16] - 2025-09-06
 
 ### Added
