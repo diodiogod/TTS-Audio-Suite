@@ -20,7 +20,9 @@ from lib.uvr5_pack.vr_network.model_param_init import ModelParameters
 from lib.uvr5_pack.vr_network.nets_new import CascadedNet
 from lib.uvr5_pack.vr_network.nets import CascadedASPPNet
 from lib.audio import remix_audio
-import librosa
+# import librosa  # Commented out for Python 3.13 compatibility (causes numba issues)
+import soundfile as sf
+import torchaudio
 from lib.uvr5_pack import spec_utils
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -198,17 +200,38 @@ class UVR5Base:
         for d in range(bands_n, 0, -1):
             bp = self.mp.param["band"][d]
             if d == bands_n:  # high-end band
-                input_audio = librosa.load(music_file,sr=bp["sr"],res_type=bp["res_type"])
+                # Use soundfile + torchaudio instead of librosa for Python 3.13 compatibility
+                audio_data, original_sr = sf.read(music_file)
+                
+                # Convert to torch tensor for resampling (ensure 2D: [channels, samples])
+                if audio_data.ndim == 1:
+                    # Mono: create [1, samples] tensor
+                    audio_tensor = torch.from_numpy(audio_data.astype(np.float32)).unsqueeze(0)
+                else:
+                    # Stereo: soundfile gives [samples, channels], we need [channels, samples]
+                    audio_tensor = torch.from_numpy(audio_data.astype(np.float32).T)
+                
+                # Resample if needed
+                if original_sr != bp["sr"]:
+                    audio_tensor = torchaudio.functional.resample(
+                        audio_tensor, orig_freq=original_sr, new_freq=bp["sr"]
+                    )
+                
+                # Convert back to numpy, squeeze to remove batch dimension if mono
+                audio_numpy = audio_tensor.squeeze(0).numpy() if audio_tensor.shape[0] == 1 else audio_tensor.numpy()
+                input_audio = (audio_numpy, bp["sr"])
                 X_wave[d] = input_audio[0]
                 if X_wave[d].ndim == 1:
                     X_wave[d] = np.asfortranarray([X_wave[d], X_wave[d]])
             else:  # lower bands
-                X_wave[d] = librosa.resample(
-                    X_wave[d + 1],
-                    orig_sr=self.mp.param["band"][d + 1]["sr"],
-                    target_sr=bp["sr"],
-                    res_type=bp["res_type"],
+                # Use torchaudio.functional.resample instead of librosa
+                audio_tensor = torch.from_numpy(X_wave[d + 1].astype(np.float32))
+                resampled = torchaudio.functional.resample(
+                    audio_tensor,
+                    orig_freq=self.mp.param["band"][d + 1]["sr"],
+                    new_freq=bp["sr"]
                 )
+                X_wave[d] = resampled.numpy()
             # Stft of wave source
             X_spec_s[d] = spec_utils.wave_to_spectrogram_mt(
                 X_wave[d],

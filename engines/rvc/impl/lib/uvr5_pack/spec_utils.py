@@ -4,6 +4,8 @@ import os
 import librosa
 import numpy as np
 import soundfile as sf
+import torch
+import torchaudio
 import math
 import random
 import math
@@ -20,6 +22,84 @@ ARM = 'arm'
 #     from pyrubberband import pyrb
 # else:
 from uvr5_pack import pyrb
+
+# Python 3.13 compatibility: Replace problematic librosa functions
+def safe_stft(y, n_fft=2048, hop_length=None, **kwargs):
+    """Safe STFT that avoids numba issues in Python 3.13"""
+    try:
+        return librosa.stft(y, n_fft=n_fft, hop_length=hop_length, **kwargs)
+    except AttributeError as e:
+        if 'get_call_template' in str(e):
+            # Fall back to torchaudio STFT with librosa-compatible defaults
+            hop_length = hop_length or n_fft // 4
+            y_tensor = torch.from_numpy(y.astype(np.float32))
+            
+            # Use librosa-compatible window (Hann) and other defaults
+            window = kwargs.pop('window', 'hann')
+            center = kwargs.pop('center', True)
+            
+            if isinstance(window, str):
+                if window == 'hann':
+                    window_tensor = torch.hann_window(n_fft)
+                else:
+                    window_tensor = torch.hann_window(n_fft)  # fallback
+            else:
+                window_tensor = torch.from_numpy(window.astype(np.float32)) if hasattr(window, 'astype') else torch.hann_window(n_fft)
+            
+            stft_transform = torch.stft(
+                y_tensor, n_fft=n_fft, hop_length=hop_length,
+                window=window_tensor, center=center,
+                return_complex=True
+            )
+            return stft_transform.numpy()
+        raise
+
+def safe_istft(stft_matrix, hop_length=None, **kwargs):
+    """Safe ISTFT that avoids numba issues in Python 3.13"""
+    try:
+        return librosa.istft(stft_matrix, hop_length=hop_length, **kwargs)
+    except AttributeError as e:
+        if 'get_call_template' in str(e):
+            # Fall back to torchaudio ISTFT with librosa-compatible defaults
+            stft_tensor = torch.from_numpy(stft_matrix)
+            if not stft_tensor.is_complex():
+                stft_tensor = torch.complex(stft_tensor.real, stft_tensor.imag)
+            
+            # Calculate n_fft from STFT matrix shape: (n_fft//2 + 1, n_frames)
+            n_fft = (stft_tensor.shape[-2] - 1) * 2
+            hop_length = hop_length or n_fft // 4
+            
+            # Use librosa-compatible defaults
+            window = kwargs.pop('window', 'hann')
+            center = kwargs.pop('center', True)
+            length = kwargs.pop('length', None)
+            
+            if isinstance(window, str):
+                if window == 'hann':
+                    window_tensor = torch.hann_window(n_fft)
+                else:
+                    window_tensor = torch.hann_window(n_fft)  # fallback
+            else:
+                window_tensor = torch.from_numpy(window.astype(np.float32)) if hasattr(window, 'astype') else torch.hann_window(n_fft)
+            
+            y = torch.istft(stft_tensor, n_fft=n_fft, hop_length=hop_length,
+                          window=window_tensor, center=center, length=length)
+            return y.numpy()
+        raise
+
+def safe_resample(y, orig_sr, target_sr, res_type='sinc_fastest'):
+    """Safe resample that avoids numba issues in Python 3.13"""
+    try:
+        return librosa.resample(y, orig_sr=orig_sr, target_sr=target_sr, res_type=res_type)
+    except AttributeError as e:
+        if 'get_call_template' in str(e):
+            # Fall back to torchaudio resample
+            y_tensor = torch.from_numpy(y.astype(np.float32))
+            if y_tensor.dim() == 1:
+                y_tensor = y_tensor.unsqueeze(0)
+            resampled = torchaudio.functional.resample(y_tensor, orig_freq=orig_sr, new_freq=target_sr)
+            return resampled.squeeze(0).numpy() if resampled.shape[0] == 1 else resampled.numpy()
+        raise
 
 if OPERATING_SYSTEM == 'Darwin':
     wav_resolution = "polyphase" if SYSTEM_PROC == ARM or ARM in SYSTEM_ARCH else "sinc_fastest" 
@@ -74,8 +154,8 @@ def wave_to_spectrogram(wave, hop_length, n_fft, mid_side=False, mid_side_b2=Fal
         wave_left = np.asfortranarray(wave[0])
         wave_right = np.asfortranarray(wave[1])
 
-    spec_left = librosa.stft(wave_left, n_fft=n_fft, hop_length=hop_length)
-    spec_right = librosa.stft(wave_right, n_fft=n_fft, hop_length=hop_length)
+    spec_left = safe_stft(wave_left, n_fft=n_fft, hop_length=hop_length)
+    spec_right = safe_stft(wave_right, n_fft=n_fft, hop_length=hop_length)
     
     spec = np.asfortranarray([spec_left, spec_right])
 
@@ -99,11 +179,11 @@ def wave_to_spectrogram_mt(wave, hop_length, n_fft, mid_side=False, mid_side_b2=
    
     def run_thread(**kwargs):
         global spec_left
-        spec_left = librosa.stft(**kwargs)
+        spec_left = safe_stft(**kwargs)
 
     thread = threading.Thread(target=run_thread, kwargs={'y': wave_left, 'n_fft': n_fft, 'hop_length': hop_length})
     thread.start()
-    spec_right = librosa.stft(wave_right, n_fft=n_fft, hop_length=hop_length)
+    spec_right = safe_stft(wave_right, n_fft=n_fft, hop_length=hop_length)
     thread.join()   
     
     spec = np.asfortranarray([spec_left, spec_right])
@@ -266,8 +346,8 @@ def spectrogram_to_wave(spec, hop_length, mid_side, mid_side_b2, reverse, clamp=
     spec_left = np.asfortranarray(spec[0])
     spec_right = np.asfortranarray(spec[1])
 
-    wave_left = librosa.istft(spec_left, hop_length=hop_length)
-    wave_right = librosa.istft(spec_right, hop_length=hop_length)
+    wave_left = safe_istft(spec_left, hop_length=hop_length)
+    wave_right = safe_istft(spec_right, hop_length=hop_length)
 
     if reverse:
         return np.asfortranarray([np.flip(wave_left), np.flip(wave_right)])
@@ -286,11 +366,11 @@ def spectrogram_to_wave_mt(spec, hop_length, mid_side, reverse, mid_side_b2):
     
     def run_thread(**kwargs):
         global wave_left
-        wave_left = librosa.istft(**kwargs)
+        wave_left = safe_istft(**kwargs)
         
     thread = threading.Thread(target=run_thread, kwargs={'stft_matrix': spec_left, 'hop_length': hop_length})
     thread.start()
-    wave_right = librosa.istft(spec_right, hop_length=hop_length)
+    wave_right = safe_istft(spec_right, hop_length=hop_length)
     thread.join()   
     
     if reverse:
@@ -327,12 +407,12 @@ def cmb_spectrogram_to_wave(spec_m, mp, extra_bins_h=None, extra_bins=None):
             sr = mp.param['band'][d+1]['sr']
             if d == 1: # lower
                 spec_s = fft_lp_filter(spec_s, bp['lpf_start'], bp['lpf_stop'])
-                wave = librosa.resample(spectrogram_to_wave(spec_s, bp['hl'], mp.param['mid_side'],mp.param['mid_side_b2'], mp.param['reverse']), orig_sr=bp['sr'], target_sr=sr, res_type=wav_resolution)
+                wave = safe_resample(spectrogram_to_wave(spec_s, bp['hl'], mp.param['mid_side'],mp.param['mid_side_b2'], mp.param['reverse']), orig_sr=bp['sr'], target_sr=sr, res_type=wav_resolution)
             else: # mid
                 spec_s = fft_hp_filter(spec_s, bp['hpf_start'], bp['hpf_stop'] - 1)
                 spec_s = fft_lp_filter(spec_s, bp['lpf_start'], bp['lpf_stop'])
                 wave2 = np.add(wave, spectrogram_to_wave(spec_s, bp['hl'], mp.param['mid_side'], mp.param['mid_side_b2'], mp.param['reverse']))
-                wave = librosa.resample(wave2, orig_sr=bp['sr'], target_sr=sr, res_type=wav_resolution)
+                wave = safe_resample(wave2, orig_sr=bp['sr'], target_sr=sr, res_type=wav_resolution)
         
     return wave
 
@@ -394,8 +474,8 @@ def adjust_aggr(mask, is_non_accom_stem, aggressiveness):
 def stft(wave, nfft, hl):
     wave_left = np.asfortranarray(wave[0])
     wave_right = np.asfortranarray(wave[1])
-    spec_left = librosa.stft(wave_left, nfft, hop_length=hl)
-    spec_right = librosa.stft(wave_right, nfft, hop_length=hl)
+    spec_left = safe_stft(wave_left, n_fft=nfft, hop_length=hl)
+    spec_right = safe_stft(wave_right, n_fft=nfft, hop_length=hl)
     spec = np.asfortranarray([spec_left, spec_right])
 
     return spec
@@ -403,8 +483,8 @@ def stft(wave, nfft, hl):
 def istft(spec, hl):
     spec_left = np.asfortranarray(spec[0])
     spec_right = np.asfortranarray(spec[1])
-    wave_left = librosa.istft(spec_left, hop_length=hl)
-    wave_right = librosa.istft(spec_right, hop_length=hl)
+    wave_left = safe_istft(spec_left, hop_length=hl)
+    wave_right = safe_istft(spec_right, hop_length=hl)
     wave = np.asfortranarray([wave_left, wave_right])
 
     return wave
@@ -429,7 +509,7 @@ def spec_effects(wave, algorithm='Default', value=None):
     return wave      
 
 def spectrogram_to_wave_no_mp(spec, n_fft=2048, hop_length=1024):
-    wave = librosa.istft(spec, n_fft=n_fft, hop_length=hop_length)
+    wave = safe_istft(spec, n_fft=n_fft, hop_length=hop_length)
     
     if wave.ndim == 1:
         wave = np.asfortranarray([wave,wave])
@@ -438,7 +518,7 @@ def spectrogram_to_wave_no_mp(spec, n_fft=2048, hop_length=1024):
 
 def wave_to_spectrogram_no_mp(wave):
     
-    spec = librosa.stft(wave, n_fft=2048, hop_length=1024)
+    spec = safe_stft(wave, n_fft=2048, hop_length=1024)
     
     if spec.ndim == 1:
         spec = np.asfortranarray([spec,spec])
@@ -732,17 +812,17 @@ def cache_or_load(mix_path, inst_path, mp):
                     res_type=bp["res_type"],
                 )
             else:  # lower bands
-                X_wave[d] = librosa.resample(
+                X_wave[d] = safe_resample(
                     X_wave[d + 1],
                     orig_sr=mp.param["band"][d + 1]["sr"],
                     target_sr=bp["sr"],
-                    res_type=bp["res_type"],
+                    res_type=bp["res_type"]
                 )
-                y_wave[d] = librosa.resample(
+                y_wave[d] = safe_resample(
                     y_wave[d + 1],
                     orig_sr=mp.param["band"][d + 1]["sr"],
                     target_sr=bp["sr"],
-                    res_type=bp["res_type"],
+                    res_type=bp["res_type"]
                 )
 
             X_wave[d], y_wave[d] = align_wave_head_and_tail(X_wave[d], y_wave[d])
