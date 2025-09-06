@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.19] - 2025-09-06
+
+### Added
+
+- Restore complete RVC functionality that was working in previous Python versions
+
+### Fixed
+
+- Fix RVC voice conversion compatibility in Python 3.13
+- Fix RVC voice conversion failing in Python 3.13 environments
+- Fix missing f0 extraction methods (pm, harvest, dio, fcpe) that were broken
+- Fix RVC model loading and pitch extraction reliability issues
+- Fix Python 3.13 numba/librosa dependency conflicts causing crashes
 ## [4.8.18] - 2025-09-06
 
 ### Changed
