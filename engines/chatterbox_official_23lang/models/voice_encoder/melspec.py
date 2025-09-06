@@ -1,5 +1,16 @@
 from functools import lru_cache
 
+# CRITICAL: Python 3.13 numba compatibility - must be before librosa import!
+import sys
+import os
+if sys.version_info >= (3, 13):
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+    try:
+        import numba
+        numba.config.DISABLE_JIT = True
+    except ImportError:
+        pass
+
 from scipy import signal
 import numpy as np
 import librosa

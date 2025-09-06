@@ -113,6 +113,7 @@ class F5TTS:
         file_wave=None,
         file_spec=None,
         seed=None,
+        auto_phonemization=True,
     ):
         if seed is None:
             seed = random.randint(0, sys.maxsize)
@@ -138,6 +139,7 @@ class F5TTS:
             speed=speed,
             fix_duration=fix_duration,
             device=self.device,
+            auto_phonemization=auto_phonemization,
         )
 
         if file_wave is not None:

@@ -656,7 +656,8 @@ class ChatterBoxF5TTS:
     def generate(self, text: str, ref_audio_path: str, ref_text: str, 
                  temperature: float = 0.8, speed: float = 1.0, 
                  target_rms: float = 0.1, cross_fade_duration: float = 0.15,
-                 nfe_step: int = 32, cfg_strength: float = 2.0, **kwargs) -> torch.Tensor:
+                 nfe_step: int = 32, cfg_strength: float = 2.0, 
+                 auto_phonemization: bool = True, **kwargs) -> torch.Tensor:
         """
         Generate audio with F5-TTS specific parameters
         Following ChatterBox interface pattern
@@ -692,7 +693,8 @@ class ChatterBoxF5TTS:
                         nfe_step=nfe_step,
                         cfg_strength=cfg_strength,
                         speed=speed,
-                        remove_silence=False
+                        remove_silence=False,
+                        auto_phonemization=auto_phonemization
                     )
             finally:
                 # Restore original encoding

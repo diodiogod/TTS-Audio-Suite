@@ -1,5 +1,17 @@
 # Adapted from https://github.com/CorentinJ/Real-Time-Voice-Cloning
 # MIT License
+
+# CRITICAL: Python 3.13 numba compatibility - must be before librosa import!
+import sys
+import os
+if sys.version_info >= (3, 13):
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+    try:
+        import numba
+        numba.config.DISABLE_JIT = True
+    except ImportError:
+        pass
+
 from typing import List, Union, Optional
 
 import numpy as np

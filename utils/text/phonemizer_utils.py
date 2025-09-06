@@ -193,21 +193,16 @@ def should_use_phonemization(model_name: str, text_list: List[str], auto_phonemi
     """
     # Check user setting first (UI toggle overrides everything)
     import os
-    import sys
     if auto_phonemization is not None:
         # Use explicit parameter if provided (more reliable than environment variable)
-        print(f"🦜 DEBUG: Explicit auto_phonemization={auto_phonemization}", file=sys.stderr)
         if not auto_phonemization:
-            print(f"🦜 DEBUG: Phonemization disabled by explicit parameter", file=sys.stderr)
-            return False
+            return False  # No debug message when disabled
     else:
         # Fall back to environment variable for backward compatibility
         env_value = os.environ.get('F5TTS_AUTO_PHONEMIZATION', 'true')
         auto_phonemization = env_value.lower() == 'true'
-        print(f"🦜 DEBUG: Environment auto_phonemization='{env_value}' -> {auto_phonemization}", file=sys.stderr)
         if not auto_phonemization:
-            print(f"🦜 DEBUG: Phonemization disabled by environment variable", file=sys.stderr)
-            return False
+            return False  # No debug message when disabled
     
     # Check if phonemization is available
     phonemizer = get_phonemizer()

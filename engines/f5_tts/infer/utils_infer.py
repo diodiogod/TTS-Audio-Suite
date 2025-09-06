@@ -403,6 +403,7 @@ def infer_process(
     speed=speed,
     fix_duration=fix_duration,
     device=device,
+    auto_phonemization=True,
 ):
     # Split the input text into batches
     audio, sr = torchaudio.load(ref_audio)
@@ -430,6 +431,7 @@ def infer_process(
             speed=speed,
             fix_duration=fix_duration,
             device=device,
+            auto_phonemization=auto_phonemization,
         )
     )
 
