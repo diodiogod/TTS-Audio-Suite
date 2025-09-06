@@ -169,23 +169,60 @@ class ChatterboxOfficial23LangSRTProcessor:
                             char_voice_path = char_voice_ref if isinstance(char_voice_ref, str) else ""
                             
                             
-                            # Generate audio using the TTS node with current config parameters
-                            char_audio, _ = self.tts_node.generate_speech(
-                                text=char_text,
-                                language=char_language,  # Use language from character parser
-                                device=self.config.get("device", "auto"),
-                                exaggeration=self.config.get("exaggeration", 0.5),
-                                temperature=self.config.get("temperature", 0.8),
-                                cfg_weight=self.config.get("cfg_weight", 0.5),
-                                repetition_penalty=self.config.get("repetition_penalty", 1.2),
-                                min_p=self.config.get("min_p", 0.05),
-                                top_p=self.config.get("top_p", 1.0),
-                                seed=seed,
-                                reference_audio=None,
-                                audio_prompt_path=char_voice_path,
-                                enable_audio_cache=True,
-                                character=char_name  # Pass character name for pause tag processing
+                            # Generate audio with pause tag support (following F5-TTS pattern)
+                            # Process pause tags for this character's text while maintaining voice context
+                            processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+                                char_text, enable_pause_tags=True
                             )
+                            
+                            if pause_segments is None:
+                                # No pause tags - generate directly
+                                char_audio, _ = self.tts_node.generate_speech(
+                                    text=char_text,
+                                    language=char_language,  # Use language from character parser
+                                    device=self.config.get("device", "auto"),
+                                    exaggeration=self.config.get("exaggeration", 0.5),
+                                    temperature=self.config.get("temperature", 0.8),
+                                    cfg_weight=self.config.get("cfg_weight", 0.5),
+                                    repetition_penalty=self.config.get("repetition_penalty", 1.2),
+                                    min_p=self.config.get("min_p", 0.05),
+                                    top_p=self.config.get("top_p", 1.0),
+                                    seed=seed,
+                                    reference_audio=None,
+                                    audio_prompt_path=char_voice_path,
+                                    enable_audio_cache=True,
+                                    character=char_name  # Pass character name for pause tag processing
+                                )
+                            else:
+                                # Has pause tags - create character-aware TTS function (F5-TTS pattern)
+                                def char_tts_func(text_segment: str) -> torch.Tensor:
+                                    """Character-aware TTS function that maintains voice context"""
+                                    segment_audio, _ = self.tts_node.generate_speech(
+                                        text=text_segment,
+                                        language=char_language,  # Use language from character parser
+                                        device=self.config.get("device", "auto"),
+                                        exaggeration=self.config.get("exaggeration", 0.5),
+                                        temperature=self.config.get("temperature", 0.8),
+                                        cfg_weight=self.config.get("cfg_weight", 0.5),
+                                        repetition_penalty=self.config.get("repetition_penalty", 1.2),
+                                        min_p=self.config.get("min_p", 0.05),
+                                        top_p=self.config.get("top_p", 1.0),
+                                        seed=seed,
+                                        reference_audio=None,
+                                        audio_prompt_path=char_voice_path,  # Maintain character's voice
+                                        enable_audio_cache=True,
+                                        character=char_name  # Maintain character context
+                                    )
+                                    # Extract waveform from ComfyUI format
+                                    if isinstance(segment_audio, dict) and "waveform" in segment_audio:
+                                        return segment_audio["waveform"]
+                                    else:
+                                        return segment_audio
+                                
+                                # Generate audio with pauses using character-aware function
+                                char_audio = PauseTagProcessor.generate_audio_with_pauses(
+                                    pause_segments, char_tts_func, self.sample_rate
+                                )
                             
                             
                             # Extract waveform from ComfyUI format
@@ -214,23 +251,59 @@ class ChatterboxOfficial23LangSRTProcessor:
                         narrator_voice_path = narrator_voice_ref if isinstance(narrator_voice_ref, str) else ""
                         
                         
-                        # Generate audio using the TTS node with current config parameters
-                        narrator_audio, _ = self.tts_node.generate_speech(
-                            text=text_content,
-                            language=self.config.get("language", "English"),
-                            device=self.config.get("device", "auto"),
-                            exaggeration=self.config.get("exaggeration", 0.5),
-                            temperature=self.config.get("temperature", 0.8),
-                            cfg_weight=self.config.get("cfg_weight", 0.5),
-                            repetition_penalty=self.config.get("repetition_penalty", 1.2),
-                            min_p=self.config.get("min_p", 0.05),
-                            top_p=self.config.get("top_p", 1.0),
-                            seed=seed,
-                            reference_audio=None,
-                            audio_prompt_path=narrator_voice_path,
-                            enable_audio_cache=True,
-                            character="narrator"  # Default narrator character
+                        # Generate audio with pause tag support for narrator (following F5-TTS pattern)
+                        processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+                            text_content, enable_pause_tags=True
                         )
+                        
+                        if pause_segments is None:
+                            # No pause tags - generate directly
+                            narrator_audio, _ = self.tts_node.generate_speech(
+                                text=text_content,
+                                language=self.config.get("language", "English"),
+                                device=self.config.get("device", "auto"),
+                                exaggeration=self.config.get("exaggeration", 0.5),
+                                temperature=self.config.get("temperature", 0.8),
+                                cfg_weight=self.config.get("cfg_weight", 0.5),
+                                repetition_penalty=self.config.get("repetition_penalty", 1.2),
+                                min_p=self.config.get("min_p", 0.05),
+                                top_p=self.config.get("top_p", 1.0),
+                                seed=seed,
+                                reference_audio=None,
+                                audio_prompt_path=narrator_voice_path,
+                                enable_audio_cache=True,
+                                character="narrator"  # Default narrator character
+                            )
+                        else:
+                            # Has pause tags - create narrator-aware TTS function
+                            def narrator_tts_func(text_segment: str) -> torch.Tensor:
+                                """Narrator-aware TTS function that maintains voice context"""
+                                segment_audio, _ = self.tts_node.generate_speech(
+                                    text=text_segment,
+                                    language=self.config.get("language", "English"),
+                                    device=self.config.get("device", "auto"),
+                                    exaggeration=self.config.get("exaggeration", 0.5),
+                                    temperature=self.config.get("temperature", 0.8),
+                                    cfg_weight=self.config.get("cfg_weight", 0.5),
+                                    repetition_penalty=self.config.get("repetition_penalty", 1.2),
+                                    min_p=self.config.get("min_p", 0.05),
+                                    top_p=self.config.get("top_p", 1.0),
+                                    seed=seed,
+                                    reference_audio=None,
+                                    audio_prompt_path=narrator_voice_path,  # Maintain narrator's voice
+                                    enable_audio_cache=True,
+                                    character="narrator"  # Maintain narrator context
+                                )
+                                # Extract waveform from ComfyUI format
+                                if isinstance(segment_audio, dict) and "waveform" in segment_audio:
+                                    return segment_audio["waveform"]
+                                else:
+                                    return segment_audio
+                            
+                            # Generate audio with pauses using narrator-aware function
+                            narrator_audio = PauseTagProcessor.generate_audio_with_pauses(
+                                pause_segments, narrator_tts_func, self.sample_rate
+                            )
                         
                         
                         # Extract waveform from ComfyUI format
@@ -247,20 +320,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                         
                         return narrator_waveform
                 
-                # Preprocess segment text for pause tags first
-                processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
-                    segment_text, enable_pause_tags=True
-                )
-                
-                # Generate audio for this SRT segment with pause tag support
-                if pause_segments is None:
-                    # No pause tags - generate audio directly
-                    segment_audio = srt_tts_generate_func(segment_text)
-                else:
-                    # Has pause tags - use pause processor
-                    segment_audio = PauseTagProcessor.generate_audio_with_pauses(
-                        pause_segments, srt_tts_generate_func, self.sample_rate
-                    )
+                # Generate audio for this SRT segment (pause tags now handled at character level)
+                segment_audio = srt_tts_generate_func(segment_text)
                 
                 # Calculate actual duration
                 actual_duration = len(segment_audio) / self.sample_rate

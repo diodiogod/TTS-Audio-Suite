@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.3] - 2025-09-05
+
+### Changed
+
+- Improve audio processing reliability for complex SRT files
+- Better handling of multilingual character switching with pause tags
+
+### Fixed
+
+- Fix SRT overlapping and character voice issues
+- Fix SRT overlapping mode not working properly (audio was being cut off)
+- Fix cache not updating when changing ChatterBox Official 23-Lang parameters
+- Fix character voices reverting to narrator after pause tags like [pause:10s]
 ## [4.8.2] - 2025-09-05
 
 ### Added

@@ -460,9 +460,9 @@ Back to the main narrator voice for the conclusion.""",
             
             # Build voice references
             voice_refs = {}
-            for character in all_characters:
-                audio_path, _ = character_mapping.get(character, (None, None))
-                voice_refs[character] = audio_path if audio_path else main_audio_prompt
+            for char_name in all_characters:
+                audio_path, _ = character_mapping.get(char_name, (None, None))
+                voice_refs[char_name] = audio_path if audio_path else main_audio_prompt
         
         # Generate audio using pause tag processor
         def tts_generate_func(text_content: str) -> torch.Tensor:
@@ -472,8 +472,8 @@ Back to the main narrator voice for the conclusion.""",
                 char_segments = parse_character_text(text_content)
                 segment_audio_parts = []
                 
-                for character, segment_text in char_segments:
-                    audio_prompt = voice_refs.get(character, main_audio_prompt)
+                for char_name, segment_text in char_segments:
+                    audio_prompt = voice_refs.get(char_name, main_audio_prompt)
                     audio_part = generate_segment_audio(segment_text, audio_prompt)
                     segment_audio_parts.append(audio_part)
                 
@@ -724,7 +724,7 @@ Back to the main narrator voice for the conclusion.""",
             inputs["text"], main_audio_prompt, inputs["exaggeration"], 
             inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
             inputs["min_p"], inputs["top_p"], inputs["language"],
-            True, character=character, seed=inputs["seed"], 
+            True, character=inputs["character"], seed=inputs["seed"], 
             enable_cache=inputs.get("enable_audio_cache", True),
             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
             stable_audio_component=stable_audio_component
@@ -754,7 +754,8 @@ Back to the main narrator voice for the conclusion.""",
                 chunk_combination_method=chunk_combination_method,
                 silence_between_chunks_ms=silence_between_chunks_ms,
                 enable_audio_cache=enable_audio_cache,
-                batch_size=current_batch_size
+                batch_size=current_batch_size,
+                character=character  # Add character to inputs
             )
             
             # Set seed for reproducibility (can be done without loading model)
@@ -819,26 +820,26 @@ Back to the main narrator voice for the conclusion.""",
                 character_voices = []
                 main_voices = []
                 
-                for character in characters:
+                for char_name in characters:
                     # CRITICAL FIX: Skip narrator - it should use selected input/dropdown voice, not character voice files
-                    if character == 'narrator':
+                    if char_name == 'narrator':
                         continue
                         
-                    audio_path, _ = character_mapping.get(character, (None, None))
+                    audio_path, _ = character_mapping.get(char_name, (None, None))
                     if audio_path:
-                        voice_refs[character] = audio_path
-                        character_voices.append(character)
+                        voice_refs[char_name] = audio_path
+                        character_voices.append(char_name)
                         
                         # CRITICAL FIX: Also map resolved character name to same audio path
                         # This ensures streaming workers can find voices using resolved names
                         from utils.voice.discovery import voice_discovery
-                        resolved_name = voice_discovery.resolve_character_alias(character)
-                        if resolved_name != character:
+                        resolved_name = voice_discovery.resolve_character_alias(char_name)
+                        if resolved_name != char_name:
                             voice_refs[resolved_name] = audio_path
                             
                     else:
-                        voice_refs[character] = main_audio_prompt
-                        main_voices.append(character)
+                        voice_refs[char_name] = main_audio_prompt
+                        main_voices.append(char_name)
                 
                 # Consolidated voice summary logging
                 voice_summary = []
@@ -964,7 +965,7 @@ Back to the main narrator voice for the conclusion.""",
                             from utils.audio.cache import create_cache_function
                             cache_fn = create_cache_function(
                                 "chatterbox",
-                                character=character,
+                                character=inputs["character"],
                                 exaggeration=inputs["exaggeration"],
                                 temperature=inputs["temperature"],
                                 cfg_weight=inputs["cfg_weight"],
@@ -996,7 +997,7 @@ Back to the main narrator voice for the conclusion.""",
                                 from utils.audio.cache import create_cache_function
                                 cache_fn = create_cache_function(
                                     "chatterbox",
-                                    character=character,
+                                    character=inputs["character"],
                                     exaggeration=inputs["exaggeration"],
                                     temperature=inputs["temperature"],
                                     cfg_weight=inputs["cfg_weight"],
@@ -1041,7 +1042,7 @@ Back to the main narrator voice for the conclusion.""",
                         clean_text, main_audio_prompt, inputs["exaggeration"], 
                         inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                         inputs["min_p"], inputs["top_p"], inputs["language"],
-                        True, character=character, seed=inputs["seed"], 
+                        True, character=inputs["character"], seed=inputs["seed"], 
                         enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=stable_audio_component
@@ -1068,7 +1069,7 @@ Back to the main narrator voice for the conclusion.""",
                             chunk, main_audio_prompt, inputs["exaggeration"], 
                             inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                             inputs["min_p"], inputs["top_p"], inputs["language"],
-                            True, character=character, seed=inputs["seed"], 
+                            True, character=inputs["character"], seed=inputs["seed"], 
                             enable_cache=inputs.get("enable_audio_cache", True),
                             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                             stable_audio_component=stable_audio_component
@@ -1135,7 +1136,7 @@ Back to the main narrator voice for the conclusion.""",
                 chunk_text, char_audio_prompt, inputs["exaggeration"],
                 inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                 inputs["min_p"], inputs["top_p"], required_language,
-                True, character=character, seed=inputs.get("seed", 42),
+                True, character=inputs["character"], seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=stable_audio_component
@@ -1348,7 +1349,7 @@ Back to the main narrator voice for the conclusion.""",
                         from utils.audio.cache import create_cache_function
                         cache_fn = create_cache_function(
                             "chatterbox",
-                            character=character,
+                            character=inputs["character"],
                             exaggeration=inputs.get("exaggeration", 0.5),
                             temperature=inputs.get("temperature", 0.8),
                             cfg_weight=inputs.get("cfg_weight", 0.5),
@@ -1394,7 +1395,7 @@ Back to the main narrator voice for the conclusion.""",
                 segment_text, voice_path, inputs.get("exaggeration", 0.5),
                 inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5),
                 inputs.get("repetition_penalty", 1.2), inputs.get("min_p", 0.05), inputs.get("top_p", 1.0),
-                language, True, character=character, seed=inputs.get("seed", 42),
+                language, True, character=inputs["character"], seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=stable_audio_component
