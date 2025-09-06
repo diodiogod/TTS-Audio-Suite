@@ -260,7 +260,7 @@ Hello! This is F5-TTS SRT with character switching.
     def _generate_segment_cache_key(self, subtitle_text: str, model_name: str, device: str,
                                    audio_prompt_component: str, ref_text: str, temperature: float,
                                    speed: float, target_rms: float, cross_fade_duration: float,
-                                   nfe_step: int, cfg_strength: float, seed: int) -> str:
+                                   nfe_step: int, cfg_strength: float, seed: int, auto_phonemization: bool = True) -> str:
         """Generate cache key for a single F5-TTS audio segment based on generation parameters."""
         cache_data = {
             'text': subtitle_text,
@@ -275,6 +275,7 @@ Hello! This is F5-TTS SRT with character switching.
             'nfe_step': nfe_step,
             'cfg_strength': cfg_strength,
             'seed': seed,
+            'auto_phonemization': auto_phonemization,
             'engine': 'f5tts'
         }
         cache_string = str(sorted(cache_data.items()))
@@ -446,7 +447,7 @@ Hello! This is F5-TTS SRT with character switching.
                         cache_key = self._generate_segment_cache_key(
                             f"{character}:{text}", required_model, self.device, audio_prompt_component,
                             char_text, temperature, speed, target_rms, cross_fade_duration,
-                            safe_nfe_step, cfg_strength, seed
+                            safe_nfe_step, cfg_strength, seed, auto_phonemization
                         )
                         cached_data = self._get_cached_segment_audio(cache_key)
                         
@@ -835,7 +836,8 @@ Hello! This is F5-TTS SRT with character switching.
                 cache_key = self._generate_segment_cache_key(
                     f"{character}:{segment_text}", required_model, device,
                     stable_audio_component, ref_text, temperature, speed,
-                    target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed
+                    target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed,
+                    auto_phonemization
                 )
                 cached_audio = self._get_cached_segment_audio(cache_key)
                 if cached_audio:

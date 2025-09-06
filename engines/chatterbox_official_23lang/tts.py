@@ -224,16 +224,28 @@ class ChatterboxOfficial23LangTTS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             
-            # Load Voice Encoder (ve.pt)
+            # Load Voice Encoder (try safetensors first, fallback to pt)
             print("📦 Loading Voice Encoder...")
-            ve_path = ckpt_dir / "ve.pt"
-            if not ve_path.exists():
-                raise FileNotFoundError(f"Voice encoder not found: {ve_path}")
+            ve_safetensors_path = ckpt_dir / "ve.safetensors"
+            ve_pt_path = ckpt_dir / "ve.pt"
             
             ve = VoiceEncoder()
-            # Use same loading approach as official implementation
-            ve_state = torch.load(ve_path, map_location=map_location, weights_only=False)
-            ve.load_state_dict(ve_state)
+            # Smart loading: prefer official .pt, but support user's safetensors
+            has_safetensors = ve_safetensors_path.exists()
+            has_pt = ve_pt_path.exists()
+            
+            if has_pt:
+                # Use official .pt format (guaranteed compatibility)
+                ve_state = torch.load(ve_pt_path, map_location=map_location, weights_only=True)
+                ve.load_state_dict(ve_state)
+            elif has_safetensors:
+                # User manually downloaded safetensors - use with compatibility warning
+                print("⚠️ Using ve.safetensors with strict=False for compatibility. Official implementation uses .pt files")
+                ve_state = load_file(ve_safetensors_path, device=actual_device)
+                ve.load_state_dict(ve_state, strict=False)
+            else:
+                raise FileNotFoundError(f"Voice encoder not found: tried {ve_safetensors_path} and {ve_pt_path}")
+            
             ve.to(actual_device).eval()
             
             # Load T3 multilingual model (t3_23lang.safetensors)
@@ -254,16 +266,28 @@ class ChatterboxOfficial23LangTTS:
             t3.load_state_dict(t3_state)
             t3.to(actual_device).eval()
             
-            # Load S3Gen (s3gen.pt)
+            # Load S3Gen (try safetensors first, fallback to pt)
             print("📦 Loading S3Gen model...")
-            s3gen_path = ckpt_dir / "s3gen.pt"
-            if not s3gen_path.exists():
-                raise FileNotFoundError(f"S3Gen model not found: {s3gen_path}")
+            s3gen_safetensors_path = ckpt_dir / "s3gen.safetensors"
+            s3gen_pt_path = ckpt_dir / "s3gen.pt"
             
             s3gen = S3Gen()
-            # Use same loading approach as official implementation
-            s3gen_state = torch.load(s3gen_path, map_location=map_location, weights_only=False)
-            s3gen.load_state_dict(s3gen_state)
+            # Smart loading: prefer official .pt, but support user's safetensors
+            has_safetensors = s3gen_safetensors_path.exists()
+            has_pt = s3gen_pt_path.exists()
+            
+            if has_pt:
+                # Use official .pt format (guaranteed compatibility)
+                s3gen_state = torch.load(s3gen_pt_path, map_location=map_location, weights_only=True)
+                s3gen.load_state_dict(s3gen_state)
+            elif has_safetensors:
+                # User manually downloaded safetensors - use with compatibility warning
+                print("⚠️ Using s3gen.safetensors with strict=False for compatibility. Official implementation uses .pt files")
+                s3gen_state = load_file(s3gen_safetensors_path, device=actual_device)
+                s3gen.load_state_dict(s3gen_state, strict=False)
+            else:
+                raise FileNotFoundError(f"S3Gen model not found: tried {s3gen_safetensors_path} and {s3gen_pt_path}")
+            
             s3gen.to(actual_device).eval()
             
             # Load multilingual tokenizer (mtl_tokenizer.json)

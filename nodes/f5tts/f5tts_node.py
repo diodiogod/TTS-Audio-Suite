@@ -695,7 +695,8 @@ Back to the main narrator voice for the conclusion.""",
                                     f"narrator:{cache_text}", inputs["model"], inputs["device"], 
                                     stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
                                     inputs["target_rms"], inputs["cross_fade_duration"], 
-                                    safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                                    safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator",
+                                    auto_phonemization
                                 )
                                 cached_data = self._get_cached_segment_audio(cache_key)
                                 if not cached_data:
@@ -933,7 +934,8 @@ Back to the main narrator voice for the conclusion.""",
                 # Generate audio for this chunk with pause tag processing
                 chunk_audio = self.generate_f5tts_with_pause_tags(
                     chunk, ref_audio_path, ref_text, temperature, speed,
-                    target_rms, cross_fade_duration, nfe_step, cfg_strength, seed
+                    target_rms, cross_fade_duration, nfe_step, cfg_strength, seed,
+                    auto_phonemization=auto_phonemization
                 )
                 
                 # Cache the result if enabled

@@ -180,14 +180,37 @@ Back to the main narrator voice for the conclusion.""",
         
         print(f"📁 Loading from directory: {ckpt_dir}")
         
-        # Auto-download model if it doesn't exist
-        if not os.path.exists(ckpt_dir) or not os.path.exists(os.path.join(ckpt_dir, "t3_23lang.safetensors")):
-            print("📥 ChatterBox Official 23-Lang model not found locally, downloading...")
+        # Auto-download model if it doesn't exist or if critical files are missing
+        required_files = [
+            "t3_23lang.safetensors",
+            "s3gen.pt", 
+            "ve.pt",
+            "mtl_tokenizer.json"
+        ]
+        
+        missing_files = []
+        if not os.path.exists(ckpt_dir):
+            missing_files = required_files
+        else:
+            for file in required_files:
+                if not os.path.exists(os.path.join(ckpt_dir, file)):
+                    # Also check for .pt fallback for s3gen and ve
+                    if file.endswith('.safetensors'):
+                        pt_file = file.replace('.safetensors', '.pt')
+                        if not os.path.exists(os.path.join(ckpt_dir, pt_file)):
+                            missing_files.append(file)
+                    else:
+                        missing_files.append(file)
+        
+        if missing_files:
+            print(f"📥 ChatterBox Official 23-Lang missing files: {missing_files}")
+            print("📥 Downloading missing files...")
             
             # Use unified downloader to download the model
             from utils.downloads.unified_downloader import unified_downloader
             
-            # Download ChatterBox Official 23-Lang model
+            # Try to download official .pt format first
+            print("📥 Trying official .pt format...")
             success_dir = unified_downloader.download_chatterbox_model(
                 repo_id="ResembleAI/chatterbox",
                 model_name="Official 23-Lang",
@@ -201,8 +224,24 @@ Back to the main narrator voice for the conclusion.""",
                 ]
             )
             
+            # Fallback to safetensors if .pt download failed
             if not success_dir:
-                raise RuntimeError("Failed to download ChatterBox Official 23-Lang model")
+                print("⚠️ Official .pt download failed, trying safetensors fallback...")
+                success_dir = unified_downloader.download_chatterbox_model(
+                    repo_id="ResembleAI/chatterbox",
+                    model_name="Official 23-Lang",
+                    subdirectory=None,
+                    files=[
+                        "t3_23lang.safetensors",
+                        "s3gen.safetensors", 
+                        "ve.safetensors",
+                        "mtl_tokenizer.json",
+                        "conds.pt"
+                    ]
+                )
+            
+            if not success_dir:
+                raise RuntimeError("Failed to download ChatterBox Official 23-Lang model (tried both .pt and safetensors)")
             
             print("✅ ChatterBox Official 23-Lang model downloaded successfully!")
         

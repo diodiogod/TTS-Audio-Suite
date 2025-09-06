@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.9] - 2025-09-06
+
+### Added
+
+- Support both .pt and safetensors formats automatically
+- Add fallback download if official format unavailable
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang safetensors compatibility
+- New users get official .pt files for guaranteed compatibility
+- Users with safetensors get compatibility warnings but keep working
+- Fix missing model files triggering proper re-downloads
 ## [4.8.8] - 2025-09-06
 
 ### Added

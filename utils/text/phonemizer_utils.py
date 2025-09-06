@@ -179,22 +179,29 @@ def get_phonemizer() -> UniversalPhonemizer:
     return _global_phonemizer
 
 
-def should_use_phonemization(model_name: str, text_list: List[str]) -> bool:
+def should_use_phonemization(model_name: str, text_list: List[str], auto_phonemization: bool = None) -> bool:
     """
     Determine if phonemization should be used for this model and text.
     
     Args:
         model_name: F5-TTS model name
         text_list: List of text strings to analyze
+        auto_phonemization: Override for phonemization setting (from UI toggle)
         
     Returns:
         True if phonemization should be used
     """
     # Check user setting first (UI toggle overrides everything)
     import os
-    auto_phonemization = os.environ.get('F5TTS_AUTO_PHONEMIZATION', 'true').lower() == 'true'
-    if not auto_phonemization:
-        return False
+    if auto_phonemization is not None:
+        # Use explicit parameter if provided (more reliable than environment variable)
+        if not auto_phonemization:
+            return False
+    else:
+        # Fall back to environment variable for backward compatibility
+        auto_phonemization = os.environ.get('F5TTS_AUTO_PHONEMIZATION', 'true').lower() == 'true'
+        if not auto_phonemization:
+            return False
     
     # Check if phonemization is available
     phonemizer = get_phonemizer()
@@ -328,7 +335,7 @@ def detect_language_from_text(text: str) -> str:
     return 'en'
 
 
-def convert_text_with_smart_phonemization(text_list: List[str], model_name: str = "") -> List[List[str]]:
+def convert_text_with_smart_phonemization(text_list: List[str], model_name: str = "", auto_phonemization: bool = None) -> List[List[str]]:
     """
     Convert text using smart phonemization or fallback to character-based processing.
     
@@ -337,6 +344,7 @@ def convert_text_with_smart_phonemization(text_list: List[str], model_name: str 
     Args:
         text_list: List of text strings to process
         model_name: F5-TTS model name for context
+        auto_phonemization: Override for phonemization setting (from UI toggle)
         
     Returns:
         List of processed text (as character lists for model input)
@@ -350,7 +358,7 @@ def convert_text_with_smart_phonemization(text_list: List[str], model_name: str 
             return [list(text) for text in texts]
     
     # Check if we should use phonemization
-    if should_use_phonemization(model_name, text_list):
+    if should_use_phonemization(model_name, text_list, auto_phonemization):
         phonemizer = get_phonemizer()
         
         import sys

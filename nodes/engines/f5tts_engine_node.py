@@ -134,7 +134,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
             }
             
             print(f"⚙️ F5-TTS Engine: Configured for {language} on {device}")
-            print(f"   Settings: temperature={temperature}, speed={speed}, nfe_step={safe_nfe_step}")
+            print(f"   Settings: temperature={temperature}, speed={speed}, nfe_step={safe_nfe_step}, auto_phonemization={auto_phonemization}")
             
             # Return engine data structure
             engine_data = {
