@@ -439,10 +439,30 @@ class VibeVoiceEngine:
                                 # Default: take first channel if not clear stereo format
                                 audio_np = audio_np[0, :]
                     
+                    # Check for invalid values and clean them up
+                    if np.any(np.isnan(audio_np)) or np.any(np.isinf(audio_np)):
+                        print(f"⚠️ VibeVoice ENGINE: Audio contains NaN or Inf values, replacing with zeros")
+                        audio_np = np.nan_to_num(audio_np, nan=0.0, posinf=0.0, neginf=0.0)
+                    
+                    # Ensure audio is not completely silent or has extreme values
+                    if np.all(audio_np == 0):
+                        print(f"⚠️ VibeVoice ENGINE: Audio waveform is completely silent")
+                    
+                    # Normalize extreme values (prevents generation issues)
+                    max_val = np.abs(audio_np).max()
+                    if max_val > 10.0:
+                        print(f"⚠️ VibeVoice ENGINE: Audio values are very large (max: {max_val}), normalizing")
+                        audio_np = audio_np / max_val
+                    
                     # Resample if needed
                     if input_sample_rate != 24000:
                         from utils.audio.librosa_fallback import safe_resample
                         audio_np = safe_resample(audio_np, orig_sr=input_sample_rate, target_sr=24000)
+                    
+                    # Final check after resampling (can introduce artifacts)
+                    if np.any(np.isnan(audio_np)) or np.any(np.isinf(audio_np)):
+                        print(f"⚠️ VibeVoice ENGINE: Audio contains NaN or Inf after resampling, replacing with zeros")
+                        audio_np = np.nan_to_num(audio_np, nan=0.0, posinf=0.0, neginf=0.0)
                     
                     # Normalize using dB FS (matches official VibeVoice)
                     target_dB_FS = -25
@@ -563,6 +583,13 @@ class VibeVoiceEngine:
                 return_attention_mask=True
             )
             # print(f"🐛 VibeVoice ENGINE: Processor inputs created - input_ids shape: {inputs['input_ids'].shape}")
+            
+            # Validate inputs before moving to GPU (prevents corrupted generation)
+            for key, value in inputs.items():
+                if isinstance(value, torch.Tensor):
+                    if torch.any(torch.isnan(value)) or torch.any(torch.isinf(value)):
+                        logger.error(f"Input tensor '{key}' contains NaN or Inf values")
+                        raise ValueError(f"Invalid values in input tensor: {key}")
             
             # Move to device
             device = next(self.model.parameters()).device

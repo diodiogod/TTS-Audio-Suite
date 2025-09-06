@@ -39,7 +39,12 @@ def get_sage_attention_function_and_params():
     attn_func = None
     pv_accum_dtype = "fp32"
 
-    if arch_code >= 90:  # Hopper architecture (H100, etc.)
+    if arch_code >= 120:  # Blackwell architecture (RTX 50 series)
+        # Use same kernel as Ada for compatibility (fixes inappropriate assert on Blackwell)
+        pv_accum_dtype = "fp32+fp32" 
+        attn_func = sageattn_qk_int8_pv_fp8_cuda  # Same as SM89 Ada
+        logger.info(f"SageAttention: Using SM120+ (Blackwell) with Ada kernel - pv_accum_dtype='{pv_accum_dtype}'.")
+    elif arch_code >= 90:  # Hopper architecture (H100, etc.)
         pv_accum_dtype = "fp32+fp32" 
         attn_func = sageattn_qk_int8_pv_fp8_cuda_sm90
         logger.info(f"SageAttention: Using SM90+ (Hopper) FP8 kernel with pv_accum_dtype='{pv_accum_dtype}'.")

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.11] - 2025-09-06
+
+### Added
+
+- Add support for RTX 50 series GPUs (Blackwell architecture)
+- Enhanced input validation prevents generation failures
+- Improved audio preprocessing reduces weird sound artifacts
+
+### Changed
+
+- Better handling of corrupted audio inputs that could cause noise generation
+
+### Fixed
+
+- Improve VibeVoice reliability and GPU compatibility
 ## [4.8.10] - 2025-09-06
 
 ### Added

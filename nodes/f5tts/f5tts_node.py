@@ -297,6 +297,11 @@ Back to the main narrator voice for the conclusion.""",
         }
         cache_string = str(sorted(cache_data.items()))
         cache_key = hashlib.md5(cache_string.encode()).hexdigest()
+        
+        # Debug: Print cache key info for phonemization debugging
+        if text and ('phonemization' in text.lower() or len(text) < 50):  # Only for short text or debug
+            print(f"🔍 Cache key for auto_phonemization={auto_phonemization}: {cache_key[:8]}... (text: '{text[:30]}')")
+            print(f"   Parameters: temp={temperature}, speed={speed}, nfe={nfe_step}, phonem={auto_phonemization}")
         return cache_key
 
     def _get_cached_segment_audio(self, segment_cache_key: str) -> Optional[Tuple[torch.Tensor, float]]:
@@ -314,6 +319,9 @@ Back to the main narrator voice for the conclusion.""",
                        temperature=0.8, speed=1.0, target_rms=0.1,
                        cross_fade_duration=0.15, nfe_step=32, cfg_strength=2.0, 
                        enable_audio_cache=True, auto_phonemization=True):
+        
+        # Store phonemization setting for direct parameter passing
+        self._current_auto_phonemization = auto_phonemization
         
         # Normalize model name for backward compatibility (case-insensitive matching)
         # Convert V1, V2, etc. to v1, v2 for consistency
@@ -811,7 +819,8 @@ Back to the main narrator voice for the conclusion.""",
                             target_rms=inputs["target_rms"],
                             cross_fade_duration=inputs["cross_fade_duration"],
                             nfe_step=safe_nfe_step,
-                            cfg_strength=inputs["cfg_strength"]
+                            cfg_strength=inputs["cfg_strength"],
+                            auto_phonemization=self._current_auto_phonemization
                         )
                         audio_segments.append(chunk_audio)
                     

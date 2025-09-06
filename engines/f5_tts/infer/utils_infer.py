@@ -455,6 +455,7 @@ def infer_batch_process(
     device=None,
     streaming=False,
     chunk_size=2048,
+    auto_phonemization=True,
 ):
     audio, sr = ref_audio
     if audio.shape[0] > 1:
@@ -488,9 +489,7 @@ def infer_batch_process(
             # Try to get original model name for phonemizer context
             model_name = getattr(model_obj, 'original_model_name', '')
             
-            # Get auto_phonemization setting from environment
-            import os
-            auto_phonemization = os.environ.get('F5TTS_AUTO_PHONEMIZATION', 'true').lower() == 'true'
+            # auto_phonemization is now passed directly as function parameter
             
             final_text_list = convert_text_with_smart_phonemization(text_list, model_name, auto_phonemization)
         except ImportError:

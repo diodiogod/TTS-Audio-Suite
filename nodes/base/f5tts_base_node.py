@@ -208,9 +208,7 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         if self.f5tts_model is None:
             raise RuntimeError("F5-TTS model not loaded. Call load_f5tts_model() first.")
         
-        # Set phonemization setting for utils_infer.py to read
-        import os
-        os.environ['F5TTS_AUTO_PHONEMIZATION'] = str(auto_phonemization).lower()
+        # Pass auto_phonemization directly through function parameters
         
         return self.f5tts_model.generate(
             text=text,
@@ -221,12 +219,13 @@ class BaseF5TTSNode(BaseChatterBoxNode):
             target_rms=target_rms,
             cross_fade_duration=cross_fade_duration,
             nfe_step=nfe_step,
-            cfg_strength=cfg_strength
+            cfg_strength=cfg_strength,
+            auto_phonemization=auto_phonemization
         )
 
     def generate_f5tts_with_pause_tags(self, text: str, ref_audio_path: str, ref_text: str,
                                      enable_pause_tags: bool = True, character: str = "narrator", 
-                                     seed: int = 0, enable_cache: bool = False, cache_fn=None, **generation_kwargs) -> torch.Tensor:
+                                     seed: int = 0, enable_cache: bool = False, cache_fn=None, auto_phonemization: bool = True, **generation_kwargs) -> torch.Tensor:
         """
         Generate F5-TTS audio with pause tag support.
         
@@ -257,7 +256,7 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                     return cached_audio
             
             audio = self.generate_f5tts_audio(
-                processed_text, ref_audio_path, ref_text, **generation_kwargs
+                processed_text, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
             )
             
             if enable_cache and cache_fn:
@@ -274,7 +273,7 @@ class BaseF5TTSNode(BaseChatterBoxNode):
                     return cached_audio
             
             audio = self.generate_f5tts_audio(
-                text_content, ref_audio_path, ref_text, **generation_kwargs
+                text_content, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
             )
             
             if enable_cache and cache_fn:
