@@ -46,6 +46,9 @@ vocos                # F5-TTS vocoder
 # RVC voice conversion (safe)
 monotonic-alignment-search
 faiss-cpu>=1.7.4
+praat-parselmouth>=0.4.6  # Praat-based f0 extraction for RVC (pm method)
+pyworld>=0.3.5           # World vocoder for RVC harvest/dio methods
+torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe method)
 
 # Optional performance enhancements
 # sageattention  # Optional: GPU-optimized mixed-precision attention for VibeVoice (requires CUDA SM80+)

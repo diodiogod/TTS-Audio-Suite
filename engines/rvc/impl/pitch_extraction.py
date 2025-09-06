@@ -200,10 +200,24 @@ class FeatureExtractor:
         if not hasattr(self,"model_rmvpe"):
             # Check organized TTS/ location first, then legacy
             rmvpe_file = f"rmvpe.{'onnx' if self.onnx else 'pt'}"
-            rmvpe_paths = [
-                os.path.join(BASE_MODELS_DIR, "TTS", "RVC", rmvpe_file),  # Organized
-                os.path.join(BASE_MODELS_DIR, rmvpe_file)  # Legacy
-            ]
+            
+            # Check ComfyUI models directory first, then local BASE_MODELS_DIR
+            rmvpe_paths = []
+            try:
+                import folder_paths
+                comfyui_models_dir = folder_paths.models_dir
+                rmvpe_paths.extend([
+                    os.path.join(comfyui_models_dir, "TTS", "RVC", rmvpe_file),  # ComfyUI organized
+                    os.path.join(comfyui_models_dir, "TTS", rmvpe_file),  # ComfyUI TTS
+                ])
+            except ImportError:
+                pass
+            
+            # Add local paths as fallback
+            rmvpe_paths.extend([
+                os.path.join(BASE_MODELS_DIR, "TTS", "RVC", rmvpe_file),  # Local organized
+                os.path.join(BASE_MODELS_DIR, rmvpe_file)  # Local legacy
+            ])
             
             rmvpe_path = None
             for path in rmvpe_paths:
@@ -222,10 +236,24 @@ class FeatureExtractor:
         if not hasattr(self,"model_rmvpe"):
             # Check organized TTS/ location first, then legacy
             rmvpe_file = f"rmvpe.{'onnx' if self.onnx else 'pt'}"
-            rmvpe_paths = [
-                os.path.join(BASE_MODELS_DIR, "TTS", "RVC", rmvpe_file),  # Organized
-                os.path.join(BASE_MODELS_DIR, rmvpe_file)  # Legacy
-            ]
+            
+            # Check ComfyUI models directory first, then local BASE_MODELS_DIR
+            rmvpe_paths = []
+            try:
+                import folder_paths
+                comfyui_models_dir = folder_paths.models_dir
+                rmvpe_paths.extend([
+                    os.path.join(comfyui_models_dir, "TTS", "RVC", rmvpe_file),  # ComfyUI organized
+                    os.path.join(comfyui_models_dir, "TTS", rmvpe_file),  # ComfyUI TTS
+                ])
+            except ImportError:
+                pass
+            
+            # Add local paths as fallback
+            rmvpe_paths.extend([
+                os.path.join(BASE_MODELS_DIR, "TTS", "RVC", rmvpe_file),  # Local organized
+                os.path.join(BASE_MODELS_DIR, rmvpe_file)  # Local legacy
+            ])
             
             rmvpe_path = None
             for path in rmvpe_paths:

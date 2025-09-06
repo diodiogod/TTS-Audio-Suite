@@ -271,9 +271,16 @@ class MinimalRVCWrapper:
             
             # Ensure RMVPE model is available for reference implementation
             if f0_method in ["rmvpe", "rmvpe+", "rmvpe_onnx"]:
-                from utils.downloads.model_downloader import download_rmvpe_for_reference
-                rmvpe_path = download_rmvpe_for_reference()
-                if not rmvpe_path:
+                print(f"🔧 RVC: {f0_method} method requires RMVPE model, checking availability...")
+                try:
+                    from utils.downloads.model_downloader import download_rmvpe_for_reference
+                    rmvpe_path = download_rmvpe_for_reference()
+                    if rmvpe_path:
+                        print(f"✅ RMVPE model ready at: {rmvpe_path}")
+                    else:
+                        print("❌ RMVPE model download failed, RVC may fail with this f0_method")
+                except Exception as e:
+                    print(f"❌ RMVPE download error: {e}")
                     print("⚠️ RMVPE model not available, continuing anyway...")
             
             # Call reference vc_single function
