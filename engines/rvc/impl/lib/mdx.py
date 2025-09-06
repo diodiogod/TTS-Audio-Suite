@@ -135,6 +135,10 @@ class MDXModel:
         self.mdx_batch_size=1
 
     def initialize_mix(self, mix, is_ckpt=False):
+        # Ensure mix is stereo (2 channels) for both branches
+        if mix.shape[0] == 1:
+            mix = np.concatenate([mix, mix], axis=0)  # Duplicate mono to stereo
+            
         if is_ckpt:
             pad = self.params.gen_size + self.params.trim - ((mix.shape[-1]) % self.params.gen_size)
             mixture = np.concatenate((np.zeros((2, self.params.trim), dtype='float32'),mix, np.zeros((2, pad), dtype='float32')), 1)
@@ -142,6 +146,7 @@ class MDXModel:
             mix_waves = [mixture[:, i * self.params.gen_size: i * self.params.gen_size + self.params.chunk_size] for i in range(num_chunks)]
         else:
             mix_waves = []
+            
             n_sample = mix.shape[1]
             pad = self.params.gen_size - n_sample % self.params.gen_size
             mix_p = np.concatenate((np.zeros((2,self.params.trim)), mix, np.zeros((2,pad)), np.zeros((2,self.params.trim))), 1)

@@ -2,6 +2,13 @@ import hashlib
 import json
 from multiprocessing.pool import ThreadPool
 import os
+import sys
+
+# Fix for Python 3.13 + numba + librosa compatibility issue
+# Disable numba JIT compilation for librosa to prevent 'get_call_template' errors
+if sys.version_info >= (3, 13):
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+
 from lib.utils import ObjectNamespace
 import numpy as np
 import torch
@@ -336,7 +343,37 @@ def prepare_mix(mix, chunk_set, margin_set, mdx_net_cut=False):
     samplerate = 44100
 
     if not isinstance(mix, np.ndarray):
-        mix, samplerate = librosa.load(mix, mono=False, sr=44100)
+        # Use soundfile instead of librosa to avoid numba issues in Python 3.13
+        import soundfile as sf
+        mix, original_sr = sf.read(mix)
+        
+        # Resample if needed
+        if original_sr != 44100:
+            import torchaudio
+            # Convert to torch tensor for resampling
+            mix_tensor = torch.from_numpy(mix.astype(np.float32))
+            
+            # Handle mono/stereo
+            if mix_tensor.dim() == 1:
+                mix_tensor = mix_tensor.unsqueeze(0)  # Add channel dimension
+            elif mix_tensor.dim() == 2:
+                mix_tensor = mix_tensor.T  # Soundfile: (samples, channels) -> (channels, samples)
+            
+            # Resample using torchaudio
+            resampled = torchaudio.functional.resample(
+                mix_tensor,
+                orig_freq=original_sr,
+                new_freq=44100
+            )
+            
+            # Convert back to numpy
+            mix = resampled.numpy()
+        else:
+            # Soundfile returns (samples, channels), need (channels, samples)
+            if mix.ndim == 2:
+                mix = mix.T
+        
+        samplerate = 44100
     else:
         mix = mix.T
 
