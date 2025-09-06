@@ -85,7 +85,7 @@ def get_cache_max_length(cache):
     if isinstance(cache, DynamicCache):
         # DynamicCache grows dynamically, so return a very large max length
         # or current sequence length if available
-        if hasattr(cache, 'get_seq_length') and len(cache.key_cache) > 0:
+        if hasattr(cache, 'get_seq_length') and len(cache) > 0:
             try:
                 return cache.get_seq_length(0)  # Get sequence length for first layer
             except:
@@ -1551,9 +1551,14 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
         
         # Handle DynamicCache to DynamicCache copying
         if isinstance(from_cache, DynamicCache) and isinstance(to_cache, DynamicCache):
-            # For DynamicCache, just update the lists directly
-            to_cache.key_cache = from_cache.key_cache.copy()
-            to_cache.value_cache = from_cache.value_cache.copy()
+            # For DynamicCache, copy layer-by-layer using new API
+            num_layers = len(from_cache)
+            to_cache.crop(0)  # Clear existing cache
+            for layer_idx in range(num_layers):
+                if layer_idx < len(from_cache):
+                    key_cache, value_cache = from_cache[layer_idx]
+                    if key_cache is not None and value_cache is not None:
+                        to_cache.update(key_cache, value_cache, layer_idx)
             return
         
         # Handle DynamicCache to StaticCache or vice versa - skip copying for now
@@ -1567,8 +1572,17 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
             assert get_cache_max_length(to_cache) >= from_cache_size, (
                 f"The target cache size {get_cache_max_length(to_cache)} is smaller than the source cache size {from_cache_size}."
             )
-            to_cache.key_cache[layer_idx][:, :, :from_cache_size, :] = from_cache.key_cache[layer_idx]
-            to_cache.value_cache[layer_idx][:, :, :from_cache_size, :] = from_cache.value_cache[layer_idx]
+            # Use new cache API - access by layer index with safety checks
+            from_cache_tuple = from_cache[layer_idx] if layer_idx < len(from_cache) else (None, None)
+            to_cache_tuple = to_cache[layer_idx] if layer_idx < len(to_cache) else (None, None)
+            
+            if from_cache_tuple is not None and to_cache_tuple is not None:
+                from_key, from_value = from_cache_tuple
+                to_key, to_value = to_cache_tuple
+                
+                if from_key is not None and to_key is not None and from_value is not None and to_value is not None:
+                    to_key[:, :, :from_cache_size, :] = from_key
+                    to_value[:, :, :from_cache_size, :] = from_value
 
     def _prepare_kv_cache(
         self,

@@ -562,9 +562,14 @@ class HiggsAudioServeEngine:
         if self.kv_caches and not force_cache_recreation:
             # Check if any cache is on wrong device
             for kv_cache in self.kv_caches.values():
-                if hasattr(kv_cache, 'key_cache') and kv_cache.key_cache:
+                if len(kv_cache) > 0:
                     try:
-                        cache_device = kv_cache.key_cache[0].device if kv_cache.key_cache[0] is not None else model_device
+                        cache_tuple = kv_cache[0]  # Get first layer's cache
+                        if cache_tuple is not None and len(cache_tuple) >= 2:
+                            key_cache, _ = cache_tuple
+                            cache_device = key_cache.device if key_cache is not None else model_device
+                        else:
+                            cache_device = model_device
                         if cache_device != model_device:
                             cache_device_mismatch = True
                             break
@@ -629,9 +634,8 @@ class HiggsAudioServeEngine:
                 # StaticCache has built-in reset method
                 kv_cache.reset()
             elif isinstance(kv_cache, DynamicCache):
-                # DynamicCache needs manual clearing of cached keys/values
-                kv_cache.key_cache.clear()
-                kv_cache.value_cache.clear()
+                # DynamicCache needs manual clearing - use new API
+                kv_cache.crop(0)  # Clear all cached states
                 print(f"  🧹 Cleared DynamicCache state for fresh generation")
 
     def generate(

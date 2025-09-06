@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.14] - 2025-09-06
+
+### Added
+
+- Both TTS engines now work reliably with latest transformers versions
+
+### Fixed
+
+- Fix compatibility with latest transformers library versions
+- Fix VibeVoice failing with 'DynamicCache' object has no attribute 'key_cache' error
+- Fix Higgs Audio 2 failing with 'StaticCache' object has no attribute 'key_cache' error
+- Support transformers 4.56+ while maintain backward compatibility
+- Resolve generation failures after clean ComfyUI installations with newer dependencies
 ## [4.8.13] - 2025-09-06
 
 ### Added
