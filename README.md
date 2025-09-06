@@ -48,12 +48,13 @@ Project          Voice            Speech         New TTS Engine │
 Renamed          Conversion       Analyzer       Voice Cloning  │
 TTS Audio Suite  + Streaming                                    │
                                                                 ▼
-                              v4.7 ◄────────── v4.6 ◄───────────┘
-                              Sep 25           Jul 25
-                              │                │                 
-                              ChatterBox       VibeVoice          
-                              11 Languages     New TTS Engine   
-                              Italian + more   90min Generation 
+              v4.8 ◄────────── v4.7 ◄────────── v4.6 ◄───────────┘
+              Sep 25           Sep 25           Jul 25
+              │                │                │                 
+              Chatterbox       ChatterBox       VibeVoice          
+              Multilingual     11 Languages     New TTS Engine   
+              TTS Official     Italian + more   90min Generation 
+              23 Languages 
 ```
 
 <details>
@@ -70,7 +71,8 @@ TTS Audio Suite  + Streaming                                    │
   - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
   - [🎵 RVC Voice Conversion Integration](#-rvc-voice-conversion-integration)
   - [⏸️ Pause Tags System](#️-pause-tags-system)
-  - [🌍 Multi-language ChatterBox Support](#-multi-language-chatterbox-support)
+  - [🌍 Multi-language ChatterBox Community Models](#-multi-language-chatterbox-community-models)
+  - [🌐 Chatterbox Multilingual TTS (Official 23-Lang)](#-chatterbox-multilingual-tts-official-23-lang)
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
@@ -135,11 +137,11 @@ TTS Audio Suite  + Streaming                                    │
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, F5-TTS, Higgs Audio 2, and VibeVoice with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, and VibeVoice with voice cloning, reference audio synthesis, and production-grade quality
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
-- 🌍 **Multi-language Support** - ChatterBox (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
+- 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
 - 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
@@ -431,9 +433,9 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 </details>
 
 <details>
-<summary><h3>🌍 Multi-language ChatterBox Support</h3></summary>
+<summary><h3>🌍 Multi-language ChatterBox Community Models</h3></summary>
 
-**NEW in v4.6.29**: ChatterBox TTS now supports 11 languages with automatic model management!
+**NEW in v4.6.29**: ChatterBox TTS now supports 11 languages with community-finetuned models and automatic model management!
 
 **Supported Languages:**
 
@@ -460,6 +462,58 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 * **Seamless Integration**: Works with existing workflows - just select your language
 
 **Usage**: Select language from dropdown → First generation downloads model → Subsequent generations use cached model
+
+</details>
+
+<details>
+<summary><h3>🌐 Chatterbox Multilingual TTS (Official 23-Lang)</h3></summary>
+
+**NEW in v4.8.0**: Official ResembleAI Chatterbox Multilingual TTS model with native support for 23 languages!
+
+The **Chatterbox Multilingual TTS** (referred to internally as "ChatterBox Official 23-Lang" to distinguish from community models) is ResembleAI's first production-grade open-source TTS model supporting 23 languages out of the box. This is the official successor to the original ChatterBox model with enhanced multilingual capabilities.
+
+**🎯 Key Advantages over Community Models:**
+
+* **Single Unified Model**: One model handles all 23 languages - no model switching required
+* **Language Parameter Switching**: Changes language via parameter, not model loading (faster)
+* **Zero-Shot Voice Cloning**: Clone any voice with just a few seconds of reference audio across all languages
+* **Production-Grade Quality**: Benchmarked against leading closed-source systems like ElevenLabs
+* **MIT Licensed**: Fully open-source with commercial usage rights
+* **Perth Watermarking**: Built-in responsible AI usage (disabled by default for compatibility)
+
+**🌍 Supported Languages (23 total):**
+
+Arabic (ar), Danish (da), German (de), Greek (el), English (en), Spanish (es), Finnish (fi), French (fr), Hebrew (he), Hindi (hi), Italian (it), Japanese (ja), Korean (ko), Malay (ms), Dutch (nl), Norwegian (no), Polish (pl), Portuguese (pt), Russian (ru), Swedish (sv), Swahili (sw), Turkish (tr), Chinese (zh)
+
+**🔧 Fully Integrated Features:**
+
+* ✅ **Character Switching**: Full `[CharacterName]` support with per-character voice references
+* ✅ **Language Switching**: `[language:character]` syntax with intelligent parameter switching
+* ✅ **Pause Tags**: Complete `[pause:Ns]` support with character voice inheritance  
+* ✅ **SRT Processing**: Advanced subtitle timing with overlapping modes and audio assembly
+* ✅ **Voice Conversion**: Built-in VC engine supporting all 23 languages
+* ✅ **Emotion Control**: Unique exaggeration parameter for expressive speech
+* ✅ **Advanced Parameters**: Full control over repetition_penalty, min_p, top_p for fine-tuning
+* ✅ **Cache Invalidation**: Proper parameter-based caching for responsive generation
+
+**🆚 vs Community Models:**
+
+| Feature | Chatterbox Multilingual TTS | Community Models |
+|---------|----------------------------|------------------|
+| Languages | 23 native languages | 11 finetuned variants |
+| Model Loading | Single model, parameter switching | Separate model per language |
+| Voice Cloning | Zero-shot across all languages | Per-model training |
+| Official Support | ✅ ResembleAI official | Community maintained |
+| Character Integration | ✅ Full integration | ✅ Full integration |
+| SRT Support | ✅ Advanced timing modes | ✅ Advanced timing modes |
+| Performance | Optimized single-model | Multiple model overhead |
+
+**🎭 Character Example:**
+```
+[En:Alice] Hello everyone! [De:Hans] Guten Tag! [Es:Maria] ¡Hola! [pause:2s] [En:Alice] That was amazing multilingual switching!
+```
+
+This creates seamless multilingual character switching with proper voice inheritance and pause support - all within a single model.
 
 </details>
 
@@ -873,6 +927,26 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 | Norwegian               | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
 
 **Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model.
+
+### 4.2. Chatterbox Multilingual TTS (Official 23-Lang)
+
+**Repository:** [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | **Size:** ~4.3GB | **Auto-Download:** ✅
+
+The official ResembleAI multilingual model supporting 23 languages in a unified model structure.
+
+**Installation Structure:**
+
+```
+ComfyUI/models/TTS/chatterbox_official_23lang/
+└── Official 23-Lang/
+    ├── t3_23lang.safetensors    # Multilingual T3 model (2.14GB)
+    ├── s3gen.pt                 # S3Gen model (1.06GB)
+    ├── ve.pt                   # Voice encoder (5.7MB) 
+    ├── mtl_tokenizer.json      # Multilingual tokenizer (68KB)
+    └── conds.pt               # Conditioning (107KB, optional)
+```
+
+**Model Selection:** Choose "ChatterBox Official 23-Lang" from Unified TTS Engine dropdown.
 
 ### 5. F5-TTS Models (Optional)
 
