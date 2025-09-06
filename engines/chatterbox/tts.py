@@ -326,6 +326,29 @@ class ChatterboxTTS:
                         print(f"🔤 Using available tokenizer: {possible_tokenizer}")
                         break
             
+            # For incomplete models, fall back to English tokenizer
+            if not tokenizer_file and is_incomplete_model:
+                print(f"📎 Loading tokenizer from English model (incomplete model fallback)")
+                # Try to find English model locally first
+                from .language_models import find_local_model_path
+                english_path = find_local_model_path("English")
+                if english_path:
+                    english_tokenizer = Path(english_path) / "tokenizer.json"
+                    if english_tokenizer.exists():
+                        tokenizer_file = str(english_tokenizer)
+                        print(f"🔤 Using English tokenizer: {english_tokenizer}")
+                else:
+                    # Download English model if not available locally
+                    from utils.downloads.unified_downloader import UnifiedDownloader
+                    downloader = UnifiedDownloader()
+                    english_dir = downloader.download_chatterbox_model("ResembleAI/chatterbox", "English")
+                    if english_dir:
+                        english_path = Path(english_dir)
+                        english_tokenizer = english_path / "tokenizer.json"
+                        if english_tokenizer.exists():
+                            tokenizer_file = str(english_tokenizer)
+                            print(f"🔤 Using English tokenizer: {english_tokenizer}")
+            
             if not tokenizer_file:
                 raise FileNotFoundError(f"No tokenizer file found in {ckpt_dir}")
             

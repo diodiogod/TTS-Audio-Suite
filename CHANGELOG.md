@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.18] - 2025-09-06
+
+### Changed
+
+- Improve ChatterBox support for incomplete language models
+- Better fallback handling for ChatterBox multilingual TTS generation
+
+### Fixed
+
+- Fix ChatterBox French TTS model loading issues
+- Fix ChatterBox French model failing to load due to missing tokenizer
 ## [4.8.17] - 2025-09-06
 
 ### Fixed
