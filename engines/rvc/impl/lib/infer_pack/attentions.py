@@ -1,9 +1,9 @@
 import math
-from commons import convert_pad_shape, subsequent_mask
+from .commons import convert_pad_shape, subsequent_mask
 import torch
 from torch import nn
 from torch.nn import functional as F
-from modules import LayerNorm
+from .modules import LayerNorm
 
 
 class Encoder(nn.Module):

@@ -2,13 +2,13 @@ import math
 import torch
 from torch import nn
 from torch.nn import functional as F
-import modules
-import attentions  
-from commons import generate_path, init_weights, get_padding, rand_slice_segments, sequence_mask, slice_segments2
+from . import modules
+from . import attentions  
+from .commons import generate_path, init_weights, get_padding, rand_slice_segments, sequence_mask, slice_segments2
 from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
 import numpy as np
-from monotonic_alignment_search import maximum_path
+from .monotonic_alignment_search import maximum_path
 
 
 class TextEncoder256(nn.Module):

@@ -5,7 +5,7 @@ import librosa
 import torch
 import os
 
-from infer_pack.loaders import HubertModelWithFinalProj
+from .infer_pack.loaders import HubertModelWithFinalProj
 
 def get_hash(model_path):
     try:
@@ -19,8 +19,16 @@ def get_hash(model_path):
 
 def load_hubert(model_path: str, config):
     try:
+        print(f"🔧 Loading HuBERT model: {model_path}")
         if model_path.endswith(".safetensors"):
-            return HubertModelWithFinalProj.from_safetensors(model_path, device=config.device)
+            try:
+                model = HubertModelWithFinalProj.from_safetensors(model_path, device=config.device)
+                print(f"✅ HuBERT safetensors model loaded successfully")
+                return model
+            except Exception as e:
+                print(f"❌ HuBERT safetensors loading error: {e}")
+                print(f"🔧 Error type: {type(e).__name__}")
+                raise
         else:
             # Convert .pt file to .safetensors format for compatibility
             print(f"🔄 Converting .pt Hubert model to safetensors format: {model_path}")
@@ -87,10 +95,27 @@ def load_hubert(model_path: str, config):
     
 def change_rms(data1, sr1, data2, sr2, rate):  # 1是输入音频，2是输出音频,rate是2的占比
     # print(data1.max(),data2.max())
-    rms1 = librosa.feature.rms(
-        y=data1, frame_length=sr1 // 2 * 2, hop_length=sr1 // 2
-    )  # 每半秒一个点
-    rms2 = librosa.feature.rms(y=data2, frame_length=sr2 // 2 * 2, hop_length=sr2 // 2)
+    
+    # Manual RMS calculation to avoid librosa/numba issues in Python 3.13
+    def calculate_rms(y, frame_length, hop_length):
+        """Calculate RMS without librosa to avoid numba issues"""
+        import numpy as np
+        
+        # Pad the signal
+        y = np.asarray(y)
+        n_frames = 1 + (len(y) - frame_length) // hop_length
+        
+        # Create frames
+        frames = np.lib.stride_tricks.sliding_window_view(
+            y, window_shape=frame_length
+        )[::hop_length]
+        
+        # Calculate RMS for each frame
+        rms = np.sqrt(np.mean(frames**2, axis=1))
+        return rms.reshape(1, -1)  # Shape: (1, n_frames)
+    
+    rms1 = calculate_rms(data1, sr1 // 2 * 2, sr1 // 2)  # 每半秒一个点
+    rms2 = calculate_rms(data2, sr2 // 2 * 2, sr2 // 2)
     rms1 = torch.from_numpy(rms1)
     rms1 = F.interpolate(
         rms1.unsqueeze(0), size=data2.shape[0], mode="linear"

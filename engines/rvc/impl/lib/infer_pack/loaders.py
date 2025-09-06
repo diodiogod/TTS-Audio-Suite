@@ -7,6 +7,46 @@ import safetensors.torch as st
 from safetensors import safe_open
 import json
 
+# Check transformers version compatibility
+try:
+    import transformers
+    transformers_version = transformers.__version__
+    print(f"🔧 RVC HuBERT: Using transformers v{transformers_version}")
+    
+    # Apply compatibility fixes for transformers 4.46+ which has breaking changes
+    version_parts = [int(x) for x in transformers_version.split('.') if x.isdigit()]
+    if len(version_parts) >= 2 and (version_parts[0] > 4 or (version_parts[0] == 4 and version_parts[1] >= 46)):
+        print(f"🔧 RVC HuBERT: Applying transformers {transformers_version} compatibility fixes")
+        
+        # Fix for get_call_template error in newer transformers
+        try:
+            from transformers import logging
+            logging.set_verbosity_error()  # Reduce transformers verbosity
+            
+            # Monkey patch the problematic tokenizer method if it exists
+            import transformers.tokenization_utils_base as tokenization_utils
+            if hasattr(tokenization_utils, 'PreTrainedTokenizerBase'):
+                original_class = tokenization_utils.PreTrainedTokenizerBase
+                
+                # Check if get_call_template exists and is causing issues
+                if hasattr(original_class, 'get_call_template') and callable(getattr(original_class, 'get_call_template')):
+                    def safe_get_call_template(self, *args, **kwargs):
+                        try:
+                            return original_class.get_call_template(self, *args, **kwargs)
+                        except Exception as e:
+                            print(f"⚠️ RVC HuBERT: Caught get_call_template error: {e}")
+                            return None
+                    
+                    original_class.get_call_template = safe_get_call_template
+                    print("🔧 RVC HuBERT: Applied get_call_template monkey patch")
+                
+        except Exception as patch_error:
+            print(f"⚠️ RVC HuBERT: Could not apply compatibility patches: {patch_error}")
+            
+except Exception as e:
+    print(f"⚠️ RVC HuBERT: Could not detect transformers version: {e}")
+    transformers_version = "unknown"
+
 class HubertModelWithFinalProj(HubertModel):
     def __init__(self, config):
         super().__init__(config)
@@ -55,9 +95,29 @@ class HubertModelWithFinalProj(HubertModel):
     def extract_features(self, source: torch.Tensor, version="v2", **kwargs):
         with torch.no_grad():
             output_layer = 9 if version == "v1" else 12
+            
+            # Python 3.13 compatibility: Handle torch_dtype properly
+            try:
+                # Try to get torch_dtype from config
+                if hasattr(self.config, 'torch_dtype') and self.config.torch_dtype is not None:
+                    target_dtype = self.config.torch_dtype
+                else:
+                    # Fallback to the model's dtype
+                    target_dtype = next(self.parameters()).dtype
+            except Exception:
+                # Ultimate fallback - use source dtype
+                target_dtype = source.dtype
+            
             # https://github.com/facebookresearch/fairseq/blob/main/fairseq/models/hubert/hubert.py#L476
-            output = self(source.to(self.config.torch_dtype), output_hidden_states=True)["hidden_states"][output_layer-1]
-            features = self.final_proj(output) if version == "v1" else output
+            try:
+                output = self(source.to(target_dtype), output_hidden_states=True)["hidden_states"][output_layer-1]
+                features = self.final_proj(output) if version == "v1" else output
+            except Exception as e:
+                print(f"❌ RVC HuBERT extract_features error: {e}")
+                print(f"🔧 Source shape: {source.shape}, target_dtype: {target_dtype}")
+                print(f"🔧 Model device: {next(self.parameters()).device}")
+                print(f"🔧 Error type: {type(e).__name__}")
+                raise
         return features.to(source.dtype)
     
     def equals(self, other: "HubertModelWithFinalProj"):

@@ -4,15 +4,15 @@ import torch.nn.functional as F
 import scipy.signal as signal
 import os, traceback, librosa
 from scipy import signal
-from lib.model_utils import load_hubert, change_rms
+from .lib.model_utils import load_hubert, change_rms
 
 # from tqdm import tqdm
 
-from pitch_extraction import FeatureExtractor
+from .pitch_extraction import FeatureExtractor
 
-from lib.audio import MAX_INT16, load_input_audio, remix_audio
-from config import config
-from lib.utils import gc_collect
+from .lib.audio import MAX_INT16, load_input_audio, remix_audio
+from .config import config
+from .lib.utils import gc_collect
 
 # torchcrepe = lazyload("torchcrepe")  # Fork Feature. Crepe algo for training and preprocess
 # torch = lazyload("torch")
@@ -204,17 +204,17 @@ def get_vc(model_path,file_index=None,config=config,device=None):
     
     if version == "v1":
         if if_f0 == 1:
-            from lib.infer_pack.models import SynthesizerTrnMs256NSFsid
+            from .lib.infer_pack.models import SynthesizerTrnMs256NSFsid
             net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
         else:
-            from lib.infer_pack.models import SynthesizerTrnMs256NSFsid_nono
+            from .lib.infer_pack.models import SynthesizerTrnMs256NSFsid_nono
             net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
     elif version == "v2":
         if if_f0 == 1:
-            from lib.infer_pack.models import SynthesizerTrnMs768NSFsid
+            from .lib.infer_pack.models import SynthesizerTrnMs768NSFsid
             net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
         else:
-            from lib.infer_pack.models import SynthesizerTrnMs768NSFsid_nono
+            from .lib.infer_pack.models import SynthesizerTrnMs768NSFsid_nono
             net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
     del net_g.enc_q
     
@@ -274,33 +274,50 @@ def vc_single(
     **kwargs #prevents function from breaking
 ):
     print(f"vc_single unused args: {kwargs}")
-    if hubert_model == None:
-        hubert_model = load_hubert(hubert_path,config)
-
-    if not (cpt and net_g and vc and hubert_model):
-        return None
-
-    tgt_sr = cpt["config"][-1]
     
-    version = cpt.get("version", "v1")
-
-    if input_audio is None and input_audio_path is None:
-        return None
-    f0_up_key = int(f0_up_key)
     try:
-        audio = input_audio[0] if input_audio is not None else load_input_audio(input_audio_path, 16000)
+        if hubert_model == None:
+            hubert_model = load_hubert(hubert_path,config)
+
+        if not (cpt and net_g and vc and hubert_model):
+            print(f"❌ vc_single: Missing required components - cpt: {cpt is not None}, net_g: {net_g is not None}, vc: {vc is not None}, hubert_model: {hubert_model is not None}")
+            return None
+
+        tgt_sr = cpt["config"][-1]
+        version = cpt.get("version", "v1")
+
+        if input_audio is None and input_audio_path is None:
+            print("❌ vc_single: No input audio provided")
+            return None
+            
+        f0_up_key = int(f0_up_key)
         
+        print(f"🔧 vc_single: Starting conversion - version: {version}, f0_method: {f0_method}")
+        
+        audio = input_audio[0] if input_audio is not None else load_input_audio(input_audio_path, 16000)
         audio,_ = remix_audio((audio,input_audio[1] if input_audio is not None else 16000), target_sr=16000)
+    
+    except Exception as e:
+        print(f"❌ vc_single preprocessing error: {e}")
+        print(f"🔧 Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        return None
+        
+    try:
 
         times = [0, 0, 0]
         if_f0 = cpt.get("f0", 1)
         
-        """
-        model, net_g, sid, audio, times, f0_up_key, f0_method,
-            file_index, index_rate, if_f0, filter_radius, tgt_sr, resample_sr, rms_mix_rate,
-            version, protect, crepe_hop_length, f0_autotune, rmvpe_onnx
-        """
-        audio_opt = vc.pipeline(
+        print(f"🔧 vc_single: About to call vc.pipeline - if_f0: {if_f0}")
+        
+        try:
+            """
+            model, net_g, sid, audio, times, f0_up_key, f0_method,
+                file_index, index_rate, if_f0, filter_radius, tgt_sr, resample_sr, rms_mix_rate,
+                version, protect, crepe_hop_length, f0_autotune, rmvpe_onnx
+            """
+            audio_opt = vc.pipeline(
             hubert_model,
             net_g,
             sid,
@@ -321,7 +338,15 @@ def vc_single(
             crepe_hop_length, f0_autotune, is_onnx,
             f0_file=f0_file,
         )
-        return (audio_opt, resample_sr if resample_sr >= 16000 and tgt_sr != resample_sr else tgt_sr)
+        
+            print(f"✅ vc_single: vc.pipeline completed successfully")
+            return (audio_opt, resample_sr if resample_sr >= 16000 and tgt_sr != resample_sr else tgt_sr)
+        except Exception as pipeline_error:
+            print(f"❌ vc_single: Pipeline error: {pipeline_error}")
+            print(f"🔧 Pipeline error type: {type(pipeline_error).__name__}")
+            import traceback
+            traceback.print_exc()
+            return None
     except Exception as error:
         print(error)
         return None

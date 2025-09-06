@@ -12,10 +12,10 @@ if not hasattr(np, 'float'):
 from scipy import signal
 import torch
 
-from lib.rmvpe import RMVPE
-from lib.audio import autotune_f0, pad_audio, hz_to_mel
-from lib import BASE_MODELS_DIR
-from lib.utils import gc_collect, get_merge_func, get_optimal_threads, get_optimal_torch_device
+from .lib.rmvpe import RMVPE
+from .lib.audio import autotune_f0, pad_audio, hz_to_mel
+from .lib import BASE_MODELS_DIR
+from .lib.utils import gc_collect, get_merge_func, get_optimal_threads, get_optimal_torch_device
 
 class FeatureExtractor:
     def __init__(self, tgt_sr, config, onnx=False):

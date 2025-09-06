@@ -19,16 +19,23 @@ def setup_python313_compatibility():
     if sys.version_info >= (3, 13):
         # Disable numba JIT compilation to fix librosa compatibility issues
         # This prevents numba compilation errors in librosa with Python 3.13
-        # Note: Higgs Audio now uses torchaudio instead of librosa for better compatibility
         os.environ['NUMBA_DISABLE_JIT'] = '1'
+        print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} detected - disabled numba JIT for RVC compatibility")
         
-        # Set this early, before any librosa imports
+        # Also try to disable it programmatically if numba is already loaded
         try:
             import numba
             numba.config.DISABLE_JIT = True
+            print("🔧 TTS Audio Suite: Set numba.config.DISABLE_JIT = True")
         except ImportError:
             # numba not yet installed, the environment variable will handle it
-            pass
+            print("🔧 TTS Audio Suite: Numba not yet loaded - environment variable will handle it")
+        
+        # Additional compatibility environment variables
+        os.environ['NUMBA_ENABLE_CUDASIM'] = '1'  # Enable CUDA simulation fallback
+        
+    else:
+        print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} detected - numba JIT enabled for optimal performance")
 
 # Apply Python 3.13 compatibility fixes
 setup_python313_compatibility()

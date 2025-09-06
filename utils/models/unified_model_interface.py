@@ -259,6 +259,10 @@ def register_chatterbox_factory():
         """Universal ChatterBox loading with component mixing fallback"""
         from engines.chatterbox.language_models import find_local_model_path
         
+        # Ensure target_class is available before attempting to use it
+        if target_class is None:
+            raise RuntimeError(f"ChatterBox class not available - cannot load model")
+        
         # Try provided path first
         if model_path:
             try:
@@ -323,7 +327,13 @@ def register_chatterbox_factory():
                 raise e  # Already trying English, fail
     
     def chatterbox_tts_factory(**kwargs):
-        from engines.chatterbox.tts import ChatterboxTTS
+        try:
+            from engines.chatterbox.tts import ChatterboxTTS
+        except ImportError:
+            ChatterboxTTS = None
+        
+        if ChatterboxTTS is None:
+            raise RuntimeError("ChatterboxTTS not available - check installation")
         
         device = kwargs.get("device", "auto")
         language = kwargs.get("language", "English")
@@ -332,15 +342,22 @@ def register_chatterbox_factory():
         return load_chatterbox_with_mixing(ChatterboxTTS, device, language, model_path)
     
     def chatterbox_vc_factory(**kwargs):
-        from engines.chatterbox.vc import ChatterboxVC
-        from engines.chatterbox.language_models import supports_voice_conversion, get_vc_supported_languages
+        try:
+            from engines.chatterbox.vc import ChatterboxVC
+            from engines.chatterbox.language_models import supports_voice_conversion, get_vc_supported_languages
+        except ImportError:
+            ChatterboxVC = None
+            supports_voice_conversion = None
+        
+        if ChatterboxVC is None:
+            raise RuntimeError("ChatterboxVC not available - check installation or add bundled version")
         
         device = kwargs.get("device", "auto")
         language = kwargs.get("language", "English")
         model_path = kwargs.get("model_path")
         
         # Check if language supports VC before attempting to load
-        if not supports_voice_conversion(language):
+        if supports_voice_conversion and not supports_voice_conversion(language):
             print(f"❌ {language} model does not support voice conversion")
             print(f"   Voice conversion requires s3gen component which is missing from this model")  
             print(f"   Try English model (confirmed working) or German models (tested working)")

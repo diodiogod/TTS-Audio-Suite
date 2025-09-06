@@ -3,10 +3,18 @@ import io
 import os
 import zlib
 import subprocess
-from lib.utils import get_hash, get_merge_func
+
+# Fix for Python 3.13 + numba + librosa compatibility issue
+# Disable numba JIT compilation for librosa to prevent 'get_call_template' errors
+os.environ['NUMBA_DISABLE_JIT'] = '1'
+print("🔧 RVC Audio: Disabled numba JIT for Python 3.13 compatibility")
+
+from .utils import get_hash, get_merge_func
 import numpy as np
 import librosa
 import soundfile as sf
+import torch
+import torchaudio
 from scipy.ndimage import uniform_filter1d, median_filter
 from scipy.interpolate import interp1d
 from collections.abc import Mapping
@@ -153,7 +161,28 @@ def remix_audio(input_audio,target_sr=None,norm=False,to_int16=False,resample=Fa
 
     # Debug info (uncomment if needed): shape={audio.shape}, max={audio.max()}, min={audio.min()}, mean={audio.mean()} sr={input_audio[1]}
     if resample or input_audio[1]!=target_sr:
-        audio = librosa.resample(np.array(input_audio[0],dtype="float32"),orig_sr=input_audio[1],target_sr=target_sr,**kwargs)
+        # Use torchaudio.resample for Python 3.13 compatibility (no numba dependency)
+        try:
+            # Convert to torch tensor for torchaudio
+            audio_tensor = torch.from_numpy(np.array(input_audio[0], dtype="float32"))
+            if audio_tensor.dim() == 1:
+                audio_tensor = audio_tensor.unsqueeze(0)  # Add batch dimension if needed
+            
+            # Perform resampling with torchaudio (higher quality than librosa)
+            resampled = torchaudio.functional.resample(
+                audio_tensor, 
+                orig_freq=input_audio[1], 
+                new_freq=target_sr
+            )
+            
+            # Convert back to numpy
+            audio = resampled.squeeze().numpy().astype("float32")
+            print(f"🔧 RVC Audio: Resampled {input_audio[1]}Hz -> {target_sr}Hz using torchaudio")
+            
+        except Exception as e:
+            print(f"⚠️ RVC Audio: torchaudio resample failed ({e}), falling back to librosa")
+            # Fallback to librosa if torchaudio fails
+            audio = librosa.resample(np.array(input_audio[0],dtype="float32"),orig_sr=input_audio[1],target_sr=target_sr,**kwargs)
     
     if audio.ndim>1:
         merge_func = get_merge_func(merge_type)
@@ -161,7 +190,14 @@ def remix_audio(input_audio,target_sr=None,norm=False,to_int16=False,resample=Fa
         audio = np.array(audio, dtype=np.float32)
         # Ensure axis is integer for NumPy compatibility
         audio=merge_func(audio,axis=int(axis))
-    if norm: audio = librosa.util.normalize(audio,axis=axis)
+    if norm: 
+        try:
+            # Use librosa normalize if available
+            audio = librosa.util.normalize(audio, axis=axis)
+        except Exception:
+            # Fallback to manual normalization if librosa fails
+            audio_max = np.max(np.abs(audio), axis=axis, keepdims=True)
+            audio = audio / (audio_max + 1e-8)  # Add small epsilon to avoid division by zero
 
     audio_max = np.abs(audio).max()/max_volume
     if audio_max > 1: audio = audio / audio_max

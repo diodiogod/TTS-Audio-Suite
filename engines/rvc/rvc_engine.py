@@ -262,19 +262,19 @@ class RVCEngine:
                 return audio_data, sample_rate
             
             # Perform actual RVC conversion using the inference pipeline
-            from .rvc_inference import vc_single
+            from .impl.vc_infer_pipeline import vc_single
             
             print(f"🔄 RVC Voice Conversion - Model: {rvc_model_data.get('model_name', 'Unknown')}")
             print(f"Pitch: {pitch_shift} semitones, Method: {final_pitch_params['f0_method']}")
             
-            # Prepare input
-            input_audio = (audio_data, sample_rate)
-            
-            # Run voice conversion
+            # Run voice conversion with correct parameters for vc_single function
             result = vc_single(
-                input_audio=input_audio,
+                cpt=rvc_model_data.get('cpt'),
+                net_g=rvc_model_data.get('net_g'),
+                vc=rvc_model_data.get('vc'),
                 hubert_model=hubert_model_data,
-                rvc_model_dict=rvc_model_data,
+                sid=0,  # Speaker ID - default to 0
+                input_audio=(audio_data, sample_rate),
                 f0_up_key=pitch_shift,
                 f0_method=final_pitch_params['f0_method'],
                 index_rate=final_pitch_params['index_rate'],
@@ -282,7 +282,8 @@ class RVCEngine:
                 rms_mix_rate=final_pitch_params['rms_mix_rate'],
                 resample_sr=final_pitch_params['resample_sr'],
                 crepe_hop_length=final_pitch_params.get('crepe_hop_length', 160),
-                f0_autotune=final_pitch_params.get('f0_autotune', False)
+                f0_autotune=final_pitch_params.get('f0_autotune', False),
+                file_index=rvc_model_data.get('file_index', '')
             )
             
             if result is None:
@@ -344,11 +345,11 @@ class RVCEngine:
                     print(f"⚠️ Failed to load via unified interface: {e}")
                     print(f"🔄 Falling back to direct loading...")
                     
-                    # Fallback to direct loading
-                    from .rvc_inference import get_rvc_model, RVCConfig
+                    # Fallback to direct loading using actual RVC implementation
+                    from .impl.vc_infer_pipeline import get_vc
+                    from .impl.config import config as rvc_config
                     
-                    config = RVCConfig()
-                    model_data = get_rvc_model(model_path, index_path, config, self.device)
+                    model_data = get_vc(model_path, index_path, rvc_config, self.device)
                     
                     if model_data:
                         model_info['model_obj'] = model_data
@@ -399,11 +400,11 @@ class RVCEngine:
                     print(f"⚠️ Failed to load via unified interface: {e}")
                     print(f"🔄 Falling back to direct loading...")
                     
-                    # Fallback to direct loading
-                    from .rvc_inference import load_hubert_model, RVCConfig
+                    # Fallback to direct loading using actual RVC implementation
+                    from .impl.lib.model_utils import load_hubert
+                    from .impl.config import config as rvc_config
                     
-                    config = RVCConfig()
-                    model_obj = load_hubert_model(model_path, config)
+                    model_obj = load_hubert(model_path, rvc_config)
                     
                     if model_obj:
                         model_info['model_obj'] = model_obj
