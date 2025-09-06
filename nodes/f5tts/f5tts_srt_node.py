@@ -294,7 +294,7 @@ Hello! This is F5-TTS SRT with character switching.
                            timing_mode, opt_reference_audio=None, temperature=0.8, speed=1.0, target_rms=0.1,
                            cross_fade_duration=0.15, nfe_step=32, cfg_strength=2.0, enable_audio_cache=True,
                            fade_for_StretchToFit=0.01, max_stretch_ratio=1.0, min_stretch_ratio=0.5,
-                           timing_tolerance=2.0):
+                           timing_tolerance=2.0, auto_phonemization=True):
         
         def _process():
             # Check if SRT support is available
@@ -560,7 +560,8 @@ Hello! This is F5-TTS SRT with character switching.
                         cfg_strength=cfg_strength,
                         seed=seed,
                         enable_cache=enable_audio_cache,
-                        cache_fn=None  # Use standard caching
+                        cache_fn=None,  # Use standard caching
+                        auto_phonemization=auto_phonemization
                     )
                     
                     # Calculate duration and store
@@ -847,7 +848,8 @@ Hello! This is F5-TTS SRT with character switching.
             # Generate with F5-TTS (using base class method)
             wav = self.generate_f5tts_with_pause_tags(
                 segment_text, ref_audio_path, ref_text, temperature, speed,
-                target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed
+                target_rms, cross_fade_duration, safe_nfe_step, cfg_strength, seed,
+                auto_phonemization=auto_phonemization
             )
             
             # Cache the result if enabled and generation succeeded

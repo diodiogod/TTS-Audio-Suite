@@ -72,6 +72,10 @@ class F5TTSEngineNode(BaseF5TTSNode):
                     "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
                     "tooltip": "Speech generation control. Lower values (1.0-1.5) = more natural, conversational delivery. Higher values (3.0-5.0) = crisper, more articulated speech with stronger emphasis. Default 2.0 balances naturalness and clarity."
                 }),
+                "auto_phonemization": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "🦜 Enable automatic phonemization for multilingual models. When enabled, non-English text is converted to IPA phonemes. Disable if quality is poor for your language model."
+                }),
             }
         }
 
@@ -82,7 +86,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
 
     def create_engine_adapter(self, language: str, device: str, temperature: float, 
                             speed: float, target_rms: float, cross_fade_duration: float,
-                            nfe_step: int, cfg_strength: float):
+                            nfe_step: int, cfg_strength: float, auto_phonemization: bool):
         """
         Create F5-TTS engine adapter with configuration.
         
@@ -95,6 +99,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
             cross_fade_duration: Crossfade duration for segments
             nfe_step: Neural Function Evaluation steps
             cfg_strength: Classifier-Free Guidance strength
+            auto_phonemization: Enable automatic phonemization for multilingual text
             
         Returns:
             Tuple containing F5-TTS engine adapter
@@ -124,6 +129,7 @@ class F5TTSEngineNode(BaseF5TTSNode):
                 "cross_fade_duration": cross_fade_duration,
                 "nfe_step": safe_nfe_step,
                 "cfg_strength": cfg_strength,
+                "auto_phonemization": auto_phonemization,
                 "engine_type": "f5tts"
             }
             

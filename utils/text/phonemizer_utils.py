@@ -190,19 +190,27 @@ def should_use_phonemization(model_name: str, text_list: List[str]) -> bool:
     Returns:
         True if phonemization should be used
     """
+    # Check user setting first (UI toggle overrides everything)
+    import os
+    auto_phonemization = os.environ.get('F5TTS_AUTO_PHONEMIZATION', 'true').lower() == 'true'
+    if not auto_phonemization:
+        return False
+    
     # Check if phonemization is available
     phonemizer = get_phonemizer()
     if not phonemizer.is_available():
         return False
     
-    # IMPORTANT: Models without vocab files (like F5-PT-BR) NEED phonemization
-    # because they must convert their language text to work with English vocab
+    # IMPORTANT: F5-PT-BR doesn't work well with phonemization
+    # The model was trained on Portuguese text, not IPA phonemes
+    # Using phonemization makes it worse, not better
     model_lower = model_name.lower()
-    models_requiring_phonemization = ['ptbr', 'pt-br', 'pt_br']  # Add more as needed
+    models_to_skip = ['ptbr', 'pt-br', 'pt_br']  # These work better without phonemization
     
-    if any(indicator in model_lower for indicator in models_requiring_phonemization):
-        print(f"🦜 Using phonemization for {model_name} - converts Portuguese to work with English vocab")
-        return True
+    if any(indicator in model_lower for indicator in models_to_skip):
+        import sys
+        print(f"🦜 Skipping phonemization for {model_name} - model trained on Portuguese text, not IPA", file=sys.stderr)
+        return False
     
     # Check if model path suggests non-English language
     non_english_indicators = [
@@ -212,6 +220,9 @@ def should_use_phonemization(model_name: str, text_list: List[str]) -> bool:
     ]
     
     if any(indicator in model_lower for indicator in non_english_indicators):
+        import sys
+        print(f"🦜 DEBUG: Model '{model_name}' triggered phonemization (non-English model detected)", file=sys.stderr)
+        print(f"🦜 EXPERIMENTAL: Using phonemization for {model_name}. Please test quality and report results!", file=sys.stderr)
         return True
     
     # Check for special characters in text that suggest non-English
@@ -219,6 +230,9 @@ def should_use_phonemization(model_name: str, text_list: List[str]) -> bool:
     
     for text in text_list:
         if any(char in special_chars for char in text):
+            import sys
+            print(f"🦜 DEBUG: Text contains special characters, triggering phonemization", file=sys.stderr)
+            print(f"🦜 EXPERIMENTAL: Using phonemization for special characters in text. Please test quality and report results!", file=sys.stderr)
             return True
     
     # Check for tokenizer.json (indicates IPA-based model)
@@ -339,7 +353,8 @@ def convert_text_with_smart_phonemization(text_list: List[str], model_name: str 
     if should_use_phonemization(model_name, text_list):
         phonemizer = get_phonemizer()
         
-        print(f"🦜 Using phonemization for F5-TTS: {phonemizer.get_backend_info()}")
+        import sys
+        print(f"🦜 Using phonemization for F5-TTS: {phonemizer.get_backend_info()}", file=sys.stderr)
         
         processed_texts = []
         for text in text_list:

@@ -202,10 +202,15 @@ class BaseF5TTSNode(BaseChatterBoxNode):
     def generate_f5tts_audio(self, text: str, ref_audio_path: str, ref_text: str, 
                             temperature: float = 0.8, speed: float = 1.0,
                             target_rms: float = 0.1, cross_fade_duration: float = 0.15,
-                            nfe_step: int = 32, cfg_strength: float = 2.0) -> torch.Tensor:
+                            nfe_step: int = 32, cfg_strength: float = 2.0, 
+                            auto_phonemization: bool = True) -> torch.Tensor:
         """Generate audio using F5-TTS with reference audio+text"""
         if self.f5tts_model is None:
             raise RuntimeError("F5-TTS model not loaded. Call load_f5tts_model() first.")
+        
+        # Set phonemization setting for utils_infer.py to read
+        import os
+        os.environ['F5TTS_AUTO_PHONEMIZATION'] = str(auto_phonemization).lower()
         
         return self.f5tts_model.generate(
             text=text,

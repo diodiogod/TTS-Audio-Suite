@@ -624,7 +624,8 @@ Hello! This is unified SRT TTS with character switching.
                     fade_for_StretchToFit=fade_for_StretchToFit,
                     max_stretch_ratio=max_stretch_ratio,
                     min_stretch_ratio=min_stretch_ratio,
-                    timing_tolerance=timing_tolerance
+                    timing_tolerance=timing_tolerance,
+                    auto_phonemization=config.get("auto_phonemization", True)
                 )
                 
             elif engine_type == "higgs_audio":

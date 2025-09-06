@@ -138,6 +138,10 @@ Back to the main narrator voice for the conclusion.""",
                     "default": True,
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
                 }),
+                "auto_phonemization": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "🦜 Enable automatic phonemization for multilingual models. When enabled, non-English text is converted to IPA phonemes. Disable if quality is poor for your language model."
+                }),
             }
         }
         
@@ -271,7 +275,8 @@ Back to the main narrator voice for the conclusion.""",
     def _generate_segment_cache_key(self, text: str, model_name: str, device: str,
                                    audio_component: str, ref_text: str, temperature: float,
                                    speed: float, target_rms: float, cross_fade_duration: float,
-                                   nfe_step: int, cfg_strength: float, seed: int, character: str = "narrator") -> str:
+                                   nfe_step: int, cfg_strength: float, seed: int, character: str = "narrator", 
+                                   auto_phonemization: bool = True) -> str:
         """Generate cache key for a single F5-TTS audio segment based on generation parameters."""
         cache_data = {
             'text': text,
@@ -287,6 +292,7 @@ Back to the main narrator voice for the conclusion.""",
             'cfg_strength': cfg_strength,
             'seed': seed,
             'character': character,
+            'auto_phonemization': auto_phonemization,
             'engine': 'f5tts'
         }
         cache_string = str(sorted(cache_data.items()))
@@ -307,7 +313,7 @@ Back to the main narrator voice for the conclusion.""",
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
                        temperature=0.8, speed=1.0, target_rms=0.1,
                        cross_fade_duration=0.15, nfe_step=32, cfg_strength=2.0, 
-                       enable_audio_cache=True):
+                       enable_audio_cache=True, auto_phonemization=True):
         
         # Normalize model name for backward compatibility (case-insensitive matching)
         # Convert V1, V2, etc. to v1, v2 for consistency
@@ -497,7 +503,8 @@ Back to the main narrator voice for the conclusion.""",
                                         f"{character}:{cache_text}", required_model, inputs["device"], 
                                         char_audio_component, char_text, inputs["temperature"], inputs["speed"],
                                         inputs["target_rms"], inputs["cross_fade_duration"], 
-                                        safe_nfe_step, inputs["cfg_strength"], inputs["seed"], character
+                                        safe_nfe_step, inputs["cfg_strength"], inputs["seed"], character,
+                                        auto_phonemization
                                     )
                                     cached_data = self._get_cached_segment_audio(cache_key)
                                     if not cached_data:
@@ -568,7 +575,8 @@ Back to the main narrator voice for the conclusion.""",
                                             f"{char_name}:{text_content}", required_model, inputs["device"], 
                                             char_audio_comp, char_ref_text, inputs["temperature"], inputs["speed"],
                                             inputs["target_rms"], inputs["cross_fade_duration"], 
-                                            safe_nfe_step, inputs["cfg_strength"], inputs["seed"], char_name
+                                            safe_nfe_step, inputs["cfg_strength"], inputs["seed"], char_name,
+                                            auto_phonemization
                                         )
                                         if audio_result is None:
                                             # Get from cache
@@ -601,7 +609,8 @@ Back to the main narrator voice for the conclusion.""",
                                 target_rms=inputs["target_rms"],
                                 cross_fade_duration=inputs["cross_fade_duration"],
                                 nfe_step=safe_nfe_step,
-                                cfg_strength=inputs["cfg_strength"]
+                                cfg_strength=inputs["cfg_strength"],
+                                auto_phonemization=auto_phonemization
                             )
                             segment_audio_chunks.append(chunk_audio)
                         
@@ -660,7 +669,8 @@ Back to the main narrator voice for the conclusion.""",
                                 f"narrator:{cache_text}", inputs["model"], inputs["device"], 
                                 stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
                                 inputs["target_rms"], inputs["cross_fade_duration"], 
-                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator",
+                                auto_phonemization
                             )
                             cached_data = self._get_cached_segment_audio(cache_key)
                             if not cached_data:
@@ -711,7 +721,8 @@ Back to the main narrator voice for the conclusion.""",
                                 f"narrator:{text_content}", inputs["model"], inputs["device"], 
                                 stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
                                 inputs["target_rms"], inputs["cross_fade_duration"], 
-                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator",
+                                auto_phonemization
                             )
                             if audio_result is None:
                                 # Get from cache
@@ -760,7 +771,8 @@ Back to the main narrator voice for the conclusion.""",
                                 f"narrator:{text_content}", inputs["model"], inputs["device"], 
                                 stable_audio_component, main_ref_text, inputs["temperature"], inputs["speed"],
                                 inputs["target_rms"], inputs["cross_fade_duration"], 
-                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator"
+                                safe_nfe_step, inputs["cfg_strength"], inputs["seed"], "narrator",
+                                auto_phonemization
                             )
                             if audio_result is None:
                                 # Get from cache
@@ -910,7 +922,8 @@ Back to the main narrator voice for the conclusion.""",
                     cache_key = self._generate_segment_cache_key(
                         f"{character}:{chunk}", required_model, device,
                         stable_audio_component, ref_text, temperature, speed,
-                        target_rms, cross_fade_duration, nfe_step, cfg_strength, seed, character
+                        target_rms, cross_fade_duration, nfe_step, cfg_strength, seed, character,
+                        auto_phonemization
                     )
                     cached_audio = self._get_cached_segment_audio(cache_key)
                     if cached_audio:
