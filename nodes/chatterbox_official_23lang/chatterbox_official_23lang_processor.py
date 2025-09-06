@@ -194,11 +194,13 @@ Back to the main narrator voice for the conclusion.""",
         else:
             for file in required_files:
                 if not os.path.exists(os.path.join(ckpt_dir, file)):
-                    # Also check for .pt fallback for s3gen and ve
-                    if file.endswith('.safetensors'):
-                        pt_file = file.replace('.safetensors', '.pt')
-                        if not os.path.exists(os.path.join(ckpt_dir, pt_file)):
+                    # Check for alternative formats for s3gen and ve
+                    if file.endswith('.pt') and file in ['s3gen.pt', 've.pt']:
+                        # Check if safetensors version exists
+                        safetensors_file = file.replace('.pt', '.safetensors')
+                        if not os.path.exists(os.path.join(ckpt_dir, safetensors_file)):
                             missing_files.append(file)
+                        # else: safetensors exists, so file is not missing
                     else:
                         missing_files.append(file)
         

@@ -841,6 +841,9 @@ Hello! This is F5-TTS SRT with character switching.
                 )
                 cached_audio = self._get_cached_segment_audio(cache_key)
                 if cached_audio:
+                    # Set phonemization setting for consistency (even when using cache)
+                    import os
+                    os.environ['F5TTS_AUTO_PHONEMIZATION'] = str(auto_phonemization).lower()
                     print(f"💾 F5-TTS SRT streaming: Cache hit for {character} segment {original_idx}")
                     return cached_audio[0]
             

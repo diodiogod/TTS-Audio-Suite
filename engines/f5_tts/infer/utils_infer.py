@@ -487,7 +487,12 @@ def infer_batch_process(
             from utils.text.phonemizer_utils import convert_text_with_smart_phonemization
             # Try to get original model name for phonemizer context
             model_name = getattr(model_obj, 'original_model_name', '')
-            final_text_list = convert_text_with_smart_phonemization(text_list, model_name)
+            
+            # Get auto_phonemization setting from environment
+            import os
+            auto_phonemization = os.environ.get('F5TTS_AUTO_PHONEMIZATION', 'true').lower() == 'true'
+            
+            final_text_list = convert_text_with_smart_phonemization(text_list, model_name, auto_phonemization)
         except ImportError:
             # Fallback to original pinyin conversion if phonemizer utils not available
             final_text_list = convert_char_to_pinyin(text_list)

@@ -928,6 +928,9 @@ Back to the main narrator voice for the conclusion.""",
                     )
                     cached_audio = self._get_cached_segment_audio(cache_key)
                     if cached_audio:
+                        # Set phonemization setting for consistency
+                        import os
+                        os.environ['F5TTS_AUTO_PHONEMIZATION'] = str(auto_phonemization).lower()
                         chunk_audios.append(cached_audio[0])
                         continue
                 
