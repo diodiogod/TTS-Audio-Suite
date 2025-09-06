@@ -7,17 +7,15 @@ import numpy as np
 import torch.nn.functional as F
 from scipy.signal import get_window
 # Librosa compatibility layer for different versions
+import numpy as np
+
+# Handle pad_center import
 try:
-    from librosa.util import pad_center, tiny, normalize
+    from librosa.util import pad_center
 except ImportError:
     try:
-        # Try alternative import path
-        from librosa import pad_center, tiny, normalize
+        from librosa import pad_center
     except ImportError:
-        # Manual implementation for newer librosa versions
-        import numpy as np
-        from librosa.util import tiny, normalize
-        
         def pad_center(data, size, axis=-1, **kwargs):
             """Manual implementation of librosa's pad_center for compatibility"""
             n = data.shape[axis]
@@ -29,6 +27,46 @@ except ImportError:
             
             return np.pad(data, pad_widths, mode=kwargs.get('mode', 'constant'), 
                          constant_values=kwargs.get('constant_values', 0))
+
+# Handle tiny import
+try:
+    from librosa.util import tiny
+except ImportError:
+    try:
+        from librosa import tiny
+    except ImportError:
+        # Manual implementation - tiny is just a very small float
+        tiny = 1e-10
+
+# Handle normalize import
+try:
+    from librosa.util import normalize
+except ImportError:
+    try:
+        from librosa import normalize
+    except ImportError:
+        def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
+            """Manual implementation of librosa's normalize for compatibility"""
+            if norm is None:
+                return S
+            
+            # Compute norm
+            if norm == np.inf:
+                length = np.abs(S).max(axis=axis, keepdims=True)
+            elif norm == -np.inf:
+                length = np.abs(S).min(axis=axis, keepdims=True)
+            else:
+                length = np.sum(np.abs(S)**norm, axis=axis, keepdims=True)**(1./norm)
+            
+            if threshold is not None:
+                length = np.maximum(length, threshold)
+            
+            if fill is not None:
+                length = np.where(length == 0, fill, length)
+            else:
+                length = np.where(length == 0, 1.0, length)
+            
+            return S / length
 
 
 ###stft codes from https://github.com/pseeth/torch-stft/blob/master/torch_stft/util.py
