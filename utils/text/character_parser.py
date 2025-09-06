@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Union
 from pathlib import Path
+from utils.models.language_mapper import resolve_language_alias, LANGUAGE_ALIASES
 
 
 @dataclass
@@ -65,129 +66,11 @@ class CharacterParser:
         self._logged_characters = set()
         self._logged_character_warnings = set()
         
-        # Language alias system for flexible language switching
-        self.language_aliases = {
-            # German variations
-            'de': 'de', 'german': 'de', 'deutsch': 'de', 'germany': 'de', 'deutschland': 'de',
-            
-            # English variations
-            'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'uk': 'en', 'america': 'en', 'britain': 'en',
-            
-            # Brazilian Portuguese (separate from European Portuguese)
-            'pt-br': 'pt-br', 'ptbr': 'pt-br', 'brazilian': 'pt-br', 'brasilian': 'pt-br',
-            'brazil': 'pt-br', 'brasil': 'pt-br', 'br': 'pt-br', 'português brasileiro': 'pt-br',
-            
-            # European Portuguese (separate from Brazilian)
-            'pt-pt': 'pt-pt', 'portugal': 'pt-pt', 'european portuguese': 'pt-pt',
-            'portuguese': 'pt-pt', 'português': 'pt-pt', 'portugues': 'pt-pt',
-            
-            # French variations
-            'fr': 'fr', 'french': 'fr', 'français': 'fr', 'francais': 'fr', 
-            'france': 'fr', 'français de france': 'fr',
-            
-            # Spanish variations
-            'es': 'es', 'spanish': 'es', 'español': 'es', 'espanol': 'es',
-            'spain': 'es', 'españa': 'es', 'castilian': 'es',
-            
-            # Italian variations
-            'it': 'it', 'italian': 'it', 'italiano': 'it', 'italy': 'it', 'italia': 'it',
-            
-            # Norwegian variations
-            'no': 'no', 'norwegian': 'no', 'norsk': 'no', 'norway': 'no', 'norge': 'no',
-            
-            # Dutch variations
-            'nl': 'nl', 'dutch': 'nl', 'nederlands': 'nl', 'netherlands': 'nl', 'holland': 'nl',
-            
-            # Japanese variations
-            'ja': 'ja', 'japanese': 'ja', '日本語': 'ja', 'japan': 'ja', 'nihongo': 'ja',
-            
-            # Chinese variations
-            'zh': 'zh', 'chinese': 'zh', '中文': 'zh', 'china': 'zh',
-            'zh-cn': 'zh-cn', 'mandarin': 'zh-cn', 'simplified': 'zh-cn', 'mainland': 'zh-cn',
-            'zh-tw': 'zh-tw', 'traditional': 'zh-tw', 'taiwan': 'zh-tw', 'taiwanese': 'zh-tw',
-            
-            # Russian variations
-            'ru': 'ru', 'russian': 'ru', 'русский': 'ru', 'russia': 'ru', 'россия': 'ru',
-            
-            # Korean variations
-            'ko': 'ko', 'korean': 'ko', '한국어': 'ko', 'korea': 'ko', 'south korea': 'ko',
-            
-            # Indian Languages (F5-Hindi-Small for Hindi, others use base F5TTS models)
-            
-            # Hindi variations
-            'hi': 'hi', 'hindi': 'hi', 'हिन्दी': 'hi', 'hin': 'hi', 'देवनागरी': 'hi',
-            
-            # Assamese variations
-            'as': 'as', 'assamese': 'as', 'অসমীয়া': 'as', 'asom': 'as', 'axomiya': 'as',
-            
-            # Bengali variations  
-            'bn': 'bn', 'bengali': 'bn', 'বাংলা': 'bn', 'bangla': 'bn', 'west bengal': 'bn',
-            'bangladesh': 'bn', 'bengal': 'bn',
-            
-            # Gujarati variations
-            'gu': 'gu', 'gujarati': 'gu', 'ગુજરાતી': 'gu', 'gujarat': 'gu', 'gujrati': 'gu',
-            
-            # Kannada variations
-            'kn': 'kn', 'kannada': 'kn', 'ಕನ್ನಡ': 'kn', 'karnataka': 'kn', 'kanarese': 'kn',
-            
-            # Malayalam variations
-            'ml': 'ml', 'malayalam': 'ml', 'മലയാളം': 'ml', 'kerala': 'ml', 'malayali': 'ml',
-            
-            # Marathi variations
-            'mr': 'mr', 'marathi': 'mr', 'मराठी': 'mr', 'maharashtra': 'mr',
-            
-            # Odia variations
-            'or': 'or', 'odia': 'or', 'ଓଡ଼ିଆ': 'or', 'oriya': 'or', 'odisha': 'or', 'orissa': 'or',
-            
-            # Punjabi variations
-            'pa': 'pa', 'punjabi': 'pa', 'ਪੰਜਾਬੀ': 'pa', 'panjabi': 'pa', 'punjab': 'pa',
-            
-            # Tamil variations
-            'ta': 'ta', 'tamil': 'ta', 'தமிழ்': 'ta', 'tamil nadu': 'ta', 'tamilnadu': 'ta',
-            
-            # Telugu variations
-            'te': 'te', 'telugu': 'te', 'తెలుగు': 'te', 'andhra pradesh': 'te',
-            'andhra': 'te', 'telangana': 'te',
-            
-            # === ChatterBox Official 23-Lang Additional Languages ===
-            
-            # Arabic variations
-            'ar': 'ar', 'arabic': 'ar', 'العربية': 'ar', 'arab': 'ar', 'middle east': 'ar',
-            
-            # Danish variations  
-            'da': 'da', 'danish': 'da', 'dansk': 'da', 'denmark': 'da', 'danmark': 'da',
-            
-            # Greek variations
-            'el': 'el', 'greek': 'el', 'ελληνικά': 'el', 'greece': 'el', 'hellenic': 'el',
-            'gr': 'el',  # Common abbreviation for Greece -> Greek language
-            
-            # Finnish variations
-            'fi': 'fi', 'finnish': 'fi', 'suomi': 'fi', 'finland': 'fi', 'suomalainen': 'fi',
-            
-            # Hebrew variations
-            'he': 'he', 'hebrew': 'he', 'עברית': 'he', 'israel': 'he', 'israeli': 'he',
-            'iw': 'he',  # Legacy ISO code
-            
-            # Malay variations
-            'ms': 'ms', 'malay': 'ms', 'bahasa melayu': 'ms', 'malaysia': 'ms', 'melayu': 'ms',
-            
-            # Polish variations
-            'pl': 'pl', 'polish': 'pl', 'polski': 'pl', 'poland': 'pl', 'polska': 'pl',
-            
-            # Swedish variations
-            'sv': 'sv', 'swedish': 'sv', 'svenska': 'sv', 'sweden': 'sv', 'sverige': 'sv',
-            
-            # Swahili variations
-            'sw': 'sw', 'swahili': 'sw', 'kiswahili': 'sw', 'tanzania': 'sw', 'kenya': 'sw',
-            
-            # Turkish variations
-            'tr': 'tr', 'turkish': 'tr', 'türkçe': 'tr', 'turkce': 'tr', 'turkey': 'tr',
-            'türkiye': 'tr', 'turkiye': 'tr',
-        }
+        # Note: Using centralized language alias system from utils.models.language_mapper
     
     def resolve_language_alias(self, language_input: str) -> str:
         """
-        Resolve language alias to canonical language code.
+        Resolve language alias to canonical language code using centralized system.
         
         Args:
             language_input: User input language (e.g., "German", "brasil", "pt-BR")
@@ -195,16 +78,7 @@ class CharacterParser:
         Returns:
             Canonical language code (e.g., "de", "pt-br")
         """
-        # Normalize input: lowercase and strip whitespace
-        normalized = language_input.strip().lower()
-        
-        # Look up in aliases
-        canonical = self.language_aliases.get(normalized)
-        if canonical:
-            return canonical
-            
-        # If no alias found, return the original (for backward compatibility)
-        return normalized
+        return resolve_language_alias(language_input)
     
     def set_available_characters(self, characters: List[str]):
         """
@@ -765,7 +639,7 @@ class CharacterParser:
                 # Convert canonical codes to display names using existing alias system
                 # Find a human-readable alias that maps to this canonical code
                 display_name = None
-                for alias, canonical in self.language_aliases.items():
+                for alias, canonical in LANGUAGE_ALIASES.items():
                     if (canonical == canonical_lang and 
                         alias.isalpha() and 
                         len(alias) > 2 and  # Skip short codes like 'en', 'de'
@@ -819,12 +693,12 @@ class CharacterParser:
         preferred_aliases = ['english', 'german', 'french', 'spanish', 'italian', 'norwegian', 'chinese', 'japanese', 'russian', 'portuguese', 'dutch', 'korean']
         
         for preferred in preferred_aliases:
-            if preferred in self.language_aliases and self.language_aliases[preferred] == canonical_lang:
+            if preferred in LANGUAGE_ALIASES and LANGUAGE_ALIASES[preferred] == canonical_lang:
                 return preferred.title()
         
         # Fallback: find any readable alias (avoid short codes and abbreviations)
         best_alias = None
-        for alias, canonical in self.language_aliases.items():
+        for alias, canonical in LANGUAGE_ALIASES.items():
             if (canonical == canonical_lang and 
                 alias.isalpha() and 
                 len(alias) >= 4 and  # Skip short codes like 'en', 'de', 'usa', 'eng'

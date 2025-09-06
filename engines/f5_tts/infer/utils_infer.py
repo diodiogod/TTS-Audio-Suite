@@ -481,7 +481,19 @@ def infer_batch_process(
 
         # Prepare the text
         text_list = [ref_text + gen_text]
-        final_text_list = convert_char_to_pinyin(text_list)
+        
+        print(f"🦜🦜🦜 utils_infer.py RUNNING - about to check phonemization")
+        
+        # Use smart phonemization for multilingual support
+        try:
+            from utils.text.phonemizer_utils import convert_text_with_smart_phonemization
+            # Try to get original model name for phonemizer context
+            model_name = getattr(model_obj, 'original_model_name', '')
+            print(f"🦜 DEBUG: Model object type: {type(model_obj)}, original_model_name: '{model_name}'")
+            final_text_list = convert_text_with_smart_phonemization(text_list, model_name)
+        except ImportError:
+            # Fallback to original pinyin conversion if phonemizer utils not available
+            final_text_list = convert_char_to_pinyin(text_list)
 
         ref_audio_len = audio.shape[-1] // hop_length
         if fix_duration is not None:

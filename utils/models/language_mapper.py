@@ -6,6 +6,215 @@ Provides centralized language-to-model mapping for F5-TTS and ChatterBox engines
 from typing import Dict, List, Optional
 
 
+# Global language alias system - maps various language names/codes to canonical codes
+# Complete copy from character_parser.py language aliases
+LANGUAGE_ALIASES = {
+    # German variations
+    'de': 'de', 'german': 'de', 'deutsch': 'de', 'germany': 'de', 'deutschland': 'de',
+    
+    # English variations
+    'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'uk': 'en', 'america': 'en', 'britain': 'en',
+    
+    # Brazilian Portuguese (separate from European Portuguese)
+    'pt-br': 'pt-br', 'ptbr': 'pt-br', 'brazilian': 'pt-br', 'brasilian': 'pt-br',
+    'brazil': 'pt-br', 'brasil': 'pt-br', 'br': 'pt-br', 'português brasileiro': 'pt-br',
+    
+    # European Portuguese (separate from Brazilian)
+    'pt-pt': 'pt-pt', 'portugal': 'pt-pt', 'european portuguese': 'pt-pt',
+    'portuguese': 'pt-pt', 'português': 'pt-pt', 'portugues': 'pt-pt',
+    
+    # French variations
+    'fr': 'fr', 'french': 'fr', 'français': 'fr', 'francais': 'fr', 
+    'france': 'fr', 'français de france': 'fr',
+    
+    # Spanish variations
+    'es': 'es', 'spanish': 'es', 'español': 'es', 'espanol': 'es',
+    'spain': 'es', 'españa': 'es', 'castilian': 'es',
+    
+    # Italian variations
+    'it': 'it', 'italian': 'it', 'italiano': 'it', 'italy': 'it', 'italia': 'it',
+    
+    # Norwegian variations
+    'no': 'no', 'norwegian': 'no', 'norsk': 'no', 'norway': 'no', 'norge': 'no',
+    
+    # Dutch variations
+    'nl': 'nl', 'dutch': 'nl', 'nederlands': 'nl', 'netherlands': 'nl', 'holland': 'nl',
+    
+    # Japanese variations
+    'ja': 'ja', 'japanese': 'ja', '日本語': 'ja', 'japan': 'ja', 'nihongo': 'ja',
+    
+    # Chinese variations
+    'zh': 'zh', 'chinese': 'zh', '中文': 'zh', 'china': 'zh',
+    'zh-cn': 'zh-cn', 'mandarin': 'zh-cn', 'simplified': 'zh-cn', 'mainland': 'zh-cn',
+    'zh-tw': 'zh-tw', 'traditional': 'zh-tw', 'taiwan': 'zh-tw', 'taiwanese': 'zh-tw',
+    
+    # Russian variations
+    'ru': 'ru', 'russian': 'ru', 'русский': 'ru', 'russia': 'ru', 'россия': 'ru',
+    
+    # Korean variations
+    'ko': 'ko', 'korean': 'ko', '한국어': 'ko', 'korea': 'ko', 'south korea': 'ko',
+    
+    # Indian Languages (F5-Hindi-Small for Hindi, others use base F5TTS models)
+    
+    # Hindi variations
+    'hi': 'hi', 'hindi': 'hi', 'हिन्दी': 'hi', 'hin': 'hi', 'देवनागरी': 'hi',
+    
+    # Assamese variations
+    'as': 'as', 'assamese': 'as', 'অসমীয়া': 'as', 'asom': 'as', 'axomiya': 'as',
+    
+    # Bengali variations  
+    'bn': 'bn', 'bengali': 'bn', 'বাংলা': 'bn', 'bangla': 'bn', 'west bengal': 'bn',
+    'bangladesh': 'bn', 'bengal': 'bn',
+    
+    # Gujarati variations
+    'gu': 'gu', 'gujarati': 'gu', 'ગુજરાતી': 'gu', 'gujarat': 'gu', 'gujrati': 'gu',
+    
+    # Kannada variations
+    'kn': 'kn', 'kannada': 'kn', 'ಕನ್ನಡ': 'kn', 'karnataka': 'kn', 'kanarese': 'kn',
+    
+    # Malayalam variations
+    'ml': 'ml', 'malayalam': 'ml', 'മലയാളം': 'ml', 'kerala': 'ml', 'malayali': 'ml',
+    
+    # Marathi variations
+    'mr': 'mr', 'marathi': 'mr', 'मराठी': 'mr', 'maharashtra': 'mr',
+    
+    # Odia variations
+    'or': 'or', 'odia': 'or', 'ଓଡ଼ିଆ': 'or', 'oriya': 'or', 'odisha': 'or', 'orissa': 'or',
+    
+    # Punjabi variations
+    'pa': 'pa', 'punjabi': 'pa', 'ਪੰਜਾਬੀ': 'pa', 'panjabi': 'pa', 'punjab': 'pa',
+    
+    # Tamil variations
+    'ta': 'ta', 'tamil': 'ta', 'தமிழ்': 'ta', 'tamil nadu': 'ta', 'tamilnadu': 'ta',
+    
+    # Telugu variations
+    'te': 'te', 'telugu': 'te', 'తెలుగు': 'te', 'andhra pradesh': 'te',
+    'andhra': 'te', 'telangana': 'te',
+    
+    # === ChatterBox Official 23-Lang Additional Languages ===
+    
+    # Arabic variations
+    'ar': 'ar', 'arabic': 'ar', 'العربية': 'ar', 'arab': 'ar', 'middle east': 'ar',
+    
+    # Danish variations  
+    'da': 'da', 'danish': 'da', 'dansk': 'da', 'denmark': 'da', 'danmark': 'da',
+    
+    # Greek variations
+    'el': 'el', 'greek': 'el', 'ελληνικά': 'el', 'greece': 'el', 'hellenic': 'el',
+    'gr': 'el',  # Common abbreviation for Greece -> Greek language
+    
+    # Finnish variations
+    'fi': 'fi', 'finnish': 'fi', 'suomi': 'fi', 'finland': 'fi', 'suomalainen': 'fi',
+    
+    # Hebrew variations
+    'he': 'he', 'hebrew': 'he', 'עברית': 'he', 'israel': 'he', 'israeli': 'he',
+    'iw': 'he',  # Legacy ISO code
+    
+    # Malay variations
+    'ms': 'ms', 'malay': 'ms', 'bahasa melayu': 'ms', 'malaysia': 'ms', 'melayu': 'ms',
+    
+    # Polish variations
+    'pl': 'pl', 'polish': 'pl', 'polski': 'pl', 'poland': 'pl', 'polska': 'pl',
+    
+    # Swedish variations
+    'sv': 'sv', 'swedish': 'sv', 'svenska': 'sv', 'sweden': 'sv', 'sverige': 'sv',
+    
+    # Swahili variations
+    'sw': 'sw', 'swahili': 'sw', 'kiswahili': 'sw', 'tanzania': 'sw', 'kenya': 'sw',
+    
+    # Turkish variations
+    'tr': 'tr', 'turkish': 'tr', 'türkçe': 'tr', 'turkce': 'tr', 'turkey': 'tr',
+    'türkiye': 'tr', 'turkiye': 'tr',
+    
+    # Additional European languages not in character parser
+    # Czech variations
+    'cs': 'cs', 'cz': 'cs', 'czech': 'cs', 'čeština': 'cs', 'ceska': 'cs',
+    
+    # Slovak variations 
+    'sk': 'sk', 'slovak': 'sk', 'slovenčina': 'sk', 'slovakia': 'sk',
+    
+    # Hungarian variations
+    'hu': 'hu', 'hungarian': 'hu', 'magyar': 'hu', 'hungary': 'hu',
+    
+    # Romanian variations
+    'ro': 'ro', 'romanian': 'ro', 'română': 'ro', 'romania': 'ro',
+    
+    # Bulgarian variations
+    'bg': 'bg', 'bulgarian': 'bg', 'български': 'bg', 'bulgaria': 'bg',
+    
+    # Croatian variations
+    'hr': 'hr', 'croatian': 'hr', 'hrvatski': 'hr', 'croatia': 'hr',
+    
+    # Serbian variations
+    'sr': 'sr', 'serbian': 'sr', 'српски': 'sr', 'serbia': 'sr',
+    
+    # Slovenian variations
+    'sl': 'sl', 'slovenian': 'sl', 'slovenščina': 'sl', 'slovenia': 'sl',
+    
+    # Estonian variations
+    'et': 'et', 'estonian': 'et', 'eesti': 'et', 'estonia': 'et',
+    
+    # Latvian variations
+    'lv': 'lv', 'latvian': 'lv', 'latviešu': 'lv', 'latvia': 'lv',
+    
+    # Lithuanian variations
+    'lt': 'lt', 'lithuanian': 'lt', 'lietuvių': 'lt', 'lithuania': 'lt',
+    
+    # Icelandic variations
+    'is': 'is', 'icelandic': 'is', 'íslenska': 'is', 'iceland': 'is',
+    
+    # Additional Asian/African languages
+    # Vietnamese variations
+    'vi': 'vi', 'vietnamese': 'vi', 'tiếng việt': 'vi', 'vietnam': 'vi',
+    
+    # Indonesian variations
+    'id': 'id', 'indonesian': 'id', 'bahasa indonesia': 'id', 'indonesia': 'id',
+    
+    # Filipino/Tagalog variations
+    'tl': 'tl', 'fil': 'tl', 'filipino': 'tl', 'tagalog': 'tl', 'philippines': 'tl',
+    
+    # Persian/Farsi variations
+    'fa': 'fa', 'persian': 'fa', 'farsi': 'fa', 'فارسی': 'fa', 'iran': 'fa',
+    
+    # Urdu variations
+    'ur': 'ur', 'urdu': 'ur', 'اردو': 'ur', 'pakistan': 'ur',
+    
+    # Afrikaans variations
+    'af': 'af', 'afrikaans': 'af', 'south africa': 'af',
+    
+    # Zulu variations
+    'zu': 'zu', 'zulu': 'zu', 'isizulu': 'zu',
+    
+    # Additional common abbreviations and alternatives
+    'jp': 'ja',  # Common abbreviation for Japanese
+    'kr': 'ko',  # Common abbreviation for Korean
+    'se': 'sv',  # Common abbreviation for Swedish
+    'dk': 'da',  # Common abbreviation for Danish
+}
+
+
+def resolve_language_alias(language_input: str) -> str:
+    """
+    Resolve language alias to canonical language code.
+    
+    Args:
+        language_input: User input language (e.g., "German", "brasil", "pt-BR")
+        
+    Returns:
+        Canonical language code (e.g., "de", "pt-br")
+    """
+    # Normalize input: lowercase and strip whitespace
+    normalized = language_input.strip().lower()
+    
+    # Look up in aliases
+    canonical = LANGUAGE_ALIASES.get(normalized)
+    if canonical:
+        return canonical
+        
+    # If no alias found, return the original (for backward compatibility)
+    return normalized
+
+
 class LanguageModelMapper:
     """Maps language codes to engine-specific model names."""
     
@@ -88,12 +297,12 @@ class LanguageModelMapper:
                 "fr": "F5-FR",       # French
                 "it": "F5-IT",       # Italian
                 "jp": "F5-JP",       # Japanese
+                "ja": "F5-JP",       # Japanese (alternative code)
                 "th": "F5-TH",       # Thai
                 "pt": "F5-PT-BR",    # Portuguese (Brazil)
                 "pt-br": "F5-PT-BR", # Portuguese (Brazil) - alternative format
                 "hi": "F5-Hindi-Small",  # Hindi - uses Small model from IIT Madras
-                # Note: Other Indian languages (as, bn, gu, kn, ml, mr, or, pa, ta, te) fall back to base F5TTS models
-                # IndicF5 was removed due to architecture incompatibility
+                # Note: Other languages fall back to default_model and use phonemization when appropriate
             },
             "chatterbox": chatterbox_mappings,
             "vibevoice": {

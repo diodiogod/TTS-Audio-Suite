@@ -665,6 +665,69 @@ class TTSAudioInstaller:
             ignore_errors=True
         )
 
+    def install_f5tts_multilingual_support(self):
+        """Install phonemization support for F5-TTS multilingual models (Polish, German, French, Spanish, etc.)"""
+        self.log("Installing F5-TTS multilingual phonemization support", "INFO")
+        
+        if self.is_windows:
+            # Windows: pip package that includes espeak binaries (no separate system install needed)
+            self.log("Windows detected - installing espeak-phonemizer-windows for multilingual F5-TTS", "INFO")
+            self.run_pip_command(
+                ["install", "espeak-phonemizer-windows"], 
+                "Installing espeak-phonemizer-windows (includes binaries)",
+                ignore_errors=True
+            )
+            
+            # Test if it works
+            try:
+                import subprocess
+                result = subprocess.run([
+                    sys.executable, "-c",
+                    "from espeak_phonemizer import Phonemizer; p=Phonemizer(); p.phonemize('test', voice='en')"
+                ], capture_output=True, timeout=10)
+                if result.returncode == 0:
+                    self.log("espeak-phonemizer-windows working - multilingual F5-TTS models will work properly", "SUCCESS")
+                else:
+                    self.log("espeak-phonemizer-windows test failed - non-English F5-TTS models may have quality issues", "WARNING")
+            except Exception:
+                self.log("Could not test espeak-phonemizer-windows installation", "WARNING")
+                
+        else:
+            # Linux/Mac: pip package + separate system dependency
+            self.log("Linux/Mac detected - installing phonemizer for multilingual F5-TTS support", "INFO")
+            
+            phonemizer_installed = self.run_pip_command(
+                ["install", "phonemizer"], 
+                "Installing phonemizer package",
+                ignore_errors=True
+            )
+            
+            if phonemizer_installed:
+                # Test if system espeak is available
+                try:
+                    import subprocess
+                    result = subprocess.run([
+                        sys.executable, "-c",
+                        "from phonemizer import phonemize; phonemize('test', language='en', backend='espeak')"
+                    ], capture_output=True, timeout=10)
+                    
+                    if result.returncode == 0:
+                        self.log("phonemizer + system espeak working - multilingual F5-TTS models will work properly", "SUCCESS")
+                    else:
+                        self.log("phonemizer installed but system espeak dependency missing", "WARNING")
+                        self.log("To enable multilingual F5-TTS support, install system espeak:", "INFO")
+                        if self.is_macos:
+                            print("   brew install espeak")
+                        else:  # Linux
+                            print("   sudo apt-get install espeak espeak-data  # Ubuntu/Debian")
+                            print("   sudo dnf install espeak espeak-devel     # Fedora/RHEL")
+                        self.log("Non-English F5-TTS models will fall back to character-based processing", "WARNING")
+                        
+                except Exception as e:
+                    self.log(f"Could not test phonemizer installation: {e}", "WARNING")
+            else:
+                self.log("phonemizer installation failed - non-English F5-TTS models will use fallback processing", "WARNING")
+
     def check_comfyui_environment(self):
         """Check if running in likely ComfyUI environment and warn for system Python"""
         python_path = sys.executable.lower()
@@ -868,6 +931,7 @@ def main():
         installer.install_rvc_dependencies()
         installer.install_problematic_packages()
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
+        installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
         installer.handle_wandb_issues()  # Fix wandb circular import
         installer.handle_python_313_specific()
         

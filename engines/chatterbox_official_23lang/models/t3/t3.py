@@ -46,7 +46,12 @@ class T3(nn.Module):
             hp = T3Config.english_only()  # Default to English-only config for backward compatibility
         super().__init__()
         self.hp = hp
-        self.cfg = LlamaConfig(**LLAMA_CONFIGS[hp.llama_config_name])
+        # Create config with eager attention for compatibility with alignment analyzer
+        config_dict = LLAMA_CONFIGS[hp.llama_config_name].copy()
+        # Force eager attention to support output_attentions=True needed by alignment analyzer
+        # This fixes compatibility with transformers 4.36+ where sdpa doesn't support output_attentions
+        config_dict['attn_implementation'] = 'eager'
+        self.cfg = LlamaConfig(**config_dict)
         self.tfmr = LlamaModel(self.cfg)
         self.dim = self.cfg.hidden_size
         self.deepspeed_patch_applied = False

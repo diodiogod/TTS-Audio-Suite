@@ -174,6 +174,10 @@ class ChatterBoxF5TTS:
                         vocoder_local_path=vocoder_local_path,
                         device=self.device
                     )
+                    # Store original model name for phonemizer on the actual model object
+                    self.f5tts_model.original_model_name = self.model_name
+                    if hasattr(self.f5tts_model, 'ema_model'):
+                        self.f5tts_model.ema_model.original_model_name = self.model_name
                     print(f"📦 F5-TTS {model_config} loaded from local files")
                     return
             
