@@ -49,7 +49,7 @@ Renamed          Conversion       Analyzer       Voice Cloning  │
 TTS Audio Suite  + Streaming                                    │
                                                                 ▼
              v4.8 ◄────────── v4.7 ◄────────── v4.6 ◄───────────┘
-             Sep 25           Sep 25           Jul 25
+             Sep 25           Sep 25           Aug 25
              │                │                │                 
              Chatterbox       ChatterBox       VibeVoice          
              Multilingual     11 Languages     New TTS Engine   
