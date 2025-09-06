@@ -67,7 +67,7 @@ Back to the narrator in default language.
 **Note:** If a language model is not available, the system will fallback to the default model with a warning.
 
 ### 3. Voice File Structure
-Organize character voices using filenames in `voices_examples/`:
+Organize character voices using filenames in `models/voices` (preferred) or in the custom_node TTS Audio Suite folder under `voices_examples/`:
 
 ```
 voices_examples/
@@ -406,3 +406,4 @@ These guidelines help ensure optimal F5-TTS generation quality and prevent commo
 ---
 
 *For technical support or feature requests, please check the main README or create an issue on GitHub.*
+
