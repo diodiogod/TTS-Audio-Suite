@@ -48,13 +48,13 @@ Project          Voice            Speech         New TTS Engine │
 Renamed          Conversion       Analyzer       Voice Cloning  │
 TTS Audio Suite  + Streaming                                    │
                                                                 ▼
-              v4.8 ◄────────── v4.7 ◄────────── v4.6 ◄───────────┘
-              Sep 25           Sep 25           Jul 25
-              │                │                │                 
-              Chatterbox       ChatterBox       VibeVoice          
-              Multilingual     11 Languages     New TTS Engine   
-              TTS Official     Italian + more   90min Generation 
-              23 Languages 
+             v4.8 ◄────────── v4.7 ◄────────── v4.6 ◄───────────┘
+             Sep 25           Sep 25           Jul 25
+             │                │                │                 
+             Chatterbox       ChatterBox       VibeVoice          
+             Multilingual     11 Languages     New TTS Engine   
+             TTS Official     Italian + more   90min Generation 
+             23 Languages 
 ```
 
 <details>
