@@ -479,6 +479,10 @@ Selects the audio format for separated stems:
                 print(f"⚠️ Primary engine failed, switching to RVC fallback engine...")
                 print(f"💡 This is normal - downloading and using model with RVC implementation")
                 
+                # Get device for fallback implementation
+                from comfy import model_management as mm
+                device = mm.get_torch_device()
+                
                 from uvr5_cli import Separator
                 model = Separator(
                     model_path=model_path,
