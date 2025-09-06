@@ -209,15 +209,15 @@ def should_use_phonemization(model_name: str, text_list: List[str], auto_phonemi
     if not phonemizer.is_available():
         return False
     
-    # IMPORTANT: F5-PT-BR doesn't work well with phonemization
-    # The model was trained on Portuguese text, not IPA phonemes
-    # Using phonemization makes it worse, not better
+    # IMPORTANT: Some models don't work well with phonemization
+    # These models were trained on text, not IPA phonemes
+    # Using phonemization makes them worse, not better
     model_lower = model_name.lower()
-    models_to_skip = ['ptbr', 'pt-br', 'pt_br']  # These work better without phonemization
+    models_to_skip = ['ptbr', 'pt-br', 'pt_br', 'it']  # These work better without phonemization
     
     if any(indicator in model_lower for indicator in models_to_skip):
         import sys
-        print(f"🦜 Skipping phonemization for {model_name} - model trained on Portuguese text, not IPA", file=sys.stderr)
+        print(f"🦜 Skipping phonemization for {model_name} - model trained on native text, not IPA", file=sys.stderr)
         return False
     
     # Check if model path suggests non-English language
