@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.13] - 2025-09-06
+
+### Added
+
+- Ensure all audio processing components work correctly with latest Python
+
+### Fixed
+
+- Fix Python 3.13 compatibility issues with ChatterBox Official 23-Lang engine
+- Fix crashes when using ChatterBox Official 23-Lang with Python 3.13
+- Resolve numba compilation errors that prevented voice generation
+- Improve compatibility with modern Python environments
 ## [4.8.12] - 2025-09-06
 
 ### Changed
