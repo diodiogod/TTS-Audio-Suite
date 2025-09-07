@@ -64,13 +64,20 @@ class VibeVoiceEngine:
     Handles model loading, text generation, and multi-speaker support
     """
     
+    # Class-level cache for shared model instance (prevents reloading on each run)
+    _shared_model = None
+    _shared_processor = None
+    _shared_config = None
+    _shared_model_name = None
+    
     def __init__(self):
         """Initialize VibeVoice engine"""
-        self.model = None
-        self.processor = None
+        # Use class-level shared model if available
+        self.model = self.__class__._shared_model
+        self.processor = self.__class__._shared_processor
+        self.current_model_name = self.__class__._shared_model_name
         self.model_path = None
         self.device = None
-        self.current_model_name = None
         
         # Use global shared cache
         self.cache = get_audio_cache()
@@ -192,12 +199,16 @@ class VibeVoiceEngine:
             attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
             quantize_llm_4bit: Enable 4-bit LLM quantization for VRAM savings
         """
-        # Check if already loaded with same config
+        # Check if already loaded with same config using class-level cache
         current_config = (model_name, device, attention_mode, quantize_llm_4bit)
-        if (self.model is not None and 
-            hasattr(self, '_current_config') and 
-            self._current_config == current_config):
-            print(f"💾 VibeVoice model '{model_name}' already loaded with same config")
+        if (self.__class__._shared_model is not None and 
+            self.__class__._shared_config == current_config):
+            print(f"💾 VibeVoice model '{model_name}' already loaded with same config (reusing cached)")
+            # Reuse the cached model
+            self.model = self.__class__._shared_model
+            self.processor = self.__class__._shared_processor
+            self.current_model_name = self.__class__._shared_model_name
+            self.device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
             return
         
         # Ensure package is installed
@@ -407,6 +418,12 @@ class VibeVoiceEngine:
             self._current_config = current_config
             self._attention_mode = final_attention_mode
             self._quantize_llm_4bit = quantize_llm_4bit
+            
+            # Store in class-level cache for reuse
+            self.__class__._shared_model = self.model
+            self.__class__._shared_processor = self.processor
+            self.__class__._shared_config = current_config
+            self.__class__._shared_model_name = model_name
             
             print(f"✅ VibeVoice model '{model_name}' loaded successfully")
             print(f"   Device: {device}, Attention: {final_attention_mode}")

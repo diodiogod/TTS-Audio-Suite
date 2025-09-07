@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.22] - 2025-09-07
+
+### Added
+
+- Add ComfyUI VRAM management support (Clear VRAM button now works)
+
+### Changed
+
+- Improve model caching to reuse loaded models across generations
+- Better memory efficiency for VibeVoice engine
+
+### Fixed
+
+- Fix VibeVoice memory issues and add VRAM management
+- Fix model reloading on each generation causing out-of-memory errors
 ## [4.8.21] - 2025-09-06
 
 ### Added

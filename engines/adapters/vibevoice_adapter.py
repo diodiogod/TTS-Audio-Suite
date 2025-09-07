@@ -76,7 +76,7 @@ class VibeVoiceEngineAdapter:
     
     def load_base_model(self, model_name: str, device: str, attention_mode: str = "auto", quantize_llm_4bit: bool = False):
         """
-        Load base VibeVoice model with enhanced parameters.
+        Load base VibeVoice model using unified model interface for ComfyUI integration.
         
         Args:
             model_name: Model name to load ("vibevoice-1.5B" or "vibevoice-7B")
@@ -84,9 +84,32 @@ class VibeVoiceEngineAdapter:
             attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
             quantize_llm_4bit: Enable 4-bit LLM quantization
         """
-        # Use direct engine loading for enhanced parameter support
-        # Credits: Enhanced loading based on wildminder/ComfyUI-VibeVoice implementation
+        # Use unified model interface for ComfyUI VRAM management and caching
+        from utils.models.unified_model_interface import load_tts_model
+        
         try:
+            # Load through unified interface which handles caching and VRAM management
+            engine = load_tts_model(
+                engine_name="vibevoice",
+                model_name=model_name,
+                device=device,
+                attention_mode=attention_mode,
+                quantize_llm_4bit=quantize_llm_4bit
+            )
+            
+            # Update our engine reference
+            self.vibevoice_engine = engine
+            
+            # Store references for compatibility
+            self.current_model = engine.model
+            self.current_processor = engine.processor
+            self.current_model_name = model_name
+            
+            print(f"✅ VibeVoice adapter: Model '{model_name}' loaded via unified interface")
+            
+        except Exception as e:
+            print(f"❌ VibeVoice adapter: Failed to load model via unified interface: {e}")
+            # Fallback to direct engine loading
             self.vibevoice_engine.initialize_engine(
                 model_name=model_name,
                 device=device,
@@ -98,23 +121,6 @@ class VibeVoiceEngineAdapter:
             self.current_model = self.vibevoice_engine.model
             self.current_processor = self.vibevoice_engine.processor
             self.current_model_name = model_name
-            
-            print(f"✅ VibeVoice adapter: Model '{model_name}' loaded with enhanced parameters")
-            
-        except Exception as e:
-            print(f"❌ VibeVoice adapter: Failed to load model with enhanced parameters: {e}")
-            # Fallback to basic ModelManager loading
-            self.current_model, self.current_processor = self.model_manager.load_vibevoice_model(
-                model_name=model_name, 
-                device=device, 
-                force_reload=False
-            )
-            self.current_model_name = model_name
-            
-            # Update engine instance with cached model/processor
-            self.vibevoice_engine.model = self.current_model
-            self.vibevoice_engine.processor = self.current_processor
-            self.vibevoice_engine.current_model_name = model_name
     
     def _parse_language_tags(self, text: str) -> Tuple[str, Optional[str]]:
         """

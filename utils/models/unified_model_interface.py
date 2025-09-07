@@ -529,12 +529,44 @@ def register_rvc_factory():
     unified_model_interface.register_model_factory("rvc", "separator_demucs", demucs_separator_factory)
 
 
+def register_vibevoice_factory():
+    """Register VibeVoice model factory"""
+    def vibevoice_factory(**kwargs):
+        """Factory for VibeVoice models with ComfyUI integration"""
+        from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
+        
+        # Extract parameters
+        model_name = kwargs.get("model_name", "vibevoice-1.5B")
+        device = kwargs.get("device", "auto")
+        attention_mode = kwargs.get("attention_mode", "auto")
+        quantize_llm_4bit = kwargs.get("quantize_llm_4bit", False)
+        
+        # Create engine instance
+        engine = VibeVoiceEngine()
+        
+        # Initialize with parameters
+        engine.initialize_engine(
+            model_name=model_name,
+            device=device,
+            attention_mode=attention_mode,
+            quantize_llm_4bit=quantize_llm_4bit
+        )
+        
+        print(f"✅ VibeVoice model '{model_name}' loaded via unified interface")
+        
+        # Return the engine which contains both model and processor
+        return engine
+    
+    unified_model_interface.register_model_factory("vibevoice", "tts", vibevoice_factory)
+
+
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
     register_f5tts_factory() 
     register_higgs_audio_factory()
     register_rvc_factory()
+    register_vibevoice_factory()
 
 
 # Auto-initialize on import
