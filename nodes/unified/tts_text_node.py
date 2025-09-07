@@ -165,6 +165,11 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "vibevoice" and 'chunk_minutes' in config:
                 stable_params['chunk_minutes'] = config.get('chunk_minutes', 0)
             
+            # For VibeVoice, include attention_mode and quantization in cache key since they require model reload
+            if engine_type == "vibevoice":
+                stable_params['attention_mode'] = config.get('attention_mode', 'auto')
+                stable_params['quantize_llm_4bit'] = config.get('quantize_llm_4bit', False)
+            
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Cache key now properly includes model name for correct differentiation

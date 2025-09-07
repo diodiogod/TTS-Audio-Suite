@@ -137,6 +137,7 @@ class ComfyUIModelWrapper:
         Partially unload the model to free memory.
         
         For TTS models, this typically means moving to CPU or offloading.
+        For VibeVoice, we delete completely to prevent system RAM accumulation.
         
         Args:
             device: Target device to move to (usually 'cpu')
@@ -147,6 +148,46 @@ class ComfyUIModelWrapper:
         """
         if not self._is_loaded_on_gpu:
             return 0
+        
+        # VibeVoice special handling: Smart CPU migration with RAM cleanup
+        if self.model_info.engine == "vibevoice" and device == 'cpu':
+            print(f"🔄 VibeVoice: Smart CPU migration with RAM cleanup to prevent accumulation")
+            
+            # Before moving to CPU, clean up any existing VibeVoice models in system RAM  
+            # Simple approach: clear other VibeVoice models that aren't on GPU
+            try:
+                models_cleared = 0
+                from utils.models.comfyui_model_wrapper import tts_model_manager
+                cache_keys_to_clear = []
+                
+                # Find VibeVoice models that are in CPU/RAM (not GPU loaded)
+                for cache_key, wrapper in tts_model_manager._model_cache.items():
+                    if (wrapper.model_info.engine == "vibevoice" and
+                        not wrapper._is_loaded_on_gpu and  # Model is in RAM/CPU
+                        wrapper != self):  # Don't clear ourselves
+                        cache_keys_to_clear.append(cache_key)
+                        models_cleared += 1
+                
+                # Clear the old VibeVoice models from RAM
+                for key in cache_keys_to_clear:
+                    try:
+                        tts_model_manager.remove_model(key)
+                        print(f"🗑️ Removed VibeVoice model from RAM: {key[:16]}...")
+                    except Exception as e:
+                        print(f"⚠️ Failed to remove {key[:16]}: {e}")
+                
+                if models_cleared > 0:
+                    print(f"🧹 RAM cleanup: removed {models_cleared} old VibeVoice models from system memory")
+                    import gc
+                    gc.collect()
+                else:
+                    print(f"🔍 No old VibeVoice models found in RAM")
+                    
+            except Exception as e:
+                print(f"⚠️ RAM cleanup error: {e}")
+            
+            # Now proceed with normal CPU migration
+            print(f"📥 Moving VibeVoice to CPU (RAM cleanup completed)")
             
         model = self._model_ref() if self._model_ref else None
         if model is None:
@@ -237,11 +278,131 @@ class ComfyUIModelWrapper:
             print(f"{'✅' if success else '❌'} Partial unload: freed {freed // 1024 // 1024}MB (requested {memory_to_free // 1024 // 1024}MB)")
             return success
             
-        # Full unload
-        freed = self.partially_unload('cpu', self._memory_size)
-        success = freed > 0
-        print(f"{'✅' if success else '❌'} Full unload: freed {freed // 1024 // 1024}MB")
-        return success
+        # Full unload - for VibeVoice, delete completely instead of moving to CPU
+        if self.model_info.engine == "vibevoice":
+            # VibeVoice: Full deletion to prevent system RAM accumulation
+            freed = 0
+            model_location = "unknown"
+            
+            if hasattr(self, 'model') and self.model is not None:
+                try:
+                    # Detect if model is on GPU or CPU
+                    if hasattr(self.model, 'device'):
+                        model_location = str(self.model.device)
+                    elif self._is_loaded_on_gpu:
+                        model_location = "GPU"
+                    else:
+                        model_location = "CPU"
+                    
+                    print(f"🔍 VibeVoice deletion: Model currently on {model_location}")
+                    
+                    # Clear VibeVoice class-level cache first
+                    if hasattr(self.model, '__class__'):
+                        model_class = self.model.__class__
+                        if hasattr(model_class, '_shared_model'):
+                            model_class._shared_model = None
+                            model_class._shared_processor = None
+                            model_class._shared_config = None
+                            model_class._shared_model_name = None
+                            print(f"🗑️ Cleared VibeVoice class-level cache")
+                    
+                    # Estimate memory before deletion (same size regardless of location)
+                    freed = self._memory_size
+                    
+                    # Delete the model completely (works for both GPU and CPU)
+                    del self.model
+                    self.model = None
+                    
+                    # Force garbage collection to actually free memory
+                    import gc
+                    gc.collect()
+                    
+                    # Clear CUDA cache if model was on GPU - AGGRESSIVE CLEANUP
+                    if model_location.lower() in ['gpu', 'cuda'] or 'cuda' in model_location.lower():
+                        if hasattr(torch, 'cuda') and torch.cuda.is_available():
+                            # Force multiple cleanup passes
+                            torch.cuda.empty_cache()
+                            torch.cuda.synchronize()  # Wait for all operations to complete
+                            torch.cuda.empty_cache()  # Second pass after sync
+                            
+                            # Force garbage collection multiple times
+                            for _ in range(3):  # Multiple GC passes
+                                gc.collect()
+                                torch.cuda.empty_cache()
+                            
+                            # NUCLEAR OPTION: Force CUDA device reset
+                            try:
+                                print(f"⚠️ NUCLEAR: Forcing CUDA device reset to clear stubborn VibeVoice memory")
+                                torch.cuda.reset_peak_memory_stats()
+                                torch.cuda.empty_cache()
+                                
+                                # Try ComfyUI model management
+                                try:
+                                    from comfy import model_management
+                                    if hasattr(model_management, 'free_memory'):
+                                        model_management.free_memory(8 * 1024 * 1024 * 1024, torch.cuda.current_device())  # Request 8GB
+                                        print(f"🧹 ComfyUI freed memory")
+                                except:
+                                    pass
+                                
+                                # Final synchronization
+                                torch.cuda.synchronize()
+                                torch.cuda.empty_cache()
+                                
+                            except Exception as e:
+                                print(f"⚠️ CUDA reset failed: {e}")
+                            
+                            print(f"🧹 NUCLEAR CUDA cleanup completed")
+                    
+                    print(f"🗑️ VibeVoice: Model deleted completely from {model_location}")
+                    
+                except Exception as e:
+                    print(f"⚠️ VibeVoice deletion error: {e}")
+            
+            success = freed > 0
+            print(f"{'✅' if success else '❌'} VibeVoice full deletion: freed {freed // 1024 // 1024}MB from {model_location}")
+            return success
+        else:
+            # Other engines: use standard CPU migration
+            freed = self.partially_unload('cpu', self._memory_size)
+            success = freed > 0
+            print(f"{'✅' if success else '❌'} Full unload: freed {freed // 1024 // 1024}MB")
+            return success
+    
+    def _vibevoice_complete_deletion(self) -> bool:
+        """Complete deletion of VibeVoice model to prevent system RAM accumulation"""
+        try:
+            model = self._model_ref() if self._model_ref else None
+            if model is None:
+                return False
+            
+            # Clear VibeVoice class-level cache first
+            if hasattr(model, '__class__'):
+                model_class = model.__class__
+                if hasattr(model_class, '_shared_model'):
+                    model_class._shared_model = None
+                    model_class._shared_processor = None
+                    model_class._shared_config = None
+                    model_class._shared_model_name = None
+            
+            # Delete the model completely
+            del model
+            self._model_ref = None
+            
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+            # Clear CUDA cache
+            if hasattr(torch, 'cuda') and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
+            self._is_loaded_on_gpu = False
+            return True
+            
+        except Exception as e:
+            print(f"⚠️ VibeVoice complete deletion error: {e}")
+            return False
     
     def _clear_cuda_graphs(self, model):
         """Clear CUDA graphs if the model supports it (prevents corruption when moving to CPU)"""
@@ -557,6 +718,31 @@ class ComfyUITTSModelManager:
                     except Exception as e:
                         print(f"⚠️ In-place reinit failed: {e}, falling back to full recreation")
                 
+                # For VibeVoice, try to reinitialize corrupted model state 
+                # Unlike Higgs Audio, VibeVoice doesn't use CUDA graphs so should be recoverable
+                elif engine == "vibevoice":
+                    print(f"🔄 VibeVoice: Attempting to recover from CPU offloading corruption")
+                    try:
+                        # Clear any cached internal state that might be corrupted
+                        if hasattr(wrapper.model, '_past_key_values'):
+                            wrapper.model._past_key_values = None
+                        if hasattr(wrapper.model, '_cache'):
+                            wrapper.model._cache = None
+                        
+                        # Reset model to evaluation mode and clear gradients
+                        wrapper.model.eval()
+                        if hasattr(wrapper.model, 'zero_grad'):
+                            wrapper.model.zero_grad()
+                        
+                        # Move back to GPU with proper state reset
+                        wrapper.model_load(device)
+                        # Mark as valid again
+                        wrapper._is_valid_for_reuse = True
+                        print(f"✅ Successfully recovered VibeVoice model from corruption")
+                        return wrapper
+                    except Exception as e:
+                        print(f"⚠️ VibeVoice recovery failed: {e}, falling back to full recreation")
+                
                 print(f"🗑️ Removing invalid cached model: {model_type} ({engine}) - corrupted by previous unload")
                 self.remove_model(model_key)
                 # Continue to create new model below
@@ -611,8 +797,24 @@ class ComfyUITTSModelManager:
                     
                     for cache_key in cached_models:
                         wrapper = self._model_cache[cache_key]
+                        should_clear = False
+                        
                         # Clear models from different engines to free VRAM
                         if wrapper.model_info.engine != engine and wrapper.model_info.model_type == "tts":
+                            should_clear = True
+                        
+                        # VibeVoice-specific: Use CPU migration instead of direct clearing
+                        # This allows model reuse while preventing RAM accumulation
+                        elif engine == "vibevoice" and wrapper.model_info.engine == "vibevoice":
+                            if cache_key != model_key:  # Don't clear the model we're about to load
+                                print(f"🔄 VibeVoice: Moving existing model to CPU instead of clearing (allows reuse)")
+                                # Force CPU migration instead of deletion
+                                try:
+                                    wrapper.partially_unload('cpu', wrapper._memory_size)
+                                except:
+                                    should_clear = True  # Fallback to clearing if CPU migration fails
+                        
+                        if should_clear:
                             models_to_clear.append(cache_key)
                     
                     if models_to_clear:

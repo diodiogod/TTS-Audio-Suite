@@ -170,6 +170,14 @@ Hello! This is unified SRT TTS with character switching.
                 'device': config.get('device'),
                 'adapter_class': config.get('adapter_class')
             }
+            
+            # For VibeVoice, include attention_mode and quantization in cache key since they require model reload
+            if engine_type == "vibevoice":
+                stable_params['attention_mode'] = config.get('attention_mode', 'auto')
+                stable_params['quantize_llm_4bit'] = config.get('quantize_llm_4bit', False)
+                # Also include chunk_minutes if it affects behavior
+                if 'chunk_minutes' in config:
+                    stable_params['chunk_minutes'] = config.get('chunk_minutes', 0)
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Check if we have a cached instance with the same stable configuration
