@@ -19,6 +19,34 @@ This document tracks all package dependencies, conflicts, solutions, and constra
 
 ## Critical Dependencies & Conflicts
 
+### **Python 3.13 Audio-Separator + Resampy Issue**
+
+**Problem:** Audio-Separator v0.36.1 claims Python 3.13 support, but dependency `resampy 0.4.3` fails
+- Audio-Separator loads successfully ✅
+- resampy compilation fails with numba in Python 3.13 ❌
+- `NUMBA_DISABLE_JIT=1` doesn't prevent resampy from attempting compilation
+
+**Impact:** Certain UVR models fail with Audio-Separator, force RVC fallback
+```
+Failed in nopython mode pipeline (step: nopython frontend)
+Untyped global name '_resample_loop_s': Cannot determine Numba type of <class 'function'>
+```
+
+**Root Cause:** resampy 0.4.3 has incomplete Python 3.13 + numba support despite Audio-Separator's claims
+
+**Current Solution:** 
+- Audio-Separator fails → RVC fallback works for compatible models (UVR v2/v3 architecture)  
+- Some models (e.g., UVR-DeNoise.pth) incompatible with both engines
+- Clean error messages implemented to avoid confusion
+
+**Model Compatibility:**
+- ✅ **Working Models:** UVR-DeEcho-DeReverb.pth, 6_HP-Karaoke-UVR.pth (via RVC fallback)
+- ❌ **Broken Models:** UVR-DeNoise.pth, models requiring Audio-Separator-specific architectures
+
+**Future Fix:** Wait for resampy or Audio-Separator to fix Python 3.13 numba compilation
+
+---
+
 ### 1. **NumPy + Numba Compatibility Crisis**
 
 **Problem:** Different numba versions support different NumPy ranges
@@ -129,6 +157,7 @@ else:
 | `MediaPipe` | Binary incompatible | OpenSeeFace fallback | ✅ Working |
 | `numba` | JIT compilation issues | Disable JIT in Python 3.13 | ✅ Working |
 | `audioop` packages | Not available | Remove from dependencies | ✅ Fixed |
+| `resampy` | Numba compilation fails in Audio-Separator | RVC fallback works for compatible models | ⚠️ Partial |
 
 ### Python 3.12 Compatibility
 
@@ -270,4 +299,4 @@ AssertionError: Torch not compiled with CUDA enabled
 
 ---
 
-*Last updated: Version 4.5.20 - Major numba compatibility fixes*
+*Last updated: Version 4.8.19 - Python 3.13 Audio-Separator + resampy compatibility issues documented*

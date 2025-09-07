@@ -230,8 +230,21 @@ class MusicSeparationModel:
 					row['Compensation'] = float(row['Vol_Comp'])
 					self.models['remove_music'].append(row)
 					
-		# Download Models to :
-		models_path	= os.path.join(BASE_MODELS_DIR, "karafan")
+		# Download Models to - ensure proper path resolution for ComfyUI
+		models_path = os.path.join(BASE_MODELS_DIR, "karafan")
+		
+		# Check ComfyUI models directory first for better integration
+		try:
+			import folder_paths
+			comfyui_models_dir = folder_paths.models_dir
+			comfyui_karafan_dir = os.path.join(comfyui_models_dir, "TTS", "karafan")
+			if os.path.exists(comfyui_karafan_dir):
+				models_path = comfyui_karafan_dir
+		except ImportError:
+			pass  # Not in ComfyUI environment, use BASE_MODELS_DIR
+		
+		# Ensure the target directory exists
+		os.makedirs(models_path, exist_ok=True)
 
 		for stem in self.models:
 			for model in self.models[stem]:				

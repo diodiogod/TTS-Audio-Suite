@@ -1,4 +1,11 @@
 import os
+import sys
+
+# Fix for Python 3.13 + numba compatibility issues
+# Set this BEFORE importing any audio libraries to prevent compilation errors
+if sys.version_info >= (3, 13):
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+
 # NumPy 2.x compatibility fix
 import numpy as np
 if not hasattr(np, 'float'):
@@ -114,21 +121,21 @@ class VocalRemovalNode:
                     "tooltip": "Input audio for vocal/instrumental separation. Standard ComfyUI AUDIO format."
                 }),
                 "model": (model_list,{
-                    "default": "MDXNET/UVR-MDX-NET-vocal_FT.onnx",
+                    "default": "MELBAND/MelBandRoformer_fp16.safetensors",
                     "tooltip": """🎵 AI AUDIO SEPARATION & PROCESSING
 
-🏆 TOP MODELS BY CATEGORY:
-
-📀 STANDARD VOCAL SEPARATION:
-• UVR-MDX-NET-vocal_FT.onnx - ⭐ DEFAULT (Reliable, Fast, Well-tested)
-• model_bs_roformer_ep_317_sdr_12.9755.ckpt - 🎵 High Quality (12.98 SDR)
-• HP5-vocals+instrumentals.pth - 🏠 Beginner Friendly
+🏆 RECOMMENDED MODELS:
 
 🎯 MELBAND ROFORMER (State-of-the-Art):
-• MELBAND/MelBandRoformer_fp16.safetensors - 🚀 Kijai's Fast Version (456MB)
-• MELBAND/MelBandRoformer_fp32.safetensors - 💎 Kijai's Quality Version (913MB)
-• MELBAND/denoise_mel_band_roformer_sdr_27.99.ckpt - 🥇 BEST Denoising (27.99 SDR!)
-• MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt - 💪 Aggressive Denoising
+• MelBandRoformer_fp16.safetensors - ⭐ DEFAULT: Fast & High Quality (456MB)
+• MelBandRoformer_fp32.safetensors - 💎 Maximum Quality (913MB)  
+• denoise_mel_band_roformer_sdr_27.99.ckpt - 🥇 BEST Denoising (27.99 SDR!)
+• denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt - 💪 Aggressive Denoising
+
+📀 STANDARD VOCAL SEPARATION:
+• UVR-MDX-NET-vocal_FT.onnx - 🔧 Reliable (needs GPU for speed)
+• model_bs_roformer_ep_317_sdr_12.9755.ckpt - 🎵 High Quality (12.98 SDR)
+• HP5-vocals+instrumentals.pth - 🏠 Beginner Friendly
 
 🔧 SPECIAL PURPOSE:
 • UVR-DeNoise - NOISE REMOVAL: "remaining" = clean audio ✅
@@ -139,7 +146,7 @@ class VocalRemovalNode:
 • model_scnet_xl_ihf_sdr_10.08.ckpt - SCNet architecture (audio artifacts)
 
 💡 QUICK RECOMMENDATIONS:
-• General Use: UVR-MDX-NET-vocal_FT.onnx
+• General Use: MelBandRoformer_fp16
 • Best Denoising: MELBAND models (27+ SDR!)
 • Fast Processing: MelBandRoformer_fp16
 • Maximum Quality: MelBandRoformer_fp32
@@ -218,6 +225,23 @@ Selects the audio format for separated stems:
     CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
 
     def split(self, audio, model, use_cache=True, aggressiveness=10, format='flac'):
+        
+        # Python 3.13 compatibility: Smart model substitution for known incompatible models
+        if sys.version_info >= (3, 13):
+            incompatible_models = {
+                "UVR-DeNoise.pth": "UVR-DeEcho-DeReverb.pth",
+                "UVR/UVR-DeNoise.pth": "UVR/UVR-DeEcho-DeReverb.pth",
+                # Add more substitutions as we discover them
+            }
+            
+            original_model = model
+            for incompatible, compatible in incompatible_models.items():
+                if incompatible.lower() in model.lower():
+                    model = compatible
+                    print(f"🔄 Python 3.13 compatibility: Substituting '{os.path.basename(original_model)}' → '{os.path.basename(model)}'")
+                    print(f"💡 Reason: '{os.path.basename(original_model)}' requires Audio-Separator features not available in Python 3.13")
+                    break
+        
         filename = os.path.basename(model)
         subfolder = os.path.dirname(model)
         
@@ -283,8 +307,31 @@ Selects the audio format for separated stems:
             
             print(f"🎵 Starting vocal separation with {os.path.basename(model)}")
             try: 
-                if "karafan" in model_path: # try karafan implementation
-                    print(f"🔧 Using Karafan separation engine")
+                if "karafan" in model_path or "MDX23C" in model_path: # try karafan implementation
+                    print(f"🔧 Using Karafan separation engine for {'MDX23C' if 'MDX23C' in model_path else 'Karafan'} model")
+                    
+                    # Check if the actual model file exists
+                    if not os.path.exists(model_path):
+                        # Try alternate paths for MDX23C models
+                        alternate_paths = [
+                            os.path.join(BASE_MODELS_DIR, "TTS", os.path.basename(model_path)),
+                            os.path.join(BASE_MODELS_DIR, "karafan", os.path.basename(model_path)),
+                            os.path.join(BASE_MODELS_DIR, os.path.basename(model_path))
+                        ]
+                        
+                        found_model = None
+                        for alt_path in alternate_paths:
+                            if os.path.exists(alt_path):
+                                found_model = alt_path
+                                break
+                        
+                        if found_model:
+                            print(f"📍 Found MDX23C model at: {found_model}")
+                            # Update the model_path to the correct location
+                            model_path = found_model
+                        else:
+                            raise FileNotFoundError(f"MDX23C model not found: {os.path.basename(model_path)}. Please ensure the model is placed in one of: {alternate_paths}")
+                    
                     primary, secondary, _ = karafan.inference.Process(audio_path,cache_dir=temp_path,format=format)
                 elif "mel_band_roformer" in model_path.lower() or "melband" in model_path.lower():
                     # MelBandRoFormer implementation
@@ -476,6 +523,21 @@ Selects the audio format for separated stems:
                     print(f"❌ MelBandRoFormer processing failed: {e}")
                     raise RuntimeError(f"MelBandRoFormer processing failed: {e}")
                 
+                # Handle specific Karafan/MDX23C errors
+                if ("karafan" in model_path or "MDX23C" in model_path) and ("'Separator' object has no attribute 'model'" in str(e) or "no attribute 'model'" in str(e)):
+                    print(f"❌ Karafan engine failed with Audio-Separator compatibility issue")
+                    print(f"🔧 Attempting fallback to RVC engine for compatible UVR models...")
+                elif "MDX23C" in model_path:
+                    print(f"❌ MDX23C model failed: {e}")
+                    print(f"💡 MDX23C models are experimental and may have compatibility issues")
+                    print(f"🔧 Attempting fallback to RVC engine...")
+                
+                # Skip RVC fallback for models that are architecturally incompatible
+                if "MDX23C" in model_path:
+                    print(f"🚫 MDX23C models are not compatible with RVC fallback engine")
+                    print(f"💡 MDX23C models use specialized Karafan architecture that cannot be processed by UVR/RVC engines")
+                    raise RuntimeError(f"MDX23C model '{os.path.basename(model_path)}' failed and is not compatible with fallback engines. Please use UVR-MDX-NET models instead.")
+                
                 print(f"⚠️ Primary engine failed, switching to RVC fallback engine...")
                 print(f"💡 This is normal - downloading and using model with RVC implementation")
                 
@@ -484,15 +546,23 @@ Selects the audio format for separated stems:
                 device = mm.get_torch_device()
                 
                 from uvr5_cli import Separator
-                model = Separator(
-                    model_path=model_path,
-                    device=device,
-                    is_half="cuda" in str(device),
-                    cache_dir=cache_dir,
-                    agg=aggressiveness
-                    )
-                primary, secondary, _ = model.run_inference(audio_path,format=format)
-                print(f"✅ RVC fallback completed successfully!")
+                try:
+                    model = Separator(
+                        model_path=model_path,
+                        device=device,
+                        is_half="cuda" in str(device),
+                        cache_dir=cache_dir,
+                        agg=aggressiveness
+                        )
+                    primary, secondary, _ = model.run_inference(audio_path,format=format)
+                    print(f"✅ RVC fallback completed successfully!")
+                except RuntimeError as rvc_error:
+                    if "incompatible with RVC fallback engine" in str(rvc_error):
+                        print(f"🚫 {rvc_error}")
+                        print(f"💡 Try using a different UVR model that's compatible with both engines")
+                        raise RuntimeError(f"Model '{os.path.basename(model_path)}' is not supported in Python 3.13 environment. Both Audio-Separator and RVC fallback failed. Please try a different UVR model.")
+                    else:
+                        raise
             finally:
                 if primary is not None and secondary is not None and use_cache:
                     print(f"💾 Caching results for faster future processing")

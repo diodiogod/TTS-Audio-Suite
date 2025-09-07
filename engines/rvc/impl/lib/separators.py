@@ -4,8 +4,8 @@ from multiprocessing.pool import ThreadPool
 import os
 import sys
 
-# Fix for Python 3.13 + numba + librosa compatibility issue
-# Disable numba JIT compilation for librosa to prevent 'get_call_template' errors
+# Fix for Python 3.13 + numba compatibility issues  
+# Disable numba JIT compilation to prevent various compilation errors
 if sys.version_info >= (3, 13):
     os.environ['NUMBA_DISABLE_JIT'] = '1'
 
@@ -44,7 +44,14 @@ class UVR5Base:
         mp = ModelParameters(os.path.join(dir_path,"uvr5_pack","vr_network","modelparams","4band_v2.json"))
         model = CascadedASPPNet(mp.param["bins"] * 2)
         cpk = torch.load(model_path, map_location=self.device, weights_only=False)
-        model.load_state_dict(cpk)
+        try:
+            model.load_state_dict(cpk)
+        except RuntimeError as e:
+            if "Missing key(s)" in str(e) or "size mismatch" in str(e):
+                model_name = os.path.basename(model_path)
+                raise RuntimeError(f"❌ Model '{model_name}' is incompatible with RVC fallback engine. This model requires Audio-Separator to work properly. The model architecture doesn't match the expected UVR v2/v3 format.")
+            else:
+                raise
         model.eval()
         if is_half:
             model = model.half().to(device)
@@ -294,7 +301,14 @@ class UVR5New(UVR5Base):
         nout = 64 if dereverb else 48
         model = CascadedNet(mp.param["bins"] * 2, nout)
         cpk = torch.load(model_path, map_location=self.device, weights_only=False)
-        model.load_state_dict(cpk)
+        try:
+            model.load_state_dict(cpk)
+        except RuntimeError as e:
+            if "Missing key(s)" in str(e) or "size mismatch" in str(e):
+                model_name = os.path.basename(model_path)
+                raise RuntimeError(f"❌ Model '{model_name}' is incompatible with RVC fallback engine. This model requires Audio-Separator to work properly. The model architecture doesn't match the expected UVR v2/v3 format.")
+            else:
+                raise
         model.eval()
         if is_half:
             model = model.half().to(device)
