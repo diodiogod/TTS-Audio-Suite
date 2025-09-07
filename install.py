@@ -371,7 +371,7 @@ class TTSAudioInstaller:
             "pypinyin", 
             "unidecode",
             "omegaconf>=2.3.0",
-            "transformers>=4.46.3",  # Now supports 4.56+ with compatibility fixes
+            "transformers>=4.51.3",  # Required for VibeVoice compatibility
             
             # Bundled engine dependencies (safe)
             "conformer>=0.3.2",      # ChatterBox engine

@@ -1,16 +1,23 @@
 """
-Transformers Compatibility Patches - Centralized Monkey Patches
+Transformers Compatibility Patches - DEPRECATED
 
-This module contains all monkey patches needed for transformers library compatibility
-across different versions. These are temporary workarounds for upstream compatibility
-issues that will be removed when the upstream libraries are fixed.
+⚠️ THIS MODULE IS NO LONGER USED ⚠️
 
-Patches Applied:
-- FlashAttentionKwargs import location (transformers 4.46.3+)
-- BaseStreamer import location (transformers 4.46.3+) 
-- DynamicCache key_cache/value_cache properties (transformers 4.56+)
-- GenerationMixin._prepare_generation_config signature (transformers 4.46.3+)
-- GenerationMixin._prepare_cache_for_generation signature (transformers 4.56+)
+Originally created to fix compatibility issues with transformers 4.46.3, but after 
+upgrading to transformers 4.51.3+ (as required by VibeVoice), these patches are no 
+longer needed and have been disabled.
+
+Historical context - patches that were needed for transformers 4.46.3:
+- FlashAttentionKwargs import location (moved in 4.46.3+)
+- BaseStreamer import location (moved in 4.46.3+) 
+- DynamicCache key_cache/value_cache properties (changed in 4.56+)
+- GenerationMixin._prepare_generation_config signature (changed in 4.46.3+)
+- GenerationMixin._prepare_cache_for_generation signature (changed in 4.56+)
+
+Solution: Updated to transformers>=4.51.3 as required by VibeVoice, eliminating 
+the need for these compatibility workarounds.
+
+This file is kept for historical reference and potential future use.
 """
 
 import warnings
@@ -30,7 +37,8 @@ class TransformersPatches:
             
         cls.patch_flash_attention_kwargs(verbose=verbose)
         cls.patch_base_streamer(verbose=verbose)
-        cls.patch_dynamic_cache_properties(verbose=verbose)
+        # Skip DynamicCache patch - causes property setter conflicts with transformers 4.46.3+
+        # cls.patch_dynamic_cache_properties(verbose=verbose)  
         cls.patch_vibevoice_generation_methods(verbose=verbose)
         
         if verbose:
@@ -226,12 +234,20 @@ class TransformersPatches:
                             if "takes 2 positional arguments but 3 were given" in str(e):
                                 # transformers 4.46.3+ GenerationMixin._prepare_generation_config 
                                 # only takes (self, generation_config), not model_kwargs
-                                # When called from VibeVoice: args = (generation_config, model_kwargs)
-                                if len(args) >= 1:
-                                    # Only pass the generation_config, drop model_kwargs
-                                    return original_prepare_gen_config(args[0])
-                                else:
-                                    return original_prepare_gen_config(*args, **kwargs)
+                                # But we need to ensure bos_token_id is set if missing
+                                generation_config = args[0] if len(args) >= 1 else None
+                                
+                                if generation_config and not hasattr(generation_config, 'bos_token_id'):
+                                    # Set bos_token_id from tokenizer if missing
+                                    if hasattr(model_self, 'config') and hasattr(model_self.config, 'bos_token_id'):
+                                        generation_config.bos_token_id = model_self.config.bos_token_id
+                                    elif hasattr(model_self, 'generation_config') and hasattr(model_self.generation_config, 'bos_token_id'):
+                                        generation_config.bos_token_id = model_self.generation_config.bos_token_id
+                                    else:
+                                        # Use a reasonable default for Qwen tokenizer
+                                        generation_config.bos_token_id = 151643  # Qwen2 BOS token
+                                
+                                return original_prepare_gen_config(generation_config)
                             else:
                                 raise e
                     

@@ -134,11 +134,7 @@ class VibeVoiceEngine:
         
         # Import VibeVoice modules
         try:
-            # Apply all transformers compatibility patches first
-            from utils.compatibility.transformers_patches import apply_transformers_patches
-            apply_transformers_patches(verbose=True)
-            
-            # Import VibeVoice (patches already applied)
+            # Import VibeVoice
             import vibevoice
             from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
             from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
@@ -350,6 +346,7 @@ class VibeVoiceEngine:
                 print(f"   🗜️ LLM quantized to 4-bit (VRAM savings expected)")
             elif quantize_llm_4bit and not quant_config:
                 print(f"   ⚠️ Quantization failed, using full precision")
+            
             
         except Exception as e:
             logger.error(f"Failed to load VibeVoice model: {e}")
@@ -619,33 +616,56 @@ class VibeVoiceEngine:
             inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
                      for k, v in inputs.items()}
             
+            # Debug inputs
+            # Debug: Print input information (commented out for production)
+            # print(f"🐛 Inputs keys: {list(inputs.keys())}")
+            # for k, v in inputs.items():
+            #     if isinstance(v, torch.Tensor):
+            #         print(f"🐛 Input {k}: shape={v.shape}, dtype={v.dtype}")
+            #     else:
+            #         print(f"🐛 Input {k}: type={type(v)}, value={v}")
+            
             # Set diffusion inference steps (based on wildminder implementation)
             # Credits: drbaph's implementation for inference steps control
             self.model.set_ddpm_inference_steps(num_steps=inference_steps)
             print(f"🔄 VibeVoice: Using {inference_steps} diffusion inference steps")
             
+            # Ensure model has proper generation config with bos_token_id (silent configuration)
+            if hasattr(self.model, 'generation_config'):
+                if not hasattr(self.model.generation_config, 'bos_token_id') or self.model.generation_config.bos_token_id is None:
+                    self.model.generation_config.bos_token_id = 151643  # Qwen2 BOS token
+            elif hasattr(self.model, 'config'):
+                if not hasattr(self.model.config, 'bos_token_id') or self.model.config.bos_token_id is None:
+                    self.model.config.bos_token_id = 151643  # Qwen2 BOS token
+            
             # Generate with appropriate mode
             with torch.no_grad():
+                # Debug tokenizer bos_token_id (commented out for production)
+                # if hasattr(self.processor.tokenizer, 'bos_token_id'):
+                #     print(f"🐛 Tokenizer bos_token_id: {self.processor.tokenizer.bos_token_id}")
+                # else:
+                #     print(f"🐛 Tokenizer has no bos_token_id attribute")
+                
+                # Ensure bos_token_id is set (workaround for transformers compatibility)
+                generation_kwargs = {
+                    "tokenizer": self.processor.tokenizer,
+                    "cfg_scale": cfg_scale,
+                    "max_new_tokens": max_new_tokens,
+                    "bos_token_id": 151643,  # Qwen2 BOS token
+                }
+                
                 if use_sampling:
                     # Sampling mode
-                    output = self.model.generate(
-                        **inputs,
-                        tokenizer=self.processor.tokenizer,
-                        cfg_scale=cfg_scale,
-                        max_new_tokens=max_new_tokens,
-                        do_sample=True,
-                        temperature=temperature,
-                        top_p=top_p,
-                    )
+                    generation_kwargs.update({
+                        "do_sample": True,
+                        "temperature": temperature,
+                        "top_p": top_p,
+                    })
+                    output = self.model.generate(**inputs, **generation_kwargs)
                 else:
                     # Deterministic mode
-                    output = self.model.generate(
-                        **inputs,
-                        tokenizer=self.processor.tokenizer,
-                        cfg_scale=cfg_scale,
-                        max_new_tokens=max_new_tokens,
-                        do_sample=False,
-                    )
+                    generation_kwargs["do_sample"] = False
+                    output = self.model.generate(**inputs, **generation_kwargs)
             
             # Extract audio from output
             if hasattr(output, 'speech_outputs') and output.speech_outputs:

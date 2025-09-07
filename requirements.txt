@@ -27,7 +27,7 @@ jieba
 pypinyin
 unidecode
 omegaconf>=2.3.0
-transformers>=4.46.3  # Required for Higgs Audio compatibility, supports 4.56+ with compatibility fixes
+transformers>=4.51.3  # Required for VibeVoice compatibility (VibeVoice requires 4.51.3+), also supports Higgs Audio
 
 # ML utilities (safe)
 accelerate

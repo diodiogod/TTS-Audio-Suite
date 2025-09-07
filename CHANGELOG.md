@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.24] - 2025-09-07
+
+### Changed
+
+- Improve model caching to properly handle configuration changes
+
+### Fixed
+
+- Fix VibeVoice model reloading and improve stability
+- Fix VibeVoice not reloading when changing attention mode settings
+- Resolve transformers compatibility issues with VibeVoice engine
+- Fix numba JIT disable logic showing wrong Python version messages
+
+### Removed
+
+- Remove excessive debug output for cleaner console logs
 ## [4.8.23] - 2025-09-07
 
 ### Added

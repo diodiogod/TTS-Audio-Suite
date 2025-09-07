@@ -157,6 +157,13 @@ class UnifiedModelInterface:
         elif config.repo_id:
             components.append(f"repo:{config.repo_id}")
         
+        # Add additional_params to ensure attention_mode, quantization, etc. trigger reloads
+        if config.additional_params:
+            # Sort params for consistent cache keys
+            sorted_params = sorted(config.additional_params.items())
+            params_str = "_".join([f"{k}:{v}" for k, v in sorted_params])
+            components.append(f"params:{params_str}")
+        
         cache_key = "_".join(components)
         # print(f"🔑 Generated cache key: {cache_key}")  # Debug only when needed
         return cache_key

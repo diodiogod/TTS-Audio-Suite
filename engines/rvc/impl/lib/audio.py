@@ -5,9 +5,11 @@ import zlib
 import subprocess
 
 # Fix for Python 3.13 + numba + librosa compatibility issue
-# Disable numba JIT compilation for librosa to prevent 'get_call_template' errors
-os.environ['NUMBA_DISABLE_JIT'] = '1'
-print("🔧 RVC Audio: Disabled numba JIT for Python 3.13 compatibility")
+# Only disable numba JIT compilation for Python 3.13+ to prevent 'get_call_template' errors
+import sys
+if sys.version_info >= (3, 13):
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+    print(f"🔧 RVC Audio: Disabled numba JIT for Python {sys.version_info.major}.{sys.version_info.minor} compatibility")
 
 from .utils import get_hash, get_merge_func
 import numpy as np

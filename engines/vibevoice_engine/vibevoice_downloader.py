@@ -209,10 +209,6 @@ class VibeVoiceDownloader:
         Returns:
             True if package is available, False otherwise
         """
-        # Apply compatibility patches before importing
-        from utils.compatibility.transformers_patches import apply_transformers_patches
-        apply_transformers_patches(verbose=True)
-        
         try:
             import vibevoice
             print(f"✅ VibeVoice base package found: {vibevoice.__file__}")
