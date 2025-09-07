@@ -560,9 +560,50 @@ def register_vibevoice_factory():
     unified_model_interface.register_model_factory("vibevoice", "tts", vibevoice_factory)
 
 
+def register_chatterbox_23lang_factory():
+    """Register ChatterBox Official 23-Lang model factory"""
+    def chatterbox_23lang_factory(**kwargs):
+        """Factory for ChatterBox Official 23-Lang models with ComfyUI integration"""
+        from engines.chatterbox_official_23lang.tts import ChatterboxOfficial23LangTTS
+        import folder_paths
+        import os
+        import torch
+        
+        # Extract parameters
+        device = kwargs.get("device", "auto")
+        model_name = kwargs.get("model_name", "Official 23-Lang")  # Always same model
+        language = kwargs.get("language", "english")  # This is the actual language to use
+        
+        # Determine device
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        # Get model directory path
+        models_dir = folder_paths.models_dir
+        ckpt_dir = os.path.join(models_dir, "TTS", "chatterbox_official_23lang", "Official 23-Lang")
+        
+        print(f"🌍 Loading ChatterBox Official 23-Lang model for {language} on {device}")
+        print(f"📁 Using model directory: {ckpt_dir}")
+        
+        # Use the proper factory method that handles model loading
+        engine = ChatterboxOfficial23LangTTS.from_local(
+            ckpt_dir=ckpt_dir,
+            device=device,
+            model_name="Official 23-Lang"
+        )
+        
+        print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
+        
+        # Return the engine
+        return engine
+    
+    unified_model_interface.register_model_factory("chatterbox_official_23lang", "tts", chatterbox_23lang_factory)
+
+
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
+    register_chatterbox_23lang_factory()
     register_f5tts_factory() 
     register_higgs_audio_factory()
     register_rvc_factory()

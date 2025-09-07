@@ -14,6 +14,15 @@ if sys.version_info >= (3, 13):
 
 from typing import List, Union, Optional
 
+# Use safe librosa fallback for Python 3.13 compatibility
+current_dir = os.path.dirname(__file__)
+engines_dir = os.path.dirname(os.path.dirname(current_dir))
+project_root = os.path.dirname(engines_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from utils.audio.librosa_fallback import safe_trim
+
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 import librosa
@@ -276,7 +285,7 @@ class VoiceEncoder(nn.Module):
             ]
 
         if trim_top_db:
-            wavs = [librosa.effects.trim(wav, top_db=trim_top_db)[0] for wav in wavs]
+            wavs = [safe_trim(wav, top_db=trim_top_db) for wav in wavs]
 
         if "rate" not in kwargs:
             kwargs["rate"] = 1.3  # Resemble's default value.

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.23] - 2025-09-07
+
+### Added
+
+- Add ComfyUI VRAM management support for ChatterBox Official 23-Lang
+- Add ComfyUI VRAM management support (Clear VRAM button now works)
+
+### Changed
+
+- Improve memory efficiency for ChatterBox Official 23-Lang engine
+
+### Fixed
+
+- Fix model caching to prevent reloading on each generation
+- Fix Python 3.13 compatibility issues with audio processing
 ## [4.8.22] - 2025-09-07
 
 ### Added

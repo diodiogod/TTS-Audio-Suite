@@ -166,15 +166,34 @@ Back to the main narrator voice for the conclusion.""",
     
     def load_tts_model(self, device: str, language: str):
         """
-        Override base method to load ChatterBox Official 23-Lang models.
+        Override base method to load ChatterBox Official 23-Lang models using unified interface.
         """
         print(f"🌍 Loading ChatterBox Official 23-Lang model for {language} on {device}")
         
-        # Get the model directory for ChatterBox Official 23-Lang
-        # This should load from: models/TTS/chatterbox_official_23lang/Official 23-Lang/
-        import folder_paths
+        # Use unified model interface for ComfyUI VRAM management
+        from utils.models.unified_model_interface import load_tts_model
         
-        models_dir = folder_paths.models_dir
+        try:
+            # Load through unified interface which handles caching and VRAM management
+            engine = load_tts_model(
+                engine_name="chatterbox_official_23lang",
+                model_name="Official 23-Lang",  # Always same model for ChatterBox 23-Lang
+                language=language,
+                device=device
+            )
+            
+            print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
+            return engine
+            
+        except Exception as e:
+            print(f"❌ Failed to load ChatterBox 23-Lang via unified interface: {e}")
+            # Fallback to direct loading
+            
+            # Get the model directory for ChatterBox Official 23-Lang
+            # This should load from: models/TTS/chatterbox_official_23lang/Official 23-Lang/
+            import folder_paths
+            
+            models_dir = folder_paths.models_dir
         # Use the unified model directory for ChatterBox Official 23-Lang
         ckpt_dir = os.path.join(models_dir, "TTS", "chatterbox_official_23lang", "Official 23-Lang")
         
@@ -1058,19 +1077,9 @@ Back to the main narrator voice for the conclusion.""",
                 
                 # Only load model if we need to generate something
                 if not single_content_cached:
-                    # Use universal smart model loader
-                    from utils.models.smart_loader import smart_model_loader
-                    
-                    # For multilingual model, always use same model_name since it's one model for all languages
-                    self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
-                        engine_type="chatterbox_official_23lang",
-                        model_name="Official 23-Lang",  # Always the same model regardless of language
-                        current_model=getattr(self, 'tts_model', None),
-                        device=inputs["device"],
-                        load_callback=lambda device, model: self.load_tts_model(device, model)
-                    )
-                    
-                    if not was_cached:
+                    # Use unified model interface for ComfyUI VRAM management
+                    if not hasattr(self, 'tts_model') or self.tts_model is None:
+                        self.tts_model = self.load_tts_model(inputs["device"], inputs["language"])
                         self.device = inputs["device"]  # Update device tracking
                 else:
                     print(f"💾 All single character content cached - skipping model loading")
@@ -1326,20 +1335,9 @@ Back to the main narrator voice for the conclusion.""",
         # For ChatterBox Official 23-Lang, we only need to load the model once
         # It's a multilingual model that handles all languages with the same model
         if not hasattr(self, 'tts_model') or self.tts_model is None:
-            # Use universal smart model loader
-            from utils.models.smart_loader import smart_model_loader
-            
-            # Load the multilingual model once
-            self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
-                engine_type="chatterbox_official_23lang",
-                model_name="Official 23-Lang",  # Always the same model for all languages
-                current_model=getattr(self, 'tts_model', None),
-                device=inputs["device"],
-                load_callback=lambda device, model: self.load_tts_model(device, model)
-            )
-            
-            if not was_cached:
-                self.device = inputs["device"]  # Update device tracking
+            # Use unified model interface for ComfyUI VRAM management
+            self.tts_model = self.load_tts_model(inputs["device"], inputs["language"])
+            self.device = inputs["device"]  # Update device tracking
         
         for original_idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
             # For Official 23-Lang, we don't need to reload model for different languages
