@@ -261,6 +261,10 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/system/subprocess.py** - Safe subprocess execution with error handling and process isolation
 
+### Compatibility System
+
+**utils/compatibility/transformers_patches.py** - Centralized transformers compatibility patches (monkey patches) managing version compatibility across different transformers library versions including FlashAttentionKwargs, BaseStreamer, DynamicCache properties, and VibeVoice generation method signatures
+
 ### Downloads
 
 **utils/downloads/unified_downloader.py** - Centralized download system for all engines eliminating HuggingFace cache duplication with direct HTTP downloads to organized TTS/ structure

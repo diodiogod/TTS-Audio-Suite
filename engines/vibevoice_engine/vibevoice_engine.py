@@ -101,89 +101,6 @@ class VibeVoiceEngine:
         """Get list of available VibeVoice models"""
         return self.downloader.get_available_models()
     
-    def _patch_vibevoice_cache_compatibility(self):
-        """
-        Apply transformers 4.56+ compatibility patches to VibeVoice.
-        Uses the simplest approach - patch DynamicCache class directly.
-        """
-        try:
-            from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
-            from transformers.cache_utils import DynamicCache
-            import inspect
-            
-            # First, add compatibility properties to DynamicCache class
-            self._patch_dynamic_cache_class()
-            
-            # Second, fix _prepare_cache_for_generation signature
-            original_generate = VibeVoiceForConditionalGenerationInference.generate
-            engine_instance = self  # Capture reference to engine instance
-            
-            def patched_generate(model_self, *args, **kwargs):
-                """Patched generate with both cache and signature fixes"""
-                
-                # Apply _prepare_cache_for_generation signature fix
-                if not hasattr(model_self, '_cache_patched'):
-                    original_prepare_cache = model_self._prepare_cache_for_generation
-                    
-                    def safe_prepare_cache_for_generation(generation_config, model_kwargs, *remaining_args):
-                        import inspect
-                        try:
-                            sig = inspect.signature(original_prepare_cache)
-                            if len(sig.parameters) == 5:
-                                # New transformers version (4.56+)
-                                return original_prepare_cache(generation_config, model_kwargs, remaining_args[0], remaining_args[1], remaining_args[2])
-                            else:
-                                # Old transformers version (pre-4.56)
-                                return original_prepare_cache(generation_config, model_kwargs, None, remaining_args[0], remaining_args[1], remaining_args[2])
-                        except Exception:
-                            # Fallback to try both versions
-                            try:
-                                return original_prepare_cache(generation_config, model_kwargs, remaining_args[0], remaining_args[1], remaining_args[2])
-                            except TypeError:
-                                return original_prepare_cache(generation_config, model_kwargs, None, remaining_args[0], remaining_args[1], remaining_args[2])
-                    
-                    model_self._prepare_cache_for_generation = safe_prepare_cache_for_generation
-                    model_self._cache_patched = True
-                
-                return original_generate(model_self, *args, **kwargs)
-            
-            # Replace the generate method
-            VibeVoiceForConditionalGenerationInference.generate = patched_generate
-            
-            print(f"✅ VibeVoice transformers 4.56+ compatibility patches applied")
-            
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to apply VibeVoice compatibility patches: {e}")
-    
-    def _patch_dynamic_cache_class(self):
-        """Add compatibility properties to DynamicCache class"""
-        try:
-            from transformers.cache_utils import DynamicCache
-            
-            # Add compatibility properties to DynamicCache class if not already patched
-            if not hasattr(DynamicCache, '_tts_suite_patched'):
-                
-                def key_cache_property(self):
-                    """Compatibility property for .key_cache access"""
-                    if len(self) == 0:
-                        return []
-                    return [self[i][0] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
-                
-                def value_cache_property(self):
-                    """Compatibility property for .value_cache access"""  
-                    if len(self) == 0:
-                        return []
-                    return [self[i][1] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
-                
-                # Add properties to the class
-                DynamicCache.key_cache = property(key_cache_property)
-                DynamicCache.value_cache = property(value_cache_property)
-                DynamicCache._tts_suite_patched = True
-                
-                print(f"🔧 DynamicCache compatibility properties added")
-                
-        except Exception as e:
-            print(f"⚠️ DynamicCache patching failed: {e}")
     
     def initialize_engine(self, 
                          model_name: str = "vibevoice-1.5B",
@@ -217,12 +134,14 @@ class VibeVoiceEngine:
         
         # Import VibeVoice modules
         try:
+            # Apply all transformers compatibility patches first
+            from utils.compatibility.transformers_patches import apply_transformers_patches
+            apply_transformers_patches(verbose=True)
+            
+            # Import VibeVoice (patches already applied)
             import vibevoice
             from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
             from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
-            
-            # Apply transformers 4.56+ compatibility patches
-            self._patch_vibevoice_cache_compatibility()
         except ImportError as e:
             raise RuntimeError(f"VibeVoice package not installed. Please install with: pip install git+https://github.com/microsoft/VibeVoice.git\nError: {e}")
         
