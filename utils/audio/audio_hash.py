@@ -7,7 +7,17 @@ to prevent cache invalidation from temporary file paths.
 
 import hashlib
 import os
+import sys
 from typing import Optional, Dict, Any
+
+# Python 3.13 compatibility: Disable numba JIT for librosa compatibility
+if sys.version_info >= (3, 13):
+    os.environ['NUMBA_DISABLE_JIT'] = '1'
+    try:
+        import numba
+        numba.config.DISABLE_JIT = True
+    except ImportError:
+        pass
 
 
 def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = None, 

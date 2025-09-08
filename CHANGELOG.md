@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.26] - 2025-09-08
+
+### Fixed
+
+- Fix Python 3.13 compatibility issues in conda environments
+- Fix audio hashing errors with Python 3.13 + conda/miniconda
+- Resolve 'get_call_template' compilation errors
+- Improve numba compatibility across different Python environments
 ## [4.8.25] - 2025-09-07
 
 ### Added

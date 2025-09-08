@@ -312,7 +312,7 @@ Back to the main narrator voice for the conclusion.""",
         
         # If still not supported, default to English
         if mapped_code not in SUPPORTED_LANGUAGES:
-            print(f"⚠️ Language '{language_input}' (resolved to '{resolved_code}') not supported by ChatterBox Official 23-Lang. Using English.")
+            print(f"⚠️ Language tag '{language_input}' not recognized by ChatterBox Official 23-Lang. Falling back to English.")
             return "en"
             
         return mapped_code
