@@ -245,9 +245,11 @@ class VibeVoiceSRTProcessor:
                 
                 if len(unique_chars) <= 4 and not has_pause_tags:
                     print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
-                    # Generate single multi-speaker segment
+                    # Generate single multi-speaker segment with seed
+                    config_with_seed = self.config.copy()
+                    config_with_seed['seed'] = seed
                     audio = self.adapter._generate_native_multispeaker(
-                        character_segments, complete_voice_refs, self.config
+                        character_segments, complete_voice_refs, config_with_seed
                     )
                     wav = audio['waveform']
                     if wav.dim() == 3:
