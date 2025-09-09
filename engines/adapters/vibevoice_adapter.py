@@ -158,6 +158,7 @@ class VibeVoiceEngineAdapter:
     def _convert_character_to_speaker_format(self, text: str) -> Tuple[str, Dict[str, int]]:
         """
         Convert [Character] tags to Speaker N format for native multi-speaker.
+        Combines continuous character segments for better VibeVoice long-form generation.
         
         Args:
             text: Text with [Character] tags
@@ -168,9 +169,9 @@ class VibeVoiceEngineAdapter:
         # Parse character segments
         segments = self.character_parser.parse_text(text)
         
-        # Build character to speaker mapping
+        # Build character to speaker mapping and combine continuous segments
         character_map = {}
-        speaker_lines = []
+        character_blocks = {}  # Group continuous text by character
         
         for segment in segments:
             char = segment.character
@@ -182,14 +183,63 @@ class VibeVoiceEngineAdapter:
                     print(f"⚠️ VibeVoice: More than 4 characters found, extra characters will use Speaker 3")
                     speaker_idx = 3
                 character_map[char] = speaker_idx
+                character_blocks[char] = []
             
+            # Accumulate text for this character (preserving paragraph structure)
+            character_blocks[char].append(segment.text.strip())
+        
+        # Create Speaker blocks by combining all text for each character
+        speaker_lines = []
+        for char in character_map.keys():
             speaker_idx = character_map[char]
-            speaker_lines.append(f"Speaker {speaker_idx}: {segment.text.strip()}")
+            # Combine all text blocks for this character with double newlines for paragraph breaks
+            combined_text = '\n\n'.join(character_blocks[char])
+            speaker_lines.append(f"Speaker {speaker_idx}: {combined_text}")
         
         # Join with newlines for multi-speaker format
         formatted_text = "\n".join(speaker_lines)
         
         return formatted_text, character_map
+    
+    def _combine_continuous_segments_for_vibevoice(self, segments: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        """
+        Combine continuous same-character segments for better VibeVoice long-form generation.
+        This is VibeVoice-specific and doesn't affect other engines.
+        
+        Args:
+            segments: Original segments from character parser
+            
+        Returns:
+            Combined segments where continuous same-character text is merged
+        """
+        if not segments:
+            return segments
+            
+        combined_segments = []
+        current_character = None
+        current_text_blocks = []
+        
+        for character, text in segments:
+            if character == current_character:
+                # Same character, accumulate text
+                current_text_blocks.append(text.strip())
+            else:
+                # Different character, finalize previous and start new
+                if current_character is not None:
+                    # Combine accumulated text blocks with double newlines for paragraph separation
+                    combined_text = '\n\n'.join(current_text_blocks)
+                    combined_segments.append((current_character, combined_text))
+                
+                # Start new character block
+                current_character = character
+                current_text_blocks = [text.strip()]
+        
+        # Don't forget the last character block
+        if current_character is not None:
+            combined_text = '\n\n'.join(current_text_blocks)
+            combined_segments.append((current_character, combined_text))
+        
+        return combined_segments
     
     def generate_segment_audio(self, text: str, char_audio: str, char_text: str, 
                              character: str = "narrator", **params) -> torch.Tensor:
@@ -339,41 +389,114 @@ class VibeVoiceEngineAdapter:
         """
         audio_segments = []
         
+        # VibeVoice-specific: Combine continuous same-character segments for better long-form generation
+        # This doesn't affect other engines since it's only applied here in VibeVoiceAdapter
+        combined_segments = self._combine_continuous_segments_for_vibevoice(segments)
+        
+        print(f"🔄 VibeVoice: Combined {len(segments)} segments into {len(combined_segments)} continuous blocks")
+        for i, (char, text) in enumerate(combined_segments):
+            text_preview = text.replace('\n\n', ' ¶ ')[:100] + "..." if len(text) > 100 else text.replace('\n\n', ' ¶ ')
+            print(f"   Block {i+1}: {char} -> {text_preview}")
+        
         # Check if we should use native multi-speaker mode
         multi_speaker_mode = params.get('multi_speaker_mode', 'Custom Character Switching')
         
-        if multi_speaker_mode == "Native Multi-Speaker" and len(segments) <= 4:
-            # Use native multi-speaker generation
-            audio = self._generate_native_multispeaker(segments, voice_mapping, params)
+        if multi_speaker_mode == "Native Multi-Speaker" and len(combined_segments) <= 4:
+            # Use native multi-speaker generation with combined segments
+            audio = self._generate_native_multispeaker(combined_segments, voice_mapping, params)
             audio_segments.append(audio)
         else:
-            # Generate each segment separately (Custom Character Switching mode)
-            for character, text in segments:
-                # Handle pause tags
-                if self.pause_processor.has_pause_tags(text):
-                    pause_segments, clean_text = self.pause_processor.parse_pause_tags(text)
-                    
-                    for seg_type, content in pause_segments:
-                        if seg_type == 'text':
-                            voice_ref = voice_mapping.get(character)
-                            audio = self.generate_segment(content, voice_ref, params, character=character)
-                            audio_segments.append(audio)
-                        elif seg_type == 'pause':
-                            # Create silence segment
-                            silence = self.pause_processor.create_silence_segment(
-                                content, 24000, 
-                                device=torch.device('cpu'),
-                                dtype=torch.float32
-                            )
-                            audio_segments.append({
-                                "waveform": silence.unsqueeze(0),
-                                "sample_rate": 24000
-                            })
-                else:
-                    # Generate normally
-                    voice_ref = voice_mapping.get(character)
-                    audio = self.generate_segment(text, voice_ref, params, character=character)
-                    audio_segments.append(audio)
+            # Custom Character Switching mode with VibeVoice-style grouped generation
+            # Group consecutive same-character segments and generate each group at once
+            audio_segments = self._generate_custom_character_switching_grouped(combined_segments, voice_mapping, params)
+        
+        return audio_segments
+    
+    def _generate_custom_character_switching_grouped(self, segments: List[Tuple[str, str]], 
+                                                   voice_mapping: Dict[str, Any],
+                                                   params: Dict) -> List[Dict]:
+        """
+        Generate audio for Custom Character Switching mode using VibeVoice-style grouped generation.
+        Groups consecutive same-character segments and generates each group at once like official VibeVoice.
+        
+        Args:
+            segments: List of (character, text) tuples  
+            voice_mapping: Dict mapping character names to voice references
+            params: Generation parameters
+            
+        Returns:
+            List of audio dicts in order
+        """
+        audio_segments = []
+        
+        if not segments:
+            return audio_segments
+        
+        # Group consecutive same-character segments for batch generation
+        character_groups = []
+        current_character = None
+        current_group = []
+        
+        for character, text in segments:
+            if character == current_character:
+                # Same character, add to current group
+                current_group.append(text)
+            else:
+                # Different character, finalize previous group and start new
+                if current_character is not None and current_group:
+                    character_groups.append((current_character, current_group))
+                
+                current_character = character
+                current_group = [text]
+        
+        # Don't forget the last group
+        if current_character is not None and current_group:
+            character_groups.append((current_character, current_group))
+        
+        print(f"🎭 Custom Character Switching: Processing {len(character_groups)} character groups")
+        
+        # Generate each character group using VibeVoice format
+        for group_idx, (character, text_list) in enumerate(character_groups):
+            print(f"🎤 Group {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
+            
+            # Format as Speaker 1 entries (VibeVoice style) and combine
+            formatted_lines = []
+            for text in text_list:
+                formatted_lines.append(f"Speaker 1: {text.strip()}")
+            
+            # Combine all segments for this character into one script
+            combined_script = '\n'.join(formatted_lines)
+            
+            print(f"🎭 CUSTOM CHARACTER GROUP - Formatted text for VibeVoice:")
+            print("="*60)
+            print(combined_script)
+            print("="*60)
+            
+            # Handle pause tags across the entire combined script
+            if self.pause_processor.has_pause_tags(combined_script):
+                pause_segments, clean_text = self.pause_processor.parse_pause_tags(combined_script)
+                
+                for seg_type, content in pause_segments:
+                    if seg_type == 'text':
+                        voice_ref = voice_mapping.get(character)
+                        audio = self.generate_segment(content, voice_ref, params, character=character)
+                        audio_segments.append(audio)
+                    elif seg_type == 'pause':
+                        # Create silence segment
+                        silence = self.pause_processor.create_silence_segment(
+                            content, 24000, 
+                            device=torch.device('cpu'),
+                            dtype=torch.float32
+                        )
+                        audio_segments.append({
+                            "waveform": silence.unsqueeze(0),
+                            "sample_rate": 24000
+                        })
+            else:
+                # Generate the entire character group at once
+                voice_ref = voice_mapping.get(character)
+                audio = self.generate_segment(combined_script, voice_ref, params, character=character)
+                audio_segments.append(audio)
         
         return audio_segments
     

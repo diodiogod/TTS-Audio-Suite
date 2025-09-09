@@ -118,7 +118,8 @@ class VibeVoiceProcessor:
                                     enable_chunking: bool,
                                     max_chars: int) -> List[Dict]:
         """
-        Process using character switching mode (generate per character).
+        Process using character switching mode with VibeVoice-optimized grouping.
+        Groups consecutive same-character segments for better long-form generation.
         
         Args:
             segments: Character segments
@@ -132,51 +133,111 @@ class VibeVoiceProcessor:
         """
         audio_segments = []
         
+        # Group consecutive same-character segments for VibeVoice optimization
+        grouped_segments = self._group_consecutive_characters(segments)
+        print(f"🔄 VibeVoice Custom: Grouped {len(segments)} segments into {len(grouped_segments)} character blocks")
+        
+        for group_idx, (character, text_list) in enumerate(grouped_segments):
+            print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
+            
+            # Combine text blocks for this character (VibeVoice style)
+            combined_text = '\n'.join(f"Speaker 1: {text.strip()}" for text in text_list)
+            
+            # Process the combined character block
+            self._process_character_block(character, combined_text, voice_mapping, params, 
+                                        enable_chunking, max_chars, audio_segments)
+        
+        return audio_segments
+    
+    def _group_consecutive_characters(self, segments: List[Tuple[str, str]]) -> List[Tuple[str, List[str]]]:
+        """
+        Group consecutive same-character segments for VibeVoice optimization.
+        
+        Args:
+            segments: Original character segments
+            
+        Returns:
+            List of (character, text_list) tuples with grouped segments
+        """
+        if not segments:
+            return []
+            
+        grouped = []
+        current_character = None
+        current_texts = []
+        
         for character, text in segments:
-            # Apply chunking if enabled and text is long
-            if enable_chunking and len(text) > max_chars:
-                chunks = self.chunker.split_into_chunks(text, max_chars)
-                print(f"📝 Chunking {character}'s text into {len(chunks)} chunks")
-                
-                for chunk in chunks:
-                    # Fix: Call generate_segment directly with proper Dict parameter, not generate_segment_audio
-                    # print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (chunked)")
-                    voice_ref = voice_mapping.get(character)
-                    # print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
-                    # Use modular pause tag processing like F5 does
-                    audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
-                        chunk, voice_ref, params, True, character
-                    )
-                    # Convert tensor back to dict format
-                    audio_dict = {
-                        'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
-                        'sample_rate': 24000,
-                        'character': character,
-                        'text': chunk
-                    }
-                    audio_segments.append(audio_dict)
-                    # generate_segment already returns dict format
-                    # (audio_dict already added above)
+            if character == current_character:
+                # Same character, add to current group
+                current_texts.append(text)
             else:
-                # Generate without chunking
-                # print(f"🐛 VIBEVOICE_PROCESSOR: Calling generate_segment for character '{character}' (no chunking)")
+                # Different character, finalize previous group
+                if current_character is not None:
+                    grouped.append((current_character, current_texts))
+                
+                # Start new group
+                current_character = character
+                current_texts = [text]
+        
+        # Don't forget the last group
+        if current_character is not None:
+            grouped.append((current_character, current_texts))
+        
+        return grouped
+    
+    def _process_character_block(self, character: str, combined_text: str, 
+                               voice_mapping: Dict[str, Any], params: Dict,
+                               enable_chunking: bool, max_chars: int, 
+                               audio_segments: List[Dict]) -> None:
+        """
+        Process a combined character block (potentially with chunking).
+        
+        Args:
+            character: Character name
+            combined_text: Combined text for this character (VibeVoice format)
+            voice_mapping: Voice mapping
+            params: Generation parameters  
+            enable_chunking: Whether chunking is enabled
+            max_chars: Max characters per chunk
+            audio_segments: List to append results to
+        """
+        # Apply chunking if enabled and text is long
+        if enable_chunking and len(combined_text) > max_chars:
+            chunks = self.chunker.split_into_chunks(combined_text, max_chars)
+            print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks")
+            
+            for chunk in chunks:
                 voice_ref = voice_mapping.get(character)
-                # print(f"🐛 VIBEVOICE_PROCESSOR: voice_ref type: {type(voice_ref)}")
-                # Use modular pause tag processing like F5 does
                 audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
-                    text, voice_ref, params, True, character
+                    chunk, voice_ref, params, True, character
                 )
                 # Convert tensor back to dict format
                 audio_dict = {
                     'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
                     'sample_rate': 24000,
                     'character': character,
-                    'text': text
+                    'text': chunk
                 }
-                # generate_segment already returns dict format
                 audio_segments.append(audio_dict)
-        
-        return audio_segments
+        else:
+            # Generate without chunking - the entire combined block at once
+            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{character}':")
+            print("="*60)
+            print(combined_text)
+            print("="*60)
+            
+            voice_ref = voice_mapping.get(character)
+            audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                combined_text, voice_ref, params, True, character
+            )
+            # Convert tensor back to dict format
+            audio_dict = {
+                'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
+                'sample_rate': 24000,
+                'character': character,
+                'text': combined_text
+            }
+            audio_segments.append(audio_dict)
     
     def _process_native_multispeaker(self,
                                     segments: List[Tuple[str, str]],
