@@ -170,6 +170,7 @@ class VibeVoiceCacheKeyGenerator(CacheKeyGenerator):
             'multi_speaker_mode': params.get('multi_speaker_mode', 'Custom Character Switching'),
             'audio_component': params.get('audio_component', ''),
             'character': params.get('character', 'narrator'),
+            'inference_steps': params.get('inference_steps', 20),  # Include diffusion inference steps in cache key
             'engine': 'vibevoice'
         }
         

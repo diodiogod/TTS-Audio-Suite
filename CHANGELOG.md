@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.30] - 2025-09-09
+
+### Fixed
+
+- Fix VibeVoice cache and compatibility issues
+- Fix cache not updating when changing inference steps or CFG values
+- Fix DynamicCache errors with newer transformers library versions
+- Improve VibeVoice compatibility with latest transformers updates
 ## [4.8.29] - 2025-09-09
 
 ### Added

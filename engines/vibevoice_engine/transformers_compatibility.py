@@ -95,6 +95,51 @@ def patch_prepare_cache_for_generation():
         return False
 
 
+def patch_dynamic_cache_key_value_cache():
+    """
+    Patch DynamicCache to add key_cache/value_cache properties for VibeVoice compatibility.
+    
+    VibeVoice tries to access .key_cache and .value_cache on DynamicCache objects,
+    but newer transformers versions use a different internal structure.
+    """
+    try:
+        from transformers.cache_utils import DynamicCache
+        
+        # Check if already patched
+        if hasattr(DynamicCache, '_vibevoice_cache_patched'):
+            return True
+            
+        def key_cache_property(self):
+            """Compatibility property for .key_cache access"""
+            if len(self) == 0:
+                return []
+            return [self[i][0] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
+                
+        def value_cache_property(self):
+            """Compatibility property for .value_cache access"""
+            if len(self) == 0:
+                return []
+            return [self[i][1] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
+        
+        # Add properties if they don't exist
+        if not hasattr(DynamicCache, 'key_cache'):
+            DynamicCache.key_cache = property(key_cache_property)
+        if not hasattr(DynamicCache, 'value_cache'):
+            DynamicCache.value_cache = property(value_cache_property)
+            
+        # Mark as patched
+        DynamicCache._vibevoice_cache_patched = True
+        logger.debug("Applied DynamicCache key_cache/value_cache compatibility patch for VibeVoice")
+        return True
+        
+    except ImportError:
+        logger.warning("transformers.cache_utils not available - DynamicCache patch skipped")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to apply DynamicCache compatibility patch: {e}")
+        return False
+
+
 def apply_all_compatibility_patches():
     """Apply all VibeVoice compatibility patches"""
     patches_applied = []
@@ -102,6 +147,10 @@ def apply_all_compatibility_patches():
     # Apply _prepare_cache_for_generation patch
     if patch_prepare_cache_for_generation():
         patches_applied.append("_prepare_cache_for_generation")
+        
+    # Apply DynamicCache key_cache/value_cache patch
+    if patch_dynamic_cache_key_value_cache():
+        patches_applied.append("dynamic_cache_properties")
     
     if patches_applied:
         logger.debug(f"VibeVoice compatibility patches applied: {', '.join(patches_applied)}")

@@ -287,8 +287,9 @@ def apply_transformers_patches(verbose: bool = True):
     TransformersPatches.apply_all_patches(verbose=verbose)
 
 
-# Auto-apply on import for critical patches
-if __name__ != "__main__":
+# Auto-apply on import for critical patches - DISABLED
+# These patches are no longer needed with transformers 4.51.3+ and cause compatibility issues
+if False:  # Completely disabled - was causing DynamicCache errors with newer transformers
     # Only apply critical patches on import to avoid side effects
     TransformersPatches.patch_flash_attention_kwargs(verbose=False)
     TransformersPatches.patch_base_streamer(verbose=False)
