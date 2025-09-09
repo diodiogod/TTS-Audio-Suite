@@ -95,8 +95,13 @@ class VibeVoiceProcessor:
         # Parse character segments (allow auto-discovery like ChatterBox)
         character_segments = parse_character_text(text, None)  # Auto-discover all characters from text
         
-        # Process based on mode
+        # Auto-detect manual "Speaker N:" format and suggest Native mode
         multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
+        if multi_speaker_mode == "Custom Character Switching":
+            if self._contains_manual_speaker_format(text):
+                print("🔄 Auto-switching to Native Multi-Speaker mode (detected manual 'Speaker N:' format)")
+                print("💡 TIP: Use 'Native Multi-Speaker' mode for better performance with manual format")
+                multi_speaker_mode = "Native Multi-Speaker"
         
         if multi_speaker_mode == "Native Multi-Speaker":
             # Check if we can use native mode (max 4 characters)
@@ -319,6 +324,19 @@ class VibeVoiceProcessor:
             combined = combined.unsqueeze(0)  # Add batch dim
         
         return combined
+    
+    def _contains_manual_speaker_format(self, text: str) -> bool:
+        """
+        Check if text contains manual 'Speaker N:' format.
+        
+        Args:
+            text: Input text to check
+            
+        Returns:
+            True if manual Speaker format is detected
+        """
+        import re
+        return bool(re.search(r'speaker\s*\d+\s*:', text, re.IGNORECASE))
     
     def cleanup(self):
         """Clean up resources"""
