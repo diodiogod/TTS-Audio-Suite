@@ -266,7 +266,7 @@ class VoiceDiscovery:
         
         Args:
             character_name: Name of the character
-            engine_type: "f5tts" or "chatterbox" - determines if text is required
+            engine_type: "audio_only" (ChatterBox, VibeVoice, Higgs) or "audio_and_text" (F5-TTS) - determines if text is required
             
         Returns:
             Dict with voice info or None if not found
@@ -280,17 +280,18 @@ class VoiceDiscovery:
         if not character_info:
             return None
         
-        # For ChatterBox, we don't require text files
-        if engine_type == "chatterbox":
+        # For audio-only engines (ChatterBox, VibeVoice, Higgs), we don't require text files
+        if engine_type == "audio_only" or engine_type == "chatterbox":  # Keep backward compatibility
             return {
                 'audio_path': character_info['audio_path'],
                 'character_name': character_name,
                 'source_folder': character_info['source_folder']
             }
         
-        # For F5TTS, we need both audio and text
-        if character_info.get('text_content'):
-            return character_info
+        # For audio+text engines (F5-TTS), we need both audio and text
+        if engine_type == "audio_and_text" or engine_type == "f5tts":  # Keep backward compatibility
+            if character_info.get('text_content'):
+                return character_info
         
         return None
     

@@ -34,6 +34,7 @@ accelerate
 datasets
 requests
 dacite
+bitsandbytes>=0.47.0     # 4-bit quantization support for VibeVoice memory efficiency
 
 # Bundled engine dependencies (safe)
 conformer>=0.3.2      # ChatterBox engine

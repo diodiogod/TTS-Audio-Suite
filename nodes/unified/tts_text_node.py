@@ -332,8 +332,8 @@ Back to the main narrator voice for the conclusion.""",
                         characters = list(set(char for char, _ in character_segments))
                         print(f"🎭 VibeVoice: Character switching mode - found characters: {', '.join(characters)}")
                         
-                        # Get character voice mapping (like F5 does)
-                        character_mapping = get_character_mapping(characters, engine_type="vibevoice")
+                        # Get character voice mapping (VibeVoice is audio-only, doesn't use reference text)
+                        character_mapping = get_character_mapping(characters, engine_type="audio_only")
                         
                         # Build voice references with fallback to main voice (like F5 does)
                         voice_mapping = {}
@@ -687,7 +687,7 @@ Back to the main narrator voice for the conclusion.""",
             # Add unified prefix to generation info
             unified_info = f"🎤 TTS Text (Unified) - {engine_type.upper()} Engine:\n{enhanced_info}"
             
-            print(f"✅ {engine_type.title()} generation complete for '{char_display}'")
+            print(f"✅ {engine_type.title()} generation complete. Default narrator: {char_display}")
             return (audio_output, unified_info)
                 
         except Exception as e:

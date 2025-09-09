@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.28] - 2025-09-09
+
+### Added
+
+- Add support for 4-bit model quantization to reduce VRAM usage
+
+### Changed
+
+- Improve voice reference troubleshooting information
+
+### Fixed
+
+- Fix VibeVoice character voice loading and quantization issues
+- Fix character voices not being found in VibeVoice engine
+- Fix misleading completion messages when using character switching
+- Better compatibility with audio-only engines like VibeVoice
 ## [4.8.27] - 2025-09-09
 
 ### Changed

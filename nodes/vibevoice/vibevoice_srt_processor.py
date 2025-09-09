@@ -205,7 +205,7 @@ class VibeVoiceSRTProcessor:
         complete_voice_refs = voice_mapping.copy()
         try:
             available_chars = get_available_characters()
-            char_mapping = get_character_mapping(list(available_chars), "vibevoice")
+            char_mapping = get_character_mapping(list(available_chars), "audio_only")
             for char in available_chars:
                 char_audio_path, _ = char_mapping.get(char, (None, None))
                 if char_audio_path:
