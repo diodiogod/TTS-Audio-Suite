@@ -293,13 +293,32 @@ class VibeVoiceSRTProcessor:
         
         audio_parts = []
         
-        for character, text in segments:
+        # Group consecutive same-character segments within this subtitle for VibeVoice optimization
+        grouped_segments = self._group_consecutive_characters_srt(segments)
+        print(f"🔄 VibeVoice SRT: Grouped {len(segments)} segments into {len(grouped_segments)} character blocks within subtitle")
+        
+        for group_idx, (character, text_list) in enumerate(grouped_segments):
             voice_ref = voice_mapping.get(character)
             
-            # Generate audio for this character using pause tag support
-            audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
-                text, voice_ref, params, True, character
-            )
+            if len(text_list) == 1:
+                # Single segment - generate normally
+                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                    text_list[0], voice_ref, params, True, character
+                )
+            else:
+                # Multiple segments for same character - combine in VibeVoice format
+                print(f"🎤 SRT Block {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
+                combined_text = '\n'.join(f"Speaker 1: {text.strip()}" for text in text_list)
+                
+                print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{character}':")
+                print("="*60)
+                print(combined_text)
+                print("="*60)
+                
+                # Generate the combined character block
+                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                    combined_text, voice_ref, params, True, character
+                )
             
             # Ensure proper tensor format
             if audio_tensor.dim() == 3:
@@ -314,6 +333,43 @@ class VibeVoiceSRTProcessor:
             return audio_parts[0]
         else:
             return torch.cat(audio_parts, dim=-1)
+    
+    def _group_consecutive_characters_srt(self, segments: List[Tuple[str, str]]) -> List[Tuple[str, List[str]]]:
+        """
+        Group consecutive same-character segments within a subtitle for VibeVoice optimization.
+        SRT-specific version that only groups within subtitle boundaries.
+        
+        Args:
+            segments: Original character segments from one subtitle
+            
+        Returns:
+            List of (character, text_list) tuples with grouped segments
+        """
+        if not segments:
+            return []
+            
+        grouped = []
+        current_character = None
+        current_texts = []
+        
+        for character, text in segments:
+            if character == current_character:
+                # Same character, add to current group
+                current_texts.append(text)
+            else:
+                # Different character, finalize previous group
+                if current_character is not None:
+                    grouped.append((current_character, current_texts))
+                
+                # Start new group
+                current_character = character
+                current_texts = [text]
+        
+        # Don't forget the last group
+        if current_character is not None:
+            grouped.append((current_character, current_texts))
+        
+        return grouped
     
     def _assemble_final_audio(self,
                              audio_segments: List[torch.Tensor],
