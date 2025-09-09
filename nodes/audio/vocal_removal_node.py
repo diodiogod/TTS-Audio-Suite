@@ -1,10 +1,9 @@
 import os
 import sys
 
-# Fix for Python 3.13 + numba compatibility issues
-# Set this BEFORE importing any audio libraries to prevent compilation errors
-if sys.version_info >= (3, 13):
-    os.environ['NUMBA_DISABLE_JIT'] = '1'
+# Smart numba compatibility for vocal separation
+from utils.compatibility import setup_numba_compatibility
+setup_numba_compatibility(quick_startup=True, verbose=False)
 
 # NumPy 2.x compatibility fix
 import numpy as np

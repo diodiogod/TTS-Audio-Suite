@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.27] - 2025-09-09
+
+### Changed
+
+- Performance improvements by only applying workarounds when needed
+
+### Fixed
+
+- Improve numba compatibility handling for Python 3.13
+- Fix contradictory startup messages about JIT status
+- Better handling of librosa/numba compatibility issues
+- Cleaner startup process with single compatibility test
+- Maintain full compatibility with all Python 3.13 environments
 ## [4.8.26] - 2025-09-08
 
 ### Fixed

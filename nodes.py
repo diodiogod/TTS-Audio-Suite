@@ -1,18 +1,15 @@
-# CRITICAL: Python 3.13 numba compatibility - must be first!
-import sys
-import os
-if sys.version_info >= (3, 13):
-    # Disable numba JIT compilation for Python 3.13 compatibility with librosa
-    os.environ['NUMBA_DISABLE_JIT'] = '1'
-    # Also try to set numba config if available
-    try:
-        import numba
-        numba.config.DISABLE_JIT = True
-    except ImportError:
-        pass
+# Smart numba compatibility handling
+try:
+    from utils.compatibility import setup_numba_compatibility
+    setup_numba_compatibility(quick_startup=True, verbose=False)
+except ImportError:
+    # Fallback: only apply workaround if not already handled
+    import sys
+    import os
+    # Don't do anything - __init__.py already handled compatibility testing
 
 # Version and constants
-VERSION = "4.8.26"
+VERSION = "4.8.27"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -418,7 +415,8 @@ print("Universal multi-engine TTS extension for ComfyUI")
 # Show Python 3.13 compatibility status
 if sys.version_info >= (3, 13):
     print(f"🐍 Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} detected")
-    print("⚡ Numba JIT disabled for librosa compatibility")
+    # 🔬 NUMBA WORKAROUND: Commented out - testing if still needed with numba 0.61.2+ and librosa 0.11.0+
+    # print("⚡ Numba JIT disabled for librosa compatibility")
 
 # Check for local models using updated model manager
 try:

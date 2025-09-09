@@ -1,4 +1,16 @@
 from typing import List, Tuple
+import os
+import sys
+
+# 🔬 NUMBA WORKAROUND: Commented out - testing if still needed with numba 0.61.2+ and librosa 0.11.0+
+# Python 3.13 compatibility: Disable numba JIT for librosa compatibility
+# if sys.version_info >= (3, 13):
+#     os.environ['NUMBA_DISABLE_JIT'] = '1'
+#     try:
+#         import numba
+#         numba.config.DISABLE_JIT = True
+#     except ImportError:
+#         pass
 
 import numpy as np
 import librosa

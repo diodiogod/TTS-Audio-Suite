@@ -4,10 +4,9 @@ from multiprocessing.pool import ThreadPool
 import os
 import sys
 
-# Fix for Python 3.13 + numba compatibility issues  
-# Disable numba JIT compilation to prevent various compilation errors
-if sys.version_info >= (3, 13):
-    os.environ['NUMBA_DISABLE_JIT'] = '1'
+# Smart numba compatibility for RVC separators
+from utils.compatibility import setup_numba_compatibility
+setup_numba_compatibility(quick_startup=True, verbose=False)
 
 from lib.utils import ObjectNamespace
 import numpy as np

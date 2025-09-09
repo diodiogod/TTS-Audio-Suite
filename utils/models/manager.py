@@ -532,13 +532,17 @@ class ModelManager:
                         # They use whatever language they were trained on
                         if language != "English":
                             print(f"⚠️ Local VC model at {path} may not support {language} - using existing model")
+                        print(f"🐛 Calling ChatterboxVC.from_local({path}, {device})")
                         model = ChatterboxVC.from_local(path, device)
+                        print(f"🐛 from_local returned: {model} (type: {type(model)})")
                 elif source == "huggingface":
                     # Ensure ChatterboxVC is available before attempting to use it
                     if ChatterboxVC is None:
                         raise RuntimeError(f"ChatterboxVC not available - cannot load model from HuggingFace")
                     
+                    print(f"🐛 Calling ChatterboxVC.from_pretrained({device}, {language})")
                     model = ChatterboxVC.from_pretrained(device, language)
+                    print(f"🐛 from_pretrained returned: {model} (type: {type(model)})")
                 else:
                     continue
                 

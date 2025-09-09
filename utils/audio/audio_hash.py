@@ -10,14 +10,15 @@ import os
 import sys
 from typing import Optional, Dict, Any
 
+# 🔬 NUMBA WORKAROUND: Commented out - testing if still needed with numba 0.61.2+ and librosa 0.11.0+
 # Python 3.13 compatibility: Disable numba JIT for librosa compatibility
-if sys.version_info >= (3, 13):
-    os.environ['NUMBA_DISABLE_JIT'] = '1'
-    try:
-        import numba
-        numba.config.DISABLE_JIT = True
-    except ImportError:
-        pass
+# if sys.version_info >= (3, 13):
+#     os.environ['NUMBA_DISABLE_JIT'] = '1'
+#     try:
+#         import numba
+#         numba.config.DISABLE_JIT = True
+#     except ImportError:
+#         pass
 
 
 def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = None, 
@@ -52,19 +53,72 @@ def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = 
         # For file paths (dropdown selections or temp files), hash file content
         try:
             # print(f"🐛 AUDIO_HASH: Hashing file path: {audio_file_path}")
-            import librosa
-            # Load audio file and create hash from content
-            waveform, sample_rate = librosa.load(audio_file_path, sr=None)
-            waveform_hash = hashlib.md5(waveform.tobytes()).hexdigest()
-            result = f"file_audio_{waveform_hash}_{sample_rate}"
-            # print(f"🐛 AUDIO_HASH: Generated file hash: {result}")
-            return result
+            
+            # Try multiple audio loading methods for robustness
+            waveform = None
+            sample_rate = None
+            
+            # Method 1: Try soundfile first (more reliable, no numba dependencies)
+            try:
+                import soundfile as sf
+                waveform, sample_rate = sf.read(audio_file_path, dtype='float32')
+                # print(f"🐛 AUDIO_HASH: Loaded with soundfile")
+            except:
+                # Method 2: Try torchaudio (also reliable, minimal numba use)
+                try:
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", UserWarning)  # Suppress torchaudio 2.9 warnings
+                        import torchaudio
+                        waveform_tensor, sample_rate = torchaudio.load(audio_file_path)
+                        waveform = waveform_tensor.numpy().flatten()
+                    # print(f"🐛 AUDIO_HASH: Loaded with torchaudio")
+                except:
+                    # Method 3: Fall back to librosa with enhanced numba protection
+                    try:
+                        # Force disable numba compilation for this specific import
+                        import warnings
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", UserWarning)  # Suppress torchaudio warnings
+                            
+                            # Smart numba compatibility for audio loading
+                            from utils.compatibility import setup_numba_compatibility
+                            setup_numba_compatibility(quick_startup=True, verbose=False)
+                            
+                            import librosa
+                            waveform, sample_rate = librosa.load(audio_file_path, sr=None)
+                            
+                        # print(f"🐛 AUDIO_HASH: Loaded with librosa (numba protected)")
+                    except Exception as librosa_error:
+                        # If all methods fail, just hash the file path + modification time for uniqueness
+                        file_stat = os.stat(audio_file_path)
+                        path_hash = hashlib.md5(f"{audio_file_path}_{file_stat.st_mtime}_{file_stat.st_size}".encode()).hexdigest()
+                        fallback = f"path_{path_hash}"
+                        print(f"⚠️ Failed to load audio file for content hashing: {librosa_error}")
+                        print(f"🔄 Using path+timestamp hash instead: {fallback}")
+                        return fallback
+            
+            if waveform is not None:
+                waveform_hash = hashlib.md5(waveform.tobytes()).hexdigest()
+                result = f"file_audio_{waveform_hash}_{sample_rate}"
+                # print(f"🐛 AUDIO_HASH: Generated file hash: {result}")
+                return result
+            else:
+                raise Exception("Failed to load audio with all methods")
+                
         except Exception as e:
-            # Fallback to path if file reading fails
-            print(f"⚠️ Failed to hash audio file {audio_file_path}: {e}, using path fallback")
-            fallback = f"path_{os.path.basename(audio_file_path)}"
-            # print(f"🐛 AUDIO_HASH: Using fallback: {fallback}")
-            return fallback
+            # Enhanced fallback using file metadata for better cache consistency
+            try:
+                file_stat = os.stat(audio_file_path)
+                path_hash = hashlib.md5(f"{audio_file_path}_{file_stat.st_mtime}_{file_stat.st_size}".encode()).hexdigest()
+                fallback = f"path_{path_hash}"
+                print(f"⚠️ Audio content hashing failed, using file metadata hash: {fallback}")
+                return fallback
+            except:
+                # Final fallback - just use filename
+                fallback = f"path_{os.path.basename(audio_file_path)}"
+                print(f"⚠️ Failed to hash audio file {audio_file_path}: {e}, using path fallback")
+                return fallback
     
     else:
         # No voice file (default voice)

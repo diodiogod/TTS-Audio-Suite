@@ -13,32 +13,72 @@ import importlib.util
 import os
 import sys
 
-# Python 3.13 compatibility: Disable numba JIT for librosa compatibility
-def setup_python313_compatibility():
-    """Setup Python 3.13 compatibility fixes for numba/librosa issues"""
+# Smart Numba Compatibility System - tests and applies fixes only when needed
+try:
+    from utils.compatibility import setup_numba_compatibility
+    # Apply smart compatibility setup (fast startup test)
+    compatibility_results = setup_numba_compatibility(quick_startup=True, verbose=True)
+except ImportError:
+    # Fallback to simple approach if compatibility module not found
+    import sys
+    import os
     if sys.version_info >= (3, 13):
-        # Disable numba JIT compilation to fix librosa compatibility issues
-        # This prevents numba compilation errors in librosa with Python 3.13
-        os.environ['NUMBA_DISABLE_JIT'] = '1'
-        print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} detected - disabled numba JIT for RVC compatibility")
-        
-        # Also try to disable it programmatically if numba is already loaded
+        # Basic test: try librosa.stft and apply workaround if it fails
         try:
-            import numba
-            numba.config.DISABLE_JIT = True
-            print("🔧 TTS Audio Suite: Set numba.config.DISABLE_JIT = True")
-        except ImportError:
-            # numba not yet installed, the environment variable will handle it
-            print("🔧 TTS Audio Suite: Numba not yet loaded - environment variable will handle it")
-        
-        # Additional compatibility environment variables
-        os.environ['NUMBA_ENABLE_CUDASIM'] = '1'  # Enable CUDA simulation fallback
-        
+            import numpy as np
+            import librosa
+            test_audio = np.random.randn(512).astype(np.float32)
+            _ = librosa.stft(test_audio, hop_length=256, n_fft=512)
+            print("✅ Numba JIT working properly - no workarounds needed")
+            # Mark that we've tested numba compatibility
+            import sys
+            sys.modules['__main__']._tts_numba_tested = True
+        except Exception as e:
+            if "'function' object has no attribute 'get_call_template'" in str(e):
+                os.environ['NUMBA_DISABLE_JIT'] = '1'
+                os.environ['NUMBA_ENABLE_CUDASIM'] = '1'
+                try:
+                    import numba
+                    numba.config.DISABLE_JIT = True
+                except ImportError:
+                    pass
+                print("🔧 Applied numba JIT workaround for Python 3.13 compatibility")
+            else:
+                print(f"⚠️ Librosa test failed with different error: {e}")
     else:
-        print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} detected - numba JIT enabled for optimal performance")
+        print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} - numba JIT enabled")
 
-# Apply Python 3.13 compatibility fixes
-setup_python313_compatibility()
+# Suppress specific torchaudio 2.9+ TorchCodec migration warnings (informational only, no action needed)
+import warnings
+warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec", category=UserWarning)
+warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.save_with_torchcodec", category=UserWarning)
+
+# Version disclosure for troubleshooting
+def print_critical_versions():
+    """Print versions of critical packages for troubleshooting"""
+    critical_packages = [
+        ('numpy', 'NumPy'),
+        ('librosa', 'Librosa'), 
+        ('numba', 'Numba'),
+        ('torch', 'PyTorch'),
+        ('torchaudio', 'TorchAudio'),
+        ('transformers', 'Transformers'),
+        ('soundfile', 'SoundFile'),
+    ]
+    
+    version_info = []
+    for pkg_name, display_name in critical_packages:
+        try:
+            module = __import__(pkg_name)
+            version = getattr(module, '__version__', 'unknown')
+            version_info.append(f"{display_name} {version}")
+        except ImportError:
+            version_info.append(f"{display_name} not installed")
+    
+    print(f"ℹ️ Critical package versions: {', '.join(version_info)}")
+
+# Print versions immediately for troubleshooting
+print_critical_versions()
 
 # Check for old ChatterBox extension conflict
 def check_old_extension_conflict():
