@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.31] - 2025-09-09
+
+### Added
+
+- Faster generation with optimized parameter combination
+
+### Changed
+
+- Optimize VibeVoice for better quality and consistency
+- Improve default settings based on community testing (CFG 3.0, 3 inference steps)
+- Better quality with less background noise and music hallucinations
+
+### Fixed
+
+- Fix voice generation producing inconsistent results between parameter configurations
 ## [4.8.30] - 2025-09-09
 
 ### Fixed

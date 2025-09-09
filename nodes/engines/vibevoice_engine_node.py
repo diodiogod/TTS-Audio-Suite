@@ -83,17 +83,17 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "tooltip": "Speaker generation mode - SUPPORTS BOTH FORMATS!\n\n• Custom Character Switching: ⭐ RECOMMENDED - Use [Alice], [Bob] character tags. Each character generated separately with voice files from voices folder. Supports pause tags, per-character control, unlimited characters.\n\n• Native Multi-Speaker: ✅ TWO FORMAT OPTIONS:\n  1. [Alice], [Bob] tags → auto-converted to Speaker format\n  2. Manual 'Speaker 1: Hello\nSpeaker 2: Hi there' format\n\nUp to 4 speakers. More efficient single-pass generation.\n\n🔧 PRIORITY: Connected speaker2_voice/3/4 inputs override character aliases with warnings!"
                 }),
                 "cfg_scale": ("FLOAT", {
-                    "default": 1.3,
+                    "default": 3.0,
                     "min": 1.0,
                     "step": 0.1,
-                    "tooltip": "Classifier-free guidance scale:\n• 1.0: Minimal guidance\n• 1.3: 🎯 RECOMMENDED - Balanced guidance\n• 2.0-3.0: Stronger text adherence\n• 3.0+: Very strong guidance (experiment with lower steps)\n\nHigher values follow text more closely but may sound less natural. Some users report good results with CFG 3.0 + 3 steps vs CFG 1.3 + 20 steps. No upper limit - experiment freely!"
+                    "tooltip": "Classifier-free guidance scale:\n• 1.0: Minimal guidance\n• 1.3: Conservative guidance\n• 3.0: 🎯 RECOMMENDED - Optimal balance (fewer steps needed)\n• 5.0: Strong guidance\n\nHigher CFG allows fewer inference steps while maintaining quality. CFG 3.0 + 3 steps often outperforms CFG 1.3 + 20 steps."
                 }),
                 "inference_steps": ("INT", {
-                    "default": 20,
+                    "default": 3,
                     "min": 1,
                     "max": 100,
                     "step": 1,
-                    "tooltip": "🔄 Diffusion inference steps:\n• 1-3: ⚡ Ultra-fast (try CFG 3.0 + 3 steps for quality)\n• 5-10: Fast but lower quality\n• 15-25: 🎯 RECOMMENDED - Balanced quality/speed\n• 30-50: Higher quality but slower\n• 50+: Diminishing returns\n\nSome users report better results with high CFG (3.0) + low steps (3) vs standard CFG (1.3) + high steps (20)."
+                    "tooltip": "🔄 Diffusion inference steps:\n• 3: 🎯 RECOMMENDED - Fast with high CFG (3.0)\n• 5-10: Fast but may need lower CFG\n• 15-25: Traditional balanced approach\n• 30+: Higher quality but slower\n\nWith CFG 3.0, just 3 steps often produces better results than CFG 1.3 + 20 steps."
                 }),
                 "use_sampling": ("BOOLEAN", {
                     "default": False,
@@ -163,10 +163,10 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "model": model,
             "device": device,
             "multi_speaker_mode": multi_speaker_mode,
-            "cfg_scale": max(1.0, cfg_scale),
+            "cfg_scale": max(1.0, min(5.0, cfg_scale)),
             "use_sampling": bool(use_sampling),
             "attention_mode": attention_mode,
-            "inference_steps": max(1, min(100, inference_steps)),
+            "inference_steps": max(3, min(100, inference_steps)),
             "quantize_llm_4bit": bool(quantize_llm_4bit),
             "temperature": max(0.1, min(2.0, temperature)),
             "top_p": max(0.1, min(1.0, top_p)),
