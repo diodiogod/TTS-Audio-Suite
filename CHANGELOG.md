@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.29] - 2025-09-09
+
+### Added
+
+- Allow ultra-low inference steps (1-3) for fast generation experiments
+- Add support for CFG 3.0 + 3 steps combination as reported by users
+
+### Changed
+
+- Improve VibeVoice generation flexibility and default quality
+- Change default to Native Multi-Speaker mode for better text processing
+- Better parameter flexibility for quality/speed experimentation
+
+### Removed
+
+- Remove CFG scale limit to allow testing high values like 3.0
 ## [4.8.28] - 2025-09-09
 
 ### Added
