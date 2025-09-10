@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Set
 try:
     import folder_paths
+    from utils.models.extra_paths import get_all_voices_paths
 except ImportError:
     folder_paths = None
+    get_all_voices_paths = None
 
 
 class VoiceDiscovery:
@@ -120,6 +122,27 @@ class VoiceDiscovery:
         voices_examples_dir = self._get_voices_examples_dir()
         if voices_examples_dir and os.path.exists(voices_examples_dir):
             self._scan_directory(voices_examples_dir, "voices_examples", "voices_examples")
+        
+        # Scan any additional extra_model_paths.yaml configured voices directories
+        if get_all_voices_paths:
+            try:
+                extra_voices_paths = get_all_voices_paths()
+                for extra_path in extra_voices_paths:
+                    # Skip paths we already scanned above
+                    if extra_path == models_voices_dir or extra_path == models_tts_voices_dir:
+                        continue
+                    if os.path.exists(extra_path):
+                        # Create a clean prefix from the path for organization
+                        path_name = os.path.basename(os.path.normpath(extra_path))
+                        parent_name = os.path.basename(os.path.dirname(extra_path))
+                        if parent_name and parent_name != "models":
+                            prefix = f"{parent_name}/{path_name}"
+                        else:
+                            prefix = path_name
+                        self._scan_directory(extra_path, f"extra:{extra_path}", prefix)
+            except Exception:
+                # Silently handle any extra paths errors to avoid breaking main functionality
+                pass
         
         self._cache_valid = True
         # print(f"🎤 Voice Discovery: Found {len(self._cache)} voices across all locations")
@@ -372,6 +395,21 @@ class VoiceDiscovery:
         if models_voices_dir and os.path.exists(models_voices_dir):
             self._scan_character_directories(models_voices_dir, "models/voices")
         
+        # Scan any additional extra_model_paths.yaml configured voices directories for characters
+        if get_all_voices_paths:
+            try:
+                extra_voices_paths = get_all_voices_paths()
+                for extra_path in extra_voices_paths:
+                    # Skip paths we already scanned above
+                    models_tts_voices_dir = self._get_models_tts_voices_dir()
+                    if extra_path == models_voices_dir or extra_path == models_tts_voices_dir:
+                        continue
+                    if os.path.exists(extra_path):
+                        self._scan_character_directories(extra_path, f"extra:{extra_path}")
+            except Exception:
+                # Silently handle any extra paths errors
+                pass
+        
         self._character_cache_valid = True
     
     def _refresh_character_aliases(self):
@@ -395,6 +433,22 @@ class VoiceDiscovery:
         models_voices_dir = self._get_models_voices_dir()
         if models_voices_dir:
             self._load_alias_file(models_voices_dir, "models/voices")
+        
+        # 4. Load from any additional extra_model_paths.yaml configured voices directories
+        # These have higher priority than models/voices since they're user-configured
+        if get_all_voices_paths:
+            try:
+                extra_voices_paths = get_all_voices_paths()
+                for extra_path in extra_voices_paths:
+                    # Skip paths we already processed above
+                    models_tts_voices_dir = self._get_models_tts_voices_dir()
+                    if extra_path == models_voices_dir or extra_path == models_tts_voices_dir:
+                        continue
+                    if os.path.exists(extra_path):
+                        self._load_alias_file(extra_path, f"extra:{extra_path}")
+            except Exception:
+                # Silently handle any extra paths errors
+                pass
         
         self._aliases_valid = True
     

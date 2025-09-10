@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.34] - 2025-09-10
+
+### Added
+
+- Add ComfyUI extra_model_paths.yaml support for shared models
+- Support shared model directories across multiple ComfyUI installations
+- Enable shared storage configurations as requested by users
+
+### Changed
+
+- Improve voice discovery with models/TTS/voices fallback support
+
+### Fixed
+
+- Fix model downloads always going to default ComfyUI models folder
+- Reference: GitHub issue #63
 ## [4.8.33] - 2025-09-10
 
 ### Changed

@@ -9,6 +9,9 @@ from typing import Optional, Dict, Any, List
 from pathlib import Path
 import folder_paths
 
+# Import extra paths support
+from utils.models.extra_paths import get_preferred_download_path, find_model_in_paths
+
 class UnifiedDownloader:
     """
     Centralized downloader that handles all model downloads directly to organized TTS/ folder structure
@@ -16,8 +19,10 @@ class UnifiedDownloader:
     """
     
     def __init__(self):
+        # Use extra_model_paths.yaml aware directory resolution
+        self.tts_dir = get_preferred_download_path('TTS')
+        # Keep backward compatibility
         self.models_dir = folder_paths.models_dir
-        self.tts_dir = os.path.join(self.models_dir, "TTS")
     
     def download_file(self, url: str, target_path: str, description: str = None) -> bool:
         """
@@ -209,7 +214,7 @@ class UnifiedDownloader:
     
     def get_organized_path(self, engine_type: str, model_name: str = None) -> str:
         """
-        Get the organized path for a model.
+        Get the organized path for a model, respecting extra_model_paths.yaml.
         
         Args:
             engine_type: Engine type ("F5-TTS", "chatterbox", "RVC", "UVR")
@@ -218,22 +223,33 @@ class UnifiedDownloader:
         Returns:
             Full path to organized model directory
         """
+        # Use extra_model_paths.yaml aware directory resolution
+        base_path = get_preferred_download_path('TTS', engine_type.lower())
+        
         if model_name:
-            return os.path.join(self.tts_dir, engine_type, model_name)
+            return os.path.join(base_path, model_name)
         else:
-            return os.path.join(self.tts_dir, engine_type)
+            return base_path
     
-    def check_legacy_location(self, engine_type: str, model_name: str = None) -> Optional[str]:
+    def check_existing_model(self, engine_type: str, model_name: str = None) -> Optional[str]:
         """
-        Check if model exists in legacy location for backward compatibility.
+        Check if model exists in any configured path (extra_model_paths.yaml aware).
         
         Args:
             engine_type: Engine type
             model_name: Optional model name
             
         Returns:
-            Path if found in legacy location, None otherwise
+            Path if found in any configured location, None otherwise
         """
+        if not model_name:
+            return None
+        
+        # First, try to find in any configured TTS paths using extra_paths system
+        search_subdirs = [engine_type.lower(), engine_type]
+        existing_path = find_model_in_paths(model_name, 'TTS', search_subdirs)
+        if existing_path:
+            return existing_path
         legacy_paths = []
         
         if engine_type == "F5-TTS":

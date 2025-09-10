@@ -10,6 +10,9 @@ import folder_paths
 from typing import Optional, List, Tuple, Dict, Any
 from utils.system.import_manager import import_manager
 
+# Import extra paths support
+from utils.models.extra_paths import get_all_tts_model_paths, find_model_in_paths
+
 # Import ComfyUI model wrapper for integration
 from utils.models.comfyui_model_wrapper import tts_model_manager
 
@@ -82,9 +85,14 @@ class ModelManager:
             model_paths.append(("bundled", self.bundled_models_dir))
             return model_paths  # Return immediately if bundled models found
         
-        # 2. Check ComfyUI models folder - new TTS organization
-        comfyui_tts_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox")
-        if os.path.exists(comfyui_tts_dir):
+        # 2. Check configured TTS model paths (extra_model_paths.yaml aware)
+        tts_model_paths = get_all_tts_model_paths('TTS')
+        
+        for base_tts_path in tts_model_paths:
+            comfyui_tts_dir = os.path.join(base_tts_path, "chatterbox")
+            if not os.path.exists(comfyui_tts_dir):
+                continue
+            
             # Check for direct s3gen.pt in chatterbox folder
             direct_model = os.path.join(comfyui_tts_dir, "s3gen.pt")
             if os.path.exists(direct_model):
