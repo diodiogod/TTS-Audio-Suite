@@ -403,7 +403,7 @@ class VibeVoiceEngineAdapter:
         
         if multi_speaker_mode == "Native Multi-Speaker" and len(combined_segments) <= 4:
             # Use native multi-speaker generation with combined segments
-            audio = self._generate_native_multispeaker(combined_segments, voice_mapping, params)
+            audio = self._generate_native_multispeaker(combined_segments, voice_mapping, params, None)
             audio_segments.append(audio)
         else:
             # Custom Character Switching mode with VibeVoice-style grouped generation
@@ -502,7 +502,8 @@ class VibeVoiceEngineAdapter:
     
     def _generate_native_multispeaker(self, segments: List[Tuple[str, str]], 
                                      voice_mapping: Dict[str, Any],
-                                     params: Dict) -> Dict:
+                                     params: Dict,
+                                     global_char_to_speaker: Optional[Dict[str, int]] = None) -> Dict:
         """
         Generate using VibeVoice's native multi-speaker mode.
         Supports both [Character] tags and manual "Speaker N:" format.
@@ -511,6 +512,7 @@ class VibeVoiceEngineAdapter:
             segments: List of (character, text) tuples
             voice_mapping: Dict mapping character names to voice references
             params: Generation parameters
+            global_char_to_speaker: Global character-to-speaker mapping for consistent SRT processing
             
         Returns:
             Combined audio dict
@@ -539,7 +541,6 @@ class VibeVoiceEngineAdapter:
         formatted_lines = []
         
         print(f"🎭 Native multi-speaker: Processing {len(segments)} segments with characters: {[char for char, _ in segments]}")
-        print(f"🎭 Available voice_mapping keys: {list(voice_mapping.keys())}")
         print(f"🎤 Speaker inputs connected: {[f'Speaker {k}' for k, v in speaker_inputs.items() if v is not None]}")
         
         for character, text in segments:
@@ -567,14 +568,20 @@ class VibeVoiceEngineAdapter:
                 formatted_lines.append(f"Speaker {manual_speaker}: {text.strip()}")
                 
             else:
-                # Character tag format - check priority system
+                # Character tag format - use global mapping if provided (for SRT consistency)
                 if character not in character_map:
-                    speaker_idx = len(character_map)
-                    if speaker_idx >= 4:
-                        print(f"⚠️ VibeVoice: Limiting to 4 speakers, '{character}' will use Speaker 4")
-                        speaker_idx = 3  # Use 0-based internally, will convert to 1-based for format
-                    else:
+                    if global_char_to_speaker and character in global_char_to_speaker:
+                        # Use global mapping for consistent SRT processing
+                        speaker_idx = global_char_to_speaker[character] - 1  # Convert to 0-based
                         character_map[character] = speaker_idx
+                    else:
+                        # Fallback to sequential assignment
+                        speaker_idx = len(character_map)
+                        if speaker_idx >= 4:
+                            print(f"⚠️ VibeVoice: Limiting to 4 speakers, '{character}' will use Speaker 4")
+                            speaker_idx = 3  # Use 0-based internally, will convert to 1-based for format
+                        else:
+                            character_map[character] = speaker_idx
                         
                     # Priority system: speaker inputs override character aliases
                     speaker_num = speaker_idx + 1
@@ -590,7 +597,7 @@ class VibeVoiceEngineAdapter:
                     else:
                         print(f"🎭 Character '{character}' -> Speaker {speaker_num}, using character voice")
                         voice = character_voice
-                        
+                    
                     speaker_voices.append(voice)
                 
                 speaker_idx = character_map.get(character, 3)
@@ -603,8 +610,45 @@ class VibeVoiceEngineAdapter:
         print("="*60)
         print(formatted_text)
         print("="*60)
-        print(f"🎤 Character mapping: {character_map}")
         print(f"🎤 Using {len(speaker_voices)} voice samples for generation")
+        
+        # Validate and normalize voice references
+        normalized_voices = []
+        for i, voice in enumerate(speaker_voices):
+            if voice is None:
+                # print(f"🐛 Speaker {i+1} voice: None")
+                normalized_voices.append(None)
+            elif isinstance(voice, dict) and ('audio_path' in voice or 'waveform' in voice):
+                # Valid voice reference format
+                # if 'audio_path' in voice:
+                #     print(f"🐛 Speaker {i+1} voice: {voice['audio_path']}")
+                # else:
+                #     print(f"🐛 Speaker {i+1} voice: waveform tensor shape {voice['waveform'].shape}")
+                normalized_voices.append(voice)
+            elif isinstance(voice, str):
+                # Invalid format - just character name, try to convert to voice reference
+                print(f"❌ Speaker {i+1} received character name '{voice}' instead of voice reference")
+                print(f"💡 TIP: Connect Character Voices output (not character_name) to Speaker {i+1} input")
+                # Try to find matching voice file
+                try:
+                    from utils.voice.discovery import get_character_mapping
+                    char_mapping = get_character_mapping()
+                    if voice in char_mapping:
+                        voice_ref = char_mapping[voice]
+                        print(f"🔄 Auto-converted '{voice}' to voice reference")
+                        normalized_voices.append(voice_ref)
+                    else:
+                        print(f"⚠️ Unknown character '{voice}', using None")
+                        normalized_voices.append(None)
+                except Exception as e:
+                    print(f"⚠️ Could not convert character '{voice}': {e}")
+                    normalized_voices.append(None)
+            else:
+                print(f"❌ Speaker {i+1} invalid voice format: {type(voice)} - {str(voice)[:100]}...")
+                normalized_voices.append(None)
+        
+        # Use normalized voices
+        speaker_voices = normalized_voices
         
         # Check if model and processor are loaded
         if self.current_model is None or self.current_processor is None:

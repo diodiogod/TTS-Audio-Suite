@@ -130,12 +130,17 @@ class VibeVoiceSRTProcessor:
         character_parser.reset_session_cache()
         character_parser.set_engine_aware_default_language(self.config.get('model', 'vibevoice-1.5B'), "vibevoice")
         
-        # Process subtitles and generate audio segments  
+        # Build global character-to-speaker mapping for Native Multi-Speaker mode
         current_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
+        global_char_to_speaker = None
+        if current_mode == "Native Multi-Speaker":
+            global_char_to_speaker = self._build_global_character_mapping(subtitles)
+        
+        # Process subtitles and generate audio segments  
         print(f"🚀 VibeVoice SRT: Processing {len(subtitles)} subtitles in {current_mode} mode")
         
         audio_segments, natural_durations, any_segment_cached = self._process_all_subtitles(
-            subtitles, voice_mapping, seed
+            subtitles, voice_mapping, seed, global_char_to_speaker
         )
         
         # Calculate timing adjustments
@@ -185,7 +190,8 @@ class VibeVoiceSRTProcessor:
     def _process_all_subtitles(self,
                               subtitles: List,
                               voice_mapping: Dict[str, Any],
-                              seed: int) -> Tuple[List[torch.Tensor], List[float], bool]:
+                              seed: int,
+                              global_char_to_speaker: Optional[Dict[str, int]] = None) -> Tuple[List[torch.Tensor], List[float], bool]:
         """
         Process all subtitles and generate audio segments.
         
@@ -193,6 +199,7 @@ class VibeVoiceSRTProcessor:
             subtitles: List of SRT subtitle objects
             voice_mapping: Voice mapping
             seed: Random seed
+            global_char_to_speaker: Global character to speaker mapping (for Native Multi-Speaker)
             
         Returns:
             Tuple of (audio_segments, natural_durations, any_segment_cached)
@@ -249,7 +256,7 @@ class VibeVoiceSRTProcessor:
                     config_with_seed = self.config.copy()
                     config_with_seed['seed'] = seed
                     audio = self.adapter._generate_native_multispeaker(
-                        character_segments, complete_voice_refs, config_with_seed
+                        character_segments, complete_voice_refs, config_with_seed, global_char_to_speaker
                     )
                     wav = audio['waveform']
                     if wav.dim() == 3:
@@ -465,6 +472,38 @@ class VibeVoiceSRTProcessor:
         reporter = SRTReportGenerator()
         return reporter.generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
     
+    def _build_global_character_mapping(self, subtitles: List) -> Dict[str, int]:
+        """
+        Build global character-to-speaker mapping for consistent SRT Native Multi-Speaker mode.
+        
+        Args:
+            subtitles: List of SRT subtitle objects
+            
+        Returns:
+            Dict mapping character names to speaker numbers (1-4)
+        """
+        # Collect all unique characters across all subtitles
+        all_characters = set()
+        
+        for subtitle in subtitles:
+            character_segments = parse_character_text(subtitle.text, None)
+            for character, _ in character_segments:
+                all_characters.add(character)
+        
+        # Sort characters to ensure consistent mapping
+        # narrator/untagged first, then alphabetical order for tagged characters
+        sorted_chars = sorted(all_characters, key=lambda x: (x != 'narrator', x))
+        
+        # Map to speakers (limit to 4 for VibeVoice native mode)
+        char_to_speaker = {}
+        for i, character in enumerate(sorted_chars[:4]):  # Max 4 speakers
+            char_to_speaker[character] = i + 1
+        
+        if char_to_speaker:
+            print(f"🎭 Global SRT character mapping: {char_to_speaker}")
+            
+        return char_to_speaker
+
     def cleanup(self):
         """Clean up resources"""
         if self.adapter:

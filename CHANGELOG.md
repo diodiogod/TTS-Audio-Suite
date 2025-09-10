@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.32] - 2025-09-09
+
+### Added
+
+- Add automatic detection of manual Speaker format in text
+
+### Changed
+
+- Improve SRT subtitle processing with consistent character mapping
+- Clean up console output for better user experience
+- Better fallback handling for invalid voice connections
+
+### Fixed
+
+- Fix VibeVoice voice handling and improve multi-speaker reliability
+- Fix voice references not loading correctly in Native Multi-Speaker mode
+- Add helpful error messages when wrong connection types are used
 ## [4.8.31] - 2025-09-09
 
 ### Added

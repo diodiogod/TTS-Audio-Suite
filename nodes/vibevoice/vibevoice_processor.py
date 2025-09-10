@@ -261,7 +261,7 @@ class VibeVoiceProcessor:
         """
         # Use adapter's native multi-speaker generation
         audio = self.adapter._generate_native_multispeaker(
-            segments, voice_mapping, params
+            segments, voice_mapping, params, None
         )
         return [audio]
     

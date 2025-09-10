@@ -1,0 +1,1556 @@
+{
+  "id": "4a7cdb14-f535-4923-861b-59ba2c7ee043",
+  "revision": 0,
+  "last_node_id": 122,
+  "last_link_id": 215,
+  "nodes": [
+    {
+      "id": 81,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1936.600341796875,
+        1330.8438720703125
+      ],
+      "size": [
+        237.15780639648438,
+        132
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            151
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+      },
+      "widgets_values": [
+        "voices_examples/higgs_audio/belinda.wav",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 53,
+      "type": "Reroute",
+      "pos": [
+        -944.7237548828125,
+        1818.8662109375
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 154
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            156
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 69,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1936.600341796875,
+        1549.321044921875
+      ],
+      "size": [
+        232.96051025390625,
+        146.08004760742188
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            152
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+      },
+      "widgets_values": [
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 99,
+      "type": "Reroute",
+      "pos": [
+        -1211.9404296875,
+        1018.4419555664062
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 188
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            182
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 84,
+      "type": "Reroute",
+      "pos": [
+        -1146.7266845703125,
+        1102.546142578125
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 210
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            150
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 112,
+      "type": "Reroute",
+      "pos": [
+        -1167.6695556640625,
+        2220.73583984375
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 202
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            201
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 68,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1936.600341796875,
+        1771.314453125
+      ],
+      "size": [
+        232.96051025390625,
+        146.08004760742188
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            153
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+      },
+      "widgets_values": [
+        "voices_examples/female/female_02.wav",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 79,
+      "type": "PreviewAudio",
+      "pos": [
+        1363.5406494140625,
+        1798.03662109375
+      ],
+      "size": [
+        441.48828125,
+        88
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 133
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 82,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        -2619.0771484375,
+        2232.60791015625
+      ],
+      "size": [
+        310.7043762207031,
+        224.9416046142578
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            183,
+            202
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament.\n[Alice] They debated the ethics of breadcrumbs and the metaphysics of flight. \n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
+      "id": 98,
+      "type": "Reroute",
+      "pos": [
+        -2133.20654296875,
+        923.192626953125
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 179
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 121,
+      "type": "PreviewAny",
+      "pos": [
+        1314.3973388671875,
+        1936.3271484375
+      ],
+      "size": [
+        486.6275634765625,
+        420.8500061035156
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 209
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 78,
+      "type": "UnifiedTTSSRTNode",
+      "pos": [
+        838.1390380859375,
+        1800.2073974609375
+      ],
+      "size": [
+        449.08203125,
+        573.4656372070312
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 156
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            133
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": [
+            209
+          ]
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedTTSSRTNode"
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is unified SRT TTS with character switching.\nThis is second line that should be grouped.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] Hi there! I'm Alice speaking with precise timing.\n[Alice] This is second line\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] And I'm Bob! The audio matches these exact SRT timings.\nSecond line but NOT bob, so no group!",
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        2286528432,
+        "fixed",
+        "pad_with_silence",
+        true,
+        0.01,
+        1,
+        0.5,
+        2,
+        0
+      ]
+    },
+    {
+      "id": 108,
+      "type": "PreviewAny",
+      "pos": [
+        -239.15965270996094,
+        2436.322509765625
+      ],
+      "size": [
+        552.7586059570312,
+        174.5865936279297
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 196
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 50,
+      "type": "PreviewAny",
+      "pos": [
+        -283.43035888671875,
+        1343.3516845703125
+      ],
+      "size": [
+        552.7586059570312,
+        174.5865936279297
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 100
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 57,
+      "type": "MarkdownNote",
+      "pos": [
+        513.143310546875,
+        1459.7095947265625
+      ],
+      "size": [
+        343.0154724121094,
+        178.18296813964844
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# **FROM v4 and up!**\n\nUnified nodes:\n- 🎤 **TTS Text**: Direct text-to-speech module  \n- 🔄 **Voice Changer**: Voice transformation  \n- 📺 **TTS SRT**: Subtitle-compatible TTS output  \n\nThese nodes are now **engine-agnostic**, meaning you can plug in **Chatterbox**, **F5**, or future engines seamlessly.\n"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 60,
+      "type": "MarkdownNote",
+      "pos": [
+        -3481.423095703125,
+        1844.3658447265625
+      ],
+      "size": [
+        450,
+        250
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# Tips\n\n## Official settings:\n\n- The official settings is CFG 1.3 and Inference Steps 20\n\n## Default: Might work well, faster, with fewer hallucinations:\n\n- CFG 3.0 and Inference Steps 3"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 114,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        -866.8209228515625,
+        2176.404541015625
+      ],
+      "size": [
+        400,
+        379.5921325683594
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 199
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 201
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            197
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            196
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+      },
+      "widgets_values": [
+        "Hello! This is unified TTS with character switching support.\n[Alice] Hi there! I'm Alice speaking with the selected TTS engine.\n[Bob] And I'm Bob! This works with any TTS engine.\nBack to the main narrator voice for the conclusion.",
+        "voices_examples/David_Attenborough CC3.wav",
+        1552347959,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 80,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        -2640.2509765625,
+        996.9678955078125
+      ],
+      "size": [
+        310.7043762207031,
+        224.9416046142578
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            208
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "Speaker 1: On Tuesdays, the pigeons held parliament.\nSpeaker 2: They debated the ethics of breadcrumbs and the metaphysics of flight. \nSpeaker 3: One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\nSpeaker 4: He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
+      "id": 65,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        -2644.760009765625,
+        650.8043212890625
+      ],
+      "size": [
+        310.7043762207031,
+        224.9416046142578
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            179
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.40",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:5s] They debated the ethics of breadcrumbs and the metaphysics of flight. \nOne particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\nHe once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
+      "id": 104,
+      "type": "Reroute",
+      "pos": [
+        -2023.4039306640625,
+        1023.01416015625
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 215
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            188
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 47,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        -911.0917358398438,
+        1083.433349609375
+      ],
+      "size": [
+        400,
+        379.5921325683594
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 130
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": 150
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 182
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            93
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            100
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+      },
+      "widgets_values": [
+        "Hello! This is unified TTS with character switching support.\n[Alice] Hi there! I'm Alice speaking with the selected TTS engine.\n[Bob] And I'm Bob! This works with any TTS engine.\nBack to the main narrator voice for the conclusion.",
+        "none",
+        1552347959,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 15,
+      "type": "PreviewAudio",
+      "pos": [
+        -232.5193328857422,
+        1185.658447265625
+      ],
+      "size": [
+        442.4916687011719,
+        88
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 93
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 103,
+      "type": "Reroute",
+      "pos": [
+        -2128.22998046875,
+        996.35595703125
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 208
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 100,
+      "type": "Reroute",
+      "pos": [
+        -2134.7265625,
+        1065.9815673828125
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 183
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            215
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 77,
+      "type": "VibeVoiceEngineNode",
+      "pos": [
+        -1440.3336181640625,
+        1330.052734375
+      ],
+      "size": [
+        363.50048828125,
+        362
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker2_voice",
+          "shape": 7,
+          "type": "*",
+          "link": 151
+        },
+        {
+          "name": "speaker3_voice",
+          "shape": 7,
+          "type": "*",
+          "link": 152
+        },
+        {
+          "name": "speaker4_voice",
+          "shape": 7,
+          "type": "*",
+          "link": 153
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            130,
+            154
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VibeVoiceEngineNode"
+      },
+      "widgets_values": [
+        "vibevoice-7B",
+        "auto",
+        true,
+        "auto",
+        "Native Multi-Speaker",
+        3,
+        3,
+        false,
+        0.95,
+        0.95,
+        0,
+        0
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 110,
+      "type": "VibeVoiceEngineNode",
+      "pos": [
+        -1395.5714111328125,
+        2298.296142578125
+      ],
+      "size": [
+        363.50048828125,
+        362
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker2_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker3_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker4_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            199
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VibeVoiceEngineNode"
+      },
+      "widgets_values": [
+        "vibevoice-7B",
+        "auto",
+        true,
+        "auto",
+        "Custom Character Switching",
+        3,
+        3,
+        false,
+        0.95,
+        0.95,
+        0,
+        0
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 56,
+      "type": "MarkdownNote",
+      "pos": [
+        -2320.298095703125,
+        1413.1715087890625
+      ],
+      "size": [
+        340.41461181640625,
+        179.46453857421875
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# 🎭  **VibeVoice Reference Audio Tips**\n\n1- For **VibeVoice**, you can connect any audio from a **Load Audio Core** node directly for **zero-shot voice cloning**\n \n2- or use the **🎭 Character Voices** feature to load a narrator from your `Voices` folder."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 51,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1936.600341796875,
+        1103.0435791015625
+      ],
+      "size": [
+        232.96051025390625,
+        146.08004760742188
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            210
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+      },
+      "widgets_values": [
+        "voices_examples/David_Attenborough CC3.wav",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 122,
+      "type": "MarkdownNote",
+      "pos": [
+        -2305.111572265625,
+        1647.9566650390625
+      ],
+      "size": [
+        315.481201171875,
+        95.3453598022461
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## These are only needed for Native Mode. On Custom, they will be ignored. Remember: Custom mode is for TAGS"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 115,
+      "type": "MarkdownNote",
+      "pos": [
+        -2769.00830078125,
+        1434.803955078125
+      ],
+      "size": [
+        406.7112121582031,
+        311.5690612792969
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "\n\n## 🔌 The Speaker Input Priority System\n\nWhen using **NATIVE Multi-Speaker**, you can connect specific voices (or audio from Load Audio core node) to Speaker 1 (opt_narrator on the unified TTS node) , Speaker2_voice, Speaker3_voice or speaker4_voice inputs on the VibeVoice Engine node and they will override tags\n\n**What happens if using tags:**\n\n- `narrator` becomes Speaker 1 → uses Speaker 1 input voice\n- `[Alice]` becomes Speaker 2 → uses Speaker 2 input voice\n- `[Bob]` becomes Speaker 3 → uses Speaker 3 input voice\n- etc.\n\nSO If using \n\n## **[character]** \n\n tags in your text to switch narrators, you DON'T need to connect opt_narrator, Speaker2_voice, Speaker3_voice or speaker4_voice\n\nEither for Native or for Custom modes"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 109,
+      "type": "PreviewAudio",
+      "pos": [
+        -239.79837036132812,
+        2271.51904296875
+      ],
+      "size": [
+        441.48828125,
+        88
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 197
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 120,
+      "type": "MarkdownNote",
+      "pos": [
+        -902.9412841796875,
+        1982.2747802734375
+      ],
+      "size": [
+        483.0889892578125,
+        88
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# SIMPLER\n\n- Using tags only in your text and selecting a narrator in the dropdown is much simpler and also work with 4 speaker native mode"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 117,
+      "type": "MarkdownNote",
+      "pos": [
+        -3600.718994140625,
+        972.3487548828125
+      ],
+      "size": [
+        576.6254272460938,
+        794.9921264648438
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# VibeVoice Multi-Speaker Modes Explained\n\n## The Two Ways VibeVoice Handles Multiple Characters\n\n### 🎭 Custom Character Switching Mode\n\n**What it does:** USE TAGS. Generates each character separately, then combines the audio pieces together.\n\n**Pros:**\n\n- Works with **unlimited characters** (Alice, Bob, Charlie, David, etc.)\n- Each character uses their **exact voice file** from voices folder\n- Supports **pause tags** like `<break time=\"2s\">` between sentences\n- **Perfect voice accuracy** - each generation have only ONE narrator, less cross-hallucinations.\n\n**Cons:**\n\n- VibeVoice seams to like medium to long text segments. Switching with Custom mode can lead to very short segments with bad quality, music and soundtrack hallucinations. It will go crazy! (obs: with 3.0 CFG and 3 steps it is way more stable with short segments)\n\n### 🎭 Native Multi-Speaker Mode (Default)\n\n**What it does:** USE NATIVE FORMAT OR TAGS. Sends everything to VibeVoice at once and lets the AI model handle different speakers.\n\n**Pros:**\n\n- **Could lead to more Natural conversations** - the model will have all voices as context all at once. So maybe more it can have more natural timing\n- **90-minute capability** - can generate very long conversations\n\n**Cons:**\n\n- **Limited to 4 speakers maximum** (Speaker 1, 2, 3, 4)\n- **No pause tags support** - can't add manual breaks\n- **Voice approximation** - tries to match your reference voices but may not be 100% exact\n- **Model confusion** - more than once the model mix reference audios or reproduce the reference audio in the middle of the TTS. It can also go crazy... so... 🤷‍♂️\n\n## 🤔 When To Use Which Mode?\n\n### Use **Custom Character Switching** when:\n\n- You have more than 4 characters\n- You need perfect voice accuracy (exact cloning)\n- You want to use pause tags for timing control\n- Your segments per char are long enough\n\n### Use **Native Multi-Speaker** when:\n\n- You have 4 or fewer characters\n- Your segments are small texts\n- You're creating dialogue scenes or long conversations (? untested)\n\n## 🧠 Auto-Detection Features\n\nThe system is smart and will:\n\n- **Auto-switch to Native mode** if it detects manual \"Speaker 1:\", \"Speaker 2:\" format in your text\n- **Show helpful warnings** if you connect the wrong type of input (like character names instead of voice files)\n- **Fall back gracefully** if Native mode can't be used (too many characters or pause tags detected)"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      93,
+      47,
+      0,
+      15,
+      0,
+      "AUDIO"
+    ],
+    [
+      100,
+      47,
+      1,
+      50,
+      0,
+      "*"
+    ],
+    [
+      130,
+      77,
+      0,
+      47,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      133,
+      78,
+      0,
+      79,
+      0,
+      "AUDIO"
+    ],
+    [
+      150,
+      84,
+      0,
+      47,
+      1,
+      "*"
+    ],
+    [
+      151,
+      81,
+      0,
+      77,
+      0,
+      "*"
+    ],
+    [
+      152,
+      69,
+      0,
+      77,
+      1,
+      "*"
+    ],
+    [
+      153,
+      68,
+      0,
+      77,
+      2,
+      "*"
+    ],
+    [
+      154,
+      77,
+      0,
+      53,
+      0,
+      "*"
+    ],
+    [
+      156,
+      53,
+      0,
+      78,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      179,
+      65,
+      0,
+      98,
+      0,
+      "*"
+    ],
+    [
+      182,
+      99,
+      0,
+      47,
+      2,
+      "STRING"
+    ],
+    [
+      183,
+      82,
+      0,
+      100,
+      0,
+      "*"
+    ],
+    [
+      188,
+      104,
+      0,
+      99,
+      0,
+      "*"
+    ],
+    [
+      196,
+      114,
+      1,
+      108,
+      0,
+      "*"
+    ],
+    [
+      197,
+      114,
+      0,
+      109,
+      0,
+      "AUDIO"
+    ],
+    [
+      199,
+      110,
+      0,
+      114,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      201,
+      112,
+      0,
+      114,
+      2,
+      "STRING"
+    ],
+    [
+      202,
+      82,
+      0,
+      112,
+      0,
+      "*"
+    ],
+    [
+      208,
+      80,
+      0,
+      103,
+      0,
+      "*"
+    ],
+    [
+      209,
+      78,
+      2,
+      121,
+      0,
+      "*"
+    ],
+    [
+      210,
+      51,
+      0,
+      84,
+      0,
+      "*"
+    ],
+    [
+      215,
+      100,
+      0,
+      104,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 6,
+      "title": "Simple text exemple",
+      "bounding": [
+        -2655.90673828125,
+        577.2042846679688,
+        335.19879150390625,
+        312.692138671875
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "Manual Native Speaker n:",
+      "bounding": [
+        -2655.42822265625,
+        918.530517578125,
+        335.19879150390625,
+        312.692138671875
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 8,
+      "title": "Multi-char with [Tags]",
+      "bounding": [
+        -2634.25439453125,
+        2154.170166015625,
+        335.19879150390625,
+        312.692138671875
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 13,
+      "title": "CONNECTED Speakers + Native multi char Switch",
+      "bounding": [
+        -1450.3336181640625,
+        974.8419799804688,
+        1729.661865234375,
+        727.2107543945312
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 14,
+      "title": "CUSTOM (or Native) multi char Switch WITHOUT connected narrator - using tags only",
+      "bounding": [
+        -1443.426025390625,
+        2102.804931640625,
+        1767.02490234375,
+        649.61572265625
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 15,
+      "title": "Basic SRT Exemple",
+      "bounding": [
+        828.1390380859375,
+        1724.4366455078125,
+        986.889892578125,
+        659.2364501953125
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.7032043091205636,
+      "offset": [
+        4295.723236850034,
+        -359.334317319104
+      ]
+    },
+    "frontendVersion": "1.25.11",
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}
