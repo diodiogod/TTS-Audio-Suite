@@ -407,7 +407,8 @@ Back to the main narrator voice for the conclusion.""",
             final_length = len(original_text)
             display_text = repr(original_text)  # repr shows spaces clearly
         else:
-            padded_text = self._pad_short_text_for_chatterbox(text)
+            # padded_text = self._pad_short_text_for_chatterbox(text)  # DISABLED FOR TESTING
+            padded_text = text  # Direct text without crash protection
             final_length = len(padded_text)
             display_text = f"{repr(original_text)} → padded: {repr(padded_text)}"
         
@@ -488,7 +489,8 @@ Back to the main narrator voice for the conclusion.""",
         def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
             """Generate audio for a text segment with crash protection"""
             # Apply padding for crash protection
-            processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])
+            # processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])  # DISABLED FOR TESTING
+            processed_text = segment_text  # Direct text without crash protection
             
             # Determine crash protection based on template
             enable_protection = bool(inputs["crash_protection_template"].strip())
@@ -659,7 +661,8 @@ Back to the main narrator voice for the conclusion.""",
                 audio_component = stable_audio_component if stable_audio_component else ""
                 
                 # Apply crash protection first for consistency
-                protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                # protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)  # DISABLED FOR TESTING
+                protected_text = processed_text  # Direct text without crash protection
                 
                 # Show final text going into the TTS model
                 print(f"🔤 Final text to ChatterBox TTS model ({character}): '{protected_text}'")
@@ -697,7 +700,8 @@ Back to the main narrator voice for the conclusion.""",
                 cache_fn(protected_text, audio_result=audio_clone)
                 return audio_clone
             else:
-                protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                # protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)  # DISABLED FOR TESTING
+                protected_text = processed_text  # Direct text without crash protection
                 # Show final text going into the TTS model
                 print(f"🔤 Final text to ChatterBox TTS model ({character}): '{protected_text}'")
                 language_code = self._language_name_to_code(language)
@@ -713,7 +717,8 @@ Back to the main narrator voice for the conclusion.""",
                 audio_component = stable_audio_component if stable_audio_component else ""
                 
                 # Apply crash protection first for consistency
-                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
+                # protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)  # DISABLED FOR TESTING
+                protected_text = text_content  # Direct text without crash protection
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
                 
@@ -754,7 +759,8 @@ Back to the main narrator voice for the conclusion.""",
                 return audio_clone
             else:
                 # Apply crash protection
-                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
+                # protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)  # DISABLED FOR TESTING
+                protected_text = text_content  # Direct text without crash protection
                 if len(text_content.strip()) < 21:
                     print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
                 
@@ -1377,7 +1383,8 @@ Back to the main narrator voice for the conclusion.""",
                 stateless_model = self._streaming_model_manager.get_stateless_model_for_language(language)
                 if stateless_model:
                     # Process text for generation
-                    processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))
+                    # processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))  # DISABLED FOR TESTING
+                    processed_text = segment_text  # Direct text without crash protection
                     
                     # Add caching logic like SRT streaming does
                     enable_cache = inputs.get("enable_audio_cache", True)

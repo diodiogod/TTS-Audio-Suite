@@ -65,7 +65,8 @@ class BatchProcessor:
             # Process each chunk (apply crash protection, etc.)
             processed_chunks = []
             for chunk_text in chunks:
-                processed_chunk = self._apply_crash_protection(chunk_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))
+                # processed_chunk = self._apply_crash_protection(chunk_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))  # DISABLED FOR TESTING
+                processed_chunk = chunk_text  # Direct text without crash protection
                 processed_chunks.append(processed_chunk)
             
             batch_texts.extend(processed_chunks)
