@@ -2095,17 +2095,28 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
 
     @torch.inference_mode()
     def _prepare_cache_for_generation(
-        self, generation_config, model_kwargs, assistant_model, batch_size, max_length, device
+        self, generation_config, model_kwargs, assistant_model, batch_size, max_length, device=None
     ):
         """
         Override _prepare_cache_for_generation to handle DynamicCache creation safely
+        Compatible with multiple transformers versions - device parameter is optional
         """
+        import inspect
+        
+        # Get the parent method signature to determine correct arguments
+        parent_method = super()._prepare_cache_for_generation
         try:
-            # Try the parent implementation first
-            return super()._prepare_cache_for_generation(
-                generation_config, model_kwargs, assistant_model, batch_size, max_length, device
-            )
-        except AttributeError as e:
+            sig = inspect.signature(parent_method)
+            params = list(sig.parameters.keys())
+            
+            # Build arguments based on parent method signature
+            args = [generation_config, model_kwargs, assistant_model, batch_size, max_length]
+            if 'device' in params:
+                args.append(device)
+            
+            return parent_method(*args)
+        except (AttributeError, TypeError, Exception) as e:
+            # Handle both signature mismatches and property setter issues
             if "property" in str(e) and "has no setter" in str(e):
                 # Handle DynamicCache property setter issue
                 from transformers.cache_utils import DynamicCache
