@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.33] - 2025-09-10
+
+### Changed
+
+- Improve Higgs Audio stability with latest dependencies
+
+### Fixed
+
+- Fix Higgs Audio compatibility with transformers 4.46.3+
+- Fix 'property has no setter' errors when using Higgs Audio
+- Fix StaticCache compatibility issues with newer transformers
+- Reference: GitHub issue #64
 ## [4.8.32] - 2025-09-09
 
 ### Added

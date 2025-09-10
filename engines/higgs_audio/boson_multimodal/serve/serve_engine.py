@@ -343,8 +343,24 @@ class HiggsAudioServeEngine:
         else:
             # Use DynamicCache for memory safety (no CUDA Graph capture)
             from transformers.cache_utils import DynamicCache
+            def safe_create_dynamic_cache():
+                """Create DynamicCache with compatibility handling"""
+                try:
+                    return DynamicCache()
+                except AttributeError as e:
+                    if "property" in str(e) and "has no setter" in str(e):
+                        # Create DynamicCache manually to avoid property setter issues
+                        cache = object.__new__(DynamicCache)
+                        object.__setattr__(cache, '_key_cache', [])
+                        object.__setattr__(cache, '_value_cache', [])
+                        if hasattr(DynamicCache, '_seen_tokens'):
+                            object.__setattr__(cache, '_seen_tokens', 0)
+                        return cache
+                    else:
+                        raise e
+            
             self.kv_caches = {
-                length: DynamicCache()
+                length: safe_create_dynamic_cache()
                 for length in sorted(kv_cache_lengths)
             }
             print(f"🛡️ Created DynamicCache buckets for memory safety")
@@ -562,7 +578,7 @@ class HiggsAudioServeEngine:
         if self.kv_caches and not force_cache_recreation:
             # Check if any cache is on wrong device
             for kv_cache in self.kv_caches.values():
-                if len(kv_cache) > 0:
+                if hasattr(kv_cache, '__len__') and len(kv_cache) > 0:
                     try:
                         cache_tuple = kv_cache[0]  # Get first layer's cache
                         if cache_tuple is not None and len(cache_tuple) >= 2:
@@ -610,8 +626,24 @@ class HiggsAudioServeEngine:
             else:
                 # Use DynamicCache for memory safety (no pre-allocation)
                 from transformers.cache_utils import DynamicCache
+                def safe_create_dynamic_cache():
+                    """Create DynamicCache with compatibility handling"""
+                    try:
+                        return DynamicCache()
+                    except AttributeError as e:
+                        if "property" in str(e) and "has no setter" in str(e):
+                            # Create DynamicCache manually to avoid property setter issues
+                            cache = object.__new__(DynamicCache)
+                            object.__setattr__(cache, '_key_cache', [])
+                            object.__setattr__(cache, '_value_cache', [])
+                            if hasattr(DynamicCache, '_seen_tokens'):
+                                object.__setattr__(cache, '_seen_tokens', 0)
+                            return cache
+                        else:
+                            raise e
+                
                 self.kv_caches = {
-                    length: DynamicCache()
+                    length: safe_create_dynamic_cache()
                     for length in sorted(cache_lengths)
                 }
                 print(f"  🛡️ Created DynamicCache buckets for memory safety")

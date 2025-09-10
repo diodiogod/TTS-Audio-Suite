@@ -85,7 +85,7 @@ def get_cache_max_length(cache):
     if isinstance(cache, DynamicCache):
         # DynamicCache grows dynamically, so return a very large max length
         # or current sequence length if available
-        if hasattr(cache, 'get_seq_length') and len(cache) > 0:
+        if hasattr(cache, 'get_seq_length') and hasattr(cache, '__len__') and len(cache) > 0:
             try:
                 return cache.get_seq_length(0)  # Get sequence length for first layer
             except:
@@ -1377,7 +1377,20 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
             )
 
         if use_cache and past_key_values is None:
-            past_key_values = DynamicCache()
+            # Safe DynamicCache creation to avoid property setter issues
+            try:
+                past_key_values = DynamicCache()
+            except AttributeError as e:
+                if "property" in str(e) and "has no setter" in str(e):
+                    # Create DynamicCache manually to avoid property setter issues
+                    past_key_values = object.__new__(DynamicCache)
+                    # Initialize without triggering property setters
+                    object.__setattr__(past_key_values, '_key_cache', [])
+                    object.__setattr__(past_key_values, '_value_cache', [])
+                    if hasattr(DynamicCache, '_seen_tokens'):
+                        object.__setattr__(past_key_values, '_seen_tokens', 0)
+                else:
+                    raise e
 
         if cache_position is None:
             past_seen_tokens = get_cache_seq_length(past_key_values) if past_key_values is not None else 0
@@ -1552,10 +1565,10 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
         # Handle DynamicCache to DynamicCache copying
         if isinstance(from_cache, DynamicCache) and isinstance(to_cache, DynamicCache):
             # For DynamicCache, copy layer-by-layer using new API
-            num_layers = len(from_cache)
+            num_layers = len(from_cache) if hasattr(from_cache, '__len__') else 0
             to_cache.crop(0)  # Clear existing cache
             for layer_idx in range(num_layers):
-                if layer_idx < len(from_cache):
+                if hasattr(from_cache, '__len__') and layer_idx < len(from_cache):
                     key_cache, value_cache = from_cache[layer_idx]
                     if key_cache is not None and value_cache is not None:
                         to_cache.update(key_cache, value_cache, layer_idx)
@@ -1573,8 +1586,8 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
                 f"The target cache size {get_cache_max_length(to_cache)} is smaller than the source cache size {from_cache_size}."
             )
             # Use new cache API - access by layer index with safety checks
-            from_cache_tuple = from_cache[layer_idx] if layer_idx < len(from_cache) else (None, None)
-            to_cache_tuple = to_cache[layer_idx] if layer_idx < len(to_cache) else (None, None)
+            from_cache_tuple = from_cache[layer_idx] if hasattr(from_cache, '__len__') and layer_idx < len(from_cache) else (None, None)
+            to_cache_tuple = to_cache[layer_idx] if hasattr(to_cache, '__len__') and layer_idx < len(to_cache) else (None, None)
             
             if from_cache_tuple is not None and to_cache_tuple is not None:
                 from_key, from_value = from_cache_tuple
@@ -2081,6 +2094,45 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
             return input_ids, audio_sequences
 
     @torch.inference_mode()
+    def _prepare_cache_for_generation(
+        self, generation_config, model_kwargs, assistant_model, batch_size, max_length, device
+    ):
+        """
+        Override _prepare_cache_for_generation to handle DynamicCache creation safely
+        """
+        try:
+            # Try the parent implementation first
+            return super()._prepare_cache_for_generation(
+                generation_config, model_kwargs, assistant_model, batch_size, max_length, device
+            )
+        except AttributeError as e:
+            if "property" in str(e) and "has no setter" in str(e):
+                # Handle DynamicCache property setter issue
+                from transformers.cache_utils import DynamicCache
+                
+                def safe_create_dynamic_cache():
+                    """Create DynamicCache with compatibility handling"""
+                    try:
+                        return DynamicCache()
+                    except AttributeError as cache_error:
+                        if "property" in str(cache_error) and "has no setter" in str(cache_error):
+                            # Create DynamicCache manually to avoid property setter issues
+                            cache = object.__new__(DynamicCache)
+                            object.__setattr__(cache, '_key_cache', [])
+                            object.__setattr__(cache, '_value_cache', [])
+                            if hasattr(DynamicCache, '_seen_tokens'):
+                                object.__setattr__(cache, '_seen_tokens', 0)
+                            return cache
+                        else:
+                            raise cache_error
+                
+                # Create safe cache and return
+                past_key_values = safe_create_dynamic_cache()
+                model_kwargs["past_key_values"] = past_key_values
+                return model_kwargs
+            else:
+                raise e
+
     def generate(
         self,
         input_ids: Optional[torch.LongTensor] = None,
