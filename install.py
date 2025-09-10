@@ -339,24 +339,62 @@ class TTSAudioInstaller:
             operator = match.group(2) if match.group(2) else None
             required_version = match.group(3) if match.group(3) else None
             
-            # Try to import and check version
-            import importlib
-            import pkg_resources
+            # Use modern importlib.metadata (Python 3.8+) with fallback
+            try:
+                from importlib.metadata import version, PackageNotFoundError
+            except ImportError:
+                # Fallback for Python < 3.8
+                try:
+                    from importlib_metadata import version, PackageNotFoundError
+                except ImportError:
+                    # Final fallback to pkg_resources (with warning suppression)
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", UserWarning)
+                        import pkg_resources
+                    
+                    try:
+                        distribution = pkg_resources.get_distribution(package_name)
+                        installed_version = distribution.version
+                        
+                        if not operator or not required_version:
+                            return True
+                            
+                        requirement = pkg_resources.Requirement.parse(package_spec)
+                        return distribution in requirement
+                        
+                    except pkg_resources.DistributionNotFound:
+                        return False
             
             try:
-                # Check if package is installed
-                distribution = pkg_resources.get_distribution(package_name)
-                installed_version = distribution.version
+                installed_version = version(package_name)
                 
                 if not operator or not required_version:
-                    # No version requirement, just check if installed
                     return True
                     
-                # Check version requirement
-                requirement = pkg_resources.Requirement.parse(package_spec)
-                return distribution in requirement
-                
-            except pkg_resources.DistributionNotFound:
+                # Check version requirement using packaging module if available
+                try:
+                    from packaging.specifiers import SpecifierSet
+                    from packaging.version import Version
+                    
+                    spec = SpecifierSet(f"{operator}{required_version}")
+                    return Version(installed_version) in spec
+                    
+                except ImportError:
+                    # Simple version comparison fallback
+                    if operator == ">=":
+                        return installed_version >= required_version
+                    elif operator == ">":
+                        return installed_version > required_version
+                    elif operator == "==":
+                        return installed_version == required_version
+                    elif operator == "<=":
+                        return installed_version <= required_version
+                    elif operator == "<":
+                        return installed_version < required_version
+                    return True
+                    
+            except PackageNotFoundError:
                 return False
                 
         except Exception:
