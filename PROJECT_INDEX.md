@@ -10,7 +10,7 @@ This extension features a **unified modular architecture** supporting multiple T
 - **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, RVC, Audio Separation) with fallback support
 - **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio, VibeVoice) handling engine-specific orchestration
 - **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, and RVC voice conversion
-- **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure
+- **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure, with full extra_model_paths.yaml support for shared model directories
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
 - **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
 - **Multilingual Support**: German and Norwegian models for ChatterBox, plus ChatterBox Official 23-Lang supporting 23 languages including Arabic, Chinese, Danish, Dutch, English, Finnish, French, German, Greek, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Norwegian, Polish, Portuguese, Russian, Spanish, Swedish, Swahili, and Turkish
@@ -211,7 +211,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ### Model Management
 
-**utils/models/manager.py** - Intelligent model discovery and caching with multilingual support for both TTS and VC models, now integrated with ComfyUI model management
+**utils/models/manager.py** - Intelligent model discovery and caching with multilingual support for both TTS and VC models, integrated with ComfyUI model management and extra_model_paths.yaml for shared storage support
 
 **utils/models/smart_loader.py** - Universal smart model loader preventing duplicate model loading across all engines and modes
 
@@ -224,6 +224,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **utils/models/comfyui_model_wrapper.py** - ComfyUI-compatible model wrapper enabling TTS models to integrate with ComfyUI's native model management system for automatic memory management
 
 **utils/models/unified_model_interface.py** - Universal model loading interface providing standardized factory pattern for all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with ComfyUI integration
+
+**utils/models/extra_paths.py** - ComfyUI extra_model_paths.yaml integration system enabling shared model directories across multiple ComfyUI installations with intelligent path resolution and fallback support
 
 ### Audio Processing
 
@@ -251,7 +253,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ### Voice Management
 
-**utils/voice/discovery.py** - Advanced voice file discovery with dual folder support and character mapping
+**utils/voice/discovery.py** - Enhanced voice file discovery with multi-path fallback system (models/voices/, models/TTS/voices/, extra_model_paths.yaml directories, voices_examples/), character mapping, and alias loading with priority support
 
 **utils/voice/multilingual_engine.py** - Central orchestrator for multilingual TTS with language switching optimization
 
@@ -265,9 +267,11 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/compatibility/transformers_patches.py** - Centralized transformers compatibility patches (monkey patches) managing version compatibility across different transformers library versions including FlashAttentionKwargs, BaseStreamer, DynamicCache properties, and VibeVoice generation method signatures
 
+**utils/compatibility/numba_compat.py** - Centralized Numba/Librosa compatibility system with fast startup testing and intelligent JIT fallback management for Python 3.13+ compatibility
+
 ### Downloads
 
-**utils/downloads/unified_downloader.py** - Centralized download system for all engines eliminating HuggingFace cache duplication with direct HTTP downloads to organized TTS/ structure
+**utils/downloads/unified_downloader.py** - Centralized download system for all engines eliminating HuggingFace cache duplication with direct HTTP downloads to organized TTS/ structure, featuring full extra_model_paths.yaml support for shared model directories
 
 **utils/downloads/model_downloader.py** - RVC-specific model auto-download system with direct downloads (legacy, integrated with unified system)
 

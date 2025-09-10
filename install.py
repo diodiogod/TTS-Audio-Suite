@@ -141,12 +141,25 @@ class TTSAudioInstaller:
         return True
 
     def run_pip_command(self, args: List[str], description: str, ignore_errors: bool = False) -> bool:
-        """Execute pip command with error handling"""
+        """Execute pip command with error handling and Windows UTF-8 support"""
         cmd = self.pip_cmd + args
         self.log(f"{description}...", "INSTALL")
         
+        # Set UTF-8 encoding for Windows to prevent charmap errors
+        env = os.environ.copy()
+        if self.is_windows:
+            env['PYTHONUTF8'] = '1'
+            env['PYTHONIOENCODING'] = 'utf-8'
+        
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                cmd, 
+                capture_output=True, 
+                text=True, 
+                check=True, 
+                env=env,
+                encoding='utf-8' if self.is_windows else None
+            )
             if result.stdout.strip():
                 print(result.stdout)
             return True
@@ -205,30 +218,37 @@ class TTSAudioInstaller:
             import torch
             current_version = torch.__version__
             
-            # Parse version (e.g., "2.5.1+cu121" -> (2, 5, 1))
+            # Parse version (e.g., "2.5.1+cu124" -> (2, 5, 1))
+            # Strip CUDA suffix first to avoid parsing errors
             import re
-            version_match = re.match(r'(\d+)\.(\d+)\.(\d+)', current_version)
+            clean_version = current_version.split('+')[0]  # Remove CUDA suffix like "+cu124"
+            version_match = re.match(r'(\d+)\.(\d+)\.(\d+)', clean_version)
             if version_match:
                 major, minor, patch = map(int, version_match.groups())
                 version_tuple = (major, minor, patch)
                 
-                # Check if version >= 2.6.0
+                # Check CUDA availability if we detected CUDA
+                cuda_available = torch.cuda.is_available()
+                detected_cuda = self.detect_cuda_version() != "cpu"
+                
+                # If CUDA mismatch, we need to reinstall
+                if detected_cuda and not cuda_available:
+                    self.log(f"PyTorch {current_version} found but no CUDA support - will reinstall with CUDA", "WARNING")
+                    return False
+                elif not detected_cuda and cuda_available:
+                    self.log(f"PyTorch {current_version} has unnecessary CUDA support - keeping anyway", "INFO")
+                    return True
+                
+                # Check security requirement: 2.6.0+ preferred for CVE-2025-32434, but 2.5.1+ acceptable
                 if version_tuple >= (2, 6, 0):
-                    # Check CUDA availability if we detected CUDA
-                    cuda_available = torch.cuda.is_available()
-                    detected_cuda = self.detect_cuda_version() != "cpu"
-                    
-                    if detected_cuda and not cuda_available:
-                        self.log(f"PyTorch {current_version} found but no CUDA support - will reinstall with CUDA", "WARNING")
-                        return False
-                    elif not detected_cuda and cuda_available:
-                        self.log(f"PyTorch {current_version} has unnecessary CUDA support - keeping anyway", "INFO")
-                        return True
-                    else:
-                        self.log(f"PyTorch {current_version} is compatible - skipping installation", "SUCCESS")
-                        return True
+                    self.log(f"PyTorch {current_version} >= 2.6.0 - secure version, skipping installation", "SUCCESS")
+                    return True
+                elif version_tuple >= (2, 5, 1):
+                    # 2.5.1+ is acceptable but try to upgrade to 2.6.0 if available
+                    self.log(f"PyTorch {current_version} >= 2.5.1 - will attempt upgrade to 2.6.0 for security fix", "INFO")
+                    return False  # Try upgrade, but won't fail if 2.6.0 unavailable
                 else:
-                    self.log(f"PyTorch {current_version} < 2.6.0 - will upgrade for security fix", "WARNING")
+                    self.log(f"PyTorch {current_version} < 2.5.1 - will upgrade for security and compatibility", "WARNING")
                     return False
             else:
                 self.log(f"Could not parse PyTorch version: {current_version} - will reinstall", "WARNING")
@@ -268,22 +288,43 @@ class TTSAudioInstaller:
         except ImportError:
             pass  # PyTorch not installed
         
-        # Install PyTorch 2.6+ with detected acceleration
-        pytorch_packages = [
-            "torch>=2.6.0", 
-            "torchvision", 
-            "torchaudio>=2.6.0"
-        ]
-        
-        pytorch_cmd = [
-            "install", 
-            "--upgrade", 
-            "--force-reinstall"
-        ] + pytorch_packages + [
-            "--index-url", index_url
-        ]
-        
-        self.run_pip_command(pytorch_cmd, f"Installing PyTorch 2.6+ ({cuda_version} support)")
+        # Try PyTorch 2.6+ first, fallback to 2.5+ if unavailable
+        try:
+            pytorch_packages_26 = [
+                "torch>=2.6.0", 
+                "torchvision", 
+                "torchaudio>=2.6.0"
+            ]
+            
+            pytorch_cmd_26 = [
+                "install", 
+                "--upgrade", 
+                "--force-reinstall"
+            ] + pytorch_packages_26 + [
+                "--index-url", index_url
+            ]
+            
+            self.run_pip_command(pytorch_cmd_26, f"Installing PyTorch 2.6+ ({cuda_version} support)")
+            
+        except subprocess.CalledProcessError:
+            # PyTorch 2.6.0 not available for this CUDA version - try 2.5+
+            self.log(f"PyTorch 2.6.0 not available for {cuda_version} - falling back to latest 2.5.x", "WARNING")
+            
+            pytorch_packages_25 = [
+                "torch>=2.5.0", 
+                "torchvision", 
+                "torchaudio>=2.5.0"
+            ]
+            
+            pytorch_cmd_25 = [
+                "install", 
+                "--upgrade", 
+                "--force-reinstall"
+            ] + pytorch_packages_25 + [
+                "--index-url", index_url
+            ]
+            
+            self.run_pip_command(pytorch_cmd_25, f"Installing PyTorch 2.5+ ({cuda_version} support)")
 
     def check_package_installed(self, package_spec):
         """Check if a package meets the version requirement"""
