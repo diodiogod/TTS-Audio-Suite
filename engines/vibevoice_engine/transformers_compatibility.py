@@ -67,7 +67,9 @@ def patch_prepare_cache_for_generation():
                     return original_method(self, generation_config, model_kwargs, *args)
                     
             except Exception as e:
-                logger.warning(f"Compatibility patch fallback triggered: {e}")
+                # Suppress this message - it's just parameter adaptation, doesn't affect quality
+                # logger.warning(f"Compatibility patch fallback triggered: {e}")
+                pass
                 # Final fallback: try both signatures
                 try:
                     # Try new signature first (5 params)
