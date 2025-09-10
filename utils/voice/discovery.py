@@ -106,12 +106,17 @@ class VoiceDiscovery:
         """Refresh the voice cache by scanning all supported directories."""
         self._cache.clear()
         
-        # Scan models/voices/ directory (existing location)
+        # Scan models/voices/ directory (primary location)
         models_voices_dir = self._get_models_voices_dir()
         if models_voices_dir and os.path.exists(models_voices_dir):
             self._scan_directory(models_voices_dir, "models/voices", "")
         
-        # Scan voices_examples/ directory (new location in custom_node)
+        # Scan models/TTS/voices/ directory (fallback location)
+        models_tts_voices_dir = self._get_models_tts_voices_dir()
+        if models_tts_voices_dir and os.path.exists(models_tts_voices_dir):
+            self._scan_directory(models_tts_voices_dir, "models/TTS/voices", "TTS/voices")
+        
+        # Scan voices_examples/ directory (bundled examples)
         voices_examples_dir = self._get_voices_examples_dir()
         if voices_examples_dir and os.path.exists(voices_examples_dir):
             self._scan_directory(voices_examples_dir, "voices_examples", "voices_examples")
@@ -135,6 +140,16 @@ class VoiceDiscovery:
             # Get the project root directory (go up from utils/voice/ to root)
             current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             return os.path.join(current_dir, "voices_examples")
+        except:
+            return None
+    
+    def _get_models_tts_voices_dir(self) -> Optional[str]:
+        """Get the ComfyUI models/TTS/voices directory path."""
+        try:
+            if folder_paths is None:
+                return None
+            models_dir = folder_paths.models_dir
+            return os.path.join(models_dir, "TTS", "voices")
         except:
             return None
     
@@ -347,6 +362,11 @@ class VoiceDiscovery:
         if voices_examples_dir and os.path.exists(voices_examples_dir):
             self._scan_character_directories(voices_examples_dir, "voices_examples")
         
+        # Scan models/TTS/voices/ directory for character folders
+        models_tts_voices_dir = self._get_models_tts_voices_dir()
+        if models_tts_voices_dir and os.path.exists(models_tts_voices_dir):
+            self._scan_character_directories(models_tts_voices_dir, "models/TTS/voices")
+        
         # Scan models/voices/ directory for character folders
         models_voices_dir = self._get_models_voices_dir()
         if models_voices_dir and os.path.exists(models_voices_dir):
@@ -359,12 +379,19 @@ class VoiceDiscovery:
         self._character_aliases.clear()
         self._character_language_defaults.clear()
         
-        # Load aliases from voices_examples folder first (lower priority)
+        # Load aliases in priority order (later loads override earlier ones)
+        
+        # 1. Load from voices_examples folder first (lowest priority)
         voices_examples_dir = self._get_voices_examples_dir()
         if voices_examples_dir:
             self._load_alias_file(voices_examples_dir, "voices_examples")
         
-        # Load aliases from models/voices folder (higher priority - overrides examples)
+        # 2. Load from models/TTS/voices folder (medium priority - overrides examples)
+        models_tts_voices_dir = self._get_models_tts_voices_dir()
+        if models_tts_voices_dir and os.path.exists(models_tts_voices_dir):
+            self._load_alias_file(models_tts_voices_dir, "models/TTS/voices")
+        
+        # 3. Load from models/voices folder (highest priority - overrides all others)
         models_voices_dir = self._get_models_voices_dir()
         if models_voices_dir:
             self._load_alias_file(models_voices_dir, "models/voices")

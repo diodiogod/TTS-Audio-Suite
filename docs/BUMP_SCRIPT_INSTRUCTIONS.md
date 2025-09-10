@@ -175,6 +175,23 @@ python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 - **Focus on net result**: What changed for the user, not the development process
 - **Example**: If refactoring broke something then fixed it, only mention the refactoring benefit
 
+**🎯 CRITICAL: Always Specify Engine/Component When Applicable**
+- **Include engine name in titles**: Users need to know which TTS engine is affected
+- **❌ Bad**: "Fix SRT processing issues" 
+- **✅ Good**: "Fix ChatterBox SRT processing issues"
+- **❌ Bad**: "Fix voice cloning errors"
+- **✅ Good**: "Fix Higgs Audio voice cloning errors"
+- **❌ Bad**: "Improve audio quality" 
+- **✅ Good**: "Improve F5-TTS audio quality"
+
+**Engine-Specific Title Examples:**
+- "Fix Higgs Audio compatibility with transformers 4.46.3+"
+- "Add VibeVoice multi-speaker support"  
+- "Fix ChatterBox character switching in SRT mode"
+- "Improve F5-TTS speech editing accuracy"
+- "Fix RVC voice conversion model loading"
+- "Add Audio Wave Analyzer timing extraction"
+
 **User-Friendly Language Rules:**
 - ❌ "Add support for MelBandRoFormer models" 
 - ✅ "Add support for advanced audio separation models (vocal/instrumental isolation)"
