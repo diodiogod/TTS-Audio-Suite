@@ -221,7 +221,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/models/fallback_utils.py** - Model fallback and error recovery utilities
 
-**utils/models/comfyui_model_wrapper.py** - ComfyUI-compatible model wrapper enabling TTS models to integrate with ComfyUI's native model management system for automatic memory management
+**utils/models/comfyui_model_wrapper/** - Modular ComfyUI model wrapper system with engine-specific handlers (base_wrapper.py, model_manager.py, cache_utils.py, engine_handlers/) enabling TTS models to integrate with ComfyUI's native model management
 
 **utils/models/unified_model_interface.py** - Universal model loading interface providing standardized factory pattern for all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with ComfyUI integration
 

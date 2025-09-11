@@ -1,6 +1,7 @@
 # VibeVoice Integration Plan - Final Version
 
 ## Overview
+
 Integrate Microsoft VibeVoice (1.5B and 7B models) into TTS Audio Suite following the unified architecture, with full support for all existing features while exposing VibeVoice's unique multi-speaker capabilities.
 
 ## Implementation Structure
@@ -8,6 +9,7 @@ Integrate Microsoft VibeVoice (1.5B and 7B models) into TTS Audio Suite followin
 ### 1. Engine Implementation (`engines/vibevoice/`)
 
 #### `vibevoice.py` (Main Engine - ~500 lines)
+
 ```python
 class VibeVoiceEngine:
     def __init__(self)
@@ -17,12 +19,14 @@ class VibeVoiceEngine:
     def cleanup()  # Memory management
     def unload_models()  # Explicit unload (called by ComfyUI's unload button)
 ```
+
 - Use `unified_model_interface` for model loading
 - Integrate with `utils.audio.cache` for caching
 - Support both models (1.5B and 7B)
 - Handle memory management via ComfyUI's unload system
 
 #### `vibevoice_downloader.py` (~200 lines)
+
 ```python
 VIBEVOICE_MODELS = {
     "vibevoice-1.5B": {
@@ -35,6 +39,7 @@ VIBEVOICE_MODELS = {
     }
 }
 ```
+
 - Use `unified_downloader` for all downloads
 - Download to `models/TTS/vibevoice/` structure
 - No HuggingFace cache duplication
@@ -58,6 +63,7 @@ class VibeVoiceEngineNode:
             - speaker3_voice: AUDIO
             - speaker4_voice: AUDIO
 ```
+
 - Returns TTS_ENGINE configuration dict
 - NO seed parameter (that's in unified nodes)
 - NO load/unload toggles (handled by ComfyUI system)
@@ -77,6 +83,7 @@ class VibeVoiceEngineAdapter:
     def handle_pause_tags(text)  # Use pause_processor
     def handle_language_tags(text)  # Parse [de:Alice] syntax
 ```
+
 - Bridge unified nodes to VibeVoice engine
 - Two modes matching Higgs naming:
   - `Custom Character Switching`: Generate per character (like ChatterBox/Higgs)
@@ -87,12 +94,14 @@ class VibeVoiceEngineAdapter:
 ### 4. Internal Processors (`nodes/vibevoice/`)
 
 #### `vibevoice_processor.py` (~300 lines)
+
 - Internal TTS processor (called by unified TTS node)
 - Handles actual generation orchestration
 - Manages chunking (time-based UI, character-based backend)
 - Memory management coordination
 
 #### `vibevoice_srt_processor.py` (~400 lines)
+
 - Internal SRT processor (called by unified SRT node)
 - Language grouping optimization
 - Multi-speaker dialogue handling
@@ -101,6 +110,7 @@ class VibeVoiceEngineAdapter:
 ### 5. Model Factory Registration (~50 lines in existing files)
 
 In `utils/models/unified_model_interface.py`:
+
 ```python
 # Register VibeVoice model factories
 interface.register_model_factory(
@@ -112,6 +122,7 @@ interface.register_model_factory(
 ### 6. Dependencies Update
 
 `requirements.txt`:
+
 ```
 # VibeVoice dependencies
 transformers>=4.44.0
@@ -121,12 +132,14 @@ git+https://github.com/microsoft/VibeVoice.git
 ## Key Integration Points
 
 ### Memory Management
+
 - Memory unloading handled by ComfyUI's "Unload Models" button
 - Engine implements `unload_models()` method
 - Uses ComfyUI's model management system
 - Auto-cleanup on node destruction
 
 ### Unified Systems Integration
+
 - **Cache**: Use `utils.audio.cache` with content-based hashing
 - **Characters**: Full `utils.text.character_parser` support
 - **Pause Tags**: `utils.text.pause_processor` integration
@@ -135,35 +148,42 @@ git+https://github.com/microsoft/VibeVoice.git
 - **Chunking**: `utils.text.chunking` with time-based UI
 
 ### Two Generation Modes (Named Like Higgs)
+
 1. **Custom Character Switching** (default):
+   
    - Preserves all TTS Audio Suite features
    - Generate audio per character, then combine
    - Supports pause tags, language switching per character
    - More flexible but slower
 
 2. **Native Multi-Speaker**:
+   
    - Uses VibeVoice's native multi-speaker
    - Single generation pass
    - More efficient but less flexible
    - Auto-converts [Character] → Speaker N format
 
 ### Time-Based Chunking
+
 - UI shows minutes: "Chunk every [5] minutes"
 - Backend converts: 5 min → ~3750 chars (150 wpm * 5 chars/word * 5)
 - More intuitive for long-form content
 - Optional (0 = no chunking)
 
 ### Seed Parameter Location
+
 - Seed is in unified nodes (TTS Text, TTS SRT) NOT in engine node
 - Follows existing pattern where engine provides configuration, unified nodes handle generation parameters
 
 ## File Size Limits
+
 - Each file stays under 500-600 lines
 - Modular design with clear separation
 - Reuses all existing utilities
 - No code duplication
 
 ## Testing Plan
+
 1. Test both 1.5B and 7B models
 2. Validate character switching in both modes
 3. Test pause tag processing
@@ -174,6 +194,7 @@ git+https://github.com/microsoft/VibeVoice.git
 8. Verify SRT synchronization
 
 ## Benefits
+
 - Full integration with all TTS Audio Suite features
 - Choice between flexibility (Custom mode) and efficiency (Native mode)
 - Proper memory management via ComfyUI system
@@ -182,6 +203,7 @@ git+https://github.com/microsoft/VibeVoice.git
 - Exposes unique 90-minute and 4-speaker capabilities
 
 ## Implementation Notes
+
 - Created: 2025-08-29
 - Author: Claude (TTS Audio Suite Assistant)
 - Status: Ready for implementation
