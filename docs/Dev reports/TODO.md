@@ -57,6 +57,20 @@ Each engine reimplements:
 **Impact**: Language switching behaves differently per engine
 **Solution**: Mandate character parser usage in base class
 
+### Problem: Engine-Specific Logic in Universal Character Parser
+- **Issue**: Universal character parser contains ChatterBox-specific Italian prefix logic (`apply_italian_prefix_if_needed`)
+- **Problem**: Engine-specific text processing belongs in engine adapters, not universal parser
+- **Current State**: Italian `[it]` prefix filter has complex conditions but should only affect:
+  - Explicit `[it:Alice]` or `[italian:Bob]` tags
+  - Characters mapped to Italian in alias system
+  - Should NOT affect normal English ChatterBox, other engines, or global model selection
+- **Impact**: Violation of separation of concerns, coupling universal parser to specific engine quirks
+- **Solution**: Move Italian prefix logic to ChatterBox adapter, keep character parser engine-agnostic
+- **Priority**: Medium (works correctly but violates clean architecture)
+- **Files Affected**: 
+  - `utils/text/character_parser/` (remove Italian logic)
+  - `engines/adapters/chatterbox_adapter.py` (add Italian logic)
+
 ## Cache System Issues
 
 ### Problem: Engine-Specific Cache Keys

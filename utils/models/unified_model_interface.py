@@ -567,6 +567,54 @@ def register_vibevoice_factory():
     unified_model_interface.register_model_factory("vibevoice", "tts", vibevoice_factory)
 
 
+def register_index_tts_factory():
+    """Register IndexTTS-2 model factory"""
+    def index_tts_factory(**kwargs):
+        """Factory for IndexTTS-2 models with ComfyUI integration"""
+        import os
+        import sys
+        
+        # Extract parameters
+        model_path = kwargs.get("model_path")
+        device = kwargs.get("device", "auto")
+        use_fp16 = kwargs.get("use_fp16", True)
+        use_cuda_kernel = kwargs.get("use_cuda_kernel", None)
+        use_deepspeed = kwargs.get("use_deepspeed", False)
+        
+        if not model_path or not os.path.exists(model_path):
+            raise RuntimeError(f"IndexTTS-2 model not found at {model_path}")
+        
+        try:
+            # Add IndexTTS module to path if needed
+            index_tts_code_path = os.path.join(model_path, "index-tts")
+            if os.path.exists(index_tts_code_path) and index_tts_code_path not in sys.path:
+                sys.path.insert(0, index_tts_code_path)
+                
+            from indextts.infer_v2 import IndexTTS2
+            
+            # Initialize IndexTTS-2 engine
+            config_path = os.path.join(model_path, "config.yaml")
+            
+            engine = IndexTTS2(
+                cfg_path=config_path,
+                model_dir=model_path,
+                device=device,
+                use_fp16=use_fp16 and device != "cpu",
+                use_cuda_kernel=use_cuda_kernel,
+                use_deepspeed=use_deepspeed
+            )
+            
+            print(f"✅ IndexTTS-2 model loaded via unified interface on {device}")
+            return engine
+            
+        except ImportError as e:
+            raise ImportError(f"IndexTTS-2 dependencies not available. Error: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load IndexTTS-2 model: {e}")
+    
+    unified_model_interface.register_model_factory("index_tts", "tts", index_tts_factory)
+
+
 def register_chatterbox_23lang_factory():
     """Register ChatterBox Official 23-Lang model factory"""
     def chatterbox_23lang_factory(**kwargs):
@@ -615,6 +663,7 @@ def initialize_all_factories():
     register_higgs_audio_factory()
     register_rvc_factory()
     register_vibevoice_factory()
+    register_index_tts_factory()
 
 
 # Auto-initialize on import

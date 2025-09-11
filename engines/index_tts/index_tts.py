@@ -6,8 +6,7 @@ import tempfile
 from typing import Optional, Union, List, Dict, Any
 import warnings
 
-from utils.models.comfyui_model_wrapper import ComfyUIModelWrapper
-from utils.downloads.unified_downloader import UnifiedDownloader
+from utils.models.unified_model_interface import unified_model_interface, UnifiedModelConfig
 
 
 class IndexTTSEngine:
@@ -44,11 +43,7 @@ class IndexTTSEngine:
         self.use_deepspeed = use_deepspeed
         
         self._tts_engine = None
-        self._model_wrapper = None
-        
-        # Cache for reference audio processing
-        self._spk_cache = {}
-        self._emo_cache = {}
+        self._model_config = None
         
     def _resolve_device(self, device: str) -> str:
         """Resolve device string to actual device."""
@@ -62,45 +57,28 @@ class IndexTTSEngine:
         return device
         
     def _ensure_model_loaded(self):
-        """Lazy load the IndexTTS-2 model when first needed."""
+        """Load the IndexTTS-2 model using unified model interface."""
         if self._tts_engine is not None:
             return
             
-        try:
-            # Add IndexTTS module to path if needed
-            index_tts_path = os.path.join(self.model_dir, "index-tts")
-            if os.path.exists(index_tts_path) and index_tts_path not in sys.path:
-                sys.path.insert(0, index_tts_path)
-                
-            from indextts.infer_v2 import IndexTTS2
-            
-            # Initialize IndexTTS-2 engine
-            config_path = os.path.join(self.model_dir, "config.yaml")
-            
-            self._tts_engine = IndexTTS2(
-                cfg_path=config_path,
-                model_dir=self.model_dir,
-                device=self.device,
-                use_fp16=self.use_fp16,
-                use_cuda_kernel=self.use_cuda_kernel,
-                use_deepspeed=self.use_deepspeed
-            )
-            
-            # Wrap for ComfyUI model management
-            self._model_wrapper = ComfyUIModelWrapper(
-                self._tts_engine,
-                model_name=f"IndexTTS-2-{self.device}",
-                memory_required_mb=4000  # Estimate based on model size
-            )
-            
-            print(f"IndexTTS-2 engine loaded on {self.device}")
-            
-        except ImportError as e:
-            raise ImportError(
-                f"IndexTTS-2 dependencies not available. Please install IndexTTS-2 first. Error: {e}"
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS-2 model: {e}")
+        # Create model configuration
+        self._model_config = UnifiedModelConfig(
+            engine_name="index_tts",
+            model_type="tts",
+            model_name="IndexTTS-2",
+            device=self.device,
+            model_path=self.model_dir,
+            additional_params={
+                "use_fp16": self.use_fp16,
+                "use_cuda_kernel": self.use_cuda_kernel,
+                "use_deepspeed": self.use_deepspeed
+            }
+        )
+        
+        # Load via unified interface
+        self._tts_engine = unified_model_interface.load_model(self._model_config)
+        
+        print(f"IndexTTS-2 engine loaded via unified interface on {self.device}")
     
     def generate(
         self,
@@ -241,12 +219,10 @@ class IndexTTSEngine:
     
     def unload(self):
         """Unload the model to free memory."""
-        if self._model_wrapper:
-            self._model_wrapper.unload()
+        if self._model_config:
+            unified_model_interface.unload_model(self._model_config)
         self._tts_engine = None
-        self._model_wrapper = None
-        self._spk_cache.clear()
-        self._emo_cache.clear()
+        self._model_config = None
     
     def __del__(self):
         """Cleanup on deletion."""

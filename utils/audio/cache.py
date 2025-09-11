@@ -178,6 +178,50 @@ class VibeVoiceCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for IndexTTS-2 engine."""
+    
+    def generate_cache_key(self, **params) -> str:
+        """Generate IndexTTS-2 cache key from parameters."""
+        # Round floating point values to avoid precision issues
+        temperature = params.get('temperature', 0.8)
+        top_p = params.get('top_p', 0.8)
+        emotion_alpha = params.get('emotion_alpha', 1.0)
+        
+        if isinstance(temperature, (int, float)):
+            temperature = round(float(temperature), 3)
+        if isinstance(top_p, (int, float)):
+            top_p = round(float(top_p), 3)
+        if isinstance(emotion_alpha, (int, float)):
+            emotion_alpha = round(float(emotion_alpha), 3)
+        
+        cache_data = {
+            'text': params.get('text', ''),
+            'speaker_audio': params.get('speaker_audio', ''),
+            'emotion_audio': params.get('emotion_audio', ''),
+            'emotion_alpha': emotion_alpha,
+            'emotion_vector': params.get('emotion_vector'),  # List or None
+            'use_emotion_text': params.get('use_emotion_text', False),
+            'emotion_text': params.get('emotion_text', ''),
+            'use_random': params.get('use_random', False),
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': params.get('top_k', 30),
+            'length_penalty': params.get('length_penalty', 0.0),
+            'repetition_penalty': params.get('repetition_penalty', 10.0),
+            'max_mel_tokens': params.get('max_mel_tokens', 1500),
+            'max_text_tokens_per_segment': params.get('max_text_tokens_per_segment', 120),
+            'interval_silence': params.get('interval_silence', 200),
+            'model_name': params.get('model_name', 'IndexTTS-2'),
+            'device': params.get('device', 'auto'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'index_tts'
+        }
+        
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -187,7 +231,8 @@ class AudioCache:
             'chatterbox': ChatterBoxCacheKeyGenerator(),
             'chatterbox_official_23lang': ChatterBoxOfficial23LangCacheKeyGenerator(),  # Uses specialized generator with advanced params
             'higgs_audio': HiggsAudioCacheKeyGenerator(),
-            'vibevoice': VibeVoiceCacheKeyGenerator()
+            'vibevoice': VibeVoiceCacheKeyGenerator(),
+            'index_tts': IndexTTSCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):
