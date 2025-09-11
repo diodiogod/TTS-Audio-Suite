@@ -404,6 +404,9 @@ Hello! This is unified SRT TTS with character switching.
                     
                     def format_audio_output(self, audio_tensor, sample_rate):
                         """Format audio for ComfyUI output"""
+                        # Move tensor to CPU if it's on CUDA
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
                         if audio_tensor.dim() == 1:
                             audio_tensor = audio_tensor.unsqueeze(0)
                         if audio_tensor.dim() == 2:
@@ -687,6 +690,27 @@ Hello! This is unified SRT TTS with character switching.
             
             # The original SRT nodes return (audio, generation_info, timing_report, adjusted_srt)
             audio_output, generation_info, timing_report, adjusted_srt = result
+            
+            # Ensure audio tensor is moved to CPU and has correct dtype
+            if audio_output and isinstance(audio_output, dict) and "waveform" in audio_output:
+                waveform = audio_output["waveform"]
+                if isinstance(waveform, torch.Tensor):
+                    needs_update = False
+                    new_waveform = waveform
+                    
+                    # Move to CPU if on CUDA
+                    if waveform.is_cuda:
+                        new_waveform = new_waveform.cpu()
+                        needs_update = True
+                    
+                    # Convert to float32 if not already
+                    if waveform.dtype != torch.float32:
+                        new_waveform = new_waveform.to(torch.float32)
+                        needs_update = True
+                    
+                    if needs_update:
+                        audio_output = audio_output.copy()
+                        audio_output["waveform"] = new_waveform
             
             # Add unified prefix to generation info
             unified_info = f"📺 TTS SRT (Unified) - {engine_type.upper()} Engine:\n{generation_info}"
