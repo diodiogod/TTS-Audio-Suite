@@ -290,11 +290,18 @@ class TTSAudioInstaller:
         
         # Try PyTorch 2.6+ first, fallback to 2.5+ if unavailable
         try:
-            pytorch_packages_26 = [
-                "torch>=2.6.0", 
-                "torchvision", 
-                "torchaudio>=2.6.0"
-            ]
+            if cuda_version == "cpu":
+                pytorch_packages_26 = [
+                    "torch>=2.6.0+cpu", 
+                    "torchvision+cpu", 
+                    "torchaudio>=2.6.0+cpu"
+                ]
+            else:
+                pytorch_packages_26 = [
+                    f"torch>=2.6.0+{cuda_version}", 
+                    f"torchvision+{cuda_version}", 
+                    f"torchaudio>=2.6.0+{cuda_version}"
+                ]
             
             pytorch_cmd_26 = [
                 "install", 
@@ -310,11 +317,18 @@ class TTSAudioInstaller:
             # PyTorch 2.6.0 not available for this CUDA version - try 2.5+
             self.log(f"PyTorch 2.6.0 not available for {cuda_version} - falling back to latest 2.5.x", "WARNING")
             
-            pytorch_packages_25 = [
-                "torch>=2.5.0", 
-                "torchvision", 
-                "torchaudio>=2.5.0"
-            ]
+            if cuda_version == "cpu":
+                pytorch_packages_25 = [
+                    "torch>=2.5.0+cpu", 
+                    "torchvision+cpu", 
+                    "torchaudio>=2.5.0+cpu"
+                ]
+            else:
+                pytorch_packages_25 = [
+                    f"torch>=2.5.0+{cuda_version}", 
+                    f"torchvision+{cuda_version}", 
+                    f"torchaudio>=2.5.0+{cuda_version}"
+                ]
             
             pytorch_cmd_25 = [
                 "install", 
