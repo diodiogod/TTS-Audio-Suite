@@ -183,7 +183,19 @@ class IndexTTSProcessor:
                         if not emotion_audio_path:
                             emotion_from_config = self.config.get('emotion_audio')
                             if emotion_from_config:
-                                emotion_audio_path = emotion_from_config
+                                if isinstance(emotion_from_config, dict) and 'waveform' in emotion_from_config:
+                                    # Convert tensor to temporary file
+                                    with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                                        # Ensure correct tensor dimensions for torchaudio.save
+                                        emotion_waveform = emotion_from_config['waveform']
+                                        if emotion_waveform.dim() == 3:
+                                            emotion_waveform = emotion_waveform.squeeze(0)
+                                        elif emotion_waveform.dim() == 1:
+                                            emotion_waveform = emotion_waveform.unsqueeze(0)
+                                        ta.save(tmp_file.name, emotion_waveform, emotion_from_config['sample_rate'])
+                                        emotion_audio_path = tmp_file.name
+                                else:
+                                    emotion_audio_path = emotion_from_config
                         
                         # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
                         segment_result = self.adapter.generate(
@@ -206,9 +218,11 @@ class IndexTTSProcessor:
                             max_mel_tokens=self.config.get('max_mel_tokens', 1500)
                         )
                         
-                        # Clean up temp file
+                        # Clean up temp files
                         if speaker_audio_path and os.path.exists(speaker_audio_path):
                             os.unlink(speaker_audio_path)
+                        if emotion_audio_path and isinstance(emotion_audio_path, str) and os.path.exists(emotion_audio_path) and emotion_audio_path.startswith(tempfile.gettempdir()):
+                            os.unlink(emotion_audio_path)
                         
                         # Ensure correct dimensions
                         if segment_result.dim() == 1:
@@ -239,12 +253,24 @@ class IndexTTSProcessor:
                                 ta.save(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                     
+                    # Handle emotion_audio - convert tensor to file path if needed
                     emotion_audio_path = self.config.get('emotion_audio')
+                    if emotion_audio_path and isinstance(emotion_audio_path, dict) and 'waveform' in emotion_audio_path:
+                        # Convert tensor to temporary file
+                        with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                            # Ensure correct tensor dimensions for torchaudio.save
+                            emotion_waveform = emotion_audio_path['waveform']
+                            if emotion_waveform.dim() == 3:
+                                emotion_waveform = emotion_waveform.squeeze(0)
+                            elif emotion_waveform.dim() == 1:
+                                emotion_waveform = emotion_waveform.unsqueeze(0)
+                            ta.save(tmp_file.name, emotion_waveform, emotion_audio_path['sample_rate'])
+                            emotion_audio_path = tmp_file.name
                     
                     result = self.adapter.generate(
                         text=text_content,
                         speaker_audio=speaker_audio_path,
-                        emotion_audio=self.config.get('emotion_audio'),
+                        emotion_audio=emotion_audio_path,
                         emotion_alpha=self.config.get('emotion_alpha', 1.0),
                         emotion_vector=self.config.get('emotion_vector'),
                         use_emotion_text=self.config.get('use_emotion_text', False),
@@ -261,9 +287,11 @@ class IndexTTSProcessor:
                         max_mel_tokens=self.config.get('max_mel_tokens', 1500)
                     )
                     
-                    # Clean up temp file
+                    # Clean up temp files
                     if speaker_audio_path and os.path.exists(speaker_audio_path):
                         os.unlink(speaker_audio_path)
+                    if emotion_audio_path and isinstance(emotion_audio_path, str) and os.path.exists(emotion_audio_path) and emotion_audio_path.startswith(tempfile.gettempdir()):
+                        os.unlink(emotion_audio_path)
                     
                     return result
             
