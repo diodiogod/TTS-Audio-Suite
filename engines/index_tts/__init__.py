@@ -8,4 +8,7 @@ Features emotion disentanglement, voice cloning, and precise duration control.
 from .index_tts import IndexTTSEngine
 from .index_tts_downloader import IndexTTSDownloader
 
-__all__ = ['IndexTTSEngine', 'IndexTTSDownloader']
+# Expose bundled indextts module for direct access
+from . import indextts
+
+__all__ = ['IndexTTSEngine', 'IndexTTSDownloader', 'indextts']

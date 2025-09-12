@@ -585,12 +585,15 @@ def register_index_tts_factory():
             raise RuntimeError(f"IndexTTS-2 model not found at {model_path}")
         
         try:
-            # Add IndexTTS module to path if needed
-            index_tts_code_path = os.path.join(model_path, "index-tts")
-            if os.path.exists(index_tts_code_path) and index_tts_code_path not in sys.path:
-                sys.path.insert(0, index_tts_code_path)
-                
-            from indextts.infer_v2 import IndexTTS2
+            # Add bundled IndexTTS path to sys.path so internal imports work
+            import sys
+            bundled_path = os.path.join(os.path.dirname(__file__), "..", "..", "engines", "index_tts")
+            bundled_path = os.path.abspath(bundled_path)
+            if bundled_path not in sys.path:
+                sys.path.insert(0, bundled_path)
+            
+            # Import from bundled IndexTTS engine
+            from engines.index_tts.indextts.infer_v2 import IndexTTS2
             
             # Initialize IndexTTS-2 engine
             config_path = os.path.join(model_path, "config.yaml")

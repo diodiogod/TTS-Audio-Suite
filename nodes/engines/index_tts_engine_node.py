@@ -45,9 +45,6 @@ class IndexTTSEngineNode(BaseTTSNode):
         # Get available model paths
         model_paths = cls._get_model_paths()
         
-        # Get available voice options for emotion audio
-        voice_options = cls._get_voice_options()
-        
         return {
             "required": {
                 # Model Configuration
@@ -58,12 +55,6 @@ class IndexTTSEngineNode(BaseTTSNode):
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
                     "tooltip": "Device to run IndexTTS-2 model on. 'auto' selects best available."
-                }),
-                
-                # Core Audio References - IndexTTS-2 Emotion Control
-                "emotion_audio": (voice_options, {
-                    "default": "None",
-                    "tooltip": "Reference audio file to extract emotion from (e.g., angry speech, sad voice). IndexTTS-2 will copy the emotional style from this audio while keeping the main speaker's voice identity. Leave as 'None' to use speaker audio emotion or manual emotion controls."
                 }),
                 
                 # IndexTTS-2 Unique Features
@@ -141,6 +132,11 @@ class IndexTTSEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
+                # IndexTTS-2 Emotion Disentanglement
+                "emotion_audio": ("AUDIO", {
+                    "tooltip": "Reference audio to extract emotion from (e.g., angry speech, sad voice). IndexTTS-2 will copy the emotional style from this audio while keeping the main speaker's voice identity. Connect Character Voices node for voice+text or direct audio input."
+                }),
+                
                 # Manual Emotion Vector (8 emotions)
                 "emotion_happy": ("FLOAT", {
                     "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
@@ -207,7 +203,6 @@ class IndexTTSEngineNode(BaseTTSNode):
         self,
         model_path: str,
         device: str,
-        emotion_audio: str,
         emotion_alpha: float,
         use_emotion_text: bool,
         emotion_text: str,
@@ -234,6 +229,7 @@ class IndexTTSEngineNode(BaseTTSNode):
         emotion_surprised: float = 0.0,
         emotion_calm: float = 0.0,
         use_cuda_kernel: str = "auto",
+        emotion_audio = None,
     ):
         """
         Create IndexTTS-2 engine adapter with configuration.
@@ -261,7 +257,7 @@ class IndexTTSEngineNode(BaseTTSNode):
             config = {
                 "model_path": model_path,
                 "device": device,
-                "emotion_audio": emotion_audio if emotion_audio != "None" else None,
+                "emotion_audio": emotion_audio,  # Will be None if not connected, audio dict if connected
                 "emotion_alpha": emotion_alpha,
                 "use_emotion_text": use_emotion_text,
                 "emotion_text": emotion_text if emotion_text.strip() else None,

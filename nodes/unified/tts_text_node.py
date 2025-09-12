@@ -415,9 +415,11 @@ Back to the main narrator voice for the conclusion.""",
                 
                 engine_instance = IndexTTSProcessor(config)
                 
-                self.cache[cache_key] = {
-                    'engine': engine_instance,
-                    'config': config.copy()
+                # Cache the instance with timestamp (follow VibeVoice pattern)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
                 }
                 
                 return engine_instance

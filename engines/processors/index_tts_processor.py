@@ -7,6 +7,8 @@ import torch
 from typing import Dict, Any, Optional, List, Tuple
 import os
 import sys
+import tempfile
+import torchaudio
 
 # Add project root to path
 current_dir = os.path.dirname(__file__)
@@ -116,8 +118,10 @@ class IndexTTSProcessor:
                 else:
                     print(f"⚠️ No narrator voice available - using IndexTTS-2 without speaker reference")
             
-            # Build voice references for all characters
-            voice_refs = {'narrator': narrator_voice_dict}
+            # Build voice references for all characters  
+            voice_refs = {}
+            if narrator_voice_dict and 'waveform' in narrator_voice_dict:
+                voice_refs['narrator'] = narrator_voice_dict
             
             for character in all_characters:
                 if character.lower() == "narrator":
@@ -125,7 +129,6 @@ class IndexTTSProcessor:
                     
                 audio_path, char_ref_text = character_mapping.get(character, (None, None))
                 if audio_path and os.path.exists(audio_path):
-                    import torchaudio
                     waveform, sample_rate = torchaudio.load(audio_path)
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
@@ -141,6 +144,9 @@ class IndexTTSProcessor:
             
             # Define TTS generation function for pause processor
             def tts_generate_func(text_content: str) -> torch.Tensor:
+                # Import references for nested function scope
+                import torchaudio as ta
+                import tempfile as tf
                 """TTS generation function for pause tag processor"""
                 if '[' in text_content and ']' in text_content:
                     # Handle character switching with emotion parsing using modularized parser
@@ -154,11 +160,15 @@ class IndexTTSProcessor:
                         if char_audio_dict and 'waveform' in char_audio_dict:
                             # Convert tensor back to temporary file for IndexTTS-2
                             # IndexTTS-2 adapter expects file paths, not tensors
-                            import tempfile
-                            import torchaudio
-                            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                                torchaudio.save(tmp_file.name, char_audio_dict['waveform'], char_audio_dict['sample_rate'])
+                            with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                                ta.save(tmp_file.name, char_audio_dict['waveform'], char_audio_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
+                        elif character.lower() == "narrator" and narrator_voice_dict and 'waveform' in narrator_voice_dict:
+                            # Fallback to narrator voice for narrator character
+                            with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                                ta.save(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
+                                speaker_audio_path = tmp_file.name
+                                print(f"✅ Using fallback narrator voice for character: {character}")
                         
                         # Check for emotion reference from character mapping or config
                         emotion_audio_path = None
@@ -218,11 +228,16 @@ class IndexTTSProcessor:
                     narrator_audio = voice_refs.get("narrator")
                     speaker_audio_path = None
                     if narrator_audio and 'waveform' in narrator_audio:
-                        import tempfile
-                        import torchaudio
-                        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                            torchaudio.save(tmp_file.name, narrator_audio['waveform'], narrator_audio['sample_rate'])
+                        with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                            ta.save(tmp_file.name, narrator_audio['waveform'], narrator_audio['sample_rate'])
                             speaker_audio_path = tmp_file.name
+                    
+                    # Ensure we have a speaker audio path - always use narrator if available  
+                    if not speaker_audio_path:
+                        if narrator_voice_dict and 'waveform' in narrator_voice_dict:
+                            with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                                ta.save(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
+                                speaker_audio_path = tmp_file.name
                     
                     emotion_audio_path = self.config.get('emotion_audio')
                     

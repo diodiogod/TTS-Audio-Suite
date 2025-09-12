@@ -4,6 +4,8 @@
 
 ---
 
+Don't ever make TODOs or PLACEHOLDERS during implementation.
+
 ## Pre-Implementation Analysis
 
 ### 1. Research the Original Implementation

@@ -50,8 +50,8 @@ class IndexTTSAdapter:
             use_cuda_kernel: Use BigVGAN CUDA kernels
             use_deepspeed: Use DeepSpeed optimization
         """
-        # Auto-download model if not provided
-        if model_path is None:
+        # Auto-download model if not provided or if "auto-download" is specified
+        if model_path is None or model_path == "auto-download":
             if not index_tts_downloader.is_model_available():
                 print("📥 IndexTTS-2 model not found, downloading...")
                 model_path = index_tts_downloader.download_model()
@@ -118,17 +118,28 @@ class IndexTTSAdapter:
         if self.engine is None:
             self.initialize_engine()
             
-        # Parse character switching tags with emotion support
-        processed_segments = self._process_character_tags_with_emotions(text)
+        # Check if text actually contains character tags before processing
+        has_character_tags = self.character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
         
-        # For now, use first segment for single-generation compatibility
-        # TODO: Implement multi-segment generation for full character switching
-        if processed_segments:
-            first_segment = processed_segments[0]
-            processed_text = ' '.join(seg['text'] for seg in processed_segments if seg['text'].strip())
-            character_name = first_segment.get('character')
-            emotion_ref = first_segment.get('emotion')
+        if has_character_tags:
+            # Parse character switching tags with emotion support
+            processed_segments = self._process_character_tags_with_emotions(text)
+            
+            if len(processed_segments) > 1:
+                # Multi-segment character switching - process each segment separately
+                return self._generate_multi_character_segments(processed_segments, speaker_audio, emotion_audio, **kwargs)
+            elif processed_segments:
+                # Single character segment
+                first_segment = processed_segments[0]
+                processed_text = first_segment.get('text', '').strip()
+                character_name = first_segment.get('character')
+                emotion_ref = first_segment.get('emotion')
+            else:
+                processed_text = text
+                character_name = None
+                emotion_ref = None
         else:
+            # No character tags - use text as is
             processed_text = text
             character_name = None
             emotion_ref = None
@@ -137,15 +148,34 @@ class IndexTTSAdapter:
         final_speaker_audio = speaker_audio
         final_emotion_audio = emotion_audio
         
-        character_mapping = get_character_mapping()
-        
-        if character_name and character_name in character_mapping:
-            final_speaker_audio = character_mapping[character_name]
-            print(f"🎭 Using character voice: {character_name} -> {final_speaker_audio}")
-                    
-        if emotion_ref and emotion_ref in character_mapping:
-            final_emotion_audio = character_mapping[emotion_ref]
-            print(f"😊 Using emotion reference: {emotion_ref} -> {final_emotion_audio}")
+        # Only do character mapping if we actually have character tags
+        if has_character_tags:
+            # Collect all characters that might be needed
+            all_characters = []
+            if character_name:
+                all_characters.append(character_name)
+            if emotion_ref:
+                all_characters.append(emotion_ref)
+                
+            # Get character mapping for IndexTTS
+            if all_characters:
+                character_mapping = get_character_mapping(all_characters, engine_type="index_tts")
+            
+            if character_name and character_name in character_mapping:
+                # IndexTTS returns (audio_path, reference_text) tuples, we need audio_path
+                character_audio_path = character_mapping[character_name][0]
+                if character_audio_path is not None:
+                    final_speaker_audio = character_audio_path
+                    print(f"🎭 Using character voice: {character_name} -> {final_speaker_audio}")
+                else:
+                    print(f"⚠️ Character '{character_name}' mapping returned None, using original speaker audio: {final_speaker_audio}")
+            elif character_name:
+                print(f"⚠️ Character '{character_name}' not found in character mapping, using original speaker audio: {final_speaker_audio}")
+                        
+            if emotion_ref and emotion_ref in character_mapping:
+                # IndexTTS returns (audio_path, reference_text) tuples, we need audio_path
+                final_emotion_audio = character_mapping[emotion_ref][0]
+                print(f"😊 Using emotion reference: {emotion_ref} -> {final_emotion_audio}")
                     
         # Check cache before generation
         cache_key = self._generate_cache_key(

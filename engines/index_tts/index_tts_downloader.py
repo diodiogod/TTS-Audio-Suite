@@ -29,13 +29,24 @@ class IndexTTSDownloader:
             "repo_id": "IndexTeam/IndexTTS-2",
             "files": [
                 "config.yaml",
-                "emo_matrix.pt", 
-                "spk_matrix.pt",
-                "gpt_checkpoint.pt",
-                "s2mel_checkpoint.pt",
-                "bpe_model.model",
-                "w2v_stat.pt",
-                "qwen_emo/**"  # QwenEmotion model directory
+                "feat1.pt", 
+                "feat2.pt",
+                "gpt.pth",
+                "s2mel.pth",
+                "bpe.model",
+                "wav2vec2bert_stats.pt",
+                # QwenEmotion model files - individual files instead of wildcard
+                "qwen0.6bemo4-merge/Modelfile",
+                "qwen0.6bemo4-merge/added_tokens.json",
+                "qwen0.6bemo4-merge/chat_template.jinja",
+                "qwen0.6bemo4-merge/config.json",
+                "qwen0.6bemo4-merge/generation_config.json",
+                "qwen0.6bemo4-merge/merges.txt",
+                "qwen0.6bemo4-merge/model.safetensors",
+                "qwen0.6bemo4-merge/special_tokens_map.json",
+                "qwen0.6bemo4-merge/tokenizer.json",
+                "qwen0.6bemo4-merge/tokenizer_config.json",
+                "qwen0.6bemo4-merge/vocab.json"
             ],
             "description": "IndexTTS-2 main model with emotion control"
         }
@@ -84,27 +95,30 @@ class IndexTTSDownloader:
         print(f"📁 Target directory: {model_path}")
         
         try:
-            # Download model files
-            self.downloader.download_from_hf(
+            # Prepare file list for unified downloader
+            file_list = []
+            for file_pattern in model_info["files"]:
+                # All files are now explicit paths
+                file_list.append({
+                    'remote': file_pattern,
+                    'local': file_pattern
+                })
+            
+            # Download model files using unified downloader
+            result_path = self.downloader.download_huggingface_model(
                 repo_id=model_info["repo_id"],
-                local_dir=model_path,
-                engine_name="index_tts",
-                files=model_info["files"],
-                force_download=force_download,
+                model_name=model_name,
+                files=file_list,
+                engine_type="IndexTTS",
                 **kwargs
             )
             
-            # Download IndexTTS-2 code if not present
-            code_path = os.path.join(model_path, "index-tts")
-            if not os.path.exists(code_path) or force_download:
-                print(f"📥 Downloading IndexTTS-2 source code...")
-                self.downloader.download_from_git(
-                    repo_url="https://github.com/index-tts/index-tts.git",
-                    local_dir=code_path,
-                    branch="main",
-                    force_download=force_download
-                )
-                
+            if not result_path:
+                raise RuntimeError("HuggingFace download failed")
+            
+            # Use the path returned by the unified downloader
+            model_path = result_path
+            
             # Verify essential files
             self._verify_model(model_path)
             
@@ -116,25 +130,24 @@ class IndexTTSDownloader:
         except Exception as e:
             raise RuntimeError(f"Failed to download IndexTTS-2 model: {e}")
     
-    def _verify_model(self, model_path: str) -> None:
+    def _verify_model(self, model_path: str, model_name: str = "IndexTTS-2") -> None:
         """
-        Verify downloaded model has essential files.
+        Verify downloaded model has all required files.
         
         Args:
             model_path: Path to model directory
+            model_name: Model name to get file list
             
         Raises:
             RuntimeError: If verification fails
         """
-        required_files = [
-            "config.yaml",
-            "gpt_checkpoint.pt",
-            "s2mel_checkpoint.pt", 
-            "bpe_model.model"
-        ]
-        
+        if model_name not in self.MODELS:
+            raise RuntimeError(f"Unknown model: {model_name}")
+            
+        model_info = self.MODELS[model_name]
         missing_files = []
-        for file in required_files:
+        
+        for file in model_info["files"]:
             if not os.path.exists(os.path.join(model_path, file)):
                 missing_files.append(file)
                 
@@ -143,13 +156,12 @@ class IndexTTSDownloader:
                 f"IndexTTS-2 model verification failed. Missing files: {missing_files}"
             )
             
-        # Verify code directory
-        code_path = os.path.join(model_path, "index-tts")
-        indextts_path = os.path.join(code_path, "indextts")
-        if not os.path.exists(code_path) or not os.path.exists(indextts_path):
-            raise RuntimeError(
-                f"IndexTTS-2 source code not found at {code_path}"
-            )
+        # Check for QwenEmotion model if emotion text is supported
+        qwen_dir = os.path.join(model_path, "qwen0.6bemo4-merge")
+        if os.path.exists(qwen_dir) and os.listdir(qwen_dir):
+            print(f"✅ QwenEmotion model found - text emotion support available")
+        else:
+            print(f"ℹ️ QwenEmotion model not found - audio emotion only")
             
         print(f"✅ Model verification passed")
     
@@ -169,7 +181,7 @@ class IndexTTSDownloader:
         model_path = os.path.join(self.base_path, model_name)
         
         try:
-            self._verify_model(model_path)
+            self._verify_model(model_path, model_name)
             return True
         except RuntimeError:
             return False
