@@ -93,6 +93,15 @@ except Exception as e:
     print(f"❌ IndexTTS-2 Engine failed: {e}")
     INDEX_TTS_ENGINE_AVAILABLE = False
 
+# IndexTTS-2 Emotion Options Node
+try:
+    index_tts_emotion_options_module = load_node_module("index_tts_emotion_options_node", "engines/index_tts_emotion_options_node.py")
+    IndexTTSEmotionOptionsNode = index_tts_emotion_options_module.IndexTTSEmotionOptionsNode
+    INDEX_TTS_EMOTION_OPTIONS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ IndexTTS-2 Emotion Options failed: {e}")
+    INDEX_TTS_EMOTION_OPTIONS_AVAILABLE = False
+
 # Load shared nodes
 try:
     character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
@@ -332,6 +341,10 @@ if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
 if INDEX_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEngineNode"] = IndexTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEngineNode"] = "⚙️ IndexTTS-2 Engine"
+
+if INDEX_TTS_EMOTION_OPTIONS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["IndexTTSEmotionOptionsNode"] = IndexTTSEmotionOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEmotionOptionsNode"] = "🔧 IndexTTS-2 Emotion Vectors Options"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

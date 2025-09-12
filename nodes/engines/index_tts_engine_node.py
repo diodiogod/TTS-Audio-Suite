@@ -60,7 +60,7 @@ class IndexTTSEngineNode(BaseTTSNode):
                 # IndexTTS-2 Unique Features
                 "emotion_alpha": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 2.0, "step": 0.1,
-                    "tooltip": "Emotion blend factor. Controls how strongly the emotion reference affects the output."
+                    "tooltip": "Emotion intensity control (0.0-2.0). Affects both emotion_audio references and emotion vectors (happy, sad, etc.). 1.0=full emotion, 0.5=50% blend, 0.0=neutral."
                 }),
                 "use_emotion_text": ("BOOLEAN", {
                     "default": False,
@@ -137,38 +137,9 @@ class IndexTTSEngineNode(BaseTTSNode):
                     "tooltip": "Reference audio to extract emotion from (e.g., angry speech, sad voice). IndexTTS-2 will copy the emotional style from this audio while keeping the main speaker's voice identity. Connect Character Voices node for voice+text or direct audio input."
                 }),
                 
-                # Manual Emotion Vector (8 emotions)
-                "emotion_happy": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Happy intensity (0.0-1.2)"
-                }),
-                "emotion_angry": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Angry intensity (0.0-1.2)"
-                }),
-                "emotion_sad": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Sad intensity (0.0-1.2)"
-                }),
-                "emotion_afraid": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Afraid intensity (0.0-1.2)"
-                }),
-                "emotion_disgusted": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Disgusted intensity (0.0-1.2)"
-                }),
-                "emotion_melancholic": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Melancholic intensity (0.0-1.2)"
-                }),
-                "emotion_surprised": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Surprised intensity (0.0-1.2)"
-                }),
-                "emotion_calm": ("FLOAT", {
-                    "default": 0.0, "min": 0.0, "max": 1.2, "step": 0.1,
-                    "tooltip": "Manual emotion control: Calm intensity (0.0-1.2)"
+                # Emotion Vectors from separate options node
+                "emotion_vectors": ("INDEXTS_EMOTION_VECTORS", {
+                    "tooltip": "Connect IndexTTS-2 Emotion Vectors Options node for advanced emotion control with 8 different emotion types (happy, angry, sad, etc.)"
                 }),
                 
                 # CUDA Kernel Option
@@ -219,17 +190,9 @@ class IndexTTSEngineNode(BaseTTSNode):
         max_mel_tokens: int,
         use_fp16: bool,
         use_deepspeed: bool,
-        # Optional emotion vector
-        emotion_happy: float = 0.0,
-        emotion_angry: float = 0.0,
-        emotion_sad: float = 0.0,
-        emotion_afraid: float = 0.0,
-        emotion_disgusted: float = 0.0,
-        emotion_melancholic: float = 0.0,
-        emotion_surprised: float = 0.0,
-        emotion_calm: float = 0.0,
         use_cuda_kernel: str = "auto",
         emotion_audio = None,
+        emotion_vectors = None,
     ):
         """
         Create IndexTTS-2 engine adapter with configuration.
@@ -238,12 +201,22 @@ class IndexTTSEngineNode(BaseTTSNode):
             Tuple containing IndexTTS-2 engine configuration data
         """
         try:
-            # Create emotion vector if any emotions are set
+            # Create emotion vector from emotion_vectors input or defaults
             emotion_vector = None
-            emotions = [emotion_happy, emotion_angry, emotion_sad, emotion_afraid, 
-                       emotion_disgusted, emotion_melancholic, emotion_surprised, emotion_calm]
-            if any(e > 0.0 for e in emotions):
-                emotion_vector = emotions
+            if emotion_vectors:
+                # Use emotion vectors from options node - match official IndexTTS-2 order
+                emotions = [
+                    emotion_vectors.get("happy", 0.0),
+                    emotion_vectors.get("angry", 0.0), 
+                    emotion_vectors.get("sad", 0.0),
+                    emotion_vectors.get("afraid", 0.0),  # Official IndexTTS-2 uses "afraid"
+                    emotion_vectors.get("disgusted", 0.0),
+                    emotion_vectors.get("melancholic", 0.0),
+                    emotion_vectors.get("surprised", 0.0),
+                    emotion_vectors.get("calm", 0.0)
+                ]
+                if any(e > 0.0 for e in emotions):
+                    emotion_vector = emotions
             
             # Parse CUDA kernel option
             cuda_kernel_option = None
