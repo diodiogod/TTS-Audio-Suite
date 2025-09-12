@@ -6,7 +6,8 @@ Backward compatible with existing CharacterParser usage.
 """
 
 # Import all classes and functions from the modular structure
-from .base_parser import CharacterParser, CharacterSegment
+from .types import CharacterSegment
+from .base_parser import CharacterParser
 from .validation import validate_character_text
 
 # Global instances for backward compatibility

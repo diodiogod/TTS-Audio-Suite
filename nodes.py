@@ -85,6 +85,14 @@ except Exception as e:
     print(f"❌ ChatterBox Official 23-Lang Engine failed: {e}")
     CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE = False
 
+try:
+    index_tts_engine_module = load_node_module("index_tts_engine_node", "engines/index_tts_engine_node.py")
+    IndexTTSEngineNode = index_tts_engine_module.IndexTTSEngineNode
+    INDEX_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ IndexTTS-2 Engine failed: {e}")
+    INDEX_TTS_ENGINE_AVAILABLE = False
+
 # Load shared nodes
 try:
     character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
@@ -320,6 +328,10 @@ if VIBEVOICE_ENGINE_AVAILABLE:
 if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = ChatterBoxOfficial23LangEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = "⚙️ ChatterBox Official 23-Lang Engine"
+
+if INDEX_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["IndexTTSEngineNode"] = IndexTTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEngineNode"] = "⚙️ IndexTTS-2 Engine"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

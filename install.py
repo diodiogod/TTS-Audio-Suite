@@ -526,7 +526,17 @@ class TTSAudioInstaller:
             "pystoi",                     # Required by descript-audiotools
             "torch-stoi",                 # Required by descript-audiotools
             "ipython",                    # Required by descript-audiotools
-            "tensorboard"                 # Required by descript-audiotools
+            "tensorboard",                # Required by descript-audiotools
+            
+            # IndexTTS-2 engine dependencies (tested safe - no conflicts found)
+            "cn2an>=0.5.22",              # Chinese number to Arabic number conversion
+            "g2p-en>=2.1.0",              # English grapheme-to-phoneme conversion  
+            "keras>=2.9.0",               # Deep learning framework
+            "modelscope>=1.27.0",         # Chinese model hub for IndexTTS-2
+            "munch>=4.0.0",               # Dictionary access with dot notation
+            "sentencepiece>=0.2.1",       # Text tokenization
+            "textstat>=0.7.10",           # Text statistics and readability
+            "wetext>=0.0.9"               # Windows text processing (Chinese)
         ]
         
         # Smart installation: check before installing (preserving all original packages and comments)

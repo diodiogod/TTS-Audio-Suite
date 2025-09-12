@@ -1,0 +1,289 @@
+"""
+IndexTTS-2 Processor - Handles TTS generation orchestration
+Called by unified TTS nodes when using IndexTTS-2 engine
+"""
+
+import torch
+from typing import Dict, Any, Optional, List, Tuple
+import os
+import sys
+
+# Add project root to path
+current_dir = os.path.dirname(__file__)
+engines_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(engines_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from utils.text.chunking import ImprovedChatterBoxChunker
+from utils.audio.processing import AudioProcessingUtils
+from utils.text.character_parser import CharacterParser
+from utils.text.pause_processor import PauseTagProcessor
+from utils.voice.discovery import get_character_mapping
+from engines.adapters.index_tts_adapter import IndexTTSAdapter
+
+
+class IndexTTSProcessor:
+    """
+    Internal processor for IndexTTS-2 TTS generation.
+    Handles emotion control, character processing, and generation orchestration.
+    """
+    
+    def __init__(self, engine_config: Dict[str, Any]):
+        """
+        Initialize IndexTTS-2 processor.
+        
+        Args:
+            engine_config: Engine configuration from IndexTTS-2 Engine node
+        """
+        self.config = engine_config
+        self.adapter = IndexTTSAdapter()
+        self.character_parser = CharacterParser()
+        self.pause_processor = PauseTagProcessor()
+        self.sample_rate = 22050  # IndexTTS-2 native sample rate
+        
+        # Initialize adapter with engine config
+        self.adapter.initialize_engine(
+            model_path=engine_config.get('model_path'),
+            device=engine_config.get('device', 'auto'),
+            use_fp16=engine_config.get('use_fp16', True),
+            use_cuda_kernel=engine_config.get('use_cuda_kernel'),
+            use_deepspeed=engine_config.get('use_deepspeed', False)
+        )
+    
+    def process_text(self, 
+                    text: str,
+                    speaker_audio: Optional[Dict] = None,
+                    reference_text: str = "",
+                    seed: int = 1,
+                    enable_chunking: bool = True,
+                    max_chars_per_chunk: int = 400,
+                    silence_between_chunks_ms: int = 100) -> torch.Tensor:
+        """
+        Process text and generate audio with IndexTTS-2.
+        
+        Args:
+            text: Input text with potential character tags and emotions
+            speaker_audio: Speaker reference audio tensor dict
+            reference_text: Reference text for voice cloning
+            seed: Random seed for generation
+            enable_chunking: Whether to chunk long text (may be disabled for IndexTTS-2)
+            max_chars_per_chunk: Maximum characters per chunk
+            silence_between_chunks_ms: Silence between segments
+            
+        Returns:
+            Generated audio tensor
+        """
+        try:
+            print(f"🤖 IndexTTS-2: Processing text with emotion support")
+            
+            # Check if IndexTTS-2's native chunking should override our chunking
+            max_text_tokens_per_segment = self.config.get('max_text_tokens_per_segment', 120)
+            if max_text_tokens_per_segment > 0:
+                # IndexTTS-2 has its own token-based chunking, disable our character-based chunking
+                print(f"📝 IndexTTS-2: Using native token chunking ({max_text_tokens_per_segment} tokens), disabling character chunking")
+                enable_chunking = False
+            
+            # Parse character segments with emotion support using modularized parser
+            character_segments = self.character_parser.split_by_character_with_emotions(text)
+            all_characters = set(char for char, _, _, _ in character_segments)
+            all_characters.add("narrator")
+            
+            # Build character mapping for emotion references
+            character_mapping = get_character_mapping(list(all_characters), engine_type="index_tts")
+            
+            print(f"🎭 IndexTTS-2: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
+            
+            # Build voice references with narrator fallback
+            narrator_voice_dict = None
+            narrator_ref_text = ""
+            
+            if speaker_audio is not None:
+                narrator_voice_dict = {"waveform": speaker_audio["waveform"], "sample_rate": speaker_audio["sample_rate"]}
+                narrator_ref_text = reference_text or ""
+                print(f"📖 Using connected narrator voice | Ref: '{narrator_ref_text[:50]}...'")
+            else:
+                # Check mapped narrator
+                mapped_narrator = character_mapping.get("narrator", (None, None))
+                if mapped_narrator[0] and os.path.exists(mapped_narrator[0]):
+                    import torchaudio
+                    waveform, sample_rate = torchaudio.load(mapped_narrator[0])
+                    if waveform.shape[0] > 1:
+                        waveform = torch.mean(waveform, dim=0, keepdim=True)
+                    narrator_voice_dict = {"waveform": waveform, "sample_rate": sample_rate}
+                    narrator_ref_text = mapped_narrator[1] or ""
+                    print(f"📖 Using mapped narrator voice: {mapped_narrator[0]} | Ref: '{narrator_ref_text[:50]}...'")
+                else:
+                    print(f"⚠️ No narrator voice available - using IndexTTS-2 without speaker reference")
+            
+            # Build voice references for all characters
+            voice_refs = {'narrator': narrator_voice_dict}
+            
+            for character in all_characters:
+                if character.lower() == "narrator":
+                    continue
+                    
+                audio_path, char_ref_text = character_mapping.get(character, (None, None))
+                if audio_path and os.path.exists(audio_path):
+                    import torchaudio
+                    waveform, sample_rate = torchaudio.load(audio_path)
+                    if waveform.shape[0] > 1:
+                        waveform = torch.mean(waveform, dim=0, keepdim=True)
+                    voice_refs[character] = {"waveform": waveform, "sample_rate": sample_rate}
+                    print(f"🎭 {character}: Loaded voice reference")
+                else:
+                    # Fallback to narrator voice
+                    voice_refs[character] = narrator_voice_dict
+                    if narrator_voice_dict:
+                        print(f"🎭 {character}: Using narrator voice fallback")
+                    else:
+                        print(f"⚠️ {character}: No voice available")
+            
+            # Define TTS generation function for pause processor
+            def tts_generate_func(text_content: str) -> torch.Tensor:
+                """TTS generation function for pause tag processor"""
+                if '[' in text_content and ']' in text_content:
+                    # Handle character switching with emotion parsing using modularized parser
+                    char_segments = self.character_parser.split_by_character_with_emotions(text_content)
+                    segment_audio_parts = []
+                    
+                    for character, segment_text, language, emotion in char_segments:
+                        # Get character voice reference
+                        char_audio_dict = voice_refs.get(character)
+                        speaker_audio_path = None
+                        if char_audio_dict and 'waveform' in char_audio_dict:
+                            # Convert tensor back to temporary file for IndexTTS-2
+                            # IndexTTS-2 adapter expects file paths, not tensors
+                            import tempfile
+                            import torchaudio
+                            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                                torchaudio.save(tmp_file.name, char_audio_dict['waveform'], char_audio_dict['sample_rate'])
+                                speaker_audio_path = tmp_file.name
+                        
+                        # Check for emotion reference from character mapping or config
+                        emotion_audio_path = None
+                        if emotion:
+                            # Emotion from character tag like [Alice:angry_bob]
+                            emotion_mapping = character_mapping.get(emotion, (None, None))
+                            if emotion_mapping[0] and os.path.exists(emotion_mapping[0]):
+                                emotion_audio_path = emotion_mapping[0]
+                                print(f"😊 Using emotion reference from tag: {emotion} -> {emotion_audio_path}")
+                        
+                        # Fall back to config emotion_audio if no tag emotion
+                        if not emotion_audio_path:
+                            emotion_from_config = self.config.get('emotion_audio')
+                            if emotion_from_config:
+                                emotion_audio_path = emotion_from_config
+                        
+                        # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
+                        segment_result = self.adapter.generate(
+                            text=segment_text,
+                            speaker_audio=speaker_audio_path,
+                            emotion_audio=emotion_audio_path,
+                            emotion_alpha=self.config.get('emotion_alpha', 1.0),
+                            emotion_vector=self.config.get('emotion_vector'),
+                            use_emotion_text=self.config.get('use_emotion_text', False),
+                            emotion_text=self.config.get('emotion_text'),
+                            use_random=self.config.get('use_random', False),
+                            interval_silence=self.config.get('interval_silence', 200),
+                            max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
+                            temperature=self.config.get('temperature', 0.8),
+                            top_p=self.config.get('top_p', 0.8),
+                            top_k=self.config.get('top_k', 30),
+                            length_penalty=self.config.get('length_penalty', 0.0),
+                            num_beams=self.config.get('num_beams', 3),
+                            repetition_penalty=self.config.get('repetition_penalty', 10.0),
+                            max_mel_tokens=self.config.get('max_mel_tokens', 1500)
+                        )
+                        
+                        # Clean up temp file
+                        if speaker_audio_path and os.path.exists(speaker_audio_path):
+                            os.unlink(speaker_audio_path)
+                        
+                        # Ensure correct dimensions
+                        if segment_result.dim() == 1:
+                            segment_result = segment_result.unsqueeze(0)
+                        elif segment_result.dim() == 3:
+                            segment_result = segment_result.squeeze(0)
+                        
+                        segment_audio_parts.append(segment_result)
+                    
+                    # Combine character segments
+                    if segment_audio_parts:
+                        return torch.cat(segment_audio_parts, dim=-1)
+                    else:
+                        return torch.zeros(1, 0)
+                else:
+                    # Simple text segment without character switching - use narrator voice
+                    narrator_audio = voice_refs.get("narrator")
+                    speaker_audio_path = None
+                    if narrator_audio and 'waveform' in narrator_audio:
+                        import tempfile
+                        import torchaudio
+                        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                            torchaudio.save(tmp_file.name, narrator_audio['waveform'], narrator_audio['sample_rate'])
+                            speaker_audio_path = tmp_file.name
+                    
+                    emotion_audio_path = self.config.get('emotion_audio')
+                    
+                    result = self.adapter.generate(
+                        text=text_content,
+                        speaker_audio=speaker_audio_path,
+                        emotion_audio=self.config.get('emotion_audio'),
+                        emotion_alpha=self.config.get('emotion_alpha', 1.0),
+                        emotion_vector=self.config.get('emotion_vector'),
+                        use_emotion_text=self.config.get('use_emotion_text', False),
+                        emotion_text=self.config.get('emotion_text'),
+                        use_random=self.config.get('use_random', False),
+                        interval_silence=self.config.get('interval_silence', 200),
+                        max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
+                        temperature=self.config.get('temperature', 0.8),
+                        top_p=self.config.get('top_p', 0.8),
+                        top_k=self.config.get('top_k', 30),
+                        length_penalty=self.config.get('length_penalty', 0.0),
+                        num_beams=self.config.get('num_beams', 3),
+                        repetition_penalty=self.config.get('repetition_penalty', 10.0),
+                        max_mel_tokens=self.config.get('max_mel_tokens', 1500)
+                    )
+                    
+                    # Clean up temp file
+                    if speaker_audio_path and os.path.exists(speaker_audio_path):
+                        os.unlink(speaker_audio_path)
+                    
+                    return result
+            
+            # Parse text into segments (text and pause segments)
+            segments, clean_text = self.pause_processor.parse_pause_tags(text)
+            
+            # Generate audio with pauses
+            if segments:
+                result = self.pause_processor.generate_audio_with_pauses(
+                    segments=segments,
+                    tts_generate_func=tts_generate_func,
+                    sample_rate=self.sample_rate
+                )
+            else:
+                # No pause tags, generate directly
+                result = tts_generate_func(text)
+            
+            # Ensure correct tensor format
+            if isinstance(result, torch.Tensor):
+                if result.dim() == 1:
+                    result = result.unsqueeze(0)  # Add channel dimension
+                elif result.dim() == 3:
+                    result = result.squeeze(0)  # Remove batch dimension
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ IndexTTS-2 processor error: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Return silence on error
+            return torch.zeros(1, self.sample_rate)  # 1 second of silence
+    
+    def cleanup(self):
+        """Clean up resources"""
+        if self.adapter:
+            self.adapter.unload()

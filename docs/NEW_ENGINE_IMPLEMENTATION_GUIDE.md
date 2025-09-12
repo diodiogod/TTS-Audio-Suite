@@ -85,8 +85,6 @@ nodes/[engine_name]_special/       # Special features (if any)
 
 **File:** `engines/[ENGINE_NAME]/[engine_name].py`
 
-
-
 **Key Implementation Notes:**
 
 - **Audio Format**: Always return `torch.Tensor` in shape `[1, samples]` or `[batch, samples]`
@@ -176,6 +174,10 @@ class [EngineClass]Processor:
 **File:** `nodes/[engine_name]/[engine_name]_processor.py`
 
 #### Step 11: Test TTS Text Implementation
+
+BUT rememeber to register all nodes so they load and work on comfyui.
+
+Also to test, requirements and dependencies need to be added.
 
 **Ask suer to Test Checklist:**
 

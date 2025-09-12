@@ -6,32 +6,13 @@ Contains the core CharacterParser class and CharacterSegment dataclass.
 """
 
 import re
-from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Union
 from pathlib import Path
 
+from .types import CharacterSegment
 from .language_resolver import LanguageResolver
 from .segment_processor import SegmentProcessor
 from .validation import ValidationMixin
-
-
-@dataclass
-class CharacterSegment:
-    """Represents a single text segment with character assignment and language"""
-    character: str
-    text: str
-    start_pos: int
-    end_pos: int
-    language: Optional[str] = None
-    original_character: Optional[str] = None  # Original character before alias resolution
-    explicit_language: bool = False  # True if language was explicitly specified in tag (e.g., [German:Bob])
-    emotion: Optional[str] = None  # Emotion reference for advanced TTS engines (IndexTTS-2)
-    
-    def __str__(self) -> str:
-        lang_info = f", lang='{self.language}'" if self.language else ""
-        orig_info = f", orig='{self.original_character}'" if self.original_character and self.original_character != self.character else ""
-        emotion_info = f", emotion='{self.emotion}'" if self.emotion else ""
-        return f"CharacterSegment(character='{self.character}'{orig_info}{lang_info}{emotion_info}, text='{self.text[:50]}...', pos={self.start_pos}-{self.end_pos})"
 
 
 class CharacterParser(ValidationMixin):

@@ -409,6 +409,19 @@ Back to the main narrator voice for the conclusion.""",
                 }
                 return engine_instance
                 
+            elif engine_type == "index_tts":
+                # Create IndexTTS processor instance using the adapter pattern
+                from engines.processors.index_tts_processor import IndexTTSProcessor
+                
+                engine_instance = IndexTTSProcessor(config)
+                
+                self.cache[cache_key] = {
+                    'engine': engine_instance,
+                    'config': config.copy()
+                }
+                
+                return engine_instance
+                
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -674,6 +687,23 @@ Back to the main narrator voice for the conclusion.""",
                     max_chars_per_chunk=max_chars_per_chunk,
                     silence_between_chunks_ms=silence_between_chunks_ms
                 )
+                
+            elif engine_type == "index_tts":
+                # IndexTTS-2 uses processor pattern - call through processor with emotion support
+                audio_result = engine_instance.process_text(
+                    text=text,
+                    speaker_audio=audio_tensor,
+                    reference_text=reference_text,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    silence_between_chunks_ms=silence_between_chunks_ms
+                )
+                
+                # Format as ComfyUI audio format (processor returns tensor, we need dict)
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
+                generation_info = f"✅ IndexTTS-2 generation complete\n🎭 Character switching and emotion support enabled"
+                result = (formatted_audio, generation_info)
                 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
