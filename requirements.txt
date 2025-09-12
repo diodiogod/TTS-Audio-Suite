@@ -50,6 +50,7 @@ g2p-en>=2.1.0         # English grapheme-to-phoneme conversion
 keras>=2.9.0          # Deep learning framework
 modelscope>=1.27.0    # Chinese model hub for IndexTTS-2
 munch>=4.0.0          # Dictionary access with dot notation
+pyjson5>=1.6.0        # JSON5 parsing for IndexTTS-2 config files
 sentencepiece>=0.2.1  # Text tokenization
 textstat>=0.7.10      # Text statistics and readability
 wetext>=0.0.9         # Windows text processing (Chinese)
