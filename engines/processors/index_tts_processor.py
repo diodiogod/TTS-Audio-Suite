@@ -43,6 +43,9 @@ class IndexTTSProcessor:
         self.character_parser = CharacterParser()
         self.pause_processor = PauseTagProcessor()
         self.sample_rate = 22050  # IndexTTS-2 native sample rate
+
+        # Set up character parser with available characters
+        self._setup_character_parser()
         
         # Initialize adapter with engine config
         self.adapter.initialize_engine(
@@ -52,7 +55,30 @@ class IndexTTSProcessor:
             use_cuda_kernel=engine_config.get('use_cuda_kernel'),
             use_deepspeed=engine_config.get('use_deepspeed', False)
         )
-    
+
+    def _setup_character_parser(self):
+        """Set up character parser with available characters and aliases."""
+        from utils.voice.discovery import get_available_characters, voice_discovery
+
+        # Get available characters and aliases
+        available_chars = get_available_characters()
+        character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        self.character_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
+        char_lang_defaults = voice_discovery.get_character_language_defaults()
+        for char, lang in char_lang_defaults.items():
+            self.character_parser.set_character_language_default(char, lang)
+
     def process_text(self, 
                     text: str,
                     speaker_audio: Optional[Dict] = None,
@@ -91,8 +117,8 @@ class IndexTTSProcessor:
             all_characters = set(char for char, _, _, _ in character_segments)
             all_characters.add("narrator")
             
-            # Build character mapping for emotion references
-            character_mapping = get_character_mapping(list(all_characters), engine_type="index_tts")
+            # Build character mapping for emotion references (IndexTTS only needs audio files)
+            character_mapping = get_character_mapping(list(all_characters), engine_type="audio_only")
             
             print(f"🎭 IndexTTS-2: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
             
@@ -129,6 +155,7 @@ class IndexTTSProcessor:
                     
                 audio_path, char_ref_text = character_mapping.get(character, (None, None))
                 if audio_path and os.path.exists(audio_path):
+                    import torchaudio
                     waveform, sample_rate = torchaudio.load(audio_path)
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)

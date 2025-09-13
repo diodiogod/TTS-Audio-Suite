@@ -11,8 +11,8 @@ from typing import Dict, Any, Optional, List, Union
 
 from engines.index_tts.index_tts import IndexTTSEngine
 from engines.index_tts.index_tts_downloader import index_tts_downloader
-from utils.text.character_parser import CharacterParser
-from utils.voice.discovery import get_character_mapping
+from utils.text.character_parser import character_parser
+from utils.voice.discovery import get_character_mapping, get_available_characters
 from utils.audio.cache import get_audio_cache
 
 
@@ -31,9 +31,8 @@ class IndexTTSAdapter:
     def __init__(self):
         """Initialize the IndexTTS-2 adapter."""
         self.engine = None
-        self.character_parser = CharacterParser()
         self.audio_cache = get_audio_cache()
-        
+    
     def initialize_engine(self, 
                          model_path: Optional[str] = None,
                          device: str = "auto",
@@ -117,10 +116,10 @@ class IndexTTSAdapter:
         """
         if self.engine is None:
             self.initialize_engine()
-            
+
         # Check if text actually contains character tags before processing
-        has_character_tags = self.character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
-        
+        has_character_tags = character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
+
         if has_character_tags:
             # Parse character switching tags with emotion support
             processed_segments = self._process_character_tags_with_emotions(text)
@@ -233,23 +232,36 @@ class IndexTTSAdapter:
     
     def _process_character_tags_with_emotions(self, text: str) -> List[Dict[str, Any]]:
         """
-        Process character switching tags with emotion support using the new modular parser.
-        
-        Supports flexible syntax:
-        - [Alice] → character="Alice"
-        - [de:Alice] → language="de", character="Alice"  
-        - [Alice:angry_bob] → character="Alice", emotion="angry_bob"
-        - [de:Alice:angry_bob] → language="de", character="Alice", emotion="angry_bob"
-        
-        Args:
-            text: Input text with flexible character/emotion tags
-            
-        Returns:
-            List of segment dictionaries with character, text, language, emotion info
+        Process character switching tags with emotion support.
         """
-        # Use the new emotion-aware parsing method
-        segments = self.character_parser.split_by_character_with_emotions(text)
-        
+        from utils.text.character_parser.base_parser import CharacterParser
+        from utils.voice.discovery import get_available_characters, voice_discovery
+
+        # Create a temporary parser and set it up properly
+        temp_parser = CharacterParser()
+
+        # Get actual available characters and aliases
+        available_chars = get_available_characters()
+        character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set (like before but not hardcoded)
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        temp_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
+        char_lang_defaults = voice_discovery.get_character_language_defaults()
+        for char, lang in char_lang_defaults.items():
+            temp_parser.set_character_language_default(char, lang)
+
+        # Use emotion-aware parsing
+        segments = temp_parser.split_by_character_with_emotions(text)
+
         processed_segments = []
         for character, segment_text, language, emotion in segments:
             segment_info = {
@@ -259,8 +271,85 @@ class IndexTTSAdapter:
                 'emotion': emotion
             }
             processed_segments.append(segment_info)
-            
+
         return processed_segments
+    
+    def _generate_multi_character_segments(self, segments: List[Dict[str, Any]], 
+                                           default_speaker_audio: Optional[str], 
+                                           default_emotion_audio: Optional[str], 
+                                           **kwargs) -> torch.Tensor:
+        """
+        Generate audio for multiple character segments and combine them.
+        
+        Args:
+            segments: List of segment dictionaries with character, text, language, emotion info
+            default_speaker_audio: Default speaker reference audio
+            default_emotion_audio: Default emotion reference audio  
+            **kwargs: Additional generation parameters
+            
+        Returns:
+            Combined audio tensor [1, samples] at 22050 Hz
+        """
+        audio_segments = []
+        
+        # Get character mapping for all unique characters
+        unique_characters = set()
+        for segment in segments:
+            if segment.get('character'):
+                unique_characters.add(segment['character'])
+            if segment.get('emotion'):
+                unique_characters.add(segment['emotion'])
+        
+        # Get character mapping for IndexTTS
+        character_mapping = {}
+        if unique_characters:
+            character_mapping = get_character_mapping(list(unique_characters), engine_type="index_tts")
+        
+        print(f"🎭 IndexTTS-2: Processing {len(segments)} character segment(s) - {', '.join([s.get('character', 'narrator') for s in segments])}")
+        
+        for segment in segments:
+            character_name = segment.get('character', 'narrator')
+            segment_text = segment.get('text', '').strip()
+            emotion_ref = segment.get('emotion')
+            
+            if not segment_text:
+                continue
+                
+            # Determine speaker audio for this segment
+            speaker_audio = default_speaker_audio
+            if character_name and character_name in character_mapping:
+                character_audio_path = character_mapping[character_name][0]
+                if character_audio_path:
+                    speaker_audio = character_audio_path
+                    print(f"📖 Using character voice '{character_name}' | Ref: '{speaker_audio}'")
+                else:
+                    print(f"⚠️ Character '{character_name}' has no audio reference, using default")
+            
+            # Determine emotion audio for this segment
+            emotion_audio = default_emotion_audio  
+            if emotion_ref and emotion_ref in character_mapping:
+                emotion_audio_path = character_mapping[emotion_ref][0]
+                if emotion_audio_path:
+                    emotion_audio = emotion_audio_path
+                    print(f"😊 Using emotion reference '{emotion_ref}' | Ref: '{emotion_audio}'")
+            
+            # Generate audio for this segment
+            segment_audio = self.engine.generate(
+                text=segment_text,
+                speaker_audio=speaker_audio,
+                emotion_audio=emotion_audio,
+                **kwargs
+            )
+            
+            audio_segments.append(segment_audio)
+        
+        # Combine all audio segments
+        if audio_segments:
+            combined_audio = torch.cat(audio_segments, dim=-1)
+            return combined_audio
+        else:
+            # Return silence if no segments generated
+            return torch.zeros(1, 22050, dtype=torch.float32)
     
     def _generate_cache_key(self, **params) -> str:
         """Generate cache key for IndexTTS-2."""
