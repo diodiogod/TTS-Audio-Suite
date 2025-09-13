@@ -306,6 +306,19 @@ class CharacterParser(ValidationMixin):
         segments = self.parse_text_segments(text)
         return [(segment.character, segment.text, segment.language, segment.emotion) for segment in segments]
     
+    def set_engine_aware_default_language(self, model_or_language: str, engine_type: str):
+        """
+        Set default language based on engine model or language code.
+        Delegates to the language resolver.
+        
+        Args:
+            model_or_language: Either a model name (F5-TTS) or language code (ChatterBox)
+            engine_type: Engine type ("f5tts" or "chatterbox")
+        """
+        self.language_resolver.set_engine_aware_default_language(model_or_language, engine_type)
+        # Also update our own default_language for consistency
+        self.default_language = self.language_resolver.default_language
+    
     def apply_italian_prefix_if_needed(self, text: str, character: str, language: str, explicit_language: bool) -> str:
         """
         Apply [it] prefix to text if Italian language is detected.
