@@ -375,6 +375,50 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
                 
+            elif engine_type == "index_tts":
+                # Import and create the IndexTTS-2 SRT processor using absolute import
+                index_tts_srt_processor_path = os.path.join(nodes_dir, "index_tts", "index_tts_srt_processor.py")
+                index_tts_srt_spec = importlib.util.spec_from_file_location("index_tts_srt_processor_module", index_tts_srt_processor_path)
+                index_tts_srt_module = importlib.util.module_from_spec(index_tts_srt_spec)
+                index_tts_srt_spec.loader.exec_module(index_tts_srt_module)
+
+                IndexTTSSRTProcessor = index_tts_srt_module.IndexTTSSRTProcessor
+
+                # Create a minimal wrapper node for the processor
+                class IndexTTSSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = IndexTTSSRTProcessor(self, config)
+
+                    def update_config(self, new_config):
+                        """Update configuration for both wrapper and processor"""
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def process_with_error_handling(self, func):
+                        """Error handling wrapper to match node interface"""
+                        try:
+                            return func()
+                        except Exception as e:
+                            raise e
+
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        """Format audio for ComfyUI output"""
+                        # Move tensor to CPU if it's on CUDA
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
+                        return {"waveform": audio_tensor, "sample_rate": sample_rate}
+
+                engine_instance = IndexTTSSRTWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             elif engine_type == "vibevoice":
                 # Import and create the VibeVoice SRT processor using absolute import
                 vibevoice_srt_processor_path = os.path.join(nodes_dir, "vibevoice", "vibevoice_srt_processor.py")
@@ -664,10 +708,10 @@ Hello! This is unified SRT TTS with character switching.
                     enable_audio_cache=enable_audio_cache
                 )
                 
-            elif engine_type == "vibevoice":
-                # Use the VibeVoice SRT processor from the wrapper instance
+            elif engine_type == "index_tts":
+                # Use the IndexTTS-2 SRT processor from the wrapper instance
                 voice_mapping = {"narrator": audio_tensor} if audio_tensor else {}
-                
+
                 # Prepare timing parameters
                 timing_params = {
                     'fade_for_StretchToFit': fade_for_StretchToFit,
@@ -675,7 +719,28 @@ Hello! This is unified SRT TTS with character switching.
                     'min_stretch_ratio': min_stretch_ratio,
                     'timing_tolerance': timing_tolerance
                 }
-                
+
+                # Use the processor's main entry point with IndexTTS-2 emotion control
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params
+                )
+
+            elif engine_type == "vibevoice":
+                # Use the VibeVoice SRT processor from the wrapper instance
+                voice_mapping = {"narrator": audio_tensor} if audio_tensor else {}
+
+                # Prepare timing parameters
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+
                 # Use the processor's main entry point
                 result = engine_instance.processor.process_srt_content(
                     srt_content=srt_content,
