@@ -189,12 +189,20 @@ class IndexTTSProcessor:
                             # Convert tensor back to temporary file for IndexTTS-2
                             # IndexTTS-2 adapter expects file paths, not tensors
                             with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                                ta.save(tmp_file.name, char_audio_dict['waveform'], char_audio_dict['sample_rate'])
+                                waveform = char_audio_dict['waveform']
+                                # Ensure 2D tensor for torchaudio.save (channels, samples)
+                                if waveform.dim() == 3:
+                                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                                ta.save(tmp_file.name, waveform, char_audio_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                         elif character.lower() == "narrator" and narrator_voice_dict and 'waveform' in narrator_voice_dict:
                             # Fallback to narrator voice for narrator character
                             with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                                ta.save(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
+                                waveform = narrator_voice_dict['waveform']
+                                # Ensure 2D tensor for torchaudio.save (channels, samples)
+                                if waveform.dim() == 3:
+                                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                                ta.save(tmp_file.name, waveform, narrator_voice_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                                 print(f"✅ Using fallback narrator voice for character: {character}")
                         

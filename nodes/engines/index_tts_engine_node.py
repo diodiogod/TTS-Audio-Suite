@@ -257,7 +257,6 @@ class IndexTTSEngineNode(BaseTTSNode):
             print(f"   Emotion: alpha={emotion_alpha}, use_text={use_emotion_text}")
             print(f"   Generation: temp={temperature}, top_p={top_p}, top_k={top_k}")
             print(f"   Chunking: max_tokens={max_text_tokens_per_segment}, silence={interval_silence}ms")
-            print(f"🐛 emotion_audio in engine config: {type(emotion_audio)} | exists: {emotion_audio is not None}")
             
             # Return engine data for consumption by unified TTS nodes
             engine_data = {
