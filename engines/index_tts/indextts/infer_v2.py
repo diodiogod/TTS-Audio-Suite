@@ -78,23 +78,22 @@ class IndexTTS2:
 
         # Initialize QwenEmotion for text-based emotion control if available
         self.qwen_emo = None
+        self.qwen_emo_path = None  # Store path for lazy loading
         
         try:
-            qwen_emo_path = None
-            
             # Check if config has qwen_emo_path and it's a valid string
             if hasattr(self.cfg, 'qwen_emo_path'):
                 config_path = getattr(self.cfg, 'qwen_emo_path', None)
                 if config_path and isinstance(config_path, str) and config_path.strip():
-                    qwen_emo_path = os.path.join(self.model_dir, config_path.strip())
+                    self.qwen_emo_path = os.path.join(self.model_dir, config_path.strip())
             
             # Fallback to default path if no valid config path
-            if qwen_emo_path is None:
-                qwen_emo_path = os.path.join(self.model_dir, "qwen0.6bemo4-merge")
-                
-            if qwen_emo_path and os.path.exists(qwen_emo_path) and os.path.isdir(qwen_emo_path):
+            if self.qwen_emo_path is None:
+                self.qwen_emo_path = os.path.join(self.model_dir, "qwen0.6bemo4-merge")
+
+            if self.qwen_emo_path and os.path.exists(self.qwen_emo_path) and os.path.isdir(self.qwen_emo_path):
                 # Check if required QwenEmotion files exist
-                normalized_path = os.path.normpath(qwen_emo_path)
+                normalized_path = os.path.normpath(self.qwen_emo_path)
                 required_files = ['config.json', 'tokenizer.json', 'tokenizer_config.json']
                 missing_files = [f for f in required_files if not os.path.exists(os.path.join(normalized_path, f))]
                 
@@ -112,9 +111,11 @@ class IndexTTS2:
             print(f"⚠️ Failed to load QwenEmotion model: {e}")
             print(f"ℹ️ Falling back to audio emotion only")
 
+        print("🔄 IndexTTS-2: Loading GPT model...")
         self.gpt = UnifiedVoice(**self.cfg.gpt)
         self.gpt_path = os.path.join(self.model_dir, self.cfg.gpt_checkpoint)
         load_checkpoint(self.gpt, self.gpt_path)
+        print("🔄 IndexTTS-2: Moving GPT to GPU...")
         self.gpt = self.gpt.to(self.device)
         if self.use_fp16:
             self.gpt.eval().half()
@@ -142,7 +143,53 @@ class IndexTTS2:
                 print(">> Failed to load custom CUDA kernel for BigVGAN. Falling back to torch.")
                 self.use_cuda_kernel = False
 
-        self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained("facebook/w2v-bert-2.0")
+        # Load W2V-BERT: check TTS folder first, then HuggingFace cache, then download
+        w2v_bert_tts_path = os.path.join(os.path.dirname(self.model_dir), "w2v-bert-2.0")
+        
+        if os.path.exists(w2v_bert_tts_path) and os.listdir(w2v_bert_tts_path):
+            # Load from TTS folder
+            print(f"🔄 Loading W2V-BERT from TTS folder: {w2v_bert_tts_path}")
+            import time
+            start_time = time.time()
+            
+            # Check if files actually exist
+            expected_files = ['config.json', 'model.safetensors', 'preprocessor_config.json']
+            missing_files = [f for f in expected_files if not os.path.exists(os.path.join(w2v_bert_tts_path, f))]
+            if missing_files:
+                print(f"⚠️ Missing files in TTS folder: {missing_files}")
+                print("📁 Actual files present:", os.listdir(w2v_bert_tts_path))
+            
+            print("🔄 Initializing SeamlessM4TFeatureExtractor (this is the slow part)...")
+            self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(w2v_bert_tts_path)
+            
+            load_time = time.time() - start_time
+            print(f"✅ W2V-BERT loaded in {load_time:.1f}s")
+        else:
+            # Check HuggingFace cache first before downloading
+            import glob
+            cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
+            cache_repo_dir = os.path.join(cache_home, "models--facebook--w2v-bert-2.0")
+            
+            if os.path.exists(cache_repo_dir):
+                # Find latest snapshot
+                snapshots = glob.glob(os.path.join(cache_repo_dir, "snapshots", "*"))
+                if snapshots:
+                    latest_snapshot = max(snapshots, key=os.path.getmtime)
+                    print(f"✅ Loading W2V-BERT from HuggingFace cache: {latest_snapshot}")
+                    self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(latest_snapshot)
+                else:
+                    print("⚠️ W2V-BERT cache found but no snapshots")
+                    self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained("facebook/w2v-bert-2.0")
+            else:
+                # Download to TTS folder using our unified downloader
+                from engines.index_tts.index_tts_downloader import index_tts_downloader
+                print("📥 Downloading W2V-BERT semantic model (2GB) to TTS folder")
+                try:
+                    w2v_bert_path = index_tts_downloader.download_model("w2v-bert-2.0")
+                    self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(w2v_bert_path)
+                except Exception as e:
+                    print(f"❌ Failed to download w2v-bert: {e}")
+                    raise RuntimeError(f"W2V-BERT model required for IndexTTS-2: {e}")
         self.semantic_model, self.semantic_mean, self.semantic_std = build_semantic_model(
             os.path.join(self.model_dir, self.cfg.w2v_stat))
         self.semantic_model = self.semantic_model.to(self.device)
@@ -595,6 +642,7 @@ class IndexTTS2:
                     s2mel_time += time.perf_counter() - m_start_time
 
                     m_start_time = time.perf_counter()
+                    # BigVGAN inference - this uses PyTorch fallback (no CUDA kernels)
                     wav = self.bigvgan(vc_target.float()).squeeze().unsqueeze(0)
                     print(wav.shape)
                     bigvgan_time += time.perf_counter() - m_start_time

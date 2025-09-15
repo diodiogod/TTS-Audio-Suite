@@ -6,6 +6,7 @@ Contains the core CharacterParser class and CharacterSegment dataclass.
 """
 
 import re
+import os
 from typing import List, Tuple, Dict, Optional, Union
 from pathlib import Path
 
@@ -305,6 +306,38 @@ class CharacterParser(ValidationMixin):
         """
         segments = self.parse_text_segments(text)
         return [(segment.character, segment.text, segment.language, segment.emotion) for segment in segments]
+
+    def get_emotion_voice_path(self, emotion_reference: str) -> Optional[str]:
+        """
+        Resolve emotion reference to voice file path using same system as character resolution.
+
+        Args:
+            emotion_reference: Emotion reference name (e.g., "Bob", "angry_alice")
+
+        Returns:
+            File path to emotion voice audio, or None if not found
+        """
+        if not emotion_reference:
+            return None
+
+        try:
+            # Resolve emotion reference using same alias system as characters
+            dummy_segments = self.split_by_character_with_emotions(f"[{emotion_reference}] dummy")
+            if not dummy_segments:
+                return None
+
+            resolved_character = dummy_segments[0][0]  # Get resolved character name
+
+            # Use voice discovery to get the audio path for resolved character
+            from utils.voice.discovery import get_character_mapping
+            char_mapping = get_character_mapping([resolved_character], "audio_only")
+            audio_path, _ = char_mapping.get(resolved_character, (None, None))
+
+            return audio_path if audio_path and os.path.exists(audio_path) else None
+
+        except Exception as e:
+            print(f"⚠️ Failed to resolve emotion reference '{emotion_reference}': {e}")
+            return None
     
     def set_engine_aware_default_language(self, model_or_language: str, engine_type: str):
         """

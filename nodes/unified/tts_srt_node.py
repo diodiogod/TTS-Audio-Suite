@@ -160,8 +160,8 @@ Hello! This is unified SRT TTS with character switching.
         """
         try:
             engine_type = engine_data.get("engine_type")
-            # The engine_data IS the config - not nested under "config"
-            config = engine_data
+            # Extract the nested config - engine_data has structure {engine_type, config, adapter_class}
+            config = engine_data.get("config", engine_data)
             
             # Create cache key based only on stable parameters that affect engine instance creation
             stable_params = {
@@ -194,6 +194,12 @@ Hello! This is unified SRT TTS with character switching.
                     from utils.models.comfyui_model_wrapper import is_engine_cache_valid
                     if is_engine_cache_valid(cache_timestamp):
                         # CRITICAL FIX: Update the cached instance's config with ALL current parameters
+                        print(f"🐛 Unified SRT updating cached {engine_type} config with keys: {list(config.keys())}")
+                        if 'emotion_audio' in config:
+                            print(f"🐛 emotion_audio found in unified SRT config: {type(config['emotion_audio'])}")
+                        else:
+                            print(f"🐛 emotion_audio NOT found in unified SRT config")
+
                         if hasattr(cached_instance, 'update_config'):
                             cached_instance.update_config(config.copy())  # Propagate to processor
                         else:
@@ -387,6 +393,11 @@ Hello! This is unified SRT TTS with character switching.
                 # Create a minimal wrapper node for the processor
                 class IndexTTSSRTWrapper:
                     def __init__(self, config):
+                        print(f"🐛 Creating new IndexTTS SRT wrapper with config keys: {list(config.keys())}")
+                        if 'emotion_audio' in config:
+                            print(f"🐛 emotion_audio in new wrapper config: {type(config['emotion_audio'])}")
+                        else:
+                            print(f"🐛 emotion_audio NOT in new wrapper config")
                         self.config = config
                         self.processor = IndexTTSSRTProcessor(self, config)
 
@@ -567,10 +578,16 @@ Hello! This is unified SRT TTS with character switching.
             
             engine_type = TTS_engine.get("engine_type")
             config = TTS_engine.get("config", {})
-            
+
+            print(f"🐛 Unified SRT received config with keys: {list(config.keys())}")
+            if 'emotion_audio' in config:
+                print(f"🐛 emotion_audio found in received config: {type(config['emotion_audio'])}")
+            else:
+                print(f"🐛 emotion_audio NOT found in received config")
+
             if not engine_type:
                 raise ValueError("TTS engine missing engine_type")
-            
+
             print(f"📺 TTS SRT: Starting {engine_type} SRT generation")
             
             # Get voice reference (opt_narrator takes priority)

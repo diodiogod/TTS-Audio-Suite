@@ -181,6 +181,7 @@ class IndexTTSProcessor:
                     segment_audio_parts = []
                     
                     for character, segment_text, language, emotion in char_segments:
+                        print(f"🐛 Character segment: character='{character}', language='{language}', emotion='{emotion}', text='{segment_text[:50]}...')")
                         # Get character voice reference
                         char_audio_dict = voice_refs.get(character)
                         speaker_audio_path = None
@@ -200,15 +201,17 @@ class IndexTTSProcessor:
                         # Check for emotion reference from character mapping or config
                         emotion_audio_path = None
                         if emotion:
-                            # Emotion from character tag like [Alice:angry_bob]
-                            emotion_mapping = character_mapping.get(emotion, (None, None))
-                            if emotion_mapping[0] and os.path.exists(emotion_mapping[0]):
-                                emotion_audio_path = emotion_mapping[0]
+                            # Emotion from character tag like [Alice:Bob] - use character parser's emotion resolution
+                            emotion_audio_path = self.character_parser.get_emotion_voice_path(emotion)
+                            if emotion_audio_path:
                                 print(f"😊 Using emotion reference from tag: {emotion} -> {emotion_audio_path}")
-                        
+                            else:
+                                print(f"🐛 Could not resolve emotion reference '{emotion}'")
+
                         # Fall back to config emotion_audio if no tag emotion
                         if not emotion_audio_path:
                             emotion_from_config = self.config.get('emotion_audio')
+                            print(f"🐛 emotion_audio from config for {character} = {type(emotion_from_config)} | exists: {emotion_from_config is not None}")
                             if emotion_from_config:
                                 if isinstance(emotion_from_config, dict) and 'waveform' in emotion_from_config:
                                     # Convert tensor to temporary file
@@ -221,8 +224,12 @@ class IndexTTSProcessor:
                                             emotion_waveform = emotion_waveform.unsqueeze(0)
                                         ta.save(tmp_file.name, emotion_waveform, emotion_from_config['sample_rate'])
                                         emotion_audio_path = tmp_file.name
+                                    print(f"🎭 Using connected engine emotion audio for character: {character}")
                                 else:
                                     emotion_audio_path = emotion_from_config
+                                    print(f"🎭 Using connected engine emotion audio for character: {character} -> {emotion_audio_path}")
+                            else:
+                                print(f"🎭 No emotion audio for character: {character} (no tag emotion, no connected engine emotion)")
                         
                         # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
                         segment_result = self.adapter.generate(
@@ -282,6 +289,7 @@ class IndexTTSProcessor:
                     
                     # Handle emotion_audio - convert tensor to file path if needed
                     emotion_audio_path = self.config.get('emotion_audio')
+                    print(f"🐛 emotion_audio from config = {type(emotion_audio_path)} | exists: {emotion_audio_path is not None}")
                     if emotion_audio_path and isinstance(emotion_audio_path, dict) and 'waveform' in emotion_audio_path:
                         # Convert tensor to temporary file
                         with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
@@ -293,6 +301,11 @@ class IndexTTSProcessor:
                                 emotion_waveform = emotion_waveform.unsqueeze(0)
                             ta.save(tmp_file.name, emotion_waveform, emotion_audio_path['sample_rate'])
                             emotion_audio_path = tmp_file.name
+                        print(f"🎭 Using connected engine emotion audio for simple text segment")
+                    elif emotion_audio_path:
+                        print(f"🎭 Using connected engine emotion audio for simple text -> {emotion_audio_path}")
+                    else:
+                        print(f"🎭 No emotion audio for simple text segment (no connected engine emotion)")
                     
                     result = self.adapter.generate(
                         text=text_content,
