@@ -40,9 +40,9 @@ class QwenEmotionNode:
                     "tooltip": "QwenEmotion model for text emotion analysis. Use 'local:' prefix for local models or select from available downloadable models."
                 }),
                 "emotion_text": ("STRING", {
-                    "default": "happy and excited",
+                    "default": "Happy character speaking: {seg}",
                     "multiline": True,
-                    "tooltip": "Text describing the desired emotion (e.g., 'angry and frustrated', 'calm and peaceful'). The QwenEmotion model will analyze this text and generate appropriate emotion vectors."
+                    "tooltip": "Text describing the desired emotion. Use {seg} placeholder for dynamic per-segment analysis (e.g., 'Angry man shouting: {seg}', 'Calm narrator: {seg}'). Without {seg}, applies same emotion to all segments."
                 }),
             }
         }
@@ -93,14 +93,21 @@ class QwenEmotionNode:
         Returns:
             Emotion control dict for IndexTTS-2 adapter
         """
+        # Check if using dynamic per-segment template
+        is_dynamic = "{seg}" in emotion_text
+
         emotion_control = {
             "type": "qwen_emotion",
             "use_emotion_text": True,
             "emotion_text": emotion_text,
-            "qwen_model": qwen_model
+            "qwen_model": qwen_model,
+            "is_dynamic_template": is_dynamic
         }
 
-        print(f"🧠 QwenEmotion: Prepared text emotion analysis with model '{qwen_model}' for '{emotion_text}'")
+        if is_dynamic:
+            print(f"🧠 QwenEmotion: Prepared dynamic per-segment analysis with model '{qwen_model}' - template: '{emotion_text}'")
+        else:
+            print(f"🧠 QwenEmotion: Prepared static emotion analysis with model '{qwen_model}' for '{emotion_text}'")
 
         return (emotion_control,)
 

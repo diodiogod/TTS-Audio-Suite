@@ -197,6 +197,7 @@ class IndexTTSEngineNode(BaseTTSNode):
             emotion_vector = None
             use_emotion_text = False
             emotion_text = None
+            is_dynamic_template = False
 
             if emotion_control:
                 if isinstance(emotion_control, dict):
@@ -223,6 +224,7 @@ class IndexTTSEngineNode(BaseTTSNode):
                         # QwenEmotion text analysis
                         use_emotion_text = emotion_control.get("use_emotion_text", False)
                         emotion_text = emotion_control.get("emotion_text", "")
+                        is_dynamic_template = emotion_control.get("is_dynamic_template", False)
 
                     elif "waveform" in emotion_control:
                         # Direct audio input (NARRATOR_VOICE or AUDIO)
@@ -263,12 +265,16 @@ class IndexTTSEngineNode(BaseTTSNode):
                 "use_deepspeed": use_deepspeed,
                 "emotion_vector": emotion_vector,
                 "use_cuda_kernel": cuda_kernel_option,
+                "is_dynamic_template": is_dynamic_template,
                 "engine_type": "index_tts"
             }
             
             print(f"⚙️ IndexTTS-2: Configured on {device}")
             print(f"   Model: {model_path}")
-            print(f"   Emotion: alpha={emotion_alpha}, use_text={use_emotion_text}")
+            emotion_desc = f"alpha={emotion_alpha}, use_text={use_emotion_text}"
+            if is_dynamic_template:
+                emotion_desc += " (dynamic template)"
+            print(f"   Emotion: {emotion_desc}")
             print(f"   Generation: temp={temperature}, top_p={top_p}, top_k={top_k}")
             print(f"   Chunking: max_tokens={max_text_tokens_per_segment}, silence={interval_silence}ms")
             

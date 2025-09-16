@@ -79,6 +79,23 @@ class IndexTTSProcessor:
         for char, lang in char_lang_defaults.items():
             self.character_parser.set_character_language_default(char, lang)
 
+    def _process_dynamic_emotion_template(self, emotion_text: str, segment_text: str) -> str:
+        """
+        Process dynamic emotion template by replacing {seg} with actual segment text.
+
+        Args:
+            emotion_text: Template with {seg} placeholder
+            segment_text: Actual text segment content
+
+        Returns:
+            Processed emotion text for QwenEmotion analysis
+        """
+        if "{seg}" in emotion_text:
+            processed_text = emotion_text.replace("{seg}", segment_text)
+            print(f"🧠 Dynamic QwenEmotion: '{segment_text[:30]}...' → '{processed_text[:50]}...'")
+            return processed_text
+        return emotion_text
+
     def process_text(self, 
                     text: str,
                     speaker_audio: Optional[Dict] = None,
@@ -252,6 +269,10 @@ class IndexTTSProcessor:
                             character_use_emotion_text = self.config.get('use_emotion_text', False)
                             character_emotion_text = self.config.get('emotion_text')
 
+                            # Handle dynamic QwenEmotion template
+                            if character_use_emotion_text and character_emotion_text and self.config.get('is_dynamic_template', False):
+                                character_emotion_text = self._process_dynamic_emotion_template(character_emotion_text, segment_text)
+
                         # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
                         segment_result = self.adapter.generate(
                             text=segment_text,
@@ -341,6 +362,10 @@ class IndexTTSProcessor:
                         simple_emotion_vector = self.config.get('emotion_vector')
                         simple_use_emotion_text = self.config.get('use_emotion_text', False)
                         simple_emotion_text = self.config.get('emotion_text')
+
+                        # Handle dynamic QwenEmotion template
+                        if simple_use_emotion_text and simple_emotion_text and self.config.get('is_dynamic_template', False):
+                            simple_emotion_text = self._process_dynamic_emotion_template(simple_emotion_text, text_content)
 
                     result = self.adapter.generate(
                         text=text_content,
