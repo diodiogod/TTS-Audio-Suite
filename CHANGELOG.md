@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.1] - 2025-09-16
+
+### Added
+
+- Add automatic recovery from CPU offloading corruption
+- Add new IndexTTS-2 integration workflow example
+
+### Changed
+
+- Improve model stability for multiple generations
+
+### Fixed
+
+- Fix IndexTTS-2 device errors and add integration workflow
+- Fix device mismatch error when reusing IndexTTS-2 after model unload
 ## [4.9.0] - 2025-09-16
 
 ### Added
