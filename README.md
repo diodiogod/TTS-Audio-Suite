@@ -48,12 +48,12 @@ Project          Voice            Speech         New TTS Engine │
 Renamed          Conversion       Analyzer       Voice Cloning  │
 TTS Audio Suite  + Streaming                                    │
                                                                 ▼
-                         v4.8 ◄─────────────── v4.6 ◄───────────┘
-                         Sep 25                Aug 25
-                         │                     │                
-                         Chatterbox            VibeVoice        
-                         Multilingual          New TTS Engine   
-                         Official (23-lang)    90min Generation 
+v4.9 ◄─────────── v4.8 ◄─────────────── v4.6 ◄───────────┘
+Sep 25        Sep 25                Aug 25
+│             │                     │
+IndexTTS-2    Chatterbox            VibeVoice
+Emotion       Multilingual          New TTS Engine
+Control       Official (23-lang)    90min Generation
 ```
 
 <details>
@@ -75,7 +75,7 @@ TTS Audio Suite  + Streaming                                    │
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
-  - [🌈 IndexTTS-2 Unified Emotion Control](#-indextts-2-unified-emotion-control)
+  - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
