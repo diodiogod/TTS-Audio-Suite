@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.5] - 2025-09-16
+
+### Fixed
+
+- Fix missing julius dependency causing Higgs Audio failures
+- Add julius dependency to install script for proper audio processing support
+- Fix 'No module named julius' error when using Higgs Audio 2 engine
+- Resolve dependency issue with RVC demucs components requiring julius
+- Users should run install.py manually in their ComfyUI environment to get the fix
+- Addresses issue #82 julius dependency error
 ## [4.9.4] - 2025-09-16
 
 ### Changed

@@ -541,6 +541,7 @@ class TTSAudioInstaller:
             "torch-stoi",                 # Required by descript-audiotools
             "ipython",                    # Required by descript-audiotools
             "tensorboard",                # Required by descript-audiotools
+            "julius",                     # Required by descript-audiotools for DSP operations
             
             # IndexTTS-2 engine dependencies (tested safe - no conflicts found)
             "cn2an>=0.5.22",              # Chinese number to Arabic number conversion
