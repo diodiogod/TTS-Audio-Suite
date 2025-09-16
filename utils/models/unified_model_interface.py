@@ -38,6 +38,7 @@ class UnifiedModelInterface:
     def __init__(self):
         """Initialize the unified interface"""
         self._model_factories: Dict[str, Callable] = {}
+        self._pytorch_warning_shown = False
         
     def register_model_factory(self, 
                              engine_name: str, 
@@ -54,6 +55,59 @@ class UnifiedModelInterface:
         key = f"{engine_name}_{model_type}"
         self._model_factories[key] = factory_func
     
+    def _check_pytorch_consistency(self) -> None:
+        """Check for PyTorch/TorchAudio/TorchVision consistency and warn if mixed CUDA/CPU"""
+        if self._pytorch_warning_shown:
+            return
+            
+        try:
+            import torch
+            import torchaudio
+            import torchvision
+            
+            # Check PyTorch version info
+            torch_version = getattr(torch, '__version__', 'unknown')
+            torchaudio_version = getattr(torchaudio, '__version__', 'unknown')  
+            torchvision_version = getattr(torchvision, '__version__', 'unknown')
+            
+            # Detect CUDA vs CPU variants
+            torch_cuda = '+cu' in torch_version
+            torch_cpu = '+cpu' in torch_version
+            torchaudio_cpu = '+cpu' in torchaudio_version or (not '+cu' in torchaudio_version and not torch_cpu)
+            torchvision_cpu = '+cpu' in torchvision_version or (not '+cu' in torchvision_version and not torch_cpu)
+            
+            warnings = []
+            
+            # Check for performance-killing mixed installations
+            if torch_cuda and torchaudio_cpu:
+                warnings.append("❌ CRITICAL PERFORMANCE WARNING: GPU PyTorch + CPU TorchAudio detected!")
+                warnings.append(f"   PyTorch: {torch_version} | TorchAudio: {torchaudio_version}")
+                warnings.append("   This causes major slowdowns and VRAM spikes in TTS generation.")
+                warnings.append("   Fix: pip uninstall torchaudio && pip install torchaudio+cu128 --index-url https://download.pytorch.org/whl/cu128")
+                
+            if torch_cuda and torchvision_cpu:
+                warnings.append("❌ PERFORMANCE WARNING: GPU PyTorch + CPU TorchVision detected!")
+                warnings.append(f"   PyTorch: {torch_version} | TorchVision: {torchvision_version}")
+                warnings.append("   Fix: pip uninstall torchvision && pip install torchvision+cu128 --index-url https://download.pytorch.org/whl/cu128")
+            
+            if warnings:
+                print("\n" + "="*80)
+                print("🔥 TTS AUDIO SUITE - PYTORCH INSTALLATION WARNING")
+                print("="*80)
+                for warning in warnings:
+                    print(warning)
+                print("="*80 + "\n")
+                
+            self._pytorch_warning_shown = True
+            
+        except ImportError as e:
+            # PyTorch not available - this will be caught elsewhere
+            pass
+        except Exception as e:
+            # Don't let consistency check break model loading
+            print(f"⚠️ PyTorch consistency check failed: {e}")
+            self._pytorch_warning_shown = True
+
     def load_model(self, config: UnifiedModelConfig, force_reload: bool = False) -> Any:
         """
         Load a model using the unified interface.
@@ -69,6 +123,9 @@ class UnifiedModelInterface:
             ValueError: If no factory is registered for the engine/model type
             RuntimeError: If model loading fails
         """
+        # Check PyTorch consistency on first model load
+        self._check_pytorch_consistency()
+        
         # Generate unique cache key
         cache_key = self._generate_cache_key(config)
         

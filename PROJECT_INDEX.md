@@ -139,6 +139,10 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/engines/rvc_engine_node.py** - RVC voice conversion node with pitch control and quality settings
 
+**nodes/engines/index_tts_engine_node.py** - IndexTTS-2 engine configuration node with character voice selection and generation parameters
+
+**nodes/engines/index_tts_emotion_options_node.py** - 🌈 IndexTTS-2 Emotion Vectors node with interactive radar chart for 8-emotion control
+
 ### Unified Interface Nodes
 
 **nodes/unified/tts_text_node.py** - Universal TTS text generation node working with any configured engine
@@ -322,6 +326,10 @@ This extension features a **unified modular architecture** supporting multiple T
 **web/audio_analyzer_node_integration.js** - Node integration bridge for ComfyUI communication
 
 **web/chatterbox_voice_capture.js** - Voice recording interface for microphone input
+
+**web/index_tts_emotion_radar.js** - ComfyUI integration for 🌈 IndexTTS-2 Emotion Vectors radar chart
+
+**web/emotion_radar_canvas_widget.js** - Interactive radar chart widget with dynamic color blending and click/drag controls
 
 **web/chatterbox_srt_showcontrol.js** - SRT subtitle display and timing controls
 

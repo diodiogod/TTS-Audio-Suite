@@ -46,63 +46,74 @@ def chinese_path_compile_support(sources, buildpath):
 
 
 def load():
-    # Check if cuda 11 is installed for compute capability 8.0
-    cc_flag = []
-    _, bare_metal_major, _ = _get_cuda_bare_metal_version(cpp_extension.CUDA_HOME)
-    if int(bare_metal_major) >= 11:
-        cc_flag.append("-gencode")
-        cc_flag.append("arch=compute_80,code=sm_80")
+    try:
+        # Check if cuda 11 is installed for compute capability 8.0
+        cc_flag = []
+        _, bare_metal_major, _ = _get_cuda_bare_metal_version(cpp_extension.CUDA_HOME)
+        if int(bare_metal_major) >= 11:
+            cc_flag.append("-gencode")
+            cc_flag.append("arch=compute_80,code=sm_80")
 
-    # Build path
-    srcpath = pathlib.Path(__file__).parent.absolute()
-    buildpath = srcpath / "build"
-    _create_build_dir(buildpath)
+        # Build path
+        srcpath = pathlib.Path(__file__).parent.absolute()
+        buildpath = srcpath / "build"
+        _create_build_dir(buildpath)
 
-    # Helper function to build the kernels.
-    def _cpp_extention_load_helper(name, sources, extra_cuda_flags):
-        return cpp_extension.load(
-            name=name,
-            sources=sources,
-            build_directory=buildpath,
-            extra_cflags=[
-                "-O3",
-            ],
-            extra_cuda_cflags=[
-                "-O3",
-                "-gencode",
-                "arch=compute_70,code=sm_70",
-                "--use_fast_math",
-            ]
-            + extra_cuda_flags
-            + cc_flag,
-            verbose=True,
+        # Helper function to build the kernels.
+        def _cpp_extention_load_helper(name, sources, extra_cuda_flags):
+            return cpp_extension.load(
+                name=name,
+                sources=sources,
+                build_directory=buildpath,
+                extra_cflags=[
+                    "-O3",
+                ],
+                extra_cuda_cflags=[
+                    "-O3",
+                    "-gencode",
+                    "arch=compute_70,code=sm_70",
+                    "--use_fast_math",
+                ]
+                + extra_cuda_flags
+                + cc_flag,
+                verbose=True,
+            )
+
+        extra_cuda_flags = [
+            "-U__CUDA_NO_HALF_OPERATORS__",
+            "-U__CUDA_NO_HALF_CONVERSIONS__",
+            "--expt-relaxed-constexpr",
+            "--expt-extended-lambda",
+        ]
+
+        sources = [
+            srcpath / "anti_alias_activation.cpp",
+            srcpath / "anti_alias_activation_cuda.cu",
+        ]
+        
+        # 兼容方案：ninja 特殊字符路径编译支持处理（比如中文路径）
+        buildpath = chinese_path_compile_support(sources, buildpath)
+        
+        anti_alias_activation_cuda = _cpp_extention_load_helper(
+            "anti_alias_activation_cuda", sources, extra_cuda_flags
         )
 
-    extra_cuda_flags = [
-        "-U__CUDA_NO_HALF_OPERATORS__",
-        "-U__CUDA_NO_HALF_CONVERSIONS__",
-        "--expt-relaxed-constexpr",
-        "--expt-extended-lambda",
-    ]
-
-    sources = [
-        srcpath / "anti_alias_activation.cpp",
-        srcpath / "anti_alias_activation_cuda.cu",
-    ]
+        return anti_alias_activation_cuda
     
-    # 兼容方案：ninja 特殊字符路径编译支持处理（比如中文路径）
-    buildpath = chinese_path_compile_support(sources, buildpath)
-    
-    anti_alias_activation_cuda = _cpp_extention_load_helper(
-        "anti_alias_activation_cuda", sources, extra_cuda_flags
-    )
-
-    return anti_alias_activation_cuda
+    except Exception as e:
+        print(f"WARNING: Failed to compile CUDA kernels: {e}")
+        print("INFO: BigVGAN will use slower PyTorch fallback operations")
+        raise RuntimeError(f"CUDA kernel compilation failed: {e}")
 
 
 def _get_cuda_bare_metal_version(cuda_dir):
+    # Handle Windows vs Linux paths for nvcc and strip any whitespace
+    cuda_dir = cuda_dir.strip() if cuda_dir else ""
+    nvcc_path = os.path.join(cuda_dir, "bin", "nvcc.exe" if os.name == "nt" else "nvcc")
+    print(f"DEBUG: Trying to run nvcc at: {nvcc_path}")
+    print(f"DEBUG: File exists: {os.path.exists(nvcc_path)}")
     raw_output = subprocess.check_output(
-        [cuda_dir + "/bin/nvcc", "-V"], universal_newlines=True
+        [nvcc_path, "-V"], universal_newlines=True
     )
     output = raw_output.split()
     release_idx = output.index("release") + 1

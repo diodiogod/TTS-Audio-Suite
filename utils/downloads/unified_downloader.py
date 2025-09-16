@@ -112,9 +112,16 @@ class UnifiedDownloader:
             remote_path = file_info['remote']  # e.g., "F5TTS_v1_Base/model_1250000.safetensors"
             local_filename = file_info['local']  # e.g., "model_1250000.safetensors"
             
-            url = f"https://huggingface.co/{repo_id}/resolve/main/{remote_path}"
             target_path = os.path.join(model_dir, local_filename)
             
+            # Skip if already exists in TTS folder
+            if os.path.exists(target_path):
+                continue
+            
+            # Note: Don't copy from cache - just download to TTS folder if missing
+            
+            # Download from HuggingFace if not in cache
+            url = f"https://huggingface.co/{repo_id}/resolve/main/{remote_path}"
             if not self.download_file(url, target_path, f"{model_name}/{local_filename}"):
                 failed_files.append(local_filename)
                 # Only fail completely if critical files are missing
@@ -311,6 +318,40 @@ class UnifiedDownloader:
         )
         
         return downloaded_dir
+    
+    def _check_huggingface_cache(self, repo_id: str, file_path: str) -> Optional[str]:
+        """
+        Check if file exists in HuggingFace cache.
+        
+        Args:
+            repo_id: Repository ID (e.g., "facebook/w2v-bert-2.0")
+            file_path: File path in repo (e.g., "model.safetensors")
+            
+        Returns:
+            Path to cached file if exists, None otherwise
+        """
+        import os
+        import glob
+        
+        # Get HuggingFace cache directory
+        cache_home = os.environ.get('HUGGINGFACE_HUB_CACHE', os.path.expanduser('~/.cache/huggingface/hub'))
+        
+        # Convert repo ID to cache format
+        cache_folder_name = f"models--{repo_id.replace('/', '--')}"
+        cache_repo_dir = os.path.join(cache_home, cache_folder_name)
+        
+        if not os.path.exists(cache_repo_dir):
+            return None
+        
+        # Find snapshot directories (they have commit hashes as names)
+        snapshot_pattern = os.path.join(cache_repo_dir, "snapshots", "*", file_path)
+        matching_files = glob.glob(snapshot_pattern)
+        
+        if matching_files:
+            # Return the most recent one (by modification time)
+            return max(matching_files, key=os.path.getmtime)
+        
+        return None
 
 # Global instance for easy access
 unified_downloader = UnifiedDownloader()

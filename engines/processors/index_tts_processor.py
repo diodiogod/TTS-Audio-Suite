@@ -43,6 +43,9 @@ class IndexTTSProcessor:
         self.character_parser = CharacterParser()
         self.pause_processor = PauseTagProcessor()
         self.sample_rate = 22050  # IndexTTS-2 native sample rate
+
+        # Set up character parser with available characters
+        self._setup_character_parser()
         
         # Initialize adapter with engine config
         self.adapter.initialize_engine(
@@ -52,7 +55,47 @@ class IndexTTSProcessor:
             use_cuda_kernel=engine_config.get('use_cuda_kernel'),
             use_deepspeed=engine_config.get('use_deepspeed', False)
         )
-    
+
+    def _setup_character_parser(self):
+        """Set up character parser with available characters and aliases."""
+        from utils.voice.discovery import get_available_characters, voice_discovery
+
+        # Get available characters and aliases
+        available_chars = get_available_characters()
+        character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        self.character_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
+        char_lang_defaults = voice_discovery.get_character_language_defaults()
+        for char, lang in char_lang_defaults.items():
+            self.character_parser.set_character_language_default(char, lang)
+
+    def _process_dynamic_emotion_template(self, emotion_text: str, segment_text: str) -> str:
+        """
+        Process dynamic emotion template by replacing {seg} with actual segment text.
+
+        Args:
+            emotion_text: Template with {seg} placeholder
+            segment_text: Actual text segment content
+
+        Returns:
+            Processed emotion text for QwenEmotion analysis
+        """
+        if "{seg}" in emotion_text:
+            processed_text = emotion_text.replace("{seg}", segment_text)
+            print(f"🌈 Dynamic Text Emotion: '{segment_text[:30]}...' → '{processed_text[:50]}...'")
+            return processed_text
+        return emotion_text
+
     def process_text(self, 
                     text: str,
                     speaker_audio: Optional[Dict] = None,
@@ -91,8 +134,8 @@ class IndexTTSProcessor:
             all_characters = set(char for char, _, _, _ in character_segments)
             all_characters.add("narrator")
             
-            # Build character mapping for emotion references
-            character_mapping = get_character_mapping(list(all_characters), engine_type="index_tts")
+            # Build character mapping for emotion references (IndexTTS only needs audio files)
+            character_mapping = get_character_mapping(list(all_characters), engine_type="audio_only")
             
             print(f"🎭 IndexTTS-2: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
             
@@ -129,6 +172,7 @@ class IndexTTSProcessor:
                     
                 audio_path, char_ref_text = character_mapping.get(character, (None, None))
                 if audio_path and os.path.exists(audio_path):
+                    import torchaudio
                     waveform, sample_rate = torchaudio.load(audio_path)
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
@@ -154,6 +198,7 @@ class IndexTTSProcessor:
                     segment_audio_parts = []
                     
                     for character, segment_text, language, emotion in char_segments:
+                        # Character segment processing (debug info removed for cleaner logs)
                         # Get character voice reference
                         char_audio_dict = voice_refs.get(character)
                         speaker_audio_path = None
@@ -161,27 +206,37 @@ class IndexTTSProcessor:
                             # Convert tensor back to temporary file for IndexTTS-2
                             # IndexTTS-2 adapter expects file paths, not tensors
                             with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                                ta.save(tmp_file.name, char_audio_dict['waveform'], char_audio_dict['sample_rate'])
+                                waveform = char_audio_dict['waveform']
+                                # Ensure 2D tensor for torchaudio.save (channels, samples)
+                                if waveform.dim() == 3:
+                                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                                ta.save(tmp_file.name, waveform, char_audio_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                         elif character.lower() == "narrator" and narrator_voice_dict and 'waveform' in narrator_voice_dict:
                             # Fallback to narrator voice for narrator character
                             with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                                ta.save(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
+                                waveform = narrator_voice_dict['waveform']
+                                # Ensure 2D tensor for torchaudio.save (channels, samples)
+                                if waveform.dim() == 3:
+                                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                                ta.save(tmp_file.name, waveform, narrator_voice_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                                 print(f"✅ Using fallback narrator voice for character: {character}")
                         
                         # Check for emotion reference from character mapping or config
                         emotion_audio_path = None
                         if emotion:
-                            # Emotion from character tag like [Alice:angry_bob]
-                            emotion_mapping = character_mapping.get(emotion, (None, None))
-                            if emotion_mapping[0] and os.path.exists(emotion_mapping[0]):
-                                emotion_audio_path = emotion_mapping[0]
+                            # Emotion from character tag like [Alice:Bob] - use character parser's emotion resolution
+                            emotion_audio_path = self.character_parser.get_emotion_voice_path(emotion)
+                            if emotion_audio_path:
                                 print(f"😊 Using emotion reference from tag: {emotion} -> {emotion_audio_path}")
-                        
+                            else:
+                                print(f"🐛 Could not resolve emotion reference '{emotion}'")
+
                         # Fall back to config emotion_audio if no tag emotion
                         if not emotion_audio_path:
                             emotion_from_config = self.config.get('emotion_audio')
+                            # Process emotion audio for this character
                             if emotion_from_config:
                                 if isinstance(emotion_from_config, dict) and 'waveform' in emotion_from_config:
                                     # Convert tensor to temporary file
@@ -194,21 +249,43 @@ class IndexTTSProcessor:
                                             emotion_waveform = emotion_waveform.unsqueeze(0)
                                         ta.save(tmp_file.name, emotion_waveform, emotion_from_config['sample_rate'])
                                         emotion_audio_path = tmp_file.name
+                                    print(f"🎭 Using connected engine emotion audio for character: {character}")
                                 else:
                                     emotion_audio_path = emotion_from_config
+                                    print(f"🎭 Using connected engine emotion audio for character: {character}")
+                            else:
+                                print(f"🎭 No emotion audio for character: {character} (no tag emotion, no connected engine emotion)")
                         
+                        # Prioritize character emotion reference over global emotion controls
+                        # If character has specific emotion ref, disable global emotion controls
+                        if emotion_audio_path:
+                            # Character has specific emotion - use only that emotion reference
+                            character_emotion_vector = None
+                            character_use_emotion_text = False
+                            character_emotion_text = None
+                        else:
+                            # No character emotion - use global emotion settings
+                            character_emotion_vector = self.config.get('emotion_vector')
+                            character_use_emotion_text = self.config.get('use_emotion_text', False)
+                            character_emotion_text = self.config.get('emotion_text')
+
+                            # Handle dynamic QwenEmotion template
+                            if character_use_emotion_text and character_emotion_text and self.config.get('is_dynamic_template', False):
+                                character_emotion_text = self._process_dynamic_emotion_template(character_emotion_text, segment_text)
+
                         # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
                         segment_result = self.adapter.generate(
                             text=segment_text,
                             speaker_audio=speaker_audio_path,
                             emotion_audio=emotion_audio_path,
                             emotion_alpha=self.config.get('emotion_alpha', 1.0),
-                            emotion_vector=self.config.get('emotion_vector'),
-                            use_emotion_text=self.config.get('use_emotion_text', False),
-                            emotion_text=self.config.get('emotion_text'),
+                            emotion_vector=character_emotion_vector,
+                            use_emotion_text=character_use_emotion_text,
+                            emotion_text=character_emotion_text,
                             use_random=self.config.get('use_random', False),
                             interval_silence=self.config.get('interval_silence', 200),
                             max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
+                            seed=seed,
                             temperature=self.config.get('temperature', 0.8),
                             top_p=self.config.get('top_p', 0.8),
                             top_k=self.config.get('top_k', 30),
@@ -255,6 +332,7 @@ class IndexTTSProcessor:
                     
                     # Handle emotion_audio - convert tensor to file path if needed
                     emotion_audio_path = self.config.get('emotion_audio')
+                    # Process emotion audio from config
                     if emotion_audio_path and isinstance(emotion_audio_path, dict) and 'waveform' in emotion_audio_path:
                         # Convert tensor to temporary file
                         with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
@@ -266,18 +344,41 @@ class IndexTTSProcessor:
                                 emotion_waveform = emotion_waveform.unsqueeze(0)
                             ta.save(tmp_file.name, emotion_waveform, emotion_audio_path['sample_rate'])
                             emotion_audio_path = tmp_file.name
-                    
+                        print(f"🎭 Using connected engine emotion audio for simple text segment")
+                    elif emotion_audio_path:
+                        print(f"🎭 Using connected engine emotion audio for simple text segment")
+                    else:
+                        print(f"🎭 No emotion audio for simple text segment (no connected engine emotion)")
+
+                    # Prioritize connected emotion_audio over global emotion controls
+                    # For simple text, use emotion_audio from config if available, else use global settings
+                    if emotion_audio_path:
+                        # Engine emotion_audio connected - use only that
+                        simple_emotion_vector = None
+                        simple_use_emotion_text = False
+                        simple_emotion_text = None
+                    else:
+                        # No engine emotion_audio - use global emotion settings
+                        simple_emotion_vector = self.config.get('emotion_vector')
+                        simple_use_emotion_text = self.config.get('use_emotion_text', False)
+                        simple_emotion_text = self.config.get('emotion_text')
+
+                        # Handle dynamic QwenEmotion template
+                        if simple_use_emotion_text and simple_emotion_text and self.config.get('is_dynamic_template', False):
+                            simple_emotion_text = self._process_dynamic_emotion_template(simple_emotion_text, text_content)
+
                     result = self.adapter.generate(
                         text=text_content,
                         speaker_audio=speaker_audio_path,
                         emotion_audio=emotion_audio_path,
                         emotion_alpha=self.config.get('emotion_alpha', 1.0),
-                        emotion_vector=self.config.get('emotion_vector'),
-                        use_emotion_text=self.config.get('use_emotion_text', False),
-                        emotion_text=self.config.get('emotion_text'),
+                        emotion_vector=simple_emotion_vector,
+                        use_emotion_text=simple_use_emotion_text,
+                        emotion_text=simple_emotion_text,
                         use_random=self.config.get('use_random', False),
                         interval_silence=self.config.get('interval_silence', 200),
                         max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
+                        seed=seed,
                         temperature=self.config.get('temperature', 0.8),
                         top_p=self.config.get('top_p', 0.8),
                         top_k=self.config.get('top_k', 30),

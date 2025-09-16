@@ -11,8 +11,8 @@ from typing import Dict, Any, Optional, List, Union
 
 from engines.index_tts.index_tts import IndexTTSEngine
 from engines.index_tts.index_tts_downloader import index_tts_downloader
-from utils.text.character_parser import CharacterParser
-from utils.voice.discovery import get_character_mapping
+from utils.text.character_parser import character_parser
+from utils.voice.discovery import get_character_mapping, get_available_characters
 from utils.audio.cache import get_audio_cache
 
 
@@ -31,9 +31,8 @@ class IndexTTSAdapter:
     def __init__(self):
         """Initialize the IndexTTS-2 adapter."""
         self.engine = None
-        self.character_parser = CharacterParser()
         self.audio_cache = get_audio_cache()
-        
+    
     def initialize_engine(self, 
                          model_path: Optional[str] = None,
                          device: str = "auto",
@@ -117,10 +116,10 @@ class IndexTTSAdapter:
         """
         if self.engine is None:
             self.initialize_engine()
-            
+
         # Check if text actually contains character tags before processing
-        has_character_tags = self.character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
-        
+        has_character_tags = character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
+
         if has_character_tags:
             # Parse character switching tags with emotion support
             processed_segments = self._process_character_tags_with_emotions(text)
@@ -146,7 +145,20 @@ class IndexTTSAdapter:
         
         # Determine final speaker and emotion audio
         final_speaker_audio = speaker_audio
-        final_emotion_audio = emotion_audio
+
+        # Handle Character Voices emotion_audio format
+        if emotion_audio and isinstance(emotion_audio, dict):
+            if "audio_path" in emotion_audio:
+                # Character Voices format: {'audio': {...}, 'audio_path': 'path', ...}
+                final_emotion_audio = emotion_audio["audio_path"]
+                print(f"🎭 Using Character Voices emotion audio: {emotion_audio.get('character_name', 'unknown')} -> {final_emotion_audio}")
+            elif "waveform" in emotion_audio:
+                # Direct AUDIO format: {'waveform': tensor, 'sample_rate': rate}
+                final_emotion_audio = emotion_audio
+            else:
+                final_emotion_audio = emotion_audio
+        else:
+            final_emotion_audio = emotion_audio
         
         # Only do character mapping if we actually have character tags
         if has_character_tags:
@@ -177,11 +189,16 @@ class IndexTTSAdapter:
                 final_emotion_audio = character_mapping[emotion_ref][0]
                 print(f"😊 Using emotion reference: {emotion_ref} -> {final_emotion_audio}")
                     
+        # For caching, we need stable identifiers for audio references
+        # Convert file paths to content hashes if they're temp files
+        cache_speaker_audio = self._get_stable_audio_identifier(final_speaker_audio)
+        cache_emotion_audio = self._get_stable_audio_identifier(final_emotion_audio) if final_emotion_audio else final_emotion_audio
+
         # Check cache before generation
         cache_key = self._generate_cache_key(
             text=processed_text,
-            speaker_audio=final_speaker_audio,
-            emotion_audio=final_emotion_audio,
+            speaker_audio=cache_speaker_audio,
+            emotion_audio=cache_emotion_audio,
             emotion_alpha=emotion_alpha,
             emotion_vector=emotion_vector,
             use_emotion_text=use_emotion_text,
@@ -194,24 +211,64 @@ class IndexTTSAdapter:
             repetition_penalty=repetition_penalty,
             max_mel_tokens=max_mel_tokens,
             max_text_tokens_per_segment=max_text_tokens_per_segment,
-            interval_silence=interval_silence
+            interval_silence=interval_silence,
+            **kwargs  # Include seed and other kwargs in cache key
         )
-        
+
+        # print(f"🐛 IndexTTS-2 cache key params: text='{processed_text[:30]}...', seed={kwargs.get('seed', 'missing')}, speaker='{final_speaker_audio}', emotion='{final_emotion_audio}'")
+        # print(f"🐛 IndexTTS-2 full cache key: {cache_key}")
+        # print(f"🐛 IndexTTS-2 cache stats: {self.audio_cache.get_cache_stats()}")
+
         cached_audio = self.audio_cache.get_cached_audio(cache_key)
         if cached_audio:
             character_desc = character_name or 'narrator'
             print(f"💾 Using cached IndexTTS-2 audio for '{character_desc}': '{processed_text[:30]}...'")
             return cached_audio[0]
+        # else:
+        #     print(f"❌ IndexTTS-2 cache MISS for key: {cache_key}")
+        #     # Show first few existing keys for comparison
+        #     # Access the global cache properly
+        #     from utils.audio.cache import GLOBAL_AUDIO_CACHE
+        #     existing_keys = list(GLOBAL_AUDIO_CACHE.keys())
+        #     if existing_keys:
+        #         print(f"🔍 Existing cache keys (first 3): {existing_keys[:3]}")
+        #     else:
+        #         print(f"🔍 Cache is empty")
             
+        # Handle seed for deterministic generation
+        seed = kwargs.get('seed', 0)
+        if seed != 0:
+            torch.manual_seed(seed)
+            import random
+            import numpy as np
+            random.seed(seed)
+            np.random.seed(seed)
+
+        # Filter out seed from kwargs (used for caching but not supported by IndexTTS engine)
+        engine_kwargs = {k: v for k, v in kwargs.items() if k != 'seed'}
+
+        # Apply consistent emotion priority: emotion_audio takes precedence over other emotion controls
+        # This ensures consistent behavior whether using character tags or direct engine inputs
+        if final_emotion_audio:
+            # emotion_audio connected - disable other emotion controls
+            final_emotion_vector = None
+            final_use_emotion_text = False
+            final_emotion_text = None
+        else:
+            # No emotion_audio - use provided emotion controls
+            final_emotion_vector = emotion_vector
+            final_use_emotion_text = use_emotion_text
+            final_emotion_text = emotion_text
+
         # Generate audio
         audio = self.engine.generate(
             text=processed_text,
             speaker_audio=final_speaker_audio,
             emotion_audio=final_emotion_audio,
             emotion_alpha=emotion_alpha,
-            emotion_vector=emotion_vector,
-            use_emotion_text=use_emotion_text,
-            emotion_text=emotion_text,
+            emotion_vector=final_emotion_vector,
+            use_emotion_text=final_use_emotion_text,
+            emotion_text=final_emotion_text,
             use_random=use_random,
             interval_silence=interval_silence,
             max_text_tokens_per_segment=max_text_tokens_per_segment,
@@ -222,34 +279,48 @@ class IndexTTSAdapter:
             num_beams=num_beams,
             repetition_penalty=repetition_penalty,
             max_mel_tokens=max_mel_tokens,
-            **kwargs
+            **engine_kwargs
         )
         
         # Cache the result
         duration = audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
         self.audio_cache.cache_audio(cache_key, audio, duration)
+        # print(f"💾 IndexTTS-2 CACHED audio with key: {cache_key}")
         
         return audio
     
     def _process_character_tags_with_emotions(self, text: str) -> List[Dict[str, Any]]:
         """
-        Process character switching tags with emotion support using the new modular parser.
-        
-        Supports flexible syntax:
-        - [Alice] → character="Alice"
-        - [de:Alice] → language="de", character="Alice"  
-        - [Alice:angry_bob] → character="Alice", emotion="angry_bob"
-        - [de:Alice:angry_bob] → language="de", character="Alice", emotion="angry_bob"
-        
-        Args:
-            text: Input text with flexible character/emotion tags
-            
-        Returns:
-            List of segment dictionaries with character, text, language, emotion info
+        Process character switching tags with emotion support.
         """
-        # Use the new emotion-aware parsing method
-        segments = self.character_parser.split_by_character_with_emotions(text)
-        
+        from utils.text.character_parser.base_parser import CharacterParser
+        from utils.voice.discovery import get_available_characters, voice_discovery
+
+        # Create a temporary parser and set it up properly
+        temp_parser = CharacterParser()
+
+        # Get actual available characters and aliases
+        available_chars = get_available_characters()
+        character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set (like before but not hardcoded)
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        temp_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
+        char_lang_defaults = voice_discovery.get_character_language_defaults()
+        for char, lang in char_lang_defaults.items():
+            temp_parser.set_character_language_default(char, lang)
+
+        # Use emotion-aware parsing
+        segments = temp_parser.split_by_character_with_emotions(text)
+
         processed_segments = []
         for character, segment_text, language, emotion in segments:
             segment_info = {
@@ -259,12 +330,119 @@ class IndexTTSAdapter:
                 'emotion': emotion
             }
             processed_segments.append(segment_info)
-            
+
         return processed_segments
+    
+    def _generate_multi_character_segments(self, segments: List[Dict[str, Any]], 
+                                           default_speaker_audio: Optional[str], 
+                                           default_emotion_audio: Optional[str], 
+                                           **kwargs) -> torch.Tensor:
+        """
+        Generate audio for multiple character segments and combine them.
+        
+        Args:
+            segments: List of segment dictionaries with character, text, language, emotion info
+            default_speaker_audio: Default speaker reference audio
+            default_emotion_audio: Default emotion reference audio  
+            **kwargs: Additional generation parameters
+            
+        Returns:
+            Combined audio tensor [1, samples] at 22050 Hz
+        """
+        audio_segments = []
+        
+        # Get character mapping for all unique characters
+        unique_characters = set()
+        for segment in segments:
+            if segment.get('character'):
+                unique_characters.add(segment['character'])
+            if segment.get('emotion'):
+                unique_characters.add(segment['emotion'])
+        
+        # Get character mapping for IndexTTS
+        character_mapping = {}
+        if unique_characters:
+            character_mapping = get_character_mapping(list(unique_characters), engine_type="index_tts")
+        
+        print(f"🎭 IndexTTS-2: Processing {len(segments)} character segment(s) - {', '.join([s.get('character', 'narrator') for s in segments])}")
+        
+        for segment in segments:
+            character_name = segment.get('character', 'narrator')
+            segment_text = segment.get('text', '').strip()
+            emotion_ref = segment.get('emotion')
+            
+            if not segment_text:
+                continue
+                
+            # Determine speaker audio for this segment
+            speaker_audio = default_speaker_audio
+            if character_name and character_name in character_mapping:
+                character_audio_path = character_mapping[character_name][0]
+                if character_audio_path:
+                    speaker_audio = character_audio_path
+                    print(f"📖 Using character voice '{character_name}' | Ref: '{speaker_audio}'")
+                else:
+                    print(f"⚠️ Character '{character_name}' has no audio reference, using default")
+            
+            # Determine emotion audio for this segment
+            emotion_audio = default_emotion_audio  
+            if emotion_ref and emotion_ref in character_mapping:
+                emotion_audio_path = character_mapping[emotion_ref][0]
+                if emotion_audio_path:
+                    emotion_audio = emotion_audio_path
+                    print(f"😊 Using emotion reference '{emotion_ref}' | Ref: '{emotion_audio}'")
+            
+            # Generate cache key for this segment
+            segment_cache_key = self._generate_cache_key(
+                text=segment_text,
+                speaker_audio=speaker_audio,
+                emotion_audio=emotion_audio,
+                **kwargs
+            )
+
+            # Check cache first
+            cached_segment_audio = self.audio_cache.get_cached_audio(segment_cache_key)
+            if cached_segment_audio:
+                print(f"💾 Using cached IndexTTS-2 segment for '{character_name}': '{segment_text[:30]}...'")
+                segment_audio = cached_segment_audio[0]
+            else:
+                # Generate audio for this segment
+                segment_audio = self.engine.generate(
+                    text=segment_text,
+                    speaker_audio=speaker_audio,
+                    emotion_audio=emotion_audio,
+                    **kwargs
+                )
+
+                # Cache the segment result
+                duration = segment_audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
+                self.audio_cache.cache_audio(segment_cache_key, segment_audio, duration)
+                # print(f"💾 IndexTTS-2 CACHED segment for '{character_name}' with key: {segment_cache_key}")
+            
+            audio_segments.append(segment_audio)
+        
+        # Combine all audio segments
+        if audio_segments:
+            combined_audio = torch.cat(audio_segments, dim=-1)
+            return combined_audio
+        else:
+            # Return silence if no segments generated
+            return torch.zeros(1, 22050, dtype=torch.float32)
     
     def _generate_cache_key(self, **params) -> str:
         """Generate cache key for IndexTTS-2."""
         return self.audio_cache.generate_cache_key('index_tts', **params)
+
+    def _get_stable_audio_identifier(self, audio_path: str) -> str:
+        """
+        Get stable identifier for audio file using centralized audio hashing.
+        """
+        if not audio_path:
+            return audio_path
+
+        # Use our centralized audio hashing utility
+        from utils.audio.audio_hash import generate_stable_audio_component
+        return generate_stable_audio_component(audio_file_path=audio_path)
     
     def get_supported_formats(self) -> List[str]:
         """Get supported audio formats."""

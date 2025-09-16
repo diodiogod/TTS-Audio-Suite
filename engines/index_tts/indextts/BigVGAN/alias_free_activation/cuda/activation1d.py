@@ -7,7 +7,14 @@ import torch.nn as nn
 from indextts.BigVGAN.alias_free_activation.cuda import load
 from indextts.BigVGAN.alias_free_activation.torch.resample import DownSample1d, UpSample1d
 
-anti_alias_activation_cuda = load.load()
+# Try to load CUDA kernels, fall back gracefully if compilation fails
+try:
+    anti_alias_activation_cuda = load.load()
+    CUDA_KERNELS_AVAILABLE = anti_alias_activation_cuda is not None
+except Exception as e:
+    print(f"INFO: CUDA kernels not available, using PyTorch fallback: {e}")
+    anti_alias_activation_cuda = None
+    CUDA_KERNELS_AVAILABLE = False
 
 
 class FusedAntiAliasActivation(torch.autograd.Function):

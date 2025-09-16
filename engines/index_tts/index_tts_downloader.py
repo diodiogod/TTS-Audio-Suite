@@ -25,6 +25,15 @@ class IndexTTSDownloader:
     """Downloader for IndexTTS-2 models using unified download system."""
     
     MODELS = {
+        "w2v-bert-2.0": {
+            "repo_id": "facebook/w2v-bert-2.0",
+            "files": [
+                "config.json",
+                "model.safetensors",
+                "preprocessor_config.json"
+            ],
+            "description": "W2V-BERT semantic feature extractor for IndexTTS-2 (2GB)"
+        },
         "IndexTTS-2": {
             "repo_id": "IndexTeam/IndexTTS-2",
             "files": [
@@ -120,9 +129,9 @@ class IndexTTSDownloader:
             model_path = result_path
             
             # Verify essential files
-            self._verify_model(model_path)
+            self._verify_model(model_path, model_name)
             
-            print(f"✅ IndexTTS-2 model downloaded successfully")
+            print(f"✅ {model_name} model downloaded successfully")
             print(f"📁 Model path: {model_path}")
             
             return model_path
