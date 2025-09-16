@@ -542,7 +542,7 @@ This creates seamless multilingual character switching with proper voice inherit
 <details>
 <summary><h3>🌈 IndexTTS-2 With Emotion Control</h3></summary>
 
-**NEW in v4.8.38**: Revolutionary IndexTTS-2 engine with advanced emotion control and unified emotion architecture!
+**NEW in v4.9.0**: Revolutionary IndexTTS-2 engine with advanced emotion control and unified emotion architecture!
 
 * **Unified Emotion Control**: Single `emotion_control` input supporting multiple emotion methods with intelligent priority system
 * **Dynamic Text Emotion**: AI-powered QwenEmotion analysis with dynamic `{seg}` template processing for contextual per-segment emotions
@@ -579,54 +579,6 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 </details>
 
 </details>
-
-## 📖 IndexTTS-2 Model Downloads
-
-**IndexTTS-2** requires specific models for optimal performance. The system will automatically download required models on first use.
-
-### Model Structure
-
-```
-ComfyUI/models/TTS/IndexTTS/
-├── IndexTTS-2/                         ← Main TTS model
-│   ├── config.yaml                     ← Model configuration
-│   ├── feat1.pt                        ← Feature extraction model 1
-│   ├── feat2.pt                        ← Feature extraction model 2
-│   ├── gpt.pth                         ← GPT model weights
-│   ├── s2mel.pth                       ← Speech-to-mel conversion
-│   ├── bpe.model                       ← BPE tokenizer model
-│   ├── wav2vec2bert_stats.pt           ← Wav2Vec2BERT statistics
-│   └── qwen0.6bemo4-merge/             ← QwenEmotion model (for text emotion)
-│       ├── config.json
-│       ├── generation_config.json
-│       ├── model.safetensors
-│       ├── tokenizer.json
-│       ├── tokenizer_config.json
-│       └── other model files...
-└── w2v-bert-2.0/                       ← W2V-BERT semantic features
-    ├── config.json
-    ├── model.safetensors               ← ~2GB model weights
-    └── preprocessor_config.json
-```
-
-### Download Links
-
-**IndexTTS-2 Main Model:**
-- **Repository**: [IndexTeam/IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2)
-- **Size**: Multiple model files (several GB total)
-- **Auto-Download**: ✅ Downloads automatically on first use
-
-**W2V-BERT Semantic Features:**
-- **Repository**: [facebook/w2v-bert-2.0](https://huggingface.co/facebook/w2v-bert-2.0)
-- **Size**: ~2GB
-- **Auto-Download**: ✅ Downloads automatically when needed
-
-**QwenEmotion Model (Built-in):**
-- **Included**: Part of IndexTTS-2 download (qwen0.6bemo4-merge)
-- **Purpose**: Text emotion analysis for dynamic emotion control
-- **Auto-Download**: ✅ Downloads with main IndexTTS-2 model
-
-**Usage**: Simply use IndexTTS-2 engine nodes → All required models download automatically on first generation!
 
 ## 🚀 Quick Start
 
@@ -1300,7 +1252,52 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 
 **Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
 
-### 10. Restart ComfyUI
+### 10. IndexTTS-2 Models (NEW in v4.9.0+)
+
+**For IndexTTS-2 advanced emotion control capabilities**, models are automatically downloaded to the organized structure:
+
+```
+ComfyUI/models/TTS/IndexTTS/
+├── IndexTTS-2/                         ← Main TTS model
+│   ├── config.yaml                     ← Model configuration
+│   ├── feat1.pt                        ← Feature extraction model 1
+│   ├── feat2.pt                        ← Feature extraction model 2
+│   ├── gpt.pth                         ← GPT model weights
+│   ├── s2mel.pth                       ← Speech-to-mel conversion
+│   ├── bpe.model                       ← BPE tokenizer model
+│   ├── wav2vec2bert_stats.pt           ← Wav2Vec2BERT statistics
+│   └── qwen0.6bemo4-merge/             ← QwenEmotion model (for text emotion)
+│       ├── config.json
+│       ├── generation_config.json
+│       ├── model.safetensors
+│       ├── tokenizer.json
+│       ├── tokenizer_config.json
+│       └── other model files...
+└── w2v-bert-2.0/                       ← W2V-BERT semantic features
+    ├── config.json
+    ├── model.safetensors               ← ~2GB model weights
+    └── preprocessor_config.json
+```
+
+**Available IndexTTS-2 Models (Auto-Download):**
+
+| Model                | Description                           | Source                                                                 | Size            | Auto-Download |
+| -------------------- | ------------------------------------- | ---------------------------------------------------------------------- | --------------- | ------------- |
+| IndexTTS-2           | Main TTS engine with emotion control  | [IndexTeam/IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2)   | Multiple files  | ✅             |
+| w2v-bert-2.0         | W2V-BERT semantic feature extractor  | [facebook/w2v-bert-2.0](https://huggingface.co/facebook/w2v-bert-2.0) | ~2GB            | ✅             |
+| qwen0.6bemo4-merge   | QwenEmotion text analysis (built-in) | Included with IndexTTS-2                                               | Part of main    | ✅             |
+
+**Key Features:**
+
+- **Unified Emotion Control**: Single emotion_control input supporting multiple emotion sources
+- **Dynamic Text Emotion**: AI-powered QwenEmotion analysis with {seg} template processing
+- **Character Tag Emotions**: Per-character emotion control using [Character:emotion_ref] syntax
+- **Audio Reference Emotion**: Use any audio file or Character Voices as emotion reference
+- **8-Emotion Vector Control**: Manual precision control over emotional expression
+
+**Usage**: Simply use the ⚙️ IndexTTS-2 Engine node → Connect emotion control → All required models download automatically!
+
+### 11. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
