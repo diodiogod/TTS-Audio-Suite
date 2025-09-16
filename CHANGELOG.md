@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.0] - 2025-09-16
+
+### Added
+
+- Add IndexTTS-2 TTS engine with advanced emotion control
+- New IndexTTS-2 engine with sophisticated emotion control system
+- Unified emotion control supporting multiple input methods (audio, text, vectors)
+- Dynamic text emotion analysis with QwenEmotion AI and contextual templates
+- Per-character emotion control using [Character:emotion_ref] syntax
+- 8-emotion vector control (Happy, Angry, Sad, Surprised, Afraid, Disgusted, Calm, Melancholic)
+- Audio reference emotion support including Character Voices integration
+- Emotion intensity control from neutral to maximum dramatic expression
+- Complete IndexTTS-2 Emotion Control Guide: docs/IndexTTS2_Emotion_Control_Guide.md
+
+### Changed
+
+- Advanced caching system for improved performance
 ## [4.8.38] - 2025-09-10
 
 ### Changed
