@@ -60,6 +60,48 @@ export function createEmotionRadarCanvasWidget(node) {
         return (value / 1.2) * maxRadius;
     }
 
+    function blendEmotionColors() {
+        // Calculate total emotional weight and color contribution
+        let totalWeight = 0;
+        let r = 0, g = 0, b = 0;
+
+        emotions.forEach(emotion => {
+            const value = emotionValues[emotion.name];
+            if (value > 0) {
+                // Parse emotion color (assumes hex format like "#ff0000")
+                const color = emotion.color;
+                const hexR = parseInt(color.substring(1, 3), 16);
+                const hexG = parseInt(color.substring(3, 5), 16);
+                const hexB = parseInt(color.substring(5, 7), 16);
+
+                // Weight by emotion value (higher values contribute more to the blend)
+                const weight = value;
+                totalWeight += weight;
+
+                r += hexR * weight;
+                g += hexG * weight;
+                b += hexB * weight;
+            }
+        });
+
+        if (totalWeight === 0) {
+            // No emotions active, return default neutral color
+            return { r: 100, g: 200, b: 255 };
+        }
+
+        // Calculate weighted average
+        r = Math.round(r / totalWeight);
+        g = Math.round(g / totalWeight);
+        b = Math.round(b / totalWeight);
+
+        // Slightly darken the colors but keep them vibrant (multiply by 0.85 for richer tone)
+        r = Math.round(r * 0.85);
+        g = Math.round(g * 0.85);
+        b = Math.round(b * 0.85);
+
+        return { r, g, b };
+    }
+
     function findNearestEmotion(x, y) {
         const { angle } = cartesianToPolar(x, y);
         let nearestEmotion = null;
@@ -130,6 +172,11 @@ export function createEmotionRadarCanvasWidget(node) {
         const { radius } = cartesianToPolar(x, y);
         const value = getEmotionValueFromRadius(radius);
         setEmotionValue(nearestEmotion.name, value);
+
+        // Set glow for the emotion being dragged
+        clickedEmotion = nearestEmotion;
+        clickedLabel = null; // Clear label indicator during dragging
+
         return nearestEmotion;
     }
 
@@ -281,11 +328,13 @@ export function createEmotionRadarCanvasWidget(node) {
             }
         });
 
-        // Draw filled emotion area
+        // Draw filled emotion area with blended colors
         if (emotions.some(emotion => emotionValues[emotion.name] > 0)) {
+            const blendedColor = blendEmotionColors();
+
             ctx.beginPath();
-            ctx.fillStyle = 'rgba(100, 200, 255, 0.15)';
-            ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)';
+            ctx.fillStyle = `rgba(${blendedColor.r}, ${blendedColor.g}, ${blendedColor.b}, 0.25)`;
+            ctx.strokeStyle = `rgba(${blendedColor.r}, ${blendedColor.g}, ${blendedColor.b}, 0.8)`;
             ctx.lineWidth = 2;
 
             let firstPoint = true;
@@ -519,7 +568,7 @@ export function createEmotionRadarCanvasWidget(node) {
                         }
                     }, 1000);
 
-                    return true;
+                    return true; // Return true to prevent dragging after label click
                 }
 
                 // Check if clicking on a dot/handle
@@ -527,12 +576,14 @@ export function createEmotionRadarCanvasWidget(node) {
                 if (handleClicked) {
                     clickedEmotion = handleClicked; // Set clicked emotion for glow
                     clickedLabel = null; // Don't show +0.1 for dot clicks
-                    return true;
+                    // Don't return true - allow dragging to continue
                 }
 
                 // If clicking elsewhere (not on any emotion), clear the glow
-                clickedEmotion = null;
-                clickedLabel = null;
+                if (!labelClicked && !handleClicked) {
+                    clickedEmotion = null;
+                    clickedLabel = null;
+                }
 
                 // Start dragging
                 isDragging = true;
@@ -550,6 +601,7 @@ export function createEmotionRadarCanvasWidget(node) {
 
             if (event.type === "pointerup") {
                 isDragging = false;
+                // Keep the glow on the emotion after dragging stops (persistent selection)
                 return true;
             }
 

@@ -139,7 +139,7 @@ class IndexTTSEngineNode(BaseTTSNode):
                 
                 # Emotion Vectors from separate options node
                 "emotion_vectors": ("INDEXTS_EMOTION_VECTORS", {
-                    "tooltip": "Connect IndexTTS-2 Emotion Vectors Options node for advanced emotion control with 8 different emotion types (happy, angry, sad, etc.)"
+                    "tooltip": "Connect 🌈 IndexTTS-2 Emotion Vectors node for advanced emotion control with 8 different emotion types (happy, angry, sad, etc.)"
                 }),
                 
                 # CUDA Kernel Option

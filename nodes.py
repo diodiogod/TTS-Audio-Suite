@@ -344,7 +344,7 @@ if INDEX_TTS_ENGINE_AVAILABLE:
 
 if INDEX_TTS_EMOTION_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEmotionOptionsNode"] = IndexTTSEmotionOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEmotionOptionsNode"] = "🔧 IndexTTS-2 Emotion Vectors Options"
+    NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEmotionOptionsNode"] = "🌈 IndexTTS-2 Emotion Vectors"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

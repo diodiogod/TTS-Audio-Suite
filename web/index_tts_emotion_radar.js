@@ -3,7 +3,7 @@ import { createEmotionRadarCanvasWidget } from "./emotion_radar_canvas_widget.js
 
 /**
  * IndexTTS-2 Emotion Radar Chart Integration
- * Adds a canvas-based radar chart widget to IndexTTS-2 Emotion Options node
+ * Adds a canvas-based radar chart widget to 🌈 IndexTTS-2 Emotion Vectors node
  */
 
 // Register the extension
@@ -11,7 +11,7 @@ app.registerExtension({
     name: "TTS_Audio_Suite.IndexTTSEmotionRadar",
 
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        // Only target the IndexTTS-2 Emotion Options node
+        // Only target the 🌈 IndexTTS-2 Emotion Vectors node
         if (nodeData.name === "IndexTTSEmotionOptionsNode") {
             console.log("🎭 Registering IndexTTS-2 Emotion Radar Chart extension");
 

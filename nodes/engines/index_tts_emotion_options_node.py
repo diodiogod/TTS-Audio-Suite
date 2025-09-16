@@ -79,7 +79,7 @@ class IndexTTSEmotionOptionsNode:
 
     @classmethod 
     def NAME(cls):
-        return "🔧 IndexTTS-2 Emotion Vectors Options"
+        return "🌈 IndexTTS-2 Emotion Vectors"
     
     def create_emotion_vectors(self, Happy=0.0, Angry=0.0, Sad=0.0, 
                              Surprised=0.0, Afraid=0.0, Disgusted=0.0,
@@ -118,5 +118,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "IndexTTSEmotionOptionsNode": "🔧 IndexTTS-2 Emotion Vectors Options"
+    "IndexTTSEmotionOptionsNode": "🌈 IndexTTS-2 Emotion Vectors"
 }
