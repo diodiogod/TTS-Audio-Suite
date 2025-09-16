@@ -68,7 +68,7 @@ class ComfyUITTSModelManager:
                     except Exception as e:
                         print(f"⚠️ In-place reinit failed: {e}, falling back to full recreation")
                 
-                # For VibeVoice, try to reinitialize corrupted model state 
+                # For VibeVoice, try to reinitialize corrupted model state
                 # Unlike Higgs Audio, VibeVoice doesn't use CUDA graphs so should be recoverable
                 elif engine == "vibevoice":
                     print(f"🔄 VibeVoice: Attempting to recover from CPU offloading corruption")
@@ -78,12 +78,12 @@ class ComfyUITTSModelManager:
                             wrapper.model._past_key_values = None
                         if hasattr(wrapper.model, '_cache'):
                             wrapper.model._cache = None
-                        
+
                         # Reset model to evaluation mode and clear gradients
                         wrapper.model.eval()
                         if hasattr(wrapper.model, 'zero_grad'):
                             wrapper.model.zero_grad()
-                        
+
                         # Move back to GPU with proper state reset
                         wrapper.model_load(device)
                         # Mark as valid again
@@ -92,6 +92,29 @@ class ComfyUITTSModelManager:
                         return wrapper
                     except Exception as e:
                         print(f"⚠️ VibeVoice recovery failed: {e}, falling back to full recreation")
+
+                # For IndexTTS-2, try to recover from device mismatch after CPU offloading
+                elif engine == "index_tts":
+                    print(f"🔄 IndexTTS-2: Attempting to recover from CPU offloading device mismatch")
+                    try:
+                        # IndexTTS-2 has multiple model components that need device synchronization
+                        # Clear any device-cached state
+                        if hasattr(wrapper.model, '_model_config'):
+                            wrapper.model._model_config = None
+
+                        # Reset model to evaluation mode
+                        if hasattr(wrapper.model, 'eval'):
+                            wrapper.model.eval()
+
+                        # Force device reload for all model components
+                        wrapper.model_load(device)
+
+                        # Mark as valid again
+                        wrapper._is_valid_for_reuse = True
+                        print(f"✅ Successfully recovered IndexTTS-2 model from device mismatch")
+                        return wrapper
+                    except Exception as e:
+                        print(f"⚠️ IndexTTS-2 recovery failed: {e}, falling back to full recreation")
                 
                 print(f"🗑️ Removing invalid cached model: {model_type} ({engine}) - corrupted by previous unload")
                 self.remove_model(model_key)
@@ -113,7 +136,7 @@ class ComfyUITTSModelManager:
                     if hasattr(wrapper.model, 'engine') and hasattr(wrapper.model.engine, 'cuda_graphs_initialized'):
                         wrapper.model.engine.cuda_graphs_initialized = False
                         print(f"✅ Reset CUDA graph state for existing model")
-                    
+
                     # Move back to GPU for reinit
                     wrapper.model_load(device)
                     # Mark as valid again
@@ -122,6 +145,23 @@ class ComfyUITTSModelManager:
                     return wrapper
                 except Exception as e:
                     print(f"⚠️ Force reload in-place reinit failed: {e}, falling back to full recreation")
+
+            # For IndexTTS-2, try in-place device synchronization on force reload
+            elif engine == "index_tts":
+                print(f"🔄 Force reload: attempting IndexTTS-2 device synchronization")
+                try:
+                    # Clear device-cached state
+                    if hasattr(wrapper.model, '_model_config'):
+                        wrapper.model._model_config = None
+
+                    # Force device reload for all model components
+                    wrapper.model_load(device)
+                    # Mark as valid again
+                    wrapper._is_valid_for_reuse = True
+                    print(f"✅ Successfully reloaded IndexTTS-2 model with device sync (force reload)")
+                    return wrapper
+                except Exception as e:
+                    print(f"⚠️ IndexTTS-2 force reload failed: {e}, falling back to full recreation")
             
             print(f"🔄 Force reloading {model_type} ({engine}) - removing from cache")
             self.remove_model(model_key)
