@@ -65,7 +65,11 @@ class GenericHandler(BaseEngineHandler):
             
         # Force garbage collection after unloading
         if freed_memory > 0:
-            gc.collect()
+            try:
+                import gc
+                gc.collect()
+            except Exception as gc_error:
+                print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
             if torch.cuda.is_available():
                 try:
                     torch.cuda.empty_cache()

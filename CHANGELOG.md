@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.4] - 2025-09-16
+
+### Changed
+
+- Improve auto device detection to maintain CUDA performance
+- Better device handling for subsequent generations after model unload
+
+### Fixed
+
+- Fix VibeVoice stability and performance issues
+- Fix crashes during garbage collection after VibeVoice generation
+- Resolve UnboundLocalError with gc variable in model cleanup
+- Addresses issue #81 garbage collection and device detection problems
 ## [4.9.3] - 2025-09-16
 
 ### Added

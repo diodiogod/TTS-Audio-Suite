@@ -222,7 +222,11 @@ class ComfyUITTSModelManager:
         # Higgs Audio now uses deferred CUDA graph initialization to prevent corruption
         if device.startswith('cuda') and engine == "higgs_audio":
             # print(f"📝 Creating fresh {engine} model (CUDA graphs deferred until first inference)")
-            gc.collect()
+            try:
+                import gc
+                gc.collect()
+            except Exception as gc_error:
+                print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
         
         # Ensure device parameter is available to factory function
         factory_kwargs['device'] = device

@@ -60,7 +60,11 @@ class VibeVoiceHandler(GenericHandler):
                 
                 if models_cleared > 0:
                     print(f"🧹 RAM cleanup: removed {models_cleared} old VibeVoice models from system memory")
-                    gc.collect()
+                    try:
+                        import gc
+                        gc.collect()
+                    except Exception as gc_error:
+                        print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
                 else:
                     print(f"🔍 No old VibeVoice models found in RAM")
                     
@@ -121,7 +125,11 @@ class VibeVoiceHandler(GenericHandler):
                 wrapper.model = None
                 
                 # Force garbage collection to actually free memory
-                gc.collect()
+                try:
+                    import gc
+                    gc.collect()
+                except Exception as gc_error:
+                    print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
                 
                 # Clear CUDA cache if model was on GPU - AGGRESSIVE CLEANUP
                 if model_location.lower() in ['gpu', 'cuda'] or 'cuda' in model_location.lower():
@@ -133,7 +141,11 @@ class VibeVoiceHandler(GenericHandler):
                         
                         # Force garbage collection multiple times
                         for _ in range(3):  # Multiple GC passes
-                            gc.collect()
+                            try:
+                                import gc
+                                gc.collect()
+                            except Exception as gc_error:
+                                print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
                             torch.cuda.empty_cache()
                         
                         # NUCLEAR OPTION: Force CUDA device reset

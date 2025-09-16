@@ -126,6 +126,7 @@ class VibeVoiceEngine:
             self.processor = self.__class__._shared_processor
             self.current_model_name = self.__class__._shared_model_name
             self.device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+            self._original_device = device  # Store original device setting for auto detection
             return
         
         # Ensure package is installed
@@ -329,6 +330,7 @@ class VibeVoiceEngine:
             # Store configuration and model info
             self.model_path = model_path
             self.device = device
+            self._original_device = device  # Store original device setting for auto detection
             self.current_model_name = model_name
             self._current_config = current_config
             self._attention_mode = final_attention_mode
@@ -614,9 +616,20 @@ class VibeVoiceEngine:
                         logger.error(f"Input tensor '{key}' contains NaN or Inf values")
                         raise ValueError(f"Invalid values in input tensor: {key}")
             
-            # Move to device
-            device = next(self.model.parameters()).device
-            inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
+            # Move to device - handle auto device detection properly
+            actual_device = next(self.model.parameters()).device
+            target_device = actual_device
+
+            # If original device was "auto" and model is currently on CPU but CUDA is available,
+            # move back to CUDA for better performance
+            if (hasattr(self, '_original_device') and self._original_device == "auto" and
+                actual_device.type == 'cpu' and torch.cuda.is_available()):
+                target_device = torch.device('cuda')
+                print(f"🔄 VibeVoice: Auto mode - moving model from CPU back to CUDA for generation")
+                self.model.to(target_device)
+                actual_device = target_device
+
+            inputs = {k: v.to(actual_device) if isinstance(v, torch.Tensor) else v
                      for k, v in inputs.items()}
             
             # Debug inputs
