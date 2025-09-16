@@ -242,9 +242,17 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             
             # Convert tensor to numpy if needed
             if hasattr(waveform, 'numpy'):
-                audio_np = waveform.numpy()
+                # Handle BFloat16 tensors which numpy can't directly convert (defensive programming)
+                if hasattr(waveform, 'dtype') and waveform.dtype == torch.bfloat16:
+                    audio_np = waveform.to(torch.float32).numpy()
+                else:
+                    audio_np = waveform.numpy()
             elif isinstance(waveform, torch.Tensor):
-                audio_np = waveform.detach().cpu().numpy()
+                # Handle BFloat16 tensors
+                if waveform.dtype == torch.bfloat16:
+                    audio_np = waveform.detach().cpu().to(torch.float32).numpy()
+                else:
+                    audio_np = waveform.detach().cpu().numpy()
             else:
                 audio_np = waveform
             
@@ -557,7 +565,11 @@ class UnifiedVoiceChangerNode(BaseVCNode):
     def _generate_rvc_cache_key(self, source_audio: Dict[str, Any], rvc_model: Dict[str, Any], config: Dict[str, Any]) -> str:
         """Generate cache key for RVC voice conversion iterations"""
         # Create hash from source audio characteristics and RVC model
-        source_hash = hashlib.md5(source_audio["waveform"].cpu().numpy().tobytes()).hexdigest()[:16]
+        # Convert BFloat16 to Float32 if needed before numpy conversion (defensive programming)
+        waveform = source_audio["waveform"].cpu()
+        if waveform.dtype == torch.bfloat16:
+            waveform = waveform.to(torch.float32)
+        source_hash = hashlib.md5(waveform.numpy().tobytes()).hexdigest()[:16]
         
         # Include RVC model information in cache key
         model_info = {

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2] - 2025-09-16
+
+### Fixed
+
+- Fix VibeVoice output compatibility with RVC voice conversion
+- Fix VibeVoice audio not working with RVC voice converter
+- Resolve BFloat16 tensor format issues causing conversion failures
+- Add defensive handling for future engine compatibility
+- Resolves issue #47 reported audio processing errors
 ## [4.9.1] - 2025-09-16
 
 ### Added

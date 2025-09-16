@@ -578,6 +578,9 @@ class VibeVoiceEngine:
             if cached_audio is not None:
                 print(f"💾 CACHE HIT for {character}: '{text[:30]}...'")
                 # print(f"🐛 VibeVoice ENGINE: CACHE HIT - audio_component was '{stable_audio_component[:50]}...'")
+                # Ensure cached audio is also in Float32 for compatibility
+                if hasattr(cached_audio, 'dtype') and cached_audio.dtype == torch.bfloat16:
+                    cached_audio = cached_audio.to(torch.float32)
                 return {
                     "waveform": cached_audio,
                     "sample_rate": 24000
@@ -682,8 +685,13 @@ class VibeVoiceEngine:
                 elif audio_tensor.dim() == 2:
                     audio_tensor = audio_tensor.unsqueeze(0)
                 
+                # Ensure waveform is in Float32 for compatibility (VibeVoice may output BFloat16)
+                audio_output = audio_tensor.cpu()
+                if audio_output.dtype == torch.bfloat16:
+                    audio_output = audio_output.to(torch.float32)
+
                 result = {
-                    "waveform": audio_tensor.cpu(),
+                    "waveform": audio_output,
                     "sample_rate": 24000
                 }
                 
