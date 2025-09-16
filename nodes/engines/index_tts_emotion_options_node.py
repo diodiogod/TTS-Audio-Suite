@@ -71,8 +71,8 @@ class IndexTTSEmotionOptionsNode:
             }
         }
     
-    RETURN_TYPES = ("INDEXTS_EMOTION_VECTORS",)
-    RETURN_NAMES = ("emotion_vectors",)
+    RETURN_TYPES = ("EMOTION_CONTROL",)
+    RETURN_NAMES = ("emotion_control",)
     FUNCTION = "create_emotion_vectors"
     CATEGORY = "TTS Audio Suite/Engines/IndexTTS-2"
     DESCRIPTION = "Configure emotion vector intensities for IndexTTS-2. Connect to IndexTTS-2 Engine node for advanced emotion control using 8 different emotion types."
@@ -108,8 +108,14 @@ class IndexTTSEmotionOptionsNode:
             print(f"🎭 IndexTTS-2 Emotion Vectors: {active_emotions}")
         else:
             print(f"🎭 IndexTTS-2 Emotion Vectors: All neutral (0.0)")
-        
-        return (emotion_vectors,)
+
+        # Create unified emotion control format
+        emotion_control = {
+            "type": "emotion_vectors",
+            "emotion_vectors": emotion_vectors
+        }
+
+        return (emotion_control,)
 
 
 # Register the node

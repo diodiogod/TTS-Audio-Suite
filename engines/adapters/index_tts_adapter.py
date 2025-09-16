@@ -234,15 +234,28 @@ class IndexTTSAdapter:
         # Filter out seed from kwargs (used for caching but not supported by IndexTTS engine)
         engine_kwargs = {k: v for k, v in kwargs.items() if k != 'seed'}
 
+        # Apply consistent emotion priority: emotion_audio takes precedence over other emotion controls
+        # This ensures consistent behavior whether using character tags or direct engine inputs
+        if final_emotion_audio:
+            # emotion_audio connected - disable other emotion controls
+            final_emotion_vector = None
+            final_use_emotion_text = False
+            final_emotion_text = None
+        else:
+            # No emotion_audio - use provided emotion controls
+            final_emotion_vector = emotion_vector
+            final_use_emotion_text = use_emotion_text
+            final_emotion_text = emotion_text
+
         # Generate audio
         audio = self.engine.generate(
             text=processed_text,
             speaker_audio=final_speaker_audio,
             emotion_audio=final_emotion_audio,
             emotion_alpha=emotion_alpha,
-            emotion_vector=emotion_vector,
-            use_emotion_text=use_emotion_text,
-            emotion_text=emotion_text,
+            emotion_vector=final_emotion_vector,
+            use_emotion_text=final_use_emotion_text,
+            emotion_text=final_emotion_text,
             use_random=use_random,
             interval_silence=interval_silence,
             max_text_tokens_per_segment=max_text_tokens_per_segment,

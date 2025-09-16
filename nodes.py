@@ -102,6 +102,15 @@ except Exception as e:
     print(f"❌ IndexTTS-2 Emotion Options failed: {e}")
     INDEX_TTS_EMOTION_OPTIONS_AVAILABLE = False
 
+# QwenEmotion Text Analysis Node
+try:
+    qwen_emotion_module = load_node_module("qwen_emotion_node", "index_tts/qwen_emotion_node.py")
+    QwenEmotionNode = qwen_emotion_module.QwenEmotionNode
+    QWEN_EMOTION_AVAILABLE = True
+except Exception as e:
+    print(f"❌ QwenEmotion Text Analysis failed: {e}")
+    QWEN_EMOTION_AVAILABLE = False
+
 # Load shared nodes
 try:
     character_voices_module = load_node_module("character_voices_node", "shared/character_voices_node.py")
@@ -345,6 +354,10 @@ if INDEX_TTS_ENGINE_AVAILABLE:
 if INDEX_TTS_EMOTION_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEmotionOptionsNode"] = IndexTTSEmotionOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEmotionOptionsNode"] = "🌈 IndexTTS-2 Emotion Vectors"
+
+if QWEN_EMOTION_AVAILABLE:
+    NODE_CLASS_MAPPINGS["QwenEmotionNode"] = QwenEmotionNode
+    NODE_DISPLAY_NAME_MAPPINGS["QwenEmotionNode"] = "🧠 QwenEmotion Text Analysis"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

@@ -29,6 +29,13 @@ BaseTTSNode = base_module.BaseTTSNode
 
 import folder_paths
 
+# AnyType for flexible input types (accepts any data type)
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+any_typ = AnyType("*")
+
 
 class IndexTTSEngineNode(BaseTTSNode):
     """
@@ -60,15 +67,7 @@ class IndexTTSEngineNode(BaseTTSNode):
                 # IndexTTS-2 Unique Features
                 "emotion_alpha": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 2.0, "step": 0.1,
-                    "tooltip": "Emotion intensity control (0.0-2.0). Affects both emotion_audio references and emotion vectors (happy, sad, etc.). 1.0=full emotion, 0.5=50% blend, 0.0=neutral."
-                }),
-                "use_emotion_text": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Extract emotions from text using QwenEmotion model instead of audio references."
-                }),
-                "emotion_text": ("STRING", {
-                    "default": "", "multiline": False,
-                    "tooltip": "Custom emotion description text (e.g., 'happy and excited'). Only used if use_emotion_text is enabled."
+                    "tooltip": "Emotion intensity control (0.0-2.0). Affects emotion control from connected emotion nodes. 1.0=full emotion, 0.5=50% blend, 0.0=neutral."
                 }),
                 "use_random": ("BOOLEAN", {
                     "default": False,
@@ -132,14 +131,9 @@ class IndexTTSEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
-                # IndexTTS-2 Emotion Disentanglement
-                "emotion_audio": ("AUDIO", {
-                    "tooltip": "Reference audio to extract emotion from (e.g., angry speech, sad voice). IndexTTS-2 will copy the emotional style from this audio while keeping the main speaker's voice identity. Connect Character Voices node for voice+text or direct audio input."
-                }),
-                
-                # Emotion Vectors from separate options node
-                "emotion_vectors": ("INDEXTS_EMOTION_VECTORS", {
-                    "tooltip": "Connect 🌈 IndexTTS-2 Emotion Vectors node for advanced emotion control with 8 different emotion types (happy, angry, sad, etc.)"
+                # Unified Emotion Control
+                "emotion_control": (any_typ, {
+                    "tooltip": "Emotion control: Connect 🌈 Emotion Vectors, 🎭 Character Voices (opt_narrator), 🧠 QwenEmotion Text Analysis, or direct AUDIO. Character emotion tags [Alice:emotion_ref] will override this for specific characters."
                 }),
                 
                 # CUDA Kernel Option
@@ -175,8 +169,6 @@ class IndexTTSEngineNode(BaseTTSNode):
         model_path: str,
         device: str,
         emotion_alpha: float,
-        use_emotion_text: bool,
-        emotion_text: str,
         use_random: bool,
         max_text_tokens_per_segment: int,
         interval_silence: int,
@@ -191,8 +183,7 @@ class IndexTTSEngineNode(BaseTTSNode):
         use_fp16: bool,
         use_deepspeed: bool,
         use_cuda_kernel: str = "auto",
-        emotion_audio = None,
-        emotion_vectors = None,
+        emotion_control = None,
     ):
         """
         Create IndexTTS-2 engine adapter with configuration.
@@ -201,22 +192,45 @@ class IndexTTSEngineNode(BaseTTSNode):
             Tuple containing IndexTTS-2 engine configuration data
         """
         try:
-            # Create emotion vector from emotion_vectors input or defaults
+            # Process unified emotion control
+            emotion_audio = None
             emotion_vector = None
-            if emotion_vectors:
-                # Use emotion vectors from options node - match official IndexTTS-2 order
-                emotions = [
-                    emotion_vectors.get("happy", 0.0),
-                    emotion_vectors.get("angry", 0.0), 
-                    emotion_vectors.get("sad", 0.0),
-                    emotion_vectors.get("afraid", 0.0),  # Official IndexTTS-2 uses "afraid"
-                    emotion_vectors.get("disgusted", 0.0),
-                    emotion_vectors.get("melancholic", 0.0),
-                    emotion_vectors.get("surprised", 0.0),
-                    emotion_vectors.get("calm", 0.0)
-                ]
-                if any(e > 0.0 for e in emotions):
-                    emotion_vector = emotions
+            use_emotion_text = False
+            emotion_text = None
+
+            if emotion_control:
+                if isinstance(emotion_control, dict):
+                    # Check the type of emotion control
+                    emotion_type = emotion_control.get("type")
+
+                    if emotion_type == "emotion_vectors":
+                        # Emotion vectors from options node
+                        emotion_vectors = emotion_control.get("emotion_vectors", {})
+                        emotions = [
+                            emotion_vectors.get("happy", 0.0),
+                            emotion_vectors.get("angry", 0.0),
+                            emotion_vectors.get("sad", 0.0),
+                            emotion_vectors.get("afraid", 0.0),
+                            emotion_vectors.get("disgusted", 0.0),
+                            emotion_vectors.get("melancholic", 0.0),
+                            emotion_vectors.get("surprised", 0.0),
+                            emotion_vectors.get("calm", 0.0)
+                        ]
+                        if any(e > 0.0 for e in emotions):
+                            emotion_vector = emotions
+
+                    elif emotion_type == "qwen_emotion":
+                        # QwenEmotion text analysis
+                        use_emotion_text = emotion_control.get("use_emotion_text", False)
+                        emotion_text = emotion_control.get("emotion_text", "")
+
+                    elif "waveform" in emotion_control:
+                        # Direct audio input (NARRATOR_VOICE or AUDIO)
+                        emotion_audio = emotion_control
+
+                elif hasattr(emotion_control, 'get') and "waveform" in emotion_control:
+                    # Direct audio input
+                    emotion_audio = emotion_control
             
             # Parse CUDA kernel option
             cuda_kernel_option = None
@@ -233,7 +247,7 @@ class IndexTTSEngineNode(BaseTTSNode):
                 "emotion_audio": emotion_audio,  # Will be None if not connected, audio dict if connected
                 "emotion_alpha": emotion_alpha,
                 "use_emotion_text": use_emotion_text,
-                "emotion_text": emotion_text if emotion_text.strip() else None,
+                "emotion_text": emotion_text if emotion_text and emotion_text.strip() else None,
                 "use_random": use_random,
                 "max_text_tokens_per_segment": max_text_tokens_per_segment,
                 "interval_silence": interval_silence,

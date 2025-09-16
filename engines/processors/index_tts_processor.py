@@ -239,15 +239,28 @@ class IndexTTSProcessor:
                             else:
                                 print(f"🎭 No emotion audio for character: {character} (no tag emotion, no connected engine emotion)")
                         
+                        # Prioritize character emotion reference over global emotion controls
+                        # If character has specific emotion ref, disable global emotion controls
+                        if emotion_audio_path:
+                            # Character has specific emotion - use only that emotion reference
+                            character_emotion_vector = None
+                            character_use_emotion_text = False
+                            character_emotion_text = None
+                        else:
+                            # No character emotion - use global emotion settings
+                            character_emotion_vector = self.config.get('emotion_vector')
+                            character_use_emotion_text = self.config.get('use_emotion_text', False)
+                            character_emotion_text = self.config.get('emotion_text')
+
                         # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
                         segment_result = self.adapter.generate(
                             text=segment_text,
                             speaker_audio=speaker_audio_path,
                             emotion_audio=emotion_audio_path,
                             emotion_alpha=self.config.get('emotion_alpha', 1.0),
-                            emotion_vector=self.config.get('emotion_vector'),
-                            use_emotion_text=self.config.get('use_emotion_text', False),
-                            emotion_text=self.config.get('emotion_text'),
+                            emotion_vector=character_emotion_vector,
+                            use_emotion_text=character_use_emotion_text,
+                            emotion_text=character_emotion_text,
                             use_random=self.config.get('use_random', False),
                             interval_silence=self.config.get('interval_silence', 200),
                             max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
@@ -315,15 +328,28 @@ class IndexTTSProcessor:
                         print(f"🎭 Using connected engine emotion audio for simple text -> {emotion_audio_path}")
                     else:
                         print(f"🎭 No emotion audio for simple text segment (no connected engine emotion)")
-                    
+
+                    # Prioritize connected emotion_audio over global emotion controls
+                    # For simple text, use emotion_audio from config if available, else use global settings
+                    if emotion_audio_path:
+                        # Engine emotion_audio connected - use only that
+                        simple_emotion_vector = None
+                        simple_use_emotion_text = False
+                        simple_emotion_text = None
+                    else:
+                        # No engine emotion_audio - use global emotion settings
+                        simple_emotion_vector = self.config.get('emotion_vector')
+                        simple_use_emotion_text = self.config.get('use_emotion_text', False)
+                        simple_emotion_text = self.config.get('emotion_text')
+
                     result = self.adapter.generate(
                         text=text_content,
                         speaker_audio=speaker_audio_path,
                         emotion_audio=emotion_audio_path,
                         emotion_alpha=self.config.get('emotion_alpha', 1.0),
-                        emotion_vector=self.config.get('emotion_vector'),
-                        use_emotion_text=self.config.get('use_emotion_text', False),
-                        emotion_text=self.config.get('emotion_text'),
+                        emotion_vector=simple_emotion_vector,
+                        use_emotion_text=simple_use_emotion_text,
+                        emotion_text=simple_emotion_text,
                         use_random=self.config.get('use_random', False),
                         interval_silence=self.config.get('interval_silence', 200),
                         max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
