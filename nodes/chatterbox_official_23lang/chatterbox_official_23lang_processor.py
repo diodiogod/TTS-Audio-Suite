@@ -281,11 +281,10 @@ Back to the main narrator voice for the conclusion.""",
     
     def _language_name_to_code(self, language_input: str) -> str:
         """Convert language name or code to language code compatible with ChatterBox Official 23-Lang."""
-        from utils.text.character_parser import CharacterParser
-        parser = CharacterParser()
-        
-        # First resolve using the centralized character parser
-        resolved_code = parser.resolve_language_alias(language_input)
+        from utils.models.language_mapper import resolve_language_alias
+
+        # First resolve using the centralized language mapper
+        resolved_code = resolve_language_alias(language_input)
         
         # Map to ChatterBox Official 23-Lang supported codes
         # Import supported languages from our language models

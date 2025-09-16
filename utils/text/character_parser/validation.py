@@ -177,7 +177,8 @@ class ValidationMixin:
                 language_resolver = getattr(self, 'language_resolver', None)
                 if language_resolver:
                     # Resolve to canonical form first, then get display name
-                    canonical_lang = language_resolver.resolve_language_alias(raw_language)
+                    from utils.models.language_mapper import resolve_language_alias
+                    canonical_lang = resolve_language_alias(raw_language)
                     display_name = language_resolver.get_language_display_name(canonical_lang)
                 else:
                     # Fallback - just use the raw language

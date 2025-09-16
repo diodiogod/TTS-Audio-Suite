@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.6] - 2025-09-16
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang language resolution and narrator input issues
+- Fix ChatterBox Official 23-Lang crashes due to language alias resolution errors
+- Fix ChatterBox Official 23-Lang ignoring direct audio input from opt_narrator
+- Fix similar language resolution errors in phonemizer and character parser
+- Improve compatibility with direct audio input across all TTS engines
 ## [4.9.5] - 2025-09-16
 
 ### Fixed

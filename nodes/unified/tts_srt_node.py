@@ -624,12 +624,14 @@ Hello! This is unified SRT TTS with character switching.
                 
             elif engine_type == "chatterbox_official_23lang":
                 # ChatterBox Official 23-Lang SRT parameters with multilingual support
+                # Use audio_tensor if available (direct audio input), otherwise fallback to audio_path (dropdown)
+                narrator_input = audio_tensor if audio_tensor is not None else (audio_path or "")
                 result = engine_instance.generate_srt_speech(
                     srt_content=srt_content,
                     language=config.get("language", "English"),  # Language name (e.g. "Turkish", "Arabic")
                     device=config.get("device", "auto"),
                     model=config.get("model", "ChatterBox Official 23-Lang"),
-                    narrator_voice=audio_path or "",  # Audio reference path
+                    narrator_voice=narrator_input,  # Audio tensor or file path
                     seed=seed,
                     temperature=config.get("temperature", 0.8),
                     exaggeration=config.get("exaggeration", 0.5),

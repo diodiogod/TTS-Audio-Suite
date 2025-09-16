@@ -324,11 +324,10 @@ def detect_language_from_text(text: str) -> str:
     # Check for languages with distinctive character sets
     for lang, chars in language_chars.items():
         if chars and any(char in text for char in chars):
-            # Use character parser's alias resolution to get canonical form
+            # Use language mapper's alias resolution to get canonical form
             try:
-                from utils.text.character_parser import CharacterParser
-                parser = CharacterParser()
-                return parser.resolve_language_alias(lang)
+                from utils.models.language_mapper import resolve_language_alias
+                return resolve_language_alias(lang)
             except ImportError:
                 return lang
     
