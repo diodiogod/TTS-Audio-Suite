@@ -75,6 +75,7 @@ TTS Audio Suite  + Streaming                                    │
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
+  - [🌈 IndexTTS-2 Unified Emotion Control](#-indextts-2-unified-emotion-control)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -136,7 +137,7 @@ TTS Audio Suite  + Streaming                                    │
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, and VibeVoice with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, and **IndexTTS-2** with voice cloning, reference audio synthesis, and production-grade quality
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
@@ -538,7 +539,94 @@ This creates seamless multilingual character switching with proper voice inherit
 
 </details>
 
+<details>
+<summary><h3>🌈 IndexTTS-2 With Emotion Control</h3></summary>
+
+**NEW in v4.8.38**: Revolutionary IndexTTS-2 engine with advanced emotion control and unified emotion architecture!
+
+* **Unified Emotion Control**: Single `emotion_control` input supporting multiple emotion methods with intelligent priority system
+* **Dynamic Text Emotion**: AI-powered QwenEmotion analysis with dynamic `{seg}` template processing for contextual per-segment emotions
+* **Direct Audio Reference**: Use any audio file as emotion reference for natural emotional expression
+* **Character Voices Integration**: Use Character Voices `opt_narrator` output as emotion reference with automatic detection
+* **8-Emotion Vector Control**: Manual precision control over Happy, Angry, Sad, Surprised, Afraid, Disgusted, Calm, and Melancholic emotions
+* **Character Tag Emotions**: Per-character emotion control using `[Character:emotion_ref]` syntax (highest priority)
+* **Emotion Alpha Control**: Fine-tune emotion intensity from 0.0 (neutral) to 2.0 (maximum dramatic expression)
+
+**Key Features:**
+
+- **Emotion Priority System**: Character tags > Global emotion control with intelligent override handling
+- **Dynamic Templates**: Use `{seg}` placeholder for contextual emotion analysis (e.g., "Worried parent speaking: {seg}")
+- **Universal Compatibility**: Works with existing TTS Text and TTS SRT nodes seamlessly
+- **Advanced Caching**: Stable audio content hashing for reliable cache hits across sessions
+- **QwenEmotion Integration**: State-of-the-art text emotion analysis with configurable model selection
+
+**Example Usage:**
+
+```text
+Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
+[Bob:angry_narrator] That's completely unacceptable behavior.
+```
+
+**Perfect for:**
+
+- Multi-character dialogue with individual emotional expressions
+- Dynamic storytelling with contextual emotion adaptation
+- Professional voice acting with precise emotional control
+- Content creation requiring sophisticated emotional nuance
+
+**📖 [Complete IndexTTS-2 Emotion Control Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
+
 </details>
+
+</details>
+
+## 📖 IndexTTS-2 Model Downloads
+
+**IndexTTS-2** requires specific models for optimal performance. The system will automatically download required models on first use.
+
+### Model Structure
+
+```
+ComfyUI/models/TTS/IndexTTS/
+├── IndexTTS-2/                         ← Main TTS model
+│   ├── config.yaml                     ← Model configuration
+│   ├── feat1.pt                        ← Feature extraction model 1
+│   ├── feat2.pt                        ← Feature extraction model 2
+│   ├── gpt.pth                         ← GPT model weights
+│   ├── s2mel.pth                       ← Speech-to-mel conversion
+│   ├── bpe.model                       ← BPE tokenizer model
+│   ├── wav2vec2bert_stats.pt           ← Wav2Vec2BERT statistics
+│   └── qwen0.6bemo4-merge/             ← QwenEmotion model (for text emotion)
+│       ├── config.json
+│       ├── generation_config.json
+│       ├── model.safetensors
+│       ├── tokenizer.json
+│       ├── tokenizer_config.json
+│       └── other model files...
+└── w2v-bert-2.0/                       ← W2V-BERT semantic features
+    ├── config.json
+    ├── model.safetensors               ← ~2GB model weights
+    └── preprocessor_config.json
+```
+
+### Download Links
+
+**IndexTTS-2 Main Model:**
+- **Repository**: [IndexTeam/IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2)
+- **Size**: Multiple model files (several GB total)
+- **Auto-Download**: ✅ Downloads automatically on first use
+
+**W2V-BERT Semantic Features:**
+- **Repository**: [facebook/w2v-bert-2.0](https://huggingface.co/facebook/w2v-bert-2.0)
+- **Size**: ~2GB
+- **Auto-Download**: ✅ Downloads automatically when needed
+
+**QwenEmotion Model (Built-in):**
+- **Included**: Part of IndexTTS-2 download (qwen0.6bemo4-merge)
+- **Purpose**: Text emotion analysis for dynamic emotion control
+- **Auto-Download**: ✅ Downloads with main IndexTTS-2 model
+
+**Usage**: Simply use IndexTTS-2 engine nodes → All required models download automatically on first generation!
 
 ## 🚀 Quick Start
 
