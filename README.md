@@ -142,7 +142,7 @@ TTS Audio Suite  + Streaming                                    │
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
 - 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
-- 😤 **Emotion Control** - Unique exaggeration parameter for expressive speech
+- 😤 **Emotion Control** - ChatterBox exaggeration parameter for expressive speech + IndexTTS-2 advanced emotion control with dynamic text analysis, character tags, and 8-emotion vectors → **[📖 IndexTTS-2 Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
 - 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
