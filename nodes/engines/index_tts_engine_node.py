@@ -133,7 +133,7 @@ class IndexTTSEngineNode(BaseTTSNode):
             "optional": {
                 # Unified Emotion Control
                 "emotion_control": (any_typ, {
-                    "tooltip": "Emotion control: Connect 🌈 Emotion Vectors, 🎭 Character Voices (opt_narrator), 🧠 QwenEmotion Text Analysis, or direct AUDIO. Character emotion tags [Alice:emotion_ref] will override this for specific characters."
+                    "tooltip": "Emotion control: Connect 🌈 Emotion Vectors, 🎭 Character Voices (opt_narrator), 🌈 Text Emotion, or direct AUDIO. Character emotion tags [Alice:emotion_ref] will override this for specific characters."
                 }),
                 
                 # CUDA Kernel Option
@@ -226,11 +226,11 @@ class IndexTTSEngineNode(BaseTTSNode):
                         emotion_text = emotion_control.get("emotion_text", "")
                         is_dynamic_template = emotion_control.get("is_dynamic_template", False)
 
-                    elif "waveform" in emotion_control:
-                        # Direct audio input (NARRATOR_VOICE or AUDIO)
+                    elif "waveform" in emotion_control or "audio" in emotion_control:
+                        # Direct audio input (NARRATOR_VOICE from Character Voices or AUDIO)
                         emotion_audio = emotion_control
 
-                elif hasattr(emotion_control, 'get') and "waveform" in emotion_control:
+                elif hasattr(emotion_control, 'get') and ("waveform" in emotion_control or "audio" in emotion_control):
                     # Direct audio input
                     emotion_audio = emotion_control
             

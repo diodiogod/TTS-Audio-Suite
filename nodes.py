@@ -357,7 +357,7 @@ if INDEX_TTS_EMOTION_OPTIONS_AVAILABLE:
 
 if QWEN_EMOTION_AVAILABLE:
     NODE_CLASS_MAPPINGS["QwenEmotionNode"] = QwenEmotionNode
-    NODE_DISPLAY_NAME_MAPPINGS["QwenEmotionNode"] = "🧠 QwenEmotion Text Analysis"
+    NODE_DISPLAY_NAME_MAPPINGS["QwenEmotionNode"] = "🌈 IndexTTS-2 Text Emotion"
 
 # Register shared nodes
 if CHARACTER_VOICES_AVAILABLE:

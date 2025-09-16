@@ -26,7 +26,7 @@ class QwenEmotionNode:
 
     @classmethod
     def NAME(cls):
-        return "🧠 QwenEmotion Text Analysis"
+        return "🌈 IndexTTS-2 Text Emotion"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -105,9 +105,9 @@ class QwenEmotionNode:
         }
 
         if is_dynamic:
-            print(f"🧠 QwenEmotion: Prepared dynamic per-segment analysis with model '{qwen_model}' - template: '{emotion_text}'")
+            print(f"🌈 IndexTTS-2 Text Emotion: Dynamic per-segment analysis with model '{qwen_model}' - template: '{emotion_text}'")
         else:
-            print(f"🧠 QwenEmotion: Prepared static emotion analysis with model '{qwen_model}' for '{emotion_text}'")
+            print(f"🌈 IndexTTS-2 Text Emotion: Static emotion analysis with model '{qwen_model}' for '{emotion_text}'")
 
         return (emotion_control,)
 
@@ -118,5 +118,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "QwenEmotionNode": "🧠 QwenEmotion Text Analysis"
+    "QwenEmotionNode": "🌈 IndexTTS-2 Text Emotion"
 }

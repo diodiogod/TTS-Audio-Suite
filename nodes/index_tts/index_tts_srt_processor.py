@@ -82,17 +82,12 @@ class IndexTTSSRTProcessor:
 
     def update_config(self, new_config: Dict[str, Any]):
         """Update processor configuration with new parameters."""
-        print(f"🐛 IndexTTS-2 SRT update_config called with keys: {list(new_config.keys())}")
-        if 'emotion_audio' in new_config:
-            print(f"🐛 emotion_audio found in new_config: {type(new_config['emotion_audio'])}")
-        else:
-            print(f"🐛 emotion_audio NOT found in new_config")
 
         self.config.update(new_config)
         # Also update the IndexTTS processor's config so emotion_audio gets passed through
         if hasattr(self.tts_processor, 'config'):
             self.tts_processor.config.update(new_config)
-            print(f"🐛 Updated IndexTTS processor config, emotion_audio present: {'emotion_audio' in self.tts_processor.config}")
+            # Updated processor configuration with new parameters
 
     def process_srt_content(self,
                            srt_content: str,

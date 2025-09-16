@@ -145,7 +145,20 @@ class IndexTTSAdapter:
         
         # Determine final speaker and emotion audio
         final_speaker_audio = speaker_audio
-        final_emotion_audio = emotion_audio
+
+        # Handle Character Voices emotion_audio format
+        if emotion_audio and isinstance(emotion_audio, dict):
+            if "audio_path" in emotion_audio:
+                # Character Voices format: {'audio': {...}, 'audio_path': 'path', ...}
+                final_emotion_audio = emotion_audio["audio_path"]
+                print(f"🎭 Using Character Voices emotion audio: {emotion_audio.get('character_name', 'unknown')} -> {final_emotion_audio}")
+            elif "waveform" in emotion_audio:
+                # Direct AUDIO format: {'waveform': tensor, 'sample_rate': rate}
+                final_emotion_audio = emotion_audio
+            else:
+                final_emotion_audio = emotion_audio
+        else:
+            final_emotion_audio = emotion_audio
         
         # Only do character mapping if we actually have character tags
         if has_character_tags:
