@@ -176,11 +176,16 @@ class IndexTTSAdapter:
                 final_emotion_audio = character_mapping[emotion_ref][0]
                 print(f"😊 Using emotion reference: {emotion_ref} -> {final_emotion_audio}")
                     
+        # For caching, we need stable identifiers for audio references
+        # Convert file paths to content hashes if they're temp files
+        cache_speaker_audio = self._get_stable_audio_identifier(final_speaker_audio)
+        cache_emotion_audio = self._get_stable_audio_identifier(final_emotion_audio) if final_emotion_audio else final_emotion_audio
+
         # Check cache before generation
         cache_key = self._generate_cache_key(
             text=processed_text,
-            speaker_audio=final_speaker_audio,
-            emotion_audio=final_emotion_audio,
+            speaker_audio=cache_speaker_audio,
+            emotion_audio=cache_emotion_audio,
             emotion_alpha=emotion_alpha,
             emotion_vector=emotion_vector,
             use_emotion_text=use_emotion_text,
@@ -193,15 +198,42 @@ class IndexTTSAdapter:
             repetition_penalty=repetition_penalty,
             max_mel_tokens=max_mel_tokens,
             max_text_tokens_per_segment=max_text_tokens_per_segment,
-            interval_silence=interval_silence
+            interval_silence=interval_silence,
+            **kwargs  # Include seed and other kwargs in cache key
         )
-        
+
+        # print(f"🐛 IndexTTS-2 cache key params: text='{processed_text[:30]}...', seed={kwargs.get('seed', 'missing')}, speaker='{final_speaker_audio}', emotion='{final_emotion_audio}'")
+        # print(f"🐛 IndexTTS-2 full cache key: {cache_key}")
+        # print(f"🐛 IndexTTS-2 cache stats: {self.audio_cache.get_cache_stats()}")
+
         cached_audio = self.audio_cache.get_cached_audio(cache_key)
         if cached_audio:
             character_desc = character_name or 'narrator'
             print(f"💾 Using cached IndexTTS-2 audio for '{character_desc}': '{processed_text[:30]}...'")
             return cached_audio[0]
+        # else:
+        #     print(f"❌ IndexTTS-2 cache MISS for key: {cache_key}")
+        #     # Show first few existing keys for comparison
+        #     # Access the global cache properly
+        #     from utils.audio.cache import GLOBAL_AUDIO_CACHE
+        #     existing_keys = list(GLOBAL_AUDIO_CACHE.keys())
+        #     if existing_keys:
+        #         print(f"🔍 Existing cache keys (first 3): {existing_keys[:3]}")
+        #     else:
+        #         print(f"🔍 Cache is empty")
             
+        # Handle seed for deterministic generation
+        seed = kwargs.get('seed', 0)
+        if seed != 0:
+            torch.manual_seed(seed)
+            import random
+            import numpy as np
+            random.seed(seed)
+            np.random.seed(seed)
+
+        # Filter out seed from kwargs (used for caching but not supported by IndexTTS engine)
+        engine_kwargs = {k: v for k, v in kwargs.items() if k != 'seed'}
+
         # Generate audio
         audio = self.engine.generate(
             text=processed_text,
@@ -221,12 +253,13 @@ class IndexTTSAdapter:
             num_beams=num_beams,
             repetition_penalty=repetition_penalty,
             max_mel_tokens=max_mel_tokens,
-            **kwargs
+            **engine_kwargs
         )
         
         # Cache the result
         duration = audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
         self.audio_cache.cache_audio(cache_key, audio, duration)
+        # print(f"💾 IndexTTS-2 CACHED audio with key: {cache_key}")
         
         return audio
     
@@ -333,13 +366,32 @@ class IndexTTSAdapter:
                     emotion_audio = emotion_audio_path
                     print(f"😊 Using emotion reference '{emotion_ref}' | Ref: '{emotion_audio}'")
             
-            # Generate audio for this segment
-            segment_audio = self.engine.generate(
+            # Generate cache key for this segment
+            segment_cache_key = self._generate_cache_key(
                 text=segment_text,
                 speaker_audio=speaker_audio,
                 emotion_audio=emotion_audio,
                 **kwargs
             )
+
+            # Check cache first
+            cached_segment_audio = self.audio_cache.get_cached_audio(segment_cache_key)
+            if cached_segment_audio:
+                print(f"💾 Using cached IndexTTS-2 segment for '{character_name}': '{segment_text[:30]}...'")
+                segment_audio = cached_segment_audio[0]
+            else:
+                # Generate audio for this segment
+                segment_audio = self.engine.generate(
+                    text=segment_text,
+                    speaker_audio=speaker_audio,
+                    emotion_audio=emotion_audio,
+                    **kwargs
+                )
+
+                # Cache the segment result
+                duration = segment_audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
+                self.audio_cache.cache_audio(segment_cache_key, segment_audio, duration)
+                # print(f"💾 IndexTTS-2 CACHED segment for '{character_name}' with key: {segment_cache_key}")
             
             audio_segments.append(segment_audio)
         
@@ -354,6 +406,17 @@ class IndexTTSAdapter:
     def _generate_cache_key(self, **params) -> str:
         """Generate cache key for IndexTTS-2."""
         return self.audio_cache.generate_cache_key('index_tts', **params)
+
+    def _get_stable_audio_identifier(self, audio_path: str) -> str:
+        """
+        Get stable identifier for audio file using centralized audio hashing.
+        """
+        if not audio_path:
+            return audio_path
+
+        # Use our centralized audio hashing utility
+        from utils.audio.audio_hash import generate_stable_audio_component
+        return generate_stable_audio_component(audio_file_path=audio_path)
     
     def get_supported_formats(self) -> List[str]:
         """Get supported audio formats."""

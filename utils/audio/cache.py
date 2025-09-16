@@ -204,6 +204,7 @@ class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
             'use_emotion_text': params.get('use_emotion_text', False),
             'emotion_text': params.get('emotion_text', ''),
             'use_random': params.get('use_random', False),
+            'seed': params.get('seed', 0),  # Seed for reproducible generation
             'temperature': temperature,
             'top_p': top_p,
             'top_k': params.get('top_k', 30),
