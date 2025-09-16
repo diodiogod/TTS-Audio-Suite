@@ -48,12 +48,32 @@ class CharacterVoicesNode(BaseTTSNode):
             "required": {
                 "voice_name": (reference_files, {
                     "default": "none",
-                    "tooltip": "Select voice from models/voices/ or voices_examples/ folders. Use 'none' to rely on direct audio input."
+                    "tooltip": """Use 'none' to rely on direct audio input + input text.
+
+Select character voice from models/voices/ or voices_examples/ folders.
+
+IMPORTANT: Character Voices node requires a .txt file with the same name as the audio file to recognize it as a character.
+
+FILE REQUIREMENTS:
+• filename.wav + filename.txt (basic setup)
+• filename.wav + filename.reference.txt
+• filename.wav + filename.txt + filename.reference.txt (both files)
+
+PRIORITY SYSTEM - When both .txt and .reference.txt exist:
+• .reference.txt = actual spoken text transcription (used for voice cloning)
+• .txt = audio information/metadata (license, etc.)"""
                 }),
                 "reference_text": ("STRING", {
                     "multiline": True,
                     "default": "",
-                    "tooltip": "Reference text for voice cloning (required for F5-TTS, optional for other engines). Should match or be similar to the reference audio content."
+                    "tooltip": """Create reference text on-the-fly for connected audio input.
+
+ENGINE REQUIREMENTS:
+• F5-TTS: REQUIRES reference text (must match spoken audio exactly)
+• Higgs Audio 2: Optional but uses reference text if provided
+• ChatterBox/VibeVoice/IndexTTS: Don't use reference text
+
+Leave empty to use text from selected character's files."""
                 }),
             },
             "optional": {

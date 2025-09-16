@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3] - 2025-09-16
+
+### Added
+
+- Add clear explanation of .txt vs .reference.txt priority system
+
+### Changed
+
+- Improve node tooltips for better user experience
+- Improve IndexTTS-2 emotion_control tooltip formatting and readability
+- Better documentation of engine-specific requirements
+
+### Fixed
+
+- Fix Character Voices node tooltips to clearly explain .txt file requirements
+- Addresses issue #69 tooltip clarity feedback
 ## [4.9.2] - 2025-09-16
 
 ### Fixed
