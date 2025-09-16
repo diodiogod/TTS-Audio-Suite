@@ -698,9 +698,10 @@ class QwenEmotion:
     def __init__(self, model_dir):
         self.model_dir = model_dir
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
+        import torch
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_dir,
-            torch_dtype="float16",  # "auto"
+            dtype=torch.float16,  # Updated from deprecated torch_dtype
             device_map="auto"
         )
         self.prompt = "文本情感分类"
