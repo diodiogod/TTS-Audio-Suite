@@ -1449,6 +1449,7 @@ Your support helps maintain and improve this project for the entire community!
 | Workflow                   | Description                                      | Status               | Files                                                                      |
 | -------------------------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
 | **🌈 IndexTTS-2 Integration** | IndexTTS-2 engine with advanced emotion control | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)            |
+| **VibeVoice Integration**  | VibeVoice long-form TTS with multi-speaker support | ✅ **Compatible**     | [📁 JSON](example_workflows/VibeVoice%20integration.json)                 |
 | **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
 | **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
 
