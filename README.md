@@ -152,7 +152,7 @@ TTS Audio Suite  + Streaming                                    │
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
 <details>
-<summary><h2>🆕 What's New in my Project?</h2></summary>
+<summary><h2>🆕 What's New in my Project? (click to expand)</h2></summary>
 
 <details>
 <summary><h3>📺 SRT Timing and TTS Node</h3></summary>
