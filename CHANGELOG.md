@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.12] - 2025-09-17
+
+### Added
+
+- Prevent module resolution conflicts during IndexTTS-2 initialization
+
+### Fixed
+
+- Fix IndexTTS-2 import errors caused by conflicting system packages
+- Fix IndexTTS-2 failing to load when system indextts package is installed
+- Ensure bundled IndexTTS-2 engine uses correct internal modules
+- Improve compatibility with different Python environments
 ## [4.9.11] - 2025-09-17
 
 ### Added

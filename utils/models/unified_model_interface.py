@@ -648,9 +648,28 @@ def register_index_tts_factory():
             bundled_path = os.path.abspath(bundled_path)
             if bundled_path not in sys.path:
                 sys.path.insert(0, bundled_path)
-            
-            # Import from bundled IndexTTS engine
-            from engines.index_tts.indextts.infer_v2 import IndexTTS2
+
+            # Temporarily override any system-installed indextts with our bundled version
+            original_indextts = sys.modules.get('indextts')
+            try:
+                # Force import our bundled indextts module
+                import importlib
+                import importlib.util
+                bundled_indextts_path = os.path.join(bundled_path, "indextts")
+                spec = importlib.util.spec_from_file_location("indextts", os.path.join(bundled_indextts_path, "__init__.py"))
+                if spec and spec.loader:
+                    bundled_indextts = importlib.util.module_from_spec(spec)
+                    sys.modules['indextts'] = bundled_indextts
+                    spec.loader.exec_module(bundled_indextts)
+
+                # Now import from bundled IndexTTS engine
+                from engines.index_tts.indextts.infer_v2 import IndexTTS2
+            finally:
+                # Restore original indextts module if it existed
+                if original_indextts is not None:
+                    sys.modules['indextts'] = original_indextts
+                elif 'indextts' in sys.modules:
+                    del sys.modules['indextts']
             
             # Initialize IndexTTS-2 engine
             config_path = os.path.join(model_path, "config.yaml")
