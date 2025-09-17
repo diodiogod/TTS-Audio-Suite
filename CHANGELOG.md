@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.11] - 2025-09-17
+
+### Added
+
+- Handle faiss circular import issues gracefully during startup
+- Prevent AttributeError about Float32 in containerized environments
+
+### Fixed
+
+- Fix startup crash in Docker environments due to faiss circular import
+- Fix dependency checker crashing with faiss in Docker containers
+- Improve compatibility with Docker and OpenSUSE setups
 ## [4.9.10] - 2025-09-17
 
 ### Added

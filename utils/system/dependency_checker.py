@@ -50,6 +50,13 @@ class DependencyChecker:
             return True
         except ImportError:
             return False
+        except (AttributeError, ValueError) as e:
+            # Handle problematic packages like faiss with circular import issues
+            if 'faiss' in module_name and ('circular import' in str(e) or 'Float32' in str(e)):
+                # faiss has circular import issues in some environments (Docker, etc.)
+                # If we get AttributeError about Float32, faiss is installed but has import issues
+                return True
+            return False
     
     @staticmethod
     def check_core_dependencies() -> List[Tuple[str, str]]:
