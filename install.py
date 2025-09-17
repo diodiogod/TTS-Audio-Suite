@@ -600,9 +600,9 @@ class TTSAudioInstaller:
                     # Fallback for other CUDA versions
                     faiss_gpu_package = "faiss-gpu-cu12>=1.7.4"
                 
-                # Try GPU installation first
-                self.run_pip_command(["install", faiss_gpu_package], f"Installing {faiss_gpu_package} for GPU acceleration")
-                self.log("✅ faiss-gpu installed - RVC will use GPU acceleration for better performance", "SUCCESS")
+                # Try GPU installation first with --no-deps to prevent numpy downgrade
+                self.run_pip_command(["install", "--no-deps", faiss_gpu_package], f"Installing {faiss_gpu_package} for GPU acceleration (--no-deps)")
+                self.log("✅ faiss-gpu installed with --no-deps - RVC will use GPU acceleration without downgrading numpy", "SUCCESS")
                 
             except subprocess.CalledProcessError:
                 # GPU installation failed - fallback to CPU

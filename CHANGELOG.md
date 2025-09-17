@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.8] - 2025-09-17
+
+### Changed
+
+- Preserve RVC GPU acceleration performance
+- Better numpy version management during installation
+
+### Fixed
+
+- Fix install script downgrading numpy on Linux systems
+- Fix faiss-gpu installation downgrading numpy from 2.x to 1.26.4 on Linux
+- Install faiss-gpu with --no-deps to prevent dependency conflicts
 ## [4.9.7] - 2025-09-17
 
 ### Added
