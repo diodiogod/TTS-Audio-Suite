@@ -610,7 +610,8 @@ class TTSAudioInstaller:
             "munch>=4.0.0",               # Dictionary access with dot notation
             "sentencepiece>=0.2.1",       # Text tokenization
             "textstat>=0.7.10",           # Text statistics and readability
-            "wetext>=0.0.9"               # Windows text processing (Chinese)
+            "wetext>=0.0.9",              # Text processing (Chinese)
+            "tn",                         # Text normalization fallback for IndexTTS-2
         ]
         
         # Smart installation: check before installing (preserving all original packages and comments)
