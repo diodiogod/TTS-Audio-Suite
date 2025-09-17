@@ -260,27 +260,34 @@ class IndexTTSAdapter:
             final_use_emotion_text = use_emotion_text
             final_emotion_text = emotion_text
 
-        # Generate audio
-        audio = self.engine.generate(
-            text=processed_text,
-            speaker_audio=final_speaker_audio,
-            emotion_audio=final_emotion_audio,
-            emotion_alpha=emotion_alpha,
-            emotion_vector=final_emotion_vector,
-            use_emotion_text=final_use_emotion_text,
-            emotion_text=final_emotion_text,
-            use_random=use_random,
-            interval_silence=interval_silence,
-            max_text_tokens_per_segment=max_text_tokens_per_segment,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            length_penalty=length_penalty,
-            num_beams=num_beams,
-            repetition_penalty=repetition_penalty,
-            max_mel_tokens=max_mel_tokens,
-            **engine_kwargs
-        )
+        # Generate audio with OOM protection
+        try:
+            audio = self.engine.generate(
+                text=processed_text,
+                speaker_audio=final_speaker_audio,
+                emotion_audio=final_emotion_audio,
+                emotion_alpha=emotion_alpha,
+                emotion_vector=final_emotion_vector,
+                use_emotion_text=final_use_emotion_text,
+                emotion_text=final_emotion_text,
+                use_random=use_random,
+                interval_silence=interval_silence,
+                max_text_tokens_per_segment=max_text_tokens_per_segment,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                length_penalty=length_penalty,
+                num_beams=num_beams,
+                repetition_penalty=repetition_penalty,
+                max_mel_tokens=max_mel_tokens,
+                **engine_kwargs
+            )
+        except torch.OutOfMemoryError as e:
+            # Analyze audio after OOM to provide helpful feedback
+            audio_analysis = self._analyze_audio_after_oom(final_speaker_audio, final_emotion_audio, max_mel_tokens)
+            raise RuntimeError(
+                f"❌ IndexTTS-2 ran out of GPU memory during generation.\n{audio_analysis}"
+            ) from e
         
         # Cache the result
         duration = audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
@@ -406,13 +413,20 @@ class IndexTTSAdapter:
                 print(f"💾 Using cached IndexTTS-2 segment for '{character_name}': '{segment_text[:30]}...'")
                 segment_audio = cached_segment_audio[0]
             else:
-                # Generate audio for this segment
-                segment_audio = self.engine.generate(
-                    text=segment_text,
-                    speaker_audio=speaker_audio,
-                    emotion_audio=emotion_audio,
-                    **kwargs
-                )
+                # Generate audio for this segment with OOM protection
+                try:
+                    segment_audio = self.engine.generate(
+                        text=segment_text,
+                        speaker_audio=speaker_audio,
+                        emotion_audio=emotion_audio,
+                        **kwargs
+                    )
+                except torch.OutOfMemoryError as e:
+                    # Analyze audio after OOM in multi-character segments
+                    audio_analysis = self._analyze_audio_after_oom(speaker_audio, emotion_audio, kwargs.get('max_mel_tokens', 1500))
+                    raise RuntimeError(
+                        f"❌ IndexTTS-2 OOM error in character segment '{character_name}'.\n{audio_analysis}"
+                    ) from e
 
                 # Cache the segment result
                 duration = segment_audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
@@ -432,6 +446,73 @@ class IndexTTSAdapter:
     def _generate_cache_key(self, **params) -> str:
         """Generate cache key for IndexTTS-2."""
         return self.audio_cache.generate_cache_key('index_tts', **params)
+
+    def _analyze_audio_after_oom(self, speaker_audio: str, emotion_audio: str, max_mel_tokens: int) -> str:
+        """
+        Analyze audio files after OOM to provide helpful feedback.
+        Uses fast header-based duration check to avoid loading large files.
+
+        Args:
+            speaker_audio: Path to speaker audio file
+            emotion_audio: Path to emotion audio file
+            max_mel_tokens: Current max_mel_tokens setting
+
+        Returns:
+            Formatted analysis message with recommendations
+        """
+        analysis_parts = []
+
+        # Analyze speaker audio
+        if speaker_audio and os.path.exists(speaker_audio):
+            try:
+                import soundfile as sf
+                info = sf.info(speaker_audio)
+                duration = info.duration
+
+                if duration > 60:
+                    analysis_parts.append(f"🔍 Speaker audio: {duration:.1f}s (TOO LONG - major OOM risk)")
+                    analysis_parts.append("   ✅ Solution: Use audio under 30 seconds")
+                elif duration > 30:
+                    analysis_parts.append(f"🔍 Speaker audio: {duration:.1f}s (long - may cause OOM)")
+                    analysis_parts.append("   ✅ Recommendation: Use shorter audio for stability")
+                else:
+                    analysis_parts.append(f"🔍 Speaker audio: {duration:.1f}s (length OK)")
+
+            except Exception:
+                analysis_parts.append("🔍 Speaker audio: Could not analyze duration")
+
+        # Analyze emotion audio
+        if emotion_audio and os.path.exists(emotion_audio):
+            try:
+                import soundfile as sf
+                info = sf.info(emotion_audio)
+                duration = info.duration
+
+                if duration > 60:
+                    analysis_parts.append(f"🔍 Emotion audio: {duration:.1f}s (TOO LONG - major OOM risk)")
+                elif duration > 30:
+                    analysis_parts.append(f"🔍 Emotion audio: {duration:.1f}s (long - may cause OOM)")
+                else:
+                    analysis_parts.append(f"🔍 Emotion audio: {duration:.1f}s (length OK)")
+
+            except Exception:
+                analysis_parts.append("🔍 Emotion audio: Could not analyze duration")
+
+        # Analyze max_mel_tokens setting
+        if max_mel_tokens > 1500:
+            analysis_parts.append(f"🔍 max_mel_tokens: {max_mel_tokens} (high - may cause OOM)")
+            analysis_parts.append("   ✅ Try reducing to 1000-1500")
+        else:
+            analysis_parts.append(f"🔍 max_mel_tokens: {max_mel_tokens} (setting OK)")
+
+        # Add general recommendations
+        analysis_parts.append("")
+        analysis_parts.append("💡 Quick fixes:")
+        analysis_parts.append("   • Use audio clips under 30 seconds")
+        analysis_parts.append("   • Reduce max_mel_tokens to 1000")
+        analysis_parts.append("   • Close other GPU applications")
+
+        return "\n".join(analysis_parts)
 
     def _get_stable_audio_identifier(self, audio_path: str) -> str:
         """

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.14] - 2025-09-17
+
+### Added
+
+- Provide specific guidance when audio files are too long
+- Recommend optimal audio length (under 30 seconds)
+- Show clear solutions when generation fails due to memory limits
+
+### Fixed
+
+- Fix IndexTTS-2 crashes with large audio files
+- Add graceful out-of-memory error handling
 ## [4.9.13] - 2025-09-17
 
 ### Added
