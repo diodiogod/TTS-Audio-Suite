@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.7] - 2025-09-17
+
+### Added
+
+- Truncate emotion audio to 20 seconds to prevent memory crashes
+
+### Changed
+
+- Improve stability with large emotion reference files
+- Better memory management for Wav2Vec2-BERT processing
+
+### Fixed
+
+- Fix IndexTTS-2 crashes with long emotion audio files
+- Fix IndexTTS-2 OOM errors when using long emotion reference audio
 ## [4.9.6] - 2025-09-16
 
 ### Fixed

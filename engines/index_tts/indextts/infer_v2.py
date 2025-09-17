@@ -482,6 +482,15 @@ class IndexTTS2:
 
         if self.cache_emo_cond is None or self.cache_emo_audio_prompt != emo_audio_prompt:
             emo_audio, _ = librosa.load(emo_audio_prompt, sr=16000)
+
+            # Truncate emotion audio to prevent OOM with long files (max 20 seconds)
+            # Wav2Vec2-BERT has quadratic memory complexity and crashes with long audio
+            max_samples = 16000 * 20  # 20 seconds at 16kHz
+            if len(emo_audio) > max_samples:
+                original_duration = len(emo_audio) / 16000
+                emo_audio = emo_audio[:max_samples]
+                print(f"⚠️ IndexTTS-2: Truncated emotion audio to 20s (was {original_duration:.1f}s) to prevent OOM")
+
             emo_inputs = self.extract_features(emo_audio, sampling_rate=16000, return_tensors="pt")
             emo_input_features = emo_inputs["input_features"]
             emo_attention_mask = emo_inputs["attention_mask"]
