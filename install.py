@@ -37,7 +37,65 @@ class TTSAudioInstaller:
         }
         symbol = symbol_map.get(level, "[i]")
         print(f"{symbol} {message}")
-    
+
+    def ensure_requirements_installed(self):
+        """Check and install requirements.txt if needed"""
+        self.log("Checking requirements.txt dependencies", "INFO")
+
+        requirements_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
+        if not os.path.exists(requirements_path):
+            self.log("requirements.txt not found - skipping", "WARNING")
+            return
+
+        # Parse requirements.txt to get all package names
+        missing_packages = []
+        try:
+            with open(requirements_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        # Remove inline comments
+                        line = line.split('#')[0].strip()
+                        if not line:
+                            continue
+                        # Extract package name (before >= <= == etc.)
+                        package_name = line.split('>=')[0].split('<=')[0].split('==')[0].split('<')[0].split('>')[0].split('!')[0].strip()
+                        if package_name:
+                            try:
+                                # Handle package name differences (dashes vs underscores)
+                                import_name = package_name.replace("-", "_")
+                                __import__(import_name)
+                            except ImportError:
+                                missing_packages.append(package_name)
+        except Exception as e:
+            self.log(f"Error reading requirements.txt: {e}", "WARNING")
+            return
+
+        if missing_packages:
+            self.log(f"Missing {len(missing_packages)} requirements.txt packages: {', '.join(missing_packages[:5])}{'...' if len(missing_packages) > 5 else ''}", "WARNING")
+            self.log("Installing missing requirements individually (preserves ComfyUI Manager safeguards)", "INFO")
+
+            # Install each missing package individually using our safe method
+            for package in missing_packages:
+                # Get the full package spec from requirements.txt
+                package_spec = package
+                try:
+                    with open(requirements_path, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('#'):
+                                # Remove inline comments
+                                clean_line = line.split('#')[0].strip()
+                                if clean_line and clean_line.startswith(package):
+                                    package_spec = clean_line
+                                    break
+                except:
+                    pass
+
+                self.run_pip_command(["install", package_spec], f"Installing {package}", ignore_errors=True)
+        else:
+            self.log("All requirements.txt dependencies already satisfied", "SUCCESS")
+
     def check_system_dependencies(self):
         """Check for required system libraries and provide helpful error messages"""
         if self.is_windows:
@@ -545,7 +603,8 @@ class TTSAudioInstaller:
             
             # IndexTTS-2 engine dependencies (tested safe - no conflicts found)
             "cn2an>=0.5.22",              # Chinese number to Arabic number conversion
-            "g2p-en>=2.1.0",              # English grapheme-to-phoneme conversion  
+            "g2p-en>=2.1.0",              # English grapheme-to-phoneme conversion
+            "json5>=0.12.0",              # JSON5 parsing for IndexTTS-2 config files
             "keras>=2.9.0",               # Deep learning framework
             "modelscope>=1.27.0",         # Chinese model hub for IndexTTS-2
             "munch>=4.0.0",               # Dictionary access with dot notation
@@ -727,6 +786,7 @@ class TTSAudioInstaller:
             "cached-path",          # Forces package downgrades
             "torchcrepe",          # Conflicts via librosa dependency
             "onnxruntime",         # For OpenSeeFace, but forces numpy 2.3.x
+            "opencv-python",       # Forces numpy downgrade from 2.x to 1.26.x
         ]
         
         for package in problematic_packages:
@@ -1020,6 +1080,7 @@ def main():
         
         # Check environment and system dependencies before proceeding
         installer.check_comfyui_environment()
+        installer.ensure_requirements_installed()  # Ensure requirements.txt is installed first
         
         # Check system dependencies (Linux only)
         if not installer.check_system_dependencies():

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.9] - 2025-09-17
+
+### Changed
+
+- Better handling of package version conflicts during setup
+
+### Fixed
+
+- Fix installation issues with numpy downgrade and requirements parsing
+- Fix opencv-python causing numpy version downgrades during installation
+- Fix requirements.txt parsing errors with inline comments
+- Improve dependency installation reliability and compatibility
 ## [4.9.8] - 2025-09-17
 
 ### Changed

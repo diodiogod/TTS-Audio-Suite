@@ -38,7 +38,7 @@ bitsandbytes>=0.47.0     # 4-bit quantization support for VibeVoice memory effic
 
 # Bundled engine dependencies (safe)
 conformer>=0.3.2      # ChatterBox engine
-x-transformers        # F5-TTS engine  
+x-transformers  
 torchdiffeq          # F5-TTS differential equations
 wandb                # F5-TTS logging
 ema-pytorch          # F5-TTS exponential moving average
@@ -67,16 +67,16 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # sageattention  # Optional: GPU-optimized mixed-precision attention for VibeVoice (requires CUDA SM80+)
 
 # Computer vision (safe)
-opencv-python
 pillow
 
 # --- PROBLEMATIC PACKAGES ---
 # These are installed by install.py with special handling:
 # - librosa (--no-deps): Forces numpy downgrade
 # - descript-audio-codec (--no-deps): Conflicts with protobuf
-# - cached-path (--no-deps): Forces package downgrades  
+# - cached-path (--no-deps): Forces package downgrades
 # - torchcrepe (--no-deps): Conflicts via librosa dependency
 # - onnxruntime (--no-deps): Forces numpy 2.3.x, needed for OpenSeeFace
+# - opencv-python (--no-deps): Forces numpy downgrade
 
 # --- PYTHON 3.13 NOTES ---
 # ✅ All TTS engines work (ChatterBox, F5-TTS, Higgs Audio)
