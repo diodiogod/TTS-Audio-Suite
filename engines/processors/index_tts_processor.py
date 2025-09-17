@@ -144,7 +144,13 @@ class IndexTTSProcessor:
             narrator_ref_text = ""
             
             if speaker_audio is not None:
-                narrator_voice_dict = {"waveform": speaker_audio["waveform"], "sample_rate": speaker_audio["sample_rate"]}
+                # Handle ComfyUI audio tensor dimensions (3D -> 2D)
+                waveform = speaker_audio["waveform"]
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                if waveform.shape[0] > 1:
+                    waveform = torch.mean(waveform, dim=0, keepdim=True)  # Convert stereo to mono
+                narrator_voice_dict = {"waveform": waveform, "sample_rate": speaker_audio["sample_rate"]}
                 narrator_ref_text = reference_text or ""
                 print(f"📖 Using connected narrator voice | Ref: '{narrator_ref_text[:50]}...'")
             else:

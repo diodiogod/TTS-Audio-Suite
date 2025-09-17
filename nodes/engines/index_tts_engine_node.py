@@ -131,7 +131,7 @@ class IndexTTSEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
-                # Unified Emotion Control
+                # Unified Emotion Control - Using multitype input for better connection suggestions
                 "emotion_control": (any_typ, {
                     "tooltip": """• 🌈 Emotion Vectors - Manual emotion control sliders
 • 🎭 Character Voices (opt_narrator) - Audio-based emotion reference
