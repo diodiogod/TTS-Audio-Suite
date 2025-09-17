@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.13] - 2025-09-17
+
+### Added
+
+- Ensure stable module loading for IndexTTS-2 initialization
+
+### Changed
+
+- Improve bundled module import handling to prevent conflicts
+
+### Fixed
+
+- Fix IndexTTS-2 KeyError import failure with bundled modules
+- Fix IndexTTS-2 failing with KeyError indextts during module resolution
+- Better compatibility with different Python import scenarios
 ## [4.9.12] - 2025-09-17
 
 ### Added
