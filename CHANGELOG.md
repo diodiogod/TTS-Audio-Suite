@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.10] - 2025-09-17
+
+### Added
+
+- Consistent with other TTS engines temp file handling
+
+### Changed
+
+- Better file organization and cleanup
+
+### Fixed
+
+- Fix IndexTTS-2 using Windows temp folder instead of ComfyUI temp
+- Fix IndexTTS-2 temp files now created in ComfyUI temp folder
 ## [4.9.9] - 2025-09-17
 
 ### Changed
