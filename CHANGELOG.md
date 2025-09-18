@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.18] - 2025-09-18
+
+### Added
+
+- Add cumulative click counters showing total adjustments (+0.1, +0.2, etc.)
+
+### Changed
+
+- Improve IndexTTS-2 emotion radar dragging and click feedback
+- Better visual feedback for both reducing all emotions and increasing individual ones
+- Improve button text positioning in radar chart interface
+
+### Fixed
+
+- Fix emotions randomly switching when dragging near center point
+- Fix emotions bouncing back when dragged past zero to opposite side
 ## [4.9.17] - 2025-09-17
 
 ### Added

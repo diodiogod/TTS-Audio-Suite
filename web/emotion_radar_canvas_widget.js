@@ -33,6 +33,25 @@ export function createEmotionRadarCanvasWidget(node) {
     let isDragging = false;
     let clickedEmotion = null; // Track which emotion is currently clicked/active
     let clickedLabel = null; // Track specifically when a label was clicked (for +0.1 display)
+    let lastDraggedEmotion = null; // Track last emotion being dragged (for deadzone continuity)
+    let centerClickedEmotions = []; // Track emotions affected by center click (for -0.1 display)
+
+    // Center click functionality
+    const CENTER_CLICK_RADIUS = 5; // px - very small clickable center area only
+    const CENTER_DRAG_DEADZONE = 20; // px - deadzone for dragging
+
+    // Click counter for cumulative reduction display
+    let centerClickCount = 0;
+    let centerClickTimer = null;
+    const CLICK_RESET_DELAY = 1000; // Reset counter after 1 second of no clicks
+
+    // Click counter for individual emotion label clicks
+    const emotionClickCounts = {};
+    const emotionClickTimers = {};
+    emotions.forEach(emotion => {
+        emotionClickCounts[emotion.name] = 0;
+        emotionClickTimers[emotion.name] = null;
+    });
 
     // Utility functions
     function polarToCartesian(centerX, centerY, radius, angleInRadians) {
@@ -103,7 +122,19 @@ export function createEmotionRadarCanvasWidget(node) {
     }
 
     function findNearestEmotion(x, y) {
-        const { angle } = cartesianToPolar(x, y);
+        const { radius, angle } = cartesianToPolar(x, y);
+
+        // If in drag deadzone, keep using the last dragged emotion
+        if (radius <= CENTER_DRAG_DEADZONE && lastDraggedEmotion) {
+            return lastDraggedEmotion;
+        }
+
+        // Outside deadzone - clear deadzone tracking and use normal selection
+        if (radius > CENTER_DRAG_DEADZONE) {
+            lastDraggedEmotion = null;
+        }
+
+        // Normal angle-based selection outside deadzone
         let nearestEmotion = null;
         let minAngleDiff = Math.PI;
 
@@ -119,6 +150,26 @@ export function createEmotionRadarCanvasWidget(node) {
         });
 
         return nearestEmotion;
+    }
+
+    function isInCenterClickArea(x, y) {
+        const distance = Math.sqrt(
+            Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
+        );
+        return distance <= CENTER_CLICK_RADIUS;
+    }
+
+    function reduceAllEmotions() {
+        emotions.forEach(emotion => {
+            const currentValue = emotionValues[emotion.name];
+            setEmotionValue(emotion.name, Math.max(0.0, currentValue - 0.1));
+        });
+    }
+
+    function resetAllEmotions() {
+        emotions.forEach(emotion => {
+            setEmotionValue(emotion.name, 0.0);
+        });
     }
 
     function findClickedEmotionLabel(x, y) {
@@ -170,8 +221,30 @@ export function createEmotionRadarCanvasWidget(node) {
         if (!nearestEmotion) return;
 
         const { radius } = cartesianToPolar(x, y);
-        const value = getEmotionValueFromRadius(radius);
+        let value;
+
+        // Apply direction projection ONLY in deadzone to prevent bouncing
+        if (radius <= CENTER_DRAG_DEADZONE && lastDraggedEmotion === nearestEmotion) {
+            // Calculate distance along the emotion's axis from center
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const emotionDx = Math.cos(nearestEmotion.angle - Math.PI / 2);
+            const emotionDy = Math.sin(nearestEmotion.angle - Math.PI / 2);
+
+            // Project mouse position onto emotion's axis (dot product)
+            const projectedDistance = dx * emotionDx + dy * emotionDy;
+
+            // Only allow positive values (same direction as emotion axis)
+            value = projectedDistance > 0 ? getEmotionValueFromRadius(projectedDistance) : 0;
+        } else {
+            // Normal fluid dragging outside deadzone
+            value = getEmotionValueFromRadius(radius);
+        }
+
         setEmotionValue(nearestEmotion.name, value);
+
+        // Track this emotion for deadzone continuity
+        lastDraggedEmotion = nearestEmotion;
 
         // Set glow for the emotion being dragged
         clickedEmotion = nearestEmotion;
@@ -301,7 +374,10 @@ export function createEmotionRadarCanvasWidget(node) {
 
             // Draw label with glow effect when emotion is clicked (both dot and label)
             const isEmotionClicked = clickedEmotion === emotion;
-            if (isEmotionClicked) {
+            const isCenterClicked = centerClickedEmotions.includes(emotion);
+            const hasGlow = isEmotionClicked || isCenterClicked;
+
+            if (hasGlow) {
                 // Glow effect - same as dot glow
                 ctx.shadowColor = emotion.color;
                 ctx.shadowBlur = 15;
@@ -310,21 +386,30 @@ export function createEmotionRadarCanvasWidget(node) {
             }
 
             ctx.fillStyle = emotion.color; // Keep original color
-            ctx.font = isEmotionClicked ? 'bold 12px Arial' : 'bold 11px Arial';
+            ctx.font = hasGlow ? 'bold 12px Arial' : 'bold 11px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(emotion.name, labelPoint.x, labelPoint.y);
 
             // Clear shadow for subsequent drawing
-            if (isEmotionClicked) {
+            if (hasGlow) {
                 ctx.shadowBlur = 0;
             }
 
-            // Add small "+0.1" indicator only when label was clicked
-            if (clickedLabel === emotion) {
+            // Add cumulative increase indicator when label was clicked
+            if (clickedLabel === emotion && emotionClickCounts[emotion.name] > 0) {
                 ctx.font = '9px Arial';
                 ctx.fillStyle = '#ffffff';
-                ctx.fillText('+0.1', labelPoint.x, labelPoint.y + 15);
+                const increaseText = `+${(emotionClickCounts[emotion.name] * 0.1).toFixed(1)}`;
+                ctx.fillText(increaseText, labelPoint.x, labelPoint.y + 15);
+            }
+
+            // Add cumulative reduction indicator when center was clicked
+            if (isCenterClicked && centerClickCount > 0) {
+                ctx.font = '9px Arial';
+                ctx.fillStyle = '#ffffff';
+                const reductionText = `-${(centerClickCount * 0.1).toFixed(1)}`;
+                ctx.fillText(reductionText, labelPoint.x, labelPoint.y + 15);
             }
         });
 
@@ -431,13 +516,14 @@ export function createEmotionRadarCanvasWidget(node) {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Random', 10 + buttonWidth/2, buttonY + 13);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Random', 10 + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Reset button
         ctx.fillStyle = '#ff6b6b';
         ctx.fillRect(10 + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Reset', 10 + buttonWidth + spacing + buttonWidth/2, buttonY + 13);
+        ctx.fillText('Reset', 10 + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Right side buttons (to avoid Sad label overlap)
         const rightButtonX = width - 2*(buttonWidth + spacing) - 10;
@@ -446,13 +532,13 @@ export function createEmotionRadarCanvasWidget(node) {
         ctx.fillStyle = '#45b7d1';
         ctx.fillRect(rightButtonX, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Export', rightButtonX + buttonWidth/2, buttonY + 13);
+        ctx.fillText('Export', rightButtonX + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Import button (right side)
         ctx.fillStyle = '#9b59b6';
         ctx.fillRect(rightButtonX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Import', rightButtonX + buttonWidth + spacing + buttonWidth/2, buttonY + 13);
+        ctx.fillText('Import', rightButtonX + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
     }
 
     // Simple hover tracking - no external DOM events needed
@@ -490,6 +576,34 @@ export function createEmotionRadarCanvasWidget(node) {
             }
 
             if (event.type === "pointerdown") {
+                // Check center click first
+                if (isInCenterClickArea(localX, localY)) {
+                    // Single click - reduce all emotions by 0.1
+                    reduceAllEmotions();
+
+                    // Increment click counter
+                    centerClickCount++;
+
+                    // Clear previous timer and set new one
+                    if (centerClickTimer) {
+                        clearTimeout(centerClickTimer);
+                    }
+
+                    // Show cumulative reduction and glow on all emotions
+                    centerClickedEmotions = [...emotions];
+
+                    // Reset counter and clear display after delay
+                    centerClickTimer = setTimeout(() => {
+                        centerClickCount = 0;
+                        centerClickedEmotions = [];
+                        if (node.graph && node.graph.setDirtyCanvas) {
+                            node.graph.setDirtyCanvas(true);
+                        }
+                    }, CLICK_RESET_DELAY);
+
+                    return true;
+                }
+
                 // Check button clicks with new positioning
                 const buttonY = WIDGET_HEIGHT - 30;
                 const buttonWidth = 50;
@@ -556,17 +670,28 @@ export function createEmotionRadarCanvasWidget(node) {
                 const labelClicked = findClickedEmotionLabel(localX, localY);
                 if (labelClicked) {
                     clickedEmotion = labelClicked; // Set clicked emotion for glow
-                    clickedLabel = labelClicked; // Set clicked label for +0.1 display
+                    clickedLabel = labelClicked; // Set clicked label for counter display
                     const currentValue = emotionValues[labelClicked.name];
                     setEmotionValue(labelClicked.name, Math.min(1.2, currentValue + 0.1));
 
-                    // Clear +0.1 indicator after a short delay (but keep glow)
-                    setTimeout(() => {
-                        clickedLabel = null;
+                    // Increment click counter for this emotion
+                    emotionClickCounts[labelClicked.name]++;
+
+                    // Clear previous timer for this emotion and set new one
+                    if (emotionClickTimers[labelClicked.name]) {
+                        clearTimeout(emotionClickTimers[labelClicked.name]);
+                    }
+
+                    // Reset counter and clear display after delay
+                    emotionClickTimers[labelClicked.name] = setTimeout(() => {
+                        emotionClickCounts[labelClicked.name] = 0;
+                        if (clickedLabel === labelClicked) {
+                            clickedLabel = null;
+                        }
                         if (node.setDirtyCanvas) {
                             node.setDirtyCanvas(true);
                         }
-                    }, 1000);
+                    }, CLICK_RESET_DELAY);
 
                     return true; // Return true to prevent dragging after label click
                 }
@@ -601,6 +726,7 @@ export function createEmotionRadarCanvasWidget(node) {
 
             if (event.type === "pointerup") {
                 isDragging = false;
+                lastDraggedEmotion = null; // Reset deadzone tracking
                 // Keep the glow on the emotion after dragging stops (persistent selection)
                 return true;
             }
