@@ -92,7 +92,10 @@ class TextNormalizer:
         if self.zh_normalizer is not None and self.en_normalizer is not None:
             return
         if platform.system() != "Linux":  # Mac and Windows
-            from wetext import Normalizer
+            try:
+                from WeTextProcessing import Normalizer
+            except ImportError:
+                from wetext import Normalizer  # Fallback for older installations
 
             self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
             self.en_normalizer = Normalizer(lang="en", operator="tn")

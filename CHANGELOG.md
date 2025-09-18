@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.22] - 2025-09-18
+
+### Added
+
+- Add automatic fallback to compatible wetext package
+- Ensure text normalization always works with graceful degradation
+
+### Fixed
+
+- Fix IndexTTS-2 text processing installation issues
+- Fix WeTextProcessing installation failures on Windows Python 3.13
+- Better error messaging for text processing capabilities
 ## [4.9.21] - 2025-09-18
 
 ### Changed

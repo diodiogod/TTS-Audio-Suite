@@ -610,8 +610,6 @@ class TTSAudioInstaller:
             "munch>=4.0.0",               # Dictionary access with dot notation
             "sentencepiece>=0.2.1",       # Text tokenization
             "textstat>=0.7.10",           # Text statistics and readability
-            "WeTextProcessing",           # Text processing for IndexTTS-2 (Chinese/English normalization)
-            "tn",                         # Text normalization fallback for IndexTTS-2
         ]
         
         # Smart installation: check before installing (preserving all original packages and comments)
@@ -893,6 +891,57 @@ class TTSAudioInstaller:
             else:
                 self.log("phonemizer installation failed - non-English F5-TTS models will use fallback processing", "WARNING")
 
+    def install_indexts_text_processing(self):
+        """Install IndexTTS-2 text processing with smart fallback handling"""
+        self.log("Installing IndexTTS-2 text normalization support", "INFO")
+
+        # Try WeTextProcessing first (newer, preferred package)
+        wetextprocessing_success = self.run_pip_command(
+            ["install", "WeTextProcessing"],
+            "Installing WeTextProcessing (Chinese/English normalization)",
+            ignore_errors=True
+        )
+
+        if wetextprocessing_success:
+            # Test if WeTextProcessing actually works
+            try:
+                result = subprocess.run([
+                    sys.executable, "-c",
+                    "from WeTextProcessing import Normalizer; n=Normalizer(lang='en', operator='tn'); print('OK')"
+                ], capture_output=True, timeout=10)
+                if result.returncode == 0:
+                    self.log("WeTextProcessing installed and working - IndexTTS-2 will have full text normalization", "SUCCESS")
+                    return
+                else:
+                    self.log("WeTextProcessing installed but not working - trying fallback", "WARNING")
+            except Exception:
+                self.log("Could not test WeTextProcessing - trying fallback", "WARNING")
+
+        # Fallback to wetext (older package, more compatible)
+        wetext_success = self.run_pip_command(
+            ["install", "wetext"],
+            "Installing wetext (fallback text normalization)",
+            ignore_errors=True
+        )
+
+        if wetext_success:
+            try:
+                result = subprocess.run([
+                    sys.executable, "-c",
+                    "from wetext import Normalizer; n=Normalizer(lang='en', operator='tn'); print('OK')"
+                ], capture_output=True, timeout=10)
+                if result.returncode == 0:
+                    self.log("wetext fallback working - IndexTTS-2 will have basic text normalization", "SUCCESS")
+                    return
+                else:
+                    self.log("wetext installed but not working", "WARNING")
+            except Exception:
+                self.log("Could not test wetext installation", "WARNING")
+
+        # Both failed - IndexTTS-2 will use basic processing
+        self.log("Text normalization packages failed to install - IndexTTS-2 will use basic text processing", "WARNING")
+        self.log("This may affect quality for Chinese text and complex English patterns", "INFO")
+
     def check_comfyui_environment(self):
         """Check if running in likely ComfyUI environment and warn for system Python"""
         python_path = sys.executable.lower()
@@ -1098,6 +1147,7 @@ def main():
         installer.install_problematic_packages()
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
+        installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
         installer.handle_wandb_issues()  # Fix wandb circular import
         installer.handle_python_313_specific()
         
