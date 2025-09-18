@@ -74,7 +74,36 @@ class IndexTTSEngine:
             else:
                 # Auto-download case - return preferred download path with model name appended
                 base_path = get_preferred_download_path(model_type='TTS', engine_name='IndexTTS')
-                return os.path.join(base_path, model_identifier)
+                model_path = os.path.join(base_path, model_identifier)
+
+                # Check if model exists and is complete, if not trigger auto-download
+                needs_download = False
+                if not os.path.exists(model_path):
+                    needs_download = True
+                    print(f"📥 IndexTTS-2 model directory not found, triggering auto-download...")
+                else:
+                    # Check model completeness using downloader's verification
+                    try:
+                        from engines.index_tts.index_tts_downloader import IndexTTSDownloader
+                        downloader = IndexTTSDownloader()
+                        downloader._verify_model(model_path, model_identifier)
+                    except Exception as verify_error:
+                        needs_download = True
+                        print(f"📥 IndexTTS-2 model incomplete (missing files), triggering re-download...")
+                        print(f"    Verification error: {verify_error}")
+
+                if needs_download:
+                    try:
+                        if 'downloader' not in locals():
+                            from engines.index_tts.index_tts_downloader import IndexTTSDownloader
+                            downloader = IndexTTSDownloader()
+                        downloaded_path = downloader.download_model(model_identifier)
+                        print(f"✅ IndexTTS-2 auto-download completed: {downloaded_path}")
+                        return downloaded_path
+                    except Exception as download_error:
+                        raise RuntimeError(f"IndexTTS-2 model not found/incomplete and auto-download failed: {download_error}")
+
+                return model_path
 
         except Exception:
             # Fallback to default path

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.21] - 2025-09-18
+
+### Changed
+
+- Better reliability for users with interrupted downloads or storage issues
+
+### Fixed
+
+- Fix IndexTTS-2 auto-download and handle partial/corrupted model files
+- Fix IndexTTS-2 models now automatically download on first use
+- Fix partial downloads are detected and completed automatically
+- Fix corrupted or incomplete model files trigger smart re-download
+- Improve error messages show exactly which files are missing
 ## [4.9.20] - 2025-09-18
 
 ### Added

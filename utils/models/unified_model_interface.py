@@ -639,7 +639,7 @@ def register_index_tts_factory():
         use_deepspeed = kwargs.get("use_deepspeed", False)
         
         if not model_path or not os.path.exists(model_path):
-            raise RuntimeError(f"IndexTTS-2 model not found at {model_path}")
+            raise RuntimeError(f"IndexTTS-2 model not found at {model_path}. Auto-download should have been triggered earlier.")
         
         try:
             # Add bundled IndexTTS path to sys.path so internal imports work
@@ -663,6 +663,10 @@ def register_index_tts_factory():
             
             # Initialize IndexTTS-2 engine
             config_path = os.path.join(model_path, "config.yaml")
+
+            # Verify config file exists after download
+            if not os.path.exists(config_path):
+                raise RuntimeError(f"IndexTTS-2 config.yaml not found at {config_path} even after download. Please check model integrity.")
             
             engine = IndexTTS2(
                 cfg_path=config_path,
