@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.16] - 2025-09-17
+
+### Added
+
+- Ensure consistent GPU usage when CUDA is available
+
+### Changed
+
+- Better performance for multi-generation workflows
+
+### Fixed
+
+- Fix VibeVoice auto device mode performance
+- Fix auto mode defaulting to CPU for subsequent generations
 ## [4.9.15] - 2025-09-17
 
 ### Added

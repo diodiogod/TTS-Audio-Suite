@@ -620,14 +620,20 @@ class VibeVoiceEngine:
             actual_device = next(self.model.parameters()).device
             target_device = actual_device
 
-            # If original device was "auto" and model is currently on CPU but CUDA is available,
-            # move back to CUDA for better performance
+            # If original device was "auto" and CUDA is available, always ensure model is on CUDA
             if (hasattr(self, '_original_device') and self._original_device == "auto" and
-                actual_device.type == 'cpu' and torch.cuda.is_available()):
+                torch.cuda.is_available()):
                 target_device = torch.device('cuda')
-                print(f"🔄 VibeVoice: Auto mode - moving model from CPU back to CUDA for generation")
-                self.model.to(target_device)
-                actual_device = target_device
+                if actual_device.type != 'cuda':
+                    print(f"🔄 VibeVoice: Auto mode - moving model from {actual_device} to CUDA for generation")
+                    self.model.to(target_device)
+                    actual_device = target_device
+                else:
+                    # Model is already on CUDA, but ensure it stays there
+                    print(f"✅ VibeVoice: Auto mode - model already on CUDA")
+            elif (hasattr(self, '_original_device') and self._original_device == "auto"):
+                # CUDA not available, should stay on CPU
+                print(f"💡 VibeVoice: Auto mode - CUDA not available, using CPU")
 
             inputs = {k: v.to(actual_device) if isinstance(v, torch.Tensor) else v
                      for k, v in inputs.items()}
