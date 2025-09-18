@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.23] - 2025-09-18
+
+### Added
+
+- Add automatic fallback to wetext package if WeTextProcessing unavailable
+- Implement graceful degradation to basic text processing as last resort
+- Ensure IndexTTS-2 always works even without advanced normalization
+
+### Fixed
+
+- Fix IndexTTS-2 graceful fallback for missing text normalization
+- Fix IndexTTS-2 crashes when WeTextProcessing fails to install
+- Better error messages showing which text processing is available
 ## [4.9.22] - 2025-09-18
 
 ### Added

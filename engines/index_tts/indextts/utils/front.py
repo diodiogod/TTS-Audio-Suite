@@ -54,6 +54,13 @@ class TextNormalizer:
             **self.char_rep_map,
         }
 
+    def _create_dummy_normalizer(self):
+        """Create a dummy normalizer that returns text unchanged"""
+        class DummyNormalizer:
+            def normalize(self, text):
+                return text
+        return DummyNormalizer()
+
     def match_email(self, email):
         # 正则表达式匹配邮箱格式：数字英文@数字英文.英文
         pattern = r"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+$"
@@ -92,13 +99,27 @@ class TextNormalizer:
         if self.zh_normalizer is not None and self.en_normalizer is not None:
             return
         if platform.system() != "Linux":  # Mac and Windows
+            normalizer_class = None
             try:
                 from WeTextProcessing import Normalizer
+                normalizer_class = Normalizer
+                print("Using WeTextProcessing for text normalization")
             except ImportError:
-                from wetext import Normalizer  # Fallback for older installations
+                try:
+                    from wetext import Normalizer  # Fallback for older installations
+                    normalizer_class = Normalizer
+                    print("Using wetext for text normalization (fallback)")
+                except ImportError:
+                    print("Warning: No text normalization package available (WeTextProcessing/wetext)")
+                    print("IndexTTS-2 will use basic text processing - may affect quality for Chinese text")
+                    # Create dummy normalizers that return text unchanged
+                    self.zh_normalizer = self._create_dummy_normalizer()
+                    self.en_normalizer = self._create_dummy_normalizer()
+                    return
 
-            self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
-            self.en_normalizer = Normalizer(lang="en", operator="tn")
+            if normalizer_class:
+                self.zh_normalizer = normalizer_class(remove_erhua=False, lang="zh", operator="tn")
+                self.en_normalizer = normalizer_class(lang="en", operator="tn")
         else:
             from tn.chinese.normalizer import Normalizer as NormalizerZh
             from tn.english.normalizer import Normalizer as NormalizerEn
@@ -115,17 +136,28 @@ class TextNormalizer:
 
     def normalize(self, text: str) -> str:
         if not self.zh_normalizer or not self.en_normalizer:
-            print("Error, text normalizer is not initialized !!!")
-            return ""
-        if self.use_chinese(text):
+            print("Warning: text normalizer is not initialized - using basic text processing")
+            # Apply basic character replacements and return
+            pattern = re.compile("|".join(re.escape(p) for p in self.char_rep_map.keys()))
+            return pattern.sub(lambda x: self.char_rep_map[x.group()], text)
+        # Check if we have functional normalizers or dummy ones
+        is_dummy_normalizer = hasattr(self.zh_normalizer, '__class__') and self.zh_normalizer.__class__.__name__ == 'DummyNormalizer'
+
+        if is_dummy_normalizer:
+            # Use basic text processing only
+            print("Using basic text processing (no advanced normalization available)")
+            pattern = re.compile("|".join(re.escape(p) for p in self.char_rep_map.keys()))
+            result = pattern.sub(lambda x: self.char_rep_map[x.group()], text)
+        elif self.use_chinese(text):
             text = re.sub(TextNormalizer.ENGLISH_CONTRACTION_PATTERN, r"\1 is", text, flags=re.IGNORECASE)
             replaced_text, pinyin_list = self.save_pinyin_tones(text.rstrip())
-            
+
             replaced_text, original_name_list = self.save_names(replaced_text)
             try:
                 result = self.zh_normalizer.normalize(replaced_text)
             except Exception:
-                result = ""
+                result = replaced_text  # Fallback to original text instead of empty string
+                print("Warning: Chinese text normalization failed, using original text")
                 print(traceback.format_exc())
             # 恢复人名
             result = self.restore_names(result, original_name_list)
@@ -138,7 +170,8 @@ class TextNormalizer:
                 text = re.sub(TextNormalizer.ENGLISH_CONTRACTION_PATTERN, r"\1 is", text, flags=re.IGNORECASE)
                 result = self.en_normalizer.normalize(text)
             except Exception:
-                result = text
+                result = text  # Fallback to original text instead of empty string
+                print("Warning: English text normalization failed, using original text")
                 print(traceback.format_exc())
             pattern = re.compile("|".join(re.escape(p) for p in self.char_rep_map.keys()))
             result = pattern.sub(lambda x: self.char_rep_map[x.group()], result)
