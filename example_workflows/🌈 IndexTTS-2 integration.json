@@ -27,6 +27,8 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": []
@@ -56,9 +58,9 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline",
         "cnr_id": "comfy-core",
         "ver": "0.3.40",
+        "Node name for S&R": "PrimitiveStringMultiline",
         "widget_ue_connectable": {}
       },
       "widgets_values": [
@@ -92,6 +94,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "5e4c39b3d25a437f83dd71cf21b2fad282eda9e1",
         "Node name for S&R": "QwenEmotionNode"
       },
       "widgets_values": [
@@ -138,48 +142,13 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "CharacterVoicesNode",
         "cnr_id": "tts_audio_suite",
-        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
+        "Node name for S&R": "CharacterVoicesNode"
       },
       "widgets_values": [
         "voices_examples/David_Attenborough CC3.wav",
         ""
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 131,
-      "type": "LoadAudio",
-      "pos": [
-        -2491.009765625,
-        2123.96484375
-      ],
-      "size": [
-        270,
-        136
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            222
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadAudio"
-      },
-      "widgets_values": [
-        "04 It's Happening Again.m4a",
-        null,
-        null
       ],
       "color": "#323",
       "bgcolor": "#535"
@@ -196,7 +165,7 @@
         26
       ],
       "flags": {},
-      "order": 15,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -273,9 +242,9 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "UnifiedTTSTextNode",
         "cnr_id": "tts_audio_suite",
-        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
+        "Node name for S&R": "UnifiedTTSTextNode"
       },
       "widgets_values": [
         "Hello! This is unified TTS with character switching support.\n[Alice] Hi there! I'm Alice speaking with the selected TTS engine.\n[Bob] And I'm Bob! This works with any TTS engine.\nBack to the main narrator voice for the conclusion.",
@@ -344,7 +313,7 @@
         146.08004760742188
       ],
       "flags": {},
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -369,9 +338,9 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "CharacterVoicesNode",
         "cnr_id": "tts_audio_suite",
-        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3"
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
+        "Node name for S&R": "CharacterVoicesNode"
       },
       "widgets_values": [
         "voices_examples/David_Attenborough CC3.wav",
@@ -403,9 +372,9 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny",
         "cnr_id": "comfy-core",
-        "ver": "0.3.57"
+        "ver": "0.3.57",
+        "Node name for S&R": "PreviewAny"
       },
       "widgets_values": []
     },
@@ -432,9 +401,9 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAudio",
         "cnr_id": "comfy-core",
         "ver": "0.3.39",
+        "Node name for S&R": "PreviewAudio",
         "widget_ue_connectable": {}
       },
       "widgets_values": [],
@@ -453,7 +422,7 @@
         26
       ],
       "flags": {},
-      "order": 13,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -638,7 +607,7 @@
         26
       ],
       "flags": {},
-      "order": 14,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -673,7 +642,7 @@
         226.72232055664062
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -686,9 +655,9 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline",
         "cnr_id": "comfy-core",
         "ver": "0.3.40",
+        "Node name for S&R": "PrimitiveStringMultiline",
         "widget_ue_connectable": {}
       },
       "widgets_values": [
@@ -757,9 +726,9 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAudio",
         "cnr_id": "comfy-core",
         "ver": "0.3.39",
+        "Node name for S&R": "PreviewAudio",
         "widget_ue_connectable": {}
       },
       "widgets_values": [],
@@ -778,7 +747,7 @@
         178.18296813964844
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -801,7 +770,7 @@
         580
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -814,6 +783,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "5e4c39b3d25a437f83dd71cf21b2fad282eda9e1",
         "Node name for S&R": "IndexTTSEmotionOptionsNode"
       },
       "widgets_values": [
@@ -841,7 +812,7 @@
         179.46453857421875
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -864,7 +835,7 @@
         450.9547119140625
       ],
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -874,63 +845,6 @@
       ],
       "color": "#432",
       "bgcolor": "#653"
-    },
-    {
-      "id": 123,
-      "type": "IndexTTSEngineNode",
-      "pos": [
-        -1903.6300048828125,
-        1051.2659912109375
-      ],
-      "size": [
-        331.431640625,
-        442
-      ],
-      "flags": {},
-      "order": 17,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "emotion_control",
-          "shape": 7,
-          "type": "*",
-          "link": 223
-        }
-      ],
-      "outputs": [
-        {
-          "name": "TTS_engine",
-          "type": "TTS_ENGINE",
-          "links": [
-            217,
-            229
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "IndexTTSEngineNode"
-      },
-      "widgets_values": [
-        "auto-download",
-        "auto",
-        0.7,
-        false,
-        120,
-        200,
-        0.8,
-        0.8,
-        30,
-        true,
-        0,
-        3,
-        9.5,
-        1500,
-        true,
-        true,
-        "auto"
-      ],
-      "color": "#222",
-      "bgcolor": "#000"
     },
     {
       "id": 133,
@@ -986,6 +900,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "5e4c39b3d25a437f83dd71cf21b2fad282eda9e1",
         "Node name for S&R": "UnifiedTTSSRTNode"
       },
       "widgets_values": [
@@ -1003,6 +919,102 @@
       ],
       "color": "#223",
       "bgcolor": "#335"
+    },
+    {
+      "id": 123,
+      "type": "IndexTTSEngineNode",
+      "pos": [
+        -1903.6300048828125,
+        1051.2659912109375
+      ],
+      "size": [
+        331.431640625,
+        442
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "emotion_control",
+          "shape": 7,
+          "type": "*",
+          "link": 223
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            217,
+            229
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "5e4c39b3d25a437f83dd71cf21b2fad282eda9e1",
+        "Node name for S&R": "IndexTTSEngineNode"
+      },
+      "widgets_values": [
+        "IndexTTS-2",
+        "auto",
+        0.7,
+        false,
+        120,
+        200,
+        0.8,
+        0.8,
+        30,
+        true,
+        0,
+        3,
+        9.5,
+        1500,
+        true,
+        true,
+        "auto"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 131,
+      "type": "LoadAudio",
+      "pos": [
+        -2491.009765625,
+        2123.96484375
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            222
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "Clint_Eastwood CC3 (enhanced2).wav",
+        null,
+        null
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
     }
   ],
   "links": [
@@ -1234,10 +1246,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.7032043091205753,
+      "scale": 0.9359649354394864,
       "offset": [
-        3015.9562492721466,
-        -453.26897425909493
+        3069.616769759141,
+        -910.4869046662698
       ]
     },
     "frontendVersion": "1.25.11",

@@ -18,6 +18,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.downloads.unified_downloader import unified_downloader
+from utils.models.extra_paths import get_preferred_download_path
 import folder_paths
 
 
@@ -64,15 +65,20 @@ class IndexTTSDownloader:
     def __init__(self, base_path: Optional[str] = None):
         """
         Initialize downloader.
-        
+
         Args:
             base_path: Base directory for IndexTTS-2 models (auto-detected if None)
         """
         if base_path is None:
-            self.base_path = os.path.join(folder_paths.models_dir, "TTS", "IndexTTS")
+            # Use extra_model_paths configuration for downloads
+            try:
+                self.base_path = get_preferred_download_path(model_type='TTS', engine_name='IndexTTS')
+            except Exception:
+                # Fallback to default if extra_paths fails
+                self.base_path = os.path.join(folder_paths.models_dir, "TTS", "IndexTTS")
         else:
             self.base_path = base_path
-        
+
         self.downloader = unified_downloader
         
     def download_model(self, 

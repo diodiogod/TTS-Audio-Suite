@@ -8,6 +8,7 @@ from typing import Optional, Union, List, Dict, Any
 import warnings
 
 from utils.models.unified_model_interface import unified_model_interface, UnifiedModelConfig
+from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
 
 
 class IndexTTSEngine:
@@ -24,28 +25,62 @@ class IndexTTSEngine:
     
     EMOTION_LABELS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"]
     
-    def __init__(self, model_dir: str = "models/TTS/IndexTTS-2", device: str = "auto", 
+    def __init__(self, model_dir: str = "IndexTTS-2", device: str = "auto",
                  use_fp16: bool = True, use_cuda_kernel: Optional[bool] = None,
                  use_deepspeed: bool = False):
         """
         Initialize IndexTTS-2 engine.
-        
+
         Args:
-            model_dir: Directory containing IndexTTS-2 models
+            model_dir: Model identifier (following F5TTS pattern: "local:ModelName" or "ModelName")
             device: Device to use ("auto", "cuda", "cpu", etc.)
             use_fp16: Whether to use FP16 for faster inference
             use_cuda_kernel: Use BigVGAN CUDA kernels (auto-detect if None)
             use_deepspeed: Use DeepSpeed for optimization
         """
-        self.model_dir = model_dir
+        # Resolve model directory using extra_model_paths
+        self.model_dir = self._find_model_directory(model_dir)
+
         self.device = self._resolve_device(device)
         self.use_fp16 = use_fp16 and self.device != "cpu"
         self.use_cuda_kernel = use_cuda_kernel
         self.use_deepspeed = use_deepspeed
-        
+
         self._tts_engine = None
         self._model_config = None
-        
+
+    def _find_model_directory(self, model_identifier: str) -> str:
+        """Find IndexTTS-2 model directory using extra_model_paths configuration."""
+        try:
+            # Handle local: prefix (following F5TTS pattern)
+            if model_identifier.startswith("local:"):
+                model_name = model_identifier[6:]  # Remove "local:" prefix
+
+                # Search in all configured TTS paths
+                all_tts_paths = get_all_tts_model_paths('TTS')
+                for base_path in all_tts_paths:
+                    # Check direct path (models/TTS/IndexTTS-2)
+                    direct_path = os.path.join(base_path, model_name)
+                    if os.path.exists(os.path.join(direct_path, "config.yaml")):
+                        return direct_path
+
+                    # Check organized path (models/TTS/IndexTTS/IndexTTS-2)
+                    organized_path = os.path.join(base_path, "IndexTTS", model_name)
+                    if os.path.exists(os.path.join(organized_path, "config.yaml")):
+                        return organized_path
+
+                raise FileNotFoundError(f"Local IndexTTS model '{model_name}' not found in any configured path")
+
+            else:
+                # Auto-download case - return preferred download path with model name appended
+                base_path = get_preferred_download_path(model_type='TTS', engine_name='IndexTTS')
+                return os.path.join(base_path, model_identifier)
+
+        except Exception:
+            # Fallback to default path
+            model_name = model_identifier.replace("local:", "") if model_identifier.startswith("local:") else model_identifier
+            return os.path.join(folder_paths.models_dir, "TTS", "IndexTTS", model_name)
+
     def _resolve_device(self, device: str) -> str:
         """Resolve device string to actual device."""
         if device == "auto":

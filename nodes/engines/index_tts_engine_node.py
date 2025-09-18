@@ -28,6 +28,7 @@ base_spec.loader.exec_module(base_module)
 BaseTTSNode = base_module.BaseTTSNode
 
 import folder_paths
+from utils.models.extra_paths import get_all_tts_model_paths, find_model_in_paths
 
 # AnyType for flexible input types (accepts any data type)
 class AnyType(str):
@@ -56,8 +57,8 @@ class IndexTTSEngineNode(BaseTTSNode):
             "required": {
                 # Model Configuration
                 "model_path": (model_paths, {
-                    "default": model_paths[0] if model_paths else "auto-download",
-                    "tooltip": "IndexTTS-2 model path. 'auto-download' will download the model automatically."
+                    "default": model_paths[0] if model_paths else "IndexTTS-2",
+                    "tooltip": "IndexTTS-2 model selection:\n• local:ModelName: Use locally installed model (respects extra_model_paths.yaml)\n• ModelName: Auto-download model if not found locally\n• Downloads respect extra_model_paths.yaml configuration"
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
@@ -155,17 +156,41 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
     
     @classmethod
     def _get_model_paths(cls) -> List[str]:
-        """Get available IndexTTS-2 model paths."""
-        paths = ["auto-download"]
-        
-        # Check for existing models
-        base_dir = os.path.join(folder_paths.models_dir, "TTS", "IndexTTS")
-        if os.path.exists(base_dir):
-            for item in os.listdir(base_dir):
-                model_dir = os.path.join(base_dir, item)
-                if os.path.isdir(model_dir) and os.path.exists(os.path.join(model_dir, "config.yaml")):
-                    paths.append(model_dir)
-        
+        """Get available IndexTTS-2 model paths following F5TTS pattern."""
+        paths = ["IndexTTS-2"]  # Auto-download option (just model name)
+
+        try:
+            # Check all configured TTS model paths
+            all_tts_paths = get_all_tts_model_paths('TTS')
+
+            for base_path in all_tts_paths:
+                # Check direct path (models/TTS/IndexTTS-2)
+                index_direct = os.path.join(base_path, "IndexTTS-2")
+                if os.path.exists(os.path.join(index_direct, "config.yaml")):
+                    local_model = "local:IndexTTS-2"
+                    if local_model not in paths:
+                        paths.insert(0, local_model)  # Insert at beginning
+
+                # Check organized path (models/TTS/IndexTTS/IndexTTS-2)
+                index_organized = os.path.join(base_path, "IndexTTS")
+                if os.path.exists(index_organized):
+                    for item in os.listdir(index_organized):
+                        model_dir = os.path.join(index_organized, item)
+                        if os.path.isdir(model_dir) and os.path.exists(os.path.join(model_dir, "config.yaml")):
+                            local_model = f"local:{item}"
+                            if local_model not in paths:
+                                paths.insert(-1, local_model)  # Insert before auto-download
+        except Exception:
+            # Fallback to original behavior if extra_paths fails
+            base_dir = os.path.join(folder_paths.models_dir, "TTS", "IndexTTS")
+            if os.path.exists(base_dir):
+                for item in os.listdir(base_dir):
+                    model_dir = os.path.join(base_dir, item)
+                    if os.path.isdir(model_dir) and os.path.exists(os.path.join(model_dir, "config.yaml")):
+                        local_model = f"local:{item}"
+                        if local_model not in paths:
+                            paths.insert(-1, local_model)  # Insert before auto-download
+
         return paths
     
     def create_engine_adapter(

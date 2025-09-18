@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.17] - 2025-09-17
+
+### Added
+
+- IndexTTS-2 now respects extra_model_paths.yaml configuration
+- Downloads go to configured shared directories instead of ComfyUI folder
+- Model discovery works across all configured paths
+- Dropdown shows local: prefix for found models, model name for download
+
+### Fixed
+
+- Fix IndexTTS-2 extra_model_paths support
 ## [4.9.16] - 2025-09-17
 
 ### Added
