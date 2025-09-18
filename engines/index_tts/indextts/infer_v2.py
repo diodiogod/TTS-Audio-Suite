@@ -135,12 +135,12 @@ class IndexTTS2:
         if self.use_cuda_kernel:
             # preload the CUDA kernel for BigVGAN
             try:
-                from indextts.BigVGAN.alias_free_activation.cuda import load
+                from indextts.s2mel.modules.bigvgan.alias_free_activation.cuda import activation1d
 
-                anti_alias_activation_cuda = load.load()
-                print(">> Preload custom CUDA kernel for BigVGAN", anti_alias_activation_cuda)
-            except:
+                print(">> Preload custom CUDA kernel for BigVGAN", activation1d.anti_alias_activation_cuda)
+            except Exception as e:
                 print(">> Failed to load custom CUDA kernel for BigVGAN. Falling back to torch.")
+                print(f"{e!r}")
                 self.use_cuda_kernel = False
 
         # Load W2V-BERT: check TTS folder first, then HuggingFace cache, then download
@@ -373,6 +373,36 @@ class IndexTTS2:
         if self.gr_progress is not None:
             self.gr_progress(value, desc=desc)
 
+    def _load_and_cut_audio(self, audio_path, max_audio_length_seconds, verbose=False, sr=None):
+        if not sr:
+            audio, sr = librosa.load(audio_path)
+        else:
+            audio, _ = librosa.load(audio_path, sr=sr)
+        audio = torch.tensor(audio).unsqueeze(0)
+        max_audio_samples = int(max_audio_length_seconds * sr)
+
+        if audio.shape[1] > max_audio_samples:
+            if verbose:
+                print(f"Audio too long ({audio.shape[1]} samples), truncating to {max_audio_samples} samples")
+            audio = audio[:, :max_audio_samples]
+        return audio, sr
+
+    def normalize_emo_vec(self, emo_vector, apply_bias=True):
+        # apply biased emotion factors for better user experience,
+        # by de-emphasizing emotions that can cause strange results
+        if apply_bias:
+            # [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm]
+            emo_bias = [0.9375, 0.875, 1.0, 1.0, 0.9375, 0.9375, 0.6875, 0.5625]
+            emo_vector = [vec * bias for vec, bias in zip(emo_vector, emo_bias)]
+
+        # the total emotion sum must be 0.8 or less
+        emo_sum = sum(emo_vector)
+        if emo_sum > 0.8:
+            scale_factor = 0.8 / emo_sum
+            emo_vector = [vec * scale_factor for vec in emo_vector]
+
+        return emo_vector
+
     # 原始推理模式
     def infer(self, spk_audio_prompt, text, output_path,
               emo_audio_prompt=None, emo_alpha=1.0,
@@ -407,6 +437,21 @@ class IndexTTS2:
                 emo_vector = list(emo_dict.values())
 
         if emo_vector is not None:
+            # Apply normalization to prevent voice identity loss
+            original_emo_vector = emo_vector.copy() if isinstance(emo_vector, list) else list(emo_vector)
+            emo_vector = self.normalize_emo_vec(emo_vector)
+
+            # Round for cleaner display
+            emo_vector_display = [round(x, 3) for x in emo_vector]
+
+            if emo_vector != original_emo_vector:
+                # Show original sum vs normalized sum for clarity
+                orig_sum = round(sum(original_emo_vector), 2)
+                norm_sum = round(sum(emo_vector), 2)
+                print(f"🎭 Emotion vectors normalized: sum {orig_sum} → {norm_sum} (max 0.8): {emo_vector_display}")
+            else:
+                print(f"🎭 Using emotion vectors: {emo_vector_display}")
+
             # we have emotion vectors; they can't be blended via alpha mixing
             # in the main inference process later, so we must pre-calculate
             # their new strengths here based on the alpha instead!
@@ -414,7 +459,8 @@ class IndexTTS2:
             if emo_vector_scale != 1.0:
                 # scale each vector and truncate to 4 decimals (for nicer printing)
                 emo_vector = [int(x * emo_vector_scale * 10000) / 10000 for x in emo_vector]
-                print(f"scaled emotion vectors to {emo_vector_scale}x: {emo_vector}")
+                emo_vector_scaled_display = [round(x, 3) for x in emo_vector]
+                print(f"🎭 Scaled by alpha {emo_vector_scale}: {emo_vector_scaled_display}")
 
         if emo_audio_prompt is None:
             # we are not using any external "emotion reference voice"; use
@@ -429,8 +475,13 @@ class IndexTTS2:
         
         # 如果参考音频改变了，才需要重新生成, 提升速度
         if self.cache_spk_cond is None or self.cache_spk_audio_prompt != spk_audio_prompt:
-            audio, sr = librosa.load(spk_audio_prompt)
-            audio = torch.tensor(audio).unsqueeze(0)
+            if self.cache_spk_cond is not None:
+                self.cache_spk_cond = None
+                self.cache_s2mel_style = None
+                self.cache_s2mel_prompt = None
+                self.cache_mel = None
+                torch.cuda.empty_cache()
+            audio, sr = self._load_and_cut_audio(spk_audio_prompt, 15, verbose)
             audio_22k = torchaudio.transforms.Resample(sr, 22050)(audio)
             audio_16k = torchaudio.transforms.Resample(sr, 16000)(audio)
 
@@ -481,15 +532,10 @@ class IndexTTS2:
             emovec_mat = emovec_mat.unsqueeze(0)
 
         if self.cache_emo_cond is None or self.cache_emo_audio_prompt != emo_audio_prompt:
-            emo_audio, _ = librosa.load(emo_audio_prompt, sr=16000)
-
-            # Truncate emotion audio to prevent OOM with long files (max 20 seconds)
-            # Wav2Vec2-BERT has quadratic memory complexity and crashes with long audio
-            max_samples = 16000 * 20  # 20 seconds at 16kHz
-            if len(emo_audio) > max_samples:
-                original_duration = len(emo_audio) / 16000
-                emo_audio = emo_audio[:max_samples]
-                print(f"⚠️ IndexTTS-2: Truncated emotion audio to 20s (was {original_duration:.1f}s) to prevent OOM")
+            if self.cache_emo_cond is not None:
+                self.cache_emo_cond = None
+                torch.cuda.empty_cache()
+            emo_audio, _ = self._load_and_cut_audio(emo_audio_prompt, 15, verbose, sr=16000)
 
             emo_inputs = self.extract_features(emo_audio, sampling_rate=16000, return_tensors="pt")
             emo_input_features = emo_inputs["input_features"]

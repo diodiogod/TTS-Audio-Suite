@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.20] - 2025-09-18
+
+### Added
+
+- Based on updates from https://github.com/index-tts/index-tts (September 8-18, 2025):
+
+### Changed
+
+- Update IndexTTS-2 with latest upstream improvements from official repository
+- Improve emotion vector logging shows normalization and alpha scaling clearly
+- Better memory management eliminates VRAM accumulation during multiple generations
+
+### Fixed
+
+- Fix emotion vectors now auto-normalize to prevent voice identity loss (commit 8aa8064)
+- Fix memory issues with automatic audio truncation to 15 seconds (commit 0828dcb)
+- Fix persistent cache buildup during batch processing (commit 64cb31a)
+- Fix CUDA performance via corrected BigVGAN kernel imports (commits ee23371, e409c4a)
 ## [4.9.19] - 2025-09-18
 
 ### Added
