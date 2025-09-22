@@ -120,19 +120,42 @@ class TextNormalizer:
             if normalizer_class:
                 self.zh_normalizer = normalizer_class(remove_erhua=False, lang="zh", operator="tn")
                 self.en_normalizer = normalizer_class(lang="en", operator="tn")
-        else:
-            from tn.chinese.normalizer import Normalizer as NormalizerZh
-            from tn.english.normalizer import Normalizer as NormalizerEn
-            # use new cache dir for build tagger rules with disable remove_interjections and remove_erhua
-            cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tagger_cache")
-            if not os.path.exists(cache_dir):
-                os.makedirs(cache_dir)
-                with open(os.path.join(cache_dir, ".gitignore"), "w") as f:
-                    f.write("*\n")
-            self.zh_normalizer = NormalizerZh(
-                cache_dir=cache_dir, remove_interjections=False, remove_erhua=False, overwrite_cache=False
-            )
-            self.en_normalizer = NormalizerEn(overwrite_cache=False)
+        else:  # Linux systems
+            try:
+                # Try WeTextProcessing first (same as Windows/Mac)
+                from WeTextProcessing import Normalizer
+                print("Using WeTextProcessing for text normalization")
+                self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
+                self.en_normalizer = Normalizer(lang="en", operator="tn")
+            except ImportError:
+                try:
+                    # Try direct tn imports (WeTextProcessing's internal modules)
+                    from tn.chinese.normalizer import Normalizer as NormalizerZh
+                    from tn.english.normalizer import Normalizer as NormalizerEn
+                    print("Using WeTextProcessing internal tn modules for text normalization")
+                    # use new cache dir for build tagger rules with disable remove_interjections and remove_erhua
+                    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tagger_cache")
+                    if not os.path.exists(cache_dir):
+                        os.makedirs(cache_dir)
+                        with open(os.path.join(cache_dir, ".gitignore"), "w") as f:
+                            f.write("*\n")
+                    self.zh_normalizer = NormalizerZh(
+                        cache_dir=cache_dir, remove_interjections=False, remove_erhua=False, overwrite_cache=False
+                    )
+                    self.en_normalizer = NormalizerEn(overwrite_cache=False)
+                except ImportError:
+                    try:
+                        # Fallback to wetext if available
+                        from wetext import Normalizer
+                        print("Using wetext for text normalization (fallback)")
+                        self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
+                        self.en_normalizer = Normalizer(lang="en", operator="tn")
+                    except ImportError:
+                        print("Warning: No text normalization package available on Linux")
+                        print("IndexTTS-2 will use basic text processing - may affect quality for Chinese text")
+                        # Create dummy normalizers that return text unchanged
+                        self.zh_normalizer = self._create_dummy_normalizer()
+                        self.en_normalizer = self._create_dummy_normalizer()
 
     def normalize(self, text: str) -> str:
         if not self.zh_normalizer or not self.en_normalizer:

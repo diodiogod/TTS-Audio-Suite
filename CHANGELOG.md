@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.24] - 2025-09-21
+
+### Added
+
+- Unify fallback handling across Windows, Mac, and Linux systems
+- Users can safely uninstall incorrect 'tn' package if previously installed
+
+### Fixed
+
+- Fix incorrect text normalization dependency causing confusion
+- Remove wrong 'tn' package dependency (time utilities instead of text processing)
+- Fix IndexTTS-2 text normalization to only require WeTextProcessing or wetext
+- Better error messages when text processing packages unavailable
 ## [4.9.23] - 2025-09-18
 
 ### Added
