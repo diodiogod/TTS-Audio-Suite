@@ -9,7 +9,7 @@ except ImportError:
     # Don't do anything - __init__.py already handled compatibility testing
 
 # Version and constants
-VERSION = "4.9.24"
+VERSION = "4.9.25"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -32,6 +32,26 @@ import importlib.util
 current_dir = os.path.dirname(__file__)
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
+
+# Check transformers version compatibility
+try:
+    import transformers
+    from packaging import version
+
+    required_version = "4.51.3"
+    current_version = transformers.__version__
+
+    if version.parse(current_version) < version.parse(required_version):
+        print(f"🚨 COMPATIBILITY WARNING:")
+        print(f"   Transformers version {current_version} is too old (requires >={required_version})")
+        print(f"   This WILL cause errors like 'DynamicCache property has no setter'")
+        print(f"   📋 SOLUTION: Run this command to upgrade:")
+        print(f"   pip install --upgrade transformers>={required_version}")
+        print(f"   (Or use your environment's package manager)")
+        print()
+except Exception as e:
+    print(f"⚠️ Could not check transformers version: {e}")
+    print("   If you encounter DynamicCache errors, upgrade transformers to >=4.51.3")
 
 # Import nodes using direct file loading to avoid package path issues
 def load_node_module(module_name, file_name):

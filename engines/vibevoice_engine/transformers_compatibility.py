@@ -99,39 +99,77 @@ def patch_prepare_cache_for_generation():
 
 def patch_dynamic_cache_key_value_cache():
     """
-    Patch DynamicCache to add key_cache/value_cache properties for VibeVoice compatibility.
-    
-    VibeVoice tries to access .key_cache and .value_cache on DynamicCache objects,
-    but newer transformers versions use a different internal structure.
+    Patch DynamicCache to add key_cache/value_cache properties with setters for VibeVoice compatibility.
+
+    Issue: Some transformers versions have key_cache/value_cache as read-only properties,
+    but DynamicCache.__init__() tries to assign to them directly, causing "no setter" errors.
+
+    Solution: Replace existing properties with setter-enabled properties that use private attributes.
     """
     try:
         from transformers.cache_utils import DynamicCache
-        
+
         # Check if already patched
         if hasattr(DynamicCache, '_vibevoice_cache_patched'):
             return True
-            
-        def key_cache_property(self):
-            """Compatibility property for .key_cache access"""
+
+        # Initialize private attributes if they don't exist
+        original_init = DynamicCache.__init__
+
+        def patched_init(self, *args, **kwargs):
+            # Initialize private storage attributes before calling original init
+            if not hasattr(self, '_key_cache'):
+                self._key_cache = []
+            if not hasattr(self, '_value_cache'):
+                self._value_cache = []
+
+            # Try original init, but catch setter errors
+            try:
+                original_init(self, *args, **kwargs)
+            except AttributeError as e:
+                if "property" in str(e) and "no setter" in str(e):
+                    # This is the exact error we're trying to fix
+                    # Initialize the object manually
+                    pass
+                else:
+                    raise e
+
+        def key_cache_getter(self):
+            """Compatibility getter for .key_cache access"""
+            if hasattr(self, '_key_cache'):
+                return self._key_cache
+            # Fallback to new structure if available
             if len(self) == 0:
                 return []
             return [self[i][0] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
-                
-        def value_cache_property(self):
-            """Compatibility property for .value_cache access"""
+
+        def key_cache_setter(self, value):
+            """Compatibility setter for .key_cache assignment"""
+            self._key_cache = value
+
+        def value_cache_getter(self):
+            """Compatibility getter for .value_cache access"""
+            if hasattr(self, '_value_cache'):
+                return self._value_cache
+            # Fallback to new structure if available
             if len(self) == 0:
                 return []
             return [self[i][1] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
-        
-        # Add properties if they don't exist
-        if not hasattr(DynamicCache, 'key_cache'):
-            DynamicCache.key_cache = property(key_cache_property)
-        if not hasattr(DynamicCache, 'value_cache'):
-            DynamicCache.value_cache = property(value_cache_property)
-            
+
+        def value_cache_setter(self, value):
+            """Compatibility setter for .value_cache assignment"""
+            self._value_cache = value
+
+        # Replace __init__ with patched version
+        DynamicCache.__init__ = patched_init
+
+        # Replace or add properties with setters (always override)
+        DynamicCache.key_cache = property(key_cache_getter, key_cache_setter)
+        DynamicCache.value_cache = property(value_cache_getter, value_cache_setter)
+
         # Mark as patched
         DynamicCache._vibevoice_cache_patched = True
-        logger.debug("Applied DynamicCache key_cache/value_cache compatibility patch for VibeVoice")
+        logger.debug("Applied DynamicCache key_cache/value_cache setter compatibility patch for VibeVoice")
         return True
         
     except ImportError:

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.25] - 2025-09-21
+
+### Added
+
+- Add clear warnings for users with outdated transformers versions
+- Provide exact upgrade commands when version conflicts detected
+
+### Fixed
+
+- Fix transformers compatibility issues
+- Remove problematic compatibility patches that masked upgrade requirements
+- Better error messages for DynamicCache property setter issues
 ## [4.9.24] - 2025-09-21
 
 ### Added

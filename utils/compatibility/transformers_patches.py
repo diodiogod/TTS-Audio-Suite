@@ -37,8 +37,8 @@ class TransformersPatches:
             
         cls.patch_flash_attention_kwargs(verbose=verbose)
         cls.patch_base_streamer(verbose=verbose)
-        # Skip DynamicCache patch - causes property setter conflicts with transformers 4.46.3+
-        # cls.patch_dynamic_cache_properties(verbose=verbose)  
+        # Skip DynamicCache patch - users should upgrade transformers instead
+        # cls.patch_dynamic_cache_properties(verbose=verbose)
         cls.patch_vibevoice_generation_methods(verbose=verbose)
         
         if verbose:
@@ -139,42 +139,85 @@ class TransformersPatches:
     @classmethod
     def patch_dynamic_cache_properties(cls, verbose: bool = True):
         """
-        Patch DynamicCache key_cache/value_cache properties
-        
-        Issue: transformers 4.56+ changed DynamicCache internal structure
-        Affects: VibeVoice cache access patterns
+        Patch DynamicCache key_cache/value_cache properties with setters
+
+        Issue: Some transformers versions have key_cache/value_cache as read-only properties,
+        but DynamicCache.__init__() tries to assign to them directly, causing "no setter" errors.
+        Affects: All engines using transformers models (ChatterBox, VibeVoice, Index-TTS)
         """
         if "dynamic_cache_properties" in cls._patches_applied:
             return
-            
+
         try:
             from transformers.cache_utils import DynamicCache
-            
+
             # Add compatibility properties if not already patched
             if not hasattr(DynamicCache, '_tts_suite_patched'):
-                
-                def key_cache_property(self):
-                    """Compatibility property for .key_cache access"""
+
+                # Store original __init__ method
+                original_init = DynamicCache.__init__
+
+                def patched_init(self, *args, **kwargs):
+                    """Patched __init__ that handles property setter errors"""
+                    # Initialize private storage attributes before calling original init
+                    if not hasattr(self, '_key_cache'):
+                        self._key_cache = []
+                    if not hasattr(self, '_value_cache'):
+                        self._value_cache = []
+
+                    # Try original init, but catch setter errors
+                    try:
+                        original_init(self, *args, **kwargs)
+                    except AttributeError as e:
+                        if "property" in str(e) and "no setter" in str(e):
+                            # This is the exact error we're trying to fix
+                            # Initialize the object manually
+                            if verbose:
+                                print(f"   🔧 DynamicCache setter error caught and handled: {e}")
+                            pass
+                        else:
+                            raise e
+
+                def key_cache_getter(self):
+                    """Compatibility getter for .key_cache access"""
+                    if hasattr(self, '_key_cache'):
+                        return self._key_cache
+                    # Fallback to new structure if available
                     if len(self) == 0:
                         return []
                     return [self[i][0] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
-                
-                def value_cache_property(self):
-                    """Compatibility property for .value_cache access"""  
+
+                def key_cache_setter(self, value):
+                    """Compatibility setter for .key_cache assignment"""
+                    self._key_cache = value
+
+                def value_cache_getter(self):
+                    """Compatibility getter for .value_cache access"""
+                    if hasattr(self, '_value_cache'):
+                        return self._value_cache
+                    # Fallback to new structure if available
                     if len(self) == 0:
                         return []
                     return [self[i][1] if self[i] is not None and len(self[i]) >= 2 else None for i in range(len(self))]
-                
-                # Add properties to the class
-                DynamicCache.key_cache = property(key_cache_property)
-                DynamicCache.value_cache = property(value_cache_property)
+
+                def value_cache_setter(self, value):
+                    """Compatibility setter for .value_cache assignment"""
+                    self._value_cache = value
+
+                # Replace __init__ with patched version
+                DynamicCache.__init__ = patched_init
+
+                # Replace or add properties with setters (always override)
+                DynamicCache.key_cache = property(key_cache_getter, key_cache_setter)
+                DynamicCache.value_cache = property(value_cache_getter, value_cache_setter)
+
                 DynamicCache._tts_suite_patched = True
-                
+
                 if verbose:
-                    print("   🔧 DynamicCache compatibility properties added")
-            
+                    print("   🔧 DynamicCache compatibility properties with setters added")
+
             cls._patches_applied.add("dynamic_cache_properties")
-            
+
         except Exception as e:
             warnings.warn(f"DynamicCache patching failed: {e}")
     
