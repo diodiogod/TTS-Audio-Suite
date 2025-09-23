@@ -223,7 +223,7 @@ class F5TTSEditEngine:
             
             # Prepare text
             text_list = [target_text]
-            if tokenizer == "pinyin":
+            if tokenizer == "pinyin" and not (hasattr(unified_model, 'model_name') and unified_model.model_name == "F5-JP"):
                 final_text_list = convert_char_to_pinyin(text_list)
             else:
                 final_text_list = text_list

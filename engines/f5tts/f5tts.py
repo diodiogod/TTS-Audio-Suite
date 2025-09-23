@@ -59,7 +59,7 @@ F5TTS_MODELS = {
     "F5-DE": {"repo": "aihpi/F5-TTS-German", "exp": "F5TTS_Base", "step": 365000, "ext": "safetensors"},
     "F5-ES": {"repo": "jpgallegoar/F5-Spanish", "exp": "", "step": 1200000, "ext": "safetensors"},
     "F5-FR": {"repo": "RASPIAUDIO/F5-French-MixedSpeakers-reduced", "exp": "", "step": 1374000, "ext": "pt"},
-    "F5-JP": {"repo": "Jmica/F5TTS", "exp": "JA_8500000", "step": 8499660, "ext": "pt"},
+    "F5-JP": {"repo": "Jmica/F5TTS", "exp": "JA_21999120", "step": 21999120, "ext": "pt"},
     "F5-IT": {"repo": "alien79/F5-TTS-italian", "exp": "", "step": 159600, "ext": "safetensors"},
     "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI", "exp": "", "step": 1000000, "ext": "pt"},
     "F5-PT-BR": {"repo": "firstpixel/F5-TTS-pt-br", "exp": "pt-br", "step": 200000, "ext": "pt"},

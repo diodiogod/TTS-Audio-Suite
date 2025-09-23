@@ -135,6 +135,9 @@ class S3Token2Mel(torch.nn.Module):
         ref_wav_16 = get_resampler(ref_sr, S3_SR, device)(ref_wav).to(device)
 
         # Speaker embedding
+        # Ensure speaker_encoder is on the correct device
+        if next(self.speaker_encoder.parameters()).device != device:
+            self.speaker_encoder = self.speaker_encoder.to(device)
         ref_x_vector = self.speaker_encoder.inference(ref_wav_16)
 
         # Tokenize 16khz reference
