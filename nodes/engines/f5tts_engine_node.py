@@ -72,10 +72,6 @@ class F5TTSEngineNode(BaseF5TTSNode):
                     "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
                     "tooltip": "Speech generation control. Lower values (1.0-1.5) = more natural, conversational delivery. Higher values (3.0-5.0) = crisper, more articulated speech with stronger emphasis. Default 2.0 balances naturalness and clarity."
                 }),
-                "auto_phonemization": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "🦜 Enable automatic phonemization for multilingual models. When enabled, non-English text is converted to IPA phonemes. Disable if quality is poor for your language model."
-                }),
             }
         }
 
@@ -84,9 +80,9 @@ class F5TTSEngineNode(BaseF5TTSNode):
     FUNCTION = "create_engine_adapter"
     CATEGORY = "TTS Audio Suite/⚙️ Engines"
 
-    def create_engine_adapter(self, language: str, device: str, temperature: float, 
+    def create_engine_adapter(self, language: str, device: str, temperature: float,
                             speed: float, target_rms: float, cross_fade_duration: float,
-                            nfe_step: int, cfg_strength: float, auto_phonemization: bool):
+                            nfe_step: int, cfg_strength: float):
         """
         Create F5-TTS engine adapter with configuration.
         
@@ -129,12 +125,12 @@ class F5TTSEngineNode(BaseF5TTSNode):
                 "cross_fade_duration": cross_fade_duration,
                 "nfe_step": safe_nfe_step,
                 "cfg_strength": cfg_strength,
-                "auto_phonemization": auto_phonemization,
+                "auto_phonemization": False,  # Disabled - use 📝 Phoneme Text Normalizer node instead
                 "engine_type": "f5tts"
             }
             
             print(f"⚙️ F5-TTS Engine: Configured for {language} on {device}")
-            print(f"   Settings: temperature={temperature}, speed={speed}, nfe_step={safe_nfe_step}, auto_phonemization={auto_phonemization}")
+            print(f"   Settings: temperature={temperature}, speed={speed}, nfe_step={safe_nfe_step}, auto_phonemization=False")
             
             # Return engine data structure
             engine_data = {
