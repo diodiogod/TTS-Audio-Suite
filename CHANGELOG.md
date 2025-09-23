@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.3] - 2025-09-23
+
+### Changed
+
+- Improve Japanese text handling in F5-TTS speech editing
+
+### Fixed
+
+- Fix F5-JP Japanese text processing issues
+- Fix F5-TTS Japanese model incorrectly applying Chinese pronunciation
+- Update F5-JP to use newer model checkpoint for better compatibility
 ## [4.10.2] - 2025-09-23
 
 ### Changed
