@@ -222,16 +222,26 @@ class ChatterBoxF5TTS:
             
             # Check if we have local model directory
             if self.ckpt_dir and os.path.exists(self.ckpt_dir):
-                # Find model file and vocab file in local directory
+                # Find model file and tokenizer files in local directory
                 model_file = None
                 vocab_file = None
+                tokenizer_file = None
                 for file in os.listdir(self.ckpt_dir):
                     if file.endswith((".safetensors", ".pt")):
                         model_file = os.path.join(self.ckpt_dir, file)
                     elif file.endswith(".txt") and "vocab" in file.lower():
                         vocab_file = os.path.join(self.ckpt_dir, file)
                     elif file.endswith(".json") and "tokenizer" in file.lower():
-                        vocab_file = os.path.join(self.ckpt_dir, file)
+                        tokenizer_file = os.path.join(self.ckpt_dir, file)
+
+                # Show detected files
+                if tokenizer_file:
+                    print(f"🔤 Detected tokenizer.json: {os.path.basename(tokenizer_file)}")
+                if vocab_file:
+                    print(f"📝 Detected vocab.txt: {os.path.basename(vocab_file)}")
+
+                # Determine which tokenizer file to use (prefer tokenizer.json over vocab.txt)
+                final_tokenizer_path = tokenizer_file if tokenizer_file else vocab_file
                 
                 if model_file:
                     # Load with explicit local files - determine correct config
@@ -250,24 +260,28 @@ class ChatterBoxF5TTS:
                     vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
                     vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
                     
-                    # Handle missing vocab file by providing explicit path to default vocab
-                    if not vocab_file:
+                    # Handle missing tokenizer files by providing explicit path to default vocab
+                    if not final_tokenizer_path:
                         # Use the bundled vocab file from our F5-TTS installation
                         current_dir = os.path.dirname(__file__)
                         default_vocab = os.path.join(current_dir, "..", "f5_tts", "infer", "examples", "vocab.txt")
                         default_vocab = os.path.normpath(default_vocab)
                         if os.path.exists(default_vocab):
-                            vocab_file = default_vocab
+                            final_tokenizer_path = default_vocab
                         else:
-                            vocab_file = ""  # Fall back to empty string
+                            final_tokenizer_path = ""  # Fall back to empty string
                     
                     self.f5tts_model = F5TTS(
                         model=model_config,
                         ckpt_file=model_file,
-                        vocab_file=vocab_file,
+                        vocab_file=final_tokenizer_path,  # Pass tokenizer.json or vocab.txt
                         vocoder_local_path=vocoder_local_path,
                         device=self.device
                     )
+
+                    # Store tokenizer information for text processing
+                    self.tokenizer_file = tokenizer_file
+                    self.vocab_file = vocab_file
                     # Store original model name for phonemizer on the actual model object
                     self.f5tts_model.original_model_name = self.model_name
                     if hasattr(self.f5tts_model, 'ema_model'):
