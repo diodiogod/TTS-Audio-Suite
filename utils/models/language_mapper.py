@@ -308,6 +308,7 @@ class LanguageModelMapper:
                 "th": "F5-TH",       # Thai
                 "pt": "F5-PT-BR",    # Portuguese (Brazil)
                 "pt-br": "F5-PT-BR", # Portuguese (Brazil) - alternative format
+                "pl": "F5-Polish",   # Polish - high quality model from Gregniuki
                 "hi": "F5-Hindi-Small",  # Hindi - uses Small model from IIT Madras
                 # Note: Other languages fall back to default_model and use phonemization when appropriate
             },

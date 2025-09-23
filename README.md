@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.9.25
+# TTS Audio Suite v4.10.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -76,6 +76,7 @@ TTS Audio Suite  + Streaming                                    │
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
+  - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -142,6 +143,7 @@ TTS Audio Suite  + Streaming                                    │
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
 - 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
+- 📝 **Multilingual Text Processing** - Universal Phoneme Text Normalizer with IPA phonemization, Unicode decomposition, and character mapping for improved pronunciation quality across languages (Experimental)
 - 😤 **Emotion Control** - ChatterBox exaggeration parameter for expressive speech + IndexTTS-2 advanced emotion control with dynamic text analysis, character tags, and 8-emotion vectors → **[📖 IndexTTS-2 Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
 - 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
 - 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
@@ -575,6 +577,34 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 - Content creation requiring sophisticated emotional nuance
 
 **📖 [Complete IndexTTS-2 Emotion Control Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
+
+</details>
+
+<details>
+<summary><h3>📝 Phoneme Text Normalizer</h3></summary>
+
+**NEW in v4.10.0**: Universal multilingual text preprocessing node for improved TTS pronunciation quality across languages!
+
+* **📝 Phoneme Text Normalizer Node**: Standalone text processing node with multiple normalization methods
+* **🌍 Universal Language Support**: Handles special characters for Polish, German, French, Spanish, Czech, Nordic languages, and more
+* **🔄 Multiple Processing Methods**:
+  - **Pass-through**: No processing (original text)
+  - **Unicode Decomposition**: Converts special characters to base + diacritical marks
+  - **IPA Phonemization**: Full International Phonetic Alphabet conversion using espeak
+  - **Character Mapping**: ASCII fallback for maximum compatibility
+* **🧠 Auto-Language Detection**: Automatically detects input language based on character patterns
+* **🖥️ Cross-Platform Support**: Works on Windows (espeak-phonemizer-windows), Linux/Mac (phonemizer + system espeak)
+* **🔗 Engine Integration**: Compatible with all TTS engines - F5-TTS, ChatterBox, Higgs Audio 2, VibeVoice, IndexTTS-2
+
+**Perfect for:**
+- Improving Polish, German, French pronunciation in F5-TTS
+- Processing multilingual content with special characters
+- Standardizing text input across different TTS engines
+- Converting text to phonemic representation for better synthesis
+
+> **⚠️ Experimental Feature**: This is a new experimental feature - user feedback needed to validate pronunciation improvements across different languages. Please test with your target languages and report results!
+
+**📖 Try the workflow**: [F5 TTS integration + 📝 Phoneme Text Normalizer](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)
 
 </details>
 
@@ -1449,6 +1479,7 @@ Your support helps maintain and improve this project for the entire community!
 | Workflow                   | Description                                      | Status               | Files                                                                      |
 | -------------------------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
 | **🌈 IndexTTS-2 Integration** | IndexTTS-2 engine with advanced emotion control | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)            |
+| **📝 F5 TTS + Text Normalizer** | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json) |
 | **VibeVoice Integration**  | VibeVoice long-form TTS with multi-speaker support | ✅ **Compatible**     | [📁 JSON](example_workflows/VibeVoice%20integration.json)                 |
 | **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
 | **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |

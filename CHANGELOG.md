@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.0] - 2025-09-23
+
+### Added
+
+- Add universal multilingual text preprocessing for improved pronunciation
+- Add 📝 Phoneme Text Normalizer node for multilingual TTS preprocessing
+- Add IPA phonemization support with automatic language detection
+- Add Unicode decomposition and character mapping fallbacks
+- Add F5-Polish model auto-download for high-quality Polish synthesis
+- Compatible with all TTS engines (F5-TTS, ChatterBox, Higgs Audio, etc.)
+
+### Changed
+
+- Improve pronunciation quality across all supported languages
+
+### Fixed
+
+- Fix Polish, German, French special character pronunciation in F5-TTS
 ## [4.9.25] - 2025-09-21
 
 ### Added

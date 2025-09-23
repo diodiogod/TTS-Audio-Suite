@@ -63,6 +63,7 @@ F5TTS_MODELS = {
     "F5-IT": {"repo": "alien79/F5-TTS-italian", "exp": "", "step": 159600, "ext": "safetensors"},
     "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI", "exp": "", "step": 1000000, "ext": "pt"},
     "F5-PT-BR": {"repo": "firstpixel/F5-TTS-pt-br", "exp": "pt-br", "step": 200000, "ext": "pt"},
+    "F5-Polish": {"repo": "Gregniuki/F5-tts_English_German_Polish", "exp": "multi3", "step": 900000, "ext": "pt", "note": "High quality multilingual Polish/English/German model from reference implementation"},
     "F5-Hindi-Small": {"repo": "SPRINGLab/F5-Hindi-24KHz", "exp": "", "step": 2500000, "ext": "safetensors", "note": "Hindi Small model (151M params) from IIT Madras"},
 }
 
@@ -414,6 +415,12 @@ class ChatterBoxF5TTS:
                         model_filename = f"{exp_name}/model_last.safetensors"
                         base_path = f"{exp_name}/"
                         fallback_vocab = None  # This model uses original F5-TTS vocab
+                    elif self.model_name == "F5-Polish":
+                        # Polish multilingual model is in multi3 subfolder
+                        exp_name = model_config["exp"]
+                        model_filename = f"{exp_name}/model_{step}.{ext}"
+                        base_path = f"{exp_name}/"
+                        fallback_vocab = f"{exp_name}/vocab.txt"
                     elif self.model_name == "F5-Hindi-Small":
                         # Hindi Small model from SPRINGLab
                         model_filename = f"model_{step}.{ext}"
