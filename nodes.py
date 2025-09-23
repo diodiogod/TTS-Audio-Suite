@@ -249,6 +249,14 @@ except Exception as e:
     print(f"❌ Load RVC Character Model failed: {e}")
     LOAD_RVC_MODEL_AVAILABLE = False
 
+try:
+    phoneme_text_normalizer_module = load_node_module("phoneme_text_normalizer_node", "text/phoneme_text_normalizer_node.py")
+    PhonemeTextNormalizer = phoneme_text_normalizer_module.PhonemeTextNormalizer
+    PHONEME_TEXT_NORMALIZER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Phoneme Text Normalizer failed: {e}")
+    PHONEME_TEXT_NORMALIZER_AVAILABLE = False
+
 # Import foundation components for compatibility
 from utils.system.import_manager import import_manager
 
@@ -455,6 +463,11 @@ if MERGE_AUDIO_AVAILABLE:
 if LOAD_RVC_MODEL_AVAILABLE:
     NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode
     NODE_DISPLAY_NAME_MAPPINGS["LoadRVCModelNode"] = "🎭 Load RVC Character Model"
+
+# Register text processing nodes
+if PHONEME_TEXT_NORMALIZER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["PhonemeTextNormalizer"] = PhonemeTextNormalizer
+    NODE_DISPLAY_NAME_MAPPINGS["PhonemeTextNormalizer"] = "📝 Phoneme Text Normalizer"
 
 # Register video analysis nodes
 if MOUTH_MOVEMENT_AVAILABLE:

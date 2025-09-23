@@ -278,6 +278,10 @@ def load_model(
     dtype = torch.float32 if mel_spec_type == "bigvgan" else None
     model = load_checkpoint(model, ckpt_path, device, dtype=dtype, use_ema=use_ema)
 
+    # Store tokenizer path information for text processing
+    model.tokenizer_path = vocab_file if vocab_file.endswith('.json') and 'tokenizer' in vocab_file.lower() else None
+    model.vocab_path = vocab_file if not (vocab_file.endswith('.json') and 'tokenizer' in vocab_file.lower()) else None
+
     return model
 
 
@@ -485,17 +489,27 @@ def infer_batch_process(
         # Prepare the text
         text_list = [ref_text + gen_text]
         
-        # Use smart phonemization for multilingual support
+        # Use appropriate tokenizer based on model type
         try:
-            from utils.text.phonemizer_utils import convert_text_with_smart_phonemization
-            # Try to get original model name for phonemizer context
-            model_name = getattr(model_obj, 'original_model_name', '')
-            
-            # auto_phonemization is now passed directly as function parameter
-            
-            final_text_list = convert_text_with_smart_phonemization(text_list, model_name, auto_phonemization)
-        except ImportError:
-            # Fallback to original pinyin conversion if phonemizer utils not available
+            # Check if model has tokenizer file information
+            tokenizer_path = getattr(model_obj, 'tokenizer_path', None)
+
+            if tokenizer_path and tokenizer_path.endswith('.json') and 'tokenizer' in tokenizer_path.lower():
+                # Use HuggingFace tokenizer for models with tokenizer.json
+                final_text_list = convert_text_with_tokenizer(text_list, tokenizer_path=tokenizer_path)
+                print(f"🔤 Using HuggingFace tokenizer: {os.path.basename(tokenizer_path)}")
+            else:
+                # Use smart phonemization for traditional vocab.txt models
+                try:
+                    from utils.text.phonemizer_utils import convert_text_with_smart_phonemization
+                    model_name = getattr(model_obj, 'original_model_name', '')
+                    final_text_list = convert_text_with_smart_phonemization(text_list, model_name, auto_phonemization)
+                except ImportError:
+                    # Final fallback to original pinyin conversion
+                    final_text_list = convert_char_to_pinyin(text_list)
+
+        except Exception as e:
+            print(f"⚠️ Text processing failed: {e}, falling back to pinyin conversion")
             final_text_list = convert_char_to_pinyin(text_list)
 
         ref_audio_len = audio.shape[-1] // hop_length

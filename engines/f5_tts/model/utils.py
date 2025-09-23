@@ -112,10 +112,12 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
     tokenizer   - "pinyin" do g2p for only chinese characters, need .txt vocab_file
                 - "char" for char-wise tokenizer, need .txt vocab_file
                 - "byte" for utf-8 tokenizer
-                - "custom" if you're directly passing in a path to the vocab.txt you want to use
+                - "custom" if you're directly passing in a path to the vocab.txt or tokenizer.json you want to use
+                - "hf_tokenizer" for HuggingFace tokenizer.json files
     vocab_size  - if use "pinyin", all available pinyin types, common alphabets (also those with accent) and symbols
                 - if use "char", derived from unfiltered character & symbol counts of custom dataset
                 - if use "byte", set to 256 (unicode byte range)
+                - if use "hf_tokenizer", derived from tokenizer.json vocab_size
     """
     if tokenizer in ["pinyin", "char"]:
         tokenizer_path = os.path.join(files(__package__ or "f5_tts").joinpath("../../data"), f"{dataset_name}_{tokenizer}/vocab.txt")
@@ -131,16 +133,99 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
         vocab_size = 256
 
     elif tokenizer == "custom":
+        # Check if it's a tokenizer.json file or vocab.txt file
+        if dataset_name.endswith(".json") and "tokenizer" in dataset_name.lower():
+            # HuggingFace tokenizer.json format
+            try:
+                from tokenizers import Tokenizer
+                hf_tokenizer = Tokenizer.from_file(dataset_name)
+                vocab_char_map = hf_tokenizer.get_vocab()
+                vocab_size = hf_tokenizer.get_vocab_size()
+
+                # For F5-TTS compatibility, we need to ensure space is index 0
+                if " " not in vocab_char_map or vocab_char_map[" "] != 0:
+                    print(f"⚠️ Warning: tokenizer.json doesn't have space at index 0 (found at {vocab_char_map.get(' ', 'not found')})")
+                    print(f"   This may cause issues with F5-TTS inference")
+
+                print(f"🔤 Using HuggingFace tokenizer: {os.path.basename(dataset_name)} ({vocab_size} tokens)")
+                return vocab_char_map, vocab_size
+
+            except ImportError:
+                print(f"❌ HuggingFace tokenizers not available, falling back to vocab.txt format")
+            except Exception as e:
+                print(f"❌ Failed to load tokenizer.json: {e}, falling back to vocab.txt format")
+
+        # Standard vocab.txt format (fallback or explicit .txt file)
         with open(dataset_name, "r", encoding="utf-8") as f:
             vocab_char_map = {}
             for i, char in enumerate(f):
                 vocab_char_map[char[:-1]] = i
         vocab_size = len(vocab_char_map)
 
+    elif tokenizer == "hf_tokenizer":
+        # Explicit HuggingFace tokenizer mode
+        try:
+            from tokenizers import Tokenizer
+            hf_tokenizer = Tokenizer.from_file(dataset_name)
+            vocab_char_map = hf_tokenizer.get_vocab()
+            vocab_size = hf_tokenizer.get_vocab_size()
+
+            # For F5-TTS compatibility, we need to ensure space is index 0
+            if " " not in vocab_char_map or vocab_char_map[" "] != 0:
+                print(f"⚠️ Warning: tokenizer.json doesn't have space at index 0 (found at {vocab_char_map.get(' ', 'not found')})")
+                print(f"   This may cause issues with F5-TTS inference")
+
+            print(f"🔤 Using HuggingFace tokenizer: {os.path.basename(dataset_name)} ({vocab_size} tokens)")
+
+        except ImportError:
+            raise ImportError("HuggingFace tokenizers package is required for tokenizer.json support. Install with: pip install tokenizers")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load tokenizer.json from {dataset_name}: {e}")
+
     return vocab_char_map, vocab_size
 
 
 # convert char to pinyin
+
+
+def convert_text_with_tokenizer(text_list, vocab_char_map=None, tokenizer_path=None):
+    """
+    Convert text using appropriate tokenizer (HuggingFace tokenizer.json or character-based vocab.txt)
+
+    Args:
+        text_list: List of text strings to process
+        vocab_char_map: Character mapping from get_tokenizer (for vocab.txt)
+        tokenizer_path: Path to tokenizer.json file (for HuggingFace tokenizers)
+
+    Returns:
+        List of tokenized sequences compatible with F5-TTS
+    """
+    # Check if we should use HuggingFace tokenizer
+    if tokenizer_path and tokenizer_path.endswith(".json") and "tokenizer" in tokenizer_path.lower():
+        try:
+            from tokenizers import Tokenizer
+            hf_tokenizer = Tokenizer.from_file(tokenizer_path)
+
+            # Process each text with HuggingFace tokenizer
+            final_text_list = []
+            for text in text_list:
+                # Encode text to tokens
+                encoding = hf_tokenizer.encode(text)
+                # Get token strings (not IDs) - F5-TTS needs token strings
+                token_strings = encoding.tokens
+                # Join tokens with spaces for F5-TTS compatibility
+                final_text_list.append(' '.join(token_strings))
+
+            print(f"🔤 Processed {len(text_list)} texts with HuggingFace tokenizer")
+            return final_text_list
+
+        except ImportError:
+            print(f"❌ HuggingFace tokenizers not available, falling back to character processing")
+        except Exception as e:
+            print(f"❌ HuggingFace tokenizer failed: {e}, falling back to character processing")
+
+    # Fall back to standard character-based processing (for vocab.txt)
+    return convert_char_to_pinyin(text_list)
 
 
 def convert_char_to_pinyin(text_list, polyphone=True):

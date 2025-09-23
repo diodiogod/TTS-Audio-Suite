@@ -13,6 +13,41 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 import folder_paths
 
+def detect_tokenizer_files(repo_id: str, base_path: str = "") -> Tuple[Optional[str], Optional[str]]:
+    """
+    Detect available tokenizer files (vocab.txt and/or tokenizer.json) in a HuggingFace repo.
+
+    Args:
+        repo_id: HuggingFace repository ID
+        base_path: Base path within the repo (e.g., "F5TTS_Base/")
+
+    Returns:
+        Tuple of (vocab_filename, tokenizer_filename) where available, None otherwise
+    """
+    from huggingface_hub import hf_api
+
+    vocab_filename = None
+    tokenizer_filename = None
+
+    try:
+        api = hf_api.HfApi()
+        repo_files = api.list_repo_files(repo_id)
+
+        # Look for vocab.txt and tokenizer.json in the specified path
+        for file_path in repo_files:
+            if file_path.startswith(base_path):
+                filename = file_path[len(base_path):] if base_path else file_path
+
+                if filename == "vocab.txt" or (filename.endswith(".txt") and "vocab" in filename.lower()):
+                    vocab_filename = file_path
+                elif filename == "tokenizer.json" or (filename.endswith(".json") and "tokenizer" in filename.lower()):
+                    tokenizer_filename = file_path
+
+    except Exception as e:
+        print(f"⚠️ Could not detect tokenizer files for {repo_id}: {e}")
+
+    return vocab_filename, tokenizer_filename
+
 # F5-TTS sample rate constant
 F5TTS_SAMPLE_RATE = 24000
 
@@ -82,7 +117,64 @@ class ChatterBoxF5TTS:
         
         # Initialize F5-TTS
         self._load_f5tts()
-    
+
+    def _download_tokenizer_file(self, repo_id: str, filename: str, file_type: str) -> str:
+        """
+        Download vocab.txt or tokenizer.json file for a model.
+
+        Args:
+            repo_id: HuggingFace repository ID
+            filename: File name to download (e.g., "vocab.txt", "tokenizer.json")
+            file_type: Type for logging ("vocab" or "tokenizer")
+
+        Returns:
+            Path to downloaded file
+        """
+        from huggingface_hub import hf_hub_download
+
+        local_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, os.path.basename(filename))
+
+        if os.path.exists(local_path):
+            print(f"📁 Using local {file_type}: {local_path}")
+            return local_path
+
+        # Check HuggingFace cache first
+        try:
+            hf_cached_file = hf_hub_download(repo_id=repo_id, filename=filename, local_files_only=True)
+            print(f"📁 Using cached {file_type}: {hf_cached_file}")
+            return hf_cached_file
+        except Exception:
+            pass
+
+        # Download to local directory
+        print(f"📥 Downloading {file_type} to local directory: {filename}")
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+        try:
+            # Use unified downloader
+            from utils.downloads.unified_downloader import unified_downloader
+
+            files_to_download = [{
+                'remote': filename,
+                'local': os.path.basename(filename)
+            }]
+
+            downloaded_dir = unified_downloader.download_huggingface_model(
+                repo_id=repo_id,
+                model_name=self.model_name,
+                files=files_to_download,
+                engine_type="F5-TTS"
+            )
+
+            if downloaded_dir:
+                return os.path.join(downloaded_dir, os.path.basename(filename))
+            else:
+                raise Exception(f"Unified {file_type} download failed")
+
+        except Exception as e:
+            print(f"⚠️ Failed to download {file_type} to local directory, using HF cache: {e}")
+            return hf_hub_download(repo_id=repo_id, filename=filename)
+
     def _setup_vocos_redirect(self, vocos_dir: str):
         """
         Monkey patch HuggingFace downloads to use our organized Vocos location.
@@ -137,6 +229,8 @@ class ChatterBoxF5TTS:
                     if file.endswith((".safetensors", ".pt")):
                         model_file = os.path.join(self.ckpt_dir, file)
                     elif file.endswith(".txt") and "vocab" in file.lower():
+                        vocab_file = os.path.join(self.ckpt_dir, file)
+                    elif file.endswith(".json") and "tokenizer" in file.lower():
                         vocab_file = os.path.join(self.ckpt_dir, file)
                 
                 if model_file:
@@ -209,6 +303,8 @@ class ChatterBoxF5TTS:
                         model_file = os.path.join(model_path, file)
                     elif file.endswith(".txt") and "vocab" in file.lower():
                         vocab_file = os.path.join(model_path, file)
+                    elif file.endswith(".json") and "tokenizer" in file.lower():
+                        vocab_file = os.path.join(model_path, file)
                 
                 if not model_file:
                     raise FileNotFoundError(f"No model file found in {model_path}")
@@ -279,34 +375,54 @@ class ChatterBoxF5TTS:
                     # Manually construct the model path for custom repo
                     from huggingface_hub import hf_hub_download
                     
-                    # Download model and vocab from custom repo  
-                    # Use reduced model for F5-FR to save space (1.35GB vs 5.39GB)
+                    # Download model and vocab/tokenizer from custom repo
+                    # Auto-detect available tokenizer files for each model
                     if self.model_name == "F5-FR":
+                        # Use reduced model for F5-FR to save space (1.35GB vs 5.39GB)
                         model_filename = "model_last_reduced.pt"
-                        vocab_filename = "vocab.txt"
+                        base_path = ""
+                        fallback_vocab = "vocab.txt"
                     elif self.model_name == "F5-JP":
                         # Japanese model is in a subfolder with different vocab name
                         exp_name = model_config["exp"]
                         model_filename = f"{exp_name}/model_{step}.{ext}"
-                        vocab_filename = f"{exp_name}/vocab_updated.txt"
+                        base_path = f"{exp_name}/"
+                        fallback_vocab = f"{exp_name}/vocab_updated.txt"
                     elif self.model_name == "F5-DE":
                         # German model is in F5TTS_Base subfolder
                         exp_name = model_config["exp"]
                         model_filename = f"{exp_name}/model_{step}.{ext}"
-                        vocab_filename = "vocab.txt"
+                        base_path = ""
+                        fallback_vocab = "vocab.txt"
                     elif self.model_name == "F5-PT-BR":
-                        # Brazilian Portuguese model is in pt-br subfolder, uses smaller safetensors version
+                        # Brazilian Portuguese model is in pt-br subfolder
                         exp_name = model_config["exp"]
-                        model_filename = f"{exp_name}/model_last.safetensors"  # Use 1.35GB version instead of 5.39GB
-                        # This model doesn't have its own vocab file, use original F5-TTS vocab
-                        vocab_filename = None  # Will download from original F5-TTS repo
+                        model_filename = f"{exp_name}/model_last.safetensors"
+                        base_path = f"{exp_name}/"
+                        fallback_vocab = None  # This model uses original F5-TTS vocab
                     elif self.model_name == "F5-Hindi-Small":
-                        # Hindi Small model from SPRINGLab - uses step 2500000
+                        # Hindi Small model from SPRINGLab
                         model_filename = f"model_{step}.{ext}"
-                        vocab_filename = "vocab.txt"
+                        base_path = ""
+                        fallback_vocab = "vocab.txt"
                     else:
                         model_filename = f"model_{step}.{ext}"
-                        vocab_filename = "vocab.txt"
+                        base_path = ""
+                        fallback_vocab = "vocab.txt"
+
+                    # Auto-detect available tokenizer files
+                    detected_vocab, detected_tokenizer = detect_tokenizer_files(repo_id, base_path)
+
+                    # Determine which tokenizer files to use (prefer detected over fallback)
+                    vocab_filename = detected_vocab or fallback_vocab
+                    tokenizer_filename = detected_tokenizer
+
+                    if detected_tokenizer:
+                        print(f"🔤 Detected tokenizer.json: {detected_tokenizer}")
+                    if detected_vocab:
+                        print(f"📝 Detected vocab.txt: {detected_vocab}")
+                    elif fallback_vocab:
+                        print(f"📝 Using fallback vocab: {fallback_vocab}")
                     
                     # Check if model exists locally first
                     local_model_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, model_filename)
@@ -350,8 +466,11 @@ class ChatterBoxF5TTS:
                                 print(f"⚠️ Failed to download to local directory, using HF cache: {e}")
                                 model_file = hf_hub_download(repo_id=repo_id, filename=model_filename)
                     
-                    # Handle vocab file - some models don't have their own vocab
-                    if vocab_filename is None:
+                    # Handle vocab and tokenizer files - some models don't have their own
+                    vocab_file = None
+                    tokenizer_file = None
+
+                    if vocab_filename is None and tokenizer_filename is None:
                         # Use original F5-TTS vocab for models that don't have their own
                         # First check if we have F5TTS_Base locally
                         # Try TTS path first, then legacy
@@ -410,64 +529,42 @@ class ChatterBoxF5TTS:
                                         print(f"⚠️ Failed to download vocab to local directory, using HF cache: {e}")
                                         vocab_file = hf_hub_download(repo_id="SWivid/F5-TTS", filename="F5TTS_Base/vocab.txt")
                     else:
-                        # Model has its own vocab file
-                        local_vocab_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, vocab_filename)
-                        
-                        if os.path.exists(local_vocab_path):
-                            vocab_file = local_vocab_path
-                            print(f"📁 Using local vocab: {vocab_file}")
-                        else:
-                            # Check HuggingFace cache first
-                            try:
-                                hf_vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename, local_files_only=True)
-                                vocab_file = hf_vocab_file
-                                print(f"📁 Using cached vocab: {vocab_file}")
-                            except Exception:
-                                # Download to local directory
-                                print(f"📥 Downloading vocab to local directory: {vocab_filename}")
-                                os.makedirs(os.path.dirname(local_vocab_path), exist_ok=True)
-                                
-                                try:
-                                    # Use unified downloader for model-specific vocab
-                                    from utils.downloads.unified_downloader import unified_downloader
-                                    
-                                    files_to_download = [{
-                                        'remote': vocab_filename,
-                                        'local': os.path.basename(vocab_filename)
-                                    }]
-                                    
-                                    downloaded_dir = unified_downloader.download_huggingface_model(
-                                        repo_id=repo_id,
-                                        model_name=self.model_name,
-                                        files=files_to_download,
-                                        engine_type="F5-TTS"
-                                    )
-                                    
-                                    if downloaded_dir:
-                                        vocab_file = os.path.join(downloaded_dir, os.path.basename(vocab_filename))
-                                    else:
-                                        raise Exception("Unified vocab download failed")
-                                except Exception as e:
-                                    print(f"⚠️ Failed to download vocab to local directory, using HF cache: {e}")
-                                    vocab_file = hf_hub_download(repo_id=repo_id, filename=vocab_filename)
+                        # Model has its own vocab and/or tokenizer files
+                        # Download vocab.txt if available
+                        if vocab_filename:
+                            vocab_file = self._download_tokenizer_file(repo_id, vocab_filename, "vocab")
+
+                        # Download tokenizer.json if available
+                        if tokenizer_filename:
+                            tokenizer_file = self._download_tokenizer_file(repo_id, tokenizer_filename, "tokenizer")
                     
                     print(f"📁 Downloaded model: {model_file}")
-                    print(f"📁 Downloaded vocab: {vocab_file}")
-                    
+                    if vocab_file:
+                        print(f"📁 Downloaded vocab: {vocab_file}")
+                    if tokenizer_file:
+                        print(f"🔤 Downloaded tokenizer: {tokenizer_file}")
+
                     # Vocos redirect already setup in _load_f5tts()
-                    
+
                     # Get local Vocos path
                     vocos_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", "vocos")
                     vocoder_local_path = vocos_path if os.path.exists(vocos_path) else None
-                    
+
+                    # Determine which tokenizer file to use (prefer tokenizer.json over vocab.txt)
+                    tokenizer_path = tokenizer_file if tokenizer_file else vocab_file
+
                     # Load with base config but custom files
                     self.f5tts_model = F5TTS(
                         model=config_name,
                         ckpt_file=model_file,
-                        vocab_file=vocab_file,
+                        vocab_file=tokenizer_path,  # Pass tokenizer.json or vocab.txt
                         vocoder_local_path=vocoder_local_path,
                         device=self.device
                     )
+
+                    # Store tokenizer information for text processing
+                    self.tokenizer_file = tokenizer_file
+                    self.vocab_file = vocab_file
                     
                 elif self.model_name.startswith("E2-"):
                     # E2 variants use E2 config
@@ -609,6 +706,8 @@ class ChatterBoxF5TTS:
                         if file.endswith((".safetensors", ".pt")):
                             model_file = os.path.join(path, file)
                         elif file.endswith(".txt") and "vocab" in file.lower():
+                            vocab_file = os.path.join(path, file)
+                        elif file.endswith(".json") and "tokenizer" in file.lower():
                             vocab_file = os.path.join(path, file)
                     
                     return F5TTS(
