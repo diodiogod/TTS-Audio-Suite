@@ -181,16 +181,19 @@ def get_phonemizer() -> UniversalPhonemizer:
 
 def should_use_phonemization(model_name: str, text_list: List[str], auto_phonemization: bool = None) -> bool:
     """
-    Determine if phonemization should be used for this model and text.
-    
+    DEPRECATED: Auto-phonemization is now disabled in favor of the dedicated
+    📝 Phoneme Text Normalizer node which gives users full control.
+
     Args:
         model_name: F5-TTS model name
         text_list: List of text strings to analyze
         auto_phonemization: Override for phonemization setting (from UI toggle)
-        
+
     Returns:
-        True if phonemization should be used
+        Always False - use 📝 Phoneme Text Normalizer node instead
     """
+    # Always return False - users should use the dedicated Phoneme Text Normalizer node
+    return False
     # Check user setting first (UI toggle overrides everything)
     import os
     if auto_phonemization is not None:
