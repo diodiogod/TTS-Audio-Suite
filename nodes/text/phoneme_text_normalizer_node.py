@@ -174,27 +174,45 @@ class PhonemeTextNormalizer:
         return result
 
     def apply_ipa_phonemization(self, text: str, language: str) -> str:
-        """Apply IPA phonemization using available phonemizer"""
+        """Apply IPA phonemization using the same method as the reference Polish F5-TTS"""
         try:
-            # Try to use the existing phonemizer from our utils
-            from utils.text.phonemizer_utils import get_phonemizer
+            # Use the exact same phonemization as the reference implementation
+            from phonemizer import phonemize
+            import re
 
-            phonemizer = get_phonemizer()
-            if phonemizer.is_available():
-                # Map language names to codes
-                lang_codes = {
-                    'polish': 'pl', 'german': 'de', 'french': 'fr', 'spanish': 'es',
-                    'portuguese': 'pt', 'italian': 'it', 'czech': 'cs', 'slovak': 'sk',
-                    'hungarian': 'hu', 'norwegian': 'no', 'swedish': 'sv', 'danish': 'da',
-                    'finnish': 'fi', 'dutch': 'nl', 'english': 'en'
-                }
+            # Map language names to codes (same as reference)
+            lang_codes = {
+                'polish': 'pl', 'german': 'de', 'french': 'fr', 'spanish': 'es',
+                'portuguese': 'pt', 'italian': 'it', 'czech': 'cs', 'slovak': 'sk',
+                'hungarian': 'hu', 'norwegian': 'no', 'swedish': 'sv', 'danish': 'da',
+                'finnish': 'fi', 'dutch': 'nl', 'english': 'en'
+            }
 
-                lang_code = lang_codes.get(language.lower(), 'en')
-                return phonemizer.phonemize_text(text, lang_code)
-            else:
-                print("⚠️ Phonemizer not available, falling back to Unicode decomposition")
-                return self.apply_unicode_decomposition(text)
+            lang_code = lang_codes.get(language.lower(), 'en')
 
+            # Use exact same parameters as reference implementation
+            ipa_text = phonemize(
+                text,
+                language=lang_code,
+                backend='espeak',
+                strip=False,
+                preserve_punctuation=True,
+                with_stress=True
+            )
+
+            # Apply same cleanup as reference implementation
+            # Remove language markings like (en), (cmn), (de), (pl), (ru)
+            ipa_text = re.sub(r'\([a-z]{2,3}\)', '', ipa_text)
+            ipa_text = re.sub(r'tʃˈaɪniːzlˈe̞tə', '', ipa_text)
+            ipa_text = re.sub(r'tʃˈaɪniːzɭˈetə', '', ipa_text)
+            ipa_text = re.sub(r'dʒˈapəniːzlˈe̞tə', '', ipa_text)
+            ipa_text = re.sub(r'dʒˈapəniːzɭˈetə', '', ipa_text)
+
+            return ipa_text
+
+        except ImportError:
+            print("⚠️ phonemizer package not available, falling back to Unicode decomposition")
+            return self.apply_unicode_decomposition(text)
         except Exception as e:
             print(f"⚠️ Phonemization failed: {e}, falling back to Unicode decomposition")
             return self.apply_unicode_decomposition(text)
@@ -239,14 +257,16 @@ class PhonemeTextNormalizer:
             print(f"   Original:   '{original_text[:100]}{'...' if len(original_text) > 100 else ''}'")
             print(f"   Normalized: '{normalized_text[:100]}{'...' if len(normalized_text) > 100 else ''}'")
 
-            # Show character-by-character changes for short texts
-            if len(original_text) <= 50:
+            # Show character-by-character changes for short texts (only for same-length transformations)
+            if len(original_text) <= 50 and len(original_text) == len(normalized_text):
                 changes = []
                 for i, (orig, norm) in enumerate(zip(original_text, normalized_text)):
                     if orig != norm:
                         changes.append(f"{orig}→{norm}")
                 if changes:
                     print(f"   Changes: {', '.join(changes)}")
+            elif len(original_text) != len(normalized_text) and len(original_text) <= 50:
+                print(f"   Text length changed: {len(original_text)} → {len(normalized_text)} characters")
 
         return (normalized_text,)
 
