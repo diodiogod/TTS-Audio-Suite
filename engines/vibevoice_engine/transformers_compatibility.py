@@ -51,11 +51,13 @@ def patch_prepare_cache_for_generation():
                 if param_count == 5:
                     # New transformers version (4.56+): 5 parameters
                     # Expected: (self, generation_config, model_kwargs, batch_size, max_cache_length, device)
-                    if len(args) >= 2:  # We need at least batch_size and max_cache_length
-                        batch_size = args[0] if len(args) > 0 else args[1]  # Skip assistant_model if passed
-                        max_cache_length = args[1] if len(args) > 1 else args[2]
-                        device = args[2] if len(args) > 2 else args[3]
-                        
+                    if len(args) >= 3:  # Skip assistant_model (args[0]) and use remaining args
+                        # VibeVoice calls with: assistant_model, batch_size, max_cache_length, device
+                        # We need to skip assistant_model and pass: batch_size, max_cache_length, device
+                        batch_size = args[1]
+                        max_cache_length = args[2]
+                        device = args[3]
+
                         return original_method(self, generation_config, model_kwargs, batch_size, max_cache_length, device)
                     else:
                         # Fallback to original call
@@ -73,10 +75,11 @@ def patch_prepare_cache_for_generation():
                 # Final fallback: try both signatures
                 try:
                     # Try new signature first (5 params)
-                    if len(args) >= 2:
-                        batch_size = args[0] if args[0] is not None else args[1] 
-                        max_cache_length = args[1] if len(args) > 1 else args[2]
-                        device = args[2] if len(args) > 2 else args[3]
+                    if len(args) >= 3:
+                        # Skip assistant_model and use remaining args
+                        batch_size = args[1]
+                        max_cache_length = args[2]
+                        device = args[3]
                         return original_method(self, generation_config, model_kwargs, batch_size, max_cache_length, device)
                 except (TypeError, IndexError):
                     # Fall back to old signature (6 params)

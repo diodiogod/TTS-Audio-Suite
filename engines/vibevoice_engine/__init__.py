@@ -13,9 +13,9 @@ try:
         from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
         from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
         
-        # Note: Transformers compatibility patches disabled - users should upgrade to >=4.51.3
-        # from .transformers_compatibility import apply_all_compatibility_patches
-        # apply_all_compatibility_patches()
+        # Apply transformers compatibility patches for newer versions
+        from .transformers_compatibility import apply_all_compatibility_patches
+        apply_all_compatibility_patches()
         
         # If imports work, load our engine components
         from .vibevoice_engine import VibeVoiceEngine
