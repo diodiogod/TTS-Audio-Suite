@@ -24,18 +24,22 @@ class PhonemeTextNormalizer:
             "required": {
                 "text": ("STRING", {
                     "multiline": True,
-                    "default": "Enter your text here. Examples:\nPolish: Cześć, jak się masz?\nGerman: Schöne Grüße aus München!\nFrench: Bonjour, comment allez-vous?"
+                    "default": "Enter your text here. Examples:\nPolish: Cześć, jak się masz?\nGerman: Schöne Grüße aus München!\nFrench: Bonjour, comment allez-vous?",
+                    "tooltip": "Input text to normalize for TTS processing.\n\nSupports multilingual text with special characters like:\n• Polish: ą, ć, ę, ł, ń, ó, ś, ź, ż\n• German: ä, ö, ü, ß\n• French: à, é, ê, ç, etc.\n• And many other languages\n\nConnect this to any TTS engine for improved pronunciation."
                 }),
                 "method": (["Pass-through", "Unicode Decomposition", "IPA Phonemization", "Character Mapping"], {
-                    "default": "Unicode Decomposition"
+                    "default": "Unicode Decomposition",
+                    "tooltip": "Text processing method to apply:\n\n• Pass-through: No processing (original text)\n• Unicode Decomposition: ą→a̧, ć→ć (recommended for most cases)\n• IPA Phonemization: Full phonetic conversion (ą→ɔ̃, requires espeak)\n• Character Mapping: ASCII fallback (ą→a, ć→c)\n\nStart with Unicode Decomposition - it fixes most pronunciation issues."
                 }),
                 "language": (["Auto-detect", "Polish", "German", "French", "Spanish", "Portuguese", "Italian", "Czech", "Slovak", "Hungarian", "Norwegian", "Swedish", "Danish", "Finnish", "Dutch", "English"], {
-                    "default": "Auto-detect"
+                    "default": "Auto-detect",
+                    "tooltip": "Language for processing (affects IPA Phonemization):\n\n• Auto-detect: Automatically detects language from text\n• Manual selection: Choose specific language for better accuracy\n\nLanguage detection looks for special characters:\n• Polish: ą, ę, ć, ł, etc.\n• German: ä, ö, ü, ß\n• French: à, é, ê, ç, etc.\n\nOnly affects IPA Phonemization method."
                 }),
                 "show_debug": ("BOOLEAN", {
                     "default": True,
                     "label_on": "Show Before/After",
-                    "label_off": "Hide Debug Info"
+                    "label_off": "Hide Debug Info",
+                    "tooltip": "Show debug information in console:\n\n• Original vs normalized text comparison\n• Character-by-character changes\n• Detected language (when auto-detecting)\n• Processing method used\n\nHelpful for testing which method works best for your language.\nDisable for cleaner console output in production."
                 })
             }
         }

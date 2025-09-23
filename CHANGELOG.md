@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.1] - 2025-09-23
+
+### Changed
+
+- Add comprehensive tooltips to 📝 Phoneme Text Normalizer node for better user guidance
+- Update PROJECT_INDEX.md with new Text Processing Nodes section
+- Improve user experience with detailed parameter explanations
+
+### Fixed
+
+- Add missing F5-TTS workflow example and improve node documentation
+- Add missing workflow file that was referenced in README and GitHub issues
 ## [4.10.0] - 2025-09-23
 
 ### Added

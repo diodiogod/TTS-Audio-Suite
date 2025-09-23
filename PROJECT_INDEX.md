@@ -155,6 +155,10 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/shared/character_voices_node.py** - Character voice management system providing NARRATOR_VOICE outputs for any TTS node
 
+### Text Processing Nodes
+
+**nodes/text/phoneme_text_normalizer_node.py** - 📝 Phoneme Text Normalizer with multilingual text preprocessing for improved TTS pronunciation. Features 4 processing methods: Pass-through, Unicode Decomposition (ą→a̧), IPA Phonemization (espeak backend), and Character Mapping (ASCII fallback). Supports auto-language detection and cross-platform phonemizer support.
+
 ### Engine-Specific Nodes
 
 *Note: These are internal processors/engines used by the Unified nodes, not direct ComfyUI interface nodes. They handle engine-specific orchestration while the Unified nodes provide the user interface.*
