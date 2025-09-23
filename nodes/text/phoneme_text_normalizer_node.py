@@ -175,10 +175,11 @@ class PhonemeTextNormalizer:
 
     def apply_ipa_phonemization(self, text: str, language: str) -> str:
         """Apply IPA phonemization using the same method as the reference Polish F5-TTS"""
+        import re
+
+        # Try standard phonemizer first (Linux/Mac/standard)
         try:
-            # Use the exact same phonemization as the reference implementation
             from phonemizer import phonemize
-            import re
 
             # Map language names to codes (same as reference)
             lang_codes = {
@@ -210,12 +211,36 @@ class PhonemeTextNormalizer:
 
             return ipa_text
 
-        except ImportError:
-            print("⚠️ phonemizer package not available, falling back to Unicode decomposition")
-            return self.apply_unicode_decomposition(text)
-        except Exception as e:
-            print(f"⚠️ Phonemization failed: {e}, falling back to Unicode decomposition")
-            return self.apply_unicode_decomposition(text)
+        except Exception as e1:
+            # Try Windows-specific espeak-phonemizer-windows as fallback
+            try:
+                from espeak_phonemizer import Phonemizer
+
+                # Map language names to espeak voice codes
+                voice_map = {
+                    'polish': 'pl', 'german': 'de', 'french': 'fr', 'spanish': 'es',
+                    'portuguese': 'pt', 'italian': 'it', 'czech': 'cs', 'slovak': 'sk',
+                    'hungarian': 'hu', 'norwegian': 'no', 'swedish': 'sv', 'danish': 'da',
+                    'finnish': 'fi', 'dutch': 'nl', 'english': 'en'
+                }
+
+                voice = voice_map.get(language.lower(), 'en')
+                phonemizer = Phonemizer()
+                ipa_text = phonemizer.phonemize(text, voice=voice)
+
+                # Apply same cleanup as reference implementation
+                ipa_text = re.sub(r'\([a-z]{2,3}\)', '', ipa_text)
+                ipa_text = re.sub(r'tʃˈaɪniːzlˈe̞tə', '', ipa_text)
+                ipa_text = re.sub(r'tʃˈaɪniːzɭˈetə', '', ipa_text)
+                ipa_text = re.sub(r'dʒˈapəniːzlˈe̞tə', '', ipa_text)
+                ipa_text = re.sub(r'dʒˈapəniːzɭˈetə', '', ipa_text)
+
+                return ipa_text
+
+            except Exception as e2:
+                print(f"⚠️ Both phonemizers failed - standard: {e1}, windows: {e2}")
+                print("⚠️ Falling back to Unicode decomposition")
+                return self.apply_unicode_decomposition(text)
 
     def normalize_text(self, text: str, method: str, language: str, show_debug: bool = True) -> Tuple[str]:
         """Main normalization function"""
