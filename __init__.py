@@ -58,14 +58,14 @@ def print_critical_versions():
     """Print versions of critical packages for troubleshooting"""
     critical_packages = [
         ('numpy', 'NumPy'),
-        ('librosa', 'Librosa'), 
+        ('librosa', 'Librosa'),
         ('numba', 'Numba'),
         ('torch', 'PyTorch'),
         ('torchaudio', 'TorchAudio'),
         ('transformers', 'Transformers'),
         ('soundfile', 'SoundFile'),
     ]
-    
+
     version_info = []
     for pkg_name, display_name in critical_packages:
         try:
@@ -74,11 +74,34 @@ def print_critical_versions():
             version_info.append(f"{display_name} {version}")
         except ImportError:
             version_info.append(f"{display_name} not installed")
-    
+
     print(f"ℹ️ Critical package versions: {', '.join(version_info)}")
 
-# Print versions immediately for troubleshooting
+def check_ffmpeg_availability():
+    """Check ffmpeg availability and log status"""
+    try:
+        from utils.ffmpeg_utils import FFmpegUtils
+        if FFmpegUtils.is_available():
+            print("✅ FFmpeg available - optimal audio processing enabled")
+        else:
+            print("⚠️ FFmpeg not found - using fallback audio processing (reduced quality)")
+            print("💡 Install FFmpeg for optimal performance: https://ffmpeg.org/download.html")
+    except ImportError:
+        # Fallback check if utils not available yet
+        try:
+            import subprocess
+            result = subprocess.run(['ffmpeg', '-version'], capture_output=True, timeout=5)
+            if result.returncode == 0:
+                print("✅ FFmpeg available - optimal audio processing enabled")
+            else:
+                print("⚠️ FFmpeg not found - using fallback audio processing (reduced quality)")
+        except Exception:
+            print("⚠️ FFmpeg not found - using fallback audio processing (reduced quality)")
+            print("💡 Install FFmpeg for optimal performance: https://ffmpeg.org/download.html")
+
+# Print versions and check dependencies immediately for troubleshooting
 print_critical_versions()
+check_ffmpeg_availability()
 
 # Check for old ChatterBox extension conflict
 def check_old_extension_conflict():

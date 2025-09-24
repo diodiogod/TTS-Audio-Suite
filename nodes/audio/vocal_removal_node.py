@@ -481,18 +481,35 @@ Selects the audio format for separated stems:
                         sf.write(primary_path, vocals_np.T, sample_rate, format='FLAC', subtype='PCM_16')
                         sf.write(secondary_path, instrumentals_np.T, sample_rate, format='FLAC', subtype='PCM_16')
                     else:  # mp3
-                        # For MP3, we need to use a different method
-                        import subprocess
-                        # Save as WAV first, then convert
+                        # For MP3, try ffmpeg conversion with fallback to WAV
+                        from utils.ffmpeg_utils import convert_to_mp3_safe
+
+                        # Save as WAV first
                         temp_wav_primary = primary_path.replace('.mp3', '_temp.wav')
                         temp_wav_secondary = secondary_path.replace('.mp3', '_temp.wav')
                         sf.write(temp_wav_primary, vocals_np.T, sample_rate, subtype='PCM_16')
                         sf.write(temp_wav_secondary, instrumentals_np.T, sample_rate, subtype='PCM_16')
-                        # Convert to MP3
-                        subprocess.run(['ffmpeg', '-i', temp_wav_primary, '-b:a', '320k', primary_path, '-y'], capture_output=True)
-                        subprocess.run(['ffmpeg', '-i', temp_wav_secondary, '-b:a', '320k', secondary_path, '-y'], capture_output=True)
-                        os.remove(temp_wav_primary)
-                        os.remove(temp_wav_secondary)
+
+                        # Convert to MP3 with fallback
+                        final_primary, used_mp3_primary = convert_to_mp3_safe(temp_wav_primary, primary_path)
+                        final_secondary, used_mp3_secondary = convert_to_mp3_safe(temp_wav_secondary, secondary_path)
+
+                        # Update paths if fallback was used
+                        if not used_mp3_primary:
+                            primary_path = final_primary
+                            print("💡 Vocals saved as WAV (ffmpeg not available for MP3 conversion)")
+                        if not used_mp3_secondary:
+                            secondary_path = final_secondary
+                            print("💡 Instrumentals saved as WAV (ffmpeg not available for MP3 conversion)")
+
+                        # Clean up temp files
+                        try:
+                            if os.path.exists(temp_wav_primary):
+                                os.remove(temp_wav_primary)
+                            if os.path.exists(temp_wav_secondary):
+                                os.remove(temp_wav_secondary)
+                        except Exception:
+                            pass
                     
                     # Kijai's MelBand models output instrumentals as primary, vocals as secondary (inverted)
                     # ZFTurbo's denoise models output correctly (vocals as primary)
