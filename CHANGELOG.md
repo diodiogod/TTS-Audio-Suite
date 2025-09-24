@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.6] - 2025-09-23
+
+### Added
+
+- No changes needed for existing setups - all voice discovery now works correctly
+
+### Changed
+
+- Improve path comparison logic to properly detect duplicate directories
+
+### Fixed
+
+- Fix voice discovery not finding voices in extra_model_paths.yaml directories
+- Fix voice dropdown not showing voices from shared directories configured in extra_model_paths.yaml
+- Fix character voice switching not finding voices in configured shared directories
 ## [4.10.5] - 2025-09-23
 
 ### Added

@@ -239,6 +239,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/audio/processing.py** - Comprehensive audio utilities for tensor manipulation, normalization, and format conversion
 
+**utils/ffmpeg_utils.py** - Centralized FFmpeg dependency handling with graceful fallbacks for audio conversion and timing analysis
+
 **utils/audio/analysis.py** - Advanced audio analysis including waveform processing, silence detection, and timing extraction
 
 **utils/audio/audio_hash.py** - Centralized content-based hashing for consistent cache keys across all processing modes

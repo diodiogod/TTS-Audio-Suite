@@ -127,9 +127,17 @@ class VoiceDiscovery:
         if get_all_voices_paths:
             try:
                 extra_voices_paths = get_all_voices_paths()
+                # Keep track of already scanned paths to avoid duplicates
+                scanned_paths = set()
+                if models_voices_dir:
+                    scanned_paths.add(os.path.normpath(models_voices_dir))
+                if models_tts_voices_dir:
+                    scanned_paths.add(os.path.normpath(models_tts_voices_dir))
+
                 for extra_path in extra_voices_paths:
-                    # Skip paths we already scanned above
-                    if extra_path == models_voices_dir or extra_path == models_tts_voices_dir:
+                    # Skip paths we already scanned above (normalize paths for comparison)
+                    normalized_extra = os.path.normpath(extra_path)
+                    if normalized_extra in scanned_paths:
                         continue
                     if os.path.exists(extra_path):
                         # Create a clean prefix from the path for organization
@@ -140,6 +148,7 @@ class VoiceDiscovery:
                         else:
                             prefix = path_name
                         self._scan_directory(extra_path, f"extra:{extra_path}", prefix)
+                        scanned_paths.add(normalized_extra)
             except Exception:
                 # Silently handle any extra paths errors to avoid breaking main functionality
                 pass
@@ -399,13 +408,22 @@ class VoiceDiscovery:
         if get_all_voices_paths:
             try:
                 extra_voices_paths = get_all_voices_paths()
+                # Keep track of already scanned paths to avoid duplicates
+                scanned_paths = set()
+                if models_voices_dir:
+                    scanned_paths.add(os.path.normpath(models_voices_dir))
+                models_tts_voices_dir = self._get_models_tts_voices_dir()
+                if models_tts_voices_dir:
+                    scanned_paths.add(os.path.normpath(models_tts_voices_dir))
+
                 for extra_path in extra_voices_paths:
-                    # Skip paths we already scanned above
-                    models_tts_voices_dir = self._get_models_tts_voices_dir()
-                    if extra_path == models_voices_dir or extra_path == models_tts_voices_dir:
+                    # Skip paths we already scanned above (normalize paths for comparison)
+                    normalized_extra = os.path.normpath(extra_path)
+                    if normalized_extra in scanned_paths:
                         continue
                     if os.path.exists(extra_path):
                         self._scan_character_directories(extra_path, f"extra:{extra_path}")
+                        scanned_paths.add(normalized_extra)
             except Exception:
                 # Silently handle any extra paths errors
                 pass
@@ -439,13 +457,22 @@ class VoiceDiscovery:
         if get_all_voices_paths:
             try:
                 extra_voices_paths = get_all_voices_paths()
+                # Keep track of already processed paths to avoid duplicates
+                processed_paths = set()
+                if models_voices_dir:
+                    processed_paths.add(os.path.normpath(models_voices_dir))
+                models_tts_voices_dir = self._get_models_tts_voices_dir()
+                if models_tts_voices_dir:
+                    processed_paths.add(os.path.normpath(models_tts_voices_dir))
+
                 for extra_path in extra_voices_paths:
-                    # Skip paths we already processed above
-                    models_tts_voices_dir = self._get_models_tts_voices_dir()
-                    if extra_path == models_voices_dir or extra_path == models_tts_voices_dir:
+                    # Skip paths we already processed above (normalize paths for comparison)
+                    normalized_extra = os.path.normpath(extra_path)
+                    if normalized_extra in processed_paths:
                         continue
                     if os.path.exists(extra_path):
                         self._load_alias_file(extra_path, f"extra:{extra_path}")
+                        processed_paths.add(normalized_extra)
             except Exception:
                 # Silently handle any extra paths errors
                 pass
