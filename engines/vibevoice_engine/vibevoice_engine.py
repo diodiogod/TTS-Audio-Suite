@@ -627,15 +627,15 @@ class VibeVoiceEngine:
         
         return voice_sample.astype(np.float32)
     
-    def _prepare_voice_samples(self, voice_refs: List[Optional[Dict]]) -> List[np.ndarray]:
+    def _prepare_voice_samples(self, voice_refs: List[Optional[Dict]]) -> List[Optional[np.ndarray]]:
         """
-        Prepare voice samples from ComfyUI audio inputs or create synthetic ones.
-        
+        Prepare voice samples from ComfyUI audio inputs or None for zero-shot generation.
+
         Args:
             voice_refs: List of voice reference dicts from ComfyUI (can contain None)
-            
+
         Returns:
-            List of numpy arrays with voice samples
+            List of numpy arrays or None values (None enables true zero-shot generation)
         """
         voice_samples = []
         
@@ -727,11 +727,11 @@ class VibeVoiceEngine:
                     
                     voice_samples.append(audio_np.astype(np.float32))
                 else:
-                    # Create synthetic voice sample
-                    voice_samples.append(self._create_synthetic_voice_sample(i))
+                    # Use None for true zero-shot generation (processor will skip voice prompt)
+                    voice_samples.append(None)
             else:
-                # Create synthetic voice sample
-                voice_samples.append(self._create_synthetic_voice_sample(i))
+                # Use None for true zero-shot generation (processor will skip voice prompt)
+                voice_samples.append(None)
         
         return voice_samples
     
