@@ -233,21 +233,34 @@ class SegmentProcessor:
     
     def _parse_speaker_format_line(self, line: str) -> Optional[Tuple[str, str]]:
         """
-        Parse a line for manual "Speaker N:" format.
-        
+        Parse a line for manual speaker formats:
+        - "Speaker N: text"
+        - "[N] text" (concise format)
+
         Args:
             line: Single line to check
-            
+
         Returns:
             Tuple of (speaker_name, text) if found, None otherwise
         """
         import re
-        # Match "Speaker N: text" (case insensitive)
-        match = re.match(r'^(speaker\s*\d+)\s*:\s*(.*)$', line.strip(), re.IGNORECASE)
-        if match:
-            speaker_name = match.group(1).lower().strip()  # Normalize to "speaker 1", "speaker 2", etc.
-            speaker_text = match.group(2)
+
+        # First try "Speaker N: text" format (case insensitive)
+        speaker_match = re.match(r'^(speaker\s*\d+)\s*:\s*(.*)$', line.strip(), re.IGNORECASE)
+        if speaker_match:
+            speaker_name = speaker_match.group(1).lower().strip()  # Normalize to "speaker 1", "speaker 2", etc.
+            speaker_text = speaker_match.group(2)
             # Normalize speaker name format
             speaker_name = re.sub(r'\s+', ' ', speaker_name)  # "speaker  1" -> "speaker 1"
             return speaker_name, speaker_text
+
+        # Then try "[N] text" concise format
+        bracket_match = re.match(r'^\[(\d+)\]\s*(.*)$', line.strip())
+        if bracket_match:
+            speaker_num = bracket_match.group(1)
+            speaker_text = bracket_match.group(2)
+            if speaker_text.strip():  # Only if there's actual text after the number
+                speaker_name = f"speaker {speaker_num}"  # Convert [1] to "speaker 1"
+                return speaker_name, speaker_text
+
         return None

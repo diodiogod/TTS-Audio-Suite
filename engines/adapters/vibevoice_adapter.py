@@ -570,7 +570,12 @@ class VibeVoiceEngineAdapter:
             else:
                 # Character tag format - use global mapping if provided (for SRT consistency)
                 if character not in character_map:
-                    if global_char_to_speaker and character in global_char_to_speaker:
+                    # Special handling for numeric characters: [1] [2] [3] [4] -> map directly to Speaker N
+                    if character.isdigit() and 1 <= int(character) <= 4:
+                        speaker_idx = int(character) - 1  # Convert [1] to Speaker 1 (0-based index)
+                        character_map[character] = speaker_idx
+                        print(f"🔢 Numeric character '[{character}]' -> Speaker {int(character)} (direct mapping)")
+                    elif global_char_to_speaker and character in global_char_to_speaker:
                         # Use global mapping for consistent SRT processing
                         speaker_idx = global_char_to_speaker[character] - 1  # Convert to 0-based
                         character_map[character] = speaker_idx
