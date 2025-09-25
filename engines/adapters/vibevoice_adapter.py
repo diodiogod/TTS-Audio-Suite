@@ -105,7 +105,7 @@ class VibeVoiceEngineAdapter:
             self.current_processor = engine.processor
             self.current_model_name = model_name
             
-            print(f"✅ VibeVoice adapter: Model '{model_name}' loaded via unified interface")
+            # print(f"✅ VibeVoice adapter: Model '{model_name}' loaded via unified interface")  # Verbose logging
             
         except Exception as e:
             print(f"❌ VibeVoice adapter: Failed to load model via unified interface: {e}")

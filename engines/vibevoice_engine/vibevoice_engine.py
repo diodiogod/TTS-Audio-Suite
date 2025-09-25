@@ -310,8 +310,8 @@ class VibeVoiceEngine:
                 else:
                     raise
             
-            # Load processor
-            self.processor = VibeVoiceProcessor.from_pretrained(model_path)
+            # Load processor with unified tokenizer handling
+            self.processor = self._load_processor_with_unified_tokenizer(model_path, model_name)
             
             # Move to device if needed (only if not using quantization which handles device_map)
             if not quant_config and device == "cuda" and torch.cuda.is_available():
@@ -353,7 +353,172 @@ class VibeVoiceEngine:
         except Exception as e:
             logger.error(f"Failed to load VibeVoice model: {e}")
             raise RuntimeError(f"Model loading failed: {e}")
-    
+
+    def _load_processor_with_unified_tokenizer(self, model_path: str, model_name: str):
+        """
+        Load VibeVoice processor following our ChatterBox-style unified pattern:
+        1. Check local unified folder first
+        2. Check HuggingFace cache
+        3. If missing, download TO unified folder
+        4. Load from wherever found (no copying)
+        """
+        from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+        from vibevoice.modular.modular_vibevoice_text_tokenizer import VibeVoiceTextTokenizerFast
+        from huggingface_hub import hf_hub_download
+
+        # Determine which Qwen repo to use based on model name
+        if "7b" in model_name.lower() or "large" in model_name.lower():
+            qwen_repo = "Qwen/Qwen2.5-7B"
+        else:
+            qwen_repo = "Qwen/Qwen2.5-1.5B"
+
+        # print(f"🔍 Looking for tokenizer from {qwen_repo} using unified pattern...")  # Verbose logging
+
+        # Check our unified TTS folder first
+        tokenizer_unified_path = os.path.join(self.downloader.downloader.tts_dir, "VibeVoice", "tokenizer", qwen_repo.replace("/", "_"))
+        tokenizer_file = os.path.join(tokenizer_unified_path, "tokenizer.json")
+
+        tokenizer_source = None
+
+        if os.path.exists(tokenizer_file):
+            print(f"📁 Using unified folder tokenizer: {tokenizer_file}")
+            tokenizer_source = tokenizer_unified_path
+        else:
+            # Check HuggingFace cache
+            try:
+                cached_file = hf_hub_download(repo_id=qwen_repo, filename="tokenizer.json", local_files_only=True)
+                print(f"📁 Using cached tokenizer: {cached_file}")
+                tokenizer_source = os.path.dirname(cached_file)
+            except Exception as cache_error:
+                print(f"📋 Cache check failed: {str(cache_error)[:100]}... - will download")
+
+                # Download to unified folder
+                print(f"📥 Downloading tokenizer to unified folder...")
+                os.makedirs(tokenizer_unified_path, exist_ok=True)
+
+                tokenizer_files = [
+                    {"remote": "tokenizer.json", "local": "tokenizer.json"},
+                    {"remote": "tokenizer_config.json", "local": "tokenizer_config.json"},
+                ]
+
+                download_path = self.downloader.download_huggingface_model(
+                    repo_id=qwen_repo,
+                    model_name=qwen_repo.replace("/", "_"),
+                    files=tokenizer_files,
+                    engine_type="VibeVoice",
+                    subfolder="tokenizer"
+                )
+
+                if download_path and os.path.exists(os.path.join(download_path, "tokenizer.json")):
+                    print(f"✅ Downloaded tokenizer to: {download_path}")
+                    tokenizer_source = download_path
+                else:
+                    raise RuntimeError(f"Failed to download tokenizer from {qwen_repo}")
+
+        # Check if we're using our unified TTS folder (not HF cache)
+        is_unified_tokenizer = tokenizer_source and tokenizer_unified_path in tokenizer_source
+
+        if is_unified_tokenizer:
+            try:
+                # We have tokenizer in unified folder - build processor manually to use it
+                # print(f"🔧 Building processor with unified tokenizer from: {tokenizer_source}")  # Verbose logging
+
+                from vibevoice.modular.modular_vibevoice_text_tokenizer import VibeVoiceTextTokenizerFast
+                from vibevoice.processor.vibevoice_tokenizer_processor import VibeVoiceTokenizerProcessor
+                import json
+
+                # Load tokenizer directly with tokenizer_file to avoid class mismatch
+                tokenizer_file_path = os.path.join(tokenizer_source, "tokenizer.json")
+                if os.path.exists(tokenizer_file_path):
+                    tokenizer = VibeVoiceTextTokenizerFast(tokenizer_file=tokenizer_file_path)
+                    # print(f"🔧 Loaded tokenizer directly from file: {tokenizer_file_path}")  # Verbose logging
+                else:
+                    # Fallback to from_pretrained (may show warning)
+                    tokenizer = VibeVoiceTextTokenizerFast.from_pretrained(tokenizer_source)
+
+                # Load processor config if available
+                processor_config_path = os.path.join(model_path, "preprocessor_config.json")
+                processor_config_data = {}
+                if os.path.exists(processor_config_path):
+                    with open(processor_config_path, 'r', encoding='utf-8') as f:
+                        processor_config_data = json.load(f)
+
+                # Create audio processor
+                audio_processor = VibeVoiceTokenizerProcessor()
+
+                # Build final processor
+                processor = VibeVoiceProcessor(
+                    tokenizer=tokenizer,
+                    audio_processor=audio_processor,
+                    speech_tok_compress_ratio=processor_config_data.get("speech_tok_compress_ratio", 3200),
+                    db_normalize=processor_config_data.get("db_normalize", True)
+                )
+
+                # print(f"✅ Built VibeVoice processor with unified tokenizer")  # Verbose logging
+                return processor
+
+            except Exception as e:
+                print(f"⚠️ Unified tokenizer processor build failed: {e}")
+                print(f"🔄 Falling back to standard processor loading...")
+
+        # For HF cached tokenizer, build processor manually to avoid class mismatch warnings
+        else:
+            try:
+                # print(f"🔧 Building processor with HF cached tokenizer from: {tokenizer_source}")  # Verbose logging
+
+                from vibevoice.modular.modular_vibevoice_text_tokenizer import VibeVoiceTextTokenizerFast
+                from vibevoice.processor.vibevoice_tokenizer_processor import VibeVoiceTokenizerProcessor
+                import json
+
+                # Load tokenizer directly with tokenizer_file to avoid class mismatch
+                tokenizer_file_path = os.path.join(tokenizer_source, "tokenizer.json")
+                if os.path.exists(tokenizer_file_path):
+                    tokenizer = VibeVoiceTextTokenizerFast(tokenizer_file=tokenizer_file_path)
+                    # print(f"🔧 Loaded tokenizer directly from file: {tokenizer_file_path}")  # Verbose logging
+                else:
+                    # Fallback to from_pretrained (may show warning)
+                    tokenizer = VibeVoiceTextTokenizerFast.from_pretrained(tokenizer_source)
+
+                # Load processor config if available
+                processor_config_path = os.path.join(model_path, "preprocessor_config.json")
+                processor_config_data = {}
+                if os.path.exists(processor_config_path):
+                    with open(processor_config_path, 'r', encoding='utf-8') as f:
+                        processor_config_data = json.load(f)
+
+                # Create audio processor
+                audio_processor = VibeVoiceTokenizerProcessor()
+
+                # Build final processor
+                processor = VibeVoiceProcessor(
+                    tokenizer=tokenizer,
+                    audio_processor=audio_processor,
+                    speech_tok_compress_ratio=processor_config_data.get("speech_tok_compress_ratio", 3200),
+                    db_normalize=processor_config_data.get("db_normalize", True)
+                )
+
+                # print(f"✅ Built VibeVoice processor with HF cached tokenizer (no warnings)")  # Verbose logging
+                return processor
+
+            except Exception as e:
+                print(f"⚠️ HF cached tokenizer processor build failed: {e}")
+                print(f"🔄 Falling back to standard processor loading...")
+
+        # Final fallback to standard loading (may show warnings)
+        try:
+            processor = VibeVoiceProcessor.from_pretrained(model_path)
+            print(f"✅ Loaded VibeVoice processor with standard method")
+            return processor
+        except Exception as e:
+            # Ultimate fallback with explicit repo specification
+            print(f"⚠️ Standard processor loading failed: {e}")
+            processor = VibeVoiceProcessor.from_pretrained(
+                model_path,
+                language_model_pretrained_name=qwen_repo
+            )
+            print(f"✅ Loaded VibeVoice processor with explicit tokenizer repo: {qwen_repo}")
+            return processor
+
     def _create_synthetic_voice_sample(self, speaker_idx: int) -> np.ndarray:
         """
         Create synthetic voice sample for a specific speaker.

@@ -37,8 +37,9 @@ VIBEVOICE_MODELS = {
             {"remote": "model-00003-of-00003.safetensors", "local": "model-00003-of-00003.safetensors"},
             {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
             {"remote": "config.json", "local": "config.json"},
-            {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"}
-            # Note: Tokenizer files not included - VibeVoice uses Qwen tokenizer fallback by design
+            {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"},
+            # Tokenizer files from Qwen2.5-1.5B (required to prevent crashes)
+            {"remote": "tokenizer.json", "local": "tokenizer.json", "alt_repo": "Qwen/Qwen2.5-1.5B"}
         ]
     },
     "vibevoice-7B": {
@@ -65,8 +66,9 @@ VIBEVOICE_MODELS = {
             {"remote": "model-00010-of-00010.safetensors", "local": "model-00010-of-00010.safetensors"},
             {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
             {"remote": "config.json", "local": "config.json"},
-            {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"}
-            # Note: Tokenizer files not included - VibeVoice uses Qwen tokenizer fallback by design
+            {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"},
+            # Tokenizer files from Qwen2.5-7B (required to prevent crashes)
+            {"remote": "tokenizer.json", "local": "tokenizer.json", "alt_repo": "Qwen/Qwen2.5-7B"}
         ]
     }
 }
@@ -211,14 +213,14 @@ class VibeVoiceDownloader:
         """
         try:
             import vibevoice
-            print(f"✅ VibeVoice base package found: {vibevoice.__file__}")
+            # print(f"✅ VibeVoice base package found: {vibevoice.__file__}")  # Verbose logging
             
             # Test specific modules we need
             from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
-            print("✅ VibeVoiceForConditionalGenerationInference imported successfully")
+            # print("✅ VibeVoiceForConditionalGenerationInference imported successfully")  # Verbose logging
             
             from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
-            print("✅ VibeVoiceProcessor imported successfully")
+            # print("✅ VibeVoiceProcessor imported successfully")  # Verbose logging
             
             return True
         except ImportError as e:
