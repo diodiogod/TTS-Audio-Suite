@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.7] - 2025-09-25
+
+### Added
+
+- Add support for [1] [2] [3] [4] numeric character tags in native multi-speaker mode
+- Support mixed usage like [1] [2] [Alice] mapping to Speakers 1, 2, 3
+
+### Changed
+
+- Improve voice generation quality with true zero-shot hybrid mode
+- Increase CFG scale maximum from 5.0 to 10.0 for better control
+
+### Fixed
+
+- Add VibeVoice compatibility improvements with wildminder format
+- Full backward compatibility with existing character tag systems
 ## [4.10.6] - 2025-09-23
 
 ### Added
