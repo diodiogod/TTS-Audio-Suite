@@ -100,15 +100,41 @@ class VibeVoiceDownloader:
         for model_key, model_info in VIBEVOICE_MODELS.items():
             model_dir = os.path.join(self.vibevoice_dir, model_key)
             config_path = os.path.join(model_dir, "config.json")
-            
+
             if os.path.exists(config_path):
                 available.append(model_key)
-        
+
+        # Check for standalone .safetensors files
+        import folder_paths
+        search_dirs = [self.vibevoice_dir]
+
+        # Also check checkpoints folder if available
+        if hasattr(folder_paths, 'get_folder_paths'):
+            checkpoint_dirs = folder_paths.get_folder_paths("checkpoints")
+            if checkpoint_dirs:
+                search_dirs.extend(checkpoint_dirs)
+
+        for model_path_dir in search_dirs:
+            if not model_path_dir or not os.path.exists(model_path_dir):
+                continue
+
+            for item in os.listdir(model_path_dir):
+                item_path = os.path.join(model_path_dir, item)
+
+                # Look for standalone .safetensors files
+                if os.path.isfile(item_path) and item.endswith('.safetensors'):
+                    model_name = os.path.splitext(item)[0]
+                    # Avoid duplicates and skip if it's part of a regular model
+                    if model_name not in available and model_name not in VIBEVOICE_MODELS:
+                        # Add "local:" prefix for consistency with ChatterBox/F5-TTS
+                        local_model_name = f"local:{model_name}"
+                        available.append(local_model_name)
+
         # Always include model names for dropdown even if not downloaded
         for model_key in VIBEVOICE_MODELS.keys():
             if model_key not in available:
                 available.append(model_key)
-        
+
         return available
     
     def get_model_path(self, model_name: str) -> Optional[str]:
@@ -122,10 +148,18 @@ class VibeVoiceDownloader:
         Returns:
             Path to model directory or None if download failed
         """
+        # First check if this might be a standalone model
+        # Strip "local:" prefix if present
+        clean_model_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
+        standalone_path = self._find_standalone_model(clean_model_name)
+        if standalone_path:
+            print(f"📁 Using standalone VibeVoice model: {standalone_path}")
+            return standalone_path
+
         if model_name not in VIBEVOICE_MODELS:
             print(f"❌ Unknown VibeVoice model: {model_name}")
             return None
-        
+
         model_info = VIBEVOICE_MODELS[model_name]
         repo_id = model_info["repo"]
         
@@ -265,7 +299,38 @@ class VibeVoiceDownloader:
                 print(f"⚠️ Failed to download tokenizer.json: {e}")
                 print(f"   You can manually download it from {tokenizer_repo}")
                 print(f"   and place it in {model_path}")
-    
+
+    def _find_standalone_model(self, model_name: str) -> Optional[str]:
+        """
+        Find standalone .safetensors file for a model name.
+
+        Args:
+            model_name: Name to search for
+
+        Returns:
+            Path to standalone .safetensors file or None if not found
+        """
+        import folder_paths
+
+        search_dirs = [self.vibevoice_dir]
+
+        # Also check checkpoints folder if available
+        if hasattr(folder_paths, 'get_folder_paths'):
+            checkpoint_dirs = folder_paths.get_folder_paths("checkpoints")
+            if checkpoint_dirs:
+                search_dirs.extend(checkpoint_dirs)
+
+        for model_path_dir in search_dirs:
+            if not model_path_dir or not os.path.exists(model_path_dir):
+                continue
+
+            # Look for exact match
+            safetensors_path = os.path.join(model_path_dir, f"{model_name}.safetensors")
+            if os.path.isfile(safetensors_path):
+                return safetensors_path
+
+        return None
+
     def get_model_info(self, model_name: str) -> Optional[Dict]:
         """
         Get information about a VibeVoice model.

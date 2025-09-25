@@ -241,12 +241,31 @@ class VibeVoiceEngine:
             if quant_config:
                 model_kwargs["quantization_config"] = quant_config
             
+            # Check if this is a standalone .safetensors file
+            is_standalone = model_path.endswith('.safetensors')
+
             # Load model with enhanced configuration
             try:
-                self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
-                    model_path,
-                    **model_kwargs
-                )
+                if is_standalone:
+                    print(f"🔧 Loading standalone VibeVoice model from: {model_path}")
+                    # Load state_dict directly from .safetensors file
+                    state_dict = self._load_standalone_state_dict(model_path, device)
+
+                    # Load config from sidecar file or use fallback
+                    config_path = self._get_standalone_config_path(model_path, model_name)
+
+                    # Load with state_dict
+                    model_kwargs["state_dict"] = state_dict
+                    self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                        config_path if config_path else None,
+                        **model_kwargs
+                    )
+                else:
+                    # Regular directory-based loading
+                    self.model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+                        model_path,
+                        **model_kwargs
+                    )
                 
                 # Apply SageAttention if selected
                 if final_attention_mode == "sage":
@@ -311,7 +330,9 @@ class VibeVoiceEngine:
                     raise
             
             # Load processor with unified tokenizer handling
-            self.processor = self._load_processor_with_unified_tokenizer(model_path, model_name)
+            # For standalone models, we need to pass the directory for processor configs
+            processor_path = os.path.dirname(model_path) if is_standalone else model_path
+            self.processor = self._load_processor_with_unified_tokenizer(processor_path, model_name)
             
             # Move to device if needed (only if not using quantization which handles device_map)
             if not quant_config and device == "cuda" and torch.cuda.is_available():
@@ -518,6 +539,45 @@ class VibeVoiceEngine:
             )
             print(f"✅ Loaded VibeVoice processor with explicit tokenizer repo: {qwen_repo}")
             return processor
+
+    def _load_standalone_state_dict(self, safetensors_path: str, device: str):
+        """Load state_dict from standalone .safetensors file using ComfyUI's loader"""
+        try:
+            # Use ComfyUI's safetensors loader with device mapping
+            import comfy.utils
+            state_dict = comfy.utils.load_torch_file(safetensors_path, device=device)
+            print(f"✅ Loaded state_dict from: {safetensors_path}")
+            return state_dict
+        except Exception as e:
+            print(f"❌ Failed to load state_dict from {safetensors_path}: {e}")
+            raise
+
+    def _get_standalone_config_path(self, safetensors_path: str, model_name: str) -> Optional[str]:
+        """Get config path for standalone model, with fallbacks"""
+        # Try sidecar config file first
+        base_path = os.path.splitext(safetensors_path)[0]
+        sidecar_config = base_path + ".config.json"
+
+        if os.path.exists(sidecar_config):
+            print(f"📄 Using sidecar config: {sidecar_config}")
+            return sidecar_config
+
+        # Try looking for config.json in same directory
+        dir_config = os.path.join(os.path.dirname(safetensors_path), "config.json")
+        if os.path.exists(dir_config):
+            print(f"📄 Using directory config: {dir_config}")
+            return dir_config
+
+        # Fallback to default configs based on model name
+        config_name = "default_VibeVoice-Large_config.json" if "large" in model_name.lower() or "7b" in model_name.lower() else "default_VibeVoice-1.5B_config.json"
+        fallback_path = os.path.join(os.path.dirname(__file__), "..", "..", "IgnoredForGitHubDocs", "For_reference", "VibeVoice-ComfyUI-wildminder", "vibevoice", "configs", config_name)
+
+        if os.path.exists(fallback_path):
+            print(f"📄 Using fallback config: {fallback_path}")
+            return fallback_path
+
+        print(f"⚠️ No config found for standalone model, using None (transformers will use defaults)")
+        return None
 
     def _create_synthetic_voice_sample(self, speaker_idx: int) -> np.ndarray:
         """
