@@ -163,7 +163,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "model": model,
             "device": device,
             "multi_speaker_mode": multi_speaker_mode,
-            "cfg_scale": max(1.0, min(5.0, cfg_scale)),
+            "cfg_scale": max(1.0, min(10.0, cfg_scale)),
             "use_sampling": bool(use_sampling),
             "attention_mode": attention_mode,
             "inference_steps": max(3, min(100, inference_steps)),
