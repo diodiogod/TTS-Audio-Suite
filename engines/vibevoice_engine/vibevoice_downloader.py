@@ -94,15 +94,18 @@ class VibeVoiceDownloader:
         Returns:
             List of model names
         """
-        available = []
-        
-        # Check for downloaded models
+        # Start with ALL official models (like ChatterBox does)
+        available = list(VIBEVOICE_MODELS.keys())
+
+        # Then add "local:" versions for downloaded models
         for model_key, model_info in VIBEVOICE_MODELS.items():
             model_dir = os.path.join(self.vibevoice_dir, model_key)
             config_path = os.path.join(model_dir, "config.json")
 
             if os.path.exists(config_path):
-                available.append(model_key)
+                # Add "local:" prefix for downloaded official models (consistent with F5/ChatterBox)
+                local_model_name = f"local:{model_key}"
+                available.append(local_model_name)
 
         # Check for standalone .safetensors files
         import folder_paths
@@ -130,10 +133,7 @@ class VibeVoiceDownloader:
                         local_model_name = f"local:{model_name}"
                         available.append(local_model_name)
 
-        # Always include model names for dropdown even if not downloaded
-        for model_key in VIBEVOICE_MODELS.keys():
-            if model_key not in available:
-                available.append(model_key)
+        # Official models already added at the start
 
         return available
     
