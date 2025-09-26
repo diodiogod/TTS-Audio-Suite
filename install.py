@@ -541,12 +541,12 @@ class TTSAudioInstaller:
             "pillow",
             
             # SAFE packages from DEPENDENCY_TESTING_RESULTS.md
-            "s3tokenizer>=0.1.7",          # ✅ SAFE - Heavy dependencies but NO conflicts
-            "vector-quantize-pytorch",     # ✅ SAFE - Clean install
-            "resemble-perth",              # ✅ SAFE - Works in ChatterBox
-            "diffusers>=0.30.0",          # ✅ SAFE - Likely safe
-            # "audio-separator>=0.35.2",    # ⚠️ MOVED - Requires numpy>=2, installed conditionally
-            "hydra-core>=1.3.0",          # ✅ SAFE - Clean install, minimal dependencies
+            "s3tokenizer>=0.1.7",          # SAFE - Heavy dependencies but NO conflicts
+            "vector-quantize-pytorch",     # SAFE - Clean install
+            "resemble-perth",              # SAFE - Works in ChatterBox
+            "diffusers>=0.30.0",          # SAFE - Likely safe
+            # "audio-separator>=0.35.2",    # MOVED - Requires numpy>=2, installed conditionally
+            "hydra-core>=1.3.0",          # SAFE - Clean install, minimal dependencies
             
             # Dependencies for --no-deps packages based on PyPI metadata
             
@@ -660,7 +660,7 @@ class TTSAudioInstaller:
                 
                 # Try GPU installation first with --no-deps to prevent numpy downgrade
                 self.run_pip_command(["install", "--no-deps", faiss_gpu_package], f"Installing {faiss_gpu_package} for GPU acceleration (--no-deps)")
-                self.log("✅ faiss-gpu installed with --no-deps - RVC will use GPU acceleration without downgrading numpy", "SUCCESS")
+                self.log("faiss-gpu installed with --no-deps - RVC will use GPU acceleration without downgrading numpy", "SUCCESS")
                 
             except subprocess.CalledProcessError:
                 # GPU installation failed - fallback to CPU
@@ -942,23 +942,35 @@ class TTSAudioInstaller:
         self.log("Text normalization packages failed to install - IndexTTS-2 will use basic text processing", "WARNING")
         self.log("This may affect quality for Chinese text and complex English patterns", "INFO")
 
-    def check_comfyui_environment(self):
-        """Check if running in likely ComfyUI environment and warn for system Python"""
+    def check_python_environment(self):
+        """Check Python environment and warn about potential mismatches"""
         python_path = sys.executable.lower()
-        
-        # Only warn for clearly identifiable system Python paths
+
+        # Check for virtual environment mismatch (Windows py launcher issue)
+        if 'VIRTUAL_ENV' in os.environ:
+            venv_path = os.environ['VIRTUAL_ENV']
+            if self.is_windows and not sys.executable.startswith(venv_path):
+                self.log("WARNING: Python version mismatch detected!", "WARNING")
+                self.log(f"Virtual environment: {venv_path}", "WARNING")
+                self.log(f"Current Python: {sys.executable}", "WARNING")
+                self.log("You likely used 'py install.py' instead of 'python install.py'", "WARNING")
+                self.log("Use 'python install.py' to match your ComfyUI Python version", "INFO")
+                print()  # Add spacing for visibility
+                return False
+
+        # Check for clearly identifiable system Python paths
         system_python_patterns = [
             "c:\\python",           # Windows system Python
-            "/usr/bin/python",      # Linux system Python  
+            "/usr/bin/python",      # Linux system Python
             "/usr/local/bin/python", # macOS Homebrew system Python
             "system32",             # Windows system directory
         ]
-        
+
         if any(pattern in python_path for pattern in system_python_patterns):
-            self.log("⚠️  WARNING: Detected system-wide Python installation", "WARNING")
+            self.log("WARNING: Detected system-wide Python installation", "WARNING")
             self.log(f"Current Python: {sys.executable}", "WARNING")
             self.log("This may install packages to the wrong location", "WARNING")
-            self.log("💡 For best results, use ComfyUI Manager for automatic installation", "INFO")
+            self.log("For best results, use ComfyUI Manager for automatic installation", "INFO")
             return False
         return True
 
@@ -1129,7 +1141,7 @@ def main():
         installer.log(f"Python {installer.python_version.major}.{installer.python_version.minor}.{installer.python_version.micro} detected", "INFO")
         
         # Check environment and system dependencies before proceeding
-        installer.check_comfyui_environment()
+        installer.check_python_environment()
         installer.ensure_requirements_installed()  # Ensure requirements.txt is installed first
         
         # Check system dependencies (Linux only)
