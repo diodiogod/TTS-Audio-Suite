@@ -44,11 +44,13 @@ try:
     from .sage_attention_patch import (
         SAGE_ATTENTION_AVAILABLE,
         set_sage_attention,
+        restore_original_attention,
         SAGE_ATTENTION_FUNCTION
     )
 except ImportError:
     SAGE_ATTENTION_AVAILABLE = False
     set_sage_attention = None
+    restore_original_attention = None
     SAGE_ATTENTION_FUNCTION = None
 
 # Convert token-based limits to character-based for unified chunker
@@ -78,7 +80,8 @@ class VibeVoiceEngine:
         self.current_model_name = self.__class__._shared_model_name
         self.model_path = None
         self.device = None
-        
+        self.attention_mode = None  # Track current attention mode for re-patching
+
         # Use global shared cache
         self.cache = get_audio_cache()
         self.downloader = VibeVoiceDownloader()
@@ -118,12 +121,23 @@ class VibeVoiceEngine:
         """
         # Check if already loaded with same config using class-level cache
         current_config = (model_name, device, attention_mode, quantize_llm_4bit)
-        if (self.__class__._shared_model is not None and 
+        if (self.__class__._shared_model is not None and
             self.__class__._shared_config == current_config):
             print(f"💾 VibeVoice model '{model_name}' already loaded with same config (reusing cached)")
             # Reuse the cached model
             self.model = self.__class__._shared_model
             self.processor = self.__class__._shared_processor
+
+            # Re-apply SageAttention if model was moved between devices
+            if (attention_mode == "sage" and
+                SAGE_ATTENTION_AVAILABLE and set_sage_attention and
+                hasattr(self.model, 'device') and self.model.device.type == "cuda"):
+                print(f"🔄 Re-applying SageAttention after device movement...")
+                try:
+                    set_sage_attention(self.model)
+                    print(f"✅ SageAttention re-patched successfully")
+                except Exception as e:
+                    print(f"⚠️ Failed to re-patch SageAttention: {e}")
             self.current_model_name = self.__class__._shared_model_name
             self.device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
             self._original_device = device  # Store original device setting for auto detection
@@ -267,7 +281,7 @@ class VibeVoiceEngine:
                         **model_kwargs
                     )
                 
-                # Apply SageAttention if selected
+                # Apply SageAttention if selected, restore original if not
                 if final_attention_mode == "sage":
                     if SAGE_ATTENTION_AVAILABLE and set_sage_attention:
                         print(f"   🎯 Applying SageAttention patch to model...")
@@ -281,6 +295,14 @@ class VibeVoiceEngine:
                     else:
                         print(f"   ⚠️ SageAttention not available, using SDPA")
                         final_attention_mode = "sdpa"
+                else:
+                    # Restore original attention if switching away from SageAttention
+                    if restore_original_attention:
+                        print(f"   🔄 Restoring original attention (cleaning SageAttention patches)")
+                        restore_original_attention(self.model)
+
+                # Store attention mode for re-patching after device movement
+                self.attention_mode = final_attention_mode
                 
                 # Set model to evaluation mode and mark quantization status
                 self.model.eval()
@@ -893,12 +915,14 @@ class VibeVoiceEngine:
                 # else:
                 #     print(f"🐛 Tokenizer has no bos_token_id attribute")
                 
-                # Ensure bos_token_id is set (workaround for transformers compatibility)
+                # Ensure proper token IDs are set (critical for stopping generation)
                 generation_kwargs = {
                     "tokenizer": self.processor.tokenizer,
                     "cfg_scale": cfg_scale,
                     "max_new_tokens": max_new_tokens,
                     "bos_token_id": 151643,  # Qwen2 BOS token
+                    "eos_token_id": self.processor.tokenizer.eos_token_id,  # Critical: EOS for stopping
+                    "pad_token_id": self.processor.tokenizer.eos_token_id,  # Use EOS as pad
                 }
                 
                 if use_sampling:

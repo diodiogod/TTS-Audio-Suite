@@ -237,13 +237,17 @@ class ComfyUIModelWrapper:
             print(f"⚠️ TTS Model detach: no memory freed (model may already be on CPU)")
         
         # CRITICAL: Mark model as invalid to prevent reuse of corrupted state
-        # Models with CUDA graphs cannot be safely reused after CPU offloading
-        self._is_valid_for_reuse = False
-        print(f"🚫 Marked {self.model_info.engine} model as invalid for reuse (CUDA state corrupted)")
-        
-        # CRITICAL: Clear node-level engine caches to prevent reuse of corrupted engines
-        # This is essential because TTS nodes have their own caching separate from ComfyUI wrapper cache
-        invalidate_all_caches()
+        # Only needed for engines with CUDA graphs (Higgs Audio) that cannot be safely reused after CPU offloading
+        if self.model_info.engine == "higgs_audio":
+            self._is_valid_for_reuse = False
+            print(f"🚫 Marked {self.model_info.engine} model as invalid for reuse (CUDA graphs corrupted by CPU migration)")
+
+            # CRITICAL: Clear node-level engine caches to prevent reuse of corrupted engines
+            # This is essential because TTS nodes have their own caching separate from ComfyUI wrapper cache
+            invalidate_all_caches()
+        else:
+            # Other engines (ChatterBox, F5-TTS, VibeVoice) can be safely reused after device movement
+            print(f"✅ {self.model_info.engine} model detached, marked valid for reuse")
     
     def partially_load(self, device, extra_memory, force_patch_weights=False):
         """

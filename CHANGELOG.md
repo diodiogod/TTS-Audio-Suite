@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.11] - 2025-09-26
+
+### Added
+
+- Add automatic fallback if SageAttention fails during generation
+- Credits: SageAttention approach adapted from @Enemyx-net's implementation
+
+### Changed
+
+- Improve generation speed and reliability with SageAttention enabled
+
+### Fixed
+
+- Fix VibeVoice SageAttention generating infinite noise and corrupting model state
+- Fix SageAttention generating 2+ minute audio with weird noise instead of proper speech
+- Fix model state corruption requiring ComfyUI restart when switching attention modes
+- Fix VibeVoice not stopping generation at proper endpoints
 ## [4.10.10] - 2025-09-26
 
 ### Changed

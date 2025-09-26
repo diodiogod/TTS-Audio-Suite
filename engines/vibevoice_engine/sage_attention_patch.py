@@ -66,127 +66,165 @@ def get_sage_attention_function_and_params():
 SAGE_ATTENTION_FUNCTION, QK_QUANT_GRAN, PV_ACCUM_DTYPE = get_sage_attention_function_and_params()
 
 
-def sage_attention_forward(
-    self,
-    hidden_states: torch.Tensor,
-    position_embeddings: tuple[torch.Tensor, torch.Tensor],
-    attention_mask: Optional[torch.Tensor] = None,
-    past_key_values: Optional['Cache'] = None,
-    cache_position: Optional[torch.LongTensor] = None,
-    **kwargs,
-) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-    """
-    Custom forward pass for Qwen2Attention using SageAttention kernels.
-    Provides mixed-precision INT8/FP16/FP8 computation for improved performance.
-    """
-    
-    if SAGE_ATTENTION_FUNCTION is None:
-        raise RuntimeError("SageAttention was selected but no compatible kernel was found for this GPU.")
-    
-    original_dtype = hidden_states.dtype
-    
-    # Check if model is 4-bit quantized
-    is_4bit = hasattr(self.q_proj, 'quant_state')
-    if is_4bit:
-        target_dtype = torch.bfloat16
-    else:
-        target_dtype = self.q_proj.weight.dtype
+def create_sage_sdpa_wrapper():
+    """Create a SageAttention wrapper for F.scaled_dot_product_attention"""
+    try:
+        from sageattention import sageattn
+        import torch.nn.functional as F
 
-    if hidden_states.dtype != target_dtype:
-        hidden_states = hidden_states.to(target_dtype)
+        # Store original function
+        original_sdpa = F.scaled_dot_product_attention
 
-    bsz, q_len, _ = hidden_states.size()
+        def sage_sdpa(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None, **kwargs):
+            """Wrapper that replaces scaled_dot_product_attention with SageAttention"""
+            # Log any unexpected parameters for debugging
+            if kwargs:
+                unexpected_params = list(kwargs.keys())
+                logger.debug(f"SageAttention: Ignoring unsupported parameters: {unexpected_params}")
 
-    # Linear projections
-    query_states = self.q_proj(hidden_states)
-    key_states = self.k_proj(hidden_states)
-    value_states = self.v_proj(hidden_states)
+            try:
+                # SageAttention expects tensors in specific format
+                # Transformers typically use (batch, heads, seq_len, head_dim)
 
-    # Reshape for attention computation
-    query_states = query_states.view(bsz, q_len, self.config.num_attention_heads, self.head_dim).transpose(1, 2)
-    key_states = key_states.view(bsz, q_len, self.config.num_key_value_heads, self.head_dim).transpose(1, 2)
-    value_states = value_states.view(bsz, q_len, self.config.num_key_value_heads, self.head_dim).transpose(1, 2)
+                # Check tensor dimensions to determine layout
+                if query.dim() == 4:
+                    # 4D tensor: (batch, heads, seq, dim)
+                    batch_size, num_heads, seq_len_q, head_dim = query.shape
+                    seq_len_k = key.shape[2]
 
-    # Apply rotary position embeddings
-    cos, sin = position_embeddings
-    # Import apply_rotary_pos_emb dynamically to avoid import errors
-    from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb
-    query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin, position_ids=None)
+                    # Reshape to (batch*heads, seq, dim) for HND layout
+                    query_reshaped = query.reshape(batch_size * num_heads, seq_len_q, head_dim)
+                    key_reshaped = key.reshape(batch_size * num_heads, seq_len_k, head_dim)
+                    value_reshaped = value.reshape(batch_size * num_heads, seq_len_k, head_dim)
 
-    # Handle past key values for caching
-    if past_key_values is not None:
-        cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
-        key_states, value_states = past_key_values.update(key_states, value_states, self.layer_idx, cache_kwargs)
+                    # Call sageattn with HND layout
+                    output = sageattn(
+                        query_reshaped, key_reshaped, value_reshaped,
+                        is_causal=is_causal,
+                        tensor_layout="HND"  # Heads*batch, seqN, Dim
+                    )
 
-    # Note: SageAttention kernel handles KV head broadcasting internally
-    # No need to repeat K and V heads here
+                    # Reshape back to original format if needed
+                    if output.dim() == 3:
+                        output = output.reshape(batch_size, num_heads, seq_len_q, head_dim)
 
-    is_causal = attention_mask is None and q_len > 1
-    
-    # Call SageAttention kernel
-    attn_output = SAGE_ATTENTION_FUNCTION(
-        query_states.to(target_dtype),
-        key_states.to(target_dtype),
-        value_states.to(target_dtype),
-        tensor_layout="HND",  # Head, Number, Dimension layout
-        is_causal=is_causal,
-        qk_quant_gran=QK_QUANT_GRAN,
-        pv_accum_dtype=PV_ACCUM_DTYPE,
-    )
-    
-    # Handle potential tuple return
-    if isinstance(attn_output, tuple):
-        attn_output = attn_output[0] 
+                    return output
+                else:
+                    # For 3D tensors, assume they're already in HND format
+                    output = sageattn(
+                        query, key, value,
+                        is_causal=is_causal,
+                        tensor_layout="HND"
+                    )
+                    return output
 
-    # Reshape output
-    attn_output = attn_output.transpose(1, 2).contiguous()
-    attn_output = attn_output.reshape(bsz, q_len, self.config.hidden_size)
-    
-    # Output projection
-    attn_output = self.o_proj(attn_output)
+            except Exception as e:
+                # If SageAttention fails, fall back to original implementation
+                logger.debug(f"SageAttention failed, using original: {e}")
+                # Call with proper arguments - scale is a keyword argument in PyTorch 2.0+
+                if scale is not None:
+                    return original_sdpa(query, key, value, attn_mask=attn_mask,
+                                       dropout_p=dropout_p, is_causal=is_causal, scale=scale, **kwargs)
+                else:
+                    return original_sdpa(query, key, value, attn_mask=attn_mask,
+                                       dropout_p=dropout_p, is_causal=is_causal, **kwargs)
 
-    # Restore original dtype if needed
-    if attn_output.dtype != original_dtype:
-        attn_output = attn_output.to(original_dtype)
+        return sage_sdpa, original_sdpa
 
-    # SageAttention doesn't return attention weights
-    attn_weights = None
-    
-    return attn_output, attn_weights
+    except ImportError:
+        logger.error("SageAttention not available for F.scaled_dot_product_attention wrapper")
+        return None, None
 
 
 def set_sage_attention(model):
     """
-    Apply SageAttention to all Qwen2Attention layers in the model.
-    This monkey-patches the forward method to use SageAttention kernels.
-    
+    Apply SageAttention using Enemyx's safer SDPA wrapper approach.
+    This patches F.scaled_dot_product_attention instead of model layers.
+
     Args:
         model: The VibeVoice model to patch
-        
+
     Raises:
         ImportError: If SageAttention is not installed
     """
     if not SAGE_ATTENTION_AVAILABLE:
         raise ImportError("SageAttention library is not installed or failed to load. Install with: pip install sageattention")
-    
-    if SAGE_ATTENTION_FUNCTION is None:
-        logger.warning("SageAttention not available for current GPU architecture")
+
+    # Use Enemyx's safer approach - patch F.scaled_dot_product_attention
+    sage_sdpa, original_sdpa = create_sage_sdpa_wrapper()
+    if sage_sdpa is None:
+        logger.warning("Failed to create SageAttention SDPA wrapper")
         return
 
-    # Import Qwen2Attention dynamically
+    # Apply Enemyx-style patching to attention modules
+    import torch.nn.functional as F
+    patched_count = 0
+
+    def patch_attention_forward(module):
+        """Patch attention layers to use SageAttention via SDPA wrapper"""
+        nonlocal patched_count
+
+        if hasattr(module, 'forward'):
+            original_forward = module.forward
+
+            def sage_forward(*args, **kwargs):
+                """Wrapper that temporarily replaces F.scaled_dot_product_attention"""
+                # Store and replace the function
+                original_func = F.scaled_dot_product_attention
+                F.scaled_dot_product_attention = sage_sdpa
+
+                try:
+                    # Call original forward with patched attention
+                    result = original_forward(*args, **kwargs)
+                finally:
+                    # Always restore original function
+                    F.scaled_dot_product_attention = original_func
+
+                return result
+
+            # Check if this module likely uses attention
+            module_name = module.__class__.__name__.lower()
+            if any(name in module_name for name in ['attention', 'attn', 'multihead']):
+                # Store original for restoration
+                if not hasattr(module, '_original_forward'):
+                    module._original_forward = original_forward
+                module.forward = sage_forward
+                patched_count += 1
+
+        # Recursively patch child modules
+        for child in module.children():
+            patch_attention_forward(child)
+
+    # Apply patching to the entire model
+    patch_attention_forward(model)
+
+    if patched_count > 0:
+        logger.info(f"Patched {patched_count} attention layers with SageAttention (Enemyx method)")
+    else:
+        logger.warning("No attention layers found to patch - SageAttention may not be applied")
+
+
+def restore_original_attention(model):
+    """
+    Restore original attention implementation by removing SageAttention patches.
+
+    Args:
+        model: The VibeVoice model to restore
+    """
     try:
         from transformers.models.qwen2.modeling_qwen2 import Qwen2Attention
     except ImportError:
         logger.error("Qwen2Attention not found in transformers library")
         return
 
-    patched_count = 0
+    restored_count = 0
     for module in model.modules():
-        if isinstance(module, Qwen2Attention):
-            module.forward = sage_attention_forward.__get__(module, Qwen2Attention)
-            patched_count += 1
-    
-    if patched_count > 0:
-        logger.info(f"Successfully patched {patched_count} Qwen2Attention layers with SageAttention")
+        if isinstance(module, Qwen2Attention) and hasattr(module, '_original_forward'):
+            module.forward = module._original_forward
+            delattr(module, '_original_forward')
+            restored_count += 1
+
+    if restored_count > 0:
+        logger.info(f"Restored original attention for {restored_count} Qwen2Attention layers")
     else:
-        logger.warning("No Qwen2Attention layers found to patch")
+        logger.warning("No patched Qwen2Attention layers found to restore")
