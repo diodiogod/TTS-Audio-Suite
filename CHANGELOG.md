@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.10] - 2025-09-26
+
+### Changed
+
+- Improve IndexTTS-2 reliability and user experience
+
+### Fixed
+
+- Fix IndexTTS-2 import conflicts with external installations
+- Fix import errors when external IndexTTS packages are installed
+- Add clear error messages with solution steps for conflicting installations
+- Resolve 'No module named indextts.gpt.model_v2' errors reported by users
 ## [4.10.9] - 2025-09-26
 
 ### Fixed
