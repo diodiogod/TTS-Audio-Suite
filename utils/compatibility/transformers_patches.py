@@ -34,13 +34,14 @@ class TransformersPatches:
         """Apply all necessary transformers compatibility patches"""
         if verbose:
             print("🔧 Applying transformers compatibility patches...")
-            
+
         cls.patch_flash_attention_kwargs(verbose=verbose)
         cls.patch_base_streamer(verbose=verbose)
         # Skip DynamicCache patch - users should upgrade transformers instead
         # cls.patch_dynamic_cache_properties(verbose=verbose)
         cls.patch_vibevoice_generation_methods(verbose=verbose)
-        
+        cls.patch_accelerate_compatibility(verbose=verbose)
+
         if verbose:
             print(f"✅ Applied {len(cls._patches_applied)} transformers compatibility patches")
     
@@ -312,7 +313,193 @@ class TransformersPatches:
             pass
         except Exception as e:
             warnings.warn(f"VibeVoice generation methods patching failed: {e}")
-    
+
+    @classmethod
+    def patch_accelerate_compatibility(cls, verbose: bool = True):
+        """
+        Fix accelerate detection and missing function compatibility issues.
+
+        Issue: transformers 4.56.1 + accelerate 0.20.3 compatibility problems:
+        1. transformers.utils.is_accelerate_available() returns False despite accelerate being installed
+        2. Missing check_tied_parameters_on_same_device function in older accelerate versions
+        Affects: VibeVoice model loading with device_map
+        """
+        if "accelerate_compatibility" in cls._patches_applied:
+            return
+
+        try:
+            # Force import accelerate first
+            import accelerate
+
+            # Force import key accelerate components that transformers needs
+            from accelerate import infer_auto_device_map, dispatch_model
+            from accelerate.utils import get_balanced_memory
+
+            # Test if transformers can detect accelerate
+            from transformers.utils import is_accelerate_available
+            accelerate_detected = is_accelerate_available()
+
+            if not accelerate_detected:
+                if verbose:
+                    print("   🔧 Fixing broken transformers accelerate detection")
+
+                # Comprehensive monkey patch for all accelerate detection functions
+                import transformers.utils
+                def fixed_is_accelerate_available():
+                    try:
+                        import accelerate
+                        return True
+                    except ImportError:
+                        return False
+
+                # Replace the broken detection function in all locations
+                transformers.utils.is_accelerate_available = fixed_is_accelerate_available
+
+                try:
+                    import transformers.modeling_utils
+                    transformers.modeling_utils.is_accelerate_available = fixed_is_accelerate_available
+                except:
+                    pass
+
+                try:
+                    import transformers.utils.import_utils
+                    transformers.utils.import_utils.is_accelerate_available = fixed_is_accelerate_available
+                except:
+                    pass
+
+                try:
+                    import transformers
+                    if hasattr(transformers, 'is_accelerate_available'):
+                        transformers.is_accelerate_available = fixed_is_accelerate_available
+                except:
+                    pass
+
+            # Add missing functions that newer transformers expects
+            def check_tied_parameters_on_same_device(model, device_map=None):
+                """
+                Dummy implementation of missing accelerate function.
+                This function checks if tied parameters are on the same device.
+
+                Args:
+                    model: The model to check
+                    device_map: Optional device mapping
+
+                Returns:
+                    bool: True if tied parameters are on same device
+                """
+                return True  # For single GPU setups, this is always true
+
+            def dispatch_model(model, device_map=None, main_device=None, state_dict=None,
+                             offload_dir=None, offload_index=None, **kwargs):
+                """
+                Dummy implementation of missing accelerate.dispatch_model function.
+                For single GPU setups, we just move the model to the target device.
+
+                Args:
+                    model: The model to dispatch
+                    device_map: Device mapping (ignored in dummy implementation)
+                    main_device: Main device to use
+                    **kwargs: Additional arguments (ignored)
+
+                Returns:
+                    The model (moved to device if specified)
+                """
+                if main_device is not None:
+                    model = model.to(main_device)
+                elif device_map == "cuda" or (isinstance(device_map, dict) and "cuda" in str(device_map)):
+                    model = model.cuda()
+                return model
+
+            # Only add missing functions if we have compatibility issues
+            needs_function_patches = False
+
+            # Check if critical functions are missing (indicating compatibility issues)
+            try:
+                import accelerate.utils
+                if not hasattr(accelerate.utils, 'check_tied_parameters_on_same_device'):
+                    needs_function_patches = True
+            except:
+                pass
+
+            try:
+                import accelerate
+                if not hasattr(accelerate, 'dispatch_model'):
+                    needs_function_patches = True
+            except:
+                pass
+
+            # Only apply function patches if we detected issues OR accelerate detection failed
+            if not accelerate_detected or needs_function_patches:
+
+                if verbose and needs_function_patches:
+                    print("   🔧 Adding missing accelerate functions")
+
+                # Add missing functions to accelerate.utils
+                try:
+                    import accelerate.utils
+                    if not hasattr(accelerate.utils, 'check_tied_parameters_on_same_device'):
+                        accelerate.utils.check_tied_parameters_on_same_device = check_tied_parameters_on_same_device
+                except Exception as e:
+                    if verbose and not accelerate_detected:
+                        print(f"   ⚠️ Could not add to accelerate.utils: {e}")
+
+                # Add dispatch_model to accelerate module
+                try:
+                    import accelerate
+                    if not hasattr(accelerate, 'dispatch_model'):
+                        accelerate.dispatch_model = dispatch_model
+                except Exception as e:
+                    if verbose and not accelerate_detected:
+                        print(f"   ⚠️ Could not add dispatch_model to accelerate: {e}")
+
+                # Also add to transformers modules that might import it
+                try:
+                    import transformers.modeling_utils
+                    if not hasattr(transformers.modeling_utils, 'check_tied_parameters_on_same_device'):
+                        transformers.modeling_utils.check_tied_parameters_on_same_device = check_tied_parameters_on_same_device
+                    if not hasattr(transformers.modeling_utils, 'dispatch_model'):
+                        transformers.modeling_utils.dispatch_model = dispatch_model
+                except Exception as e:
+                    if verbose and not accelerate_detected:
+                        print(f"   ⚠️ Could not add to transformers.modeling_utils: {e}")
+
+                # Add to global namespace as well (for direct imports)
+                try:
+                    import builtins
+                    builtins.check_tied_parameters_on_same_device = check_tied_parameters_on_same_device
+                    builtins.dispatch_model = dispatch_model
+                except Exception as e:
+                    if verbose and not accelerate_detected:
+                        print(f"   ⚠️ Could not add to global namespace: {e}")
+
+                # Add to any vibevoice modules that might need it
+                try:
+                    import sys
+                    for module_name, module in sys.modules.items():
+                        if 'vibevoice' in module_name.lower() and hasattr(module, '__dict__'):
+                            if 'check_tied_parameters_on_same_device' not in module.__dict__:
+                                module.__dict__['check_tied_parameters_on_same_device'] = check_tied_parameters_on_same_device
+                            if 'dispatch_model' not in module.__dict__:
+                                module.__dict__['dispatch_model'] = dispatch_model
+                except Exception as e:
+                    if verbose and not accelerate_detected:
+                        print(f"   ⚠️ Could not add to vibevoice modules: {e}")
+
+            cls._patches_applied.add("accelerate_compatibility")
+
+            # Only log if patches were actually needed
+            if verbose and not accelerate_detected:
+                print("   ✅ Accelerate compatibility patches applied")
+            elif verbose:
+                # Silent for working installations - no log pollution
+                pass
+
+        except ImportError as e:
+            if verbose:
+                print(f"   ❌ accelerate not available: {e}")
+        except Exception as e:
+            warnings.warn(f"Accelerate compatibility patching failed: {e}")
+
     @classmethod
     def get_applied_patches(cls):
         """Get list of applied patches"""

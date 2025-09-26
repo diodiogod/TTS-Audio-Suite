@@ -13,6 +13,14 @@ import logging
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 from packaging import version
+
+# Apply accelerate compatibility patches
+try:
+    from utils.compatibility.transformers_patches import TransformersPatches
+    TransformersPatches.patch_accelerate_compatibility(verbose=True)
+except ImportError:
+    print("⚠️ Could not import transformers patches")
+
 import transformers
 
 # Add parent directory for imports
@@ -237,15 +245,17 @@ class VibeVoiceEngine:
             else:
                 model_kwargs['torch_dtype'] = final_load_dtype
             
-            # Set device_map based on quantization and device
+            # Set device_map based on quantization and device (original logic)
             if quant_config:
                 # For quantization, use explicit device mapping to avoid buffer issues
                 if device == "cuda" or device == "auto":
                     model_kwargs["device_map"] = {"": 0}  # Put everything on GPU 0
                 else:
                     model_kwargs["device_map"] = {"": "cpu"}
+                print(f"🔧 VibeVoice: Using device_map for quantization: {model_kwargs['device_map']}")
             else:
                 model_kwargs["device_map"] = device if device != "auto" else None
+                print(f"🔧 VibeVoice: Using device_map: {model_kwargs.get('device_map', 'None')}")
             
             # Add attention implementation (use SDPA for SageAttention, patch later)
             if attn_implementation_for_load != "auto":
@@ -376,7 +386,6 @@ class VibeVoiceEngine:
             self._original_device = device  # Store original device setting for auto detection
             self.current_model_name = model_name
             self._current_config = current_config
-            self._attention_mode = final_attention_mode
             self._quantize_llm_4bit = quantize_llm_4bit
             
             # Store in class-level cache for reuse
@@ -801,7 +810,7 @@ class VibeVoiceEngine:
             temperature_rounded = round(float(temperature), 3) if isinstance(temperature, (int, float)) else temperature
             top_p_rounded = round(float(top_p), 3) if isinstance(top_p, (int, float)) else top_p
             
-            # print(f"🐛 VibeVoice ENGINE: Cache params - character='{character}', cfg_scale={cfg_scale_rounded}, use_sampling={use_sampling}, multi_speaker_mode='{multi_speaker_mode}', attention={getattr(self, '_attention_mode', 'auto')}, steps={inference_steps}, quant={getattr(self, '_quantize_llm_4bit', False)}")
+            print(f"🐛 VibeVoice ENGINE: Cache params - character='{character}', cfg_scale={cfg_scale_rounded}, use_sampling={use_sampling}, multi_speaker_mode='{multi_speaker_mode}', attention={getattr(self, 'attention_mode', 'auto')}, steps={inference_steps}, quant={getattr(self, '_quantize_llm_4bit', False)}")
             # print(f"🐛 VibeVoice ENGINE: Original vs rounded - cfg_scale: {cfg_scale} -> {cfg_scale_rounded}, temp: {temperature} -> {temperature_rounded}, top_p: {top_p} -> {top_p_rounded}")
             cache_fn = create_cache_function(
                 "vibevoice",
@@ -817,7 +826,7 @@ class VibeVoiceEngine:
                 audio_component=stable_audio_component,
                 multi_speaker_mode=multi_speaker_mode,
                 # New parameters that should invalidate cache
-                attention_mode=getattr(self, '_attention_mode', 'auto'),
+                attention_mode=getattr(self, 'attention_mode', 'auto'),
                 inference_steps=inference_steps,
                 quantize_llm_4bit=getattr(self, '_quantize_llm_4bit', False)
             )

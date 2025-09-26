@@ -597,6 +597,14 @@ def register_vibevoice_factory():
     """Register VibeVoice model factory"""
     def vibevoice_factory(**kwargs):
         """Factory for VibeVoice models with ComfyUI integration"""
+
+        # Ensure accelerate is imported before VibeVoice engine
+        try:
+            import accelerate
+            print(f"🔧 Unified Interface: accelerate {accelerate.__version__} available for VibeVoice")
+        except ImportError as e:
+            print(f"⚠️ Unified Interface: accelerate not available: {e}")
+
         from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
         
         # Extract parameters

@@ -130,13 +130,13 @@ class VibeVoiceEngineNode(BaseTTSNode):
             },
             "optional": {
                 "speaker2_voice": (any_typ, {
-                    "tooltip": "🎤 Voice for Speaker 2 in Native Multi-Speaker mode. Connect audio input or Character Voices output. Used as second speaker when multi_speaker_mode is Native."
+                    "tooltip": "🎤 Voice for Speaker 2 in Native Multi-Speaker mode. Connect audio input or Character Voices output.\n\n⚠️ Important: Each speaker must use a DIFFERENT voice file - duplicate voices cause confusion.\n\n💡 Note: Speaker 1 is the 'opt_narrator' input on the Unified TTS Text/SRT node."
                 }),
                 "speaker3_voice": (any_typ, {
-                    "tooltip": "🎤 Voice for Speaker 3 in Native Multi-Speaker mode. Connect audio input or Character Voices output. Up to 4 speakers supported."
+                    "tooltip": "🎤 Voice for Speaker 3 in Native Multi-Speaker mode. Connect audio input or Character Voices output.\n\n⚠️ Important: Each speaker must use a DIFFERENT voice file - duplicate voices cause confusion.\n\n💡 Note: Speaker 1 is the 'opt_narrator' input on the Unified TTS Text/SRT node."
                 }),
                 "speaker4_voice": (any_typ, {
-                    "tooltip": "🎤 Voice for Speaker 4 in Native Multi-Speaker mode. Connect audio input or Character Voices output. Maximum of 4 speakers in native mode."
+                    "tooltip": "🎤 Voice for Speaker 4 in Native Multi-Speaker mode. Connect audio input or Character Voices output.\n\n⚠️ Important: Each speaker must use a DIFFERENT voice file - duplicate voices cause confusion.\n\n💡 Note: Speaker 1 is the 'opt_narrator' input on the Unified TTS Text/SRT node."
                 })
             }
         }

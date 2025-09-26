@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.12] - 2025-09-26
+
+### Added
+
+- Add accelerate version to startup diagnostics
+
+### Changed
+
+- Better support for different environment configurations
+
+### Fixed
+
+- Fix VibeVoice compatibility with accelerate library versions
+- Fix VibeVoice failing to load with older accelerate versions
+- Add smart compatibility patches for transformers + accelerate mismatches
+- Improve error handling for missing accelerate functions
 ## [4.10.11] - 2025-09-26
 
 ### Added

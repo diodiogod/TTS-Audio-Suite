@@ -262,9 +262,11 @@ class VibeVoiceEngineAdapter:
         enable_cache = params.get("enable_audio_cache", True)
         model = params.get("model", "vibevoice-1.5B")
         device = params.get("device", "auto")
-        
+        attention_mode = params.get("attention_mode", "auto")
+        quantize_llm_4bit = params.get("quantize_llm_4bit", False)
+
         # Initialize engine if not already done
-        self.load_base_model(model, device)
+        self.load_base_model(model, device, attention_mode, quantize_llm_4bit)
         
         # Call engine with cache support
         result = self.generate_segment(text, char_audio, {
@@ -603,7 +605,10 @@ class VibeVoiceEngineAdapter:
                         print(f"🎭 Character '{character}' -> Speaker {speaker_num}, using character voice")
                         voice = character_voice
                     
-                    speaker_voices.append(voice)
+                    # Ensure we have enough speaker_voices slots
+                    while len(speaker_voices) <= speaker_idx:
+                        speaker_voices.append(None)
+                    speaker_voices[speaker_idx] = voice
                 
                 speaker_idx = character_map.get(character, 3)
                 # Use 1-based Speaker format as per VibeVoice spec (Speaker 1:, Speaker 2:, etc.)

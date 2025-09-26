@@ -70,6 +70,7 @@ def print_critical_versions():
         ('torch', 'PyTorch'),
         ('torchaudio', 'TorchAudio'),
         ('transformers', 'Transformers'),
+        ('accelerate', 'Accelerate'),
         ('soundfile', 'SoundFile'),
     ]
 
