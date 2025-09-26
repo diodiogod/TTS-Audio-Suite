@@ -562,6 +562,9 @@ Hello! This is unified SRT TTS with character switching.
             Tuple of (audio_tensor, generation_info, timing_report, adjusted_srt)
         """
         try:
+            # Apply Python 3.12 CUDNN compatibility fix before TTS generation
+            from utils.comfyui_compatibility import ensure_python312_cudnn_fix
+            ensure_python312_cudnn_fix()
             # Validate engine input
             if not TTS_engine or not isinstance(TTS_engine, dict):
                 raise ValueError("Invalid TTS_engine input - connect a TTS engine node")

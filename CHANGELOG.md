@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.9] - 2025-09-26
+
+### Fixed
+
+- Fix severe VRAM spikes on Python 3.12 with automatic compatibility patch
+- Fix multi-GB VRAM spikes occurring before and after TTS generation
+- Add automatic ComfyUI compatibility system (no user action required)
+- Fix affects all TTS engines: ChatterBox, F5-TTS, IndexTTS-2
+- Resolve ComfyUI v0.3.57+ regression in Python 3.12 environments
+- Patch only applies when needed, preserving performance on other Python versions
 ## [4.10.8] - 2025-09-25
 
 ### Added

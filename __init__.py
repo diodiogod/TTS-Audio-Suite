@@ -48,6 +48,13 @@ except ImportError:
     else:
         print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} - numba JIT enabled")
 
+# Apply ComfyUI compatibility patches
+try:
+    from utils.comfyui_compatibility import apply_all_compatibility_patches
+    apply_all_compatibility_patches()
+except ImportError:
+    pass
+
 # Suppress specific torchaudio 2.9+ TorchCodec migration warnings (informational only, no action needed)
 import warnings
 warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec", category=UserWarning)
