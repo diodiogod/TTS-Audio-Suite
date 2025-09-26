@@ -66,7 +66,6 @@ class IndexTTSAdapter:
             use_deepspeed=use_deepspeed
         )
         
-        print(f"✅ IndexTTS-2 adapter initialized with model at: {model_path}")
     
     def generate(self,
                 text: str,

@@ -649,17 +649,40 @@ def register_index_tts_factory():
             if bundled_path not in sys.path:
                 sys.path.insert(0, bundled_path)
 
-            # Ensure our bundled indextts module is available
-            # Remove any conflicting system-installed indextts temporarily
-            original_indextts = sys.modules.pop('indextts', None)
-
+            # Check for conflicting external IndexTTS installation
             try:
-                # Import from bundled IndexTTS engine
-                from engines.index_tts.indextts.infer_v2 import IndexTTS2
-            finally:
-                # Only restore original if it existed and no bundled version was loaded
-                if original_indextts is not None and 'indextts' not in sys.modules:
-                    sys.modules['indextts'] = original_indextts
+                import indextts
+                external_path = indextts.__file__
+                if ('site-packages' in external_path or
+                    'conda' in external_path or
+                    'pip' in external_path or
+                    'dist-packages' in external_path):
+
+                    raise ImportError(f"""
+❌ External IndexTTS installation detected!
+
+   Found at: {external_path}
+
+   This conflicts with our bundled IndexTTS-2 engine and causes import errors.
+
+   🔧 SOLUTION: Please uninstall the external version:
+      pip uninstall indextts
+
+   Then restart ComfyUI.
+
+   Our bundled version has all required dependencies and will work perfectly.
+""")
+            except ImportError as e:
+                if "External IndexTTS" in str(e):
+                    raise e
+                # No external installation found - this is good!
+                pass
+            except Exception:
+                # Some other issue with indextts, proceed anyway
+                pass
+
+            # Import from our bundled IndexTTS engine
+            from engines.index_tts.indextts.infer_v2 import IndexTTS2
             
             # Initialize IndexTTS-2 engine
             config_path = os.path.join(model_path, "config.yaml")
