@@ -171,6 +171,8 @@ class VibeVoiceCacheKeyGenerator(CacheKeyGenerator):
             'audio_component': params.get('audio_component', ''),
             'character': params.get('character', 'narrator'),
             'inference_steps': params.get('inference_steps', 20),  # Include diffusion inference steps in cache key
+            'attention_mode': params.get('attention_mode', 'eager'),  # Include attention mode in cache key
+            'quantize': params.get('quantize', False),  # Include quantization in cache key
             'engine': 'vibevoice'
         }
         
