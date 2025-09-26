@@ -83,12 +83,12 @@ class UnifiedModelInterface:
                 warnings.append("❌ CRITICAL PERFORMANCE WARNING: GPU PyTorch + CPU TorchAudio detected!")
                 warnings.append(f"   PyTorch: {torch_version} | TorchAudio: {torchaudio_version}")
                 warnings.append("   This causes major slowdowns and VRAM spikes in TTS generation.")
-                warnings.append("   Fix: pip uninstall torchaudio && pip install torchaudio+cu128 --index-url https://download.pytorch.org/whl/cu128")
+                warnings.append("   Fix: pip uninstall torchaudio && pip install torchaudio --index-url https://download.pytorch.org/whl/cu129")
                 
             if torch_cuda and torchvision_cpu:
                 warnings.append("❌ PERFORMANCE WARNING: GPU PyTorch + CPU TorchVision detected!")
                 warnings.append(f"   PyTorch: {torch_version} | TorchVision: {torchvision_version}")
-                warnings.append("   Fix: pip uninstall torchvision && pip install torchvision+cu128 --index-url https://download.pytorch.org/whl/cu128")
+                warnings.append("   Fix: pip uninstall torchvision && pip install torchvision --index-url https://download.pytorch.org/whl/cu129")
             
             if warnings:
                 print("\n" + "="*80)
