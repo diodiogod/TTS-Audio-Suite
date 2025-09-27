@@ -77,13 +77,28 @@ class VibeVoiceEngineAdapter:
     def load_base_model(self, model_name: str, device: str, attention_mode: str = "auto", quantize_llm_4bit: bool = False):
         """
         Load base VibeVoice model using unified model interface for ComfyUI integration.
-        
+
         Args:
             model_name: Model name to load ("vibevoice-1.5B" or "vibevoice-7B")
             device: Device to load model on
             attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
             quantize_llm_4bit: Enable 4-bit LLM quantization
         """
+        # Check if model is already loaded with same parameters to avoid redundant loading
+        # This prevents the aggressive memory management from running on every generation
+        if (self.current_model is not None and
+            self.current_processor is not None and
+            self.current_model_name == model_name):
+            # Model already loaded, just ensure it's on the correct device if needed
+            if hasattr(self.current_model, 'parameters'):
+                current_device = next(self.current_model.parameters()).device
+                target_device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+                if current_device.type != target_device:
+                    # Only move device if actually different - this prevents unnecessary moves
+                    print(f"🔄 VibeVoice: Moving existing model from {current_device} to {target_device}")
+                    self.current_model.to(target_device)
+            return
+
         # Use unified model interface for ComfyUI VRAM management and caching
         from utils.models.unified_model_interface import load_tts_model
         
@@ -99,11 +114,17 @@ class VibeVoiceEngineAdapter:
             
             # Update our engine reference
             self.vibevoice_engine = engine
-            
+
             # Store references for compatibility
             self.current_model = engine.model
             self.current_processor = engine.processor
             self.current_model_name = model_name
+
+            # Store original device for auto detection logic
+            if hasattr(engine, '_original_device'):
+                self._original_device = engine._original_device
+            else:
+                self._original_device = device
             
             # print(f"✅ VibeVoice adapter: Model '{model_name}' loaded via unified interface")  # Verbose logging
             

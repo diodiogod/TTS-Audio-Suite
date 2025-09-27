@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.14] - 2025-09-27
+
+### Changed
+
+- Improve memory management to prevent unnecessary model reloading
+
+### Fixed
+
+- Fix VibeVoice performance issues with auto device mode
+- Fix models being moved to CPU after first generation
+- Resolve slow subsequent generations when using auto device setting
+- Fix VibeVoice auto device detection staying on GPU consistently
 ## [4.10.13] - 2025-09-26
 
 ### Changed
