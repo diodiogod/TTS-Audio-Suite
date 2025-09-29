@@ -33,6 +33,15 @@ except ImportError as e:
         @classmethod
         def get_available_models(cls):
             return {}
+
+        def download_huggingface_model(self, *args, **kwargs):
+            raise ImportError(f"VibeVoice not available: {VIBEVOICE_IMPORT_ERROR}")
+
+        def get_model_path(self, model_name):
+            raise ImportError(f"VibeVoice not available: {VIBEVOICE_IMPORT_ERROR}")
+
+        def ensure_vibevoice_package(self):
+            return False
     
     VIBEVOICE_MODELS = {}
 

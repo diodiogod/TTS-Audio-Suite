@@ -331,13 +331,36 @@ class VibeVoiceDownloader:
 
         return None
 
+    def download_huggingface_model(self, repo_id: str, model_name: str, files: List[Dict[str, str]],
+                                 engine_type: str, subfolder: str = None) -> Optional[str]:
+        """
+        Download HuggingFace model files using unified downloader.
+
+        Args:
+            repo_id: HuggingFace repository ID
+            model_name: Model name for folder organization
+            files: List of files to download
+            engine_type: Engine type for organization
+            subfolder: Optional subfolder
+
+        Returns:
+            Path to model directory if successful, None otherwise
+        """
+        return self.downloader.download_huggingface_model(
+            repo_id=repo_id,
+            model_name=model_name,
+            files=files,
+            engine_type=engine_type,
+            subfolder=subfolder
+        )
+
     def get_model_info(self, model_name: str) -> Optional[Dict]:
         """
         Get information about a VibeVoice model.
-        
+
         Args:
             model_name: Name of the model
-            
+
         Returns:
             Model info dict or None
         """

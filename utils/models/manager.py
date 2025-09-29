@@ -26,7 +26,7 @@ f5tts_success, F5TTS, f5tts_source = import_manager.import_f5tts()
 try:
     from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
     from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
-    from engines.vibevoice_engine.vibevoice_downloader import VibeVoiceDownloader
+    from engines.vibevoice_engine import VibeVoiceDownloader
     VIBEVOICE_AVAILABLE = True
 except ImportError as e:
     VibeVoiceForConditionalGenerationInference = None
