@@ -271,7 +271,8 @@ Back to the main narrator voice for the conclusion.""",
         self.tts_model = ChatterboxOfficial23LangTTS.from_local(
             ckpt_dir=ckpt_dir,
             device=device,
-            model_name="Official 23-Lang"
+            model_name="Official 23-Lang",
+            model_version=model_version
         )
         
         self.device = device

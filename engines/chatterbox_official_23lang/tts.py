@@ -487,17 +487,25 @@ class ChatterboxOfficial23LangTTS:
         files_to_download = get_model_requirements(model_name, model_version)
         
         # Handle mixed format models (try safetensors first, fallback to pt)
+        # Exception: conds.pt doesn't have a safetensors version, keep as .pt
         if model_format == "mixed":
-            # Try safetensors first
-            files_to_download = [f.replace('.pt', '.safetensors') if f.endswith('.pt') else f for f in files_to_download]
+            # Try safetensors first, but exclude files that only exist as .pt
+            files_to_download = [
+                f.replace('.pt', '.safetensors') if (f.endswith('.pt') and f != 'conds.pt') else f
+                for f in files_to_download
+            ]
         elif model_format == "pt":
             files_to_download = [f.replace('.safetensors', '.pt') if f.endswith('.safetensors') else f for f in files_to_download]
         
+        # Normalize model name for download path (strip "ChatterBox " prefix if present)
+        # This ensures consistent paths: "ChatterBox Official 23-Lang" → "Official 23-Lang"
+        download_model_name = model_name.replace("ChatterBox ", "") if model_name.startswith("ChatterBox ") else model_name
+
         # Download model using new method with subdirectory support
         subdirectory = model_config.get("subdirectory")
         downloaded_dir = unified_downloader.download_chatterbox_model(
             repo_id=repo_id,
-            model_name=model_name,
+            model_name=download_model_name,
             subdirectory=subdirectory,
             files=files_to_download
         )
