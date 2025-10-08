@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.1] - 2025-10-08
+
+### Added
+
+- Add honest documentation about experimental nature of special tokens
+- Note: v2 special tokens exist in vocabulary but may produce minimal effects
+
+### Fixed
+
+- Fix ChatterBox v2 special token conversion
+- Fix v2 emotion tags not being converted from <emotion> to [emotion] format
+- Fix incorrect token names in changelog and examples
+- Link to ResembleAI issue showing lack of official documentation and limited effectiveness
 ## [4.11.0] - 2025-10-08
 
 ### Added
