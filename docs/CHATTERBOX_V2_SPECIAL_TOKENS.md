@@ -1,8 +1,31 @@
 # ChatterBox Official 23-Lang v2 Special Tokens
 
+## 🚧 EXPERIMENTAL FEATURE - LIMITED FUNCTIONALITY
+
+**IMPORTANT: These special tokens are present in the v2 vocabulary but may not work as expected!**
+
+Based on community testing and the lack of official documentation from ResembleAI, these emotion/sound tokens appear to be an **incomplete implementation**:
+
+- ✅ **Tokens exist** in the v2 tokenizer vocabulary
+- ⚠️ **Limited effect** - tokens may produce minimal or no audible changes
+- ❌ **No official documentation** - ResembleAI has not published usage guidelines
+- 🔬 **Experimental** - model may not be fully trained to respond to these tokens
+
+**What works (partially):**
+- Some users report `<laughter> hahaha` produces slight effects
+- Results are inconsistent and unreliable
+
+**Community Discussion:**
+- See [ResembleAI/chatterbox Issue #186](https://github.com/resemble-ai/chatterbox/issues/186) - "Use of Emotional Tags Like [laughter] During Generation"
+- No official response from ResembleAI team on proper usage
+
+**Our implementation is ready for when/if ResembleAI improves this feature. Feel free to experiment, but don't expect production-ready results.**
+
+---
+
 ## Overview
 
-ChatterBox v2 introduces special tokens that allow you to add emotions, sounds, and vocal effects directly in your text. These tokens are processed by the enhanced tokenizer to generate more expressive and natural-sounding speech.
+ChatterBox v2 vocabulary includes special tokens for emotions, sounds, and vocal effects. While the tokenizer supports these tags, the model's response to them is limited and undocumented.
 
 ## ⚠️ IMPORTANT: Use Angle Brackets `<tag>`
 

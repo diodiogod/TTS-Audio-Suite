@@ -517,12 +517,14 @@ Arabic (ar), Danish (da), German (de), Greek (el), English (en), Spanish (es), F
 
 This creates seamless multilingual character switching with proper voice inheritance and pause support - all within a single model.
 
-**🎭 NEW: v2 Special Emotion & Sound Tokens**
+**🎭 NEW: v2 Special Emotion & Sound Tokens** 🚧 *Experimental*
 
-ChatterBox v2 adds 30+ special tokens for emotions, sounds, and vocal effects! Use angle brackets `<emotion>` to add expressive elements:
+ChatterBox v2 vocabulary includes 30+ special tokens for emotions, sounds, and vocal effects. **Note: These are experimental - tokens may produce minimal or no audible effects.** ResembleAI has not officially documented their usage ([see issue #186](https://github.com/resemble-ai/chatterbox/issues/186)).
+
+Try angle brackets `<emotion>` to experiment:
 
 ```
-[Alice] Hello! <giggle> Nice to meet you. [pause:0.5] <whisper> I have a secret. <gasp>
+[Alice] Hello! <laughter> hahaha. [pause:0.5] <whisper> This might work slightly.
 ```
 
 **Available v2 Tokens:**
@@ -532,10 +534,10 @@ ChatterBox v2 adds 30+ special tokens for emotions, sounds, and vocal effects! U
 - **And more!** See the **[📖 Complete v2 Special Tokens Guide](docs/CHATTERBOX_V2_SPECIAL_TOKENS.md)** for all 30+ tokens
 
 **Model Version Selection:**
-- **v2** (default): Enhanced tokenization with emotion/sound tokens
+- **v2** (default): Enhanced tokenization with experimental emotion/sound tokens
 - **v1**: Original model without special tokens
 
-Both versions fully support character switching, language switching, and pause tags. The angle bracket syntax `<emotion>` is specifically designed to avoid conflicts with character tags `[Name]` and pause tags `[pause:1s]`.
+Both versions fully support character switching, language switching, and pause tags. The v2 special tokens are **experimental with limited effectiveness** - our implementation is ready for when/if ResembleAI improves this feature. The angle bracket syntax `<emotion>` avoids conflicts with character tags `[Name]` and pause tags `[pause:1s]`.
 
 </details>
 
