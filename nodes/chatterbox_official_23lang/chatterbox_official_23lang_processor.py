@@ -164,24 +164,25 @@ Back to the main narrator voice for the conclusion.""",
         self.ChatterboxTTS = ChatterboxOfficial23LangTTS
         self.ChatterboxVC = ChatterboxOfficial23LangVC
     
-    def load_tts_model(self, device: str, language: str):
+    def load_tts_model(self, device: str, language: str, model_version: str = "v2"):
         """
         Override base method to load ChatterBox Official 23-Lang models using unified interface.
         """
         print(f"🌍 Loading ChatterBox Official 23-Lang model for {language} on {device}")
-        
+
         # Use unified model interface for ComfyUI VRAM management
         from utils.models.unified_model_interface import load_tts_model
-        
+
         try:
             # Load through unified interface which handles caching and VRAM management
             engine = load_tts_model(
                 engine_name="chatterbox_official_23lang",
                 model_name="Official 23-Lang",  # Always same model for ChatterBox 23-Lang
                 language=language,
-                device=device
+                device=device,
+                model_version=model_version
             )
-            
+
             print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
             return engine
             
@@ -800,8 +801,8 @@ Back to the main narrator voice for the conclusion.""",
             stable_audio_component=stable_audio_component
         )
 
-    def generate_speech(self, text, language, device, exaggeration, temperature, cfg_weight,
-                       repetition_penalty, min_p, top_p, seed,
+    def generate_speech(self, text, language, device, model_version="v2", exaggeration=0.5, temperature=0.8, cfg_weight=0.5,
+                       repetition_penalty=2.0, min_p=0.05, top_p=1.0, seed=0,
                        reference_audio=None, audio_prompt_path="",
                        enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
@@ -816,8 +817,9 @@ Back to the main narrator voice for the conclusion.""",
             
             # Validate inputs
             inputs = self.validate_inputs(
-                text=text, language=language, device=device, exaggeration=exaggeration,
-                temperature=temperature, cfg_weight=cfg_weight, 
+                text=text, language=language, device=device, model_version=model_version,
+                exaggeration=exaggeration,
+                temperature=temperature, cfg_weight=cfg_weight,
                 repetition_penalty=repetition_penalty, min_p=min_p, top_p=top_p,
                 seed=seed, reference_audio=reference_audio, audio_prompt_path=audio_prompt_path,
                 enable_chunking=enable_chunking, max_chars_per_chunk=max_chars_per_chunk,
@@ -1089,7 +1091,7 @@ Back to the main narrator voice for the conclusion.""",
                 if not single_content_cached:
                     # Use unified model interface for ComfyUI VRAM management
                     if not hasattr(self, 'tts_model') or self.tts_model is None:
-                        self.tts_model = self.load_tts_model(inputs["device"], inputs["language"])
+                        self.tts_model = self.load_tts_model(inputs["device"], inputs["language"], inputs.get("model_version", "v2"))
                         self.device = inputs["device"]  # Update device tracking
                 else:
                     print(f"💾 All single character content cached - skipping model loading")
@@ -1346,7 +1348,7 @@ Back to the main narrator voice for the conclusion.""",
         # It's a multilingual model that handles all languages with the same model
         if not hasattr(self, 'tts_model') or self.tts_model is None:
             # Use unified model interface for ComfyUI VRAM management
-            self.tts_model = self.load_tts_model(inputs["device"], inputs["language"])
+            self.tts_model = self.load_tts_model(inputs["device"], inputs["language"], inputs.get("model_version", "v2"))
             self.device = inputs["device"]  # Update device tracking
         
         for original_idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):

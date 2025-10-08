@@ -31,6 +31,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **docs/CHARACTER_SWITCHING_GUIDE.md** - Guide for multi-character TTS using [CharacterName] tags, voice organization, and character voice management system
 
+**docs/CHATTERBOX_V2_SPECIAL_TOKENS.md** - Complete guide for ChatterBox Official 23-Lang v2 special emotion and sound tokens (<giggle>, <whisper>, <sigh>, etc.) with 30+ expressive tokens for enhanced TTS generation
+
 **docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md** - Complete user guide for Audio Wave Analyzer with interactive waveform visualization and timing extraction
 
 **docs/VERSION_3.1_RELEASE_GUIDE.md** - Release documentation for character switching system and overlapping subtitles support

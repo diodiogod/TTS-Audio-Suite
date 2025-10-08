@@ -732,27 +732,43 @@ def register_chatterbox_23lang_factory():
         device = kwargs.get("device", "auto")
         model_name = kwargs.get("model_name", "Official 23-Lang")  # Always same model
         language = kwargs.get("language", "english")  # This is the actual language to use
-        
+        model_version = kwargs.get("model_version", "v2")  # v1 or v2
+
         # Determine device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        
+
         # Get model directory path
         models_dir = folder_paths.models_dir
         ckpt_dir = os.path.join(models_dir, "TTS", "chatterbox_official_23lang", "Official 23-Lang")
-        
+
         print(f"🌍 Loading ChatterBox Official 23-Lang model for {language} on {device}")
         print(f"📁 Using model directory: {ckpt_dir}")
-        
-        # Use the proper factory method that handles model loading
-        engine = ChatterboxOfficial23LangTTS.from_local(
-            ckpt_dir=ckpt_dir,
+
+        # Try local first, then use from_pretrained for auto-download if needed
+        if os.path.exists(ckpt_dir):
+            try:
+                engine = ChatterboxOfficial23LangTTS.from_local(
+                    ckpt_dir=ckpt_dir,
+                    device=device,
+                    model_name="Official 23-Lang",
+                    model_version=model_version
+                )
+                print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
+                return engine
+            except FileNotFoundError as e:
+                print(f"⚠️ Local model incomplete: {e}")
+                print(f"📥 Downloading missing {model_version} files...")
+
+        # Use from_pretrained for auto-download
+        engine = ChatterboxOfficial23LangTTS.from_pretrained(
             device=device,
-            model_name="Official 23-Lang"
+            model_name="ChatterBox Official 23-Lang",
+            model_version=model_version
         )
-        
+
         print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
-        
+
         # Return the engine
         return engine
     

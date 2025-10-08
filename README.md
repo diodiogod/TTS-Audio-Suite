@@ -517,6 +517,26 @@ Arabic (ar), Danish (da), German (de), Greek (el), English (en), Spanish (es), F
 
 This creates seamless multilingual character switching with proper voice inheritance and pause support - all within a single model.
 
+**🎭 NEW: v2 Special Emotion & Sound Tokens**
+
+ChatterBox v2 adds 30+ special tokens for emotions, sounds, and vocal effects! Use angle brackets `<emotion>` to add expressive elements:
+
+```
+[Alice] Hello! <giggle> Nice to meet you. [pause:0.5] <whisper> I have a secret. <gasp>
+```
+
+**Available v2 Tokens:**
+- **Emotions**: `<giggle>`, `<laughter>`, `<sigh>`, `<cry>`, `<gasp>`, `<groan>`
+- **Speech Modifiers**: `<whisper>`, `<mumble>`, `<singing>`, `<humming>`
+- **Sounds**: `<cough>`, `<sneeze>`, `<sniff>`, `<inhale>`, `<exhale>`
+- **And more!** See the **[📖 Complete v2 Special Tokens Guide](docs/CHATTERBOX_V2_SPECIAL_TOKENS.md)** for all 30+ tokens
+
+**Model Version Selection:**
+- **v2** (default): Enhanced tokenization with emotion/sound tokens
+- **v1**: Original model without special tokens
+
+Both versions fully support character switching, language switching, and pause tags. The angle bracket syntax `<emotion>` is specifically designed to avoid conflicts with character tags `[Name]` and pause tags `[pause:1s]`.
+
 </details>
 
 <details>
@@ -1005,17 +1025,30 @@ The official ResembleAI multilingual model supporting 23 languages in a unified 
 
 **Installation Structure:**
 
+All v1 and v2 files coexist in the same directory (they share most files):
+
 ```
 ComfyUI/models/TTS/chatterbox_official_23lang/
-└── Official 23-Lang/
-    ├── t3_23lang.safetensors    # Multilingual T3 model (2.14GB)
+└── ChatterBox Official 23-Lang/          # Single directory for both versions
+    # v1 Model Files:
+    ├── t3_23lang.safetensors             # Multilingual T3 model v1 (2.14GB)
+
+    # v2 Model Files (auto-downloads when v2 selected):
+    ├── t3_mtl23ls_v2.safetensors           # Multilingual T3 model v2 with enhanced tokenization (2.14GB)
+    ├── grapheme_mtl_merged_expanded_v1.json # Enhanced grapheme/phoneme mappings with special tokens (68KB)
+
+    # Shared Files (used by both v1 and v2):
     ├── s3gen.pt                 # S3Gen model (1.06GB)
-    ├── ve.pt                   # Voice encoder (5.7MB) 
-    ├── mtl_tokenizer.json      # Multilingual tokenizer (68KB)
-    └── conds.pt               # Conditioning (107KB, optional)
+    ├── ve.pt                    # Voice encoder (5.7MB)
+    ├── mtl_tokenizer.json       # Multilingual tokenizer (68KB)
+    └── conds.pt                 # Conditioning (107KB, optional)
 ```
 
-**Model Selection:** Choose "ChatterBox Official 23-Lang" from Unified TTS Engine dropdown.
+**Model Selection:**
+- Choose "ChatterBox Official 23-Lang" from Unified TTS Engine dropdown
+- Select model version (v1 or v2) in the Engine Configuration node
+- **Auto-download**: Missing v2 files download automatically on first use (only ~2.2GB if v1 already installed)
+- Both versions can coexist - switch between them without re-downloading
 
 ### 5. F5-TTS Models (Optional)
 

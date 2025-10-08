@@ -255,14 +255,11 @@ class ChatterboxOfficial23LangTTS:
             print(f"📦 Loading T3 23-Lang {model_version} model...")
             if model_version == "v2":
                 t3_path = ckpt_dir / "t3_mtl23ls_v2.safetensors"
-                if not t3_path.exists():
-                    print(f"⚠️ v2 model not found at {t3_path}, falling back to v1")
-                    t3_path = ckpt_dir / "t3_23lang.safetensors"
             else:
                 t3_path = ckpt_dir / "t3_23lang.safetensors"
 
             if not t3_path.exists():
-                raise FileNotFoundError(f"T3 multilingual model not found: {t3_path}")
+                raise FileNotFoundError(f"T3 multilingual {model_version} model not found: {t3_path}")
             
             # Load T3 with multilingual config
             from .models.t3.t3 import T3Config
@@ -481,6 +478,7 @@ class ChatterboxOfficial23LangTTS:
                 return cls.from_local(model_dir, device, model_name, model_version)
             else:
                 print(f"⚠️ Local {model_version} model incomplete, missing: {missing_files}")
+                print(f"📥 Downloading missing {model_version} files...")
 
         # Use new unified ChatterBox downloader
         from utils.downloads.unified_downloader import unified_downloader
@@ -499,21 +497,17 @@ class ChatterboxOfficial23LangTTS:
         subdirectory = model_config.get("subdirectory")
         downloaded_dir = unified_downloader.download_chatterbox_model(
             repo_id=repo_id,
-            model_name=language,
+            model_name=model_name,
             subdirectory=subdirectory,
             files=files_to_download
         )
-        
+
         if downloaded_dir:
-            print(f"✅ Downloaded ChatterBox model: {language}")
-            return cls.from_local(downloaded_dir, device, language)
+            print(f"✅ Downloaded ChatterBox {model_version} model files")
+            return cls.from_local(downloaded_dir, device, model_name, model_version)
         else:
-            # Fallback to English if download fails
-            print(f"❌ Failed to download {language} model, falling back to English")
-            if language != "English":
-                return cls.from_pretrained(device, language="English")
-            else:
-                raise Exception("Failed to download English ChatterBox model")
+            # Download failed
+            raise Exception(f"Failed to download ChatterBox Official 23-Lang {model_version} model files")
 
     def prepare_conditionals(self, wav_fpath, exaggeration=0.5):
         # Load reference wav using fallback for Python 3.13 compatibility
