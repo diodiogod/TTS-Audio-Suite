@@ -172,7 +172,12 @@ class UnifiedDownloader:
         success = True
         # Different critical files for Official 23-Lang model
         if "Official 23-Lang" in model_name:
-            critical_files = ["t3_23lang.safetensors", "mtl_tokenizer.json"]  # Multilingual requirements
+            # Check if downloading v2 model (t3_mtl23ls_v2.safetensors)
+            is_v2 = "t3_mtl23ls_v2.safetensors" in files
+            if is_v2:
+                critical_files = ["t3_mtl23ls_v2.safetensors", "mtl_tokenizer.json"]  # v2 requirements
+            else:
+                critical_files = ["t3_23lang.safetensors", "mtl_tokenizer.json"]  # v1 requirements
         else:
             critical_files = ["t3_cfg.safetensors", "tokenizer.json"]  # Standard ChatterBox requirements
         failed_files = []

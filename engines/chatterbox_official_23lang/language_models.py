@@ -17,7 +17,7 @@ OFFICIAL_23LANG_MODELS = {
         "description": "Official ResembleAI multilingual ChatterBox model supporting 23 languages",
         "languages": [
             "ar",  # Arabic
-            "da",  # Danish  
+            "da",  # Danish
             "de",  # German
             "el",  # Greek
             "en",  # English
@@ -40,13 +40,23 @@ OFFICIAL_23LANG_MODELS = {
             "tr",  # Turkish
             "zh",  # Chinese
         ],
-        "required_files": [
-            "t3_23lang.safetensors",  # Multilingual T3 model
-            "s3gen.pt",               # S3Gen model (same as English)
-            "ve.pt",                  # Voice encoder (same as English)  
-            "mtl_tokenizer.json",     # Multilingual tokenizer
-            "conds.pt"                # Conditioning (optional)
-        ],
+        "required_files": {
+            "v1": [
+                "t3_23lang.safetensors",  # Multilingual T3 model v1
+                "s3gen.pt",               # S3Gen model (same as English)
+                "ve.pt",                  # Voice encoder (same as English)
+                "mtl_tokenizer.json",     # Multilingual tokenizer
+                "conds.pt"                # Conditioning (optional)
+            ],
+            "v2": [
+                "t3_mtl23ls_v2.safetensors",      # Multilingual T3 model v2 with enhanced tokenization
+                "s3gen.pt",                        # S3Gen model (same as English)
+                "ve.pt",                           # Voice encoder (same as English)
+                "grapheme_mtl_merged_expanded_v1.json",  # Enhanced grapheme/phoneme mappings with special tokens
+                "mtl_tokenizer.json",              # Multilingual tokenizer (may be updated for v2)
+                "conds.pt"                         # Conditioning (optional)
+            ]
+        },
         "multilingual": True
     }
 }
@@ -207,33 +217,40 @@ def detect_model_format(model_path: str) -> str:
     else:
         return "pt"
 
-def get_model_requirements(model_name: str) -> List[str]:
-    """Get list of required files for the official 23-lang model"""
+def get_model_requirements(model_name: str, model_version: str = "v1") -> List[str]:
+    """Get list of required files for the official 23-lang model based on version"""
     config = get_model_config(model_name)
     if config and "required_files" in config:
-        return config["required_files"]
-    
-    # Default requirements for official model
+        required_files = config["required_files"]
+
+        # Handle version-specific requirements
+        if isinstance(required_files, dict):
+            return required_files.get(model_version, required_files.get("v1", []))
+        else:
+            # Legacy format - return as-is
+            return required_files
+
+    # Default requirements for official model v1
     return [
         "t3_23lang.safetensors",
-        "s3gen.pt", 
+        "s3gen.pt",
         "ve.pt",
         "mtl_tokenizer.json",
         "conds.pt"  # Optional but expected
     ]
 
-def validate_model_completeness(model_path: str, model_name: str) -> Tuple[bool, List[str]]:
+def validate_model_completeness(model_path: str, model_name: str, model_version: str = "v1") -> Tuple[bool, List[str]]:
     """
     Validate if a model has all required components.
     Returns (is_complete, missing_files)
     """
     if not os.path.exists(model_path):
         return False, ["Model directory not found"]
-    
-    required_files = get_model_requirements(model_name)
+
+    required_files = get_model_requirements(model_name, model_version)
     missing_files = []
-    optional_files = ["conds.pt"]  # These are optional
-    
+    optional_files = ["conds.pt", "grapheme_mtl_merged_expanded_v1.json"]  # These are optional
+
     existing_files = os.listdir(model_path)
     for required_file in required_files:
         # Check for exact file name
@@ -241,7 +258,7 @@ def validate_model_completeness(model_path: str, model_name: str) -> Tuple[bool,
             # Only consider it missing if it's not optional
             if required_file not in optional_files:
                 missing_files.append(required_file)
-    
+
     return len(missing_files) == 0, missing_files
 
 def supports_voice_conversion(model_name: str) -> bool:

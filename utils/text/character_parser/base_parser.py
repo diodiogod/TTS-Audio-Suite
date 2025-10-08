@@ -29,7 +29,7 @@ class CharacterParser(ValidationMixin):
     - Language-aware character switching
     """
     
-    # Regex pattern for character tags: [CharacterName] or [language:CharacterName] 
+    # Regex pattern for character tags: [CharacterName] or [language:CharacterName]
     # Excludes: pause tags, standalone Italian tags [it]/[italian] (but allows [it:]/[italian:])
     CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
     

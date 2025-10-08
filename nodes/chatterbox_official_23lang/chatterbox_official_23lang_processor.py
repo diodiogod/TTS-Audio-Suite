@@ -487,6 +487,11 @@ Back to the main narrator voice for the conclusion.""",
         """
         def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
             """Generate audio for a text segment with crash protection"""
+            # Convert v2 special tags (AFTER character parsing, BEFORE TTS engine)
+            if hasattr(self.tts_model, 'model_version') and self.tts_model.model_version == "v2":
+                from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
+                segment_text = convert_v2_special_tags(segment_text)
+
             # Apply padding for crash protection
             # processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])  # DISABLED FOR TESTING
             processed_text = segment_text  # Direct text without crash protection

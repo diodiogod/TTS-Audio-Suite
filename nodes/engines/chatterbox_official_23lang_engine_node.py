@@ -44,9 +44,13 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             available_languages = get_supported_language_names()
         except ImportError:
             available_languages = ["English"]
-        
+
         return {
             "required": {
+                "model_version": (["v1", "v2"], {
+                    "default": "v2",
+                    "tooltip": "ChatterBox model version. v2 adds special tokens for emotions ([giggle], [laughter], [sigh]), sounds ([cough], [sneeze]), vocal styles ([singing], [whisper]), and improved Russian support."
+                }),
                 "language": (available_languages, {
                     "default": "English",
                     "tooltip": "ChatterBox language model to use for text-to-speech generation. Local models are preferred over remote downloads."
@@ -105,13 +109,14 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
     FUNCTION = "create_engine_adapter"
     CATEGORY = "TTS Audio Suite/⚙️ Engines"
 
-    def create_engine_adapter(self, language: str, device: str, exaggeration: float, 
+    def create_engine_adapter(self, model_version: str, language: str, device: str, exaggeration: float,
                             temperature: float, cfg_weight: float, repetition_penalty: float,
                             min_p: float, top_p: float):
         """
         Create ChatterBox Official 23-Lang engine adapter with configuration.
-        
+
         Args:
+            model_version: Model version (v1 or v2)
             language: Language for multilingual generation
             device: Device to run model on
             exaggeration: Speech exaggeration level
@@ -120,16 +125,17 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             repetition_penalty: Penalty for repeated tokens
             min_p: Minimum probability threshold
             top_p: Nucleus sampling threshold
-            
+
         Returns:
             Tuple containing ChatterBox Official 23-Lang engine adapter
         """
         try:
             # Import the adapter class
             from engines.adapters.chatterbox_official_23lang_adapter import ChatterBoxOfficial23LangEngineAdapter
-            
+
             # Create configuration dictionary
             config = {
+                "model_version": model_version,
                 "language": language,
                 "device": device,
                 "exaggeration": exaggeration,
@@ -141,7 +147,7 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
                 "engine_type": "chatterbox_official_23lang"
             }
             
-            print(f"⚙️ ChatterBox Official 23-Lang: Configured for {language} on {device}")
+            print(f"⚙️ ChatterBox Official 23-Lang {model_version}: Configured for {language} on {device}")
             print(f"   Settings: exaggeration={exaggeration}, temperature={temperature}, cfg_weight={cfg_weight}")
             print(f"   Advanced: repetition_penalty={repetition_penalty}, min_p={min_p}, top_p={top_p}")
             

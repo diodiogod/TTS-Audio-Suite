@@ -177,7 +177,12 @@ class ChatterboxOfficial23LangSRTProcessor:
                         for char_name, char_text, char_language in char_segments:
                             if not char_text.strip():
                                 continue
-                                
+
+                            # Convert v2 special tags (AFTER character parsing, BEFORE TTS engine)
+                            if hasattr(self.tts_node, 'tts_model') and hasattr(self.tts_node.tts_model, 'model_version') and self.tts_node.tts_model.model_version == "v2":
+                                from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
+                                char_text = convert_v2_special_tags(char_text)
+
                             # Get voice reference for this character
                             char_voice_ref = voice_refs.get(char_name, voice_refs.get('narrator'))
                             
@@ -265,8 +270,12 @@ class ChatterboxOfficial23LangSRTProcessor:
                         # No character switching - use default narrator
                         narrator_voice_ref = voice_refs.get('narrator')
                         narrator_voice_path = narrator_voice_ref if isinstance(narrator_voice_ref, str) else ""
-                        
-                        
+
+                        # Convert v2 special tags (BEFORE TTS engine)
+                        if hasattr(self.tts_node, 'tts_model') and hasattr(self.tts_node.tts_model, 'model_version') and self.tts_node.tts_model.model_version == "v2":
+                            from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
+                            text_content = convert_v2_special_tags(text_content)
+
                         # Generate audio with pause tag support for narrator (following F5-TTS pattern)
                         processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
                             text_content, enable_pause_tags=True

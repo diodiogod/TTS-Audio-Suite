@@ -75,7 +75,7 @@ class ChatterBoxCacheKeyGenerator(CacheKeyGenerator):
 
 class ChatterBoxOfficial23LangCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for ChatterBox Official 23-Lang engine."""
-    
+
     def generate_cache_key(self, **params) -> str:
         """Generate ChatterBox Official 23-Lang cache key from parameters."""
         cache_data = {
@@ -86,6 +86,7 @@ class ChatterBoxOfficial23LangCacheKeyGenerator(CacheKeyGenerator):
             'seed': params.get('seed', 0),
             'audio_component': params.get('audio_component', ''),
             'model_source': params.get('model_source', ''),
+            'model_version': params.get('model_version', 'v1'),  # v1 or v2 - ensures cache invalidation between versions
             'device': params.get('device', ''),
             'language': params.get('language', 'English'),
             'character': params.get('character', 'narrator'),

@@ -42,9 +42,9 @@ except ImportError:
     SUPPORTED_LANGUAGES = {"en": "English"}
     def get_model_config(model_name):
         return OFFICIAL_23LANG_MODELS.get(model_name, OFFICIAL_23LANG_MODELS["ChatterBox Official 23-Lang"])
-    def get_model_requirements(model_name):
+    def get_model_requirements(model_name, model_version="v1"):
         return ["t3_23lang.safetensors", "s3gen.pt", "ve.pt", "mtl_tokenizer.json", "conds.pt"]
-    def validate_model_completeness(model_path, model_name):
+    def validate_model_completeness(model_path, model_name, model_version="v1"):
         return True, []
     def get_supported_languages():
         return list(SUPPORTED_LANGUAGES.keys())
@@ -152,6 +152,7 @@ class ChatterboxOfficial23LangTTS:
         tokenizer,  # Union[EnTokenizer, MTLTokenizer]
         device: str,
         conds: Conditionals = None,
+        model_version: str = "v1",
     ):
         self.sr = S3GEN_SR  # sample rate of synthesized audio
         self.t3 = t3
@@ -160,12 +161,13 @@ class ChatterboxOfficial23LangTTS:
         self.tokenizer = tokenizer
         self.device = device
         self.conds = conds
+        self.model_version = model_version  # v1 or v2
         # Watermarking disabled by default for maximum compatibility
         # Set to True to enable watermarking (requires perth library)
         self.enable_watermarking = False
         self.watermarker = None
         self._watermarker_init_attempted = False
-        
+
         # Initialize modular processors
         self.overlapping_processor = OverlappingBatchProcessor(self)
     
@@ -185,14 +187,15 @@ class ChatterboxOfficial23LangTTS:
                 self.enable_watermarking = False
 
     @classmethod
-    def from_local(cls, ckpt_dir, device, model_name=None) -> 'ChatterboxOfficial23LangTTS':
+    def from_local(cls, ckpt_dir, device, model_name=None, model_version="v2") -> 'ChatterboxOfficial23LangTTS':
         """
         Load ChatterBox Official 23-Lang multilingual model from local directory.
         Expected files:
-        - t3_23lang.safetensors (multilingual T3 model)
+        - t3_23lang.safetensors (multilingual T3 model v1) OR t3_mtl23ls_v2.safetensors (v2)
         - s3gen.pt (S3Gen model)
-        - ve.pt (Voice encoder) 
+        - ve.pt (Voice encoder)
         - mtl_tokenizer.json (multilingual tokenizer)
+        - grapheme_mtl_merged_expanded_v1.json (v2 enhanced tokenization, optional)
         - conds.pt (optional conditioning)
         """
         ckpt_dir = Path(ckpt_dir)
@@ -213,12 +216,12 @@ class ChatterboxOfficial23LangTTS:
             map_location = torch.device('cpu')
         else:
             map_location = None
-        
-        # Check model completeness
+
+        # Check model completeness with version
         if model_name:
-            is_complete, missing_files = validate_model_completeness(str(ckpt_dir), model_name)
+            is_complete, missing_files = validate_model_completeness(str(ckpt_dir), model_name, model_version)
             if not is_complete:
-                print(f"⚠️ Missing files: {missing_files}")
+                print(f"⚠️ Missing {model_version} files: {missing_files}")
                 # Continue loading anyway - some files like conds.pt are optional
         
         with warnings.catch_warnings():
@@ -248,9 +251,16 @@ class ChatterboxOfficial23LangTTS:
             
             ve.to(actual_device).eval()
             
-            # Load T3 multilingual model (t3_23lang.safetensors)
-            print("📦 Loading T3 23-Lang model...")
-            t3_path = ckpt_dir / "t3_23lang.safetensors"
+            # Load T3 multilingual model based on version
+            print(f"📦 Loading T3 23-Lang {model_version} model...")
+            if model_version == "v2":
+                t3_path = ckpt_dir / "t3_mtl23ls_v2.safetensors"
+                if not t3_path.exists():
+                    print(f"⚠️ v2 model not found at {t3_path}, falling back to v1")
+                    t3_path = ckpt_dir / "t3_23lang.safetensors"
+            else:
+                t3_path = ckpt_dir / "t3_23lang.safetensors"
+
             if not t3_path.exists():
                 raise FileNotFoundError(f"T3 multilingual model not found: {t3_path}")
             
@@ -308,7 +318,7 @@ class ChatterboxOfficial23LangTTS:
                 print("⚠️ No conditioning found - using None")
             
             # Create instance
-            instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds)
+            instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds, model_version=model_version)
             
             # Show model path info
             print(f"📦 Model loaded from: {ckpt_dir}")
@@ -405,20 +415,21 @@ class ChatterboxOfficial23LangTTS:
             if (builtin_voice := ckpt_dir / "conds.pt").exists():
                 conds = Conditionals.load(builtin_voice).to(actual_device)
             
-            instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds)
+            instance = cls(t3, s3gen, ve, tokenizer, actual_device, conds=conds, model_version=model_version)
             print(f"✅ Italian TTS model loaded successfully!")
             print(f"💡 Use '[it]' prefix for Italian text, no prefix for English")
             print(f"📦 Model loaded from: {ckpt_dir}")
             return instance
 
     @classmethod
-    def from_pretrained(cls, device, model_name="ChatterBox Official 23-Lang") -> 'ChatterboxOfficial23LangTTS':
+    def from_pretrained(cls, device, model_name="ChatterBox Official 23-Lang", model_version="v2") -> 'ChatterboxOfficial23LangTTS':
         """
         Download and load ChatterBox Official 23-Lang model from HuggingFace Hub.
-        
+
         Args:
             device: Device to load model on
             model_name: Model to load (defaults to "ChatterBox Official 23-Lang")
+            model_version: Model version - "v1" or "v2" (defaults to "v2")
         """
         # Get model configuration
         model_config = get_model_config(model_name)
@@ -461,21 +472,21 @@ class ChatterboxOfficial23LangTTS:
         # Silent loading unless errors occur
         
         # Check if local model exists first
-        model_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox", language)
+        model_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox_official_23lang", model_name)
         if os.path.exists(model_dir):
-            # Validate model completeness
-            is_complete, missing_files = validate_model_completeness(model_dir, language)
+            # Validate model completeness with version
+            is_complete, missing_files = validate_model_completeness(model_dir, model_name, model_version)
             if is_complete:
-                print(f"📁 Using existing local model: {model_dir}")
-                return cls.from_local(model_dir, device, language)
+                print(f"📁 Using existing local {model_version} model: {model_dir}")
+                return cls.from_local(model_dir, device, model_name, model_version)
             else:
-                print(f"⚠️ Local model incomplete, missing: {missing_files}")
+                print(f"⚠️ Local {model_version} model incomplete, missing: {missing_files}")
 
         # Use new unified ChatterBox downloader
         from utils.downloads.unified_downloader import unified_downloader
-        
-        # Get files to download based on model completeness
-        files_to_download = get_model_requirements(language)
+
+        # Get files to download based on model version
+        files_to_download = get_model_requirements(model_name, model_version)
         
         # Handle mixed format models (try safetensors first, fallback to pt)
         if model_format == "mixed":
