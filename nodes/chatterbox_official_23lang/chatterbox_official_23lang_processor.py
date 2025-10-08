@@ -625,13 +625,13 @@ Back to the main narrator voice for the conclusion.""",
         return generate_stable_audio_component(reference_audio, audio_prompt_path)
 
 
-    def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 
+    def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float,
                                     temperature: float, cfg_weight: float, repetition_penalty: float = 1.2,
                                     min_p: float = 0.05, top_p: float = 1.0, language: str = "English",
-                                    enable_pause_tags: bool = True, character: str = "narrator", 
+                                    enable_pause_tags: bool = True, character: str = "narrator",
                                     seed: int = 0, enable_cache: bool = True,
-                                    crash_protection_template: str = "hmm ,, {seg} hmm ,,", 
-                                    stable_audio_component: str = None) -> torch.Tensor:
+                                    crash_protection_template: str = "hmm ,, {seg} hmm ,,",
+                                    stable_audio_component: str = None, model_version: str = "v1") -> torch.Tensor:
         """
         Generate ChatterBox TTS audio with pause tag support.
         
@@ -684,6 +684,7 @@ Back to the main narrator voice for the conclusion.""",
                     seed=seed,
                     audio_component=audio_component,
                     model_source=f"chatterbox_{language.lower()}",
+                    model_version=model_version,
                     device=self.device,
                     language=language,
                     # Add ChatterBox Official 23-Lang specific parameters to cache key
@@ -742,6 +743,7 @@ Back to the main narrator voice for the conclusion.""",
                     seed=seed,
                     audio_component=audio_component,
                     model_source=f"chatterbox_{language.lower()}",
+                    model_version=model_version,
                     device=self.device,
                     language=language,
                     # Add ChatterBox Official 23-Lang specific parameters to cache key
@@ -793,13 +795,14 @@ Back to the main narrator voice for the conclusion.""",
         
         # Use the pause tag processor with caching
         return self._generate_tts_with_pause_tags(
-            inputs["text"], main_audio_prompt, inputs["exaggeration"], 
+            inputs["text"], main_audio_prompt, inputs["exaggeration"],
             inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
             inputs["min_p"], inputs["top_p"], inputs["language"],
-            True, character=inputs["character"], seed=inputs["seed"], 
+            True, character=inputs["character"], seed=inputs["seed"],
             enable_cache=inputs.get("enable_audio_cache", True),
             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-            stable_audio_component=stable_audio_component
+            stable_audio_component=stable_audio_component,
+            model_version=inputs.get("model_version", "v1")
         )
 
     def generate_speech(self, text, language, device, model_version="v2", exaggeration=0.5, temperature=0.8, cfg_weight=0.5,
@@ -1045,6 +1048,7 @@ Back to the main narrator voice for the conclusion.""",
                                 seed=inputs["seed"],
                                 audio_component=stable_audio_component,
                                 model_source=f"chatterbox_{language.lower()}",
+                                model_version=inputs.get("model_version", "v1"),
                                 device=inputs["device"],
                                 language=inputs["language"]
                             )
@@ -1077,6 +1081,7 @@ Back to the main narrator voice for the conclusion.""",
                                     seed=inputs["seed"],
                                     audio_component=stable_audio_component,
                                     model_source=f"chatterbox_{language.lower()}",
+                                    model_version=inputs.get("model_version", "v1"),
                                     device=inputs["device"],
                                     language=inputs["language"]
                                 )
@@ -1102,13 +1107,14 @@ Back to the main narrator voice for the conclusion.""",
                     # BUGFIX: Clean character tags from text even in single character mode
                     clean_text = character_parser.remove_character_tags(inputs["text"])
                     wav = self._generate_tts_with_pause_tags(
-                        clean_text, main_audio_prompt, inputs["exaggeration"], 
+                        clean_text, main_audio_prompt, inputs["exaggeration"],
                         inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                         inputs["min_p"], inputs["top_p"], inputs["language"],
-                        True, character=inputs["character"], seed=inputs["seed"], 
+                        True, character=inputs["character"], seed=inputs["seed"],
                         enable_cache=inputs.get("enable_audio_cache", True),
                         crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                        stable_audio_component=stable_audio_component
+                        stable_audio_component=stable_audio_component,
+                        model_version=inputs.get("model_version", "v1")
                     )
                     model_source = f"chatterbox_{language.lower()}"
                     info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
@@ -1129,13 +1135,14 @@ Back to the main narrator voice for the conclusion.""",
                         
                         # Generate chunk with caching support
                         chunk_audio = self._generate_tts_with_pause_tags(
-                            chunk, main_audio_prompt, inputs["exaggeration"], 
+                            chunk, main_audio_prompt, inputs["exaggeration"],
                             inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                             inputs["min_p"], inputs["top_p"], inputs["language"],
-                            True, character=inputs["character"], seed=inputs["seed"], 
+                            True, character=inputs["character"], seed=inputs["seed"],
                             enable_cache=inputs.get("enable_audio_cache", True),
                             crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                            stable_audio_component=stable_audio_component
+                            stable_audio_component=stable_audio_component,
+                            model_version=inputs.get("model_version", "v1")
                         )
                         audio_segments.append(chunk_audio)
                     
@@ -1202,7 +1209,8 @@ Back to the main narrator voice for the conclusion.""",
                 True, character=inputs["character"], seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                stable_audio_component=stable_audio_component
+                stable_audio_component=stable_audio_component,
+                model_version=inputs.get("model_version", "v1")
             )
             segment_audio_chunks.append(chunk_audio)
         
@@ -1369,7 +1377,8 @@ Back to the main narrator voice for the conclusion.""",
                 True, character=char, seed=inputs["seed"],
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                stable_audio_component=stable_audio_component
+                stable_audio_component=stable_audio_component,
+                model_version=inputs.get("model_version", "v1")
             )
             
             audio_segments_with_order.append((original_idx, segment_audio))
@@ -1409,6 +1418,7 @@ Back to the main narrator voice for the conclusion.""",
                             seed=inputs.get("seed", 42),
                             audio_component=self._generate_stable_audio_component(inputs.get("reference_audio"), voice_path),
                             model_source="streaming_stateless",
+                            model_version=inputs.get("model_version", "v1"),
                             device="auto",
                             language=language
                         )
@@ -1451,7 +1461,8 @@ Back to the main narrator voice for the conclusion.""",
                 language, True, character=inputs["character"], seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
                 crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                stable_audio_component=stable_audio_component
+                stable_audio_component=stable_audio_component,
+                model_version=inputs.get("model_version", "v1")
             )
             return segment_audio
             
