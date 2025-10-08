@@ -178,6 +178,11 @@ Hello! This is unified SRT TTS with character switching.
                 # Also include chunk_minutes if it affects behavior
                 if 'chunk_minutes' in config:
                     stable_params['chunk_minutes'] = config.get('chunk_minutes', 0)
+
+            # For ChatterBox Official 23-Lang, include model_version in cache key since v1/v2 are different models
+            if engine_type == "chatterbox_official_23lang":
+                stable_params['model_version'] = config.get('model_version', 'v1')
+
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Check if we have a cached instance with the same stable configuration

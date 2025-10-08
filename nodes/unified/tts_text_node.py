@@ -169,7 +169,11 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "vibevoice":
                 stable_params['attention_mode'] = config.get('attention_mode', 'auto')
                 stable_params['quantize_llm_4bit'] = config.get('quantize_llm_4bit', False)
-            
+
+            # For ChatterBox Official 23-Lang, include model_version in cache key since v1/v2 are different models
+            if engine_type == "chatterbox_official_23lang":
+                stable_params['model_version'] = config.get('model_version', 'v1')
+
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Cache key now properly includes model name for correct differentiation
