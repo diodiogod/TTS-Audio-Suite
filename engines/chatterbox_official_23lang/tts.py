@@ -261,9 +261,9 @@ class ChatterboxOfficial23LangTTS:
             if not t3_path.exists():
                 raise FileNotFoundError(f"T3 multilingual {model_version} model not found: {t3_path}")
             
-            # Load T3 with multilingual config
+            # Load T3 with version-specific multilingual config
             from .models.t3.t3 import T3Config
-            config = T3Config.multilingual()  # Use multilingual configuration
+            config = T3Config.multilingual(version=model_version)
             t3 = T3(config)
             
             t3_state = load_file(t3_path, device=actual_device)
@@ -297,12 +297,20 @@ class ChatterboxOfficial23LangTTS:
             
             s3gen.to(actual_device).eval()
             
-            # Load multilingual tokenizer (mtl_tokenizer.json)
+            # Load version-specific multilingual tokenizer
             print("📦 Loading multilingual tokenizer...")
-            tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
+            if model_version == "v2":
+                tokenizer_path = ckpt_dir / "grapheme_mtl_merged_expanded_v1.json"
+                if not tokenizer_path.exists():
+                    # Fallback to v1 tokenizer if v2 tokenizer not found
+                    print("⚠️ v2 tokenizer not found, falling back to v1 tokenizer")
+                    tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
+            else:
+                tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
+
             if not tokenizer_path.exists():
                 raise FileNotFoundError(f"Multilingual tokenizer not found: {tokenizer_path}")
-            
+
             tokenizer = MTLTokenizer(str(tokenizer_path))
             
             # Load conditioning (optional)
