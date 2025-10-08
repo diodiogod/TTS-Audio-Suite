@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add ChatterBox Official 23-Lang v2 with emotion and sound effects
 - New v2 model adds 30+ special tokens for expressive speech:
-- Emotions: <giggle>, <sigh>, <gasp>, <laugh>, <cry>
-- Sounds: <cough>, <sneeze>, <yawn>, <breathe>
-- Vocal effects: <whisper>, <singing>, <shouting>
+- Emotions: <giggle>, <laughter>, <sigh>, <gasp>, <cry>
+- Sounds: <cough>, <sneeze>, <sniff>, <inhale>, <exhale>
+- Vocal effects: <whisper>, <singing>, <mumble>
 - Features:
 - Select v1 or v2 model in ChatterBox engine configuration
 - Auto-download v2 model files when selected
