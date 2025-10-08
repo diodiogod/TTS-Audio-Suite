@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.0] - 2025-10-08
+
+### Added
+
+- Add ChatterBox Official 23-Lang v2 with emotion and sound effects
+- New v2 model adds 30+ special tokens for expressive speech:
+- Emotions: <giggle>, <sigh>, <gasp>, <laugh>, <cry>
+- Sounds: <cough>, <sneeze>, <yawn>, <breathe>
+- Vocal effects: <whisper>, <singing>, <shouting>
+- Features:
+- Select v1 or v2 model in ChatterBox engine configuration
+- Auto-download v2 model files when selected
+- Use angle brackets <emotion> to avoid conflicts with character switching
+- Both v1 and v2 models can coexist in same installation
+- See docs/CHATTERBOX_V2_SPECIAL_TOKENS.md for complete token list and usage examples
+
+### Fixed
+
+- Full compatibility with existing character voices and pause tags
+- Bug fixes:
+- Fix v1 and v2 models properly isolated (separate caches)
+- Fix v2 model auto-download with correct file paths
+- Fix v1 model loading with correct vocabulary size
 ## [4.10.16] - 2025-10-07
 
 ### Added
