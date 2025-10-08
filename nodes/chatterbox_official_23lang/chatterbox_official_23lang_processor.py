@@ -655,7 +655,18 @@ Back to the main narrator voice for the conclusion.""",
         processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
             text, enable_pause_tags
         )
-        
+
+        # Convert v2 special tags AFTER pause processing, BEFORE TTS generation
+        if model_version == "v2":
+            from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
+            processed_text = convert_v2_special_tags(processed_text)
+            # Also convert in pause segments if they exist
+            if pause_segments is not None:
+                pause_segments = [
+                    (seg_type, convert_v2_special_tags(content) if seg_type == 'text' else content)
+                    for seg_type, content in pause_segments
+                ]
+
         # Debug pause tag processing in streaming
         if pause_segments is not None:
             print(f"🏷️ PAUSE TAGS: Found in '{text[:50]}...' -> {len(pause_segments)} segments")
