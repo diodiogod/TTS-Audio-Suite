@@ -690,7 +690,9 @@ Back to the main narrator voice for the conclusion.""",
                     character=char_display,
                     seed=seed,
                     enable_audio_cache=enable_audio_cache,
+                    enable_chunking=enable_chunking,
                     max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
                     silence_between_chunks_ms=silence_between_chunks_ms
                 )
                 

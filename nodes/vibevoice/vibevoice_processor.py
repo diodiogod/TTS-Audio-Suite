@@ -249,21 +249,94 @@ class VibeVoiceProcessor:
                                     voice_mapping: Dict[str, Any],
                                     params: Dict) -> List[Dict]:
         """
-        Process using native multi-speaker mode.
-        
+        Process using native multi-speaker mode with chunking support.
+
         Args:
             segments: Character segments
             voice_mapping: Voice mapping
             params: Generation parameters
-            
+
         Returns:
-            List with single combined audio segment
+            List of audio segments (single if no chunking, multiple if chunked)
         """
-        # Use adapter's native multi-speaker generation
-        audio = self.adapter._generate_native_multispeaker(
-            segments, voice_mapping, params, None
-        )
-        return [audio]
+        # Check if chunking is needed based on config
+        chunk_chars = self.config.get('chunk_chars', 0)
+        chunk_minutes = self.config.get('chunk_minutes', 0)
+
+        # Calculate total text length
+        total_text = ' '.join([text for _, text in segments])
+        total_length = len(total_text)
+
+        # Determine if chunking should be applied
+        should_chunk = chunk_minutes > 0 and total_length > chunk_chars
+
+        if not should_chunk:
+            # No chunking - generate everything at once
+            audio = self.adapter._generate_native_multispeaker(
+                segments, voice_mapping, params, None
+            )
+            return [audio]
+
+        # Chunking enabled - rebuild text and split using existing chunker
+        print(f"📝 Native Multi-Speaker: Chunking {len(segments)} segments (max {chunk_chars} chars per chunk)")
+
+        # Reconstruct the full formatted text with Speaker tags
+        formatted_lines = []
+        character_map = {}
+        for character, text in segments:
+            if character not in character_map:
+                speaker_idx = len(character_map) + 1  # 1-based indexing
+                if speaker_idx > 4:
+                    speaker_idx = 4  # Max 4 speakers
+                character_map[character] = speaker_idx
+            speaker_idx = character_map[character]
+            formatted_lines.append(f"Speaker {speaker_idx}: {text.strip()}")
+
+        full_text = "\n".join(formatted_lines)
+
+        # Use existing chunker to intelligently split the text
+        text_chunks = self.chunker.split_into_chunks(full_text, chunk_chars)
+        print(f"✂️ Split {len(full_text)} chars into {len(text_chunks)} chunks")
+
+        # Parse each chunk back into (character, text) segments
+        chunk_groups = []
+        for chunk_text in text_chunks:
+            chunk_segments = []
+            # Parse Speaker N: format back to segments
+            for line in chunk_text.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                # Match "Speaker N: text"
+                import re
+                match = re.match(r'^Speaker\s+(\d+):\s*(.+)$', line)
+                if match:
+                    speaker_num = int(match.group(1))
+                    text_content = match.group(2)
+                    # Find character name for this speaker number
+                    char_name = next((char for char, idx in character_map.items() if idx == speaker_num), f"Speaker {speaker_num}")
+                    chunk_segments.append((char_name, text_content))
+                else:
+                    # Fallback: treat as narrator text
+                    chunk_segments.append(("narrator", line))
+
+            if chunk_segments:
+                chunk_groups.append(chunk_segments)
+
+        print(f"🔄 Split into {len(chunk_groups)} chunks for native multi-speaker generation")
+
+        # Generate each chunk using native multi-speaker
+        audio_results = []
+        for i, chunk_segments in enumerate(chunk_groups):
+            chunk_chars_total = sum(len(text) for _, text in chunk_segments)
+            print(f"📦 Chunk {i+1}/{len(chunk_groups)}: {len(chunk_segments)} segments, {chunk_chars_total} chars")
+
+            audio = self.adapter._generate_native_multispeaker(
+                chunk_segments, voice_mapping, params, None
+            )
+            audio_results.append(audio)
+
+        return audio_results
     
     def combine_audio_segments(self, 
                               segments: List[Dict],

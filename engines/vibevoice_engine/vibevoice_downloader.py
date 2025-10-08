@@ -149,22 +149,22 @@ class VibeVoiceDownloader:
             Path to model directory or None if download failed
         """
         # First check if this might be a standalone model
-        # Strip "local:" prefix if present
+        # Strip "local:" prefix if present for all lookups
         clean_model_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
         standalone_path = self._find_standalone_model(clean_model_name)
         if standalone_path:
             print(f"📁 Using standalone VibeVoice model: {standalone_path}")
             return standalone_path
 
-        if model_name not in VIBEVOICE_MODELS:
-            print(f"❌ Unknown VibeVoice model: {model_name}")
+        if clean_model_name not in VIBEVOICE_MODELS:
+            print(f"❌ Unknown VibeVoice model: {clean_model_name}")
             return None
 
-        model_info = VIBEVOICE_MODELS[model_name]
+        model_info = VIBEVOICE_MODELS[clean_model_name]
         repo_id = model_info["repo"]
-        
+
         # 1. Check current local path first
-        model_dir = os.path.join(self.vibevoice_dir, model_name)
+        model_dir = os.path.join(self.vibevoice_dir, clean_model_name)
         config_path = os.path.join(model_dir, "config.json")
         
         if os.path.exists(config_path):
@@ -180,7 +180,7 @@ class VibeVoiceDownloader:
             if all_files_exist:
                 print(f"📁 Using local VibeVoice model: {model_dir}")
                 # Ensure tokenizer.json exists (download if missing)
-                self._ensure_tokenizer(model_name, model_dir)
+                self._ensure_tokenizer(clean_model_name, model_dir)
                 return model_dir
             else:
                 print(f"🔄 Local model incomplete, will re-download: {model_dir}")
@@ -193,7 +193,7 @@ class VibeVoiceDownloader:
         if os.path.exists(legacy_config_path):
             print(f"📁 Using legacy VibeVoice model: {legacy_model_dir}")
             # Ensure tokenizer.json exists (download if missing)
-            self._ensure_tokenizer(model_name, legacy_model_dir)
+            self._ensure_tokenizer(clean_model_name, legacy_model_dir)
             return legacy_model_dir
         
         # 3. Check HuggingFace cache
@@ -204,13 +204,13 @@ class VibeVoiceDownloader:
             cached_model_dir = os.path.dirname(cached_config)
             print(f"📁 Using cached VibeVoice model: {cached_model_dir}")
             # Ensure tokenizer.json exists (download if missing)
-            self._ensure_tokenizer(model_name, cached_model_dir)
+            self._ensure_tokenizer(clean_model_name, cached_model_dir)
             return cached_model_dir
         except Exception as cache_error:
-            print(f"📋 Cache check for {model_name}: {str(cache_error)[:100]}... - will download")
-        
+            print(f"📋 Cache check for {clean_model_name}: {str(cache_error)[:100]}... - will download")
+
         # 4. Download model to local directory with fallback repos
-        print(f"📥 Downloading VibeVoice model '{model_name}'...")
+        print(f"📥 Downloading VibeVoice model '{clean_model_name}'...")
         
         # Try primary repo first
         repos_to_try = [model_info["repo"]] + model_info.get("fallback_repos", [])
@@ -220,21 +220,21 @@ class VibeVoiceDownloader:
             
             result = self.downloader.download_huggingface_model(
                 repo_id=repo_id,
-                model_name=model_name,
+                model_name=clean_model_name,
                 files=model_info["files"],
                 engine_type="vibevoice",
                 subfolder=None
             )
-            
+
             if result:
-                print(f"✅ VibeVoice model '{model_name}' downloaded successfully from {repo_id}")
+                print(f"✅ VibeVoice model '{clean_model_name}' downloaded successfully from {repo_id}")
                 # Ensure tokenizer.json exists (download if missing)
-                self._ensure_tokenizer(model_name, result)
+                self._ensure_tokenizer(clean_model_name, result)
                 return result
             else:
                 print(f"⚠️ Failed to download from {repo_id}, trying next...")
-        
-        print(f"❌ Failed to download VibeVoice model '{model_name}' from all sources")
+
+        print(f"❌ Failed to download VibeVoice model '{clean_model_name}' from all sources")
         print(f"   Tried repos: {', '.join(repos_to_try)}")
         return None
     
