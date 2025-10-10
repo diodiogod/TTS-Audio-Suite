@@ -92,12 +92,11 @@ class HiggsAudioTokenizer(nn.Module):
             # Use unified downloader to follow TTS folder > cache > download policy
             from utils.downloads.unified_downloader import unified_downloader
 
-            # Define HuBERT model for unified downloader
+            # Define HuBERT model for unified downloader - actual files that exist
             hubert_files = [
                 {"remote": "config.json", "local": "config.json"},
                 {"remote": "pytorch_model.bin", "local": "pytorch_model.bin"},
-                {"remote": "tokenizer.json", "local": "tokenizer.json", "optional": True},
-                {"remote": "tokenizer_config.json", "local": "tokenizer_config.json", "optional": True},
+                {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"},
             ]
 
             # Download to TTS/hubert/hubert-base-ls960/ following our unified policy

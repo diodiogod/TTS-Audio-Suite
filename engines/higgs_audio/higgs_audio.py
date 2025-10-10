@@ -725,9 +725,8 @@ class HiggsAudioEngine:
                 print(f"✅ Downloaded to TTS structure: {downloaded_path}")
                 return downloaded_path
             
-            # Fallback to repo ID if download failed
-            print(f"🔄 Fallback to repo ID: {repo_id}")
-            return repo_id
+            # If download failed, raise error instead of fallback to repo ID
+            raise RuntimeError(f"Failed to download model to TTS structure: {repo_id}")
         
         # For direct repo IDs, ensure download to organized structure
         if "/" in model_path:  # Looks like repo ID
@@ -747,9 +746,8 @@ class HiggsAudioEngine:
                 print(f"✅ Downloaded to TTS structure: {downloaded_path}")
                 return downloaded_path
             
-            # Fallback to repo ID
-            print(f"🔄 Fallback to repo ID: {model_path}")
-            return model_path
+            # If download failed, raise error instead of fallback to repo ID
+            raise RuntimeError(f"Failed to download model to TTS structure: {model_path}")
         
         # Default: return as-is
         return model_path
@@ -784,13 +782,21 @@ class HiggsAudioEngine:
                 # print(f"✅ Using verified local tokenizer: {local_path}")
                 return local_path
             
-            # Return repo ID - HuggingFace will handle cache/download
-            print(f"🔄 Using repo ID (HF will handle cache): {tokenizer_path}")
-            return tokenizer_path
-        
-        # Default: return as-is (likely repo ID)
-        print(f"🔄 Using repo ID (HF will handle cache): {tokenizer_path}")
-        return tokenizer_path
+            # Download using unified downloader to follow TTS folder policy
+            print(f"📥 Downloading tokenizer using unified downloader: {tokenizer_path}")
+            downloaded_path = self.downloader.download_tokenizer(tokenizer_path)
+            if downloaded_path:
+                return downloaded_path
+            else:
+                raise RuntimeError(f"Failed to download tokenizer: {tokenizer_path}")
+
+        # Default: try to download using unified downloader
+        print(f"📥 Downloading tokenizer using unified downloader: {tokenizer_path}")
+        downloaded_path = self.downloader.download_tokenizer(tokenizer_path)
+        if downloaded_path:
+            return downloaded_path
+        else:
+            raise RuntimeError(f"Failed to download tokenizer: {tokenizer_path}")
     
     def _verify_model_completeness(self, model_dir: str) -> bool:
         """Verify model directory has all essential files and they're not corrupted"""

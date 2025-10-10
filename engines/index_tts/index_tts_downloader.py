@@ -35,6 +35,21 @@ class IndexTTSDownloader:
             ],
             "description": "W2V-BERT semantic feature extractor for IndexTTS-2 (2GB)"
         },
+        "MaskGCT": {
+            "repo_id": "amphion/MaskGCT",
+            "files": [
+                "semantic_codec/model.safetensors"
+            ],
+            "description": "MaskGCT semantic codec for IndexTTS-2"
+        },
+        "bigvgan_v2_22khz_80band_256x": {
+            "repo_id": "nvidia/bigvgan_v2_22khz_80band_256x",
+            "files": [
+                "config.json",
+                "bigvgan_generator.pt"
+            ],
+            "description": "BigVGAN vocoder for IndexTTS-2"
+        },
         "IndexTTS-2": {
             "repo_id": "IndexTeam/IndexTTS-2",
             "files": [

@@ -178,8 +178,11 @@ class IndexTTS2:
                     print(f"✅ Loading W2V-BERT from HuggingFace cache: {latest_snapshot}")
                     self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(latest_snapshot)
                 else:
-                    print("⚠️ W2V-BERT cache found but no snapshots")
-                    self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained("facebook/w2v-bert-2.0")
+                    print("⚠️ W2V-BERT cache found but no snapshots - downloading to TTS folder")
+                    # Use unified downloader instead of direct HuggingFace download
+                    from engines.index_tts.index_tts_downloader import index_tts_downloader
+                    w2v_bert_path = index_tts_downloader.download_model("w2v-bert-2.0")
+                    self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(w2v_bert_path)
             else:
                 # Download to TTS folder using our unified downloader
                 from engines.index_tts.index_tts_downloader import index_tts_downloader
@@ -198,7 +201,10 @@ class IndexTTS2:
         self.semantic_std = self.semantic_std.to(self.device)
 
         semantic_codec = build_semantic_codec(self.cfg.semantic_codec)
-        semantic_code_ckpt = hf_hub_download("amphion/MaskGCT", filename="semantic_codec/model.safetensors")
+        # Use unified downloader instead of direct HuggingFace download
+        from engines.index_tts.index_tts_downloader import index_tts_downloader
+        maskgct_path = index_tts_downloader.download_model("MaskGCT")
+        semantic_code_ckpt = os.path.join(maskgct_path, "semantic_codec", "model.safetensors")
         safetensors.torch.load_model(semantic_codec, semantic_code_ckpt)
         self.semantic_codec = semantic_codec.to(self.device)
         self.semantic_codec.eval()
@@ -230,7 +236,14 @@ class IndexTTS2:
         print(">> campplus_model weights restored from:", campplus_ckpt_path)
 
         bigvgan_name = self.cfg.vocoder.name
-        self.bigvgan = bigvgan.BigVGAN.from_pretrained(bigvgan_name, use_cuda_kernel=self.use_cuda_kernel)
+
+        # Use unified downloader to follow TTS folder policy
+        from engines.index_tts.index_tts_downloader import index_tts_downloader
+
+        # Download BigVGAN to TTS/IndexTTS/bigvgan_v2_22khz_80band_256x/ instead of .cache
+        bigvgan_path = index_tts_downloader.download_model("bigvgan_v2_22khz_80band_256x")
+
+        self.bigvgan = bigvgan.BigVGAN.from_pretrained(bigvgan_path, use_cuda_kernel=self.use_cuda_kernel)
         self.bigvgan = self.bigvgan.to(self.device)
         self.bigvgan.remove_weight_norm()
         self.bigvgan.eval()

@@ -85,7 +85,12 @@ class JsonHParams:
 
 
 def build_semantic_model(path_='./models/tts/maskgct/ckpt/wav2vec2bert_stats.pt'):
-    semantic_model = Wav2Vec2BertModel.from_pretrained("facebook/w2v-bert-2.0")
+    # Use unified downloader to follow TTS folder policy
+    from engines.index_tts.index_tts_downloader import index_tts_downloader
+
+    # Download w2v-bert-2.0 to TTS/IndexTTS/w2v-bert-2.0/ instead of .cache
+    w2v_bert_path = index_tts_downloader.download_model("w2v-bert-2.0")
+    semantic_model = Wav2Vec2BertModel.from_pretrained(w2v_bert_path)
     semantic_model.eval()
     stat_mean_var = torch.load(path_)
     semantic_mean = stat_mean_var["mean"]
