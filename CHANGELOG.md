@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.5] - 2025-10-10
+
+### Added
+
+- HuBERT now downloads to TTS/hubert/hubert-base-ls960/ following TTS structure
+- Consistent behavior with all other engines for model organization
+- Properly respects extra_model_paths.yaml for custom model directories
+- All engines now follow unified download policy: local > cache check > TTS download
+
+### Fixed
+
+- Fix Higgs Audio downloading dependencies to .cache instead of TTS folder
+- Fix Higgs Audio HuBERT model downloading to .cache against our unified policy
 ## [4.11.4] - 2025-10-10
 
 ### Added

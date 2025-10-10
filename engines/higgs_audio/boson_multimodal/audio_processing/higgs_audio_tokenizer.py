@@ -89,25 +89,34 @@ class HiggsAudioTokenizer(nn.Module):
             self.encoder_semantic_dim = 768
 
         elif semantic_techer == "hubert_base_general":
-            # Force offline mode to avoid authentication issues
-            import os
-            os.environ["HF_HUB_OFFLINE"] = "1"
-            
-            try:
-                # Try local cached model first
-                self.semantic_model = AutoModel.from_pretrained(
-                    "facebook/hubert-base-ls960", 
-                    trust_remote_code=True,
-                    local_files_only=True
-                )
-            except:
-                # If no local cache, download without auth
-                os.environ.pop("HF_HUB_OFFLINE", None)
-                self.semantic_model = AutoModel.from_pretrained(
-                    "facebook/hubert-base-ls960", 
-                    trust_remote_code=True,
-                    use_auth_token=False
-                )
+            # Use unified downloader to follow TTS folder > cache > download policy
+            from utils.downloads.unified_downloader import unified_downloader
+
+            # Define HuBERT model for unified downloader
+            hubert_files = [
+                {"remote": "config.json", "local": "config.json"},
+                {"remote": "pytorch_model.bin", "local": "pytorch_model.bin"},
+                {"remote": "tokenizer.json", "local": "tokenizer.json", "optional": True},
+                {"remote": "tokenizer_config.json", "local": "tokenizer_config.json", "optional": True},
+            ]
+
+            # Download to TTS/hubert/hubert-base-ls960/ following our unified policy
+            hubert_path = unified_downloader.download_huggingface_model(
+                repo_id="facebook/hubert-base-ls960",
+                model_name="hubert-base-ls960",
+                files=hubert_files,
+                engine_type="hubert",
+                subfolder=None
+            )
+
+            if not hubert_path:
+                raise RuntimeError("Failed to download HuBERT model for Higgs Audio")
+
+            self.semantic_model = AutoModel.from_pretrained(
+                hubert_path,
+                trust_remote_code=True,
+                local_files_only=True
+            )
             
             self.semantic_sample_rate = 16000
             self.semantic_dim = 768
