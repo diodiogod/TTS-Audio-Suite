@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.4] - 2025-10-10
+
+### Added
+
+- Support multiple parent folder naming conventions (HiggsAudio/, higgs_audio/, etc.)
+- Allow flexible subfolder naming like other TTS engines
+- Models now properly detected from configured shared directories
+- Consistent behavior with ChatterBox, F5-TTS, VibeVoice, and IndexTTS-2
+
+### Fixed
+
+- Fix Higgs Audio models not being detected from custom directories
+- Fix Higgs Audio not respecting extra_model_paths.yaml configuration
 ## [4.11.3] - 2025-10-10
 
 ### Added

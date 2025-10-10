@@ -15,6 +15,7 @@ project_root = os.path.dirname(engines_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from utils.downloads.unified_downloader import unified_downloader
+from utils.models.extra_paths import get_all_tts_model_paths
 import folder_paths
 
 # Higgs Audio model configurations
@@ -52,7 +53,14 @@ class HiggsAudioDownloader:
     def __init__(self):
         """Initialize Higgs Audio downloader"""
         self.downloader = unified_downloader
-        self.base_path = os.path.join(folder_paths.models_dir, "TTS", "HiggsAudio")
+        self.models_dir = folder_paths.models_dir
+
+        # Use extra_model_paths.yaml aware TTS directory (like ChatterBox/VibeVoice)
+        self.tts_model_paths = get_all_tts_model_paths('TTS')
+
+        # Default TTS directory for downloads (first configured path)
+        self.tts_dir = self.tts_model_paths[0] if self.tts_model_paths else os.path.join(self.models_dir, "TTS")
+        self.base_path = os.path.join(self.tts_dir, "HiggsAudio")
     
     def get_available_models(self) -> List[str]:
         """
@@ -62,23 +70,43 @@ class HiggsAudioDownloader:
             List of model names
         """
         models = list(HIGGS_AUDIO_MODELS.keys())
-        
-        # Check for local models in organized directory
-        try:
-            if os.path.exists(self.base_path):
-                for item in os.listdir(self.base_path):
-                    item_path = os.path.join(self.base_path, item)
-                    if os.path.isdir(item_path):
-                        # Check if it has both generation and tokenizer subdirs
-                        gen_path = os.path.join(item_path, "generation")
-                        tok_path = os.path.join(item_path, "tokenizer")
-                        if os.path.exists(gen_path) and os.path.exists(tok_path):
-                            local_model = f"local:{item}"
-                            if local_model not in models:
-                                models.append(local_model)
-        except Exception:
-            pass  # Ignore errors in model discovery
-        
+        found_local_models = set()
+
+        # Search in all configured TTS paths (supports extra_model_paths.yaml)
+        for base_tts_path in self.tts_model_paths:
+            # Try case variations for the parent folder
+            for higgs_folder_name in ["HiggsAudio", "higgs_audio", "higgsaudio"]:
+                higgs_base_dir = os.path.join(base_tts_path, higgs_folder_name)
+                if not os.path.exists(higgs_base_dir):
+                    continue
+
+                # Flexible subfolder scanning (like ChatterBox/VibeVoice)
+                try:
+                    for item in os.listdir(higgs_base_dir):
+                        item_path = os.path.join(higgs_base_dir, item)
+
+                        if os.path.isdir(item_path):
+                            # Check if this subdirectory contains Higgs Audio model files
+                            if self._has_higgs_audio_files(item_path):
+                                model_name = item  # Use folder name as model name
+
+                                # Check if it's an official model
+                                if model_name in HIGGS_AUDIO_MODELS:
+                                    local_model_name = f"local:{model_name}"
+                                    if local_model_name not in found_local_models:
+                                        found_local_models.add(local_model_name)
+                                        models.append(local_model_name)
+                                else:
+                                    # Custom model - add with "local:" prefix
+                                    local_model_name = f"local:{model_name}"
+                                    if local_model_name not in found_local_models:
+                                        found_local_models.add(local_model_name)
+                                        models.append(local_model_name)
+
+                except OSError:
+                    # Skip directories we can't read
+                    continue
+
         return models
     
     def download_model(self, model_name_or_path: str) -> str:
@@ -97,15 +125,20 @@ class HiggsAudioDownloader:
             print(f"📁 Using local generation model: {model_name_or_path}")
             return model_name_or_path
         
-        # Handle local: prefix
+        # Handle local: prefix - search in all configured TTS paths
         if model_name_or_path.startswith("local:"):
             local_name = model_name_or_path[6:]  # Remove "local:" prefix
-            local_path = os.path.join(self.base_path, local_name, "generation")
-            if os.path.exists(local_path):
-                print(f"📁 Using local generation model: {local_path}")
-                return local_path
-            else:
-                raise FileNotFoundError(f"Local model not found: {local_path}")
+
+            # Search in all configured TTS paths
+            for base_tts_path in self.tts_model_paths:
+                for higgs_folder_name in ["HiggsAudio", "higgs_audio", "higgsaudio"]:
+                    local_path = os.path.join(base_tts_path, higgs_folder_name, local_name, "generation")
+                    if os.path.exists(local_path):
+                        print(f"📁 Using local generation model: {local_path}")
+                        return local_path
+
+            # If not found, raise error
+            raise FileNotFoundError(f"Local model not found: {local_name}")
         
         # Handle predefined models
         if model_name_or_path in HIGGS_AUDIO_MODELS:
@@ -242,15 +275,20 @@ class HiggsAudioDownloader:
             print(f"📁 Using local tokenizer model: {tokenizer_name_or_path}")
             return tokenizer_name_or_path
         
-        # Handle local: prefix
+        # Handle local: prefix - search in all configured TTS paths
         if tokenizer_name_or_path.startswith("local:"):
             local_name = tokenizer_name_or_path[6:]  # Remove "local:" prefix
-            local_path = os.path.join(self.base_path, local_name, "tokenizer")
-            if os.path.exists(local_path):
-                print(f"📁 Using local tokenizer model: {local_path}")
-                return local_path
-            else:
-                raise FileNotFoundError(f"Local tokenizer not found: {local_path}")
+
+            # Search in all configured TTS paths
+            for base_tts_path in self.tts_model_paths:
+                for higgs_folder_name in ["HiggsAudio", "higgs_audio", "higgsaudio"]:
+                    local_path = os.path.join(base_tts_path, higgs_folder_name, local_name, "tokenizer")
+                    if os.path.exists(local_path):
+                        print(f"📁 Using local tokenizer model: {local_path}")
+                        return local_path
+
+            # If not found, raise error
+            raise FileNotFoundError(f"Local tokenizer not found: {local_name}")
         
         # Handle predefined models
         model_name = None
@@ -506,5 +544,41 @@ class HiggsAudioDownloader:
                 return True
         except Exception as e:
             print(f"❌ Failed to cleanup model {model_name}: {e}")
-        
+
         return False
+
+    def _has_higgs_audio_files(self, model_path: str) -> bool:
+        """
+        Check if directory contains Higgs Audio model files (like ChatterBox/VibeVoice do).
+
+        Args:
+            model_path: Path to model directory
+
+        Returns:
+            True if it contains Higgs Audio model files, False otherwise
+        """
+        try:
+            if not os.path.exists(model_path):
+                return False
+
+            # Check if it has both generation and tokenizer subdirs (standard structure)
+            gen_path = os.path.join(model_path, "generation")
+            tok_path = os.path.join(model_path, "tokenizer")
+
+            if os.path.exists(gen_path) and os.path.exists(tok_path):
+                # Check for essential files in generation folder
+                gen_files = os.listdir(gen_path)
+                has_config = any(f == "config.json" for f in gen_files)
+                has_model = any(f.endswith(".safetensors") for f in gen_files)
+
+                # Check for essential files in tokenizer folder
+                tok_files = os.listdir(tok_path)
+                has_tok_config = any(f == "config.json" for f in tok_files)
+                has_tok_model = any(f.endswith((".pth", ".bin")) for f in tok_files)
+
+                return has_config and has_model and has_tok_config and has_tok_model
+
+            return False
+
+        except OSError:
+            return False
