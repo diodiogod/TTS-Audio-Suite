@@ -81,59 +81,98 @@ class VibeVoiceDownloader:
         """Initialize VibeVoice downloader"""
         self.downloader = unified_downloader
         self.models_dir = folder_paths.models_dir
-        self.tts_dir = os.path.join(self.models_dir, "TTS")
+
+        # Use extra_model_paths.yaml aware TTS directory (like ChatterBox does)
+        from utils.models.extra_paths import get_all_tts_model_paths
+        self.tts_model_paths = get_all_tts_model_paths('TTS')
+
+        # Default TTS directory for downloads (first configured path)
+        self.tts_dir = self.tts_model_paths[0] if self.tts_model_paths else os.path.join(self.models_dir, "TTS")
         self.vibevoice_dir = os.path.join(self.tts_dir, "vibevoice")
-        
+
         # Create directories
         os.makedirs(self.vibevoice_dir, exist_ok=True)
     
     def get_available_models(self) -> List[str]:
         """
         Get list of available VibeVoice models.
-        
+        Searches all configured TTS paths with flexible subfolder support.
+
         Returns:
             List of model names
         """
         # Start with ALL official models (like ChatterBox does)
         available = list(VIBEVOICE_MODELS.keys())
+        found_local_models = set()
 
-        # Then add "local:" versions for downloaded models
-        for model_key, model_info in VIBEVOICE_MODELS.items():
-            model_dir = os.path.join(self.vibevoice_dir, model_key)
-            config_path = os.path.join(model_dir, "config.json")
+        # Search in all configured TTS paths (supports extra_model_paths.yaml)
+        for base_tts_path in self.tts_model_paths:
+            # Try both case variations for the parent folder
+            for vibevoice_folder_name in ["vibevoice", "VibeVoice"]:
+                vibevoice_base_dir = os.path.join(base_tts_path, vibevoice_folder_name)
+                if not os.path.exists(vibevoice_base_dir):
+                    continue
 
-            if os.path.exists(config_path):
-                # Add "local:" prefix for downloaded official models (consistent with F5/ChatterBox)
-                local_model_name = f"local:{model_key}"
-                available.append(local_model_name)
+                # Flexible subfolder scanning (like ChatterBox)
+                try:
+                    for item in os.listdir(vibevoice_base_dir):
+                        item_path = os.path.join(vibevoice_base_dir, item)
 
-        # Check for standalone .safetensors files
+                        if os.path.isdir(item_path):
+                            # Check if this subdirectory contains VibeVoice model files
+                            if self._has_vibevoice_files(item_path):
+                                model_name = item  # Use folder name as model name
+
+                                # Check if it's an official model
+                                if model_name in VIBEVOICE_MODELS:
+                                    local_model_name = f"local:{model_name}"
+                                    if local_model_name not in found_local_models:
+                                        found_local_models.add(local_model_name)
+                                        available.append(local_model_name)
+                                else:
+                                    # Custom model - add with "local:" prefix
+                                    local_model_name = f"local:{model_name}"
+                                    if local_model_name not in found_local_models:
+                                        found_local_models.add(local_model_name)
+                                        available.append(local_model_name)
+
+                        # Also check for standalone .safetensors files
+                        elif os.path.isfile(item_path) and item.endswith('.safetensors'):
+                            model_name = os.path.splitext(item)[0]
+                            # Avoid duplicates and skip if it's part of a regular model
+                            if (model_name not in available and
+                                model_name not in VIBEVOICE_MODELS and
+                                not os.path.exists(os.path.join(vibevoice_base_dir, f"{model_name}.json"))):
+                                local_model_name = f"local:{model_name}"
+                                if local_model_name not in found_local_models:
+                                    found_local_models.add(local_model_name)
+                                    available.append(local_model_name)
+
+                except OSError:
+                    # Skip directories we can't read
+                    continue
+
+        # Also check checkpoints folder for standalone files (backward compatibility)
         import folder_paths
-        search_dirs = [self.vibevoice_dir]
-
-        # Also check checkpoints folder if available
         if hasattr(folder_paths, 'get_folder_paths'):
             checkpoint_dirs = folder_paths.get_folder_paths("checkpoints")
             if checkpoint_dirs:
-                search_dirs.extend(checkpoint_dirs)
+                for checkpoint_dir in checkpoint_dirs:
+                    if not checkpoint_dir or not os.path.exists(checkpoint_dir):
+                        continue
 
-        for model_path_dir in search_dirs:
-            if not model_path_dir or not os.path.exists(model_path_dir):
-                continue
-
-            for item in os.listdir(model_path_dir):
-                item_path = os.path.join(model_path_dir, item)
-
-                # Look for standalone .safetensors files
-                if os.path.isfile(item_path) and item.endswith('.safetensors'):
-                    model_name = os.path.splitext(item)[0]
-                    # Avoid duplicates and skip if it's part of a regular model
-                    if model_name not in available and model_name not in VIBEVOICE_MODELS:
-                        # Add "local:" prefix for consistency with ChatterBox/F5-TTS
-                        local_model_name = f"local:{model_name}"
-                        available.append(local_model_name)
-
-        # Official models already added at the start
+                    try:
+                        for item in os.listdir(checkpoint_dir):
+                            if item.endswith('.safetensors'):
+                                model_name = os.path.splitext(item)[0]
+                                if (model_name not in available and
+                                    model_name not in VIBEVOICE_MODELS):
+                                    local_model_name = f"local:{model_name}"
+                                    if local_model_name not in found_local_models:
+                                        found_local_models.add(local_model_name)
+                                        available.append(local_model_name)
+                    except OSError:
+                        continue
 
         return available
     
@@ -163,27 +202,29 @@ class VibeVoiceDownloader:
         model_info = VIBEVOICE_MODELS[clean_model_name]
         repo_id = model_info["repo"]
 
-        # 1. Check current local path first
-        model_dir = os.path.join(self.vibevoice_dir, clean_model_name)
-        config_path = os.path.join(model_dir, "config.json")
-        
-        if os.path.exists(config_path):
-            # Verify all required model files exist
-            all_files_exist = True
-            for file_info in model_info["files"]:
-                file_path = os.path.join(model_dir, file_info["local"])
-                if not os.path.exists(file_path):
-                    print(f"⚠️ Missing local file: {file_info['local']}")
-                    all_files_exist = False
-                    break
-            
-            if all_files_exist:
-                print(f"📁 Using local VibeVoice model: {model_dir}")
-                # Ensure tokenizer.json exists (download if missing)
-                self._ensure_tokenizer(clean_model_name, model_dir)
-                return model_dir
-            else:
-                print(f"🔄 Local model incomplete, will re-download: {model_dir}")
+        # 1. Check all configured TTS paths with case variations
+        for base_tts_path in self.tts_model_paths:
+            for vibevoice_folder_name in ["vibevoice", "VibeVoice"]:
+                model_dir = os.path.join(base_tts_path, vibevoice_folder_name, clean_model_name)
+                config_path = os.path.join(model_dir, "config.json")
+
+                if os.path.exists(config_path):
+                    # Verify all required model files exist
+                    all_files_exist = True
+                    for file_info in model_info["files"]:
+                        file_path = os.path.join(model_dir, file_info["local"])
+                        if not os.path.exists(file_path):
+                            print(f"⚠️ Missing local file: {file_info['local']}")
+                            all_files_exist = False
+                            break
+
+                    if all_files_exist:
+                        print(f"📁 Using local VibeVoice model: {model_dir}")
+                        # Ensure tokenizer.json exists (download if missing)
+                        self._ensure_tokenizer(clean_model_name, model_dir)
+                        return model_dir
+                    else:
+                        print(f"🔄 Local model incomplete, will re-download: {model_dir}")
         
         # 2. Check legacy VibeVoice-ComfyUI path
         legacy_vibevoice_dir = os.path.join(self.models_dir, "vibevoice")
@@ -365,3 +406,36 @@ class VibeVoiceDownloader:
             Model info dict or None
         """
         return VIBEVOICE_MODELS.get(model_name)
+
+    def _has_vibevoice_files(self, model_path: str) -> bool:
+        """
+        Check if directory contains VibeVoice model files (like ChatterBox does).
+
+        Args:
+            model_path: Path to model directory
+
+        Returns:
+            True if it contains VibeVoice model files, False otherwise
+        """
+        try:
+            if not os.path.exists(model_path):
+                return False
+
+            files = os.listdir(model_path)
+
+            # VibeVoice models need these specific files
+            required_files = ["config.json", "preprocessor_config.json"]
+
+            # Check for required files
+            has_required = all(any(f == req for f in files) for req in required_files)
+            if not has_required:
+                return False
+
+            # Must have either model.safetensors.index.json (multi-file) or direct .safetensors files
+            has_index = any(f == "model.safetensors.index.json" for f in files)
+            has_safetensors = any(f.endswith(".safetensors") for f in files)
+
+            return has_index or has_safetensors
+
+        except OSError:
+            return False
