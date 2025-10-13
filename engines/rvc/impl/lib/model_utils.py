@@ -30,32 +30,51 @@ def load_hubert(model_path: str, config):
                 print(f"🔧 Error type: {type(e).__name__}")
                 raise
         else:
-            # Convert .pt file to .safetensors format for compatibility
+            # Try loading .pt file directly first (safer approach)
+            print(f"🔧 Attempting direct .pt loading: {model_path}")
+            try:
+                import torch
+                checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
+
+                # Try to create HuBERT model directly from .pt checkpoint
+                # This will work if the checkpoint contains the full model with config
+                if hasattr(checkpoint, 'eval'):
+                    # The checkpoint itself is a model
+                    model = checkpoint.to(config.device)
+                    model.eval()
+                    print(f"✅ Direct .pt model loading successful")
+                    return model
+
+            except Exception as direct_error:
+                print(f"⚠️ Direct .pt loading failed: {direct_error}")
+                print(f"🔄 Falling back to safetensors conversion")
+
+            # Fallback: Convert .pt file to .safetensors format for compatibility
             print(f"🔄 Converting .pt Hubert model to safetensors format: {model_path}")
-            
+
             # Generate safetensors path
             safetensors_path = model_path.replace(".pt", ".safetensors")
             if not safetensors_path.endswith(".safetensors"):
                 safetensors_path = model_path + ".safetensors"
-            
+
             # If safetensors version doesn't exist, create it
             if not os.path.exists(safetensors_path):
                 try:
                     import torch
                     from safetensors.torch import save_file
-                    
+
                     print(f"🔧 Converting {model_path} to {safetensors_path}")
-                    
+
                     # Try to extract just the model weights, ignoring fairseq objects
                     try:
                         # First attempt: load with torch pickle_module to handle fairseq objects
                         import pickle
                         import io
-                        
+
                         with open(model_path, 'rb') as f:
                             # Load raw data and try to extract model state_dict only
                             checkpoint = torch.load(f, map_location='cpu', weights_only=False)
-                            
+
                         # Extract state_dict from various possible formats
                         if hasattr(checkpoint, 'state_dict'):
                             state_dict = checkpoint.state_dict()
@@ -69,24 +88,25 @@ def load_hubert(model_path: str, config):
                                 state_dict = checkpoint['state_dict']
                             else:
                                 # Assume the dict itself is the state_dict
-                                state_dict = {k: v for k, v in checkpoint.items() 
+                                state_dict = {k: v for k, v in checkpoint.items()
                                             if isinstance(v, torch.Tensor)}
                         else:
                             raise ValueError("Cannot extract state_dict from checkpoint")
-                            
+
                     except Exception as load_error:
                         print(f"⚠️ Standard loading failed: {load_error}")
                         # Fallback: try to manually extract tensors
                         raise NotImplementedError(f"Cannot convert complex .pt file without fairseq: {model_path}")
-                    
-                    # Save as safetensors
+
+                    # Save as safetensors (without config metadata - this is the limitation)
                     save_file(state_dict, safetensors_path)
                     print(f"✅ Converted to safetensors: {safetensors_path}")
-                    
+                    print(f"⚠️ Note: Config metadata not preserved - may cause loading issues")
+
                 except Exception as conv_error:
                     print(f"❌ Failed to convert model: {conv_error}")
                     raise NotImplementedError(f"Cannot load .pt file without fairseq: {model_path}")
-            
+
             # Load the safetensors version
             return HubertModelWithFinalProj.from_safetensors(safetensors_path, device=config.device)
     except Exception as e:

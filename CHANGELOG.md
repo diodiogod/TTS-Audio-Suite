@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.7] - 2025-10-13
+
+### Fixed
+
+- Fix RVC HuBERT model loading issues
+- Fix 'NoneType' object is not subscriptable error during voice conversion
+- Improve compatibility with chinese-hubert-base.pt models
+- Better error messages when model conversion fails
 ## [4.11.6] - 2025-10-10
 
 ### Added
