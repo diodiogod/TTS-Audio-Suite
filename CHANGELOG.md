@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.9] - 2025-10-14
+
+### Fixed
+
+- Fix VibeVoice not detecting custom models in extra_model_paths.yaml
+- Fix support for .safetensor file extension (some models use singular form)
+- Fix custom model paths not being searched correctly
+- Improve compatibility with user-organized model directories
 ## [4.11.8] - 2025-10-14
 
 ### Fixed

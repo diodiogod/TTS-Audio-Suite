@@ -136,8 +136,8 @@ class VibeVoiceDownloader:
                                         found_local_models.add(local_model_name)
                                         available.append(local_model_name)
 
-                        # Also check for standalone .safetensors files
-                        elif os.path.isfile(item_path) and item.endswith('.safetensors'):
+                        # Also check for standalone .safetensors/.safetensor files
+                        elif os.path.isfile(item_path) and (item.endswith('.safetensors') or item.endswith('.safetensor')):
                             model_name = os.path.splitext(item)[0]
                             # Avoid duplicates and skip if it's part of a regular model
                             if (model_name not in available and
@@ -163,7 +163,7 @@ class VibeVoiceDownloader:
 
                     try:
                         for item in os.listdir(checkpoint_dir):
-                            if item.endswith('.safetensors'):
+                            if item.endswith('.safetensors') or item.endswith('.safetensor'):
                                 model_name = os.path.splitext(item)[0]
                                 if (model_name not in available and
                                     model_name not in VIBEVOICE_MODELS):
@@ -343,17 +343,23 @@ class VibeVoiceDownloader:
 
     def _find_standalone_model(self, model_name: str) -> Optional[str]:
         """
-        Find standalone .safetensors file for a model name.
+        Find standalone .safetensors/.safetensor file for a model name.
 
         Args:
             model_name: Name to search for
 
         Returns:
-            Path to standalone .safetensors file or None if not found
+            Path to standalone .safetensors/.safetensor file or None if not found
         """
         import folder_paths
 
-        search_dirs = [self.vibevoice_dir]
+        # Search in all configured TTS paths with case variations
+        search_dirs = []
+        for base_tts_path in self.tts_model_paths:
+            for vibevoice_folder_name in ["vibevoice", "VibeVoice"]:
+                vibevoice_dir = os.path.join(base_tts_path, vibevoice_folder_name)
+                if os.path.exists(vibevoice_dir):
+                    search_dirs.append(vibevoice_dir)
 
         # Also check checkpoints folder if available
         if hasattr(folder_paths, 'get_folder_paths'):
@@ -365,10 +371,11 @@ class VibeVoiceDownloader:
             if not model_path_dir or not os.path.exists(model_path_dir):
                 continue
 
-            # Look for exact match
-            safetensors_path = os.path.join(model_path_dir, f"{model_name}.safetensors")
-            if os.path.isfile(safetensors_path):
-                return safetensors_path
+            # Look for exact match with both extensions
+            for ext in ['.safetensors', '.safetensor']:
+                safetensors_path = os.path.join(model_path_dir, f"{model_name}{ext}")
+                if os.path.isfile(safetensors_path):
+                    return safetensors_path
 
         return None
 
