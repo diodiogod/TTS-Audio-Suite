@@ -6,7 +6,14 @@ import os
 
 import torch
 import torchaudio
-import wandb
+
+try:
+    import wandb
+    WANDB_AVAILABLE = True
+except Exception:
+    WANDB_AVAILABLE = False
+    wandb = None
+
 from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from ema_pytorch import EMA
@@ -56,7 +63,7 @@ class Trainer:
     ):
         ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
 
-        if logger == "wandb" and not wandb.api.api_key:
+        if logger == "wandb" and (not WANDB_AVAILABLE or not wandb.api.api_key):
             logger = None
         self.log_samples = log_samples
 

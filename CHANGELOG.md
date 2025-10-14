@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.8] - 2025-10-14
+
+### Fixed
+
+- Fix F5-TTS engine failing to load in ComfyUI portable
+- Fix protobuf version mismatch preventing all TTS engines from loading
+- Make wandb dependency optional (only needed for training, not inference)
+- Resolves 'Detected incompatible Protobuf Gencode/Runtime versions' error in ComfyUI portable installations
 ## [4.11.7] - 2025-10-13
 
 ### Fixed
