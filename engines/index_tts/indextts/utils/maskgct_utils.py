@@ -87,15 +87,57 @@ class JsonHParams:
 def build_semantic_model(path_='./models/tts/maskgct/ckpt/wav2vec2bert_stats.pt'):
     # Use unified downloader to follow TTS folder policy
     from engines.index_tts.index_tts_downloader import index_tts_downloader
+    import os
 
-    # Download w2v-bert-2.0 to TTS/IndexTTS/w2v-bert-2.0/ instead of .cache
-    w2v_bert_path = index_tts_downloader.download_model("w2v-bert-2.0")
-    semantic_model = Wav2Vec2BertModel.from_pretrained(w2v_bert_path)
-    semantic_model.eval()
-    stat_mean_var = torch.load(path_)
-    semantic_mean = stat_mean_var["mean"]
-    semantic_std = torch.sqrt(stat_mean_var["var"])
-    return semantic_model, semantic_mean, semantic_std
+    # Configure SSL verification for transformers/huggingface_hub
+    # If user has SSL certificate issues, disable verification
+    disable_ssl = os.environ.get('TTS_DISABLE_SSL_VERIFY', '0') == '1'
+    original_request = None
+
+    if disable_ssl:
+        # Temporarily monkey-patch requests session to disable SSL verification
+        # This is scoped - we restore it after model loading
+        import requests
+        import urllib3
+        from functools import wraps
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        original_request = requests.Session.request
+        @wraps(original_request)
+        def patched_request(self, *args, **kwargs):
+            kwargs['verify'] = False
+            return original_request(self, *args, **kwargs)
+
+        requests.Session.request = patched_request
+        print("⚠️ SSL verification temporarily disabled for W2V-BERT download (TTS_DISABLE_SSL_VERIFY=1)")
+
+    try:
+        # Download w2v-bert-2.0 to TTS/IndexTTS/w2v-bert-2.0/ instead of .cache
+        w2v_bert_path = index_tts_downloader.download_model("w2v-bert-2.0")
+
+        # Load model with local_files_only to prevent online access if files exist
+        try:
+            semantic_model = Wav2Vec2BertModel.from_pretrained(
+                w2v_bert_path,
+                local_files_only=True
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to load locally, attempting online download: {e}")
+            # Fallback to online if local files incomplete
+            semantic_model = Wav2Vec2BertModel.from_pretrained(w2v_bert_path)
+
+        semantic_model.eval()
+        stat_mean_var = torch.load(path_)
+        semantic_mean = stat_mean_var["mean"]
+        semantic_std = torch.sqrt(stat_mean_var["var"])
+        return semantic_model, semantic_mean, semantic_std
+
+    finally:
+        # Restore original requests behavior
+        if disable_ssl and original_request is not None:
+            import requests
+            requests.Session.request = original_request
+            print("✅ SSL verification restored to default behavior")
 
 
 def build_semantic_codec(cfg):

@@ -23,6 +23,15 @@ class UnifiedDownloader:
         self.tts_dir = get_preferred_download_path('TTS')
         # Keep backward compatibility
         self.models_dir = folder_paths.models_dir
+        # SSL verification bypass for environments with certificate issues
+        self.verify_ssl = os.environ.get('CURL_CA_BUNDLE') is not None or os.environ.get('REQUESTS_CA_BUNDLE') is not None
+        if not self.verify_ssl:
+            # Check if user explicitly disabled SSL verification
+            self.verify_ssl = os.environ.get('TTS_DISABLE_SSL_VERIFY', '0') != '1'
+
+        if not self.verify_ssl:
+            print("⚠️ SSL certificate verification is DISABLED")
+            print("   Set environment variable TTS_DISABLE_SSL_VERIFY=0 to re-enable")
     
     def download_file(self, url: str, target_path: str, description: str = None) -> bool:
         """
@@ -47,8 +56,9 @@ class UnifiedDownloader:
             # Download with progress
             desc = description or os.path.basename(target_path)
             print(f"📥 Downloading {desc} directly (no cache)")
-            
-            response = requests.get(url, stream=True)
+
+            # Apply SSL verification setting
+            response = requests.get(url, stream=True, verify=self.verify_ssl)
             response.raise_for_status()
             
             total_size = int(response.headers.get('content-length', 0))
