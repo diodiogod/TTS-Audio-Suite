@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.11] - 2025-10-20
+
+### Added
+
+- First generation works fine
+- Now ensures conditioning data moves with model to CUDA
+- User impact: ChatterBox Official 23-Lang now works correctly when running multiple generations
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang CUDA device mismatch on repeated generations
+- Resolves issue #143 where generation fails on second run after model detach.
+- After VRAM management moves model to CPU, second run fails with device mismatch
 ## [4.11.10] - 2025-10-19
 
 ### Added

@@ -572,11 +572,16 @@ class ChatterboxOfficial23LangTTS:
                 f"Unsupported language_id '{language_id}'. "
                 f"Supported languages: {supported_langs}"
             )
-        
+
         if audio_prompt_path:
             self.prepare_conditionals(audio_prompt_path, exaggeration=exaggeration)
         else:
             assert self.conds is not None, "Please `prepare_conditionals` first or specify `audio_prompt_path`"
+
+        # CRITICAL FIX: Ensure conditioning data is on the correct device (fixes device mismatch when reusing cached models)
+        # When models are moved from CPU back to GPU, the embedding tensors are moved but the conditioning data may still be on CPU
+        if self.conds is not None and hasattr(self.conds, 'to'):
+            self.conds = self.conds.to(device=self.device)
 
         # Update exaggeration if needed
         if float(exaggeration) != float(self.conds.t3.emotion_adv[0, 0, 0].item()):
@@ -645,10 +650,10 @@ class ChatterboxOfficial23LangTTS:
     ):
         """
         Generate audio for multiple text inputs using TRUE batched processing.
-        
+
         FIXED: Now processes multiple texts simultaneously using batch inference,
         not sequential loops like before.
-        
+
         Args:
             texts: List of text strings to generate audio for
             audio_prompt_path: Path to reference audio
@@ -656,7 +661,7 @@ class ChatterboxOfficial23LangTTS:
             cfg_weight: Classifier-free guidance weight
             temperature: Sampling temperature
             batch_size: Number of texts to process in parallel
-            
+
         Returns:
             List of audio tensors
         """
@@ -664,7 +669,12 @@ class ChatterboxOfficial23LangTTS:
             self.prepare_conditionals(audio_prompt_path, exaggeration=exaggeration)
         else:
             assert self.conds is not None, "Please `prepare_conditionals` first or specify `audio_prompt_path`"
-        
+
+        # CRITICAL FIX: Ensure conditioning data is on the correct device (fixes device mismatch when reusing cached models)
+        # When models are moved from CPU back to GPU, the embedding tensors are moved but the conditioning data may still be on CPU
+        if self.conds is not None and hasattr(self.conds, 'to'):
+            self.conds = self.conds.to(device=self.device)
+
         # Update exaggeration if needed
         if exaggeration != self.conds.t3.emotion_adv[0, 0, 0]:
             _cond: T3Cond = self.conds.t3

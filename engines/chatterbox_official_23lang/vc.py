@@ -279,6 +279,14 @@ class ChatterboxVC:
         else:
             assert self.ref_dict is not None, "Please `prepare_conditionals` first or specify `target_voice_path`"
 
+        # CRITICAL FIX: Ensure reference dict is on the correct device (fixes device mismatch when reusing cached models)
+        # When models are moved from CPU back to GPU, the embedding tensors are moved but the ref_dict may still be on CPU
+        if self.ref_dict is not None:
+            self.ref_dict = {
+                k: v.to(self.device) if torch.is_tensor(v) else v
+                for k, v in self.ref_dict.items()
+            }
+
         with torch.inference_mode():
             # Load audio using fallback for Python 3.13 compatibility
             audio_16_wav, _ = safe_load(audio, sr=S3_SR, mono=True)
