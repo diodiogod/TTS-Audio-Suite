@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.12] - 2025-10-21
+
+### Added
+
+- User impact: IndexTTS-2 now properly downloads and caches the CampPlus speaker embedding model
+
+### Fixed
+
+- Fix IndexTTS-2 CampPlus model download failure
+- Resolves issue #144 where IndexTTS-2 fails to load with FileNotFoundError.
+- CampPlus model now automatically downloads to the correct location.
 ## [4.11.11] - 2025-10-20
 
 ### Added
