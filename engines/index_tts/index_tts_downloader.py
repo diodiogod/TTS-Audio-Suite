@@ -50,11 +50,18 @@ class IndexTTSDownloader:
             ],
             "description": "BigVGAN vocoder for IndexTTS-2"
         },
+        "campplus": {
+            "repo_id": "funasr/campplus",
+            "files": [
+                "campplus_cn_common.bin"
+            ],
+            "description": "CampPlus speaker embedding model for IndexTTS-2"
+        },
         "IndexTTS-2": {
             "repo_id": "IndexTeam/IndexTTS-2",
             "files": [
                 "config.yaml",
-                "feat1.pt", 
+                "feat1.pt",
                 "feat2.pt",
                 "gpt.pth",
                 "s2mel.pth",

@@ -225,10 +225,18 @@ class IndexTTS2:
         self.s2mel.eval()
         print(">> s2mel weights restored from:", s2mel_path)
 
-        # load campplus_model
-        campplus_ckpt_path = hf_hub_download(
-            "funasr/campplus", filename="campplus_cn_common.bin"
-        )
+        # load campplus_model using unified downloader (follows TTS folder policy)
+        # Import from parent directory (index_tts)
+        import sys
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+
+        from index_tts_downloader import index_tts_downloader
+        campplus_path = index_tts_downloader.download_model("campplus")
+        campplus_ckpt_path = os.path.join(campplus_path, "campplus_cn_common.bin")
+
         campplus_model = CAMPPlus(feat_dim=80, embedding_size=192)
         campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu"))
         self.campplus_model = campplus_model.to(self.device)
