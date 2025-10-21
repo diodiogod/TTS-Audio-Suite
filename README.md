@@ -634,6 +634,9 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 
 ## 🚀 Quick Start
 
+> [!TIP]
+> You might want to create a clean portable installation just for TTS-Audio-Suite, instead of adding it to your regular ComfyUI setup. This can make the installation process smoother and may reduce initialization time.
+
 ### Option 1: ComfyUI Manager (Recommended) ✨
 
 **One-click installation with intelligent dependency management:**
