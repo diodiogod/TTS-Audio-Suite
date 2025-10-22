@@ -83,8 +83,11 @@ class T3(nn.Module):
         Token cond data needs to be embedded, so that needs to be here instead of in `T3CondEnc`.
         """
         if t3_cond.cond_prompt_speech_tokens is not None and t3_cond.cond_prompt_speech_emb is None:
-            t3_cond.cond_prompt_speech_emb = self.speech_emb(t3_cond.cond_prompt_speech_tokens) + \
-                self.speech_pos_emb(t3_cond.cond_prompt_speech_tokens)
+            # CRITICAL: Ensure tokens are on the correct device before embedding
+            # (fixes device mismatch when models are reused after CPU offloading)
+            cond_tokens = t3_cond.cond_prompt_speech_tokens.to(device=self.device)
+            t3_cond.cond_prompt_speech_emb = self.speech_emb(cond_tokens) + \
+                self.speech_pos_emb(cond_tokens)
         return self.cond_enc(t3_cond)  # (B, len_cond, dim)
 
     def prepare_input_embeds(
