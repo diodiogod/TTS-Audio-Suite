@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.14] - 2025-10-22
+
+### Added
+
+- IndexTTS-2 uses fallback text processing on Windows (fully functional)
+- Add helpful note in installation summary explaining why
+
+### Changed
+
+- Improve Windows install experience for IndexTTS-2
+- User impact: Much cleaner install process on Windows with no confusing errors
+
+### Fixed
+
+- WeTextProcessing no longer shows confusing error messages on Windows install.
+- Windows users get clean installation without error spam
 ## [4.11.13] - 2025-10-22
 
 ### Fixed

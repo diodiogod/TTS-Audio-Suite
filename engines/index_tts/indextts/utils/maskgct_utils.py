@@ -122,9 +122,14 @@ def build_semantic_model(path_='./models/tts/maskgct/ckpt/wav2vec2bert_stats.pt'
                 local_files_only=True
             )
         except Exception as e:
-            print(f"⚠️ Failed to load locally, attempting online download: {e}")
-            # Fallback to online if local files incomplete
-            semantic_model = Wav2Vec2BertModel.from_pretrained(w2v_bert_path)
+            print(f"⚠️ Failed to load w2v-bert-2.0 from local path: {e}")
+            # CRITICAL FIX: Always use local_files_only for local paths
+            # Line 127 was treating local path as HuggingFace repo ID, causing it to search online
+            # Instead, verify the download was complete and provide clear error message
+            print(f"❌ w2v-bert-2.0 model incomplete at: {w2v_bert_path}")
+            print("Please ensure all files were downloaded correctly.")
+            print("Try: Delete models/TTS/IndexTTS/w2v-bert-2.0/ and restart ComfyUI to re-download")
+            raise RuntimeError(f"Failed to load w2v-bert-2.0 model: {e}")
 
         semantic_model.eval()
         stat_mean_var = torch.load(path_)
