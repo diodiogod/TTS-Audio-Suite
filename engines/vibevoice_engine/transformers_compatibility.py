@@ -183,21 +183,77 @@ def patch_dynamic_cache_key_value_cache():
         return False
 
 
+def patch_vibevoice_config_num_hidden_layers():
+    """
+    Patch VibeVoiceConfig to add num_hidden_layers attribute.
+
+    Issue: FushionHub/VibeVoice fork doesn't have the num_hidden_layers fix from wildminder v1.5.1.
+    Transformers 4.51.3+ DynamicCache initialization requires decoder_config.num_hidden_layers.
+
+    Fix from: https://github.com/wildminder/ComfyUI-VibeVoice/releases/tag/1.5.1
+    Commit: 1ee7d7c "fix tokenizer.json issue, fix num_hidden_layers"
+
+    Solution: Patch VibeVoiceConfig.__init__ to set num_hidden_layers from decoder_config.
+    """
+    try:
+        from vibevoice.modular.configuration_vibevoice import VibeVoiceConfig
+
+        # Check if already patched (has num_hidden_layers attribute in a fresh instance)
+        if hasattr(VibeVoiceConfig, '_vibevoice_num_hidden_layers_patched'):
+            return True
+
+        # Store original __init__
+        original_init = VibeVoiceConfig.__init__
+
+        def patched_init(self, *args, **kwargs):
+            """Patched __init__ that adds num_hidden_layers attribute"""
+            # Call original init
+            original_init(self, *args, **kwargs)
+
+            # Add num_hidden_layers attribute from decoder_config
+            # This is the exact fix from wildminder v1.5.1
+            if hasattr(self, 'decoder_config') and hasattr(self.decoder_config, 'num_hidden_layers'):
+                self.num_hidden_layers = self.decoder_config.num_hidden_layers
+                logger.debug(f"VibeVoiceConfig: Set num_hidden_layers={self.num_hidden_layers} from decoder_config")
+            else:
+                # Fallback: use a reasonable default (shouldn't happen with proper models)
+                logger.warning("VibeVoiceConfig: decoder_config.num_hidden_layers not found, using fallback")
+                self.num_hidden_layers = 32  # Common default for 7B models
+
+        # Apply the patch
+        VibeVoiceConfig.__init__ = patched_init
+        VibeVoiceConfig._vibevoice_num_hidden_layers_patched = True
+
+        logger.debug("Applied VibeVoiceConfig.num_hidden_layers compatibility patch (wildminder v1.5.1 fix)")
+        return True
+
+    except ImportError:
+        logger.warning("VibeVoice not available - num_hidden_layers patch skipped")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to apply VibeVoiceConfig num_hidden_layers patch: {e}")
+        return False
+
+
 def apply_all_compatibility_patches():
     """Apply all VibeVoice compatibility patches"""
     patches_applied = []
-    
+
+    # Apply VibeVoiceConfig num_hidden_layers patch (MUST be first - fixes the root cause)
+    if patch_vibevoice_config_num_hidden_layers():
+        patches_applied.append("vibevoice_config_num_hidden_layers")
+
     # Apply _prepare_cache_for_generation patch
     if patch_prepare_cache_for_generation():
         patches_applied.append("_prepare_cache_for_generation")
-        
+
     # Apply DynamicCache key_cache/value_cache patch
     if patch_dynamic_cache_key_value_cache():
         patches_applied.append("dynamic_cache_properties")
-    
+
     if patches_applied:
         logger.debug(f"VibeVoice compatibility patches applied: {', '.join(patches_applied)}")
     else:
         logger.warning("⚠️ No VibeVoice compatibility patches could be applied")
-    
+
     return len(patches_applied) > 0

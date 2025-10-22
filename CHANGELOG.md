@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.13] - 2025-10-22
+
+### Fixed
+
+- Fix VibeVoice num_hidden_layers compatibility issue
+- Fix VibeVoice generation error: 'VibeVoiceConfig' object has no attribute 'num_hidden_layers'
+- Add compatibility patch for transformers 4.51.3+ DynamicCache initialization
+- Implements fix from wildminder/ComfyUI-VibeVoice v1.5.1 for FushionHub fork
 ## [4.11.12] - 2025-10-21
 
 ### Added
