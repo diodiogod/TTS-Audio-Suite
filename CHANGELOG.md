@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.15] - 2025-10-22
+
+### Changed
+
+- Improve stability when switching between CPU and CUDA device placement
+
+### Fixed
+
+- Fix Higgs Audio cache errors in Memory Safe mode
+- Fix AttributeError when resetting DynamicCache in Memory Safe mode (CUDA Graphs OFF)
+- Fix cache not being recreated after model unload/reload cycle
+- Better error handling and logging for cache operations
 ## [4.11.14] - 2025-10-22
 
 ### Added

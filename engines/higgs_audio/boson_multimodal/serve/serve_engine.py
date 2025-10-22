@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Union
 from copy import deepcopy
 from transformers import AutoTokenizer, AutoProcessor
-from transformers.cache_utils import StaticCache
+from transformers.cache_utils import StaticCache, DynamicCache
 from transformers.generation.streamers import BaseStreamer
 from transformers.generation.stopping_criteria import StoppingCriteria
 from dataclasses import asdict
@@ -342,23 +342,28 @@ class HiggsAudioServeEngine:
             print(f"🔥 Created StaticCache buckets for CUDA Graph optimization")
         else:
             # Use DynamicCache for memory safety (no CUDA Graph capture)
-            from transformers.cache_utils import DynamicCache
             def safe_create_dynamic_cache():
-                """Create DynamicCache with compatibility handling"""
+                """Create DynamicCache with comprehensive compatibility handling"""
                 try:
                     return DynamicCache()
-                except AttributeError as e:
-                    if "property" in str(e) and "has no setter" in str(e):
-                        # Create DynamicCache manually to avoid property setter issues
+                except (AttributeError, TypeError) as e:
+                    # Fallback for transformers versions with property issues
+                    logger.warning(f"DynamicCache() constructor failed: {e}, attempting manual construction...")
+                    try:
                         cache = object.__new__(DynamicCache)
+                        # Initialize all expected internal attributes
                         object.__setattr__(cache, '_key_cache', [])
                         object.__setattr__(cache, '_value_cache', [])
                         if hasattr(DynamicCache, '_seen_tokens'):
                             object.__setattr__(cache, '_seen_tokens', 0)
+                        # Try to mark it as properly initialized
+                        if hasattr(cache, '__dict__'):
+                            cache.__dict__['_is_initialized'] = True
                         return cache
-                    else:
-                        raise e
-            
+                    except Exception as fallback_error:
+                        logger.error(f"Manual DynamicCache construction failed: {fallback_error}")
+                        raise RuntimeError(f"Cannot create DynamicCache: {e}") from fallback_error
+
             self.kv_caches = {
                 length: safe_create_dynamic_cache()
                 for length in sorted(kv_cache_lengths)
@@ -625,23 +630,28 @@ class HiggsAudioServeEngine:
                 print(f"  🔥 Created StaticCache buckets for CUDA Graph optimization")
             else:
                 # Use DynamicCache for memory safety (no pre-allocation)
-                from transformers.cache_utils import DynamicCache
                 def safe_create_dynamic_cache():
-                    """Create DynamicCache with compatibility handling"""
+                    """Create DynamicCache with comprehensive compatibility handling"""
                     try:
                         return DynamicCache()
-                    except AttributeError as e:
-                        if "property" in str(e) and "has no setter" in str(e):
-                            # Create DynamicCache manually to avoid property setter issues
+                    except (AttributeError, TypeError) as e:
+                        # Fallback for transformers versions with property issues
+                        logger.warning(f"DynamicCache() constructor failed in _prepare_kv_caches: {e}, attempting manual construction...")
+                        try:
                             cache = object.__new__(DynamicCache)
+                            # Initialize all expected internal attributes
                             object.__setattr__(cache, '_key_cache', [])
                             object.__setattr__(cache, '_value_cache', [])
                             if hasattr(DynamicCache, '_seen_tokens'):
                                 object.__setattr__(cache, '_seen_tokens', 0)
+                            # Try to mark it as properly initialized
+                            if hasattr(cache, '__dict__'):
+                                cache.__dict__['_is_initialized'] = True
                             return cache
-                        else:
-                            raise e
-                
+                        except Exception as fallback_error:
+                            logger.error(f"Manual DynamicCache construction in _prepare_kv_caches failed: {fallback_error}")
+                            raise RuntimeError(f"Cannot create DynamicCache: {e}") from fallback_error
+
                 self.kv_caches = {
                     length: safe_create_dynamic_cache()
                     for length in sorted(cache_lengths)
@@ -659,16 +669,25 @@ class HiggsAudioServeEngine:
             if not hasattr(self, '_cache_device'):
                 self._cache_device = model_device
         
-        # Reset all caches (StaticCache has reset(), DynamicCache needs manual clearing)
-        from transformers.cache_utils import DynamicCache
+        # Reset all caches using explicit type checking to avoid ambiguity
+        # (both StaticCache and DynamicCache have reset() method, so we use isinstance)
         for kv_cache in self.kv_caches.values():
-            if hasattr(kv_cache, 'reset'):
+            if isinstance(kv_cache, StaticCache):
                 # StaticCache has built-in reset method
-                kv_cache.reset()
+                try:
+                    kv_cache.reset()
+                except Exception as e:
+                    print(f"  ⚠️ StaticCache reset error (may be expected): {type(e).__name__}")
             elif isinstance(kv_cache, DynamicCache):
-                # DynamicCache needs manual clearing - use new API
-                kv_cache.crop(0)  # Clear all cached states
-                print(f"  🧹 Cleared DynamicCache state for fresh generation")
+                # DynamicCache needs manual clearing - use crop() API
+                try:
+                    kv_cache.crop(0)  # Clear all cached states
+                    print(f"  🧹 Cleared DynamicCache state for fresh generation")
+                except Exception as e:
+                    print(f"  ⚠️ DynamicCache crop error: {type(e).__name__}: {e}")
+            else:
+                # Unknown cache type - log warning
+                print(f"  ⚠️ Unknown cache type: {type(kv_cache).__name__}")
 
     def generate(
         self,
