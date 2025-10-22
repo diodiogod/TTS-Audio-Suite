@@ -895,12 +895,18 @@ class TTSAudioInstaller:
         """Install IndexTTS-2 text processing with smart fallback handling"""
         self.log("Installing IndexTTS-2 text normalization support", "INFO")
 
-        # Try WeTextProcessing first (newer, preferred package)
-        wetextprocessing_success = self.run_pip_command(
-            ["install", "WeTextProcessing"],
-            "Installing WeTextProcessing (Chinese/English normalization)",
-            ignore_errors=True
-        )
+        # WeTextProcessing requires manual wheel installation on Windows (build tools needed)
+        # Skip it on Windows and use fallback instead to avoid confusing error messages
+        if self.is_windows:
+            self.log("Windows detected - WeTextProcessing requires manual build, using fallback approach", "INFO")
+            wetextprocessing_success = False
+        else:
+            # Try WeTextProcessing first (newer, preferred package) - only on Linux/Mac
+            wetextprocessing_success = self.run_pip_command(
+                ["install", "WeTextProcessing"],
+                "Installing WeTextProcessing (Chinese/English normalization)",
+                ignore_errors=True
+            )
 
         if wetextprocessing_success:
             # Test if WeTextProcessing actually works
@@ -1130,7 +1136,20 @@ class TTSAudioInstaller:
         
         print("\n" + "="*70)
         print(" "*15 + "READY TO USE TTS AUDIO SUITE IN COMFYUI!")
-        print("="*70 + "\n")
+        print("="*70)
+
+        # Windows-specific note about text normalization
+        if self.is_windows:
+            print("\n" + "-"*50)
+            print("   WINDOWS NOTES")
+            print("-"*50)
+            print("  WeTextProcessing was skipped (requires manual wheel build).")
+            print("  IndexTTS-2 will use fallback text processing instead - this")
+            print("  means slightly lower quality for Chinese text, but all TTS")
+            print("  generation will work fine.")
+            print("\n  This is normal and expected on Windows!")
+
+        print()
 
 def main():
     """Main installation entry point"""
