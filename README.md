@@ -888,9 +888,9 @@ To update the node to the latest version:
    ```
 
 3. Reinstall the dependencies (in case they have been updated):
-   
+
    ```bash
-   pip install -r requirements.txt
+   python install.py
    ```
 
 </details>
@@ -915,7 +915,7 @@ python -m pip install --upgrade pip setuptools wheel
 After running the command above, install the node's specific requirements:
 
 ```bash
-pip install -r requirements.txt
+python install.py
 ```
 
 ### 3. Optional: Install FFmpeg for Enhanced Audio Processing
