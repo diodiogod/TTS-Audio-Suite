@@ -759,16 +759,13 @@ For portable installations, follow these steps:
    cd TTS-Audio-Suite
    ```
 
-3. Install the required dependencies.  **Important:** Use the `python.exe` executable located in your ComfyUI portable installation with environment isolation flags.
-   
+3. Run the install script to automatically handle all dependencies. **Important:** Use the `python.exe` executable located in your ComfyUI portable installation.
+
    ```bash
-   ../../../python_embeded/python.exe -m pip install -r requirements.txt --no-user
+   ../../../python_embeded/python.exe install.py
    ```
-   
-   **Why the `--no-user` flag?**
-   
-   - Prevents installing to your system Python's user directory, which can cause import conflicts
-   - Ensures packages install only to the portable environment for proper isolation
+
+   The script will automatically install all required Python packages and detect any missing system dependencies.
 
 #### 2. Direct Installation with venv
 
@@ -800,11 +797,13 @@ If you have a direct installation with a virtual environment (venv), follow thes
    cd custom_nodes/TTS-Audio-Suite
    ```
 
-4. Install the required dependencies using `pip`:
-   
+4. Run the install script to automatically handle all dependencies:
+
    ```bash
-   pip install -r requirements.txt
+   python install.py
    ```
+
+   The script will automatically install all required Python packages and detect any missing system dependencies.
 
 #### 3. Installation through the ComfyUI Manager
 
@@ -820,10 +819,10 @@ If you have a direct installation with a virtual environment (venv), follow thes
 
 4. Activate your ComfyUI virtual environment (see instructions in "Direct Installation with venv").
 
-5. If you encounter issues, manually install the dependencies:
-   
+5. If you encounter issues, run the install script to manually install dependencies:
+
    ```bash
-   pip install -r requirements.txt
+   python install.py
    ```
 
 ### Troubleshooting Dependency Issues
