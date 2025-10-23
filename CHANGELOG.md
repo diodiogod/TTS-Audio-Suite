@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.17] - 2025-10-23
+
+### Added
+
+- Resolves issues when using rgthree Any Switch node
+
+### Changed
+
+- Reduces console spam with smart model download detection
+- Improves user experience with cleaner logs
+
+### Fixed
+
+- Fix IndexTTS-2 and other engines failing on first run after reboot
+- Fix engine parameters corrupted by ComfyUI JSON serialization
 ## [4.11.16] - 2025-10-22
 
 ### Changed
