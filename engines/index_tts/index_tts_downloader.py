@@ -103,34 +103,44 @@ class IndexTTSDownloader:
 
         self.downloader = unified_downloader
         
-    def download_model(self, 
+    def download_model(self,
                       model_name: str = "IndexTTS-2",
                       force_download: bool = False,
                       **kwargs) -> str:
         """
         Download IndexTTS-2 model.
-        
+
         Args:
             model_name: Model to download ("IndexTTS-2")
             force_download: Force re-download even if exists
             **kwargs: Additional download options
-            
+
         Returns:
             Path to downloaded model directory
-            
+
         Raises:
             ValueError: If model_name is not supported
             RuntimeError: If download fails
         """
         if model_name not in self.MODELS:
             raise ValueError(f"Unknown model: {model_name}. Available: {list(self.MODELS.keys())}")
-        
+
         model_info = self.MODELS[model_name]
         model_path = os.path.join(self.base_path, model_name)
-        
+
+        # Check if model already exists
+        if not force_download and os.path.exists(model_path):
+            try:
+                self._verify_model(model_path, model_name, verbose=False)
+                # Model already exists and is valid, skip download
+                return model_path
+            except RuntimeError:
+                # Model exists but is invalid, proceed with download
+                pass
+
         print(f"📥 Downloading IndexTTS-2 model: {model_name}")
         print(f"📁 Target directory: {model_path}")
-        
+
         try:
             # Prepare file list for unified downloader
             file_list = []
@@ -167,40 +177,42 @@ class IndexTTSDownloader:
         except Exception as e:
             raise RuntimeError(f"Failed to download IndexTTS-2 model: {e}")
     
-    def _verify_model(self, model_path: str, model_name: str = "IndexTTS-2") -> None:
+    def _verify_model(self, model_path: str, model_name: str = "IndexTTS-2", verbose: bool = True) -> None:
         """
         Verify downloaded model has all required files.
-        
+
         Args:
             model_path: Path to model directory
             model_name: Model name to get file list
-            
+            verbose: Print verification messages (default True)
+
         Raises:
             RuntimeError: If verification fails
         """
         if model_name not in self.MODELS:
             raise RuntimeError(f"Unknown model: {model_name}")
-            
+
         model_info = self.MODELS[model_name]
         missing_files = []
-        
+
         for file in model_info["files"]:
             if not os.path.exists(os.path.join(model_path, file)):
                 missing_files.append(file)
-                
+
         if missing_files:
             raise RuntimeError(
                 f"IndexTTS-2 model verification failed. Missing files: {missing_files}"
             )
-            
-        # Check for QwenEmotion model if emotion text is supported
-        qwen_dir = os.path.join(model_path, "qwen0.6bemo4-merge")
-        if os.path.exists(qwen_dir) and os.listdir(qwen_dir):
-            print(f"✅ QwenEmotion model found - text emotion support available")
-        else:
-            print(f"ℹ️ QwenEmotion model not found - audio emotion only")
-            
-        print(f"✅ Model verification passed")
+
+        if verbose:
+            # Check for QwenEmotion model if emotion text is supported
+            qwen_dir = os.path.join(model_path, "qwen0.6bemo4-merge")
+            if os.path.exists(qwen_dir) and os.listdir(qwen_dir):
+                print(f"✅ QwenEmotion model found - text emotion support available")
+            else:
+                print(f"ℹ️ QwenEmotion model not found - audio emotion only")
+
+            print(f"✅ Model verification passed")
     
     def is_model_available(self, model_name: str = "IndexTTS-2") -> bool:
         """
