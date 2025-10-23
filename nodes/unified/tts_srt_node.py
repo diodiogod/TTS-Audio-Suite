@@ -35,6 +35,7 @@ BaseTTSNode = base_module.BaseTTSNode
 
 from utils.voice.discovery import get_available_voices
 from utils.audio.processing import AudioProcessingUtils
+from utils.config_sanitizer import ConfigSanitizer
 import comfy.model_management as model_management
 
 # AnyType for flexible input types (accepts any data type)
@@ -577,18 +578,10 @@ Hello! This is unified SRT TTS with character switching.
             engine_type = TTS_engine.get("engine_type")
             config = TTS_engine.get("config", {})
 
-            # FIX: Sanitize device parameter - Any Switch sometimes corrupts it to float
-            # Convert numeric device values (0.6, 0, etc.) back to proper device strings
-            if "device" in config:
-                device_val = config.get("device")
-                if isinstance(device_val, (int, float)):
-                    # Numeric device value - convert to proper format
-                    if device_val == 0:
-                        config["device"] = "cuda:0"
-                    else:
-                        # Likely a corrupted float from Any Switch - default to auto
-                        print(f"⚠️ TTS SRT engine config had corrupted device value ({device_val}), resetting to 'auto'")
-                        config["device"] = "auto"
+            # FIX: Sanitize engine config - ComfyUI JSON serialization corrupts numeric types
+            # When workflow JSON is saved/loaded, floats like 10.0 become integers 10
+            # This particularly affects first run after reboot or when using Any Switch
+            config = ConfigSanitizer.sanitize(config)
 
             # Check if emotion control is connected
             if config.get('emotion_audio') is not None:
