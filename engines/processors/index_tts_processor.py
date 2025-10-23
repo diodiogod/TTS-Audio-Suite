@@ -96,7 +96,7 @@ class IndexTTSProcessor:
             return processed_text
         return emotion_text
 
-    def process_text(self, 
+    def process_text(self,
                     text: str,
                     speaker_audio: Optional[Dict] = None,
                     reference_text: str = "",
@@ -106,7 +106,7 @@ class IndexTTSProcessor:
                     silence_between_chunks_ms: int = 100) -> torch.Tensor:
         """
         Process text and generate audio with IndexTTS-2.
-        
+
         Args:
             text: Input text with potential character tags and emotions
             speaker_audio: Speaker reference audio tensor dict
@@ -115,11 +115,20 @@ class IndexTTSProcessor:
             enable_chunking: Whether to chunk long text (may be disabled for IndexTTS-2)
             max_chars_per_chunk: Maximum characters per chunk
             silence_between_chunks_ms: Silence between segments
-            
+
         Returns:
             Generated audio tensor
         """
         try:
+            # Validate text input - prevent None text which causes NoneType errors
+            if text is None:
+                raise ValueError("Text input cannot be None. Please provide valid text to generate speech.")
+
+            if isinstance(text, str):
+                text = text.strip()
+            if not text:
+                raise ValueError("Text input is empty. Please provide text to generate speech.")
+
             print(f"🤖 IndexTTS-2: Processing text with emotion support")
             
             # Check if IndexTTS-2's native chunking should override our chunking

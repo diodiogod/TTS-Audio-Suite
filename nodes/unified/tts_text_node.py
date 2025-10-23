@@ -532,9 +532,22 @@ Back to the main narrator voice for the conclusion.""",
             # Validate engine input
             if not TTS_engine or not isinstance(TTS_engine, dict):
                 raise ValueError("Invalid TTS_engine input - connect a TTS engine node")
-            
+
             engine_type = TTS_engine.get("engine_type")
             config = TTS_engine.get("config", {})
+
+            # FIX: Sanitize device parameter - Any Switch sometimes corrupts it to float
+            # Convert numeric device values (0.6, 0, etc.) back to proper device strings
+            if "device" in config:
+                device_val = config.get("device")
+                if isinstance(device_val, (int, float)):
+                    # Numeric device value - convert to proper format
+                    if device_val == 0:
+                        config["device"] = "cuda:0"
+                    else:
+                        # Likely a corrupted float from Any Switch - default to auto
+                        print(f"⚠️ TTS engine config had corrupted device value ({device_val}), resetting to 'auto'")
+                        config["device"] = "auto"
             
             
             if not engine_type:
