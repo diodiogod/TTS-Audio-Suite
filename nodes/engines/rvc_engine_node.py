@@ -46,28 +46,54 @@ class RVCEngineNode(BaseTTSNode):
         return "⚙️ RVC Engine"
     
     @classmethod
-    def INPUT_TYPES(cls):
+    def _get_available_rvc_models(cls) -> list:
+        """Get available RVC models without importing heavy modules.
+        Reconstructs the discovery logic using file reading only."""
+        rvc_models = []
+
         try:
-            # Get available models through RVC adapter
-            adapter = RVCEngineAdapter()
-            available_models = adapter.get_available_models()
-            pitch_methods = adapter.get_pitch_extraction_methods()
-            
-            rvc_models = available_models.get('rvc_models', ["No RVC models found"])
-            
-            # Get HuBERT models from our registry
-            from engines.rvc.hubert_models import get_hubert_model_descriptions
-            hubert_models = get_hubert_model_descriptions()
-            
-            # Add sample rates for resampling
-            sample_rates = [0, 16000, 32000, 40000, 44100, 48000]
-            
-        except ImportError as e:
-            print(f"Warning: Could not load RVC components: {e}")
-            rvc_models = ["No RVC models found"]
-            hubert_models = ["auto: Automatically select best available model", "content-vec-best: Content Vec 768 (Recommended)"]
-            pitch_methods = ['rmvpe', 'crepe', 'mangio-crepe', 'rmvpe+']
-            sample_rates = [0, 16000, 32000, 40000, 44100, 48000]
+            import folder_paths
+
+            # Look for RVC models - try TTS path first, then legacy
+            rvc_search_paths = [
+                os.path.join(folder_paths.models_dir, "TTS", "RVC"),
+                os.path.join(folder_paths.models_dir, "RVC")  # Legacy
+            ]
+
+            for rvc_dir in rvc_search_paths:
+                if os.path.exists(rvc_dir):
+                    try:
+                        for file in os.listdir(rvc_dir):
+                            if file.endswith('.pth'):
+                                relative_path = os.path.relpath(os.path.join(rvc_dir, file), folder_paths.models_dir)
+                                rvc_models.append(relative_path)
+                    except OSError:
+                        continue
+        except Exception:
+            pass
+
+        return rvc_models if rvc_models else ["No RVC models found"]
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        rvc_models = cls._get_available_rvc_models()
+
+        # Static HuBERT model definitions (not heavy)
+        HUBERT_MODELS = {
+            "auto": "Automatically select best available model",
+            "content-vec-best": "Content Vec 768 (Recommended)",
+            "hubert-base-japanese": "HuBERT Japanese",
+            "hubert-base-korean": "HuBERT Korean",
+            "chinese-hubert-base": "Chinese HuBERT Base",
+            "hubert-large": "HuBERT Large (Highest Quality)"
+        }
+        hubert_models = [f"{key}: {desc}" for key, desc in HUBERT_MODELS.items()]
+
+        # Static pitch methods (not heavy)
+        pitch_methods = ['rmvpe', 'crepe', 'mangio-crepe', 'rmvpe+']
+
+        # Add sample rates for resampling
+        sample_rates = [0, 16000, 32000, 40000, 44100, 48000]
         
         return {
             "required": {

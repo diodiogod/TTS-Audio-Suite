@@ -333,12 +333,55 @@ class BaseF5TTSNode(BaseChatterBoxNode):
     
     @classmethod
     def get_available_models_for_dropdown(cls) -> List[str]:
-        """Get list of available F5-TTS models for dropdown use in INPUT_TYPES"""
+        """Get list of available F5-TTS models without importing heavy modules.
+        Reconstructs the discovery logic using file reading only."""
+        # Official models (static list)
+        F5TTS_MODELS = {
+            "F5TTS_Base": {"repo": "SWivid/F5-TTS"},
+            "F5TTS_v1_Base": {"repo": "SWivid/F5-TTS"},
+            "E2TTS_Base": {"repo": "SWivid/E2-TTS"},
+            "F5-DE": {"repo": "aihpi/F5-TTS-German"},
+            "F5-ES": {"repo": "jpgallegoar/F5-Spanish"},
+            "F5-FR": {"repo": "RASPIAUDIO/F5-French-MixedSpeakers-reduced"},
+            "F5-JP": {"repo": "Jmica/F5TTS"},
+            "F5-IT": {"repo": "alien79/F5-TTS-italian"},
+            "F5-TH": {"repo": "VIZINTZOR/F5-TTS-THAI"},
+            "F5-PT-BR": {"repo": "firstpixel/F5-TTS-pt-br"},
+            "F5-Polish": {"repo": "Gregniuki/F5-tts_English_German_Polish"},
+            "F5-Hindi-Small": {"repo": "SPRINGLab/F5-Hindi-24KHz"},
+        }
+
+        models = list(F5TTS_MODELS.keys())
+
         try:
-            from engines.f5tts import get_f5tts_models
-            return get_f5tts_models()
-        except ImportError:
-            return ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
+            import folder_paths
+
+            # Search paths (same as original)
+            search_paths = [
+                os.path.join(folder_paths.models_dir, "TTS", "F5-TTS"),
+                os.path.join(folder_paths.models_dir, "F5-TTS"),  # Legacy
+                os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS")  # Legacy fallback
+            ]
+
+            for models_dir in search_paths:
+                try:
+                    if os.path.exists(models_dir):
+                        for item in os.listdir(models_dir):
+                            item_path = os.path.join(models_dir, item)
+                            if os.path.isdir(item_path):
+                                # Check if it contains model files
+                                for ext in [".safetensors", ".pt"]:
+                                    if any(f.endswith(ext) for f in os.listdir(item_path)):
+                                        local_model = f"local:{item}"
+                                        if local_model not in models:
+                                            models.append(local_model)
+                                        break
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        return models if models else ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]
     
     def format_f5tts_audio_output(self, audio_tensor: torch.Tensor) -> Dict[str, Any]:
         """Format F5-TTS audio tensor for ComfyUI output"""

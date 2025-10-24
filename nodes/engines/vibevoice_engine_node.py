@@ -45,21 +45,10 @@ class VibeVoiceEngineNode(BaseTTSNode):
     
     @classmethod
     def INPUT_TYPES(cls):
-        # Check VibeVoice availability first
-        try:
-            from engines.vibevoice_engine import VIBEVOICE_AVAILABLE
-            if not VIBEVOICE_AVAILABLE:
-                raise ImportError("VibeVoice package not available")
-            
-            # Import VibeVoice models for dropdown
-            from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
-            from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
-            
-            engine = VibeVoiceEngine()
-            available_models = engine.get_available_models()
-        except ImportError:
-            available_models = ["vibevoice-1.5B", "vibevoice-7B"]
-        
+        # Get available models without importing heavy VibeVoice engine
+        # Reconstructs the discovery logic using file reading only
+        available_models = cls._get_available_vibevoice_models()
+
         return {
             "required": {
                 "model": (available_models, {
@@ -146,7 +135,58 @@ class VibeVoiceEngineNode(BaseTTSNode):
     FUNCTION = "create_engine_config"
     CATEGORY = "TTS Audio Suite/⚙️ Engines"
     DESCRIPTION = "Configure VibeVoice engine for multi-speaker TTS with 90-minute generation capability. Supports both custom character switching and native multi-speaker modes."
-    
+
+    @classmethod
+    def _get_available_vibevoice_models(cls) -> list:
+        """Get available VibeVoice models without importing heavy modules.
+        Reconstructs the discovery logic using file reading only."""
+        # Official models (static list)
+        VIBEVOICE_MODELS = {
+            "vibevoice-1.5B": {"repo": "microsoft/VibeVoice-1.5B"},
+            "vibevoice-7B": {"repo": "aoi-ot/VibeVoice-Large"}
+        }
+
+        available = list(VIBEVOICE_MODELS.keys())
+        found_local_models = set()
+
+        try:
+            from utils.models.extra_paths import get_all_tts_model_paths
+
+            # Search in all configured TTS paths
+            for base_tts_path in get_all_tts_model_paths('TTS'):
+                # Try both case variations
+                for vibevoice_folder in ["vibevoice", "VibeVoice"]:
+                    vibevoice_base_dir = os.path.join(base_tts_path, vibevoice_folder)
+                    if not os.path.exists(vibevoice_base_dir):
+                        continue
+
+                    try:
+                        for item in os.listdir(vibevoice_base_dir):
+                            item_path = os.path.join(vibevoice_base_dir, item)
+                            if os.path.isdir(item_path):
+                                # Check for VibeVoice model files (config.json + safetensors)
+                                files = os.listdir(item_path)
+                                has_config = "config.json" in files
+                                has_model = any(f.endswith(('.safetensors', '.pt')) for f in files)
+
+                                if has_config and has_model:
+                                    model_name = item
+                                    if model_name in VIBEVOICE_MODELS:
+                                        local_model = f"local:{model_name}"
+                                        if local_model not in found_local_models:
+                                            found_local_models.add(local_model)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # Add found local models to the beginning
+        for local_model in sorted(found_local_models):
+            if local_model not in available:
+                available.insert(0, local_model)
+
+        return available if available else ["vibevoice-1.5B", "vibevoice-7B"]
+
     def create_engine_config(self, model, device, multi_speaker_mode, cfg_scale,
                            use_sampling, attention_mode, inference_steps, quantize_llm_4bit, 
                            temperature, top_p, chunk_minutes, max_new_tokens,

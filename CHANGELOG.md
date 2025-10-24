@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.19] - 2025-10-23
+
+### Added
+
+- Faster ComfyUI startup with lazy engine loading
+- Reduce blocking operations during ComfyUI initialization
+- Cache voice character discovery for faster repeated loading
+
+### Changed
+
+- Performance improvements:
+- Optimize all 7 TTS engine nodes to load instantly on startup
+
+### Fixed
+
+- Move dependency validation to background thread
 ## [4.11.18] - 2025-10-23
 
 ### Added

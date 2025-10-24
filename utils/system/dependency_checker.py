@@ -1,11 +1,14 @@
 """
 Dependency checker for TTS Audio Suite initialization.
 Warns users about missing dependencies based on enabled engines.
+Supports both synchronous and asynchronous background checking.
 """
 
 import importlib
 import sys
-from typing import List, Dict, Tuple
+import threading
+import time
+from typing import List, Dict, Tuple, Optional, Callable
 
 
 class DependencyChecker:
@@ -162,3 +165,63 @@ class DependencyChecker:
             warnings.append("ℹ️ Engine nodes will fail without dependencies")
         
         return warnings
+
+
+class AsyncDependencyChecker:
+    """Background dependency checker that runs after ComfyUI loads."""
+
+    def __init__(self):
+        """Initialize async checker."""
+        self._check_thread = None
+        self._stop_check = False
+        self._results_callback = None
+        self._lock = threading.Lock()
+
+    def start_background_check(self, callback: Optional[Callable[[List[str]], None]] = None):
+        """
+        Start background dependency check.
+
+        Args:
+            callback: Optional callback function to call with results (or print if None)
+        """
+        if self._check_thread is not None and self._check_thread.is_alive():
+            return  # Already running
+
+        self._results_callback = callback
+        self._stop_check = False
+        self._check_thread = threading.Thread(target=self._check_worker, daemon=True)
+        self._check_thread.start()
+
+    def _check_worker(self):
+        """Background worker thread - performs dependency check."""
+        try:
+            # Give ComfyUI time to fully load before checking
+            time.sleep(2)
+
+            if self._stop_check:
+                return
+
+            # Get warnings (this may take a moment)
+            warnings = DependencyChecker.get_startup_warnings()
+
+            if self._stop_check:
+                return
+
+            # Report results
+            if warnings:
+                with self._lock:
+                    if self._results_callback:
+                        self._results_callback(warnings)
+                    else:
+                        # Default: print to console
+                        print("📋 System Dependencies (background check):")
+                        for warning in warnings:
+                            print(f"   {warning}")
+        except Exception:
+            pass  # Silently fail - dependency check is optional
+
+    def stop(self):
+        """Stop the background check thread."""
+        self._stop_check = True
+        if self._check_thread and self._check_thread.is_alive():
+            self._check_thread.join(timeout=1)

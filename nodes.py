@@ -9,7 +9,7 @@ except ImportError:
     # Don't do anything - __init__.py already handled compatibility testing
 
 # Version and constants
-VERSION = "4.11.18"
+VERSION = "4.11.19"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -494,30 +494,55 @@ if sys.version_info >= (3, 13):
 
 # Import dependency checker
 try:
-    from utils.system.dependency_checker import DependencyChecker
+    from utils.system.dependency_checker import DependencyChecker, AsyncDependencyChecker
     DEPENDENCY_CHECKER_AVAILABLE = True
 except ImportError:
     DEPENDENCY_CHECKER_AVAILABLE = False
+    AsyncDependencyChecker = None
 
-# Check for system dependency issues (only show warnings if problems detected)
-dependency_warnings = []
+# Check for immediate PortAudio issues (show during startup)
+startup_warnings = []
 
 # Check PortAudio availability for voice recording
 if VOICE_CAPTURE_AVAILABLE and hasattr(audio_recorder_module, 'SOUNDDEVICE_AVAILABLE') and not audio_recorder_module.SOUNDDEVICE_AVAILABLE:
-    dependency_warnings.append("⚠️ PortAudio library not found - Voice recording disabled")
-    dependency_warnings.append("   Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)")
+    startup_warnings.append("⚠️ PortAudio library not found - Voice recording disabled")
+    startup_warnings.append("   Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)")
 
-# Check for missing dependencies using our dependency checker
-if DEPENDENCY_CHECKER_AVAILABLE:
-    dependency_warnings.extend(DependencyChecker.get_startup_warnings())
-
-# Only show dependency section if there are warnings
-if dependency_warnings:
+# Only show startup dependencies if there are warnings
+if startup_warnings:
     print("📋 System Dependencies:")
-    for warning in dependency_warnings:
+    for warning in startup_warnings:
         print(f"   {warning}")
+
+# Start background dependency check (non-blocking)
+# This will print warnings after ComfyUI loads if there are missing dependencies
+if DEPENDENCY_CHECKER_AVAILABLE and AsyncDependencyChecker:
+    try:
+        async_checker = AsyncDependencyChecker()
+        async_checker.start_background_check()
+    except Exception:
+        pass  # Silently fail - background check is optional
 
 print(f"✅ TTS Audio Suite {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
 for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
     print(f"   • {node}")
 print(SEPARATOR)
+
+# Trigger voice discovery initialization in background thread after ComfyUI startup
+# This loads character cache or starts scanning in a non-blocking way
+try:
+    import threading
+    from utils.voice.discovery import voice_discovery
+
+    def _init_voice_discovery_background():
+        """Initialize voice discovery in background after ComfyUI loads."""
+        import time
+        # Wait a moment for ComfyUI to fully initialize
+        time.sleep(0.5)
+        # Trigger initialization (loads cache or starts background scan)
+        voice_discovery._ensure_initialized()
+
+    discovery_thread = threading.Thread(target=_init_voice_discovery_background, daemon=True)
+    discovery_thread.start()
+except Exception:
+    pass  # Silently fail - discovery will happen on first use

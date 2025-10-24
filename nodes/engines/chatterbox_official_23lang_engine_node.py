@@ -37,13 +37,107 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
         return "⚙️ ChatterBox Official 23-Lang Engine"
     
     @classmethod
-    def INPUT_TYPES(cls):
-        # Import language models for dropdown
+    def _get_available_chatterbox_23lang_models(cls) -> list:
+        """Get available ChatterBox Official 23-Lang models without importing heavy modules.
+        Reconstructs the discovery logic using file reading only."""
+        # Static model definitions (not heavy)
+        OFFICIAL_23LANG_MODELS = {
+            "ChatterBox Official 23-Lang": {
+                "repo": "ResembleAI/chatterbox",
+                "format": "mixed",
+            }
+        }
+
+        models = list(OFFICIAL_23LANG_MODELS.keys())
+        found_local_models = set()
+
         try:
-            from engines.chatterbox_official_23lang.language_models import get_supported_language_names, SUPPORTED_LANGUAGES
-            available_languages = get_supported_language_names()
-        except ImportError:
-            available_languages = ["English"]
+            import folder_paths
+
+            # Check hardcoded paths (like F5-TTS and ChatterBox pattern)
+            search_paths = [
+                os.path.join(folder_paths.models_dir, "TTS", "chatterbox_official_23lang"),
+                os.path.join(folder_paths.models_dir, "chatterbox_official_23lang")
+            ]
+
+            for models_dir in search_paths:
+                if not os.path.exists(models_dir):
+                    continue
+
+                try:
+                    for item in os.listdir(models_dir):
+                        item_path = os.path.join(models_dir, item)
+                        if not os.path.isdir(item_path):
+                            continue
+
+                        # Check if it contains official 23-lang model files
+                        # Must have at least: t3_23lang.safetensors or t3_mtl23ls_v2.safetensors + s3gen.pt + ve.pt + mtl_tokenizer.json
+                        required_files = ["s3gen.pt", "ve.pt", "mtl_tokenizer.json"]
+                        has_model = True
+
+                        # Check for essential files
+                        try:
+                            item_files = os.listdir(item_path)
+                            for required_file in required_files:
+                                if required_file not in item_files:
+                                    has_model = False
+                                    break
+
+                            # Check for t3 model file (v1 or v2)
+                            if has_model:
+                                has_t3 = any(f in item_files for f in ["t3_23lang.safetensors", "t3_mtl23ls_v2.safetensors"])
+                                has_model = has_t3
+                        except OSError:
+                            has_model = False
+
+                        if has_model:
+                            local_model = f"local:{item}"
+                            if local_model not in found_local_models:
+                                found_local_models.add(local_model)
+
+                except OSError:
+                    continue
+        except Exception:
+            pass
+
+        # Add found local models to the beginning
+        for local_model in sorted(found_local_models):
+            if local_model not in models:
+                models.insert(0, local_model)
+
+        return models if models else ["ChatterBox Official 23-Lang"]
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        available_models = cls._get_available_chatterbox_23lang_models()
+
+        # Static language names (not heavy)
+        SUPPORTED_LANGUAGES = {
+            "ar": "Arabic",
+            "da": "Danish",
+            "de": "German",
+            "el": "Greek",
+            "en": "English",
+            "es": "Spanish",
+            "fi": "Finnish",
+            "fr": "French",
+            "he": "Hebrew",
+            "hi": "Hindi",
+            "it": "Italian",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "ms": "Malay",
+            "nl": "Dutch",
+            "no": "Norwegian",
+            "pl": "Polish",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "sv": "Swedish",
+            "sw": "Swahili",
+            "tr": "Turkish",
+            "zh": "Chinese",
+        }
+        available_languages = list(SUPPORTED_LANGUAGES.values())
 
         return {
             "required": {

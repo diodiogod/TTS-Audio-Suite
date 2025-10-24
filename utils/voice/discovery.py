@@ -1,18 +1,21 @@
 """
 Voice Discovery Utility for F5-TTS and ChatterBox Integration
 Enhanced voice file discovery with dual folder support, smart text file priority, and character mapping
+Includes persistent caching for faster startup times.
 """
 
 import os
 import json
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional, Set
+from typing import List, Dict, Tuple, Optional, Set, Union
 try:
     import folder_paths
     from utils.models.extra_paths import get_all_voices_paths
 except ImportError:
     folder_paths = None
     get_all_voices_paths = None
+
+from utils.voice.cache_manager import VoiceDiscoveryCacheManager
 
 
 class VoiceDiscovery:
@@ -37,37 +40,155 @@ class VoiceDiscovery:
         self._character_aliases = {}
         self._character_language_defaults = {}
         self._aliases_valid = False
-        
-        # Initialize character discovery on first import
-        self._initialize_character_discovery()
+
+        # Initialize cache manager for persistent caching
+        self._cache_manager = VoiceDiscoveryCacheManager()
+        self._voice_dirs_tracked = self._get_all_voice_dirs()
+
+        # Defer character discovery to first access (non-blocking startup)
+        self._initialized = False
     
-    def _initialize_character_discovery(self):
-        """Initialize character discovery system on startup."""
+    def _ensure_initialized(self):
+        """
+        Lazy initialization on first access.
+        - Loads from cache immediately (fast)
+        - Starts background refresh thread to update cache after ComfyUI loads
+        """
+        if self._initialized:
+            return
+
+        self._initialized = True
+
+        # Try loading from cache first (instant - no filesystem scan)
+        if self._cache_manager.is_cache_valid():
+            try:
+                cached_data = self._cache_manager.load_cache()
+                if cached_data:
+                    self._character_cache = cached_data.get('character_cache', {})
+                    self._character_aliases = cached_data.get('character_aliases', {})
+                    self._character_language_defaults = cached_data.get('character_language_defaults', {})
+                    self._character_cache_valid = True
+                    self._aliases_valid = True
+
+                    if len(self._character_cache) > 0:
+                        alias_count = len(self._character_aliases)
+                        if alias_count > 0:
+                            print(f"🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases (cached)")
+                        else:
+                            print(f"🎭 Character voices: Found {len(self._character_cache)} characters (cached)")
+
+                    # Start background refresh after ComfyUI loads
+                    self._cache_manager.start_background_refresh(self._get_fresh_cache_data)
+                    return
+            except Exception:
+                pass  # Fallback to full scan
+
+        # No cache - do full discovery now
         try:
-            # Force character cache refresh to discover characters immediately
             self._refresh_character_cache()
-            # Load character aliases after characters are discovered
             self._refresh_character_aliases()
+
+            # Save to persistent cache for next startup
+            cache_data = self._get_fresh_cache_data()
+            self._cache_manager.save_cache(cache_data)
+
             if len(self._character_cache) > 0:
                 alias_count = len(self._character_aliases)
                 if alias_count > 0:
                     print(f"🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases")
                 else:
                     print(f"🎭 Character voices: Found {len(self._character_cache)} characters")
+
+            # Start background refresh for updates
+            self._cache_manager.start_background_refresh(self._get_fresh_cache_data)
+
         except Exception as e:
             print(f"⚠️ Character discovery failed: {e}")
+
+    def _get_fresh_cache_data(self) -> Tuple[Dict, bool]:
+        """
+        Get fresh cache data by rescanning directories.
+
+        Returns:
+            Tuple of (cache_data, was_updated) where was_updated indicates if content changed
+        """
+        try:
+            # Store old data to compare
+            old_chars = set(self._character_cache.keys())
+            old_aliases = set(self._character_aliases.keys())
+
+            # Rescan
+            self._refresh_character_cache()
+            self._refresh_character_aliases()
+
+            # Check if anything changed
+            new_chars = set(self._character_cache.keys())
+            new_aliases = set(self._character_aliases.keys())
+            was_updated = (old_chars != new_chars) or (old_aliases != new_aliases)
+
+            cache_data = {
+                'character_cache': self._character_cache,
+                'character_aliases': self._character_aliases,
+                'character_language_defaults': self._character_language_defaults
+            }
+
+            # Print update message if cache changed
+            if was_updated:
+                char_diff = len(new_chars) - len(old_chars)
+                alias_diff = len(new_aliases) - len(old_aliases)
+                msg_parts = []
+                if char_diff != 0:
+                    msg_parts.append(f"{char_diff:+d} characters" if char_diff > 0 else f"{char_diff} characters")
+                if alias_diff != 0:
+                    msg_parts.append(f"{alias_diff:+d} aliases" if alias_diff > 0 else f"{alias_diff} aliases")
+                if msg_parts:
+                    print(f"🎭 Character voices updated: {', '.join(msg_parts)}")
+
+            return cache_data, was_updated
+        except Exception as e:
+            return {}, False
+
+    def _get_all_voice_dirs(self) -> List[str]:
+        """Get list of all voice directories to track for caching."""
+        dirs = []
+
+        # Add standard directories
+        voices_examples_dir = self._get_voices_examples_dir()
+        if voices_examples_dir:
+            dirs.append(voices_examples_dir)
+
+        models_voices_dir = self._get_models_voices_dir()
+        if models_voices_dir:
+            dirs.append(models_voices_dir)
+
+        models_tts_voices_dir = self._get_models_tts_voices_dir()
+        if models_tts_voices_dir:
+            dirs.append(models_tts_voices_dir)
+
+        # Add extra paths if available
+        if get_all_voices_paths:
+            try:
+                extra_paths = get_all_voices_paths()
+                dirs.extend(extra_paths)
+            except Exception:
+                pass
+
+        return dirs
     
     def get_available_voices(self) -> List[str]:
         """
         Get list of available voice files with companion text files.
-        
+
         Returns:
             List of voice file paths relative to their base directories.
             Format: ["voice.wav", "folder/voice.wav", "voices_examples/speaker.wav"]
         """
+        # Lazy initialization on first access
+        self._ensure_initialized()
+
         if not self._cache_valid:
             self._refresh_cache()
-        
+
         return ["none"] + sorted(self._cache.keys())
     
     def get_voice_info(self, voice_key: str) -> Optional[Dict[str, str]]:
@@ -298,13 +419,16 @@ class VoiceDiscovery:
     def get_available_characters(self) -> Set[str]:
         """
         Get set of available character names from voice folders.
-        
+
         Returns:
             Set of character names found in voice directories
         """
+        # Lazy initialization on first access
+        self._ensure_initialized()
+
         if not self._character_cache_valid:
             self._refresh_character_cache()
-        
+
         return set(self._character_cache.keys())
     
     def get_character_voice_info(self, character_name: str, engine_type: str = "f5tts") -> Optional[Dict[str, str]]:

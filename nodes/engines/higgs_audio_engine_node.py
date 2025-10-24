@@ -44,21 +44,85 @@ class HiggsAudioEngineNode(BaseTTSNode):
         return "⚙️ Higgs Audio 2 Engine"
     
     @classmethod
-    def INPUT_TYPES(cls):
-        # Import Higgs Audio models for dropdown
+    def _get_available_higgs_models(cls) -> list:
+        """Get available Higgs Audio models without importing heavy modules.
+        Reconstructs the discovery logic using file reading only."""
+        # Static model definitions (not heavy)
+        HIGGS_AUDIO_MODELS = {
+            "higgs-audio-v2-3B": {
+                "generation_repo": "bosonai/higgs-audio-v2-generation-3B-base",
+                "tokenizer_repo": "bosonai/higgs-audio-v2-tokenizer",
+            }
+        }
+
+        available = list(HIGGS_AUDIO_MODELS.keys())
+        found_local_models = set()
+
         try:
-            from engines.higgs_audio.higgs_audio_downloader import HIGGS_AUDIO_MODELS
-            available_models = list(HIGGS_AUDIO_MODELS.keys())
-            
-            # Add local models
-            from engines.higgs_audio.higgs_audio import HiggsAudioEngine
-            engine = HiggsAudioEngine()
-            all_models = engine.get_available_models()
-            
-            # Combine and deduplicate
-            available_models.extend([m for m in all_models if m not in available_models])
-        except ImportError:
-            available_models = ["higgs-audio-v2-3B"]
+            from utils.models.extra_paths import get_all_tts_model_paths
+
+            # Search in all configured TTS paths (respects extra_model_paths.yaml)
+            for base_tts_path in get_all_tts_model_paths('TTS'):
+                # Try case variations for folder name
+                for higgs_folder_name in ["HiggsAudio", "higgs_audio", "higgsaudio"]:
+                    higgs_base_dir = os.path.join(base_tts_path, higgs_folder_name)
+                    if not os.path.exists(higgs_base_dir):
+                        continue
+
+                    try:
+                        for item in os.listdir(higgs_base_dir):
+                            item_path = os.path.join(higgs_base_dir, item)
+                            if not os.path.isdir(item_path):
+                                continue
+
+                            # Check if this subdirectory contains Higgs Audio model files
+                            # Must have both generation/ and tokenizer/ subdirs with essential files
+                            gen_path = os.path.join(item_path, "generation")
+                            tok_path = os.path.join(item_path, "tokenizer")
+
+                            if not (os.path.exists(gen_path) and os.path.exists(tok_path)):
+                                continue
+
+                            # Check for essential generation files
+                            try:
+                                gen_files = os.listdir(gen_path)
+                                has_gen_config = "config.json" in gen_files
+                                has_gen_model = any(f.endswith(".safetensors") for f in gen_files)
+                            except OSError:
+                                has_gen_config = False
+                                has_gen_model = False
+
+                            # Check for essential tokenizer files
+                            try:
+                                tok_files = os.listdir(tok_path)
+                                has_tok_config = "config.json" in tok_files
+                                has_tok_model = any(f.endswith((".pth", ".bin")) for f in tok_files)
+                            except OSError:
+                                has_tok_config = False
+                                has_tok_model = False
+
+                            # Valid if has essential files in both subdirs
+                            if has_gen_config and has_gen_model and has_tok_config and has_tok_model:
+                                model_name = item
+                                local_model_name = f"local:{model_name}"
+                                if local_model_name not in found_local_models:
+                                    found_local_models.add(local_model_name)
+
+                    except OSError:
+                        continue
+        except Exception:
+            pass
+
+        # Add found local models to the beginning
+        for local_model in sorted(found_local_models):
+            if local_model not in available:
+                available.insert(0, local_model)
+
+        return available if available else ["higgs-audio-v2-3B"]
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        available_models = cls._get_available_higgs_models()
         
         
         return {

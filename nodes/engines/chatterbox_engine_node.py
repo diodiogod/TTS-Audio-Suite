@@ -37,13 +37,83 @@ class ChatterBoxEngineNode(BaseTTSNode):
         return "⚙️ ChatterBox TTS Engine"
     
     @classmethod
-    def INPUT_TYPES(cls):
-        # Import language models for dropdown
+    def _get_available_chatterbox_languages(cls) -> list:
+        """Get available ChatterBox languages without importing heavy modules.
+        Reconstructs the discovery logic using file reading only."""
+        # Static language definitions (not heavy)
+        CHATTERBOX_MODELS = {
+            "English": {"repo": "ResembleAI/chatterbox", "format": "pt"},
+            "German": {"repo": "stlohrey/chatterbox_de", "format": "safetensors"},
+            "German (SebastianBodza)": {"repo": "SebastianBodza/Kartoffelbox-v0.1", "format": "mixed"},
+            "German (havok2)": {"repo": "havok2/Kartoffelbox-v0.1_0.65h2", "format": "safetensors"},
+            "Norwegian": {"repo": "akhbar/chatterbox-tts-norwegian", "format": "safetensors"},
+            "French": {"repo": "Thomcles/Chatterbox-TTS-French", "format": "safetensors"},
+            "Russian": {"repo": "niobures/Chatterbox-TTS", "format": "safetensors"},
+            "Armenian": {"repo": "niobures/Chatterbox-TTS", "format": "safetensors"},
+            "Georgian": {"repo": "niobures/Chatterbox-TTS", "format": "safetensors"},
+            "Japanese": {"repo": "niobures/Chatterbox-TTS", "format": "safetensors"},
+            "Korean": {"repo": "niobures/Chatterbox-TTS", "format": "safetensors"},
+            "Italian": {"repo": "niobures/Chatterbox-TTS", "format": "pt"},
+        }
+
+        languages = list(CHATTERBOX_MODELS.keys())
+        found_local_models = set()
+
         try:
-            from engines.chatterbox.language_models import get_available_languages
-            available_languages = get_available_languages()
-        except ImportError:
-            available_languages = ["English"]
+            import folder_paths
+
+            # Check hardcoded paths (like F5-TTS pattern)
+            search_paths = [
+                os.path.join(folder_paths.models_dir, "TTS", "chatterbox"),
+                os.path.join(folder_paths.models_dir, "chatterbox")
+            ]
+
+            for models_dir in search_paths:
+                if not os.path.exists(models_dir):
+                    continue
+
+                try:
+                    for item in os.listdir(models_dir):
+                        item_path = os.path.join(models_dir, item)
+                        if not os.path.isdir(item_path):
+                            continue
+
+                        # Check if it contains ChatterBox model files
+                        # Must have files starting with: ve., t3_cfg., s3gen., tokenizer.json
+                        required_file_starts = ["ve.", "t3_cfg.", "s3gen.", "tokenizer.json"]
+                        has_model = False
+
+                        try:
+                            for file in os.listdir(item_path):
+                                for required_start in required_file_starts:
+                                    if file.startswith(required_start) and file.endswith((".pt", ".safetensors")):
+                                        has_model = True
+                                        break
+                                if has_model:
+                                    break
+                        except OSError:
+                            continue
+
+                        if has_model:
+                            local_model = f"local:{item}"
+                            if local_model not in found_local_models:
+                                found_local_models.add(local_model)
+
+                except OSError:
+                    continue
+        except Exception:
+            pass
+
+        # Add found local models to the beginning
+        for local_model in sorted(found_local_models):
+            if local_model not in languages:
+                languages.insert(0, local_model)
+
+        return languages if languages else ["English"]
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        available_languages = cls._get_available_chatterbox_languages()
         
         return {
             "required": {
