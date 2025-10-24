@@ -73,9 +73,10 @@ class VoiceDiscovery:
                     if len(self._character_cache) > 0:
                         alias_count = len(self._character_aliases)
                         if alias_count > 0:
-                            print(f"🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases (cached)")
+                            print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases (cached)")
                         else:
-                            print(f"🎭 Character voices: Found {len(self._character_cache)} characters (cached)")
+                            print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters (cached)")
+                        print(f"[TTS Audio Suite] 🔄 Updating character discovery in background...")
 
                     # Start background refresh after ComfyUI loads
                     self._cache_manager.start_background_refresh(self._get_fresh_cache_data)
@@ -95,9 +96,9 @@ class VoiceDiscovery:
             if len(self._character_cache) > 0:
                 alias_count = len(self._character_aliases)
                 if alias_count > 0:
-                    print(f"🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases")
+                    print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases")
                 else:
-                    print(f"🎭 Character voices: Found {len(self._character_cache)} characters")
+                    print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters")
 
             # Start background refresh for updates
             self._cache_manager.start_background_refresh(self._get_fresh_cache_data)
