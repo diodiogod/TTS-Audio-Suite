@@ -73,7 +73,19 @@ class FeatureExtractor:
                 else:
                     print(f"{file_index} was not found...")
                 import faiss
-                index = faiss.read_index(file_index)
+                # Suppress faiss loading messages by redirecting stdout
+                import sys
+                from io import StringIO
+
+                old_stdout = sys.stdout
+                sys.stdout = StringIO()
+
+                try:
+                    index = faiss.read_index(file_index)
+                finally:
+                    sys.stdout = old_stdout
+
+                # Only show success message, not the verbose loading details
                 print(f"loaded index: {index}")
                 big_npy = index.reconstruct_n(0, index.ntotal)
         except Exception as e:

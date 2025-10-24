@@ -489,22 +489,8 @@ if sys.version_info >= (3, 13):
     # 🔬 NUMBA WORKAROUND: Commented out - testing if still needed with numba 0.61.2+ and librosa 0.11.0+
     # print("⚡ Numba JIT disabled for librosa compatibility")
 
-# Check for local models using updated model manager
-try:
-    from utils.models.manager import ModelManager
-    model_manager = ModelManager()
-    model_paths = model_manager.find_chatterbox_models()
-    first_source = model_paths[0][0] if model_paths else None
-    if first_source == "bundled":
-        print("✓ Using bundled ChatterBox models")
-    elif first_source == "comfyui":
-        print("✓ Using ComfyUI ChatterBox models")
-    else:
-        print("⚠️ No local ChatterBox models found - will download from Hugging Face")
-        print("💡 Tip: First generation will download models (~1GB)")
-        print("   Models will be saved locally for future use")
-except:
-    print("⚠️ ChatterBox model discovery not available")
+# Removed legacy ChatterBox model discovery to improve startup performance
+# Model discovery now happens lazily when needed by individual engines
 
 # Import dependency checker
 try:

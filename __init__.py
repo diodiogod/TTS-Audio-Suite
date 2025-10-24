@@ -29,7 +29,7 @@ except ImportError:
             import librosa
             test_audio = np.random.randn(512).astype(np.float32)
             _ = librosa.stft(test_audio, hop_length=256, n_fft=512)
-            print("✅ Numba JIT working properly - no workarounds needed")
+            # Only show when there's a problem, not success
             # Mark that we've tested numba compatibility
             import sys
             sys.modules['__main__']._tts_numba_tested = True
@@ -46,7 +46,8 @@ except ImportError:
             else:
                 print(f"⚠️ Librosa test failed with different error: {e}")
     else:
-        print(f"🔧 TTS Audio Suite: Python {sys.version_info.major}.{sys.version_info.minor} - numba JIT enabled")
+        # Only show warning when JIT is disabled (indicates a problem)
+        pass
 
 # Apply ComfyUI compatibility patches
 try:
@@ -55,8 +56,11 @@ try:
 except ImportError:
     pass
 
-# Suppress specific torchaudio 2.9+ TorchCodec migration warnings (informational only, no action needed)
+# Suppress torchaudio 2.9+ TorchCodec migration warnings (informational only, no action needed)
 import warnings
+import sys
+import os
+
 warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec", category=UserWarning)
 warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.save_with_torchcodec", category=UserWarning)
 
@@ -90,7 +94,8 @@ def check_ffmpeg_availability():
     try:
         from utils.ffmpeg_utils import FFmpegUtils
         if FFmpegUtils.is_available():
-            print("✅ FFmpeg available - optimal audio processing enabled")
+            # Only show when unavailable (problem)
+            pass
         else:
             print("⚠️ FFmpeg not found - using fallback audio processing (reduced quality)")
             print("💡 Install FFmpeg for optimal performance: https://ffmpeg.org/download.html")
@@ -100,7 +105,8 @@ def check_ffmpeg_availability():
             import subprocess
             result = subprocess.run(['ffmpeg', '-version'], capture_output=True, timeout=5)
             if result.returncode == 0:
-                print("✅ FFmpeg available - optimal audio processing enabled")
+                # Only show when unavailable (problem)
+                pass
             else:
                 print("⚠️ FFmpeg not found - using fallback audio processing (reduced quality)")
         except Exception:

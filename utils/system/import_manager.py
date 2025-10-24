@@ -79,7 +79,8 @@ class ImportManager:
                 "source": "bundled",
                 "error": None
             }
-            self._log_debug("✅ ChatterboxTTS loaded from bundled package")
+            # Only log on error, not success
+            pass
             return True, ChatterboxTTS, "bundled"
             
         except ImportError as bundled_error:
@@ -129,7 +130,8 @@ class ImportManager:
                 "source": "bundled",
                 "error": None
             }
-            self._log_debug("✅ ChatterboxVC loaded from bundled package")
+            # Only log on error, not success
+            pass
             return True, ChatterboxVC, "bundled"
             
         except ImportError as bundled_error:
@@ -178,7 +180,8 @@ class ImportManager:
                 "source": "system",
                 "error": None
             }
-            self._log_debug("✅ F5-TTS loaded from system package")
+            # Only log on error, not success
+            pass
             return True, F5TTS, "system"
             
         except ImportError as error:

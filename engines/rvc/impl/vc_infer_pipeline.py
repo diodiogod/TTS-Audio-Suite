@@ -230,17 +230,25 @@ def get_vc(model_path,file_index=None,config=config,device=None):
     try: #preload file_index
         if os.path.exists(file_index):
             import faiss
-            sys.stdout.write(f"Attempting to load {file_index}....\n")
-            sys.stdout.flush()
-            index = faiss.read_index(file_index)
+            # Suppress verbose faiss loading messages by redirecting stdout
+            import sys
+            from io import StringIO
+
+            # Temporarily redirect stdout to suppress faiss loading messages
+            old_stdout = sys.stdout
+            sys.stdout = StringIO()
+
+            try:
+                index = faiss.read_index(file_index)
+            finally:
+                # Always restore stdout
+                sys.stdout = old_stdout
+
             big_npy = index.reconstruct_n(0, index.ntotal)
             file_index = index, big_npy
         else:
-            sys.stdout.write(f"Attempting to load {file_index}.... (despite it not existing)\n")
-            sys.stdout.flush()
             file_index = ""
-        
-        sys.stdout.write(f"loaded index: {file_index}\n")
+
     except Exception as e:
         print(f"Could not open Faiss index file for reading. {e}")
         file_index = ""
