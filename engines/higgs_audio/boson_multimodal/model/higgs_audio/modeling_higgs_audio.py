@@ -1253,6 +1253,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
         cache_audio_discrete_codes_mask: Optional[torch.LongTensor] = None,
         past_key_values_buckets: Optional[OrderedDict[int, Cache]] = None,
         reward: Optional[torch.FloatTensor] = None,
+        **kwargs  # Compatibility: transformers 4.57.1+ passes tokenizer to forward()
     ):
         """Forward pass for the Higgs-Audio model.
 
@@ -2407,7 +2408,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
         splitted_model = super().from_pretrained(
             checkpoint_dir,
             *model_args,
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,  # Changed from torch_dtype (deprecated in transformers 4.57.1+)
             device_map="cpu",
             **{**kwargs, "state_dict": None},  # Prevent auto-loading state_dict
         )

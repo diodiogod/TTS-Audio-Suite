@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.21] - 2025-10-25
+
+### Fixed
+
+- Fix Higgs Audio compatibility with transformers 4.57.1+
+- Fix audio generation failing with transformers 4.57.1 and newer
+- Maintain full backward compatibility with older transformers versions
+
+### Removed
+
+- Remove deprecated torch_dtype warnings during model loading
 ## [4.11.20] - 2025-10-23
 
 ### Added

@@ -287,8 +287,8 @@ class HiggsAudioServeEngine:
         # Initialize model and tokenizer
         # Load with attention implementation fix for newer transformers
         self.model = HiggsAudioModel.from_pretrained(
-            model_name_or_path, 
-            torch_dtype=torch_dtype,
+            model_name_or_path,
+            dtype=torch_dtype,  # Changed from torch_dtype (deprecated in transformers 4.57.1+)
             attn_implementation="eager"  # Force eager attention for compatibility
         ).to(device)
         
