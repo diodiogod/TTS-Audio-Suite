@@ -2475,11 +2475,13 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
                 batch_size = 1
                 hidden_dim = self.config.hidden_size
 
+                # Use self.dtype instead of self.config.torch_dtype (deprecated in transformers 4.57.1+)
+                model_dtype = getattr(self, 'dtype', getattr(self.config, 'dtype', torch.float32))
                 hidden_states = torch.zeros(
-                    (batch_size, 1, hidden_dim), dtype=self.config.torch_dtype, device=self.device
+                    (batch_size, 1, hidden_dim), dtype=model_dtype, device=self.device
                 )
                 causal_mask = torch.ones(
-                    (batch_size, 1, 1, kv_cache_length), dtype=self.config.torch_dtype, device=self.device
+                    (batch_size, 1, 1, kv_cache_length), dtype=model_dtype, device=self.device
                 )
                 position_ids = torch.zeros((batch_size, 1), dtype=torch.long, device=self.device)
                 audio_discrete_codes_mask = torch.tensor(
