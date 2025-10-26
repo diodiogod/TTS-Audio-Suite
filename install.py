@@ -350,15 +350,15 @@ class TTSAudioInstaller:
         try:
             if cuda_version == "cpu":
                 pytorch_packages_26 = [
-                    "torch>=2.6.0+cpu", 
-                    "torchvision+cpu", 
-                    "torchaudio>=2.6.0+cpu"
+                    "torch>=2.6.0",
+                    "torchvision",
+                    "torchaudio>=2.6.0"
                 ]
             else:
                 pytorch_packages_26 = [
-                    f"torch>=2.6.0+{cuda_version}", 
-                    f"torchvision+{cuda_version}", 
-                    f"torchaudio>=2.6.0+{cuda_version}"
+                    "torch>=2.6.0",
+                    "torchvision",
+                    "torchaudio>=2.6.0"
                 ]
             
             pytorch_cmd_26 = [
@@ -374,18 +374,18 @@ class TTSAudioInstaller:
         except subprocess.CalledProcessError:
             # PyTorch 2.6.0 not available for this CUDA version - try 2.5+
             self.log(f"PyTorch 2.6.0 not available for {cuda_version} - falling back to latest 2.5.x", "WARNING")
-            
+
             if cuda_version == "cpu":
                 pytorch_packages_25 = [
-                    "torch>=2.5.0+cpu", 
-                    "torchvision+cpu", 
-                    "torchaudio>=2.5.0+cpu"
+                    "torch>=2.5.0",
+                    "torchvision",
+                    "torchaudio>=2.5.0"
                 ]
             else:
                 pytorch_packages_25 = [
-                    f"torch>=2.5.0+{cuda_version}", 
-                    f"torchvision+{cuda_version}", 
-                    f"torchaudio>=2.5.0+{cuda_version}"
+                    "torch>=2.5.0",
+                    "torchvision",
+                    "torchaudio>=2.5.0"
                 ]
             
             pytorch_cmd_25 = [
@@ -637,9 +637,9 @@ class TTSAudioInstaller:
     def install_rvc_dependencies(self):
         """Install RVC voice conversion dependencies with smart GPU detection"""
         self.log("Installing RVC voice conversion dependencies", "INFO")
-        
-        # Install core RVC dependency first
-        self.run_pip_command(["install", "monotonic-alignment-search"], "Installing monotonic-alignment-search")
+
+        # Install core RVC dependency first (with graceful failure for build-tool-less systems)
+        self.run_pip_command(["install", "monotonic-alignment-search"], "Installing monotonic-alignment-search", ignore_errors=True)
         
         # Smart faiss installation: GPU on Linux with CUDA, CPU fallback for Windows/compatibility
         cuda_version = self.detect_cuda_version()

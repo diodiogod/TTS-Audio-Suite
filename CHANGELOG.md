@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.23] - 2025-10-26
+
+### Fixed
+
+- Fix PyTorch installation failing on Windows Python 3.13
+- Fix invalid pip requirement syntax preventing installation on all platforms
+- Add graceful fallback if RVC dependencies unavailable (build tools missing)
 ## [4.11.22] - 2025-10-25
 
 ### Added
