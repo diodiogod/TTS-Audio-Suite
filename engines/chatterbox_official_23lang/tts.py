@@ -186,6 +186,29 @@ class ChatterboxOfficial23LangTTS:
                 self.watermarker = None
                 self.enable_watermarking = False
 
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+        """
+        self.device = device
+
+        # Move all PyTorch model components
+        if hasattr(self.t3, 'to'):
+            self.t3 = self.t3.to(device)
+        if hasattr(self.s3gen, 'to'):
+            self.s3gen = self.s3gen.to(device)
+        if hasattr(self.ve, 'to'):
+            self.ve = self.ve.to(device)
+        if hasattr(self.tokenizer, 'to'):
+            self.tokenizer = self.tokenizer.to(device)
+        if self.conds is not None and hasattr(self.conds, 'to'):
+            self.conds = self.conds.to(device)
+
+        return self
+
     @classmethod
     def from_local(cls, ckpt_dir, device, model_name=None, model_version="v2") -> 'ChatterboxOfficial23LangTTS':
         """

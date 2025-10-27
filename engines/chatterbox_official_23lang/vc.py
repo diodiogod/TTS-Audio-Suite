@@ -55,6 +55,28 @@ class ChatterboxVC:
                 for k, v in ref_dict.items()
             }
 
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+        """
+        self.device = device
+
+        # Move s3gen model
+        if hasattr(self.s3gen, 'to'):
+            self.s3gen = self.s3gen.to(device)
+
+        # Move reference dict tensors
+        if self.ref_dict is not None:
+            self.ref_dict = {
+                k: v.to(device) if torch.is_tensor(v) else v
+                for k, v in self.ref_dict.items()
+            }
+
+        return self
+
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxVC':
         print(f"📦 Loading local ChatterBox VC models from: {ckpt_dir}")

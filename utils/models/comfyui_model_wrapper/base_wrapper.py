@@ -115,108 +115,140 @@ class ComfyUIModelWrapper:
     def partially_unload(self, device: str, memory_to_free: int) -> int:
         """
         Partially unload the model to free memory.
-        
+
         Uses engine-specific handlers for specialized behavior.
-        
+
         Args:
             device: Target device to move to (usually 'cpu')
             memory_to_free: Amount of memory to free in bytes
-            
+
         Returns:
             Amount of memory actually freed in bytes
         """
         if not self._is_loaded_on_gpu:
+            print(f"⚠️ Skipping unload: model already marked as not on GPU (_is_loaded_on_gpu={self._is_loaded_on_gpu})")
             return 0
-        
+
         # Import and use engine-specific handler
         from .engine_handlers import get_engine_handler
         handler = get_engine_handler(self.model_info.engine)
-        
+
         return handler.partially_unload(self, device, memory_to_free)
     
     def model_unload(self, memory_to_free: Optional[int] = None, unpatch_weights: bool = True) -> bool:
         """
         Fully unload the model from GPU memory.
-        
+
         Args:
             memory_to_free: Amount of memory to free (ignored for full unload)
             unpatch_weights: Whether to unpatch weights (TTS models don't use this)
-            
+
         Returns:
             True if model was unloaded, False otherwise
         """
-        print(f"🔄 TTS Model unload requested: {self.model_info.engine} {self.model_info.model_type}")
-        
+        print(f"🔄 TTS Model unload requested: {self.model_info.engine} {self.model_info.model_type} (_is_loaded_on_gpu={self._is_loaded_on_gpu})")
+
         # Import and use engine-specific handler
         from .engine_handlers import get_engine_handler
         handler = get_engine_handler(self.model_info.engine)
-        
+
         return handler.model_unload(self, memory_to_free, unpatch_weights)
     
     def model_load(self, device: Optional[str] = None) -> None:
         """
         Load the model back to GPU.
-        
+
         Args:
             device: Device to load to (defaults to original load_device)
         """
         if self._is_loaded_on_gpu:
             return
-            
+
         target_device = device or self.load_device
         model = self._model_ref() if self._model_ref else None
-        
+
         if model is None:
             return
-            
+
         try:
             # Move model back to GPU (comprehensive approach)
             if hasattr(model, 'to'):
                 model.to(target_device)
                 print(f"🔄 Moved main {self.model_info.model_type} model ({self.model_info.engine}) to {target_device}")
-            
+
             # CRITICAL: Recursively move ALL nested components to ensure device consistency
             self._move_all_components_to_device(model, target_device, depth=0)
-            
+
             self.current_device = target_device
             self._is_loaded_on_gpu = True
             print(f"✅ Fully moved {self.model_info.model_type} model components ({self.model_info.engine}) back to {target_device}")
-                
+
+            # Re-register with ComfyUI after reload so "Clear VRAM" continues to work
+            try:
+                import comfy.model_management as model_management
+                # Check if we're in current_loaded_models list
+                if hasattr(model_management, 'current_loaded_models'):
+                    # Find our LoadedModel wrapper
+                    found = False
+                    for loaded_model in model_management.current_loaded_models:
+                        if hasattr(loaded_model, 'model') and loaded_model.model == self:
+                            found = True
+                            break
+
+                    # If not found, re-register
+                    if not found:
+                        loaded_model = model_management.LoadedModel(self)
+                        loaded_model.real_model = weakref.ref(model)
+                        loaded_model._tts_wrapper_ref = self
+                        # Set up finalizer that ComfyUI expects
+                        if hasattr(model_management, 'cleanup_models'):
+                            loaded_model.model_finalizer = weakref.finalize(model, model_management.cleanup_models)
+                        else:
+                            loaded_model.model_finalizer = weakref.finalize(model, lambda: None)
+                        model_management.current_loaded_models.insert(0, loaded_model)
+                        print(f"✅ Re-registered with ComfyUI model management after reload")
+            except Exception as e:
+                print(f"⚠️ Could not re-register with ComfyUI ({e}) - 'Clear VRAM' may not work")
+
         except Exception as e:
             print(f"⚠️ Error moving model to {target_device}: {e}")
     
-    def _move_all_components_to_device(self, obj, target_device: str, depth: int = 0, max_depth: int = 4):
+    def _move_all_components_to_device(self, obj, target_device: str, depth: int = 0, max_depth: int = 5):
         """
         Recursively move all PyTorch components to target device.
         This ensures no CPU/GPU device mismatches after model reload.
         """
         if depth > max_depth:
             return
-        
+
         if obj is None:
             return
-            
-        # Move PyTorch modules
-        if hasattr(obj, 'to') and hasattr(obj, 'parameters') and callable(getattr(obj, 'to')):
+
+        # Move PyTorch modules (any object with .to() method)
+        if hasattr(obj, 'to') and callable(getattr(obj, 'to')):
             try:
                 obj.to(target_device)
-                if depth == 0:
-                    print(f"  📦 Moved {type(obj).__name__} to {target_device}")
+                if depth <= 1:  # Log top-level and first-level components
+                    print(f"  {'  ' * depth}📦 Moved {type(obj).__name__} to {target_device}")
             except Exception as e:
-                if depth == 0:
-                    print(f"  ⚠️ Failed to move {type(obj).__name__}: {e}")
-        
+                if depth <= 1:
+                    print(f"  {'  ' * depth}⚠️ Failed to move {type(obj).__name__}: {e}")
+
         # Recurse through object attributes
         if hasattr(obj, '__dict__'):
             for attr_name, attr_value in obj.__dict__.items():
-                if not attr_name.startswith('_') and attr_value is not None:
-                    # Skip certain problematic attributes
-                    if attr_name in ['_modules', '_parameters', '_buffers']:
-                        continue
-                    try:
-                        self._move_all_components_to_device(attr_value, target_device, depth + 1, max_depth)
-                    except Exception:
-                        pass
+                # Skip private attributes and known problematic ones
+                if attr_name.startswith('_'):
+                    continue
+                if attr_value is None:
+                    continue
+                # Skip internal PyTorch structures (already handled by .to())
+                if attr_name in ['_modules', '_parameters', '_buffers', 'training']:
+                    continue
+                try:
+                    self._move_all_components_to_device(attr_value, target_device, depth + 1, max_depth)
+                except Exception:
+                    pass
     
     def is_clone(self, other) -> bool:
         """Check if this model is a clone of another model"""

@@ -137,8 +137,13 @@ class UnifiedModelInterface:
         wrapper = tts_model_manager.get_model(cache_key)
         if wrapper is not None:
             # Ensure model is on correct device
-            if wrapper.current_device != config.device and config.device != "auto":
-                wrapper.model_load(config.device)
+            target_device = config.device
+            if target_device == "auto":
+                target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # Reload if device mismatch (handles both explicit devices and "auto" resolution)
+            if wrapper.current_device != target_device:
+                wrapper.model_load(target_device)
             return wrapper.model
         
         # Find appropriate factory

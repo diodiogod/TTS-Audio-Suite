@@ -324,12 +324,52 @@ Back to the main narrator voice for the conclusion.""",
         """
         if self.tts_model is None:
             raise RuntimeError("TTS model not loaded. Call load_tts_model() first.")
-        
+
+        # CRITICAL FIX: Reload model to correct device if it was offloaded
+        # When processors are cached, the model reference persists but may be on wrong device
+        # Use the unified model interface to properly reload through wrapper system
+        if hasattr(self.tts_model, 'to') and hasattr(self.tts_model, 'device'):
+            target_device = self.device if hasattr(self, 'device') else self.tts_model.device
+
+            # Resolve "auto" to actual device
+            if target_device == "auto":
+                target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # Check current device of model components
+            if hasattr(self.tts_model.t3, 'parameters'):
+                try:
+                    current_device = str(next(self.tts_model.t3.parameters()).device)
+                    target_device_str = str(target_device)
+
+                    # Reload through unified interface if device mismatch
+                    # This ensures ComfyUI's model management stays in sync
+                    if current_device != target_device_str:
+                        print(f"🔄 Reloading ChatterBox model from {current_device} to {target_device_str} via wrapper")
+
+                        # Find and call wrapper's model_load() instead of direct .to()
+                        try:
+                            from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                            for cache_key, wrapper in tts_model_manager._model_cache.items():
+                                if hasattr(wrapper, 'model') and wrapper.model is self.tts_model:
+                                    wrapper.model_load(target_device)
+                                    print(f"✅ Reloaded model via wrapper - ComfyUI management stays in sync")
+                                    break
+                            else:
+                                # Fallback: direct .to() if wrapper not found
+                                print(f"⚠️ Wrapper not found, using direct .to() - 'Clear VRAM' may not work")
+                                self.tts_model.to(target_device)
+                        except Exception as e:
+                            # Fallback to direct .to()
+                            print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
+                            self.tts_model.to(target_device)
+                except StopIteration:
+                    pass  # Model has no parameters
+
         # Use torch.no_grad() to ensure no gradients are tracked during inference
         with torch.no_grad():
             # Debug: Show the language_id being passed to the model
             print(f"🌍 ChatterBox Official 23-Lang TTS: language_id='{language_id}' for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
-            
+
             # ChatterBox generate method with correct parameters including language_id
             audio = self.tts_model.generate(
                 text,
