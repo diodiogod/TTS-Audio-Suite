@@ -342,6 +342,78 @@ class [EngineClass]Processor:
 
 **Use Unified Pause System, search for the unified code**
 
+#### Step 9.5: Implement Interrupt Handling (CRITICAL)
+
+**⚠️ REQUIRED FOR ALL NEW ENGINES - Users Must Be Able to Cancel Operations**
+
+ComfyUI provides an interrupt mechanism that allows users to stop long-running operations (like SRT generation with many segments). Your processors MUST check for interruption signals.
+
+**Import and Check Pattern:**
+
+```python
+import comfy.model_management as model_management
+
+# In your main processing loops:
+def generate_srt_speech(self, srt_content: str, ...):
+    # ... setup code ...
+
+    for i, segment in enumerate(srt_segments):
+        # Check for interruption before processing each segment
+        if model_management.interrupt_processing:
+            raise InterruptedError(f"Engine SRT segment {i+1}/{len(srt_segments)} interrupted by user")
+
+        # Your generation code...
+```
+
+**Where to Add Interrupt Checks:**
+
+1. **SRT Processors** - Add checks in main subtitle/segment loops:
+   - Before processing each subtitle/segment
+   - Before processing character segments within a subtitle
+   - Before timing assembly (after all audio generation)
+
+2. **Text Processors** - Add checks in main generation loops:
+   - Before character setup/loading
+   - Before processing each character segment
+   - Before processing chunks (if chunking is enabled)
+
+3. **Special Feature Processors** - Add checks in long-running operations:
+   - Before each major processing step
+   - At natural breakpoints (before/after audio generation)
+
+**Example SRT Processor Structure:**
+
+```python
+class EngineSRTProcessor:
+    def generate_srt_speech(self, srt_content, ...):
+        # Pre-generation check
+        if model_management.interrupt_processing:
+            raise InterruptedError("Setup interrupted")
+
+        # Main segment loop
+        for i, segment in enumerate(srt_segments):
+            if model_management.interrupt_processing:
+                raise InterruptedError(f"Segment {i+1}/{len(srt_segments)} interrupted")
+
+            # Character switching support
+            for char_segment in char_segments:
+                if model_management.interrupt_processing:
+                    raise InterruptedError(f"Character {char} interrupted")
+                # ... generate audio ...
+
+        # Pre-assembly check
+        if model_management.interrupt_processing:
+            raise InterruptedError("Assembly interrupted")
+
+        # Timing assembly...
+```
+
+**Real Examples:**
+
+- See `nodes/higgs_audio/higgs_audio_srt_processor.py` - SRT interrupts
+- See `nodes/vibevoice/vibevoice_processor.py` - TTS processor interrupts
+- See `nodes/chatterbox_official_23lang/chatterbox_official_23lang_srt_processor.py` - Complex interrupts
+
 #### Step 10: Create Main TTS Processor
 
 **File:** `nodes/[engine_name]/[engine_name]_processor.py`
@@ -362,6 +434,7 @@ Also to test, requirements and dependencies need to be added.
 - [ ] Model auto-download works
 - [ ] VRAM management works (model unloads)
 - [ ] Different parameter combinations work
+- [ ] **Interrupt handling works** - User can stop SRT generation and it stops within ~1 segment
 
 ### Phase 4: SRT Implementation
 
@@ -529,6 +602,7 @@ Update the engines comparison table.
 - **PauseTagProcessor** - Pause tag handling
 - **LanguageMapper** - Language code mapping
 - **UnifiedDownloader** - Model downloads
+- **model_management.interrupt_processing** - Interrupt signal checking (CRITICAL for cancellation)
 
 #### ❌ Never Duplicate These
 
