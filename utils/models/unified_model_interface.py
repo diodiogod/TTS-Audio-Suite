@@ -569,10 +569,27 @@ def register_higgs_audio_factory():
 
 
 def register_rvc_factory():
-    """Register RVC model factories"""  
+    """Register RVC model factories"""
     def rvc_factory(**kwargs):
-        from engines.rvc.rvc_engine import RVCEngine
-        return RVCEngine()
+        """Load RVC model and wrap it for ComfyUI management"""
+        from engines.rvc.impl.vc_infer_pipeline import get_vc
+        from engines.rvc.impl.config import config as rvc_config
+        from engines.rvc.rvc_engine import RVCModelWrapper
+
+        model_path = kwargs.get("model_path")
+        index_path = kwargs.get("index_path")
+        device = kwargs.get("device", "cuda")
+
+        if not model_path:
+            raise ValueError("RVC factory requires model_path")
+
+        # Load the RVC model using the actual implementation
+        model_data = get_vc(model_path, index_path, rvc_config, device)
+
+        # Wrap the model_data dict so it has .to() method for device management
+        wrapped_model = RVCModelWrapper(model_data, device)
+
+        return wrapped_model
     
     def hubert_factory(**kwargs):
         from engines.rvc.impl.lib.model_utils import load_hubert

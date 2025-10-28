@@ -118,18 +118,35 @@ class MinimalRVCWrapper:
     def __init__(self):
         self.hubert_model = None
         self.reference_path = None
+        self._model_cache = {}  # Cache loaded RVC models to prevent VRAM spikes
+        self._hubert_cache = {}  # Cache Hubert models separately
         self._setup_reference_path()
         
+    def clear_model_cache(self):
+        """Clear cached models to free VRAM"""
+        import torch
+        import gc
+
+        freed_count = len(self._model_cache) + len(self._hubert_cache)
+        self._model_cache.clear()
+        self._hubert_cache.clear()
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+
+        print(f"🗑️ RVC minimal wrapper: Cleared {freed_count} cached models")
+
     def _setup_reference_path(self):
         """Setup path to implementation (moved from docs to proper engine location)"""
         current_dir = os.path.dirname(__file__)
         self.reference_path = os.path.join(current_dir, "impl")
         self.lib_path = os.path.join(self.reference_path, "lib")
-        
+
         # Add all necessary paths for reference implementation
         self.infer_pack_path = os.path.join(self.lib_path, "infer_pack")
         self.text_path = os.path.join(self.infer_pack_path, "text")
-        
+
         # Add paths in order of priority
         if self.text_path not in sys.path:
             sys.path.insert(0, self.text_path)       # For symbols
@@ -246,25 +263,40 @@ class MinimalRVCWrapper:
             from engines.rvc.impl.lib.model_utils import load_hubert
             from engines.rvc.impl.config import config
             
-            # Load RVC model
-            print(f"🔄 Loading RVC model via minimal wrapper: {os.path.basename(model_path)}")
-            model_data = get_vc(model_path, index_path)
-            
-            if not model_data:
-                print("❌ Failed to load RVC model")
-                return None
-            
-            # Load Hubert model
+            # Load RVC model (with caching to prevent VRAM spikes)
+            cache_key = f"{model_path}:{index_path}"
+            if cache_key in self._model_cache:
+                print(f"♻️ Using cached RVC model: {os.path.basename(model_path)}")
+                model_data = self._model_cache[cache_key]
+            else:
+                print(f"🔄 Loading RVC model via minimal wrapper: {os.path.basename(model_path)}")
+                model_data = get_vc(model_path, index_path)
+
+                if not model_data:
+                    print("❌ Failed to load RVC model")
+                    return None
+
+                self._model_cache[cache_key] = model_data
+                print(f"💾 Cached RVC model for reuse")
+
+            # Load Hubert model (with caching)
             hubert_path = self._find_hubert_model()
             if not hubert_path:
                 print("❌ Hubert model not found")
                 return None
-            
-            print(f"🔄 Loading Hubert model: {os.path.basename(hubert_path)}")
-            hubert_model = load_hubert(hubert_path, config)
-            if not hubert_model:
-                print("❌ Failed to load Hubert model")
-                return None
+
+            if hubert_path in self._hubert_cache:
+                print(f"♻️ Using cached Hubert model")
+                hubert_model = self._hubert_cache[hubert_path]
+            else:
+                print(f"🔄 Loading Hubert model: {os.path.basename(hubert_path)}")
+                hubert_model = load_hubert(hubert_path, config)
+                if not hubert_model:
+                    print("❌ Failed to load Hubert model")
+                    return None
+
+                self._hubert_cache[hubert_path] = hubert_model
+                print(f"💾 Cached Hubert model for reuse")
             
             # Prepare input audio
             input_audio = (audio, sample_rate)

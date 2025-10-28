@@ -99,7 +99,30 @@ class VibeVoiceEngine:
         
         # Track if package is available
         self._package_available = None
-    
+
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+        """
+        self.device = device
+
+        # Move the model
+        if hasattr(self.model, 'to'):
+            self.model = self.model.to(device)
+
+        # Move the processor if it has tensors
+        if hasattr(self.processor, 'to'):
+            self.processor = self.processor.to(device)
+
+        # Update class-level shared model if it's the same instance
+        if self.__class__._shared_model is self.model:
+            self.__class__._shared_model = self.model
+
+        return self
+
     def _ensure_package(self) -> bool:
         """Ensure VibeVoice package is installed"""
         if self._package_available is not None:
@@ -799,7 +822,51 @@ class VibeVoiceEngine:
         """
         if self.model is None or self.processor is None:
             raise RuntimeError("Model not initialized. Call initialize_engine first.")
-        
+
+        # CRITICAL FIX: Reload model to correct device if it was offloaded
+        # When models are cached, the model reference persists but may be on wrong device after "Clear VRAM"
+        # IMPORTANT: Always check against the INTENDED device (cuda if available), not self.device which may have been updated to CPU
+        target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Check current device by examining actual parameters (not model.device attribute which can be stale)
+        current_device = None
+        if hasattr(self.model, 'model') and hasattr(self.model.model, 'parameters'):
+            try:
+                first_param = next(self.model.model.parameters())
+                current_device = str(first_param.device)
+            except StopIteration:
+                pass
+        elif hasattr(self.model, 'parameters'):
+            try:
+                first_param = next(self.model.parameters())
+                current_device = str(first_param.device)
+            except StopIteration:
+                pass
+
+        # Reload through unified interface if device mismatch
+        if current_device and current_device != str(target_device):
+            print(f"🔄 Reloading VibeVoice model from {current_device} to {target_device} via wrapper")
+
+            # Find and call wrapper's model_load() instead of direct .to()
+            try:
+                from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                wrapper_found = False
+                for cache_key, wrapper in tts_model_manager._model_cache.items():
+                    if hasattr(wrapper, 'model') and wrapper.model is self:
+                        wrapper.model_load(target_device)
+                        print(f"✅ Reloaded VibeVoice via wrapper - ComfyUI management stays in sync")
+                        wrapper_found = True
+                        break
+
+                if not wrapper_found:
+                    # Fallback: direct .to() if wrapper not found
+                    print(f"⚠️ Wrapper not found for VibeVoice, using direct .to()")
+                    self.to(target_device)
+            except Exception as e:
+                # Fallback to direct .to()
+                print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
+                self.to(target_device)
+
         # Handle caching if enabled (following ChatterBox pattern)
         if enable_cache:
             from utils.audio.cache import create_cache_function

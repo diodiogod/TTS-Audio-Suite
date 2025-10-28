@@ -6,6 +6,11 @@ import os, traceback, librosa
 from scipy import signal
 from .lib.model_utils import load_hubert, change_rms
 
+# CRITICAL FIX: Disable CUDNN benchmark to prevent VRAM spikes on Python 3.12+
+# Same issue as other TTS engines - CUDNN benchmark causes memory allocation spikes
+if torch.cuda.is_available() and sys.version_info >= (3, 12):
+    torch.backends.cudnn.benchmark = False
+
 # from tqdm import tqdm
 
 from .pitch_extraction import FeatureExtractor

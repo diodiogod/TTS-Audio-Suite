@@ -24,6 +24,42 @@ import comfy.model_management as model_management
 # Import unified model interface for ComfyUI integration
 from utils.models.unified_model_interface import load_vc_model, load_auxiliary_model
 
+class RVCModelWrapper:
+    """
+    Wrapper for RVC model dict to provide .to() method for device management.
+
+    RVC models are loaded as dicts with 'net_g', 'cpt', 'vc', etc.
+    This wrapper makes them compatible with ComfyUI's model management.
+    """
+    def __init__(self, model_data: dict, device: str):
+        self.model_data = model_data
+        self.device = device
+
+    def to(self, device):
+        """Move all model components to target device"""
+        self.device = device
+
+        # Move net_g (the main synthesizer network)
+        if 'net_g' in self.model_data and hasattr(self.model_data['net_g'], 'to'):
+            self.model_data['net_g'] = self.model_data['net_g'].to(device)
+
+        # Move VC pipeline if it has components
+        if 'vc' in self.model_data:
+            vc = self.model_data['vc']
+            if hasattr(vc, 'to'):
+                self.model_data['vc'] = vc.to(device)
+
+        return self
+
+    def __getitem__(self, key):
+        """Allow dict-like access"""
+        return self.model_data[key]
+
+    def get(self, key, default=None):
+        """Allow dict-like get"""
+        return self.model_data.get(key, default)
+
+
 class RVCEngine:
     """
     Core RVC (Real-time Voice Conversion) Engine
@@ -48,7 +84,33 @@ class RVCEngine:
             'protect': 0.25,
             'crepe_hop_length': 160
         }
-    
+
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+        """
+        self.device = device
+
+        # Move all loaded RVC models
+        for model_name, model in self.rvc_models.items():
+            if hasattr(model, 'to'):
+                self.rvc_models[model_name] = model.to(device)
+
+        # Move all loaded Hubert models
+        for model_name, model in self.hubert_models.items():
+            if hasattr(model, 'to'):
+                self.hubert_models[model_name] = model.to(device)
+
+        # Move all pitch extractors
+        for extractor_name, extractor in self.pitch_extractors.items():
+            if hasattr(extractor, 'to'):
+                self.pitch_extractors[extractor_name] = extractor.to(device)
+
+        return self
+
     def _setup_cache(self):
         """Setup cache directory for RVC processing"""
         try:
@@ -209,18 +271,49 @@ class RVCEngine:
     ) -> Tuple[np.ndarray, int]:
         """
         Perform voice conversion using RVC
-        
+
         Args:
             audio: Input audio (tensor, numpy array, or tuple of (audio, sample_rate))
             rvc_model_id: RVC model identifier from load_rvc_model
-            hubert_model_id: Hubert model identifier from load_hubert_model  
+            hubert_model_id: Hubert model identifier from load_hubert_model
             pitch_shift: Pitch shift in semitones (-14 to +14)
             pitch_params: Pitch extraction parameters (optional)
             use_cache: Whether to use caching for faster repeated conversions
-            
+
         Returns:
             Tuple of (converted_audio, sample_rate)
         """
+        # CRITICAL FIX: Reload models to correct device if they were offloaded
+        # Check if models need to be moved back to GPU after "Clear VRAM"
+        import torch
+        target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Check RVC models
+        for model_name, model in self.rvc_models.items():
+            if hasattr(model, 'parameters'):
+                try:
+                    first_param = next(model.parameters())
+                    current_device = str(first_param.device)
+                    if current_device != str(target_device):
+                        print(f"🔄 Reloading RVC model '{model_name}' from {current_device} to {target_device}")
+                        self.to(target_device)
+                        break
+                except StopIteration:
+                    pass
+
+        # Check Hubert models
+        for model_name, model in self.hubert_models.items():
+            if hasattr(model, 'parameters'):
+                try:
+                    first_param = next(model.parameters())
+                    current_device = str(first_param.device)
+                    if current_device != str(target_device):
+                        print(f"🔄 Reloading Hubert model '{model_name}' from {current_device} to {target_device}")
+                        self.to(target_device)
+                        break
+                except StopIteration:
+                    pass
+
         try:
             # Process input audio to consistent format
             if isinstance(audio, tuple):
