@@ -19,6 +19,7 @@ import torchaudio
 from typing import Dict, Any, Optional, List, Tuple
 import os
 import sys
+import comfy.model_management as model_management
 
 # Add project root to path
 current_dir = os.path.dirname(__file__)
@@ -205,6 +206,9 @@ class IndexTTSSRTProcessor:
 
         # Process each subtitle using the existing working processor
         for i, subtitle in enumerate(subtitles):
+            # Check for interruption before processing each subtitle
+            if model_management.interrupt_processing:
+                raise InterruptedError(f"IndexTTS-2 SRT subtitle {i+1}/{len(subtitles)} interrupted by user")
             if not subtitle.text.strip():
                 # Empty subtitle - create silence
                 natural_duration = subtitle.duration

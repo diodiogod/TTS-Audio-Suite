@@ -7,6 +7,7 @@ import torch
 from typing import Dict, Any, Optional, List, Tuple
 import os
 import sys
+import comfy.model_management as model_management
 
 # Add project root to path
 current_dir = os.path.dirname(__file__)
@@ -143,6 +144,9 @@ class VibeVoiceProcessor:
         print(f"🔄 VibeVoice Custom: Grouped {len(segments)} segments into {len(grouped_segments)} character blocks")
         
         for group_idx, (character, text_list) in enumerate(grouped_segments):
+            # Check for interruption before processing each character block
+            if model_management.interrupt_processing:
+                raise InterruptedError(f"VibeVoice character block {group_idx + 1}/{len(grouped_segments)} ({character}) interrupted by user")
             print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
             
             # Combine text blocks for this character (VibeVoice style)
@@ -211,7 +215,10 @@ class VibeVoiceProcessor:
             chunks = self.chunker.split_into_chunks(combined_text, max_chars)
             print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks")
             
-            for chunk in chunks:
+            for chunk_idx, chunk in enumerate(chunks):
+                # Check for interruption during chunk processing
+                if model_management.interrupt_processing:
+                    raise InterruptedError(f"VibeVoice chunk {chunk_idx + 1}/{len(chunks)} interrupted by user")
                 voice_ref = voice_mapping.get(character)
                 audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
                     chunk, voice_ref, params, True, character

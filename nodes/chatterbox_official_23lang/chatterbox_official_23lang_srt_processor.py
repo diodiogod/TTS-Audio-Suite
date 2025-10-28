@@ -9,6 +9,7 @@ Uses existing timing utilities for proper SRT functionality.
 import torch
 import os
 from typing import Dict, Any, Optional, List, Tuple
+import comfy.model_management as model_management
 
 # Add project root to path for imports
 import sys
@@ -152,6 +153,9 @@ class ChatterboxOfficial23LangSRTProcessor:
             
             # Process each SRT segment
             for i, segment in enumerate(srt_segments):
+                # Check for interruption before processing each segment
+                if model_management.interrupt_processing:
+                    raise InterruptedError(f"ChatterBox 23-Lang SRT segment {i+1}/{len(srt_segments)} interrupted by user")
                 segment_text = segment.text
                 segment_start = segment.start_time
                 segment_end = segment.end_time
@@ -175,6 +179,9 @@ class ChatterboxOfficial23LangSRTProcessor:
                         # Generate audio for each character segment
                         segment_audios = []
                         for char_name, char_text, char_language in char_segments:
+                            # Check for interruption during character segment processing
+                            if model_management.interrupt_processing:
+                                raise InterruptedError(f"ChatterBox 23-Lang character segment ({char_name}) interrupted by user")
                             if not char_text.strip():
                                 continue
 

@@ -12,6 +12,7 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
+import comfy.model_management as model_management
 
 # Use direct file imports that work when loaded via importlib
 import os
