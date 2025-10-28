@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.25] - 2025-10-27
+
+### Changed
+
+- Improve memory management with proper CUDA/CPU device handling across all engines
+
+### Fixed
+
+- Fix Clear VRAM button for all TTS engines
+- Fix ChatterBox Classic, ChatterBox 23-Lang, F5-TTS, Higgs Audio, VibeVoice, RVC, and Index-TTS models not unloading from GPU when Clear VRAM is clicked
+- Fix device mismatch errors after unloading and reloading TTS models
+- Fix VRAM spike issues when reloading RVC and VibeVoice models
 ## [4.11.24] - 2025-10-27
 
 ### Added
