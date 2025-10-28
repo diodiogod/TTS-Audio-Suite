@@ -86,9 +86,28 @@ class HiggsAudioEngine:
         # Use global shared cache (HiggsAudio generator already registered centrally)
         self.cache = get_audio_cache()
         self.downloader = HiggsAudioDownloader()
-        
-    
-    
+
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+
+        Note: Higgs Audio uses CUDA graphs which are corrupted by CPU migration.
+        After offloading to CPU, the model should be marked as invalid for reuse.
+        """
+        self.device = device
+
+        # Move the underlying HiggsAudioServeEngine
+        if hasattr(self.engine, 'to'):
+            self.engine = self.engine.to(device)
+        elif hasattr(self.engine, 'model') and hasattr(self.engine.model, 'to'):
+            # Move the model component if engine doesn't have .to()
+            self.engine.model = self.engine.model.to(device)
+
+        return self
+
     def get_available_models(self) -> List[str]:
         """Get list of available Higgs Audio models"""
         return self.downloader.get_available_models()

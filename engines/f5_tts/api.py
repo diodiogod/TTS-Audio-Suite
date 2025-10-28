@@ -83,6 +83,25 @@ class F5TTS:
             model_cls, model_arc, ckpt_file, self.mel_spec_type, vocab_file, self.ode_method, self.use_ema, self.device
         )
 
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+        """
+        self.device = device
+
+        # Move EMA model
+        if hasattr(self.ema_model, 'to'):
+            self.ema_model = self.ema_model.to(device)
+
+        # Move vocoder
+        if hasattr(self.vocoder, 'to'):
+            self.vocoder = self.vocoder.to(device)
+
+        return self
+
     def transcribe(self, ref_audio, language=None):
         return transcribe(ref_audio, language)
 
