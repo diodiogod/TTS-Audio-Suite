@@ -128,6 +128,25 @@ class MinimalRVCWrapper:
         import gc
 
         freed_count = len(self._model_cache) + len(self._hubert_cache)
+
+        # Remove from ComfyUI's model list before clearing cache
+        try:
+            import comfy.model_management as model_management
+            if hasattr(model_management, 'current_loaded_models'):
+                # Remove RVC models from ComfyUI's tracking
+                models_to_remove = []
+                for wrapper in model_management.current_loaded_models:
+                    if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "rvc":
+                        models_to_remove.append(wrapper)
+
+                for wrapper in models_to_remove:
+                    model_management.current_loaded_models.remove(wrapper)
+
+                if models_to_remove:
+                    print(f"🗑️ Removed {len(models_to_remove)} RVC models from ComfyUI tracking")
+        except Exception as e:
+            print(f"⚠️ Could not remove from ComfyUI tracking: {e}")
+
         self._model_cache.clear()
         self._hubert_cache.clear()
 
@@ -136,6 +155,80 @@ class MinimalRVCWrapper:
         gc.collect()
 
         print(f"🗑️ RVC minimal wrapper: Cleared {freed_count} cached models")
+
+    def _register_rvc_model_with_comfyui(self, model_data, model_path):
+        """Register RVC model with ComfyUI model management"""
+        try:
+            import comfy.model_management as model_management
+            from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo
+            from engines.rvc.rvc_engine import RVCModelWrapper
+
+            # Estimate model size for VRAM tracking
+            model_size = 0
+            if 'net_g' in model_data and hasattr(model_data['net_g'], 'parameters'):
+                for param in model_data['net_g'].parameters():
+                    model_size += param.numel() * param.element_size()
+
+            # Wrap the model_data dict with RVCModelWrapper so it supports weakref and .to()
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            rvc_wrapped = RVCModelWrapper(model_data, device)
+
+            # Create ModelInfo for the RVC model
+            model_info = ModelInfo(
+                model=rvc_wrapped,
+                model_type="rvc_voice",
+                engine="rvc",
+                device=device,
+                memory_size=model_size,
+                load_device=device
+            )
+
+            # Wrap for ComfyUI model management
+            wrapper = ComfyUIModelWrapper(rvc_wrapped, model_info)
+
+            # Register with ComfyUI's model list - this makes Clear VRAM work
+            if hasattr(model_management, 'current_loaded_models'):
+                model_management.current_loaded_models.append(wrapper)
+                print(f"✅ Re-registered RVC model with ComfyUI model management")
+
+        except Exception as e:
+            print(f"⚠️ Could not re-register RVC with ComfyUI management: {e}")
+
+    def _register_hubert_model_with_comfyui(self, hubert_model, hubert_path):
+        """Register Hubert model with ComfyUI model management"""
+        try:
+            import comfy.model_management as model_management
+            from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo, SimpleModelWrapper
+
+            # Estimate model size for VRAM tracking
+            model_size = 0
+            if hasattr(hubert_model, 'parameters'):
+                for param in hubert_model.parameters():
+                    model_size += param.numel() * param.element_size()
+
+            # Wrap Hubert with SimpleModelWrapper so it has .model attribute for ComfyUI logging
+            hubert_wrapped = SimpleModelWrapper(hubert_model)
+
+            # Create ModelInfo for the Hubert model
+            model_info = ModelInfo(
+                model=hubert_wrapped,
+                model_type="hubert",
+                engine="rvc",
+                device="cuda" if torch.cuda.is_available() else "cpu",
+                memory_size=model_size,
+                load_device="cuda" if torch.cuda.is_available() else "cpu"
+            )
+
+            # Wrap the model so ComfyUI can manage it
+            wrapper = ComfyUIModelWrapper(hubert_wrapped, model_info)
+
+            # Register with ComfyUI's model list - this makes Clear VRAM work
+            if hasattr(model_management, 'current_loaded_models'):
+                model_management.current_loaded_models.append(wrapper)
+                print(f"✅ Re-registered Hubert model with ComfyUI model management")
+
+        except Exception as e:
+            print(f"⚠️ Could not re-register Hubert with ComfyUI management: {e}")
 
     def _setup_reference_path(self):
         """Setup path to implementation (moved from docs to proper engine location)"""
@@ -263,11 +356,31 @@ class MinimalRVCWrapper:
             from engines.rvc.impl.lib.model_utils import load_hubert
             from engines.rvc.impl.config import config
             
+            # CRITICAL FIX: Reload models to correct device if they were offloaded
+            target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
             # Load RVC model (with caching to prevent VRAM spikes)
             cache_key = f"{model_path}:{index_path}"
             if cache_key in self._model_cache:
                 print(f"♻️ Using cached RVC model: {os.path.basename(model_path)}")
                 model_data = self._model_cache[cache_key]
+
+                # Check if model was offloaded to CPU and needs to be reloaded
+                if 'net_g' in model_data and hasattr(model_data['net_g'], 'parameters'):
+                    try:
+                        first_param = next(model_data['net_g'].parameters())
+                        current_device = str(first_param.device)
+                        if current_device != target_device:
+                            print(f"🔄 Reloading cached RVC model from {current_device} to {target_device}")
+                            if hasattr(model_data['net_g'], 'to'):
+                                model_data['net_g'] = model_data['net_g'].to(target_device)
+                            if 'vc' in model_data and hasattr(model_data['vc'], 'to'):
+                                model_data['vc'] = model_data['vc'].to(target_device)
+
+                            # Re-register with ComfyUI after reload
+                            self._register_rvc_model_with_comfyui(model_data, model_path)
+                    except StopIteration:
+                        pass
             else:
                 print(f"🔄 Loading RVC model via minimal wrapper: {os.path.basename(model_path)}")
                 model_data = get_vc(model_path, index_path)
@@ -279,6 +392,9 @@ class MinimalRVCWrapper:
                 self._model_cache[cache_key] = model_data
                 print(f"💾 Cached RVC model for reuse")
 
+                # CRITICAL: Register with ComfyUI model management so Clear VRAM button can see it
+                self._register_rvc_model_with_comfyui(model_data, model_path)
+
             # Load Hubert model (with caching)
             hubert_path = self._find_hubert_model()
             if not hubert_path:
@@ -288,6 +404,21 @@ class MinimalRVCWrapper:
             if hubert_path in self._hubert_cache:
                 print(f"♻️ Using cached Hubert model")
                 hubert_model = self._hubert_cache[hubert_path]
+
+                # Check if Hubert was offloaded to CPU and needs to be reloaded
+                if hasattr(hubert_model, 'parameters'):
+                    try:
+                        first_param = next(hubert_model.parameters())
+                        current_device = str(first_param.device)
+                        if current_device != target_device:
+                            print(f"🔄 Reloading cached Hubert model from {current_device} to {target_device}")
+                            hubert_model = hubert_model.to(target_device)
+                            self._hubert_cache[hubert_path] = hubert_model
+
+                            # Re-register with ComfyUI after reload
+                            self._register_hubert_model_with_comfyui(hubert_model, hubert_path)
+                    except StopIteration:
+                        pass
             else:
                 print(f"🔄 Loading Hubert model: {os.path.basename(hubert_path)}")
                 hubert_model = load_hubert(hubert_path, config)
@@ -297,6 +428,9 @@ class MinimalRVCWrapper:
 
                 self._hubert_cache[hubert_path] = hubert_model
                 print(f"💾 Cached Hubert model for reuse")
+
+                # CRITICAL: Register with ComfyUI model management so Clear VRAM button can see it
+                self._register_hubert_model_with_comfyui(hubert_model, hubert_path)
             
             # Prepare input audio
             input_audio = (audio, sample_rate)

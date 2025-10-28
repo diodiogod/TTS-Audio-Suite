@@ -321,4 +321,8 @@ class RVCEngineAdapter:
         self._loaded_models.clear()
         if hasattr(self, 'rvc_engine'):
             self.rvc_engine.cleanup()
+
+        # CRITICAL: Clear minimal wrapper cache - this is where RVC models are actually stored
+        minimal_wrapper.clear_model_cache()
+
         print("RVC adapter cleanup completed")

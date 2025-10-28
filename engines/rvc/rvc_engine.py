@@ -34,6 +34,8 @@ class RVCModelWrapper:
     def __init__(self, model_data: dict, device: str):
         self.model_data = model_data
         self.device = device
+        # ComfyUI expects .model.model attribute for logging - point to net_g
+        self.model = model_data.get('net_g', model_data)
 
     def to(self, device):
         """Move all model components to target device"""
@@ -42,6 +44,7 @@ class RVCModelWrapper:
         # Move net_g (the main synthesizer network)
         if 'net_g' in self.model_data and hasattr(self.model_data['net_g'], 'to'):
             self.model_data['net_g'] = self.model_data['net_g'].to(device)
+            self.model = self.model_data['net_g']  # Update reference
 
         # Move VC pipeline if it has components
         if 'vc' in self.model_data:

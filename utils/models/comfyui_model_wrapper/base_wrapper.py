@@ -20,7 +20,7 @@ except ImportError:
     model_management = None
 
 
-@dataclass 
+@dataclass
 class ModelInfo:
     """Information about a model for memory management"""
     model: Any
@@ -29,6 +29,25 @@ class ModelInfo:
     device: str
     memory_size: int  # in bytes
     load_device: str
+
+
+class SimpleModelWrapper:
+    """
+    Simple wrapper to add .model attribute for ComfyUI compatibility.
+    ComfyUI expects .model.model for logging, so we wrap simple PyTorch models.
+    """
+    def __init__(self, model):
+        self.model = model  # This is what ComfyUI accesses for logging
+
+    def to(self, device):
+        """Forward .to() calls to the wrapped model"""
+        if hasattr(self.model, 'to'):
+            self.model = self.model.to(device)
+        return self
+
+    def __getattr__(self, name):
+        """Forward all other attributes to the wrapped model"""
+        return getattr(self.model, name)
 
 
 class ComfyUIModelWrapper:
@@ -103,7 +122,11 @@ class ComfyUIModelWrapper:
     def model_size(self) -> int:
         """Return the total model size in bytes"""
         return self._memory_size
-    
+
+    def model_memory(self) -> int:
+        """Return the total model size in bytes (alias for model_size for ComfyUI compatibility)"""
+        return self._memory_size
+
     def model_offloaded_memory(self) -> int:
         """Return the amount of memory that would be freed if offloaded"""
         return self.model_size() - self.loaded_size()
@@ -254,8 +277,14 @@ class ComfyUIModelWrapper:
         """Check if this model is a clone of another model"""
         if not isinstance(other, ComfyUIModelWrapper):
             return False
-        return (self.model_info.model_type == other.model_info.model_type and 
+        return (self.model_info.model_type == other.model_info.model_type and
                 self.model_info.engine == other.model_info.engine)
+
+    def is_dead(self) -> bool:
+        """Check if the model's weak reference is dead (for ComfyUI cleanup)"""
+        if self._model_ref is None:
+            return True
+        return self._model_ref() is None
     
     def detach(self, unpatch_all: bool = False) -> None:
         """Detach the model - actually unload from GPU to CPU and invalidate cache"""
