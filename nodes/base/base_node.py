@@ -392,7 +392,50 @@ class BaseTTSNode(BaseChatterBoxNode):
         """
         if self.tts_model is None:
             raise RuntimeError("TTS model not loaded. Call load_tts_model() first.")
-        
+
+        # CRITICAL FIX: Reload model to correct device if it was offloaded
+        # When models are cached, the model reference persists but may be on wrong device after "Clear VRAM"
+        # Use the wrapper system to properly reload through ComfyUI model management
+        if hasattr(self.tts_model, 'to') and hasattr(self.tts_model, 'device'):
+            target_device = self.device if hasattr(self, 'device') else self.tts_model.device
+
+            # Resolve "auto" to actual device
+            if target_device == "auto":
+                target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # Check current device of model components (look for any PyTorch module with parameters)
+            current_device = None
+            for attr_name in ['t3', 's3gen', 've', 'ema_model']:  # Check common TTS model components
+                if hasattr(self.tts_model, attr_name):
+                    component = getattr(self.tts_model, attr_name)
+                    if hasattr(component, 'parameters'):
+                        try:
+                            current_device = str(next(component.parameters()).device)
+                            break
+                        except StopIteration:
+                            continue
+
+            # Reload through unified interface if device mismatch
+            if current_device and current_device != str(target_device):
+                print(f"🔄 Reloading TTS model from {current_device} to {target_device} via wrapper")
+
+                # Find and call wrapper's model_load() instead of direct .to()
+                try:
+                    from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                    for cache_key, wrapper in tts_model_manager._model_cache.items():
+                        if hasattr(wrapper, 'model') and wrapper.model is self.tts_model:
+                            wrapper.model_load(target_device)
+                            print(f"✅ Reloaded model via wrapper - ComfyUI management stays in sync")
+                            break
+                    else:
+                        # Fallback: direct .to() if wrapper not found
+                        print(f"⚠️ Wrapper not found, using direct .to() - 'Clear VRAM' may not work")
+                        self.tts_model.to(target_device)
+                except Exception as e:
+                    # Fallback to direct .to()
+                    print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
+                    self.tts_model.to(target_device)
+
         # Use torch.no_grad() to ensure no gradients are tracked during inference
         with torch.no_grad():
             audio = self.tts_model.generate(
