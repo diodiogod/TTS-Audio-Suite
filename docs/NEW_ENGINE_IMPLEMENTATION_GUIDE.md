@@ -92,7 +92,178 @@ nodes/[engine_name]_special/       # Special features (if any)
 - **Audio Format**: Always return `torch.Tensor` in shape `[1, samples]` or `[batch, samples]`
 - **Sample Rate**: Must match engine's native sample rate, handle conversion in adapter if needed
 - **Device Management**: Support "auto", "cuda", "cpu" device selection
+- **Clear VRAM Integration**: CRITICAL - Implement `.to()` method and device checking for ComfyUI model management (see Step 1b below)
 - **Error Handling**: Graceful fallbacks, informative error messages
+
+#### Step 1b: Implement Clear VRAM Integration (CRITICAL)
+
+**⚠️ REQUIRED FOR ALL NEW ENGINES**
+
+ComfyUI's "Clear VRAM" button offloads models to CPU. Your engine MUST support this or it will cause device mismatch errors.
+
+**Implementation Requirements:**
+
+**1. Add `.to()` Method to Engine Class**
+
+This method moves ALL model components between devices (CPU ↔ CUDA).
+
+```python
+def to(self, device):
+    """
+    Move all model components to the specified device.
+
+    Critical for ComfyUI model management - ensures all components move together
+    when models are detached to CPU and later reloaded to CUDA.
+    """
+    self.device = device
+
+    # Move the underlying model/engine if loaded
+    if self._model is not None:
+        # OPTION 1: Simple engines with single model
+        if hasattr(self._model, 'to'):
+            self._model = self._model.to(device)
+
+        # OPTION 2: Complex engines with multiple components
+        # Example: ChatterBox has model.s3gen, model.t3, model.voice_encoder
+        for component_name in ['s3gen', 't3', 'voice_encoder', 'tokenizer']:
+            if hasattr(self._model, component_name):
+                component = getattr(self._model, component_name)
+                if hasattr(component, 'to'):
+                    setattr(self._model, component_name, component.to(device))
+
+        # OPTION 3: Deeply nested engines (like Index-TTS)
+        # Call .to() on engine itself for recursive moving, with manual fallback
+        if hasattr(self._model, 'to'):
+            self._model = self._model.to(device)
+        else:
+            # Manually move known nested components
+            for attr_name in ['semantic_model', 'gpt_model', 'vocoder']:
+                if hasattr(self._model, attr_name):
+                    component = getattr(self._model, attr_name)
+                    if hasattr(component, 'to'):
+                        setattr(self._model, attr_name, component.to(device))
+
+        # Update device attribute on model if it exists
+        if hasattr(self._model, 'device'):
+            self._model.device = torch.device(device) if isinstance(device, str) else device
+
+    return self
+```
+
+**2. Add Device Checking Before Generation**
+
+Check if model was offloaded to CPU and reload to CUDA before generation.
+
+```python
+def generate(self, text, reference_audio, **kwargs):
+    """Main generation method"""
+
+    # CRITICAL: Check and reload model if offloaded to CPU
+    target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if self._model is not None:
+        # Check current device of model
+        # Strategy 1: Check first parameter device (most reliable)
+        if hasattr(self._model, 'parameters'):
+            try:
+                first_param = next(self._model.parameters())
+                current_device = str(first_param.device)
+
+                if current_device != target_device:
+                    print(f"🔄 Reloading {self.__class__.__name__} from {current_device} to {target_device}")
+
+                    # Try to find wrapper and call wrapper.model_load()
+                    wrapper_found = False
+                    try:
+                        from utils.models.unified_model_interface import unified_model_interface
+
+                        if hasattr(unified_model_interface, 'model_manager'):
+                            for cache_key, wrapper in unified_model_interface.model_manager._model_cache.items():
+                                model = wrapper.model if hasattr(wrapper, 'model') else None
+                                if model is self:
+                                    wrapper.model_load(target_device)
+                                    print(f"✅ Reloaded via wrapper - ComfyUI tracking in sync")
+                                    wrapper_found = True
+                                    break
+                                # Check through SimpleModelWrapper if present
+                                elif hasattr(model, 'model') and model.model is self:
+                                    wrapper.model_load(target_device)
+                                    print(f"✅ Reloaded via wrapper (unwrapped)")
+                                    wrapper_found = True
+                                    break
+
+                        if not wrapper_found:
+                            # Fallback: direct .to() and check if already registered
+                            self.to(target_device)
+
+                            # Check ComfyUI's current_loaded_models for existing wrapper
+                            try:
+                                import comfy.model_management as model_management
+
+                                already_registered = False
+                                if hasattr(model_management, 'current_loaded_models'):
+                                    for wrapper in model_management.current_loaded_models:
+                                        if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "[engine_name]":
+                                            wrapper.model_load(target_device)
+                                            print(f"✅ Reloaded via existing ComfyUI wrapper")
+                                            already_registered = True
+                                            break
+
+                                if not already_registered:
+                                    # Re-register with ComfyUI
+                                    from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo, SimpleModelWrapper
+
+                                    model_size = ComfyUIModelWrapper.calculate_model_memory(self)
+                                    wrapped_model = SimpleModelWrapper(self)
+
+                                    model_info = ModelInfo(
+                                        model=wrapped_model,
+                                        model_type="tts",
+                                        engine="[engine_name]",
+                                        device=target_device,
+                                        memory_size=model_size,
+                                        load_device=target_device
+                                    )
+                                    new_wrapper = ComfyUIModelWrapper(wrapped_model, model_info)
+                                    model_management.current_loaded_models.append(new_wrapper)
+                                    print(f"✅ Re-registered with ComfyUI model management")
+                            except Exception as e:
+                                print(f"⚠️ Re-registration failed: {e}")
+
+                    except Exception as e:
+                        print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
+                        self.to(target_device)
+
+            except StopIteration:
+                pass
+
+        # Strategy 2: For models with nested components
+        elif hasattr(self._model, 'semantic_model') and hasattr(self._model.semantic_model, 'parameters'):
+            try:
+                first_param = next(self._model.semantic_model.parameters())
+                current_device = str(first_param.device)
+                # ... same reload logic as above
+            except StopIteration:
+                pass
+
+    # Continue with normal generation
+    # ... your generation code here
+```
+
+**3. Important Device Checking Notes:**
+
+- **Always check against INTENDED device** (`"cuda"` if available), NOT `self.device` which gets updated to "cpu" after offload
+- **Search for existing wrapper first** before creating new ones to avoid duplicates
+- **Use wrapper.model_load()** when possible to keep ComfyUI tracking in sync
+- **Fallback to direct .to()** if wrapper not found, then re-register
+- **Check both unified interface cache AND ComfyUI's current_loaded_models** for wrappers
+
+**4. Key Implementation Notes:**
+
+- **Always check against INTENDED device** (`"cuda"` if available), NOT `self.device`
+- **Search for existing wrapper first** to avoid duplicates
+- **Use wrapper.model_load()** when possible to keep ComfyUI tracking in sync
+- **Check both unified interface cache AND current_loaded_models**
 
 #### Step 2: Create Model Downloader
 

@@ -64,7 +64,7 @@ This extension features a **unified modular architecture** supporting multiple T
 ### Engine Implementations
 
 **engines/chatterbox/** - Complete ChatterBox TTS and VC engine implementation
-- **tts.py** - ChatterBox TTS engine with multilingual support and perth watermarking
+- **tts.py** - ChatterBox TTS engine with multilingual support, perth watermarking, and ComfyUI model management integration
 - **vc.py** - ChatterBox Voice Conversion with multilingual model loading
 - **language_models.py** - Language model registry for English, German, and Norwegian models
 - **audio_timing.py** - Audio timing utilities and time-stretching functionality
@@ -231,7 +231,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/models/fallback_utils.py** - Model fallback and error recovery utilities
 
-**utils/models/comfyui_model_wrapper/** - Modular ComfyUI model wrapper system with engine-specific handlers (base_wrapper.py, model_manager.py, cache_utils.py, engine_handlers/) enabling TTS models to integrate with ComfyUI's native model management
+**utils/models/comfyui_model_wrapper/** - Modular ComfyUI model wrapper system with engine-specific handlers (base_wrapper.py, model_manager.py, cache_utils.py, engine_handlers.py) enabling TTS models to integrate with ComfyUI's native model management
 
 **utils/models/unified_model_interface.py** - Universal model loading interface providing standardized factory pattern for all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with ComfyUI integration
 
