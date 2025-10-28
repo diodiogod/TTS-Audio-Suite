@@ -6,6 +6,7 @@ Internal processor used by UnifiedTTSSRTNode - not a ComfyUI node itself
 import torch
 import os
 from typing import Dict, Any, Optional, List, Tuple
+import comfy.model_management as model_management
 
 # Add project root to path for imports
 import sys
@@ -25,13 +26,13 @@ class HiggsAudioSRTProcessor:
     def __init__(self, engine_wrapper):
         """
         Initialize the SRT processor
-        
+
         Args:
             engine_wrapper: HiggsAudioWrapper instance with adapter and config
         """
         self.engine_wrapper = engine_wrapper
         self.sample_rate = 24000
-    
+
     def generate_srt_speech(self, srt_content: str, multi_speaker_mode: str, 
                            audio_tensor: Optional[Dict] = None, reference_text: str = "",
                            seed: int = 1, timing_mode: str = "smart_natural",
@@ -106,7 +107,11 @@ class HiggsAudioSRTProcessor:
             audio_segments = []
             timing_segments = []
             total_duration = 0.0
-            
+
+            # Check for interruption before starting segment generation
+            if model_management.interrupt_processing:
+                raise InterruptedError("Higgs Audio SRT: Pre-generation setup interrupted by user")
+
             # Build voice references for character switching mode
             voice_refs = {}
             if multi_speaker_mode == "Custom Character Switching":
@@ -175,11 +180,15 @@ class HiggsAudioSRTProcessor:
                             print(f"⚠️ {character}: No voice available, using basic TTS")
             
             for i, segment in enumerate(srt_segments):
+                # Check for interruption before processing each segment
+                if model_management.interrupt_processing:
+                    raise InterruptedError(f"Higgs Audio SRT segment {i+1}/{len(srt_segments)} interrupted by user")
+
                 segment_text = segment.text
                 segment_start = segment.start_time
                 segment_end = segment.end_time
                 expected_duration = segment_end - segment_start
-                
+
                 if multi_speaker_mode == "Custom Character Switching":
                     # Use character switching with pause tag support
                     def srt_tts_generate_func(text_content: str) -> torch.Tensor:
@@ -196,10 +205,13 @@ class HiggsAudioSRTProcessor:
                             
                             for segment in char_segments_full:
                                 character = segment.character
+                                # Check for interruption during character segment processing
+                                if model_management.interrupt_processing:
+                                    raise InterruptedError(f"Higgs Audio SRT character segment ({character}) interrupted by user")
                                 segment_text = segment.text
                                 language = segment.language
                                 explicit_language = segment.explicit_language
-                                
+
                                 char_audio_dict = voice_refs.get(character, voice_refs.get("narrator"))
                                 char_ref_text = ref_texts.get(character, reference_text or "")
                                 
@@ -332,7 +344,11 @@ class HiggsAudioSRTProcessor:
                     "actual_duration": segment_duration,
                     "text": segment_text
                 })
-            
+
+            # Check for interruption before timing assembly
+            if model_management.interrupt_processing:
+                raise InterruptedError("Higgs Audio SRT: Preparing audio assembly interrupted by user")
+
             # Apply timing modes using unified timing utilities
             timing_engine = TimingEngine(self.sample_rate)
             assembler = AudioAssemblyEngine(self.sample_rate)

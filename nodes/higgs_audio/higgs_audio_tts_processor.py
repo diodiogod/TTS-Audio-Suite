@@ -6,6 +6,7 @@ Internal processor used by UnifiedTTSTextNode - not a ComfyUI node itself
 import torch
 import os
 from typing import Dict, Any, Optional, List, Tuple
+import comfy.model_management as model_management
 
 # Add project root to path for imports
 import sys
@@ -25,13 +26,13 @@ class HiggsAudioTTSProcessor:
     def __init__(self, engine_wrapper):
         """
         Initialize the TTS processor
-        
+
         Args:
             engine_wrapper: HiggsAudioWrapper instance with adapter and config
         """
         self.engine_wrapper = engine_wrapper
         self.sample_rate = 24000
-    
+
     def generate_tts_speech(self, text: str, multi_speaker_mode: str,
                            audio_tensor: Optional[Dict] = None, reference_text: str = "",
                            seed: int = 1, enable_audio_cache: bool = True,
@@ -119,7 +120,11 @@ class HiggsAudioTTSProcessor:
                 
                 voice_refs = {'narrator': narrator_voice_dict}
                 ref_texts = {'narrator': narrator_ref_text}
-                
+
+                # Check for interruption before character setup
+                if model_management.interrupt_processing:
+                    raise InterruptedError("Higgs Audio TTS: Character voice setup interrupted by user")
+
                 for character in all_characters:
                     # Skip narrator - already set above with connected voice
                     if character.lower() == "narrator":
@@ -157,6 +162,10 @@ class HiggsAudioTTSProcessor:
                         segment_audio_parts = []
                         
                         for character, segment_text in char_segments:
+                            # Check for interruption during character segment processing
+                            if model_management.interrupt_processing:
+                                raise InterruptedError(f"Higgs Audio TTS character segment ({character}) interrupted by user")
+
                             char_audio_dict = voice_refs.get(character)
                             char_ref_text = ref_texts.get(character, reference_text or "")
                             
@@ -216,7 +225,11 @@ class HiggsAudioTTSProcessor:
             else:
                 # Native multi-speaker modes - process entire conversation as single unit
                 print(f"🎭 Higgs Audio: Using native multi-speaker mode (whole conversation processing)")
-                
+
+                # Check for interruption before native mode processing
+                if model_management.interrupt_processing:
+                    raise InterruptedError("Higgs Audio TTS: Native multi-speaker mode setup interrupted by user")
+
                 # Get second narrator audio if provided
                 opt_second_narrator = self.engine_wrapper.config.get("opt_second_narrator")
                 
