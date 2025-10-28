@@ -204,7 +204,94 @@ class IndexTTSEngine:
             Generated audio as torch.Tensor with shape [1, samples]
         """
         self._ensure_model_loaded()
-        
+
+        # CRITICAL FIX: Reload model to correct device if it was offloaded
+        # IMPORTANT: Always check against the INTENDED device (cuda if available), not self.device which gets updated to CPU
+        target_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Check if model was offloaded to CPU and needs to be reloaded
+        if self._tts_engine is not None and hasattr(self._tts_engine, 'semantic_model'):
+            if hasattr(self._tts_engine.semantic_model, 'parameters'):
+                try:
+                    first_param = next(self._tts_engine.semantic_model.parameters())
+                    current_device = str(first_param.device)
+                    print(f"🔧 Index-TTS device check: current={current_device}, target={target_device}")
+                    if current_device != target_device:
+                        print(f"🔄 Reloading Index-TTS model from {current_device} to {target_device} via wrapper")
+
+                        # Find and call wrapper's model_load() to keep ComfyUI tracking in sync
+                        try:
+                            from utils.models.unified_model_interface import unified_model_interface
+
+                            # Index-TTS is loaded via unified interface, search its cache
+                            wrapper_found = False
+                            if hasattr(unified_model_interface, 'model_manager'):
+                                for cache_key, wrapper in unified_model_interface.model_manager._model_cache.items():
+                                    # Check if wrapper.model is self, or if it's wrapped in SimpleModelWrapper
+                                    model = wrapper.model if hasattr(wrapper, 'model') else None
+                                    if model is self:
+                                        wrapper.model_load(target_device)
+                                        print(f"✅ Reloaded Index-TTS via wrapper - ComfyUI management stays in sync")
+                                        wrapper_found = True
+                                        break
+                                    # Also check through SimpleModelWrapper if present
+                                    elif hasattr(model, 'model') and model.model is self:
+                                        wrapper.model_load(target_device)
+                                        print(f"✅ Reloaded Index-TTS via wrapper (unwrapped SimpleModelWrapper) - ComfyUI management stays in sync")
+                                        wrapper_found = True
+                                        break
+
+                            if not wrapper_found:
+                                # Fallback: direct .to() and check if already registered before re-registering
+                                self.to(target_device)
+
+                                # Check if we're already in ComfyUI's current_loaded_models (from previous re-registration)
+                                try:
+                                    import comfy.model_management as model_management
+
+                                    already_registered = False
+                                    if hasattr(model_management, 'current_loaded_models'):
+                                        for wrapper in model_management.current_loaded_models:
+                                            if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "index_tts":
+                                                # Found an index_tts wrapper, just reload it
+                                                wrapper.model_load(target_device)
+                                                print(f"✅ Reloaded Index-TTS via existing ComfyUI wrapper")
+                                                already_registered = True
+                                                break
+
+                                    if not already_registered:
+                                        # Re-register with ComfyUI after direct reload
+                                        from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo, SimpleModelWrapper
+
+                                        # Estimate model size
+                                        model_size = ComfyUIModelWrapper.calculate_model_memory(self)
+
+                                        # Wrap with SimpleModelWrapper to add .model attribute for ComfyUI logging
+                                        wrapped_model = SimpleModelWrapper(self)
+
+                                        # Create new wrapper and register
+                                        model_info = ModelInfo(
+                                            model=wrapped_model,
+                                            model_type="tts",
+                                            engine="index_tts",
+                                            device=target_device,
+                                            memory_size=model_size,
+                                            load_device=target_device
+                                        )
+                                        new_wrapper = ComfyUIModelWrapper(wrapped_model, model_info)
+
+                                        model_management.current_loaded_models.append(new_wrapper)
+                                        print(f"✅ Re-registered Index-TTS with ComfyUI model management")
+                                except Exception as reg_error:
+                                    print(f"⚠️ Re-registration failed: {reg_error}")
+
+                        except Exception as e:
+                            # Fallback to direct .to()
+                            print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
+                            self.to(target_device)
+                except StopIteration:
+                    pass
+
         # Validate emotion vector if provided
         if emotion_vector is not None:
             if len(emotion_vector) != 8:
@@ -292,13 +379,43 @@ class IndexTTSEngine:
                 vector[i] = max(0.0, min(1.2, float(emotions[label])))
         return vector
     
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ensures all components move together
+        when models are detached to CPU and later reloaded to CUDA.
+        """
+        self.device = device
+
+        # Move the underlying TTS engine if loaded
+        if self._tts_engine is not None:
+            # Index-TTS has deeply nested components - use recursive approach
+            # Call .to() on the engine itself which should recursively move all PyTorch modules
+            if hasattr(self._tts_engine, 'to'):
+                self._tts_engine = self._tts_engine.to(device)
+            else:
+                # Fallback: manually move known components
+                for attr_name in ['semantic_model', 'semantic_codec', 'gpt_model', 'gpt',
+                                  's2mel', 'campplus_model', 'bigvgan', 'qwen_model']:
+                    if hasattr(self._tts_engine, attr_name):
+                        component = getattr(self._tts_engine, attr_name)
+                        if hasattr(component, 'to'):
+                            setattr(self._tts_engine, attr_name, component.to(device))
+
+            # Update device attribute on engine
+            if hasattr(self._tts_engine, 'device'):
+                self._tts_engine.device = torch.device(device) if isinstance(device, str) else device
+
+        return self
+
     def unload(self):
         """Unload the model to free memory."""
         if self._model_config:
             unified_model_interface.unload_model(self._model_config)
         self._tts_engine = None
         self._model_config = None
-    
+
     def __del__(self):
         """Cleanup on deletion."""
         self.unload()
