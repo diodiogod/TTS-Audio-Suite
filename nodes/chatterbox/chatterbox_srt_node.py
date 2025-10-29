@@ -695,34 +695,34 @@ The audio will match these exact timings.""",
                     all_subtitle_segments.append((i, subtitle, 'empty', None, None))
                     continue
                 
-                # Parse character segments with language awareness (with Italian prefix automatically applied)
-                character_segments_with_lang_and_explicit = character_parser.split_by_character_with_language_and_explicit_flag(subtitle.text)
-                
-                # Create backward-compatible segments (Italian prefix already applied in parser)
-                character_segments_with_lang = [(char, segment_text, lang) for char, segment_text, lang, explicit_lang in character_segments_with_lang_and_explicit]
-                
+                # Parse character segments with parameters (handles both language and character tags)
+                segment_objects = character_parser.parse_text_segments(subtitle.text)
+
+                # Convert to 4-tuple format with parameters
+                character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
+
                 # Check if we have character switching or language switching
-                characters = list(set(char for char, _, _ in character_segments_with_lang))
-                languages = list(set(lang for _, _, lang in character_segments_with_lang))
+                characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+                languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
                 has_multiple_characters_in_subtitle = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
                 has_multiple_languages_in_subtitle = len(languages) > 1
-                
+
                 if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle:
                     # Complex subtitle - group by dominant language or mark as multilingual
                     primary_lang = languages[0] if languages else 'en'
                     subtitle_type = 'multilingual' if has_multiple_languages_in_subtitle else 'multicharacter'
                     all_subtitle_segments.append((i, subtitle, subtitle_type, primary_lang, character_segments_with_lang))
-                    
+
                     # Add to language groups for smart processing
                     if primary_lang not in subtitle_language_groups:
                         subtitle_language_groups[primary_lang] = []
                     subtitle_language_groups[primary_lang].append((i, subtitle, subtitle_type, character_segments_with_lang))
                 else:
                     # Simple subtitle - group by language
-                    single_char, single_text, single_lang = character_segments_with_lang[0]
+                    single_char, single_text, single_lang, single_params = character_segments_with_lang[0]
                     print(f"🔍 SRT DEBUG: Subtitle {i+1} '{subtitle.text[:30]}...' detected as language '{single_lang}' (expected: '{language}')")
                     all_subtitle_segments.append((i, subtitle, 'simple', single_lang, character_segments_with_lang))
-                    
+
                     if single_lang not in subtitle_language_groups:
                         subtitle_language_groups[single_lang] = []
                     subtitle_language_groups[single_lang].append((i, subtitle, 'simple', character_segments_with_lang))
