@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.12.1] - 2025-10-29
+
+### Added
+
+- Higgs Audio now uses consistent fixed seed across segments
+- Per-segment seed control available via segment parameters
+
+### Changed
+
+- Better cache consistency when editing or reordering subtitles
+
+### Fixed
+
+- Fix Higgs Audio SRT seed behavior
 ## [4.12.0] - 2025-10-29
 
 ### Added

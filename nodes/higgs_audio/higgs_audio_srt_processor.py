@@ -231,7 +231,7 @@ class HiggsAudioSRTProcessor:
 
                                 # Apply per-segment parameters
                                 current_params = dict(generation_params)
-                                current_seed = seed + i  # Vary seed per segment
+                                current_seed = seed
                                 if segment_params:
                                     from utils.text.segment_parameters import apply_segment_parameters
                                     current_params = apply_segment_parameters(current_params, segment_params, "higgs_audio")
@@ -276,7 +276,7 @@ class HiggsAudioSRTProcessor:
                                 char_audio=narrator_audio,
                                 char_text=ref_texts.get("narrator", reference_text or ""),
                                 character="narrator",
-                                seed=seed + i,  # Vary seed per segment
+                                seed=seed,
                                 enable_audio_cache=enable_audio_cache,
                                 **generation_params  # Pass through all generation parameters
                             )
@@ -322,7 +322,7 @@ class HiggsAudioSRTProcessor:
                         char_audio=reference_audio_dict,
                         char_text="",  # Higgs Audio doesn't need reference text
                         character="SPEAKER0",
-                        seed=seed + i,  # Vary seed per segment
+                        seed=seed,
                         enable_audio_cache=enable_audio_cache,
                         multi_speaker_mode=multi_speaker_mode,
                         second_narrator_audio=opt_second_narrator,
