@@ -291,7 +291,7 @@ class VibeVoiceSRTProcessor:
                         reasons.append("pause tags")
                     if has_param_changes:
                         reasons.append("parameter changes")
-                    print(f"🔄 VibeVoice: Falling back to custom mode ({', '.join(reasons)})")
+                    print(f"⚡⚡⚡ FALLBACK: Native Multi-Speaker → Custom Character Switching ({', '.join(reasons)})")
                     # Fall back to custom character switching with parameter support
                     wav = self._process_custom_character_switching_subtitle_with_params(
                         segment_objects, complete_voice_refs, seed
