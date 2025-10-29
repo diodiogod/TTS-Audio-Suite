@@ -227,9 +227,13 @@ class HiggsAudioSRTProcessor:
 
                                 # Apply per-segment parameters
                                 current_params = dict(generation_params)
+                                current_seed = seed + i  # Vary seed per segment
                                 if segment_params:
                                     from utils.text.segment_parameters import apply_segment_parameters
                                     current_params = apply_segment_parameters(current_params, segment_params, "higgs_audio")
+                                    # If segment has a seed parameter, use that instead of the default
+                                    if 'seed' in current_params:
+                                        current_seed = current_params.pop('seed')
                                     print(f"📊 SRT segment {i+1}: Character '{character}' with parameters {segment_params}")
 
                                 segment_result = self.engine_wrapper.generate_srt_audio(
@@ -238,7 +242,7 @@ class HiggsAudioSRTProcessor:
                                     char_audio=char_audio_dict,
                                     char_text=char_ref_text,
                                     character=character,
-                                    seed=seed + i,  # Vary seed per segment
+                                    seed=current_seed,
                                     enable_audio_cache=enable_audio_cache,
                                     **current_params  # Pass through all generation parameters including segment-specific ones
                                 )
