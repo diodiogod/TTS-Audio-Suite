@@ -1054,7 +1054,7 @@ Back to the main narrator voice for the conclusion.""",
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
                 # Create processed text for timing display (character tags removed, Italian prefixes applied)
-                processed_text_segments = [segment_text for _, segment_text, _ in character_segments_with_lang]
+                processed_text_segments = [segment_text for _, segment_text, _, _ in character_segments_with_lang]
                 processed_text = ' '.join(processed_text_segments)
                 
                 # Combine all character segments with timing info
