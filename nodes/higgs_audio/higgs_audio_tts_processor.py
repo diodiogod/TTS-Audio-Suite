@@ -76,8 +76,12 @@ class HiggsAudioTTSProcessor:
 
                 # Import modular utilities
                 from utils.text.pause_processor import PauseTagProcessor
-                from utils.voice.discovery import get_character_mapping
+                from utils.voice.discovery import get_character_mapping, get_available_characters
                 from utils.text.character_parser import parse_character_text, character_parser
+
+                # Set up character parser with available characters BEFORE processing text
+                available_chars = get_available_characters()
+                character_parser.set_available_characters(list(available_chars))
 
                 # Discover characters and build voice mapping (include narrator for fallback)
                 # Use parse_text_segments to get full segment info including parameters

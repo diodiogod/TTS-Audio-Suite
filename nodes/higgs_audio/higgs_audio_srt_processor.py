@@ -62,29 +62,33 @@ class HiggsAudioSRTProcessor:
         try:
             # Import required utilities
             from utils.timing.parser import SRTParser
-            from utils.text.character_parser import parse_character_text
-            from utils.voice.discovery import get_character_mapping
+            from utils.text.character_parser import parse_character_text, character_parser
+            from utils.voice.discovery import get_character_mapping, get_available_characters
             from utils.text.pause_processor import PauseTagProcessor
-            from utils.timing.engine import TimingEngine  
+            from utils.timing.engine import TimingEngine
             from utils.timing.assembly import AudioAssemblyEngine
             from utils.timing.reporting import SRTReportGenerator
-            
+
             print(f"📺 Higgs Audio SRT: Processing SRT with multi-speaker support")
-            
+
+            # Set up character parser with available characters BEFORE processing
+            available_chars = get_available_characters()
+            character_parser.set_available_characters(list(available_chars))
+
             # Parse SRT content
             srt_parser = SRTParser()
             srt_segments = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
             print(f"📺 Higgs Audio SRT: Found {len(srt_segments)} SRT segments")
-            
+
             # Check for overlaps and handle smart_natural mode fallback using modular utility
             from utils.timing.overlap_detection import SRTOverlapHandler
             has_overlaps = SRTOverlapHandler.detect_overlaps(srt_segments)
             current_timing_mode, mode_switched = SRTOverlapHandler.handle_smart_natural_fallback(
                 timing_mode, has_overlaps, "Higgs Audio SRT"
             )
-            
+
             print(f"🎭 Higgs Audio SRT: Using mode '{multi_speaker_mode}'")
-            
+
             # Analyze all text for character discovery
             all_text = " ".join([seg.text for seg in srt_segments])
             character_segments = parse_character_text(all_text)
