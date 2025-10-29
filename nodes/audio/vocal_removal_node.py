@@ -102,17 +102,26 @@ class VocalRemovalNode:
 
         # Add ZFTurbo SOTA models to the list
         zfturbo_model_names = [model_path for _, model_path in ZFTURBO_MODELS]
-        
+
         # Search both TTS and legacy paths for models
         tts_models = get_filenames(root=os.path.join(BASE_MODELS_DIR, "TTS"),format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"])
         legacy_models = get_filenames(root=BASE_MODELS_DIR,format_func=lambda x: f"{os.path.basename(os.path.dirname(x))}/{os.path.basename(x)}",name_filters=["UVR","MDX","karafan","SCNET","MDX23C","MELBAND"])
-        
+
         model_list = (MDX_MODELS + VR_MODELS + KARAFAN_MODELS + zfturbo_model_names + MELBAND_MODELS + tts_models + legacy_models)
         model_list = list(set(model_list)) # dedupe
-        
+
         # Filter out non-model files (JSON configs, etc.)
         model_extensions = ['.pth', '.ckpt', '.onnx', '.pt', '.safetensors']
         model_list = [model for model in model_list if any(model.lower().endswith(ext) for ext in model_extensions)]
+
+        # Sort by category (folder name) then alphabetically within each category
+        def sort_key(model_path):
+            parts = model_path.split('/')
+            category = parts[0].upper() if len(parts) > 1 else "OTHER"
+            filename = parts[-1]
+            return (category, filename)
+
+        model_list = sorted(model_list, key=sort_key)
 
         return {
             "required": {
