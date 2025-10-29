@@ -1059,17 +1059,28 @@ The audio will match these exact timings.""",
         reporter = SRTReportGenerator()
         return reporter.generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
     
-    def _process_traditional_srt_logic(self, subtitles, subtitle_language_groups, language, device, exaggeration, 
-                                     temperature, cfg_weight, seed, reference_audio, audio_prompt_path, 
+    def _process_traditional_srt_logic(self, subtitles, subtitle_language_groups, language, device, exaggeration,
+                                     temperature, cfg_weight, seed, reference_audio, audio_prompt_path,
                                      enable_audio_cache, crash_protection_template, stable_audio_prompt_component,
                                      all_subtitle_segments, audio_prompt):
         """Traditional sequential SRT processing logic - preserves ALL original functionality."""
         from utils.models.language_mapper import get_model_for_language
-        
+
         # Initialize result arrays
         audio_segments = [None] * len(subtitles)
         natural_durations = [0.0] * len(subtitles)
         any_segment_cached = False
+
+        # Build voice references for characters (same as streaming path)
+        voice_refs = {'narrator': audio_prompt or None}
+        try:
+            available_chars = get_available_characters()
+            char_mapping = get_character_mapping(list(available_chars), "chatterbox")
+            for char in available_chars:
+                char_audio_path, _ = char_mapping.get(char, (audio_prompt or None, None))
+                voice_refs[char] = char_audio_path
+        except ImportError:
+            pass
         
         # Process each language group with ALL original logging and logic
         for lang_code in sorted(subtitle_language_groups.keys()):
@@ -1100,6 +1111,9 @@ The audio will match these exact timings.""",
 
                     segment_audio_parts = []
                     for seg_idx, (char, text, lang, seg_params) in enumerate(character_segments_with_lang):
+                        # Get character-specific voice reference
+                        char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
+
                         # Apply segment parameters
                         current_temp = temperature
                         current_exag = exaggeration
@@ -1121,9 +1135,9 @@ The audio will match these exact timings.""",
                         # Pad short text with crash protection
                         processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
 
-                        # Generate audio for this segment with its parameters
+                        # Generate audio for this segment with its parameters and character voice
                         segment_wav = self._generate_tts_with_pause_tags(
-                            processed_text, audio_prompt, current_exag, current_temp, current_cfg, lang,
+                            processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
                             True, character=char, seed=current_seed, enable_cache=enable_audio_cache,
                             crash_protection_template=crash_protection_template,
                             stable_audio_component=stable_audio_prompt_component
