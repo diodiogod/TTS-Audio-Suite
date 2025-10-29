@@ -215,9 +215,9 @@ class IndexTTSEngine:
                 try:
                     first_param = next(self._tts_engine.semantic_model.parameters())
                     current_device = str(first_param.device)
-                    print(f"🔧 Index-TTS device check: current={current_device}, target={target_device}")
+                    # print(f"🔧 Index-TTS device check: current={current_device}, target={target_device}")
                     if current_device != target_device:
-                        print(f"🔄 Reloading Index-TTS model from {current_device} to {target_device} via wrapper")
+                        # print(f"🔄 Reloading Index-TTS model from {current_device} to {target_device} via wrapper")
 
                         # Find and call wrapper's model_load() to keep ComfyUI tracking in sync
                         try:
@@ -231,13 +231,13 @@ class IndexTTSEngine:
                                     model = wrapper.model if hasattr(wrapper, 'model') else None
                                     if model is self:
                                         wrapper.model_load(target_device)
-                                        print(f"✅ Reloaded Index-TTS via wrapper - ComfyUI management stays in sync")
+                                        # print(f"✅ Reloaded Index-TTS via wrapper - ComfyUI management stays in sync")
                                         wrapper_found = True
                                         break
                                     # Also check through SimpleModelWrapper if present
                                     elif hasattr(model, 'model') and model.model is self:
                                         wrapper.model_load(target_device)
-                                        print(f"✅ Reloaded Index-TTS via wrapper (unwrapped SimpleModelWrapper) - ComfyUI management stays in sync")
+                                        # print(f"✅ Reloaded Index-TTS via wrapper (unwrapped SimpleModelWrapper) - ComfyUI management stays in sync")
                                         wrapper_found = True
                                         break
 

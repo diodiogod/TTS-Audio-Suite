@@ -417,7 +417,7 @@ class BaseTTSNode(BaseChatterBoxNode):
 
             # Reload through unified interface if device mismatch
             if current_device and current_device != str(target_device):
-                print(f"🔄 Reloading TTS model from {current_device} to {target_device} via wrapper")
+                # print(f"🔄 Reloading TTS model from {current_device} to {target_device} via wrapper")
 
                 # Find and call wrapper's model_load() instead of direct .to()
                 try:
@@ -425,7 +425,7 @@ class BaseTTSNode(BaseChatterBoxNode):
                     for cache_key, wrapper in tts_model_manager._model_cache.items():
                         if hasattr(wrapper, 'model') and wrapper.model is self.tts_model:
                             wrapper.model_load(target_device)
-                            print(f"✅ Reloaded model via wrapper - ComfyUI management stays in sync")
+                            # print(f"✅ Reloaded model via wrapper - ComfyUI management stays in sync")
                             break
                     else:
                         # Fallback: direct .to() if wrapper not found

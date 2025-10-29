@@ -845,7 +845,7 @@ class VibeVoiceEngine:
 
         # Reload through unified interface if device mismatch
         if current_device and current_device != str(target_device):
-            print(f"🔄 Reloading VibeVoice model from {current_device} to {target_device} via wrapper")
+            # print(f"🔄 Reloading VibeVoice model from {current_device} to {target_device} via wrapper")
 
             # Find and call wrapper's model_load() instead of direct .to()
             try:
@@ -854,7 +854,7 @@ class VibeVoiceEngine:
                 for cache_key, wrapper in tts_model_manager._model_cache.items():
                     if hasattr(wrapper, 'model') and wrapper.model is self:
                         wrapper.model_load(target_device)
-                        print(f"✅ Reloaded VibeVoice via wrapper - ComfyUI management stays in sync")
+                        # print(f"✅ Reloaded VibeVoice via wrapper - ComfyUI management stays in sync")
                         wrapper_found = True
                         break
 
