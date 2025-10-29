@@ -73,17 +73,22 @@ class HiggsAudioTTSProcessor:
             if multi_speaker_mode == "Custom Character Switching":
                 # Use existing modular utilities - pause processing first, then character parsing (like ChatterBox)
                 # print(f"🎭 Higgs Audio: Using character switching with pause support")
-                
-                # Import modular utilities  
+
+                # Import modular utilities
                 from utils.text.pause_processor import PauseTagProcessor
                 from utils.voice.discovery import get_character_mapping
-                from utils.text.character_parser import parse_character_text
-                
+                from utils.text.character_parser import parse_character_text, character_parser
+
                 # Discover characters and build voice mapping (include narrator for fallback)
-                character_segments = parse_character_text(text)
+                # Use parse_text_segments to get full segment info including parameters
+                character_segment_objects = character_parser.parse_text_segments(text)
+                character_segments = [(seg.character, seg.text) for seg in character_segment_objects]
                 all_characters = set(char for char, _ in character_segments)
                 all_characters.add("narrator")  # Always include narrator for fallback mapping
                 character_mapping = get_character_mapping(list(all_characters), engine_type="f5tts")
+
+                # Build parameter mapping for later use (map from segment text to parameters)
+                segment_params_map = {seg.text: seg.parameters for seg in character_segment_objects if seg.parameters}
                 
                 # print(f"🎭 Higgs Audio: Processing {len(character_segments)} character segment(s) - {', '.join(sorted(all_characters))}")
                 
@@ -158,17 +163,29 @@ class HiggsAudioTTSProcessor:
                     """TTS generation function for pause tag processor"""
                     if '[' in text_content and ']' in text_content:
                         # Handle character switching within this segment
-                        char_segments = parse_character_text(text_content)
+                        # Use parse_text_segments to get full segment info including parameters
+                        char_segment_objects = character_parser.parse_text_segments(text_content)
                         segment_audio_parts = []
-                        
-                        for character, segment_text in char_segments:
+
+                        for seg in char_segment_objects:
+                            character = seg.character
+                            segment_text = seg.text
+                            segment_params = seg.parameters if seg.parameters else {}
+
                             # Check for interruption during character segment processing
                             if model_management.interrupt_processing:
                                 raise InterruptedError(f"Higgs Audio TTS character segment ({character}) interrupted by user")
 
                             char_audio_dict = voice_refs.get(character)
                             char_ref_text = ref_texts.get(character, reference_text or "")
-                            
+
+                            # Apply per-segment parameters
+                            current_params = dict(generation_params)
+                            if segment_params:
+                                from utils.text.segment_parameters import apply_segment_parameters
+                                current_params = apply_segment_parameters(current_params, segment_params, "higgs")
+                                print(f"📊 Higgs Audio segment: Character '{character}' with parameters {segment_params}")
+
                             segment_result = self.engine_wrapper.generate_tts_audio(
                                 text=segment_text,
                                 char_audio=char_audio_dict,
@@ -178,10 +195,10 @@ class HiggsAudioTTSProcessor:
                                 enable_audio_cache=enable_audio_cache,
                                 max_chars_per_chunk=max_chars_per_chunk,
                                 silence_between_chunks_ms=0,
-                                **generation_params  # Pass through all generation parameters
+                                **current_params  # Pass through all generation parameters including segment-specific ones
                             )
                             segment_audio_parts.append(segment_result)
-                        
+
                         # Combine character segments
                         if segment_audio_parts:
                             return torch.cat(segment_audio_parts, dim=-1)
@@ -189,10 +206,20 @@ class HiggsAudioTTSProcessor:
                             return torch.zeros(1, 0)
                     else:
                         # Simple text segment without character switching - use narrator voice
+                        # Check if this text has parameters from the segment_params_map
+                        segment_params = segment_params_map.get(text_content, {})
+
                         narrator_audio = voice_refs.get("narrator")
                         if narrator_audio is None and audio_tensor is not None:
                             narrator_audio = {"waveform": audio_tensor, "sample_rate": 24000}
-                        
+
+                        # Apply per-segment parameters
+                        current_params = dict(generation_params)
+                        if segment_params:
+                            from utils.text.segment_parameters import apply_segment_parameters
+                            current_params = apply_segment_parameters(current_params, segment_params, "higgs")
+                            print(f"📊 Higgs Audio segment: Character 'narrator' with parameters {segment_params}")
+
                         return self.engine_wrapper.generate_tts_audio(
                             text=text_content,
                             char_audio=narrator_audio,
@@ -202,7 +229,7 @@ class HiggsAudioTTSProcessor:
                             enable_audio_cache=enable_audio_cache,
                             max_chars_per_chunk=max_chars_per_chunk,
                             silence_between_chunks_ms=0,
-                            **generation_params  # Pass through all generation parameters
+                            **current_params  # Pass through all generation parameters including segment-specific ones
                         )
                 
                 # Process with pause tag handling using existing utility

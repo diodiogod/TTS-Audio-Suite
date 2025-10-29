@@ -211,19 +211,27 @@ class HiggsAudioSRTProcessor:
                                 segment_text = segment.text
                                 language = segment.language
                                 explicit_language = segment.explicit_language
+                                segment_params = segment.parameters if segment.parameters else {}
 
                                 char_audio_dict = voice_refs.get(character, voice_refs.get("narrator"))
                                 char_ref_text = ref_texts.get(character, reference_text or "")
-                                
+
                                 # Add language hint for Higgs Audio 2 ONLY if language was explicit in tag
                                 higgs_text = segment_text
                                 if explicit_language and language:
                                     display_name = character_parser.get_language_display_name(language)
                                     higgs_text = f"[{display_name}] {segment_text}"
-                                
+
                                 # Log what's actually being processed
                                 print(f"📺 Processing SRT segment {i+1}/{len(srt_segments)} ({character}): '{higgs_text[:50]}...' ({expected_duration:.2f}s)")
-                                
+
+                                # Apply per-segment parameters
+                                current_params = dict(generation_params)
+                                if segment_params:
+                                    from utils.text.segment_parameters import apply_segment_parameters
+                                    current_params = apply_segment_parameters(current_params, segment_params, "higgs")
+                                    print(f"📊 SRT segment {i+1}: Character '{character}' with parameters {segment_params}")
+
                                 segment_result = self.engine_wrapper.generate_srt_audio(
                                     srt_content="",  # Individual segment processing
                                     text=higgs_text,  # Use text with language hints
@@ -232,7 +240,7 @@ class HiggsAudioSRTProcessor:
                                     character=character,
                                     seed=seed + i,  # Vary seed per segment
                                     enable_audio_cache=enable_audio_cache,
-                                    **generation_params  # Pass through all generation parameters
+                                    **current_params  # Pass through all generation parameters including segment-specific ones
                                 )
                                 
                                 # Convert to tensor format
