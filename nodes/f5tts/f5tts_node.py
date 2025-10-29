@@ -365,18 +365,20 @@ Back to the main narrator voice for the conclusion.""",
             # Set engine-aware default language to prevent unnecessary model switching
             character_parser.set_engine_aware_default_language(inputs["model"], "f5tts")
             
-            # Parse character segments from text with language awareness
+            # Parse character segments from text with language awareness and parameter support
             # NOTE: We parse characters and languages from original text, then handle pause tags within each segment
-            character_segments_with_lang = character_parser.split_by_character_with_language(inputs["text"])
+            # Use parse_text_segments to get parameters, then convert to (char, text, lang, params) format
+            character_segment_objects = character_parser.parse_text_segments(inputs["text"])
+            character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in character_segment_objects]
             
             # Check if we have character switching or language switching
-            characters = list(set(char for char, _, _ in character_segments_with_lang))
-            languages = list(set(lang for _, _, lang in character_segments_with_lang))
+            characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+            languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             has_multiple_languages = len(languages) > 1
-            
+
             # Create backward-compatible character segments for existing logic
-            character_segments = [(char, segment_text) for char, segment_text, _ in character_segments_with_lang]
+            character_segments = [(char, segment_text) for char, segment_text, _, _ in character_segments_with_lang]
             
             # Validate and clamp nfe_step to prevent ODE solver issues
             safe_nfe_step = max(1, min(inputs["nfe_step"], 71))
@@ -453,12 +455,12 @@ Back to the main narrator voice for the conclusion.""",
                     # Use appropriate model for detected language (supports both explicit tags and character alias language switching)
                     return lang_model_map.get(lang_code.lower(), inputs["model"])
                 
-                # Group segments by language with original order tracking
+                # Group segments by language with original order tracking (including parameters)
                 language_groups = {}
-                for idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+                for idx, (char, segment_text, lang, segment_params) in enumerate(character_segments_with_lang):
                     if lang not in language_groups:
                         language_groups[lang] = []
-                    language_groups[lang].append((idx, char, segment_text, lang))  # Include original index
+                    language_groups[lang].append((idx, char, segment_text, lang, segment_params))  # Include original index and parameters
                 
                 # Generate audio for each language group, tracking original positions
                 audio_segments_with_order = []  # Will store (original_index, audio_tensor)
@@ -482,7 +484,7 @@ Back to the main narrator voice for the conclusion.""",
                     # Check if ALL segments in this language group are cached
                     all_segments_cached = True
                     if inputs.get("enable_audio_cache", True):
-                        for original_idx, character, segment_text, segment_lang in lang_segments:
+                        for original_idx, character, segment_text, segment_lang, segment_params in lang_segments:
                             # Get voice reference for this character
                             char_audio, char_text = voice_refs[character]
                             
@@ -554,18 +556,25 @@ Back to the main narrator voice for the conclusion.""",
                         print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
                     
                     # Process each segment in this language group
-                    for original_idx, character, segment_text, segment_lang in lang_segments:
+                    for original_idx, character, segment_text, segment_lang, segment_params in lang_segments:
                         segment_display_idx = original_idx + 1  # For display (1-based)
-                        
+
                         # Check for interruption
                         self.check_interruption(f"F5-TTS generation segment {segment_display_idx}/{total_segments} (lang: {lang_code})")
-                        
+
+                        # Apply per-segment parameters
+                        current_config = dict(inputs)
+                        if segment_params:
+                            from utils.text.segment_parameters import apply_segment_parameters
+                            current_config = apply_segment_parameters(current_config, segment_params, "f5tts")
+                            print(f"📊 Segment {segment_display_idx}: Character '{character}' with parameters {segment_params}")
+
                         # Apply chunking to long segments if enabled
-                        if inputs["enable_chunking"] and len(segment_text) > inputs["max_chars_per_chunk"]:
-                            segment_chunks = self.chunker.split_into_chunks(segment_text, inputs["max_chars_per_chunk"])
+                        if current_config["enable_chunking"] and len(segment_text) > current_config["max_chars_per_chunk"]:
+                            segment_chunks = self.chunker.split_into_chunks(segment_text, current_config["max_chars_per_chunk"])
                         else:
                             segment_chunks = [segment_text]
-                        
+
                         # Get voice reference for this character
                         char_audio, char_text = voice_refs[character]
                         
@@ -574,16 +583,16 @@ Back to the main narrator voice for the conclusion.""",
                         for chunk_i, chunk_text in enumerate(segment_chunks):
                             print(f"🎤 Generating F5-TTS segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
                             
-                            # Create cache function for this character if caching is enabled
+                            # Create cache function for this character if caching is enabled (uses per-segment parameters)
                             cache_fn = None
-                            if inputs.get("enable_audio_cache", True):
+                            if current_config.get("enable_audio_cache", True):
                                 def create_cache_fn(char_name, char_audio_comp, char_ref_text):
                                     def cache_fn_impl(text_content: str, audio_result=None):
                                         cache_key = self._generate_segment_cache_key(
-                                            f"{char_name}:{text_content}", required_model, inputs["device"], 
-                                            char_audio_comp, char_ref_text, inputs["temperature"], inputs["speed"],
-                                            inputs["target_rms"], inputs["cross_fade_duration"], 
-                                            safe_nfe_step, inputs["cfg_strength"], inputs["seed"], char_name,
+                                            f"{char_name}:{text_content}", required_model, current_config["device"],
+                                            char_audio_comp, char_ref_text, current_config["temperature"], current_config["speed"],
+                                            current_config["target_rms"], current_config["cross_fade_duration"],
+                                            safe_nfe_step, current_config["cfg_strength"], current_config["seed"], char_name,
                                             auto_phonemization
                                         )
                                         if audio_result is None:
@@ -598,26 +607,26 @@ Back to the main narrator voice for the conclusion.""",
                                             char_duration = char_audio.size(-1) / self.f5tts_sample_rate if hasattr(char_audio, 'size') else 0.0
                                             self._cache_segment_audio(cache_key, audio_result, char_duration)
                                     return cache_fn_impl
-                                
+
                                 # Determine character audio component for cache key
                                 char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
                                 cache_fn = create_cache_fn(character, char_audio_component, char_text)
-                            
+
                             chunk_audio = self.generate_f5tts_with_pause_tags(
                                 text=chunk_text,
                                 ref_audio_path=char_audio,
                                 ref_text=char_text,
                                 enable_pause_tags=True,
                                 character=character,
-                                seed=inputs["seed"],
-                                enable_cache=inputs.get("enable_audio_cache", True),
+                                seed=current_config["seed"],
+                                enable_cache=current_config.get("enable_audio_cache", True),
                                 cache_fn=cache_fn,
-                                temperature=inputs["temperature"],
-                                speed=inputs["speed"],
-                                target_rms=inputs["target_rms"],
-                                cross_fade_duration=inputs["cross_fade_duration"],
+                                temperature=current_config["temperature"],
+                                speed=current_config["speed"],
+                                target_rms=current_config["target_rms"],
+                                cross_fade_duration=current_config["cross_fade_duration"],
                                 nfe_step=safe_nfe_step,
-                                cfg_strength=inputs["cfg_strength"],
+                                cfg_strength=current_config["cfg_strength"],
                                 auto_phonemization=auto_phonemization
                             )
                             segment_audio_chunks.append(chunk_audio)
