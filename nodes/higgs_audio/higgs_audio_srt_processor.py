@@ -229,7 +229,7 @@ class HiggsAudioSRTProcessor:
                                 current_params = dict(generation_params)
                                 if segment_params:
                                     from utils.text.segment_parameters import apply_segment_parameters
-                                    current_params = apply_segment_parameters(current_params, segment_params, "higgs")
+                                    current_params = apply_segment_parameters(current_params, segment_params, "higgs_audio")
                                     print(f"📊 SRT segment {i+1}: Character '{character}' with parameters {segment_params}")
 
                                 segment_result = self.engine_wrapper.generate_srt_audio(
