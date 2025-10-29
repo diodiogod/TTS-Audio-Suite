@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.11.26
+# TTS Audio Suite v4.12.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -77,6 +77,7 @@ TTS Audio Suite  + Streaming                                    │
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
+  - [⚙️ Per-Segment Parameter Switching](#️-per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -139,9 +140,10 @@ TTS Audio Suite  + Streaming                                    │
 ## Features
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, and **IndexTTS-2** with voice cloning, reference audio synthesis, and production-grade quality
-- 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models  
+- 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
+- ⚙️ **Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis with inline tags → **[📖 Complete Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
 - 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
 - 📝 **Multilingual Text Processing** - Universal Phoneme Text Normalizer with IPA phonemization, Unicode decomposition, and character mapping for improved pronunciation quality across languages (Experimental)
 - 😤 **Emotion Control** - ChatterBox exaggeration parameter for expressive speech + IndexTTS-2 advanced emotion control with dynamic text analysis, character tags, and 8-emotion vectors → **[📖 IndexTTS-2 Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
@@ -627,6 +629,54 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 > **⚠️ Experimental Feature**: This is a new experimental feature - user feedback needed to validate pronunciation improvements across different languages. Please test with your target languages and report results!
 
 **📖 Try the workflow**: [F5 TTS integration + 📝 Phoneme Text Normalizer](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)
+
+</details>
+
+<details>
+<summary><h3>⚙️ Per-Segment Parameter Switching</h3></summary>
+
+**NEW in v4.12.0**: Fine-grained per-segment control over TTS generation parameters across all engines!
+
+Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. This enables dynamic control over individual audio segments without modifying node defaults.
+
+**🎯 Key Features:**
+
+* **⚙️ Per-Segment Control** - Override parameters for individual text segments or SRT subtitle entries
+* **🔀 Order-Independent Syntax** - Specify parameters in any order: `[Alice|seed:42|temp:0.5]` or `[seed:42|Alice|temp:0.5]`
+* **📝 Alias Support** - Use shortcuts like `temp` (temperature), `cfg_weight` (cfg), `exag` (exaggeration)
+* **🔤 Case-Insensitive** - `[SEED:42]`, `[Seed:42]`, `[seed:42]` all work identically
+* **📺 SRT Support** - Apply parameters to individual SRT subtitle lines
+* **🔙 Backward Compatible** - Works alongside character and language switching: `[de:Alice|seed:42|temp:0.7]`
+* **🚨 Smart Filtering** - Unsupported parameters are silently ignored; engine-specific parameters work automatically
+
+**💡 Real-World Examples:**
+
+```
+[Alice|seed:42] This is the first segment of Alice.
+[Alice|seed:42] This is the second segment, sounding identical.
+
+[Bob|temperature:0.3] Bob speaks carefully and precisely.
+[Bob|temperature:0.8] Bob speaks more creatively and varied.
+
+[Narrator|temp:0.4] Important introduction - precise delivery.
+[Narrator|temp:0.7] Creative narrative section - more varied!
+```
+
+**🔧 Supported Parameters by Engine:**
+
+- **ChatterBox & Official 23-Lang**: seed, temperature, cfg, exaggeration
+- **F5-TTS**: seed, temperature, cfg, speed
+- **Higgs Audio 2**: seed, temperature, cfg, top_p, top_k
+- **VibeVoice**: seed, temperature, cfg, top_p, top_k, inference_steps
+- **IndexTTS-2**: seed, temperature, cfg, top_p, top_k, emotion_alpha
+
+**📖 [Complete Per-Segment Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
+
+Perfect for:
+- Creating consistent character voices with fixed seeds across segments
+- Varying emotional intensity within a single narration
+- Fine-tuning generation quality per-segment without regenerating everything
+- Dynamic control in SRT workflows with per-line customization
 
 </details>
 

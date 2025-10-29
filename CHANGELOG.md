@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.12.0] - 2025-10-29
+
+### Added
+
+- Add per-segment parameter switching across all TTS engines
+- Override generation parameters (seed, temperature, CFG, speed, etc.) per segment
+- Use inline tag syntax: [Alice|seed:42|temperature:0.5] for fine-grained control
+- Works with all engines: ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, IndexTTS-2
+- Apply parameters to individual SRT subtitle lines
+- Order-independent parameter specification
+- Engine-specific parameters automatically filtered
+- Backward compatible with character and language switching
+- Per-segment parameters override node defaults without affecting other segments
 ## [4.11.26] - 2025-10-28
 
 ### Added
