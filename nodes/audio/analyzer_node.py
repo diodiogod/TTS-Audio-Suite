@@ -568,25 +568,33 @@ class AudioAnalyzerNode:
                 
                 # Handle audio file copying or saving - respect priority: connected audio first
                 if audio is not None:
-                    # Connected audio: save tensor to temporary file for web access
+                    # Connected audio: save ORIGINAL tensor to temporary file for web access (preserves stereo)
                     try:
                         input_dir = folder_paths.get_input_directory()
                         temp_audio_filename = f"connected_audio_{node_id}.wav"
                         temp_audio_path = os.path.join(input_dir, temp_audio_filename)
-                        
-                        # Convert tensor to numpy array for soundfile
-                        audio_numpy = audio_tensor.cpu().numpy()
+
+                        # Convert original tensor to numpy array for soundfile (preserves stereo/channels)
+                        audio_numpy = original_audio.cpu().numpy()
                         if audio_numpy.ndim == 1:
                             # Mono audio
                             sf.write(temp_audio_path, audio_numpy, sample_rate)
+                        elif audio_numpy.ndim == 2:
+                            # Stereo/multichannel - save as-is
+                            if audio_numpy.shape[0] == 1:
+                                # Single channel in 2D format
+                                sf.write(temp_audio_path, audio_numpy[0], sample_rate)
+                            else:
+                                # Multiple channels - transpose for soundfile [channels, samples] -> [samples, channels]
+                                sf.write(temp_audio_path, audio_numpy.T, sample_rate)
                         else:
-                            # Multi-channel audio - use first channel or average
+                            # 3D or 4D - flatten to 2D first
+                            while audio_numpy.ndim > 2:
+                                audio_numpy = audio_numpy.squeeze(0)
                             if audio_numpy.shape[0] == 1:
                                 sf.write(temp_audio_path, audio_numpy[0], sample_rate)
                             else:
-                                # Average multiple channels to mono
-                                mono_audio = np.mean(audio_numpy, axis=0)
-                                sf.write(temp_audio_path, mono_audio, sample_rate)
+                                sf.write(temp_audio_path, audio_numpy.T, sample_rate)
                         
                         web_audio_filename = temp_audio_filename
                         # print(f"🎵 Connected audio saved for web access: {temp_audio_path}")  # Debug: audio save
