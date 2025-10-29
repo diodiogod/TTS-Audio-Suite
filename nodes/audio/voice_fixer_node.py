@@ -16,6 +16,9 @@ VoiceFixer = None
 from utils.downloads.voicefixer_downloader import VoiceFixerDownloader
 from utils.models.extra_paths import get_preferred_download_path
 
+# Python 3.12 CUDNN fix for VRAM spikes
+from utils.comfyui_compatibility import ensure_python312_cudnn_fix
+
 # Add bundled voicefixer to path
 import sys
 current_dir = os.path.dirname(__file__)
@@ -80,6 +83,9 @@ class VoiceFixerNode:
             Tuple of (restored_audio_dict, info_string)
         """
         global VoiceFixer
+
+        # Apply Python 3.12 CUDNN fix to prevent VRAM spikes
+        ensure_python312_cudnn_fix()
 
         # Parse mode from dropdown string
         mode = int(restoration_mode.split(" - ")[0])
