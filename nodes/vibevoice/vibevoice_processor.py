@@ -292,15 +292,13 @@ class VibeVoiceProcessor:
         if enable_chunking and len(combined_text) > max_chars:
             voice_ref = voice_mapping.get(character)
 
-            # Build voice info for display
-            if isinstance(voice_ref, dict):
-                keys = list(voice_ref.keys())
-                voice_info = f"dict({keys})"
-            else:
-                voice_info = "None (zero-shot)"
+            # Show voice info only if using zero-shot (no voice reference)
+            voice_note = ""
+            if not isinstance(voice_ref, dict):
+                voice_note = " [⚠️ Zero-shot]"
 
             chunks = self.chunker.split_into_chunks(combined_text, max_chars)
-            print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks [Voice: {voice_info}]")
+            print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks{voice_note}")
             
             for chunk_idx, chunk in enumerate(chunks):
                 # Check for interruption during chunk processing
@@ -322,14 +320,12 @@ class VibeVoiceProcessor:
             # Generate without chunking - the entire combined block at once
             voice_ref = voice_mapping.get(character)
 
-            # Build voice info for display
-            if isinstance(voice_ref, dict):
-                keys = list(voice_ref.keys())
-                voice_info = f"dict({keys})"
-            else:
-                voice_info = "None (zero-shot)"
+            # Show voice info only if using zero-shot (no voice reference)
+            voice_note = ""
+            if not isinstance(voice_ref, dict):
+                voice_note = " [⚠️ Zero-shot mode - no voice reference]"
 
-            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{character}' [Voice: {voice_info}]:")
+            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{character}'{voice_note}:")
             print("="*60)
             print(combined_text)
             print("="*60)
