@@ -29,24 +29,68 @@ if utils_dir not in sys.path:
 
 class VoiceFixerNode:
     """
-    Audio restoration node using VoiceFixer to clean degraded audio.
+    🎙️ Voice Fixer - Professional Audio Restoration Node
 
-    Handles:
-    - Noise removal
-    - Reverberation removal
-    - Clipping restoration (0.1-1.0 threshold)
-    - Low-resolution audio upscaling (2kHz~44.1kHz)
+    Restores degraded audio using deep learning. Removes noise, reverberation,
+    clipping artifacts, and handles low-resolution audio upscaling in a single pass.
 
-    All in a single unified model.
+    WHAT IT DOES:
+    ✅ Noise Removal - Reduces background noise and hum
+    ✅ Reverberation Removal - Cleans up echoey/reverberant speech
+    ✅ Clipping Restoration - Fixes distorted/clipped audio peaks
+    ✅ Low-Res Upscaling - Enhances audio from 2kHz to 44.1kHz
+    ✅ Fast Processing - ~4 seconds per audio file with GPU
+
+    FEATURES:
+    • 3 restoration modes for different degradation levels
+    • GPU acceleration with automatic CPU fallback
+    • Handles mono and stereo (converts to mono internally)
+    • Preserves sample rate from input
+    • No cache downloads - models stored in TTS/ folder
+
+    BEST FOR:
+    • Podcast/recording cleanup
+    • Voice call quality improvement
+    • Archive audio restoration
+    • Phone recording enhancement
+    • Degraded speech recovery
     """
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "audio": ("AUDIO",),
-                "restoration_mode": (["0 - Original (Default)", "1 - With High-Freq Removal", "2 - Train Mode (Seriously Degraded)"],),
-                "use_cuda": ("BOOLEAN", {"default": True}),
+                "audio": ("AUDIO", {
+                    "tooltip": "Input audio for restoration. Accepts ComfyUI AUDIO format (waveform + sample rate)."
+                }),
+                "restoration_mode": (["0 - Original (Default)", "1 - With High-Freq Removal", "2 - Train Mode (Seriously Degraded)"], {
+                    "tooltip": """🎙️ VOICE FIXER RESTORATION MODES
+
+MODE 0 - ORIGINAL (Recommended for most audio):
+• Removes noise, reverberation, clipping artifacts
+• Balanced approach for general degraded speech
+• Works well with speech that has some background noise
+• Best for: Podcasts, recordings, voice calls
+
+MODE 1 - WITH HIGH-FREQUENCY REMOVAL:
+• Original restoration + aggressive high-frequency filtering
+• Removes harsh sibilants and high-frequency artifacts
+• Good for audio with excessive brightness or hiss
+• Best for: Overly bright recordings, high-pitched noise
+
+MODE 2 - TRAIN MODE (Seriously Degraded):
+• Uses model in training mode for maximum restoration
+• Most aggressive but may introduce artifacts
+• Best for severely damaged audio quality
+• Warning: Can distort very clean audio
+• Best for: Heavily degraded, severely clipped, or very noisy audio
+
+💡 START WITH MODE 0 - if unsatisfactory, try MODE 1 or 2"""
+                }),
+                "use_cuda": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Enable CUDA GPU acceleration. Falls back to CPU automatically if not available."
+                }),
             },
         }
 
