@@ -376,16 +376,18 @@ Back to the main narrator voice for the conclusion.""",
             languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             has_multiple_languages = len(languages) > 1
+            # Check if ANY segment has parameters (for parameter-only tags like [seed:42])
+            has_segment_parameters = any(params for _, _, _, params in character_segments_with_lang)
 
             # Create backward-compatible character segments for existing logic
             character_segments = [(char, segment_text) for char, segment_text, _, _ in character_segments_with_lang]
-            
+
             # Validate and clamp nfe_step to prevent ODE solver issues
             safe_nfe_step = max(1, min(inputs["nfe_step"], 71))
             if safe_nfe_step != inputs["nfe_step"]:
                 print(f"⚠️ F5-TTS: Clamped nfe_step from {inputs['nfe_step']} to {safe_nfe_step} to prevent ODE solver issues")
-            
-            if has_multiple_characters or has_multiple_languages:
+
+            if has_multiple_characters or has_multiple_languages or has_segment_parameters:
                 # CHARACTER AND/OR LANGUAGE SWITCHING MODE
                 if has_multiple_languages:
                     print(f"🌍 F5-TTS: Language switching mode - found languages: {', '.join(languages)}")
@@ -472,7 +474,7 @@ Back to the main narrator voice for the conclusion.""",
                 # Process each language group with appropriate model
                 for lang_code, lang_segments in language_groups.items():
                     # Check if this language group contains narrator segments
-                    has_narrator_segments = any(character == "narrator" for _, character, _, _ in lang_segments)
+                    has_narrator_segments = any(character == "narrator" for _, character, _, _, _ in lang_segments)
                     
                     if has_narrator_segments and len([seg for seg in lang_segments if seg[1] == "narrator"]) == len(lang_segments):
                         # Pure narrator language group - use selected base model

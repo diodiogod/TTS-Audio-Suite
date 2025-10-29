@@ -368,17 +368,18 @@ Hello! This is F5-TTS SRT with character switching.
             for i, subtitle in enumerate(subtitles):
                 if not subtitle.text.strip():
                     # Empty subtitle - will be handled separately
-                    all_character_segments.append((i, None, subtitle, 'empty', None, None, None))
+                    all_character_segments.append((i, None, subtitle, 'empty', None, None, None, None))
                     continue
-                
-                # Parse character segments with language awareness
-                character_segments_with_lang = character_parser.split_by_character_with_language(subtitle.text)
-                
+
+                # Parse character segments with language and parameter awareness
+                character_segment_objects = character_parser.parse_text_segments(subtitle.text)
+                character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in character_segment_objects]
+
                 # Process each individual character segment separately
-                for seg_idx, (character, text, language) in enumerate(character_segments_with_lang):
-                    segment_info = (i, seg_idx, subtitle, 'character_segment', character, text, language)
+                for seg_idx, (character, text, language, segment_params) in enumerate(character_segments_with_lang):
+                    segment_info = (i, seg_idx, subtitle, 'character_segment', character, text, language, segment_params)
                     all_character_segments.append(segment_info)
-                    
+
                     # Group this individual segment by its language
                     if language not in segment_language_groups:
                         segment_language_groups[language] = []
@@ -399,7 +400,7 @@ Hello! This is F5-TTS SRT with character switching.
                 
                 # Skip empty segments
                 if lang_code == 'empty':
-                    for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
+                    for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language, segment_params in lang_segments:
                         # Handle empty text by creating silence
                         natural_duration = subtitle.duration
                         wav = self.AudioTimingUtils.create_silence(
@@ -423,7 +424,7 @@ Hello! This is F5-TTS SRT with character switching.
                     from utils.models.language_mapper import get_model_for_language
                     required_model = get_model_for_language("f5tts", lang_code, model)
                     
-                    for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
+                    for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language, segment_params in lang_segments:
                         # PRIORITY FIX: For "narrator" character, always use main reference when provided
                         # This ensures Character Voices node and dropdown selection work correctly
                         if character == "narrator" and audio_prompt and validated_ref_text:
@@ -438,19 +439,33 @@ Hello! This is F5-TTS SRT with character switching.
                             if not char_audio or not char_text:
                                 char_audio = audio_prompt
                                 char_text = validated_ref_text
-                        
+
                         # Validate and clamp nfe_step
                         safe_nfe_step = max(1, min(nfe_step, 71))
-                        
+
+                        # Apply per-segment parameters for cache key generation
+                        current_config = {
+                            'temperature': temperature,
+                            'speed': speed,
+                            'target_rms': target_rms,
+                            'cross_fade_duration': cross_fade_duration,
+                            'cfg_strength': cfg_strength,
+                            'seed': seed
+                        }
+                        if segment_params:
+                            from utils.text.segment_parameters import apply_segment_parameters
+                            current_config = apply_segment_parameters(current_config, segment_params, "f5tts")
+
                         # Generate cache key using the required model for this language
                         # This ensures consistent cache keys regardless of current model state
                         cache_key = self._generate_segment_cache_key(
                             f"{character}:{text}", required_model, self.device, audio_prompt_component,
-                            char_text, temperature, speed, target_rms, cross_fade_duration,
-                            safe_nfe_step, cfg_strength, seed, auto_phonemization
+                            char_text, current_config['temperature'], current_config['speed'],
+                            current_config['target_rms'], current_config['cross_fade_duration'],
+                            safe_nfe_step, current_config['cfg_strength'], current_config['seed'], auto_phonemization
                         )
                         cached_data = self._get_cached_segment_audio(cache_key)
-                        
+
                         if cached_data:
                             cached_segments_info.append((subtitle_idx, seg_idx, cached_data, character, text, language))
                         else:
@@ -488,7 +503,7 @@ Hello! This is F5-TTS SRT with character switching.
                     print(f"✅ SRT: Using {required_model} model for {len(lang_segments)} segment(s) (already loaded)")
                 
                 # Process each character segment in this language group
-                for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language in lang_segments:
+                for subtitle_idx, seg_idx, subtitle, segment_type, character, text, language, segment_params in lang_segments:
                     # Check for interruption
                     self.check_interruption(f"F5-TTS character segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence})")
                     
@@ -529,13 +544,28 @@ Hello! This is F5-TTS SRT with character switching.
                     safe_nfe_step = max(1, min(nfe_step, 71))
                     if safe_nfe_step != nfe_step:
                         print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
-                    
+
+                    # Apply per-segment parameters
+                    current_config = {
+                        'temperature': temperature,
+                        'speed': speed,
+                        'target_rms': target_rms,
+                        'cross_fade_duration': cross_fade_duration,
+                        'cfg_strength': cfg_strength,
+                        'seed': seed
+                    }
+                    if segment_params:
+                        from utils.text.segment_parameters import apply_segment_parameters
+                        current_config = apply_segment_parameters(current_config, segment_params, "f5tts")
+                        print(f"📊 Segment {subtitle_idx+1}.{seg_idx+1}: Character '{character}' with parameters {segment_params}")
+
                     # Check cache first before generating (using consistent required model name)
                     if enable_audio_cache:
                         cache_key = self._generate_segment_cache_key(
-                            f"{character}:{text}", required_model, self.device, audio_prompt_component, 
-                            char_text, temperature, speed, target_rms, cross_fade_duration, 
-                            safe_nfe_step, cfg_strength, seed
+                            f"{character}:{text}", required_model, self.device, audio_prompt_component,
+                            char_text, current_config['temperature'], current_config['speed'],
+                            current_config['target_rms'], current_config['cross_fade_duration'],
+                            safe_nfe_step, current_config['cfg_strength'], current_config['seed']
                         )
                         cached_data = self._get_cached_segment_audio(cache_key)
                         if cached_data:
@@ -545,7 +575,7 @@ Hello! This is F5-TTS SRT with character switching.
                             generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
                             any_segment_cached = True
                             continue
-                    
+
                     # Generate audio for this character segment
                     wav = self.generate_f5tts_with_pause_tags(
                         text=text,
@@ -553,28 +583,29 @@ Hello! This is F5-TTS SRT with character switching.
                         ref_text=char_text,
                         enable_pause_tags=True,
                         character=character,
-                        temperature=temperature,
-                        speed=speed,
-                        target_rms=target_rms,
-                        cross_fade_duration=cross_fade_duration,
+                        temperature=current_config['temperature'],
+                        speed=current_config['speed'],
+                        target_rms=current_config['target_rms'],
+                        cross_fade_duration=current_config['cross_fade_duration'],
                         nfe_step=safe_nfe_step,
-                        cfg_strength=cfg_strength,
-                        seed=seed,
+                        cfg_strength=current_config['cfg_strength'],
+                        seed=current_config['seed'],
                         enable_cache=enable_audio_cache,
                         cache_fn=None,  # Use standard caching
                         auto_phonemization=auto_phonemization
                     )
-                    
+
                     # Calculate duration and store
                     natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
                     generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
-                    
+
                     # Cache the generated segment for future use (using consistent required model name)
                     if enable_audio_cache:
                         cache_key = self._generate_segment_cache_key(
-                            f"{character}:{text}", required_model, self.device, audio_prompt_component, 
-                            char_text, temperature, speed, target_rms, cross_fade_duration, 
-                            safe_nfe_step, cfg_strength, seed
+                            f"{character}:{text}", required_model, self.device, audio_prompt_component,
+                            char_text, current_config['temperature'], current_config['speed'],
+                            current_config['target_rms'], current_config['cross_fade_duration'],
+                            safe_nfe_step, current_config['cfg_strength'], current_config['seed']
                         )
                         self._cache_segment_audio(cache_key, wav, natural_duration)
             
