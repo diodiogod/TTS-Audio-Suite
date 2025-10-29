@@ -1081,14 +1081,14 @@ The audio will match these exact timings.""",
             # Process each subtitle in this language group
             for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
                 print(f"📺 Generating SRT segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence}) in {lang_code}...")
-                
+
                 # Check for interruption
                 self.check_interruption(f"SRT generation segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})")
-                
+
                 if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
                     # Use modular multilingual engine for character/language switching
-                    characters = list(set(char for char, _, _ in character_segments_with_lang))
-                    languages = list(set(lang for _, _, lang in character_segments_with_lang))
+                    characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+                    languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
                     
                     if len(languages) > 1:
                         print(f"🌍 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
@@ -1103,7 +1103,31 @@ The audio will match these exact timings.""",
                         from engines.adapters.chatterbox_adapter import ChatterBoxEngineAdapter
                         self.multilingual_engine = MultilingualEngine("chatterbox")
                         self.chatterbox_adapter = ChatterBoxEngineAdapter(self)
-                    
+
+                    # Apply per-segment parameters if any segment has them
+                    current_temp = temperature
+                    current_exag = exaggeration
+                    current_cfg = cfg_weight
+                    current_seed = seed
+
+                    # Check if any segment has parameters and apply them
+                    segment_has_params = any(seg_params for _, _, _, _, seg_params in character_segments_with_lang)
+                    if segment_has_params:
+                        # Extract first segment with parameters (will be applied to entire subtitle for now)
+                        for _, _, _, _, seg_params in character_segments_with_lang:
+                            if seg_params:
+                                segment_config = apply_segment_parameters(
+                                    {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
+                                    seg_params,
+                                    "chatterbox"
+                                )
+                                current_temp = segment_config.get('temperature', temperature)
+                                current_exag = segment_config.get('exaggeration', exaggeration)
+                                current_cfg = segment_config.get('cfg_weight', cfg_weight)
+                                current_seed = segment_config.get('seed', seed)
+                                print(f"  📊 SRT: Applying segment parameters: {seg_params}")
+                                break  # Use first segment's parameters for the entire subtitle
+
                     # Use modular multilingual engine
                     result = self.multilingual_engine.process_multilingual_text(
                         text=subtitle.text,
@@ -1113,10 +1137,10 @@ The audio will match these exact timings.""",
                         main_audio_reference=audio_prompt,
                         main_text_reference="",  # ChatterBox doesn't use text reference
                         stable_audio_component=stable_audio_prompt_component,
-                        temperature=temperature,
-                        exaggeration=exaggeration,
-                        cfg_weight=cfg_weight,
-                        seed=seed,
+                        temperature=current_temp,
+                        exaggeration=current_exag,
+                        cfg_weight=current_cfg,
+                        seed=current_seed,
                         enable_audio_cache=enable_audio_cache,
                         crash_protection_template=crash_protection_template
                     )
@@ -1134,28 +1158,46 @@ The audio will match these exact timings.""",
                     
                 else:  # subtitle_type == 'simple'
                     # Single character mode - model already loaded for this language group
-                    single_char, single_text, single_lang = character_segments_with_lang[0]
-                    
+                    single_char, single_text, single_lang, single_params = character_segments_with_lang[0]
+
+                    # Apply per-segment parameters if available
+                    current_temp = temperature
+                    current_exag = exaggeration
+                    current_cfg = cfg_weight
+                    current_seed = seed
+
+                    if single_params:
+                        segment_config = apply_segment_parameters(
+                            {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
+                            single_params,
+                            "chatterbox"
+                        )
+                        current_temp = segment_config.get('temperature', temperature)
+                        current_exag = segment_config.get('exaggeration', exaggeration)
+                        current_cfg = segment_config.get('cfg_weight', cfg_weight)
+                        current_seed = segment_config.get('seed', seed)
+                        print(f"  📊 SRT: Applying segment parameters: {single_params}")
+
                     # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
                     processed_subtitle_text = self._pad_short_text_for_chatterbox(single_text, crash_protection_template)
-                    
+
                     # DEBUG: Show actual text being sent to ChatterBox when padding might occur
                     if len(single_text.strip()) < 21:
                         print(f"🔍 DEBUG: Original text: '{single_text}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
-                    
+
                     # Show what model is actually being used for generation
                     model_path = getattr(self.tts_model, 'model_dir', 'unknown') if hasattr(self, 'tts_model') else 'no_model'
                     print(f"🔧 TRADITIONAL SRT: Generating subtitle {i+1} using '{self.current_language}' model")
                     print(f"📁 MODEL PATH: {model_path}")
-                    
+
                     # DEBUG: Show actual model state like multilingual engine does
                     actual_current_model = getattr(self, 'current_model_name', 'unknown')
                     print(f"🔧 ACTUAL MODEL: Traditional SRT subtitle {i+1} using '{actual_current_model}' model")
-                    
+
                     # Generate new audio with pause tag support (includes internal caching)
                     wav = self._generate_tts_with_pause_tags(
-                        processed_subtitle_text, audio_prompt, exaggeration, temperature, cfg_weight, self.current_language,
-                        True, character="narrator", seed=seed, enable_cache=enable_audio_cache,
+                        processed_subtitle_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
+                        True, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
                         crash_protection_template=crash_protection_template,
                         stable_audio_component=stable_audio_prompt_component
                     )
