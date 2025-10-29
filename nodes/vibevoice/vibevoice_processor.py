@@ -18,7 +18,8 @@ if project_root not in sys.path:
 
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
-from utils.text.character_parser import parse_character_text
+from utils.text.character_parser import character_parser
+from utils.text.segment_parameters import apply_segment_parameters
 from engines.adapters.vibevoice_adapter import VibeVoiceEngineAdapter
 
 
@@ -93,9 +94,13 @@ class VibeVoiceProcessor:
             max_chars_per_chunk = 999999  # Effectively disable chunking
         # Note: If chunk_minutes is not set (None), fall back to TTS Text settings
         
-        # Parse character segments (allow auto-discovery like ChatterBox)
-        character_segments = parse_character_text(text, None)  # Auto-discover all characters from text
-        
+        # Parse character segments with parameter support
+        character_parser.reset_session_cache()
+        segment_objects = character_parser.parse_text_segments(text)
+
+        # Convert segment objects to tuples for backward compatibility
+        character_segments = [(seg.character, seg.text) for seg in segment_objects]
+
         # Auto-detect manual "Speaker N:" format and suggest Native mode
         multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
         if multi_speaker_mode == "Custom Character Switching":
@@ -103,22 +108,22 @@ class VibeVoiceProcessor:
                 print("🔄 Auto-switching to Native Multi-Speaker mode (detected manual 'Speaker N:' format)")
                 print("💡 TIP: Use 'Native Multi-Speaker' mode for better performance with manual format")
                 multi_speaker_mode = "Native Multi-Speaker"
-        
+
         if multi_speaker_mode == "Native Multi-Speaker":
             # Check if we can use native mode (max 4 characters)
             unique_chars = list(set([char for char, _ in character_segments]))
             if len(unique_chars) <= 4:
                 print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
                 return self._process_native_multispeaker(character_segments, voice_mapping, params)
-        
-        # Use Custom Character Switching mode
+
+        # Use Custom Character Switching mode with parameter support
         return self._process_character_switching(
-            character_segments, voice_mapping, params,
+            segment_objects, voice_mapping, params,
             enable_chunking, max_chars_per_chunk
         )
     
     def _process_character_switching(self,
-                                    segments: List[Tuple[str, str]],
+                                    segment_objects,  # List of CharacterSegment objects
                                     voice_mapping: Dict[str, Any],
                                     params: Dict,
                                     enable_chunking: bool,
@@ -126,55 +131,108 @@ class VibeVoiceProcessor:
         """
         Process using character switching mode with VibeVoice-optimized grouping.
         Groups consecutive same-character segments for better long-form generation.
-        
+        Supports per-segment parameters.
+
         Args:
-            segments: Character segments
+            segment_objects: List of CharacterSegment objects (with parameters)
             voice_mapping: Voice mapping
-            params: Generation parameters
+            params: Base generation parameters
             enable_chunking: Whether to chunk
             max_chars: Max chars per chunk
-            
+
         Returns:
             List of audio segments
         """
         audio_segments = []
-        
+
         # Group consecutive same-character segments for VibeVoice optimization
-        grouped_segments = self._group_consecutive_characters(segments)
-        print(f"🔄 VibeVoice Custom: Grouped {len(segments)} segments into {len(grouped_segments)} character blocks")
-        
-        for group_idx, (character, text_list) in enumerate(grouped_segments):
+        grouped_segments = self._group_consecutive_character_objects(segment_objects)
+        print(f"🔄 VibeVoice Custom: Grouped {len(segment_objects)} segments into {len(grouped_segments)} character blocks")
+
+        for group_idx, (character, segment_list) in enumerate(grouped_segments):
             # Check for interruption before processing each character block
             if model_management.interrupt_processing:
                 raise InterruptedError(f"VibeVoice character block {group_idx + 1}/{len(grouped_segments)} ({character}) interrupted by user")
-            print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
-            
+            print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
+
             # Combine text blocks for this character (VibeVoice style)
-            combined_text = '\n'.join(f"Speaker 1: {text.strip()}" for text in text_list)
-            
-            # Process the combined character block
-            self._process_character_block(character, combined_text, voice_mapping, params, 
+            combined_text = '\n'.join(f"Speaker 1: {seg.text.strip()}" for seg in segment_list)
+
+            # All segments in a group have the same parameters (grouping broke on parameter changes)
+            # So just take parameters from first segment
+            group_params = params.copy()
+            if segment_list and segment_list[0].parameters:
+                segment_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
+                group_params.update(segment_params)
+                if segment_list[0].parameters:
+                    print(f"  📊 Applying parameters: {segment_list[0].parameters}")
+
+            # Process the combined character block with group parameters
+            self._process_character_block(character, combined_text, voice_mapping, group_params,
                                         enable_chunking, max_chars, audio_segments)
-        
+
         return audio_segments
     
+    def _group_consecutive_character_objects(self, segment_objects) -> List[Tuple[str, list]]:
+        """
+        Group consecutive same-character segment objects for VibeVoice optimization.
+        IMPORTANT: Groups are broken when parameters change (each parameter set gets own generation).
+
+        Args:
+            segment_objects: List of CharacterSegment objects
+
+        Returns:
+            List of (character, segment_object_list) tuples with grouped segments
+        """
+        if not segment_objects:
+            return []
+
+        grouped = []
+        current_character = None
+        current_parameters = None
+        current_segments = []
+
+        for segment in segment_objects:
+            # Check if character OR parameters changed
+            character_changed = segment.character != current_character
+            parameters_changed = segment.parameters != current_parameters
+
+            if character_changed or parameters_changed:
+                # Character or parameters changed - finalize previous group
+                if current_character is not None:
+                    grouped.append((current_character, current_segments))
+
+                # Start new group
+                current_character = segment.character
+                current_parameters = segment.parameters.copy() if segment.parameters else {}
+                current_segments = [segment]
+            else:
+                # Same character AND same parameters, add to current group
+                current_segments.append(segment)
+
+        # Don't forget the last group
+        if current_character is not None:
+            grouped.append((current_character, current_segments))
+
+        return grouped
+
     def _group_consecutive_characters(self, segments: List[Tuple[str, str]]) -> List[Tuple[str, List[str]]]:
         """
         Group consecutive same-character segments for VibeVoice optimization.
-        
+
         Args:
-            segments: Original character segments
-            
+            segments: Original character segments (tuples)
+
         Returns:
             List of (character, text_list) tuples with grouped segments
         """
         if not segments:
             return []
-            
+
         grouped = []
         current_character = None
         current_texts = []
-        
+
         for character, text in segments:
             if character == current_character:
                 # Same character, add to current group
@@ -183,15 +241,15 @@ class VibeVoiceProcessor:
                 # Different character, finalize previous group
                 if current_character is not None:
                     grouped.append((current_character, current_texts))
-                
+
                 # Start new group
                 current_character = character
                 current_texts = [text]
-        
+
         # Don't forget the last group
         if current_character is not None:
             grouped.append((current_character, current_texts))
-        
+
         return grouped
     
     def _process_character_block(self, character: str, combined_text: str, 

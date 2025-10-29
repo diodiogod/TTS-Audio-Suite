@@ -81,7 +81,8 @@ class SegmentProcessor:
                     character_parser._logged_characters
                 ),
                 original_character=self.default_character,
-                explicit_language=False
+                explicit_language=False,
+                parameters={}  # No parameters for untagged text
             ))
         
         return segments
@@ -89,13 +90,13 @@ class SegmentProcessor:
     def _parse_single_line(self, line: str, line_start_pos: int, language_resolver, character_parser) -> List[CharacterSegment]:
         """
         Parse a single line for character tags, treating it completely independently.
-        
+
         Args:
             line: Single line of text (no newlines)
             line_start_pos: Starting position of this line in the original text
             language_resolver: LanguageResolver instance
             character_parser: Main CharacterParser instance
-            
+
         Returns:
             List of CharacterSegment objects for this line only
         """
@@ -104,6 +105,7 @@ class SegmentProcessor:
         current_character = self.default_character
         current_language = language_resolver.default_language
         current_emotion = None
+        current_parameters = {}  # Track per-segment parameters
         
         # IMPORTANT: Each line starts fresh with narrator as default
         # If the line doesn't start with a character tag, everything is narrator
@@ -125,7 +127,8 @@ class SegmentProcessor:
                         character_parser._logged_characters
                     ),
                     original_character=speaker_name,
-                    explicit_language=False
+                    explicit_language=False,
+                    parameters={}  # No parameters for speaker format
                 ))
             return segments
         
@@ -144,7 +147,8 @@ class SegmentProcessor:
                         character_parser._logged_characters
                     ),
                     original_character=self.default_character,
-                    explicit_language=False
+                    explicit_language=False,
+                    parameters={}  # No parameters for untagged text
                 ))
             return segments
         
@@ -161,19 +165,21 @@ class SegmentProcessor:
                     language=current_language,
                     original_character=current_character,  # Before this tag, it's already resolved
                     explicit_language=False,  # Text before tags doesn't have explicit language
-                    emotion=current_emotion
+                    emotion=current_emotion,
+                    parameters=current_parameters  # Use current parameters state
                 ))
             
-            # Parse language, character, and emotion from the tag using flexible parser
+            # Parse language, character, emotion, and parameters from the tag
             raw_tag_content = match.group(1)
-            
-            # Use flexible tag parser to handle emotion syntax
-            tag_info = language_resolver.parse_flexible_tag(raw_tag_content)
-            
+
+            # Use flexible tag parser with parameter support to handle all syntax
+            tag_info = language_resolver.parse_tag_with_parameters(raw_tag_content)
+
             # Extract individual components
             explicit_language = tag_info.get('language')
             raw_character = tag_info.get('character') or self.default_character
             emotion_reference = tag_info.get('emotion')
+            segment_parameters = tag_info.get('parameters', {})
             
             # Update current character for text after this tag
             # IMPORTANT: Resolve language using original alias name before character normalization
@@ -199,7 +205,11 @@ class SegmentProcessor:
             # Update emotion state if provided in tag
             if emotion_reference is not None:
                 current_emotion = emotion_reference
-                
+
+            # Update parameter state if provided in tag
+            if segment_parameters:
+                current_parameters = segment_parameters.copy()
+
             current_pos = match.end()
         
         # Add remaining text after last tag (or entire line if no tags)
@@ -213,7 +223,8 @@ class SegmentProcessor:
                 language=current_language,
                 original_character=original_character,
                 explicit_language=current_explicit_language if 'current_explicit_language' in locals() else False,
-                emotion=current_emotion
+                emotion=current_emotion,
+                parameters=current_parameters  # Include current parameters
             ))
         elif not segments and line.strip():
             # Line with only tags and no text after - still need a segment for the line
@@ -226,7 +237,8 @@ class SegmentProcessor:
                 language=current_language,
                 original_character=original_character if 'original_character' in locals() else current_character,
                 explicit_language=current_explicit_language if 'current_explicit_language' in locals() else False,
-                emotion=current_emotion
+                emotion=current_emotion,
+                parameters=current_parameters  # Include current parameters
             ))
         
         return segments

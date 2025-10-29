@@ -261,6 +261,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/text/pause_processor.py** - Pause tag parsing supporting [pause:xx] syntax for precise timing control
 
+**utils/text/segment_parameters.py** - Per-segment parameter system enabling inline control of seed, temperature, cfg, speed, and other engine-specific parameters via pipe-separated syntax like [Alice|seed:42|temperature:0.5]. Supports aliases (cfg_weight→cfg, temp→temperature) and case-insensitive input with universal parameter filtering and validation across all TTS engines
+
 **utils/text/phonemizer_utils.py** - F5-TTS multilingual phonemization system with IPA conversion, cross-platform backend support (espeak-phonemizer-windows/phonemizer), smart language detection, and model-specific exceptions for optimal quality
 
 ### Voice Management

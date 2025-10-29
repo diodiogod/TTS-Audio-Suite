@@ -10,6 +10,7 @@ ChatterBox Voice now supports seamless character and narrator switching with **l
 
 - **🎭 Universal Character Parsing** - Works with both F5TTS and ChatterBox engines
 - **🌍 Language-Aware Switching** - Switch both character AND language with `[lang:character]` syntax
+- **⚙️ Per-Segment Parameters** - Control seed, temperature, cfg, and other parameters per segment with `[Alice|seed:42|temperature:0.5]` syntax (see [Parameter Switching Guide](PARAMETER_SWITCHING_GUIDE.md))
 - **🔄 Robust Fallback System** - No errors when characters or languages not found
 - **📁 Voice Folder Integration** - Organized character voice management
 - **📺 SRT Support** - Character and language switching in subtitle timing

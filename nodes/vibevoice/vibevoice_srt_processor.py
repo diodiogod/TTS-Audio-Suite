@@ -30,6 +30,7 @@ if project_root not in sys.path:
 
 from utils.system.import_manager import import_manager
 from utils.text.character_parser import parse_character_text, character_parser
+from utils.text.segment_parameters import apply_segment_parameters
 from utils.text.pause_processor import PauseTagProcessor
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_characters, get_character_mapping
@@ -241,24 +242,34 @@ class VibeVoiceSRTProcessor:
                 continue
             
             print(f"🎭 VibeVoice SRT Subtitle {i+1}/{len(subtitles)} (Seq {subtitle.sequence}): Processing '{subtitle.text[:50]}...'")
-            
-            # Parse character segments
-            character_segments = parse_character_text(subtitle.text, None)
-            
+
+            # Parse character segments with parameter support
+            character_parser.reset_session_cache()
+            segment_objects = character_parser.parse_text_segments(subtitle.text)
+
             # Determine processing mode
             multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
-            
+
             if multi_speaker_mode == "Native Multi-Speaker":
                 # Check if we can use native mode (max 4 characters) and no pause tags
-                unique_chars = list(set([char for char, _ in character_segments]))
-                full_text = " ".join([text for _, text in character_segments])
+                unique_chars = list(set([seg.character for seg in segment_objects]))
+                full_text = " ".join([seg.text for seg in segment_objects])
                 has_pause_tags = PauseTagProcessor.has_pause_tags(full_text)
-                
+
                 if len(unique_chars) <= 4 and not has_pause_tags:
                     print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
-                    # Generate single multi-speaker segment with seed
+                    # Generate single multi-speaker segment with parameters support
                     config_with_seed = self.config.copy()
                     config_with_seed['seed'] = seed
+
+                    # Extract and merge all parameters from segment objects for native multispeaker
+                    for seg in segment_objects:
+                        if seg.parameters:
+                            segment_params = apply_segment_parameters(config_with_seed, seg.parameters, 'vibevoice')
+                            config_with_seed.update(segment_params)
+
+                    # Convert to tuples for backward compatibility with _generate_native_multispeaker
+                    character_segments = [(seg.character, seg.text) for seg in segment_objects]
                     audio = self.adapter._generate_native_multispeaker(
                         character_segments, complete_voice_refs, config_with_seed, global_char_to_speaker
                     )
@@ -267,14 +278,14 @@ class VibeVoiceSRTProcessor:
                         wav = wav.squeeze(0)
                 else:
                     print(f"🔄 VibeVoice: Falling back to custom mode (too many speakers or pause tags)")
-                    # Fall back to custom character switching
-                    wav = self._process_custom_character_switching_subtitle(
-                        character_segments, complete_voice_refs, seed
+                    # Fall back to custom character switching with parameter support
+                    wav = self._process_custom_character_switching_subtitle_with_params(
+                        segment_objects, complete_voice_refs, seed
                     )
             else:
-                # Custom character switching mode
-                wav = self._process_custom_character_switching_subtitle(
-                    character_segments, complete_voice_refs, seed
+                # Custom character switching mode with parameter support
+                wav = self._process_custom_character_switching_subtitle_with_params(
+                    segment_objects, complete_voice_refs, seed
                 )
             
             # Calculate duration and store
@@ -347,6 +358,122 @@ class VibeVoiceSRTProcessor:
         else:
             return torch.cat(audio_parts, dim=-1)
     
+    def _process_custom_character_switching_subtitle_with_params(self,
+                                                               segment_objects,  # List of CharacterSegment objects
+                                                               voice_mapping: Dict[str, Any],
+                                                               seed: int) -> torch.Tensor:
+        """
+        Process subtitle using custom character switching mode with parameter support.
+        Generate separate audio for each character and combine.
+        Supports per-segment parameters that override config for each segment.
+
+        Args:
+            segment_objects: List of CharacterSegment objects (with parameters)
+            voice_mapping: Voice mapping
+            seed: Random seed
+
+        Returns:
+            Combined audio tensor for this subtitle
+        """
+        params = self.config.copy()
+        params['seed'] = seed
+        params['multi_speaker_mode'] = self.config.get('multi_speaker_mode', 'Custom Character Switching')
+
+        audio_parts = []
+
+        # Group consecutive same-character segments within this subtitle for VibeVoice optimization
+        grouped_segments = self._group_consecutive_character_objects_srt(segment_objects)
+        print(f"🔄 VibeVoice SRT: Grouped {len(segment_objects)} segments into {len(grouped_segments)} character blocks within subtitle")
+
+        for group_idx, (character, segment_list) in enumerate(grouped_segments):
+            voice_ref = voice_mapping.get(character)
+
+            # All segments in a group have the same parameters (grouping broke on parameter changes)
+            # So just take parameters from first segment
+            group_params = params.copy()
+            if segment_list and segment_list[0].parameters:
+                segment_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
+                group_params.update(segment_params)
+                print(f"  📊 Applying parameters: {segment_list[0].parameters}")
+
+            if len(segment_list) == 1:
+                # Single segment - generate normally with group parameters
+                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                    segment_list[0].text, voice_ref, group_params, True, character
+                )
+            else:
+                # Multiple segments for same character with same parameters - combine in VibeVoice format
+                print(f"🎤 SRT Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
+                combined_text = '\n'.join(f"Speaker 1: {seg.text.strip()}" for seg in segment_list)
+
+                print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{character}':")
+                print("="*60)
+                print(combined_text)
+                print("="*60)
+
+                # Generate the combined character block with group parameters
+                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                    combined_text, voice_ref, group_params, True, character
+                )
+
+            # Ensure proper tensor format
+            if audio_tensor.dim() == 3:
+                audio_tensor = audio_tensor.squeeze(0)
+            if audio_tensor.dim() == 1:
+                audio_tensor = audio_tensor.unsqueeze(0)
+
+            audio_parts.append(audio_tensor)
+
+        # Combine all character parts
+        if len(audio_parts) == 1:
+            return audio_parts[0]
+        else:
+            return torch.cat(audio_parts, dim=-1)
+
+    def _group_consecutive_character_objects_srt(self, segment_objects) -> List[Tuple[str, list]]:
+        """
+        Group consecutive same-character segment objects within a subtitle for VibeVoice optimization.
+        SRT-specific version that only groups within subtitle boundaries.
+        IMPORTANT: Groups are broken when parameters change (each parameter set gets own generation).
+
+        Args:
+            segment_objects: List of CharacterSegment objects from one subtitle
+
+        Returns:
+            List of (character, segment_object_list) tuples with grouped segments
+        """
+        if not segment_objects:
+            return []
+
+        grouped = []
+        current_character = None
+        current_parameters = None
+        current_segments = []
+
+        for segment in segment_objects:
+            # Check if character OR parameters changed
+            character_changed = segment.character != current_character
+            parameters_changed = segment.parameters != current_parameters
+
+            if character_changed or parameters_changed:
+                # Character or parameters changed - finalize previous group
+                if current_character is not None:
+                    grouped.append((current_character, current_segments))
+
+                # Start new group
+                current_character = segment.character
+                current_parameters = segment.parameters.copy() if segment.parameters else {}
+                current_segments = [segment]
+            else:
+                # Same character AND same parameters, add to current group
+                current_segments.append(segment)
+
+        # Don't forget the last group
+        if current_character is not None:
+            grouped.append((current_character, current_segments))
+
+        return grouped
+
     def _group_consecutive_characters_srt(self, segments: List[Tuple[str, str]]) -> List[Tuple[str, List[str]]]:
         """
         Group consecutive same-character segments within a subtitle for VibeVoice optimization.

@@ -96,23 +96,25 @@ class LanguageResolver:
     def parse_flexible_tag(self, tag_content: str) -> Dict[str, Optional[str]]:
         """
         Parse flexible character tag with emotion support for IndexTTS-2.
-        
+
         Handles all combinations:
         - [Alice] → character="Alice"
-        - [de] → language="de", character="narrator"  
+        - [de] → language="de", character="narrator"
         - [de:Alice] → language="de", character="Alice"
         - [Alice:angry_bob] → character="Alice", emotion="angry_bob"
         - [de:Alice:angry_bob] → language="de", character="Alice", emotion="angry_bob"
-        
+
+        NOTE: This does NOT handle parameters. Use parse_tag_with_parameters for pipe-separated params.
+
         Args:
             tag_content: Content inside brackets
-            
+
         Returns:
             Dictionary with keys: language, character, emotion
         """
         parts = [part.strip() for part in tag_content.split(':')]
         result = {'language': None, 'character': None, 'emotion': None}
-        
+
         if len(parts) == 1:
             # [Alice] or [de]
             if self.is_known_language_code(parts[0]):
@@ -120,7 +122,7 @@ class LanguageResolver:
                 result['character'] = "narrator"
             else:
                 result['character'] = parts[0] or "narrator"
-                
+
         elif len(parts) == 2:
             # [de:Alice] or [Alice:angry_bob]
             if self.is_known_language_code(parts[0]):
@@ -129,17 +131,54 @@ class LanguageResolver:
             else:
                 result['character'] = parts[0] or "narrator"
                 result['emotion'] = parts[1] if parts[1] else None
-                
+
         elif len(parts) == 3:
             # [de:Alice:angry_bob]
             result['language'] = resolve_language_alias(parts[0]) if parts[0] else None
             result['character'] = parts[1] or "narrator"
             result['emotion'] = parts[2] if parts[2] else None
-            
+
         else:
             # More than 3 parts - treat as character name with colons
             result['character'] = tag_content or "narrator"
-            
+
+        return result
+
+    def parse_tag_with_parameters(self, tag_content: str) -> Dict[str, any]:
+        """
+        Parse character tag with pipe-separated parameters.
+
+        Handles all combinations:
+        - [Alice] → character="Alice", parameters={}
+        - [Alice|seed:42] → character="Alice", parameters={"seed": 42}
+        - [de:Alice|seed:42|temp:0.5] → character="Alice", language="de", parameters={"seed": 42, "temperature": 0.5}
+        - [seed:42|de:Alice] → Order-independent parameter extraction
+
+        Args:
+            tag_content: Content inside brackets with potential pipe-separated parameters
+
+        Returns:
+            Dictionary with keys: language, character, emotion, parameters
+        """
+        # Import here to avoid circular imports
+        from utils.text.segment_parameters import SegmentParameterParser, ParameterValidator
+
+        # First split by pipes to separate character/language info from parameters
+        tag_segments, parameters = SegmentParameterParser.parse_tag_segments(tag_content)
+
+        # Now parse the character/language segment using flexible tag parser
+        reconstructed_tag = SegmentParameterParser.reconstruct_character_tag(tag_segments)
+
+        # Parse the reconstructed tag (without parameters) using the regular flexible tag parser
+        result = self.parse_flexible_tag(reconstructed_tag) if reconstructed_tag else {
+            'language': None,
+            'character': 'narrator',
+            'emotion': None
+        }
+
+        # Add parameters to result
+        result['parameters'] = parameters
+
         return result
     
     def resolve_character_language(self, character: str, explicit_language: Optional[str], 
