@@ -20,6 +20,7 @@ from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import character_parser
 from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.pause_processor import PauseTagProcessor
 from engines.adapters.vibevoice_adapter import VibeVoiceEngineAdapter
 
 
@@ -110,11 +111,30 @@ class VibeVoiceProcessor:
                 multi_speaker_mode = "Native Multi-Speaker"
 
         if multi_speaker_mode == "Native Multi-Speaker":
-            # Check if we can use native mode (max 4 characters)
-            unique_chars = list(set([char for char, _ in character_segments]))
-            if len(unique_chars) <= 4:
+            # Check if we can use native mode (max 4 characters, no pause tags, no parameter changes)
+            unique_chars = list(set([seg.character for seg in segment_objects]))
+            full_text = " ".join([seg.text for seg in segment_objects])
+            has_pause_tags = PauseTagProcessor.has_pause_tags(full_text)
+
+            # Check if parameters change between segments
+            has_param_changes = False
+            for seg_idx in range(1, len(segment_objects)):
+                if segment_objects[seg_idx].parameters != segment_objects[seg_idx-1].parameters:
+                    has_param_changes = True
+                    break
+
+            if len(unique_chars) <= 4 and not has_pause_tags and not has_param_changes:
                 print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
                 return self._process_native_multispeaker(character_segments, voice_mapping, params)
+            else:
+                reasons = []
+                if len(unique_chars) > 4:
+                    reasons.append("too many speakers")
+                if has_pause_tags:
+                    reasons.append("pause tags")
+                if has_param_changes:
+                    reasons.append("parameter changes")
+                print(f"⚡⚡⚡ FALLBACK: Native Multi-Speaker → Custom Character Switching ({', '.join(reasons)})")
 
         # Use Custom Character Switching mode with parameter support
         return self._process_character_switching(
