@@ -258,8 +258,8 @@ class VibeVoiceSRTProcessor:
 
                 # Check if parameters change between segments
                 has_param_changes = False
-                for i in range(1, len(segment_objects)):
-                    if segment_objects[i].parameters != segment_objects[i-1].parameters:
+                for seg_idx in range(1, len(segment_objects)):
+                    if segment_objects[seg_idx].parameters != segment_objects[seg_idx-1].parameters:
                         has_param_changes = True
                         break
 
@@ -303,6 +303,8 @@ class VibeVoiceSRTProcessor:
                 )
             
             # Calculate duration and store
+            if wav is None:
+                raise RuntimeError(f"VibeVoice SRT subtitle {i+1}/{len(subtitles)}: Generation returned None")
             natural_duration = self.AudioTimingUtils.get_audio_duration(wav, 24000)
             audio_segments[i] = wav
             natural_durations[i] = natural_duration
@@ -439,7 +441,9 @@ class VibeVoiceSRTProcessor:
             audio_parts.append(audio_tensor)
 
         # Combine all character parts
-        if len(audio_parts) == 1:
+        if len(audio_parts) == 0:
+            raise RuntimeError("No audio parts generated for subtitle")
+        elif len(audio_parts) == 1:
             return audio_parts[0]
         else:
             return torch.cat(audio_parts, dim=-1)
