@@ -181,9 +181,13 @@ class HiggsAudioTTSProcessor:
 
                             # Apply per-segment parameters
                             current_params = dict(generation_params)
+                            current_seed = seed
                             if segment_params:
                                 from utils.text.segment_parameters import apply_segment_parameters
                                 current_params = apply_segment_parameters(current_params, segment_params, "higgs_audio")
+                                # If segment has a seed parameter, use that instead of the default
+                                if 'seed' in current_params:
+                                    current_seed = current_params.pop('seed')
                                 print(f"📊 Higgs Audio segment: Character '{character}' with parameters {segment_params}")
 
                             segment_result = self.engine_wrapper.generate_tts_audio(
@@ -191,7 +195,7 @@ class HiggsAudioTTSProcessor:
                                 char_audio=char_audio_dict,
                                 char_text=char_ref_text,
                                 character=character,
-                                seed=seed,
+                                seed=current_seed,
                                 enable_audio_cache=enable_audio_cache,
                                 max_chars_per_chunk=max_chars_per_chunk,
                                 silence_between_chunks_ms=0,
@@ -215,9 +219,13 @@ class HiggsAudioTTSProcessor:
 
                         # Apply per-segment parameters
                         current_params = dict(generation_params)
+                        current_seed = seed
                         if segment_params:
                             from utils.text.segment_parameters import apply_segment_parameters
                             current_params = apply_segment_parameters(current_params, segment_params, "higgs_audio")
+                            # If segment has a seed parameter, use that instead of the default
+                            if 'seed' in current_params:
+                                current_seed = current_params.pop('seed')
                             print(f"📊 Higgs Audio segment: Character 'narrator' with parameters {segment_params}")
 
                         return self.engine_wrapper.generate_tts_audio(
@@ -225,7 +233,7 @@ class HiggsAudioTTSProcessor:
                             char_audio=narrator_audio,
                             char_text=ref_texts.get("narrator", reference_text or ""),
                             character="narrator",
-                            seed=seed,
+                            seed=current_seed,
                             enable_audio_cache=enable_audio_cache,
                             max_chars_per_chunk=max_chars_per_chunk,
                             silence_between_chunks_ms=0,
