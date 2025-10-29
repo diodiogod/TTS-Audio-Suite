@@ -571,7 +571,11 @@ class AudioAnalyzerNode:
                     # Connected audio: save ORIGINAL tensor to temporary file for web access (preserves stereo)
                     try:
                         input_dir = folder_paths.get_input_directory()
-                        temp_audio_filename = f"connected_audio_{node_id}.wav"
+                        # Use unique filename per analysis so JavaScript detects file change
+                        # Include tensor hash to invalidate cache when audio input changes
+                        import hashlib
+                        audio_hash = hashlib.md5(str(tensor_hash).encode()).hexdigest()[:8]
+                        temp_audio_filename = f"connected_audio_{node_id}_{audio_hash}.wav"
                         temp_audio_path = os.path.join(input_dir, temp_audio_filename)
 
                         # Convert original tensor to numpy array for soundfile (preserves stereo/channels)
