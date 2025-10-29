@@ -29,7 +29,7 @@ if utils_dir not in sys.path:
 
 class VoiceFixerNode:
     """
-    🎙️ Voice Fixer - Professional Audio Restoration Node
+    🤐 Voice Fixer - Professional Audio Restoration Node
 
     Restores degraded audio using deep learning. Removes noise, reverberation,
     clipping artifacts, and handles low-resolution audio upscaling in a single pass.
@@ -64,7 +64,7 @@ class VoiceFixerNode:
                     "tooltip": "Input audio for restoration. Accepts ComfyUI AUDIO format (waveform + sample rate)."
                 }),
                 "restoration_mode": (["0 - Original (Default)", "1 - With High-Freq Removal", "2 - Train Mode (Seriously Degraded)"], {
-                    "tooltip": """🎙️ VOICE FIXER RESTORATION MODES
+                    "tooltip": """🤐 VOICE FIXER RESTORATION MODES
 
 MODE 0 - ORIGINAL (Recommended for most audio):
 • Removes noise, reverberation, clipping artifacts
@@ -105,7 +105,7 @@ MODE 2 - TRAIN MODE (Seriously Degraded):
 
     @classmethod
     def NAME(cls):
-        return "🎙️ Voice Fixer"
+        return "🤐 Voice Fixer"
 
     def _ensure_analysis_module_path(self, voicefixer_dir):
         """Ensure analysis module path is configured"""
@@ -239,6 +239,6 @@ MODE 2 - TRAIN MODE (Seriously Degraded):
 
         # Generate info string
         mode_names = ["Original", "High-Freq Removal", "Train Mode"]
-        info = f"🎙️ VoiceFixer Mode {mode} ({mode_names[mode]}) | Input: {wav_numpy.shape[0]:,} samples @ {sample_rate}Hz | Output: {restored_wav.shape[0]:,} samples"
+        info = f"🤐 VoiceFixer Mode {mode} ({mode_names[mode]}) | Input: {wav_numpy.shape[0]:,} samples @ {sample_rate}Hz | Output: {restored_wav.shape[0]:,} samples"
 
         return ({"waveform": restored_tensor, "sample_rate": sample_rate}, info)

@@ -470,7 +470,7 @@ if MERGE_AUDIO_AVAILABLE:
 
 if VOICE_FIXER_AVAILABLE:
     NODE_CLASS_MAPPINGS["VoiceFixerNode"] = VoiceFixerNode
-    NODE_DISPLAY_NAME_MAPPINGS["VoiceFixerNode"] = "🎙️ Voice Fixer"
+    NODE_DISPLAY_NAME_MAPPINGS["VoiceFixerNode"] = "🤐 Voice Fixer"
 
 if LOAD_RVC_MODEL_AVAILABLE:
     NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode
