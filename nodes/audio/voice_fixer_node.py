@@ -48,7 +48,7 @@ class VoiceFixerNode:
         }
 
     RETURN_TYPES = ("AUDIO", "STRING")
-    RETURN_NAMES = ("restored_audio", "restoration_info")
+    RETURN_NAMES = ("restored_audio", "info")
     FUNCTION = "restore_audio"
     CATEGORY = "audio/restoration"
 
@@ -67,22 +67,52 @@ class VoiceFixerNode:
         # to voicefixer_dir via the downloader
         pass
 
-    def restore_audio(self, audio: torch.Tensor, restoration_mode: str, use_cuda: bool) -> Tuple[torch.Tensor, str]:
+    def restore_audio(self, audio: dict, restoration_mode: str, use_cuda: bool) -> Tuple[dict, str]:
         """
         Restore degraded audio using VoiceFixer.
 
         Args:
-            audio: Input audio tensor [batch, channels, samples] or [batch, samples]
+            audio: ComfyUI AUDIO dict with 'waveform' and 'sample_rate'
             restoration_mode: Which restoration mode to use (0, 1, or 2)
             use_cuda: Whether to use CUDA acceleration
 
         Returns:
-            Tuple of (restored_audio_tensor, info_string)
+            Tuple of (restored_audio_dict, info_string)
         """
         global VoiceFixer
 
         # Parse mode from dropdown string
         mode = int(restoration_mode.split(" - ")[0])
+
+        # Extract audio data from ComfyUI format
+        if isinstance(audio, dict) and 'waveform' in audio:
+            waveform = audio['waveform']
+            sample_rate = audio.get('sample_rate', 44100)
+        else:
+            raise ValueError(f"Expected ComfyUI AUDIO dict, got {type(audio)}")
+
+        # Convert tensor to numpy if needed
+        if isinstance(waveform, torch.Tensor):
+            waveform = waveform.cpu().numpy()
+
+        # Handle tensor shape [batch, channels, samples] -> [samples]
+        if waveform.ndim == 3:
+            # [batch, channels, samples]
+            if waveform.shape[0] != 1:
+                raise ValueError(f"Expected batch size 1, got {waveform.shape[0]}")
+            waveform = waveform[0]  # Remove batch dimension
+
+        if waveform.ndim == 2:
+            # [channels, samples] - convert to mono
+            if waveform.shape[0] > 1:
+                waveform = waveform.mean(axis=0)
+            else:
+                waveform = waveform[0]  # Single channel
+
+        if waveform.ndim != 1:
+            raise ValueError(f"Unexpected waveform shape: {waveform.shape}")
+
+        wav_numpy = waveform.astype(np.float32)
 
         # Ensure models are downloaded (lazy - only on first use)
         if not self.downloader.ensure_models_downloaded():
@@ -122,11 +152,6 @@ class VoiceFixerNode:
                 finally:
                     sys.stdout = old_stdout
 
-                # Now patch the instance to override analysis checkpoint path
-                # Store the correct paths for use during initialization
-                self._voicefixer_analysis_ckpt = analysis_ckpt
-                self._voicefixer_vocoder_ckpt = vocoder_ckpt
-
                 # Monkey-patch torch.load to intercept analysis checkpoint loading
                 original_torch_load = torch.load
 
@@ -150,31 +175,6 @@ class VoiceFixerNode:
             print("⚠️ CUDA requested but not available - falling back to CPU")
             use_cuda = False
 
-        # Convert ComfyUI tensor format to numpy
-        # ComfyUI uses [batch, samples] or [batch, channels, samples]
-        if audio.dim() == 2:
-            # [batch, samples] - mono batch
-            batch_size, num_samples = audio.shape
-            if batch_size != 1:
-                raise ValueError(f"Expected batch size 1, got {batch_size}")
-            wav_numpy = audio[0].cpu().numpy().astype(np.float32)
-        elif audio.dim() == 3:
-            # [batch, channels, samples] - multichannel
-            batch_size, channels, num_samples = audio.shape
-            if batch_size != 1:
-                raise ValueError(f"Expected batch size 1, got {batch_size}")
-            if channels > 1:
-                # Mix down to mono
-                wav_numpy = audio[0].mean(dim=0).cpu().numpy().astype(np.float32)
-            else:
-                wav_numpy = audio[0, 0].cpu().numpy().astype(np.float32)
-        else:
-            raise ValueError(f"Unexpected audio tensor shape: {audio.shape}")
-
-        # Resample to 44.1kHz if needed (VoiceFixer works at 44.1kHz internally)
-        # Note: Users should handle resampling separately if they need specific sample rates
-        # VoiceFixer internally resamples, but for best results use 44.1kHz input
-
         # Restore audio
         restored_wav = self.voicefixer.restore_inmem(
             wav_10k=wav_numpy,
@@ -183,11 +183,12 @@ class VoiceFixerNode:
             your_vocoder_func=None
         )
 
-        # Convert back to ComfyUI tensor format
-        restored_tensor = torch.from_numpy(restored_wav).unsqueeze(0).float()  # [1, samples]
+        # Convert back to ComfyUI AUDIO dict format
+        # VoiceFixer outputs mono, reshape to [batch=1, channels=1, samples]
+        restored_tensor = torch.from_numpy(restored_wav).unsqueeze(0).unsqueeze(0).float()
 
         # Generate info string
         mode_names = ["Original", "High-Freq Removal", "Train Mode"]
-        info = f"🎙️ VoiceFixer Mode {mode} ({mode_names[mode]}) | Input: {wav_numpy.shape[0]:,} samples | Output: {restored_wav.shape[0]:,} samples"
+        info = f"🎙️ VoiceFixer Mode {mode} ({mode_names[mode]}) | Input: {wav_numpy.shape[0]:,} samples @ {sample_rate}Hz | Output: {restored_wav.shape[0]:,} samples"
 
-        return (restored_tensor, info)
+        return ({"waveform": restored_tensor, "sample_rate": sample_rate}, info)
