@@ -280,13 +280,19 @@ class StreamingCoordinator:
             segment_counter = 0  # Global counter for unique segment indices
             for idx, subtitle, character_segments in data:
                 for segment_data in character_segments:
-                    # Handle both old 3-tuple and new 4-tuple formats
-                    if len(segment_data) >= 4:
+                    # Handle 3-tuple, 4-tuple, and 5-tuple formats
+                    segment_params = {}
+                    if len(segment_data) >= 5:
+                        # New format with parameters: (char, text, lang, original_char, params)
+                        character, text, language, original_character, segment_params = segment_data[:5]
+                    elif len(segment_data) >= 4:
+                        # Old format without parameters: (char, text, lang, original_char)
                         character, text, language, original_character = segment_data[:4]
                     else:
+                        # Oldest format: (char, text, lang)
                         character, text, language = segment_data
                         original_character = character
-                    
+
                     # CRITICAL FIX: For language-only tags like [de:], force use of narrator voice for proper cache behavior
                     # Language-only tags should always use the main narrator voice, not character aliases
                     main_narrator_voice = voice_refs.get('narrator')
@@ -297,7 +303,7 @@ class StreamingCoordinator:
                         voice_path = voice_refs.get(character, None)  # Use character-specific voice
                         if voice_path:
                             print(f"🎭 Character-specific tag using character voice: [{language}:{original_character}] → {character} voice")
-                    
+
                     segments.append(StreamingSegment(
                         index=segment_counter,  # Use unique segment counter instead of subtitle index
                         text=text,
@@ -310,7 +316,8 @@ class StreamingCoordinator:
                             'original_character': original_character,
                             'start_time': subtitle.start_time if hasattr(subtitle, 'start_time') else None,
                             'end_time': subtitle.end_time if hasattr(subtitle, 'end_time') else None,
-                            'duration': subtitle.duration if hasattr(subtitle, 'duration') else None
+                            'duration': subtitle.duration if hasattr(subtitle, 'duration') else None,
+                            'parameters': segment_params  # Store segment parameters in metadata
                         }
                     ))
                     segment_counter += 1  # Increment counter for next segment

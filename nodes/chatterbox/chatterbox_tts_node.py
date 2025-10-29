@@ -621,20 +621,22 @@ Back to the main narrator voice for the conclusion.""",
             character_parser.set_engine_aware_default_language(inputs["language"], "chatterbox")
             
             # Parse character segments from original text for all modes (with Italian prefix automatically applied)
-            character_segments_with_lang_and_explicit = character_parser.split_by_character_with_language_and_explicit_flag(inputs["text"])
-            
-            # Create backward-compatible segments (Italian prefix already applied in parser)
-            character_segments_with_lang = [(char, segment_text, lang) for char, segment_text, lang, explicit_lang in character_segments_with_lang_and_explicit]
+            # Parse using CharacterSegment objects to get parameters
+            character_segment_objects = character_parser.parse_text_segments(inputs["text"])
+
+            # Create backward-compatible segments from CharacterSegment objects (Italian prefix already applied in parser)
+            character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in character_segment_objects]
+            character_segments_with_lang_and_explicit = [(seg.character, seg.text, seg.language, seg.explicit_language) for seg in character_segment_objects]
             
             # Check if we have pause tags, character switching, or language switching
             has_pause_tags = pause_segments is not None
-            characters = list(set(char for char, _, _ in character_segments_with_lang))
-            languages = list(set(lang for _, _, lang in character_segments_with_lang))
+            characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+            languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             has_multiple_languages = len(languages) > 1
-            
+
             # Create backward-compatible character segments for existing logic
-            character_segments = [(char, segment_text) for char, segment_text, _ in character_segments_with_lang]
+            character_segments = [(char, segment_text) for char, segment_text, _, _ in character_segments_with_lang]
             
             if has_multiple_characters or has_multiple_languages:
                 # CHARACTER AND/OR LANGUAGE SWITCHING MODE
@@ -713,18 +715,18 @@ Back to the main narrator voice for the conclusion.""",
                 segment_mapping = {}  # Map streaming indices to original indices
                 streaming_idx = 0
                 
-                for original_idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+                for original_idx, (char, segment_text, lang, segment_params) in enumerate(character_segments_with_lang):
                     from utils.text.pause_processor import PauseTagProcessor
                     processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(segment_text, True)
-                    
+
                     if pause_segments is not None:
                         # Segment has pause tags - expand into multiple sub-segments
                         print(f"⏸️ Expanding segment {original_idx} with pause tags: {len(pause_segments)} parts")
                         sub_idx = 0
                         for segment_type, content in pause_segments:
                             if segment_type == 'text' and content.strip():
-                                # Text segment - add to streaming queue with integer index
-                                expanded_segments_with_lang.append((streaming_idx, char, content, lang))
+                                # Text segment - add to streaming queue with parameters
+                                expanded_segments_with_lang.append((streaming_idx, char, content, lang, segment_params))
                                 segment_mapping[streaming_idx] = f"{original_idx}_{sub_idx}"
                                 streaming_idx += 1
                                 sub_idx += 1
@@ -734,17 +736,17 @@ Back to the main narrator voice for the conclusion.""",
                                 pause_info[pause_key] = content  # pause duration
                                 sub_idx += 1
                     else:
-                        # No pause tags - add as single segment
-                        expanded_segments_with_lang.append((streaming_idx, char, segment_text, lang))
+                        # No pause tags - add as single segment with parameters
+                        expanded_segments_with_lang.append((streaming_idx, char, segment_text, lang, segment_params))
                         segment_mapping[streaming_idx] = original_idx
                         streaming_idx += 1
                 
                 # Group expanded segments by language with original order tracking
                 language_groups = {}
-                for idx, char, segment_text, lang in expanded_segments_with_lang:
+                for idx, char, segment_text, lang, segment_params in expanded_segments_with_lang:
                     if lang not in language_groups:
                         language_groups[lang] = []
-                    language_groups[lang].append((idx, char, segment_text, lang))  # Include original index
+                    language_groups[lang].append((idx, char, segment_text, lang, segment_params))  # Include parameters
                 
                 # Generate audio for each language group, tracking original positions
                 audio_segments_with_order = []  # Will store (original_index, audio_tensor)
@@ -772,7 +774,7 @@ Back to the main narrator voice for the conclusion.""",
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
                 
                 # Create processed text for timing display (character tags removed, Italian prefixes applied)
-                processed_text_segments = [segment_text for _, segment_text, _ in character_segments_with_lang]
+                processed_text_segments = [segment_text for _, segment_text, _, _ in character_segments_with_lang]
                 processed_text = ' '.join(processed_text_segments)
                 
                 # Combine all character segments with timing info
@@ -928,7 +930,7 @@ Back to the main narrator voice for the conclusion.""",
                         audio_segments.append(chunk_audio)
                     
                     # Create processed text for timing display (character tags removed, Italian prefixes applied)
-                    processed_text_segments = [segment_text for _, segment_text, _ in character_segments_with_lang]
+                    processed_text_segments = [segment_text for _, segment_text, _, _ in character_segments_with_lang]
                     processed_text = ' '.join(processed_text_segments)
                     
                     # Combine audio segments with timing info
@@ -1133,15 +1135,15 @@ Back to the main narrator voice for the conclusion.""",
         audio_segments_with_order = []
         current_loaded_language = None
         
-        for original_idx, (char, segment_text, lang) in enumerate(character_segments_with_lang):
+        for original_idx, (char, segment_text, lang, segment_params) in enumerate(character_segments_with_lang):
             # Load TTS model for this language if not already loaded
             from utils.models.language_mapper import get_model_for_language
             required_model = get_model_for_language("chatterbox", lang, "English")
-            
+
             if current_loaded_language != required_model:
                 # Use universal smart model loader
                 from utils.models.smart_loader import smart_model_loader
-                
+
                 self.tts_model, was_cached = smart_model_loader.load_model_if_needed(
                     engine_type="chatterbox",
                     model_name=required_model,
@@ -1149,27 +1151,33 @@ Back to the main narrator voice for the conclusion.""",
                     device=inputs["device"],
                     load_callback=lambda device, model: self.model_manager.load_tts_model(device, model)
                 )
-                
+
                 if not was_cached:
                     self.device = inputs["device"]  # Update device tracking
-                    
+
                 current_loaded_language = required_model
-            
+
+            # Apply per-segment parameters
+            current_config = dict(inputs)
+            if segment_params:
+                from utils.text.segment_parameters import apply_segment_parameters
+                current_config = apply_segment_parameters(current_config, segment_params, "chatterbox")
+
             # Process each segment individually
             char_audio_prompt = voice_refs.get(char, voice_refs.get("narrator", "none"))
-            
+
             # Generate stable audio component for cache consistency
             stable_audio_component = self._generate_stable_audio_component(inputs.get("reference_audio"), char_audio_prompt)
-            
+
             segment_audio = self._generate_tts_with_pause_tags(
-                segment_text, char_audio_prompt, inputs["exaggeration"],
-                inputs["temperature"], inputs["cfg_weight"], lang,
-                True, character=char, seed=inputs["seed"],
-                enable_cache=inputs.get("enable_audio_cache", True),
-                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                segment_text, char_audio_prompt, current_config.get("exaggeration", inputs["exaggeration"]),
+                current_config.get("temperature", inputs["temperature"]), current_config.get("cfg_weight", inputs["cfg_weight"]), lang,
+                True, character=char, seed=current_config.get("seed", inputs["seed"]),
+                enable_cache=current_config.get("enable_audio_cache", inputs.get("enable_audio_cache", True)),
+                crash_protection_template=current_config.get("crash_protection_template", inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,")),
                 stable_audio_component=stable_audio_component
             )
-            
+
             audio_segments_with_order.append((original_idx, segment_audio))
             # Use the original better format with proper emoji based on character type
             if char == "narrator":

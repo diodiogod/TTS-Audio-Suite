@@ -38,6 +38,7 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.text.pause_processor import PauseTagProcessor
+from utils.text.segment_parameters import apply_segment_parameters
 # Lazy imports for modular components (loaded when needed to avoid torch import issues during node registration)
 import comfy.model_management as model_management
 
@@ -740,18 +741,24 @@ The audio will match these exact timings.""",
                             # Handle complex subtitles with character switching
                             # Need to get original character info before alias resolution
                             detailed_segments = character_parser.parse_text_segments(subtitle.text)
-                            
-                            # Build segment data with original character info
+
+                            # Build segment data with original character info and parameters
                             segment_data = []
                             for seg_idx, (char, text, seg_lang) in enumerate(character_segments_with_lang):
-                                # Get original character from detailed segments if available
-                                original_char = detailed_segments[seg_idx].original_character if seg_idx < len(detailed_segments) else char
-                                segment_data.append((char, text, seg_lang, original_char or char))
-                            
+                                # Get original character and parameters from detailed segments if available
+                                if seg_idx < len(detailed_segments):
+                                    segment_obj = detailed_segments[seg_idx]
+                                    original_char = segment_obj.original_character or char
+                                    segment_params = segment_obj.parameters if segment_obj.parameters else {}
+                                else:
+                                    original_char = char
+                                    segment_params = {}
+                                segment_data.append((char, text, seg_lang, original_char, segment_params))
+
                             srt_segments_data.append((i, subtitle, segment_data))
                         else:
                             # Simple subtitle - single narrator
-                            srt_segments_data.append((i, subtitle, [('narrator', subtitle.text, lang_code, 'narrator')]))
+                            srt_segments_data.append((i, subtitle, [('narrator', subtitle.text, lang_code, 'narrator', {})]))
                 
                 # Build voice references for characters
                 # CRITICAL FIX: Use audio_prompt (processed result) instead of audio_prompt_path (input parameter)
