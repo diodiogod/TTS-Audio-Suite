@@ -399,11 +399,11 @@ character_parser = CharacterParser()
 def parse_character_text(text: str, available_characters: Optional[List[str]] = None) -> List[Tuple[str, str]]:
     """
     Convenience function to parse character text.
-    
+
     Args:
         text: Input text with [Character] tags
         available_characters: Optional list of available character voices
-        
+
     Returns:
         List of (character_name, text_content) tuples
     """
@@ -420,5 +420,9 @@ def parse_character_text(text: str, available_characters: Optional[List[str]] = 
                 character_parser.set_available_characters(list(auto_chars))
         except Exception as e:
             print(f"⚠️ Character Parser: Auto-discovery failed: {e}")
-    
-    return character_parser.split_by_character(text)
+
+    # Parse segments and filter out parameter-only tags (which have empty text)
+    segments = character_parser.parse_text_segments(text)
+    result = [(seg.character, seg.text) for seg in segments if seg.text.strip()]
+
+    return result

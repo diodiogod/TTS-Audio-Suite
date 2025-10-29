@@ -699,7 +699,9 @@ The audio will match these exact timings.""",
                 segment_objects = character_parser.parse_text_segments(subtitle.text)
 
                 # Convert to 4-tuple format with parameters
-                character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
+                # Use original_character (before alias resolution) to preserve the actual character from the tag
+                # This ensures Alice stays as Alice for voice lookup, not converted to narrator
+                character_segments_with_lang = [(seg.original_character or seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
 
                 # Check if we have character switching, language switching, or parameter changes
                 characters = list(set(char for char, _, _, _ in character_segments_with_lang))
