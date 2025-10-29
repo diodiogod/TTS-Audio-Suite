@@ -701,16 +701,25 @@ The audio will match these exact timings.""",
                 # Convert to 4-tuple format with parameters
                 character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
 
-                # Check if we have character switching or language switching
+                # Check if we have character switching, language switching, or parameter changes
                 characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                 languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
+                # Check if parameters differ across segments (indicates parameter switching)
+                has_parameter_changes = len(set(str(params) for _, _, _, params in character_segments_with_lang)) > 1
+
                 has_multiple_characters_in_subtitle = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
                 has_multiple_languages_in_subtitle = len(languages) > 1
 
-                if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle:
+                if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle or has_parameter_changes:
                     # Complex subtitle - group by dominant language or mark as multilingual
                     primary_lang = languages[0] if languages else 'en'
-                    subtitle_type = 'multilingual' if has_multiple_languages_in_subtitle else 'multicharacter'
+                    if has_parameter_changes:
+                        # Parameter changes require segment-by-segment processing
+                        subtitle_type = 'parameter_switching'
+                    elif has_multiple_languages_in_subtitle:
+                        subtitle_type = 'multilingual'
+                    else:
+                        subtitle_type = 'multicharacter'
                     all_subtitle_segments.append((i, subtitle, subtitle_type, primary_lang, character_segments_with_lang))
 
                     # Add to language groups for smart processing
@@ -1085,7 +1094,52 @@ The audio will match these exact timings.""",
                 # Check for interruption
                 self.check_interruption(f"SRT generation segment {i+1}/{len(subtitles)} (Seq {subtitle.sequence})")
 
-                if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
+                if subtitle_type == 'parameter_switching':
+                    # Process each segment individually with its own parameters
+                    print(f"🔀 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Per-segment parameter switching")
+
+                    segment_audio_parts = []
+                    for seg_idx, (char, text, lang, seg_params) in enumerate(character_segments_with_lang):
+                        # Apply segment parameters
+                        current_temp = temperature
+                        current_exag = exaggeration
+                        current_cfg = cfg_weight
+                        current_seed = seed
+
+                        if seg_params:
+                            segment_config = apply_segment_parameters(
+                                {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
+                                seg_params,
+                                "chatterbox"
+                            )
+                            current_temp = segment_config.get('temperature', temperature)
+                            current_exag = segment_config.get('exaggeration', exaggeration)
+                            current_cfg = segment_config.get('cfg_weight', cfg_weight)
+                            current_seed = segment_config.get('seed', seed)
+                            print(f"  📊 Segment {seg_idx+1}: Applying parameters {seg_params}")
+
+                        # Pad short text with crash protection
+                        processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+
+                        # Generate audio for this segment with its parameters
+                        segment_wav = self._generate_tts_with_pause_tags(
+                            processed_text, audio_prompt, current_exag, current_temp, current_cfg, lang,
+                            True, character=char, seed=current_seed, enable_cache=enable_audio_cache,
+                            crash_protection_template=crash_protection_template,
+                            stable_audio_component=stable_audio_prompt_component
+                        )
+                        segment_audio_parts.append(segment_wav)
+
+                    # Concatenate all segment audio
+                    if segment_audio_parts:
+                        import torch
+                        wav = torch.cat(segment_audio_parts, dim=-1)
+                    else:
+                        wav = torch.zeros(1, 1000)
+
+                    natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+
+                elif subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
                     # Use modular multilingual engine for character/language switching
                     characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                     languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
@@ -1111,10 +1165,10 @@ The audio will match these exact timings.""",
                     current_seed = seed
 
                     # Check if any segment has parameters and apply them
-                    segment_has_params = any(seg_params for _, _, _, _, seg_params in character_segments_with_lang)
+                    segment_has_params = any(seg_params for _, _, _, seg_params in character_segments_with_lang)
                     if segment_has_params:
                         # Extract first segment with parameters (will be applied to entire subtitle for now)
-                        for _, _, _, _, seg_params in character_segments_with_lang:
+                        for _, _, _, seg_params in character_segments_with_lang:
                             if seg_params:
                                 segment_config = apply_segment_parameters(
                                     {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
