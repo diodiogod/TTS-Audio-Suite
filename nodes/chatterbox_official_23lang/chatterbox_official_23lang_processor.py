@@ -921,18 +921,18 @@ Back to the main narrator voice for the conclusion.""",
             character_segment_objects = character_parser.parse_text_segments(inputs["text"])
 
             # Create backward-compatible segments from CharacterSegment objects (Italian prefix already applied in parser)
-            character_segments_with_lang = [(seg.character, seg.text, seg.language) for seg in character_segment_objects]
+            character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in character_segment_objects]
             character_segments_with_lang_and_explicit = [(seg.character, seg.text, seg.language, seg.explicit_language) for seg in character_segment_objects]
             
             # Check if we have pause tags, character switching, or language switching
             has_pause_tags = pause_segments is not None
-            characters = list(set(char for char, _, _ in character_segments_with_lang))
-            languages = list(set(lang for _, _, lang in character_segments_with_lang))
+            characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+            languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             has_multiple_languages = len(languages) > 1
-            
+
             # Create backward-compatible character segments for existing logic
-            character_segments = [(char, segment_text) for char, segment_text, _ in character_segments_with_lang]
+            character_segments = [(char, segment_text) for char, segment_text, _, _ in character_segments_with_lang]
             
             if has_multiple_characters or has_multiple_languages:
                 # CHARACTER AND/OR LANGUAGE SWITCHING MODE
