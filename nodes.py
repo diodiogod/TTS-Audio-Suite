@@ -242,6 +242,14 @@ except Exception as e:
     MERGE_AUDIO_AVAILABLE = False
 
 try:
+    voice_fixer_module = load_node_module("voice_fixer_node", "audio/voice_fixer_node.py")
+    VoiceFixerNode = voice_fixer_module.VoiceFixerNode
+    VOICE_FIXER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Voice Fixer Audio Restoration failed: {e}")
+    VOICE_FIXER_AVAILABLE = False
+
+try:
     load_rvc_model_module = load_node_module("load_rvc_model_node", "models/load_rvc_model_node.py")
     LoadRVCModelNode = load_rvc_model_module.LoadRVCModelNode
     LOAD_RVC_MODEL_AVAILABLE = True
@@ -459,6 +467,10 @@ if VOCAL_REMOVAL_AVAILABLE:
 if MERGE_AUDIO_AVAILABLE:
     NODE_CLASS_MAPPINGS["MergeAudioNode"] = MergeAudioNode
     NODE_DISPLAY_NAME_MAPPINGS["MergeAudioNode"] = "🥪 Merge Audio"
+
+if VOICE_FIXER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoiceFixerNode"] = VoiceFixerNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoiceFixerNode"] = "🎙️ Voice Fixer"
 
 if LOAD_RVC_MODEL_AVAILABLE:
     NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode
