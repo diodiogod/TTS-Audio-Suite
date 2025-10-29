@@ -194,12 +194,21 @@ class SegmentProcessor:
             
             # Detect language-only tags: if the original tag had empty character part and raw_character
             # was defaulted to narrator, skip alias resolution to preserve narrator voice priority
-            is_language_only_tag = (raw_character == self.default_character and 
-                                   ':' in raw_tag_content and 
+            is_language_only_tag = (raw_character == self.default_character and
+                                   ':' in raw_tag_content and
                                    raw_tag_content.split(':', 1)[1].strip() == '')
-            
+
+            # Also detect parameter-only tags: if raw_character is narrator and we have parameters
+            # but no explicit language specification, it's a parameter-only tag like [seed:4|exag:1.0]
+            is_parameter_only_tag = (raw_character == self.default_character and
+                                    segment_parameters and
+                                    explicit_language is None)
+
+            # Skip narrator alias resolution for language-only or parameter-only tags
+            skip_alias = is_language_only_tag or is_parameter_only_tag
+
             current_character = character_parser.normalize_character_name(
-                raw_character, skip_narrator_alias=is_language_only_tag
+                raw_character, skip_narrator_alias=skip_alias
             )
             
             # Update emotion state if provided in tag
