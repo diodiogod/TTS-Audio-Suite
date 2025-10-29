@@ -113,6 +113,15 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
                     "device": kwargs.get("device", "auto"),
                     "reference_audio": kwargs.get("reference_audio", None)
                 }
+
+                # Apply segment-level parameters if available
+                segment_params = segment.metadata.get('parameters', {}) if segment.metadata else {}
+                if segment_params:
+                    # Import parameter application function
+                    from utils.text.segment_parameters import apply_segment_parameters
+                    segment_config = apply_segment_parameters(inputs, segment_params, "chatterbox_official_23lang")
+                    inputs.update(segment_config)
+                    print(f"  📊 Streaming: Applying segment parameters: {segment_params}")
                 
                 # Call exactly like the old working system
                 audio = self.node._process_single_segment_for_streaming(

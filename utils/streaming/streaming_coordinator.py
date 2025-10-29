@@ -252,15 +252,26 @@ class StreamingCoordinator:
         
         if node_type == 'tts':
             # Convert TTS text chunks to segments
-            # Data is list of (idx, character, text, language) tuples
-            for idx, character, text, language in data:
+            # Data is list of (idx, character, text, language) or (idx, character, text, language, params) tuples
+            for data_tuple in data:
+                if len(data_tuple) >= 5:
+                    idx, character, text, language, segment_params = data_tuple[:5]
+                else:
+                    idx, character, text, language = data_tuple[:4]
+                    segment_params = {}
+
+                metadata = {
+                    'source': 'tts',
+                    'parameters': segment_params  # Store segment parameters in metadata
+                }
+
                 segments.append(StreamingSegment(
                     index=idx,
                     text=text,
                     character=character,
                     language=language,
                     voice_path=voice_refs.get(character, None),  # Use None for default voice
-                    metadata={'source': 'tts'}
+                    metadata=metadata
                 ))
                 
         elif node_type == 'srt':
