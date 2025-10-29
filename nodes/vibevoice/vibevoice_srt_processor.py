@@ -251,12 +251,19 @@ class VibeVoiceSRTProcessor:
             multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
 
             if multi_speaker_mode == "Native Multi-Speaker":
-                # Check if we can use native mode (max 4 characters) and no pause tags
+                # Check if we can use native mode (max 4 characters, no pause tags, no parameter changes)
                 unique_chars = list(set([seg.character for seg in segment_objects]))
                 full_text = " ".join([seg.text for seg in segment_objects])
                 has_pause_tags = PauseTagProcessor.has_pause_tags(full_text)
 
-                if len(unique_chars) <= 4 and not has_pause_tags:
+                # Check if parameters change between segments
+                has_param_changes = False
+                for i in range(1, len(segment_objects)):
+                    if segment_objects[i].parameters != segment_objects[i-1].parameters:
+                        has_param_changes = True
+                        break
+
+                if len(unique_chars) <= 4 and not has_pause_tags and not has_param_changes:
                     print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
                     # Generate single multi-speaker segment with parameters support
                     config_with_seed = self.config.copy()
@@ -277,7 +284,14 @@ class VibeVoiceSRTProcessor:
                     if wav.dim() == 3:
                         wav = wav.squeeze(0)
                 else:
-                    print(f"🔄 VibeVoice: Falling back to custom mode (too many speakers or pause tags)")
+                    reasons = []
+                    if len(unique_chars) > 4:
+                        reasons.append("too many speakers")
+                    if has_pause_tags:
+                        reasons.append("pause tags")
+                    if has_param_changes:
+                        reasons.append("parameter changes")
+                    print(f"🔄 VibeVoice: Falling back to custom mode ({', '.join(reasons)})")
                     # Fall back to custom character switching with parameter support
                     wav = self._process_custom_character_switching_subtitle_with_params(
                         segment_objects, complete_voice_refs, seed
