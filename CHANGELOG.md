@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.26] - 2025-10-28
+
+### Added
+
+- Add interrupt handling for all TTS engines
+- All TTS engines now support operation cancellation:
+- Users can stop SRT generation at any point
+- Interruption checks at segment processing boundaries
+- Character switching and chunking operations are interruptible
+- Added documentation for future engine implementations
+
+### Fixed
+
+- Graceful error handling with informative messages
 ## [4.11.25] - 2025-10-27
 
 ### Changed
