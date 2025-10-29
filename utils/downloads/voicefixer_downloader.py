@@ -51,32 +51,34 @@ class VoiceFixerDownloader:
 
         for attempt in range(max_retries):
             try:
-                # Check if we have a partial download
-                resume_header = {}
-                if os.path.exists(temp_path):
-                    resume_header = {'Range': f'bytes={os.path.getsize(temp_path)}-'}
-                    print(f"📥 Resuming {os.path.basename(target_path)} from {os.path.getsize(temp_path)} bytes...")
+                # Start fresh if previous attempt was incomplete
+                if attempt > 0 and os.path.exists(temp_path):
+                    os.remove(temp_path)
 
                 # Download with streaming
-                response = requests.get(url, stream=True, headers=resume_header, timeout=30, verify=False)
+                print(f"📥 Downloading {description}...")
+                response = requests.get(url, stream=True, timeout=60, verify=False)
                 response.raise_for_status()
 
                 total_size = int(response.headers.get('content-length', 0))
-                downloaded_size = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
-
-                print(f"📥 Downloading {description}...")
+                downloaded_size = 0
 
                 # Write to temp file
-                with open(temp_path, 'ab') as f:
+                with open(temp_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
                             downloaded_size += len(chunk)
                             if total_size > 0:
-                                progress = (downloaded_size / (total_size + os.path.getsize(temp_path) if os.path.exists(temp_path) else total_size)) * 100
+                                progress = (downloaded_size / total_size) * 100
                                 print(f"\r📥 {os.path.basename(target_path)}: {progress:.1f}%", end='', flush=True)
 
                 print()  # New line after progress
+
+                # Verify download completed
+                temp_size = os.path.getsize(temp_path)
+                if total_size > 0 and temp_size < total_size:
+                    raise RuntimeError(f"Incomplete download: got {temp_size} bytes, expected {total_size}")
 
                 # Move temp file to final location
                 if os.path.exists(target_path):
