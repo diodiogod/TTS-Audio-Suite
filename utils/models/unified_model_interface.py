@@ -623,7 +623,7 @@ def register_vibevoice_factory():
         # Ensure accelerate is imported before VibeVoice engine
         try:
             import accelerate
-            print(f"🔧 Unified Interface: accelerate {accelerate.__version__} available for VibeVoice")
+            # (accelerate version check removed - only show on errors)
         except ImportError as e:
             print(f"⚠️ Unified Interface: accelerate not available: {e}")
 

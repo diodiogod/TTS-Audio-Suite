@@ -339,18 +339,6 @@ class VibeVoiceEngineAdapter:
         
         # For single segment, format as Speaker 1 (VibeVoice uses 1-based indexing)
         formatted_text = f"Speaker 1: {text}"
-        print(f"🎭 SINGLE SEGMENT - Formatted text for VibeVoice:")
-        print(f"📝 {formatted_text}")
-        if isinstance(voice_ref, dict):
-            keys = list(voice_ref.keys())
-            # Check if this looks like a fallback voice (has audio_path or character_name from main voice)
-            fallback_hint = ""
-            if 'character_name' in voice_ref and voice_ref['character_name'] != character:
-                fallback_hint = f" (using {voice_ref['character_name']} voice as fallback)"
-            voice_info = f"dict({keys}){fallback_hint}"
-        else:
-            voice_info = str(voice_ref)[:50]
-        print(f"🎤 Character: '{character}', Voice ref: {voice_info} {'✅' if voice_ref else '❌'}")
         
         # Extract cache parameters
         enable_cache = params.get('enable_cache', True)

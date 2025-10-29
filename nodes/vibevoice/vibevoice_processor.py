@@ -290,8 +290,17 @@ class VibeVoiceProcessor:
         """
         # Apply chunking if enabled and text is long
         if enable_chunking and len(combined_text) > max_chars:
+            voice_ref = voice_mapping.get(character)
+
+            # Build voice info for display
+            if isinstance(voice_ref, dict):
+                keys = list(voice_ref.keys())
+                voice_info = f"dict({keys})"
+            else:
+                voice_info = "None (zero-shot)"
+
             chunks = self.chunker.split_into_chunks(combined_text, max_chars)
-            print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks")
+            print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks [Voice: {voice_info}]")
             
             for chunk_idx, chunk in enumerate(chunks):
                 # Check for interruption during chunk processing
@@ -311,12 +320,19 @@ class VibeVoiceProcessor:
                 audio_segments.append(audio_dict)
         else:
             # Generate without chunking - the entire combined block at once
-            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{character}':")
+            voice_ref = voice_mapping.get(character)
+
+            # Build voice info for display
+            if isinstance(voice_ref, dict):
+                keys = list(voice_ref.keys())
+                voice_info = f"dict({keys})"
+            else:
+                voice_info = "None (zero-shot)"
+
+            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{character}' [Voice: {voice_info}]:")
             print("="*60)
             print(combined_text)
             print("="*60)
-            
-            voice_ref = voice_mapping.get(character)
             audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
                 combined_text, voice_ref, params, True, character
             )

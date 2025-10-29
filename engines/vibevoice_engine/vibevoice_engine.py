@@ -275,10 +275,10 @@ class VibeVoiceEngine:
                     model_kwargs["device_map"] = {"": 0}  # Put everything on GPU 0
                 else:
                     model_kwargs["device_map"] = {"": "cpu"}
-                print(f"🔧 VibeVoice: Using device_map for quantization: {model_kwargs['device_map']}")
+                # print(f"🔧 VibeVoice: Using device_map for quantization: {model_kwargs['device_map']}")
             else:
                 model_kwargs["device_map"] = device if device != "auto" else None
-                print(f"🔧 VibeVoice: Using device_map: {model_kwargs.get('device_map', 'None')}")
+                # print(f"🔧 VibeVoice: Using device_map: {model_kwargs.get('device_map', 'None')}")
             
             # Add attention implementation (use SDPA for SageAttention, patch later)
             if attn_implementation_for_load != "auto":
@@ -449,14 +449,13 @@ class VibeVoiceEngine:
 
         # print(f"🔍 Looking for tokenizer from {qwen_repo} using unified pattern...")  # Verbose logging
 
-        # Check our unified TTS folder first
-        tokenizer_unified_path = os.path.join(self.downloader.downloader.tts_dir, "VibeVoice", "tokenizer", qwen_repo.replace("/", "_"))
+        # Check our unified TTS folder first (use same directory structure as model storage)
+        tokenizer_unified_path = os.path.join(self.downloader.downloader.tts_dir, "vibevoice", qwen_repo.replace("/", "_"), "tokenizer")
         tokenizer_file = os.path.join(tokenizer_unified_path, "tokenizer.json")
 
         tokenizer_source = None
 
         if os.path.exists(tokenizer_file):
-            print(f"📁 Using unified folder tokenizer: {tokenizer_file}")
             tokenizer_source = tokenizer_unified_path
         else:
             # Check HuggingFace cache
@@ -476,19 +475,24 @@ class VibeVoiceEngine:
                     {"remote": "tokenizer_config.json", "local": "tokenizer_config.json"},
                 ]
 
-                download_path = self.downloader.download_huggingface_model(
-                    repo_id=qwen_repo,
-                    model_name=qwen_repo.replace("/", "_"),
-                    files=tokenizer_files,
-                    engine_type="VibeVoice",
-                    subfolder="tokenizer"
-                )
+                # Download directly to the unified path instead of using downloader subfolder
+                try:
+                    from huggingface_hub import hf_hub_download
+                    for file_info in tokenizer_files:
+                        hf_hub_download(
+                            repo_id=qwen_repo,
+                            filename=file_info["remote"],
+                            local_dir=tokenizer_unified_path,
+                            local_dir_use_symlinks=False
+                        )
 
-                if download_path and os.path.exists(os.path.join(download_path, "tokenizer.json")):
-                    print(f"✅ Downloaded tokenizer to: {download_path}")
-                    tokenizer_source = download_path
-                else:
-                    raise RuntimeError(f"Failed to download tokenizer from {qwen_repo}")
+                    if os.path.exists(os.path.join(tokenizer_unified_path, "tokenizer.json")):
+                        print(f"✅ Downloaded tokenizer to: {tokenizer_unified_path}")
+                        tokenizer_source = tokenizer_unified_path
+                    else:
+                        raise RuntimeError(f"Failed to download tokenizer files")
+                except Exception as download_error:
+                    raise RuntimeError(f"Failed to download tokenizer from {qwen_repo}: {download_error}")
 
         # Check if we're using our unified TTS folder (not HF cache)
         is_unified_tokenizer = tokenizer_source and tokenizer_unified_path in tokenizer_source

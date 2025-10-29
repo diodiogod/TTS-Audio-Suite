@@ -224,11 +224,7 @@ class LanguageResolver:
             # Normalize alias language
             if resolved_language and resolved_language.startswith("local:"):
                 resolved_language = resolved_language[6:]
-            # Only log once per character
-            if character_lower not in logged_characters:
-                print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
-                logged_characters.add(character_lower)
-        
+
         # Priority 2: Check voice discovery system for language defaults
         if not resolved_language:
             try:
@@ -239,12 +235,14 @@ class LanguageResolver:
                     # Normalize alias language from voice discovery
                     if resolved_language and resolved_language.startswith("local:"):
                         resolved_language = resolved_language[6:]
-                    # Only log once per character
-                    if character_lower not in logged_characters:
-                        print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
-                        logged_characters.add(character_lower)
             except Exception:
                 pass  # Silently handle voice discovery errors
+
+        # Log once per character only if language was explicitly resolved (not default)
+        if resolved_language and resolved_language != self.default_language:
+            if character_lower not in logged_characters:
+                print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
+                logged_characters.add(character_lower)
         
         # Priority 3: Fall back to global default
         if not resolved_language:
