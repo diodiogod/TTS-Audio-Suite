@@ -41,6 +41,7 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_characters, get_character_mapping
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.character_parser import parse_character_text, character_parser
+from utils.text.segment_parameters import apply_segment_parameters
 import comfy.model_management as model_management
 
 

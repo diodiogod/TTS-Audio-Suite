@@ -19,6 +19,8 @@ project_root = os.path.dirname(nodes_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from utils.text.segment_parameters import apply_segment_parameters
+
 
 class ChatterboxOfficial23LangSRTProcessor:
     """
@@ -173,12 +175,46 @@ class ChatterboxOfficial23LangSRTProcessor:
                         character_parser.set_available_characters(list(all_characters))
                         character_parser.set_engine_aware_default_language(self.config.get("language", "English"), "chatterbox")
                         
-                        # Parse character segments with language support
-                        char_segments = character_parser.split_by_character_with_language(text_content)
-                        
+                        # Parse character segments with language support and parameters
+                        char_segment_objects = character_parser.parse_text_segments(text_content)
+
                         # Generate audio for each character segment
                         segment_audios = []
-                        for char_name, char_text, char_language in char_segments:
+                        for char_seg in char_segment_objects:
+                            char_name = char_seg.character
+                            char_text = char_seg.text
+                            char_language = char_seg.language
+                            segment_params = char_seg.parameters if char_seg.parameters else {}
+
+                            # Apply segment parameters if provided
+                            seg_exaggeration = current_exaggeration
+                            seg_temperature = current_temperature
+                            seg_cfg_weight = current_cfg_weight
+                            seg_repetition_penalty = current_repetition_penalty
+                            seg_min_p = current_min_p
+                            seg_top_p = current_top_p
+                            seg_seed = seed
+
+                            if segment_params:
+                                base_config = {
+                                    'exaggeration': current_exaggeration,
+                                    'temperature': current_temperature,
+                                    'cfg_weight': current_cfg_weight,
+                                    'repetition_penalty': current_repetition_penalty,
+                                    'min_p': current_min_p,
+                                    'top_p': current_top_p,
+                                    'seed': seed
+                                }
+                                segment_config = apply_segment_parameters(base_config, segment_params, "chatterbox_official_23lang")
+                                seg_exaggeration = segment_config.get('exaggeration', current_exaggeration)
+                                seg_temperature = segment_config.get('temperature', current_temperature)
+                                seg_cfg_weight = segment_config.get('cfg_weight', current_cfg_weight)
+                                seg_repetition_penalty = segment_config.get('repetition_penalty', current_repetition_penalty)
+                                seg_min_p = segment_config.get('min_p', current_min_p)
+                                seg_top_p = segment_config.get('top_p', current_top_p)
+                                seg_seed = segment_config.get('seed', seed)
+                                print(f"  📊 Segment: Character '{char_name}' with params {segment_params}")
+
                             # Check for interruption during character segment processing
                             if model_management.interrupt_processing:
                                 raise InterruptedError(f"ChatterBox 23-Lang character segment ({char_name}) interrupted by user")
@@ -209,13 +245,13 @@ class ChatterboxOfficial23LangSRTProcessor:
                                     text=char_text,
                                     language=char_language,  # Use language from character parser
                                     device=current_device,
-                                    exaggeration=current_exaggeration,
-                                    temperature=current_temperature,
-                                    cfg_weight=current_cfg_weight,
-                                    repetition_penalty=current_repetition_penalty,
-                                    min_p=current_min_p,
-                                    top_p=current_top_p,
-                                    seed=seed,
+                                    exaggeration=seg_exaggeration,
+                                    temperature=seg_temperature,
+                                    cfg_weight=seg_cfg_weight,
+                                    repetition_penalty=seg_repetition_penalty,
+                                    min_p=seg_min_p,
+                                    top_p=seg_top_p,
+                                    seed=seg_seed,
                                     reference_audio=None,
                                     audio_prompt_path=char_voice_path,
                                     enable_audio_cache=True,
@@ -229,13 +265,13 @@ class ChatterboxOfficial23LangSRTProcessor:
                                         text=text_segment,
                                         language=char_language,  # Use language from character parser
                                         device=current_device,
-                                        exaggeration=current_exaggeration,
-                                        temperature=current_temperature,
-                                        cfg_weight=current_cfg_weight,
-                                        repetition_penalty=current_repetition_penalty,
-                                        min_p=current_min_p,
-                                        top_p=current_top_p,
-                                        seed=seed,
+                                        exaggeration=seg_exaggeration,
+                                        temperature=seg_temperature,
+                                        cfg_weight=seg_cfg_weight,
+                                        repetition_penalty=seg_repetition_penalty,
+                                        min_p=seg_min_p,
+                                        top_p=seg_top_p,
+                                        seed=seg_seed,
                                         reference_audio=None,
                                         audio_prompt_path=char_voice_path,  # Maintain character's voice
                                         enable_audio_cache=True,
