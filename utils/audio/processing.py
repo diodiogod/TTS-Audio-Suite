@@ -460,23 +460,29 @@ class AudioProcessingUtils:
         return audio
     
     @staticmethod
-    def detect_silence(audio: torch.Tensor, threshold: float = 0.01, 
+    def detect_silence(audio: torch.Tensor, threshold: float = 0.01,
                       min_duration: float = 0.1, sample_rate: int = 22050) -> List[Tuple[float, float]]:
         """
-        Detect silent regions in audio.
-        
+        Detect silent regions in audio. Handles 1D to 4D tensors without quality loss.
+
         Args:
-            audio: Input audio tensor
+            audio: Input audio tensor (supports 1D to 4D shapes)
             threshold: Amplitude threshold for silence detection
             min_duration: Minimum duration for a silence region
             sample_rate: Sample rate
-            
+
         Returns:
             List of (start_time, end_time) tuples for silent regions
         """
-        # Convert to mono if stereo
-        if audio.dim() == 2:
-            audio = torch.mean(audio, dim=0)
+        # Flatten to 1D while preserving sample values
+        # Remove batch and channel dimensions, keep only sample data
+        while audio.dim() > 1:
+            if audio.shape[0] == 1:
+                # Remove batch dimension if it's 1
+                audio = audio.squeeze(0)
+            else:
+                # Multiple channels/batches: average along first dimension to convert to mono
+                audio = torch.mean(audio, dim=0)
         
         # Find samples below threshold
         silent_mask = torch.abs(audio) < threshold

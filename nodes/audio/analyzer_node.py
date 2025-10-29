@@ -112,8 +112,14 @@ class AudioAnalyzerNode:
     def __del__(self):
         self.cleanup_temp_files()
     
-    def _extract_audio_tensor(self, audio_input: Union[Dict, torch.Tensor]) -> Tuple[torch.Tensor, int]:
-        """Extract audio tensor and sample rate from input."""
+    def _extract_audio_tensor(self, audio_input: Union[Dict, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, int]:
+        """
+        Extract audio tensor and sample rate from input.
+        Returns BOTH original audio and mono version for analysis.
+
+        Returns:
+            Tuple of (original_audio_tensor, mono_audio_for_analysis, sample_rate)
+        """
         if isinstance(audio_input, dict):
             if 'waveform' in audio_input:
                 audio_tensor = audio_input['waveform']
@@ -125,22 +131,25 @@ class AudioAnalyzerNode:
             sample_rate = 24000  # Default sample rate (matches TTS engines)
         else:
             raise ValueError("Invalid audio input type. Expected dict or torch.Tensor.")
-        
-        # Normalize audio tensor
-        if audio_tensor.dim() == 3:
-            audio_tensor = audio_tensor.squeeze(0)  # Remove batch dimension
-        
-        if audio_tensor.dim() == 2 and audio_tensor.shape[0] > 1:
-            audio_tensor = torch.mean(audio_tensor, dim=0, keepdim=True)  # Convert to mono
-        
-        if audio_tensor.dim() == 2:
-            audio_tensor = audio_tensor.squeeze(0)  # Remove channel dimension if mono
-        
-        # Ensure consistent 1D tensor format
-        if audio_tensor.dim() != 1:
-            raise ValueError(f"Expected 1D audio tensor after processing, got {audio_tensor.dim()}D")
-        
-        return audio_tensor, sample_rate
+
+        # Keep original for segmentation output (preserves stereo if input was stereo)
+        original_audio = audio_tensor
+
+        # Create mono version for analysis (graphs, regions, etc.)
+        mono_audio = audio_tensor.clone()
+
+        # Flatten to mono while preserving samples
+        while mono_audio.dim() > 1:
+            if mono_audio.shape[0] == 1:
+                mono_audio = mono_audio.squeeze(0)
+            else:
+                # Multiple channels: average to mono for analysis
+                mono_audio = torch.mean(mono_audio, dim=0)
+
+        if mono_audio.dim() < 1 or mono_audio.dim() > 4:
+            raise ValueError(f"Unsupported tensor shape: {audio_tensor.shape}. Expected 1D to 4D tensor.")
+
+        return original_audio, mono_audio, sample_rate
     
     def _parse_manual_regions(self, manual_regions: str, labels: str = "") -> List[TimingRegion]:
         """Parse manual timing regions from multiline string input."""
@@ -425,11 +434,11 @@ class AudioAnalyzerNode:
             # Handle audio input - either from file or from input
             if audio is not None:
                 # Audio input from another node
-                audio_tensor, sample_rate = self._extract_audio_tensor(audio)
+                original_audio, mono_audio, sample_rate = self._extract_audio_tensor(audio)
             elif audio_file and audio_file.strip():
                 # Load audio from file path
                 file_path = audio_file.strip()
-                
+
                 # If path is not absolute, try to resolve it relative to ComfyUI input directory
                 if not os.path.isabs(file_path):
                     try:
@@ -441,45 +450,53 @@ class AudioAnalyzerNode:
                             # print(f"🎵 Resolved relative path to: {file_path}")  # Debug: path resolution
                     except ImportError:
                         print("⚠️ Could not import folder_paths, using path as-is")
-                
+
                 if not os.path.exists(file_path):
                     print(f"❌ Audio file not found: {file_path}")
                     raise FileNotFoundError(f"Audio file not found: {file_path}")
                 audio_tensor, sample_rate = self.analyzer.load_audio(file_path)
+                # For file input, create mono version for analysis
+                original_audio = audio_tensor
+                mono_audio = audio_tensor.clone()
+                while mono_audio.dim() > 1:
+                    if mono_audio.shape[0] == 1:
+                        mono_audio = mono_audio.squeeze(0)
+                    else:
+                        mono_audio = torch.mean(mono_audio, dim=0)
             else:
                 raise ValueError("No audio input provided. Either connect an audio input or specify an audio file path.")
-            
+
             # Set analyzer sample rate
             self.analyzer.sample_rate = sample_rate
             
             # Generate cache key for analysis
-            # Use tensor shape and mean for more stable caching
-            tensor_hash = hash((tuple(audio_tensor.shape), float(audio_tensor.mean()), float(audio_tensor.std())))
+            # Use mono tensor for cache key (consistent across stereo/mono)
+            tensor_hash = hash((tuple(mono_audio.shape), float(mono_audio.mean()), float(mono_audio.std())))
             manual_hash = hash((manual_regions, region_labels))  # Include manual regions in cache
             cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{invert_silence_regions}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}_{manual_hash}"
-            
+
             # Check cache first
             cached_result = analysis_cache.get(cache_key)
             if cached_result:
                 regions = cached_result
                 # print("📋 Using cached analysis results")  # Debug: cache usage
             else:
-                # Perform analysis based on method
+                # Perform analysis on MONO version only
                 if analysis_method == "manual":
                     regions = self._parse_manual_regions(manual_regions, region_labels)
                 elif analysis_method == "silence":
                     regions = self.analyzer.detect_silence_regions(
-                        audio_tensor, threshold=silence_threshold, min_duration=silence_min_duration,
+                        mono_audio, threshold=silence_threshold, min_duration=silence_min_duration,
                         invert=invert_silence_regions
                     )
                 elif analysis_method == "energy":
                     regions = self.analyzer.detect_word_boundaries(
-                        audio_tensor, sensitivity=energy_sensitivity
+                        mono_audio, sensitivity=energy_sensitivity
                     )
                 elif analysis_method == "peaks":
                     regions = self.analyzer.extract_timing_regions(
-                        audio_tensor, method="peaks", 
-                        peak_threshold=peak_threshold, 
+                        mono_audio, method="peaks",
+                        peak_threshold=peak_threshold,
                         peak_min_distance=peak_min_distance,
                         peak_region_size=peak_region_size
                     )
@@ -501,9 +518,9 @@ class AudioAnalyzerNode:
                 # Cache results
                 analysis_cache.put(cache_key, regions)
             
-            # Generate visualization data
-            viz_data = self.analyzer.generate_visualization_data(audio_tensor, visualization_points)
-            
+            # Generate visualization data from MONO version
+            viz_data = self.analyzer.generate_visualization_data(mono_audio, visualization_points)
+
             # Add regions to visualization data
             viz_data["regions"] = [
                 {
@@ -515,7 +532,7 @@ class AudioAnalyzerNode:
                 }
                 for region in regions
             ]
-            
+
             # Format timing data according to export format and precision level
             if export_format == "f5tts":
                 # F5TTS format with precision formatting
@@ -525,15 +542,15 @@ class AudioAnalyzerNode:
                 raw_timing_data = self.analyzer.export_timing_data(regions, export_format)
                 formatted_timing_data = self._apply_precision_to_timing_data(raw_timing_data, precision_level)
                 timing_data = json.dumps(formatted_timing_data, indent=2)
+
+            # Create analysis info from MONO version
+            analysis_info = self._create_analysis_info(mono_audio, sample_rate, regions, analysis_method, precision_level, group_regions_threshold, invert_silence_regions, viz_data)
+
+            # Return ORIGINAL audio in ComfyUI format (passthrough - preserves stereo if input was stereo)
+            processed_audio = AudioProcessingUtils.format_for_comfyui(original_audio, sample_rate)
             
-            # Create analysis info with precision formatting (now includes visualization summary)
-            analysis_info = self._create_analysis_info(audio_tensor, sample_rate, regions, analysis_method, precision_level, group_regions_threshold, invert_silence_regions, viz_data)
-            
-            # Return processed audio in ComfyUI format (passthrough)
-            processed_audio = AudioProcessingUtils.format_for_comfyui(audio_tensor, sample_rate)
-            
-            # Generate segmented audio containing only the detected regions
-            segmented_audio = self._create_segmented_audio(audio_tensor, sample_rate, regions)
+            # Generate segmented audio from ORIGINAL (preserves stereo if input was stereo)
+            segmented_audio = self._create_segmented_audio(original_audio, sample_rate, regions)
             
             
             # Save visualization data to ComfyUI temp directory and save audio for web access
