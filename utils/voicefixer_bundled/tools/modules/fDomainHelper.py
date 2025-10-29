@@ -49,6 +49,11 @@ class LibrosaSTFT:
             real = np.real(D)[np.newaxis, ...]  # Add batch dimension [1, freq, time]
             imag = np.imag(D)[np.newaxis, ...]
 
+        # Transpose to match torchlibrosa output format: [batch, time, freq]
+        # librosa gives us [batch, freq, time], so transpose last two dims
+        real = np.transpose(real, (0, 2, 1))  # [batch, time, freq]
+        imag = np.transpose(imag, (0, 2, 1))  # [batch, time, freq]
+
         # Convert back to torch tensors
         real_tensor = torch.from_numpy(real).to(device=device, dtype=dtype)
         imag_tensor = torch.from_numpy(imag).to(device=device, dtype=dtype)
@@ -79,6 +84,15 @@ class LibrosaISTFT:
             dtype = torch.float32
 
         imag_np = imag_tensor.detach().cpu().numpy() if isinstance(imag_tensor, torch.Tensor) else imag_tensor
+
+        # Input is [batch, time, freq] or [time, freq] from torchlibrosa format
+        # Transpose back to [batch, freq, time] for librosa
+        if real_np.ndim == 3:  # [batch, time, freq]
+            real_np = np.transpose(real_np, (0, 2, 1))  # [batch, freq, time]
+            imag_np = np.transpose(imag_np, (0, 2, 1))  # [batch, freq, time]
+        else:  # [time, freq]
+            real_np = real_np.T  # [freq, time]
+            imag_np = imag_np.T  # [freq, time]
 
         # Reconstruct complex spectrogram
         D = real_np + 1j * imag_np  # [batch, freq, time] or [freq, time]
