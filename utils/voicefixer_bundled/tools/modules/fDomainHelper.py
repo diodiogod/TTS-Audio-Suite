@@ -201,10 +201,12 @@ class FDomainHelper(nn.Module):
         channels_num = input.shape[1]
         for channel in range(channels_num):
             mag, cos, sin = self.spectrogram_phase(input[:, channel, :], eps=eps)
-            sp_list.append(mag)
-            cos_list.append(cos)
-            sin_list.append(sin)
+            # mag/cos/sin shape: [batch, freq, time] - add channel dimension
+            sp_list.append(mag.unsqueeze(1))  # [batch, 1, freq, time]
+            cos_list.append(cos.unsqueeze(1))
+            sin_list.append(sin.unsqueeze(1))
 
+        # Stack to [batch, channels, freq, time]
         sps = torch.cat(sp_list, dim=1)
         coss = torch.cat(cos_list, dim=1)
         sins = torch.cat(sin_list, dim=1)
