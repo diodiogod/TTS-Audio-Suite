@@ -438,7 +438,7 @@ class IndexTTSProcessor:
                     else:
                         segment_text_with_tag = seg_obj.text
 
-                    print(f"  📦 Segment {seg_idx + 1}: Character '{seg_obj.character}' with params {seg_obj.parameters}")
+                    print(f"  📊 Segment {seg_idx + 1}: Character '{seg_obj.character}' with params {seg_obj.parameters}")
                     segment_audio = tts_generate_func(segment_text_with_tag, seg_obj.parameters)
                     if isinstance(segment_audio, torch.Tensor) and segment_audio.numel() > 0:
                         audio_parts.append(segment_audio)
