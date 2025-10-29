@@ -46,8 +46,8 @@ ema-pytorch          # F5-TTS exponential moving average
 vocos                # F5-TTS vocoder
 
 # Audio restoration
-torchlibrosa         # VoiceFixer torch-based STFT/ISTFT (tested: no conflicts)
-# voicefixer is bundled in utils/voicefixer_bundled/ - no external dependency needed
+# VoiceFixer is bundled in utils/voicefixer_bundled/
+# Uses librosa (already required) for STFT/ISTFT instead of torchlibrosa - reduces dependencies
 
 # IndexTTS-2 engine dependencies (safe)
 cn2an>=0.5.22         # Chinese number to Arabic number conversion

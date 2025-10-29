@@ -1,8 +1,109 @@
-from torchlibrosa.stft import STFT, ISTFT, magphase
 import torch
 import torch.nn as nn
 import numpy as np
+import librosa
 from voicefixer_bundled.tools.modules.pqmf import PQMF
+
+
+class LibrosaSTFT:
+    """Librosa-based STFT wrapper for compatibility with torchlibrosa API"""
+    def __init__(self, n_fft, hop_length, win_length, window, center, pad_mode, freeze_parameters=True):
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.window = window
+        self.center = center
+        self.pad_mode = pad_mode
+
+    def __call__(self, input_tensor):
+        """Convert tensor to STFT (real, imag parts)"""
+        # Convert torch tensor to numpy
+        if isinstance(input_tensor, torch.Tensor):
+            input_np = input_tensor.detach().cpu().numpy()
+            device = input_tensor.device
+            dtype = input_tensor.dtype
+        else:
+            input_np = input_tensor
+            device = torch.device('cpu')
+            dtype = torch.float32
+
+        # Handle batch dimension
+        if input_np.ndim == 2:  # [batch, samples]
+            batch_size = input_np.shape[0]
+            results_real = []
+            results_imag = []
+
+            for b in range(batch_size):
+                D = librosa.stft(input_np[b], n_fft=self.n_fft, hop_length=self.hop_length,
+                                win_length=self.win_length, window=self.window, center=self.center,
+                                pad_mode=self.pad_mode)
+                results_real.append(np.real(D))
+                results_imag.append(np.imag(D))
+
+            real = np.stack(results_real, axis=0)  # [batch, freq, time]
+            imag = np.stack(results_imag, axis=0)
+        else:  # [samples]
+            D = librosa.stft(input_np, n_fft=self.n_fft, hop_length=self.hop_length,
+                            win_length=self.win_length, window=self.window, center=self.center,
+                            pad_mode=self.pad_mode)
+            real = np.real(D)[np.newaxis, ...]  # Add batch dimension [1, freq, time]
+            imag = np.imag(D)[np.newaxis, ...]
+
+        # Convert back to torch tensors
+        real_tensor = torch.from_numpy(real).to(device=device, dtype=dtype)
+        imag_tensor = torch.from_numpy(imag).to(device=device, dtype=dtype)
+
+        return real_tensor, imag_tensor
+
+
+class LibrosaISTFT:
+    """Librosa-based ISTFT wrapper for compatibility with torchlibrosa API"""
+    def __init__(self, n_fft, hop_length, win_length, window, center, pad_mode, freeze_parameters=True):
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.window = window
+        self.center = center
+        self.pad_mode = pad_mode
+
+    def __call__(self, real_tensor, imag_tensor, length=None):
+        """Convert STFT (real, imag parts) back to waveform"""
+        # Convert torch tensors to numpy
+        if isinstance(real_tensor, torch.Tensor):
+            real_np = real_tensor.detach().cpu().numpy()
+            device = real_tensor.device
+            dtype = real_tensor.dtype
+        else:
+            real_np = real_tensor
+            device = torch.device('cpu')
+            dtype = torch.float32
+
+        imag_np = imag_tensor.detach().cpu().numpy() if isinstance(imag_tensor, torch.Tensor) else imag_tensor
+
+        # Reconstruct complex spectrogram
+        D = real_np + 1j * imag_np  # [batch, freq, time] or [freq, time]
+
+        # Handle batch dimension
+        if D.ndim == 3:  # [batch, freq, time]
+            batch_size = D.shape[0]
+            results = []
+
+            for b in range(batch_size):
+                wav = librosa.istft(D[b], hop_length=self.hop_length, win_length=self.win_length,
+                                   window=self.window, center=self.center, length=length)
+                results.append(wav)
+
+            output_np = np.stack(results, axis=0)  # [batch, samples]
+        else:  # [freq, time]
+            output_np = librosa.istft(D, hop_length=self.hop_length, win_length=self.win_length,
+                                     window=self.window, center=self.center, length=length)
+            output_np = output_np[np.newaxis, ...]  # Add batch dimension [1, samples]
+
+        # Convert back to torch tensor
+        output_tensor = torch.from_numpy(output_np).to(device=device, dtype=dtype)
+
+        return output_tensor
+
 
 class FDomainHelper(nn.Module):
     def __init__(
@@ -18,9 +119,9 @@ class FDomainHelper(nn.Module):
     ):
         super(FDomainHelper, self).__init__()
         self.subband = subband
-        # assert torchlibrosa.__version__ == "0.0.7", "Error: Found torchlibrosa version %s. Please install 0.0.7 version of torchlibrosa by: pip install torchlibrosa==0.0.7." % torchlibrosa.__version__
+
         if self.subband is None:
-            self.stft = STFT(
+            self.stft = LibrosaSTFT(
                 n_fft=window_size,
                 hop_length=hop_size,
                 win_length=window_size,
@@ -30,7 +131,7 @@ class FDomainHelper(nn.Module):
                 freeze_parameters=freeze_parameters,
             )
 
-            self.istft = ISTFT(
+            self.istft = LibrosaISTFT(
                 n_fft=window_size,
                 hop_length=hop_size,
                 win_length=window_size,
@@ -40,7 +141,7 @@ class FDomainHelper(nn.Module):
                 freeze_parameters=freeze_parameters,
             )
         else:
-            self.stft = STFT(
+            self.stft = LibrosaSTFT(
                 n_fft=window_size // self.subband,
                 hop_length=hop_size // self.subband,
                 win_length=window_size // self.subband,
@@ -50,7 +151,7 @@ class FDomainHelper(nn.Module):
                 freeze_parameters=freeze_parameters,
             )
 
-            self.istft = ISTFT(
+            self.istft = LibrosaISTFT(
                 n_fft=window_size // self.subband,
                 hop_length=hop_size // self.subband,
                 win_length=window_size // self.subband,
