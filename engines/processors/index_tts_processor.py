@@ -21,6 +21,7 @@ from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import CharacterParser
 from utils.text.pause_processor import PauseTagProcessor
+from utils.text.segment_parameters import apply_segment_parameters
 from utils.voice.discovery import get_character_mapping
 from engines.adapters.index_tts_adapter import IndexTTSAdapter
 
@@ -130,16 +131,17 @@ class IndexTTSProcessor:
                 raise ValueError("Text input is empty. Please provide text to generate speech.")
 
             print(f"🤖 IndexTTS-2: Processing text with emotion support")
-            
+
             # Check if IndexTTS-2's native chunking should override our chunking
             max_text_tokens_per_segment = self.config.get('max_text_tokens_per_segment', 120)
             if max_text_tokens_per_segment > 0:
                 # IndexTTS-2 has its own token-based chunking, disable our character-based chunking
                 print(f"📝 IndexTTS-2: Using native token chunking ({max_text_tokens_per_segment} tokens), disabling character chunking")
                 enable_chunking = False
-            
-            # Parse character segments with emotion support using modularized parser
-            character_segments = self.character_parser.split_by_character_with_emotions(text)
+
+            # Parse character segments with emotion support and parameters
+            character_segment_objects = self.character_parser.parse_text_segments(text)
+            character_segments = [(seg.character, seg.text, seg.language, seg.emotion) for seg in character_segment_objects]
             all_characters = set(char for char, _, _, _ in character_segments)
             all_characters.add("narrator")
             
@@ -202,11 +204,16 @@ class IndexTTSProcessor:
                         print(f"⚠️ {character}: No voice available")
             
             # Define TTS generation function for pause processor
-            def tts_generate_func(text_content: str) -> torch.Tensor:
+            def tts_generate_func(text_content: str, segment_params: Optional[Dict[str, Any]] = None) -> torch.Tensor:
                 # Import references for nested function scope
                 import torchaudio as ta
                 import tempfile as tf
-                """TTS generation function for pause tag processor"""
+                """TTS generation function for pause tag processor with per-segment parameters"""
+                # Apply segment parameters if provided
+                current_config = dict(self.config)
+                if segment_params:
+                    current_config = apply_segment_parameters(current_config, segment_params, "index_tts")
+
                 if '[' in text_content and ']' in text_content:
                     # Handle character switching with emotion parsing using modularized parser
                     char_segments = self.character_parser.split_by_character_with_emotions(text_content)
@@ -279,35 +286,35 @@ class IndexTTSProcessor:
                             character_use_emotion_text = False
                             character_emotion_text = None
                         else:
-                            # No character emotion - use global emotion settings
-                            character_emotion_vector = self.config.get('emotion_vector')
-                            character_use_emotion_text = self.config.get('use_emotion_text', False)
-                            character_emotion_text = self.config.get('emotion_text')
+                            # No character emotion - use global emotion settings (from current_config with segment params)
+                            character_emotion_vector = current_config.get('emotion_vector')
+                            character_use_emotion_text = current_config.get('use_emotion_text', False)
+                            character_emotion_text = current_config.get('emotion_text')
 
                             # Handle dynamic QwenEmotion template
-                            if character_use_emotion_text and character_emotion_text and self.config.get('is_dynamic_template', False):
+                            if character_use_emotion_text and character_emotion_text and current_config.get('is_dynamic_template', False):
                                 character_emotion_text = self._process_dynamic_emotion_template(character_emotion_text, segment_text)
 
-                        # Generate audio for this character segment (use original IndexTTS-2 defaults as fallbacks)
+                        # Generate audio for this character segment (use parameters from current_config with segment overrides)
                         segment_result = self.adapter.generate(
                             text=segment_text,
                             speaker_audio=speaker_audio_path,
                             emotion_audio=emotion_audio_path,
-                            emotion_alpha=self.config.get('emotion_alpha', 1.0),
+                            emotion_alpha=current_config.get('emotion_alpha', 1.0),
                             emotion_vector=character_emotion_vector,
                             use_emotion_text=character_use_emotion_text,
                             emotion_text=character_emotion_text,
-                            use_random=self.config.get('use_random', False),
-                            interval_silence=self.config.get('interval_silence', 200),
-                            max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
-                            seed=seed,
-                            temperature=self.config.get('temperature', 0.8),
-                            top_p=self.config.get('top_p', 0.8),
-                            top_k=self.config.get('top_k', 30),
-                            length_penalty=self.config.get('length_penalty', 0.0),
-                            num_beams=self.config.get('num_beams', 3),
-                            repetition_penalty=self.config.get('repetition_penalty', 10.0),
-                            max_mel_tokens=self.config.get('max_mel_tokens', 1500)
+                            use_random=current_config.get('use_random', False),
+                            interval_silence=current_config.get('interval_silence', 200),
+                            max_text_tokens_per_segment=current_config.get('max_text_tokens_per_segment', 120),
+                            seed=current_config.get('seed', seed),
+                            temperature=current_config.get('temperature', 0.8),
+                            top_p=current_config.get('top_p', 0.8),
+                            top_k=current_config.get('top_k', 30),
+                            length_penalty=current_config.get('length_penalty', 0.0),
+                            num_beams=current_config.get('num_beams', 3),
+                            repetition_penalty=current_config.get('repetition_penalty', 10.0),
+                            max_mel_tokens=current_config.get('max_mel_tokens', 1500)
                         )
                         
                         # Clean up temp files
@@ -366,41 +373,41 @@ class IndexTTSProcessor:
                         print(f"🎭 No emotion audio for simple text segment (no connected engine emotion)")
 
                     # Prioritize connected emotion_audio over global emotion controls
-                    # For simple text, use emotion_audio from config if available, else use global settings
+                    # For simple text, use emotion_audio from config if available, else use global settings (with segment params)
                     if emotion_audio_path:
                         # Engine emotion_audio connected - use only that
                         simple_emotion_vector = None
                         simple_use_emotion_text = False
                         simple_emotion_text = None
                     else:
-                        # No engine emotion_audio - use global emotion settings
-                        simple_emotion_vector = self.config.get('emotion_vector')
-                        simple_use_emotion_text = self.config.get('use_emotion_text', False)
-                        simple_emotion_text = self.config.get('emotion_text')
+                        # No engine emotion_audio - use global emotion settings (from current_config with segment params)
+                        simple_emotion_vector = current_config.get('emotion_vector')
+                        simple_use_emotion_text = current_config.get('use_emotion_text', False)
+                        simple_emotion_text = current_config.get('emotion_text')
 
                         # Handle dynamic QwenEmotion template
-                        if simple_use_emotion_text and simple_emotion_text and self.config.get('is_dynamic_template', False):
+                        if simple_use_emotion_text and simple_emotion_text and current_config.get('is_dynamic_template', False):
                             simple_emotion_text = self._process_dynamic_emotion_template(simple_emotion_text, text_content)
 
                     result = self.adapter.generate(
                         text=text_content,
                         speaker_audio=speaker_audio_path,
                         emotion_audio=emotion_audio_path,
-                        emotion_alpha=self.config.get('emotion_alpha', 1.0),
+                        emotion_alpha=current_config.get('emotion_alpha', 1.0),
                         emotion_vector=simple_emotion_vector,
                         use_emotion_text=simple_use_emotion_text,
                         emotion_text=simple_emotion_text,
-                        use_random=self.config.get('use_random', False),
-                        interval_silence=self.config.get('interval_silence', 200),
-                        max_text_tokens_per_segment=self.config.get('max_text_tokens_per_segment', 120),
-                        seed=seed,
-                        temperature=self.config.get('temperature', 0.8),
-                        top_p=self.config.get('top_p', 0.8),
-                        top_k=self.config.get('top_k', 30),
-                        length_penalty=self.config.get('length_penalty', 0.0),
-                        num_beams=self.config.get('num_beams', 3),
-                        repetition_penalty=self.config.get('repetition_penalty', 10.0),
-                        max_mel_tokens=self.config.get('max_mel_tokens', 1500)
+                        use_random=current_config.get('use_random', False),
+                        interval_silence=current_config.get('interval_silence', 200),
+                        max_text_tokens_per_segment=current_config.get('max_text_tokens_per_segment', 120),
+                        seed=current_config.get('seed', seed),
+                        temperature=current_config.get('temperature', 0.8),
+                        top_p=current_config.get('top_p', 0.8),
+                        top_k=current_config.get('top_k', 30),
+                        length_penalty=current_config.get('length_penalty', 0.0),
+                        num_beams=current_config.get('num_beams', 3),
+                        repetition_penalty=current_config.get('repetition_penalty', 10.0),
+                        max_mel_tokens=current_config.get('max_mel_tokens', 1500)
                     )
                     
                     # Clean up temp files
@@ -411,19 +418,65 @@ class IndexTTSProcessor:
                     
                     return result
             
-            # Parse text into segments (text and pause segments)
-            segments, clean_text = self.pause_processor.parse_pause_tags(text)
-            
-            # Generate audio with pauses
-            if segments:
-                result = self.pause_processor.generate_audio_with_pauses(
-                    segments=segments,
-                    tts_generate_func=tts_generate_func,
-                    sample_rate=self.sample_rate
-                )
+            # Check if we have multiple character segments with different parameters
+            # If so, generate each character segment separately to preserve per-segment parameters
+            has_parameter_changes = False
+            if len(character_segment_objects) > 1:
+                for i in range(1, len(character_segment_objects)):
+                    if character_segment_objects[i].parameters != character_segment_objects[i-1].parameters:
+                        has_parameter_changes = True
+                        break
+
+            if has_parameter_changes:
+                # Generate each character segment separately with its parameters
+                # Need to reconstruct text with character tags to preserve character switching
+                audio_parts = []
+                for seg_idx, seg_obj in enumerate(character_segment_objects):
+                    # Reconstruct segment with character tag for proper character switching
+                    if seg_obj.character and seg_obj.character != "narrator":
+                        segment_text_with_tag = f"[{seg_obj.character}] {seg_obj.text}"
+                    else:
+                        segment_text_with_tag = seg_obj.text
+
+                    print(f"  📦 Segment {seg_idx + 1}: Character '{seg_obj.character}' with params {seg_obj.parameters}")
+                    segment_audio = tts_generate_func(segment_text_with_tag, seg_obj.parameters)
+                    if isinstance(segment_audio, torch.Tensor) and segment_audio.numel() > 0:
+                        audio_parts.append(segment_audio)
+
+                if audio_parts:
+                    # Ensure all audio parts have correct dimensions and concatenate
+                    audio_parts_normalized = []
+                    for audio in audio_parts:
+                        if audio.dim() == 1:
+                            audio = audio.unsqueeze(0)
+                        elif audio.dim() == 3:
+                            audio = audio.squeeze(0)
+                        audio_parts_normalized.append(audio)
+                    result = torch.cat(audio_parts_normalized, dim=-1)
+                else:
+                    result = torch.zeros(1, self.sample_rate)
             else:
-                # No pause tags, generate directly
-                result = tts_generate_func(text)
+                # No parameter changes between segments, use pause processor for pause tag handling
+                segments, clean_text = self.pause_processor.parse_pause_tags(text)
+
+                # Create a wrapper that handles pause segments
+                def tts_generate_with_params(text_content: str) -> torch.Tensor:
+                    """Wrapper for pause processor that passes segment parameters"""
+                    # For pause-based processing, use first segment's parameters
+                    segment_params = character_segment_objects[0].parameters if character_segment_objects and character_segment_objects[0].parameters else None
+                    return tts_generate_func(text_content, segment_params)
+
+                # Generate audio with pauses
+                if segments:
+                    result = self.pause_processor.generate_audio_with_pauses(
+                        segments=segments,
+                        tts_generate_func=tts_generate_with_params,
+                        sample_rate=self.sample_rate
+                    )
+                else:
+                    # No pause tags, generate directly
+                    segment_params = character_segment_objects[0].parameters if character_segment_objects and character_segment_objects[0].parameters else None
+                    result = tts_generate_func(text, segment_params)
             
             # Ensure correct tensor format
             if isinstance(result, torch.Tensor):

@@ -31,6 +31,7 @@ if project_root not in sys.path:
 from utils.system.import_manager import import_manager
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.text.pause_processor import PauseTagProcessor
+from utils.text.segment_parameters import apply_segment_parameters
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_characters, get_character_mapping
 from engines.processors.index_tts_processor import IndexTTSProcessor
