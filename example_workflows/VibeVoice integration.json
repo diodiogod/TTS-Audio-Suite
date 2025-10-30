@@ -148,7 +148,7 @@
         146.08004760742188
       ],
       "flags": {},
-      "order": 8,
+      "order": 0,
       "mode": 0,
       "inputs": [
         {
@@ -231,7 +231,7 @@
         179.46453857421875
       ],
       "flags": {},
-      "order": 7,
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -254,7 +254,7 @@
         178.18296813964844
       ],
       "flags": {},
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -277,7 +277,7 @@
         250
       ],
       "flags": {},
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -300,7 +300,7 @@
         224.9416046142578
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -334,7 +334,7 @@
         146.08004760742188
       ],
       "flags": {},
-      "order": 2,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -382,7 +382,7 @@
         146.08004760742188
       ],
       "flags": {},
-      "order": 1,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
@@ -430,7 +430,7 @@
         362
       ],
       "flags": {},
-      "order": 17,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
@@ -596,7 +596,7 @@
         224.9416046142578
       ],
       "flags": {},
-      "order": 14,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -630,7 +630,7 @@
         132
       ],
       "flags": {},
-      "order": 0,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -678,7 +678,7 @@
         224.9416046142578
       ],
       "flags": {},
-      "order": 13,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -713,7 +713,7 @@
         26
       ],
       "flags": {},
-      "order": 19,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
@@ -819,7 +819,7 @@
         26
       ],
       "flags": {},
-      "order": 20,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
@@ -857,7 +857,7 @@
         26
       ],
       "flags": {},
-      "order": 22,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -989,7 +989,7 @@
         362
       ],
       "flags": {},
-      "order": 6,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
@@ -1052,7 +1052,7 @@
         26
       ],
       "flags": {},
-      "order": 21,
+      "order": 22,
       "mode": 0,
       "inputs": [
         {
@@ -1161,7 +1161,7 @@
         311.5690612792969
       ],
       "flags": {},
-      "order": 10,
+      "order": 11,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1184,13 +1184,13 @@
         794.9921264648438
       ],
       "flags": {},
-      "order": 12,
+      "order": 16,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "# VibeVoice Multi-Speaker Modes Explained\n\n## The Two Ways VibeVoice Handles Multiple Characters\n\n### 🎭 Custom Character Switching Mode\n\n**What it does:** USE TAGS. Generates each character separately, then combines the audio pieces together.\n\n**Pros:**\n\n- Works with **unlimited characters** (Alice, Bob, Charlie, David, etc.)\n- Each character uses their **exact voice file** from voices folder\n- Supports **pause tags** like `<break time=\"2s\">` between sentences\n- **Perfect voice accuracy** - each generation have only ONE narrator, less cross-hallucinations.\n\n**Cons:**\n\n- VibeVoice seams to like medium to long text segments. Switching with Custom mode can lead to very short segments with bad quality, music and soundtrack hallucinations. It will go crazy! (obs: with 3.0 CFG and 3 steps it is way more stable with short segments)\n\n### 🎭 Native Multi-Speaker Mode (Default)\n\n**What it does:** USE NATIVE FORMAT OR TAGS. Sends everything to VibeVoice at once and lets the AI model handle different speakers.\n\n**Pros:**\n\n- **Could lead to more Natural conversations** - the model will have all voices as context all at once. So maybe more it can have more natural timing\n- **90-minute capability** - can generate very long conversations\n\n**Cons:**\n\n- **Limited to 4 speakers maximum** (Speaker 1, 2, 3, 4)\n- **No pause tags support** - can't add manual breaks\n- **Voice approximation** - tries to match your reference voices but may not be 100% exact\n- **Model confusion** - more than once the model mix reference audios or reproduce the reference audio in the middle of the TTS. It can also go crazy... so... 🤷‍♂️\n\n## 🤔 When To Use Which Mode?\n\n### Use **Custom Character Switching** when:\n\n- You have more than 4 characters\n- You need perfect voice accuracy (exact cloning)\n- You want to use pause tags for timing control\n- Your segments per char are long enough\n\n### Use **Native Multi-Speaker** when:\n\n- You have 4 or fewer characters\n- Your segments are small texts\n- You're creating dialogue scenes or long conversations (? untested)\n\n## 🧠 Auto-Detection Features\n\nThe system is smart and will:\n\n- **Auto-switch to Native mode** if it detects manual \"Speaker 1:\", \"Speaker 2:\" format in your text\n- **Show helpful warnings** if you connect the wrong type of input (like character names instead of voice files)\n- **Fall back gracefully** if Native mode can't be used (too many characters or pause tags detected)"
+        "# VibeVoice Multi-Speaker Modes Explained\n\n## The Two Ways VibeVoice Handles Multiple Characters\n\n### 🎭 Custom Character Switching Mode\n\n**What it does:** USE TAGS. Generates each character separately, then combines the audio pieces together.\n\n**Pros:**\n\n- Works with **unlimited characters** (Alice, Bob, Charlie, David, etc.)\n- Each character uses their **exact voice file** from voices folder\n- Supports **pause tags** like `[wait:2s]` between sentences\n- **Perfect voice accuracy** - each generation have only ONE narrator, less cross-hallucinations.\n\n**Cons:**\n\n- VibeVoice seams to like medium to long text segments. Switching with Custom mode can lead to very short segments with bad quality, music and soundtrack hallucinations. It will go crazy! (obs: with 3.0 CFG and 3 steps it is way more stable with short segments)\n\n### 🎭 Native Multi-Speaker Mode (Default)\n\n**What it does:** USE NATIVE FORMAT OR TAGS. Sends everything to VibeVoice at once and lets the AI model handle different speakers.\n\n**Pros:**\n\n- **Could lead to more Natural conversations** - the model will have all voices as context all at once. So maybe more it can have more natural timing\n- **90-minute capability** - can generate very long conversations\n\n**Cons:**\n\n- **Limited to 4 speakers maximum** (Speaker 1, 2, 3, 4)\n- **No pause tags support** - can't add manual breaks\n- **Voice approximation** - tries to match your reference voices but may not be 100% exact\n- **Model confusion** - more than once the model mix reference audios or reproduce the reference audio in the middle of the TTS. It can also go crazy... so... 🤷‍♂️\n\n## 🤔 When To Use Which Mode?\n\n### Use **Custom Character Switching** when:\n\n- You have more than 4 characters\n- You need perfect voice accuracy (exact cloning)\n- You want to use pause tags for timing control\n- Your segments per char are long enough\n\n### Use **Native Multi-Speaker** when:\n\n- You have 4 or fewer characters\n- Your segments are small texts\n- You're creating dialogue scenes or long conversations (? untested)\n\n## 🧠 Auto-Detection Features\n\nThe system is smart and will:\n\n- **Auto-switch to Native mode** if it detects manual \"Speaker 1:\", \"Speaker 2:\" format in your text\n- **Show helpful warnings** if you connect the wrong type of input (like character names instead of voice files)\n- **Fall back gracefully** if Native mode can't be used (too many characters or pause tags detected)"
       ],
       "color": "#432",
       "bgcolor": "#653"
@@ -1207,7 +1207,7 @@
         88
       ],
       "flags": {},
-      "order": 11,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1257,7 +1257,7 @@
         95.3453598022461
       ],
       "flags": {},
-      "order": 9,
+      "order": 13,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1280,7 +1280,7 @@
         88
       ],
       "flags": {},
-      "order": 16,
+      "order": 14,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1606,13 +1606,13 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.39694050000003755,
+      "scale": 1.3703462619769353,
       "offset": [
-        3602.115050179567,
-        -683.1690254884456
+        4066.3308947541577,
+        -861.3710849543739
       ]
     },
-    "frontendVersion": "1.25.11",
+    "frontendVersion": "1.26.13",
     "ue_links": [],
     "links_added_by_ue": [],
     "VHS_latentpreview": false,
