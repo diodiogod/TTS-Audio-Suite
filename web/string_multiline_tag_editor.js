@@ -268,7 +268,7 @@ function addStringMultilineTagEditorWidget(node) {
     highlightsOverlay.style.padding = "10px";
     highlightsOverlay.style.fontFamily = "monospace";
     highlightsOverlay.style.fontSize = "13px";
-    highlightsOverlay.style.color = "transparent"; // Regular text invisible, only spans show
+    highlightsOverlay.style.color = "#eee"; // Same as textarea text
     highlightsOverlay.style.background = "#1a1a1a";
     highlightsOverlay.style.border = "none";
     highlightsOverlay.style.overflow = "hidden";
@@ -276,10 +276,8 @@ function addStringMultilineTagEditorWidget(node) {
     highlightsOverlay.style.whiteSpace = "pre-wrap";
     highlightsOverlay.style.wordWrap = "break-word";
     highlightsOverlay.style.lineHeight = "1.4";
-    highlightsOverlay.style.textRendering = "optimizeLegibility";
-    highlightsOverlay.style.WebkitFontSmoothing = "antialiased";
 
-    // Create textarea
+    // Create textarea with transparent background so overlay shows through
     const textarea = document.createElement("textarea");
     textarea.className = "comfy-multiline-input";
     textarea.value = state.text;
@@ -290,8 +288,8 @@ function addStringMultilineTagEditorWidget(node) {
     textarea.style.fontSize = "13px";
     textarea.style.padding = "10px";
     textarea.style.border = "none";
-    textarea.style.background = "transparent";
-    textarea.style.color = "#eee";
+    textarea.style.background = "transparent"; // Let overlay show through
+    textarea.style.color = "transparent"; // Hide textarea text, show overlay colors instead
     textarea.style.outline = "none";
     textarea.style.margin = "0";
     textarea.style.resize = "none";
@@ -300,6 +298,7 @@ function addStringMultilineTagEditorWidget(node) {
     textarea.style.position = "relative";
     textarea.style.zIndex = "1";
     textarea.style.lineHeight = "1.4";
+    textarea.style.caretColor = "#eee"; // Keep cursor visible
 
     // Function to highlight syntax
     const updateHighlights = () => {
