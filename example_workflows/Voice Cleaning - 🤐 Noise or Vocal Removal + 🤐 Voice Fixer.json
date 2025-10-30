@@ -1,0 +1,1057 @@
+{
+  "id": "076be553-821b-4849-8d05-12c66730733b",
+  "revision": 0,
+  "last_node_id": 247,
+  "last_link_id": 445,
+  "nodes": [
+    {
+      "id": 221,
+      "type": "VoiceFixerNode",
+      "pos": [
+        2810,
+        2720
+      ],
+      "size": [
+        300,
+        102
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 418
+        }
+      ],
+      "outputs": [
+        {
+          "name": "restored_audio",
+          "type": "AUDIO",
+          "links": [
+            402,
+            409
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": [
+            401
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VoiceFixerNode"
+      },
+      "widgets_values": [
+        "0 - Original (Default)",
+        true
+      ]
+    },
+    {
+      "id": 222,
+      "type": "LoadAudio",
+      "pos": [
+        -160,
+        2270
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            403,
+            411,
+            444
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "test_utterance_original_original.wav",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 223,
+      "type": "PreviewAny",
+      "pos": [
+        3170,
+        2990
+      ],
+      "size": [
+        300,
+        160
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 401
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 224,
+      "type": "PreviewAudio",
+      "pos": [
+        3160,
+        2820
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 402
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 225,
+      "type": "ChatterBoxAudioAnalyzer",
+      "pos": [
+        330,
+        2510
+      ],
+      "size": [
+        850,
+        950
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 403
+        },
+        {
+          "name": "options",
+          "shape": 7,
+          "type": "ADV_AUDIO_OPTIONS",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_audio",
+          "type": "AUDIO",
+          "links": []
+        },
+        {
+          "name": "timing_data",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "analysis_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "segmented_audio",
+          "type": "AUDIO",
+          "links": [
+            405
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+      },
+      "widgets_values": [
+        "",
+        "manual",
+        "milliseconds",
+        2000,
+        "",
+        "",
+        "f5tts",
+        ""
+      ]
+    },
+    {
+      "id": 226,
+      "type": "PreviewAudio",
+      "pos": [
+        1220,
+        2570
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 405
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 229,
+      "type": "PreviewAny",
+      "pos": [
+        4630,
+        2740
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 410
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 230,
+      "type": "ChatterBoxAudioAnalyzer",
+      "pos": [
+        3690,
+        2720
+      ],
+      "size": [
+        850,
+        950
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 409
+        },
+        {
+          "name": "options",
+          "shape": 7,
+          "type": "ADV_AUDIO_OPTIONS",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "timing_data",
+          "type": "STRING",
+          "links": [
+            410
+          ]
+        },
+        {
+          "name": "analysis_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "segmented_audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+      },
+      "widgets_values": [
+        "",
+        "manual",
+        "milliseconds",
+        2000,
+        "",
+        "",
+        "f5tts",
+        ""
+      ]
+    },
+    {
+      "id": 231,
+      "type": "VocalRemovalNode",
+      "pos": [
+        1710,
+        2270
+      ],
+      "size": [
+        500,
+        150
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 411
+        }
+      ],
+      "outputs": [
+        {
+          "name": "extracted voice/noise/echo",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "remaining",
+          "type": "AUDIO",
+          "links": [
+            414,
+            416
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VocalRemovalNode"
+      },
+      "widgets_values": [
+        "MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt",
+        true,
+        10,
+        "flac"
+      ]
+    },
+    {
+      "id": 232,
+      "type": "PreviewAudio",
+      "pos": [
+        2840,
+        2460
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 417
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 233,
+      "type": "VocalRemovalNode",
+      "pos": [
+        2370,
+        2460
+      ],
+      "size": [
+        380,
+        150
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 414
+        }
+      ],
+      "outputs": [
+        {
+          "name": "extracted voice/noise/echo",
+          "type": "AUDIO",
+          "links": [
+            417,
+            418
+          ]
+        },
+        {
+          "name": "remaining",
+          "type": "AUDIO",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VocalRemovalNode"
+      },
+      "widgets_values": [
+        "MDX23C/model_vocals_mdx23c_sdr_10.17.ckpt",
+        true,
+        10,
+        "flac"
+      ]
+    },
+    {
+      "id": 234,
+      "type": "PreviewAudio",
+      "pos": [
+        2360,
+        2290
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 416
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 235,
+      "type": "PreviewAudio",
+      "pos": [
+        2220,
+        4000
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 419
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 236,
+      "type": "VoiceFixerNode",
+      "pos": [
+        1810,
+        3900
+      ],
+      "size": [
+        300,
+        102
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 445
+        }
+      ],
+      "outputs": [
+        {
+          "name": "restored_audio",
+          "type": "AUDIO",
+          "links": [
+            419,
+            421
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VoiceFixerNode"
+      },
+      "widgets_values": [
+        "0 - Original (Default)",
+        true
+      ]
+    },
+    {
+      "id": 237,
+      "type": "ChatterBoxAudioAnalyzer",
+      "pos": [
+        3680,
+        3900
+      ],
+      "size": [
+        850,
+        950
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 421
+        },
+        {
+          "name": "options",
+          "shape": 7,
+          "type": "ADV_AUDIO_OPTIONS",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_audio",
+          "type": "AUDIO",
+          "links": [
+            422
+          ]
+        },
+        {
+          "name": "timing_data",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "analysis_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "segmented_audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+      },
+      "widgets_values": [
+        "",
+        "manual",
+        "milliseconds",
+        2000,
+        "",
+        "",
+        "f5tts",
+        ""
+      ]
+    },
+    {
+      "id": 238,
+      "type": "PreviewAny",
+      "pos": [
+        4590,
+        3900
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 422
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 239,
+      "type": "MarkdownNote",
+      "pos": [
+        -580,
+        2140
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "1",
+      "properties": {},
+      "widgets_values": [
+        "# Load a terrible audio Here\n\n[Here is a link from Voice Fixer Github](https://github.com/haoheliu/voicefixer/blob/main/test/utterance/original/original.wav)"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 240,
+      "type": "MarkdownNote",
+      "pos": [
+        530,
+        2340
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "2",
+      "properties": {},
+      "widgets_values": [
+        "# Click Analyze to visualize the WaveForm"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 241,
+      "type": "Reroute",
+      "pos": [
+        320,
+        3900
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 444
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            445
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 242,
+      "type": "MarkdownNote",
+      "pos": [
+        4000,
+        2560
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "3",
+      "properties": {},
+      "widgets_values": [
+        "# Click Analyze to visualize the WaveForm"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 243,
+      "type": "MarkdownNote",
+      "pos": [
+        3310,
+        4280
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "4",
+      "properties": {},
+      "widgets_values": [
+        "# Click Analyze to visualize the WaveForm"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 244,
+      "type": "MarkdownNote",
+      "pos": [
+        1850,
+        2560
+      ],
+      "size": [
+        390,
+        260
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {},
+      "widgets_values": [
+        "## Lets try MelBand reformer agressive + removing vocals + a final Voice fixer\n\nYou can test we have multiple model options on the '🤐 Noise or Vocal Removal':\n- Remove noise\n- Remove reverb/echo\n- Remove instruments/vocal\n\nYou can chain some of them for better cleaning sometimes.\n\nCheck the tooltips for tips, and [check more info in the full guide here](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/VOCAL_REMOVAL_GUIDE.md)"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 245,
+      "type": "MarkdownNote",
+      "pos": [
+        2700,
+        2920
+      ],
+      "size": [
+        370,
+        110
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {},
+      "widgets_values": [
+        "## 🤐 Voice Fixer has 3 resotration_modes\n\nCheck tooltip. Their effectiveness depend on how bad your audio is."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 246,
+      "type": "MarkdownNote",
+      "pos": [
+        270,
+        1940
+      ],
+      "size": [
+        380,
+        88
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {},
+      "widgets_values": [
+        "# Voice Cleaning Example Workflow"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 247,
+      "type": "MarkdownNote",
+      "pos": [
+        1760,
+        4060
+      ],
+      "size": [
+        370,
+        110
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {},
+      "widgets_values": [
+        "## 🤐 Voice Fixer has 3 resotration_modes\n\nCheck tooltip. Their effectiveness depend on how bad your audio is."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      401,
+      221,
+      1,
+      223,
+      0,
+      "*"
+    ],
+    [
+      402,
+      221,
+      0,
+      224,
+      0,
+      "AUDIO"
+    ],
+    [
+      403,
+      222,
+      0,
+      225,
+      0,
+      "AUDIO"
+    ],
+    [
+      405,
+      225,
+      3,
+      226,
+      0,
+      "AUDIO"
+    ],
+    [
+      409,
+      221,
+      0,
+      230,
+      0,
+      "AUDIO"
+    ],
+    [
+      410,
+      230,
+      1,
+      229,
+      0,
+      "*"
+    ],
+    [
+      411,
+      222,
+      0,
+      231,
+      0,
+      "AUDIO"
+    ],
+    [
+      414,
+      231,
+      1,
+      233,
+      0,
+      "AUDIO"
+    ],
+    [
+      416,
+      231,
+      1,
+      234,
+      0,
+      "AUDIO"
+    ],
+    [
+      417,
+      233,
+      0,
+      232,
+      0,
+      "AUDIO"
+    ],
+    [
+      418,
+      233,
+      0,
+      221,
+      0,
+      "AUDIO"
+    ],
+    [
+      419,
+      236,
+      0,
+      235,
+      0,
+      "AUDIO"
+    ],
+    [
+      421,
+      236,
+      0,
+      237,
+      0,
+      "AUDIO"
+    ],
+    [
+      422,
+      237,
+      0,
+      238,
+      0,
+      "*"
+    ],
+    [
+      444,
+      222,
+      0,
+      241,
+      0,
+      "*"
+    ],
+    [
+      445,
+      241,
+      0,
+      236,
+      0,
+      "AUDIO"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 12,
+      "title": "original Terrible Audio",
+      "bounding": [
+        -590,
+        2070,
+        2120,
+        1403.5999755859375
+      ],
+      "color": "#a1309b",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 13,
+      "title": "🤐 Noise or Vocal Removal + 🤐 Voice Fixer",
+      "bounding": [
+        1680,
+        2080,
+        3240,
+        1600
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 14,
+      "title": "Just 🤐 Voice Fixer",
+      "bounding": [
+        1680,
+        3810,
+        3240,
+        1060
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.3282441015834411,
+      "offset": [
+        1187.0871997845475,
+        -1339.6289480427706
+      ]
+    },
+    "frontendVersion": "1.26.13",
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "VHS_latentpreview": true,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}
