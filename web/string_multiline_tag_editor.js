@@ -353,18 +353,15 @@ function addStringMultilineTagEditorWidget(node) {
     // Initial highlight
     updateHighlights();
 
-    // Create the widget - this is the ONLY widget for this node
-    const widget = node.addDOMWidget("text_output", "customtext", editorContainer, {
+    // Create the widget - this provides the "text" input for the node
+    const widget = node.addDOMWidget("text", "customtext", editorContainer, {
         getValue() {
-            const value = textarea.value;
-            console.log("🏷️ Widget getValue called, returning:", value.substring(0, 50) + (value.length > 50 ? "..." : ""));
-            return value;
+            return textarea.value;
         },
         setValue(v) {
-            console.log("🏷️ Widget setValue called with:", (v || "").substring(0, 50));
             textarea.value = v;
             state.text = v;
-            updateHighlights(); // Just update highlights, don't call setTextareaValue
+            updateHighlights();
         }
     });
 

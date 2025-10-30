@@ -25,7 +25,9 @@ class StringMultilineTagEditor:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {},
+            "required": {
+                "text": ("STRING", {"default": "", "forceInput": True}),
+            },
             "optional": {}
         }
 
@@ -33,6 +35,7 @@ class StringMultilineTagEditor:
     RETURN_NAMES = ("text",)
     FUNCTION = "process_text"
     CATEGORY = "utils/string"
+    OUTPUT_NODE = True
 
     def __init__(self):
         """Initialize the editor state"""
@@ -250,12 +253,11 @@ class StringMultilineTagEditor:
         """Return list of available character voices for the widget"""
         return self._discovered_characters if isinstance(self._discovered_characters, list) else list(self._discovered_characters)
 
-    def process_text(self) -> Tuple[str]:
+    def process_text(self, text: str) -> Tuple[str]:
         """Main processing function - returns text from widget"""
-        # Note: ComfyUI gets the actual value from the widget's getValue()
-        # This method is required but the real value comes from the frontend widget
-        # The widget automatically passes its value through ComfyUI's widget system
-        return ("",)
+        # Receives the text value from the widget through ComfyUI's input system
+        # The widget's getValue() provides the current textarea content
+        return (text,)
 
 
 # Register the node
