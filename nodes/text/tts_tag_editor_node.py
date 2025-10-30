@@ -69,10 +69,10 @@ class StringMultilineTagEditor:
             discovery = VoiceDiscovery()
 
             # Get all available characters
-            characters = discovery.get_character_voices()
+            characters = discovery.get_available_characters()
             if characters:
-                self._discovered_characters = characters
-                print(f"🎭 TTS Tag Editor: Discovered {len(characters)} character voices")
+                self._discovered_characters = list(characters) if isinstance(characters, set) else characters
+                print(f"🎭 TTS Tag Editor: Discovered {len(self._discovered_characters)} character voices")
         except Exception as e:
             print(f"⚠️ TTS Tag Editor: Could not discover characters: {e}")
 
@@ -248,9 +248,9 @@ class StringMultilineTagEditor:
 
     def process_text(self) -> Tuple[str]:
         """Main processing function - returns text from widget"""
-        # This node doesn't process anything - the widget handles all editing
-        # The text value is managed entirely by the frontend widget via getValue/setValue
-        # This method just returns an empty string since actual output comes from the widget
+        # Note: ComfyUI gets the actual value from the widget's getValue()
+        # This method is required but the real value comes from the frontend widget
+        # The widget automatically passes its value through ComfyUI's widget system
         return ("",)
 
 

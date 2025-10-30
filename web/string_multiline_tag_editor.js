@@ -323,10 +323,11 @@ function addStringMultilineTagEditorWidget(node) {
         highlightsOverlay.innerHTML = html;
     };
 
-    // Helper function to update textarea value and highlights in sync
+    // Helper function to update textarea value, highlights, and widget value in sync
     const setTextareaValue = (newText) => {
         textarea.value = newText;
         updateHighlights();
+        widget.value = newText; // Keep widget value in sync for ComfyUI
     };
 
     // Sync scroll between textarea and highlights
@@ -335,9 +336,15 @@ function addStringMultilineTagEditorWidget(node) {
         highlightsOverlay.scrollLeft = textarea.scrollLeft;
     });
 
-    // Update highlights on input
-    textarea.addEventListener("input", updateHighlights);
-    textarea.addEventListener("change", updateHighlights);
+    // Update highlights on input and sync widget value
+    textarea.addEventListener("input", () => {
+        updateHighlights();
+        widget.value = textarea.value;
+    });
+    textarea.addEventListener("change", () => {
+        updateHighlights();
+        widget.value = textarea.value;
+    });
 
     textareaWrapper.appendChild(highlightsOverlay);
     textareaWrapper.appendChild(textarea);
@@ -356,8 +363,12 @@ function addStringMultilineTagEditorWidget(node) {
         setValue(v) {
             textarea.value = v;
             state.text = v;
+            setTextareaValue(v); // Update highlights when setValue is called
         }
     });
+
+    // Initialize widget value to current textarea content
+    widget.value = textarea.value;
 
     widget.inputEl = textarea;
     widget.options.minNodeSize = [900, 600];
