@@ -246,6 +246,10 @@ class StringMultilineTagEditor:
         except Exception as e:
             print(f"⚠️ Failed to deserialize state: {e}")
 
+    def get_available_characters(self) -> List[str]:
+        """Return list of available character voices for the widget"""
+        return self._discovered_characters if isinstance(self._discovered_characters, list) else list(self._discovered_characters)
+
     def process_text(self) -> Tuple[str]:
         """Main processing function - returns text from widget"""
         # Note: ComfyUI gets the actual value from the widget's getValue()

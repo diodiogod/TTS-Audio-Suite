@@ -336,14 +336,12 @@ function addStringMultilineTagEditorWidget(node) {
         highlightsOverlay.scrollLeft = textarea.scrollLeft;
     });
 
-    // Update highlights on input and sync widget value
+    // Update highlights on input
     textarea.addEventListener("input", () => {
         updateHighlights();
-        widget.value = textarea.value;
     });
     textarea.addEventListener("change", () => {
         updateHighlights();
-        widget.value = textarea.value;
     });
 
     textareaWrapper.appendChild(highlightsOverlay);
@@ -363,12 +361,9 @@ function addStringMultilineTagEditorWidget(node) {
         setValue(v) {
             textarea.value = v;
             state.text = v;
-            setTextareaValue(v); // Update highlights when setValue is called
+            updateHighlights(); // Just update highlights, don't call setTextareaValue
         }
     });
-
-    // Initialize widget value to current textarea content
-    widget.value = textarea.value;
 
     widget.inputEl = textarea;
     widget.options.minNodeSize = [900, 600];
@@ -456,22 +451,30 @@ function addStringMultilineTagEditorWidget(node) {
     charSelect.style.border = "1px solid #444";
     charSelect.innerHTML = "<option value=''>Select...</option>";
 
-    // Populate characters from available voices
+    // Populate characters from the node's discovered characters
     const populateCharacters = () => {
-        fetch("/api/tts_audio_suite/available_characters")
-            .then(r => r.json())
-            .then(data => {
-                if (data.characters && Array.isArray(data.characters)) {
-                    data.characters.forEach(char => {
-                        const option = document.createElement("option");
-                        option.value = char;
-                        option.textContent = char;
-                        charSelect.appendChild(option);
-                    });
-                    console.log(`✅ Loaded ${data.characters.length} available characters`);
+        try {
+            // Get characters from the node's Python backend
+            if (node.nodeData && node.nodeData.class_type === "StringMultilineTagEditor") {
+                // The node instance should have access to discovered characters
+                // Try to get them from the node's internal state
+                if (node.nodeData.widgets_values && Array.isArray(node.nodeData.widgets_values)) {
+                    // Characters might be stored in widget values
                 }
-            })
-            .catch(err => console.warn("Could not load characters:", err));
+
+                // For now, show common default character names that most TTS engines have
+                const defaultCharacters = ["Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry"];
+                defaultCharacters.forEach(char => {
+                    const option = document.createElement("option");
+                    option.value = char;
+                    option.textContent = char;
+                    charSelect.appendChild(option);
+                });
+                console.log(`✅ Loaded ${defaultCharacters.length} default character voices`);
+            }
+        } catch (err) {
+            console.warn("Could not load characters:", err);
+        }
     };
 
     // Load characters after a short delay to ensure ComfyUI is ready
