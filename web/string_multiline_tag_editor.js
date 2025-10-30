@@ -249,6 +249,34 @@ function addStringMultilineTagEditorWidget(node) {
     sidebar.style.display = "flex";
     sidebar.style.flexDirection = "column";
 
+    // Create textarea wrapper for syntax highlighting
+    const textareaWrapper = document.createElement("div");
+    textareaWrapper.style.position = "relative";
+    textareaWrapper.style.flex = "1 1 auto";
+    textareaWrapper.style.display = "flex";
+    textareaWrapper.style.minHeight = "0";
+    textareaWrapper.style.width = "100%";
+
+    // Create highlights overlay (behind textarea)
+    const highlightsOverlay = document.createElement("pre");
+    highlightsOverlay.style.position = "absolute";
+    highlightsOverlay.style.top = "0";
+    highlightsOverlay.style.left = "0";
+    highlightsOverlay.style.width = "100%";
+    highlightsOverlay.style.height = "100%";
+    highlightsOverlay.style.margin = "0";
+    highlightsOverlay.style.padding = "10px";
+    highlightsOverlay.style.fontFamily = "monospace";
+    highlightsOverlay.style.fontSize = "13px";
+    highlightsOverlay.style.color = "transparent";
+    highlightsOverlay.style.background = "#1a1a1a";
+    highlightsOverlay.style.border = "none";
+    highlightsOverlay.style.overflow = "hidden";
+    highlightsOverlay.style.pointerEvents = "none";
+    highlightsOverlay.style.whiteSpace = "pre-wrap";
+    highlightsOverlay.style.wordWrap = "break-word";
+    highlightsOverlay.style.lineHeight = "1.4";
+
     // Create textarea
     const textarea = document.createElement("textarea");
     textarea.className = "comfy-multiline-input";
@@ -260,16 +288,58 @@ function addStringMultilineTagEditorWidget(node) {
     textarea.style.fontSize = "13px";
     textarea.style.padding = "10px";
     textarea.style.border = "none";
-    textarea.style.background = "#1a1a1a";
+    textarea.style.background = "transparent";
     textarea.style.color = "#eee";
     textarea.style.outline = "none";
     textarea.style.margin = "0";
     textarea.style.resize = "none";
     textarea.style.minHeight = "0";
     textarea.style.width = "100%";
+    textarea.style.position = "relative";
+    textarea.style.zIndex = "1";
+    textarea.style.lineHeight = "1.4";
+
+    // Function to highlight syntax
+    const updateHighlights = () => {
+        let html = textarea.value
+            // Escape HTML
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm)
+        html = html.replace(
+            /(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/g,
+            '<span style="color: #ffa500;">$1</span>' // Orange for SRT timings
+        );
+
+        // Highlight tags [...]
+        html = html.replace(
+            /(\[[^\]]+\])/g,
+            '<span style="color: #00ff00;">$1</span>' // Green for tags
+        );
+
+        highlightsOverlay.innerHTML = html;
+    };
+
+    // Sync scroll between textarea and highlights
+    textarea.addEventListener("scroll", () => {
+        highlightsOverlay.scrollTop = textarea.scrollTop;
+        highlightsOverlay.scrollLeft = textarea.scrollLeft;
+    });
+
+    // Update highlights on input
+    textarea.addEventListener("input", updateHighlights);
+    textarea.addEventListener("change", updateHighlights);
+
+    textareaWrapper.appendChild(highlightsOverlay);
+    textareaWrapper.appendChild(textarea);
 
     editorContainer.appendChild(sidebar);
-    editorContainer.appendChild(textarea);
+    editorContainer.appendChild(textareaWrapper);
+
+    // Initial highlight
+    updateHighlights();
 
     // Create the widget - this is the ONLY widget for this node
     const widget = node.addDOMWidget("text_output", "customtext", editorContainer, {
