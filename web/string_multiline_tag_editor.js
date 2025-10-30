@@ -307,19 +307,25 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
 
-        // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm)
+        // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm) - bright yellow
         html = html.replace(
             /(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/g,
-            '<span style="color: #ffff00; font-weight: bold; text-shadow: 0 0 4px #ffff00;">$1</span>' // Bright yellow with glow for SRT timings
+            '<span style="color: #ffff00;">$1</span>' // Bright yellow for SRT timings
         );
 
-        // Highlight tags [...]
+        // Highlight tags [...] - bright green
         html = html.replace(
             /(\[[^\]]+\])/g,
-            '<span style="color: #00ff00; font-weight: bold; text-shadow: 0 0 4px #00ff00;">$1</span>' // Bright green with glow for tags
+            '<span style="color: #00ff00;">$1</span>' // Bright green for tags
         );
 
         highlightsOverlay.innerHTML = html;
+    };
+
+    // Helper function to update textarea value and highlights in sync
+    const setTextareaValue = (newText) => {
+        textarea.value = newText;
+        updateHighlights();
     };
 
     // Sync scroll between textarea and highlights
@@ -688,7 +694,7 @@ function addStringMultilineTagEditorWidget(node) {
 
             const newText = text.substring(0, tagStart + 1) + tagContent + text.substring(tagEnd);
 
-            textarea.value = newText;
+            setTextareaValue(newText);
             state.addToHistory(newText);
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
@@ -698,7 +704,7 @@ function addStringMultilineTagEditorWidget(node) {
             const paramTag = `[${paramStr}]`;
             const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
 
-            textarea.value = newText;
+            setTextareaValue(newText);
             state.addToHistory(newText);
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
@@ -834,14 +840,14 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Undo/Redo buttons
     undoBtn.addEventListener("click", () => {
-        textarea.value = state.undo();
+        setTextareaValue(state.undo());
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
 
     redoBtn.addEventListener("click", () => {
-        textarea.value = state.redo();
+        setTextareaValue(state.redo());
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
@@ -852,9 +858,9 @@ function addStringMultilineTagEditorWidget(node) {
         if ((e.ctrlKey || e.metaKey) && e.key === "z") {
             e.preventDefault();
             if (e.shiftKey) {
-                textarea.value = state.redo();
+                setTextareaValue(state.redo());
             } else {
-                textarea.value = state.undo();
+                setTextareaValue(state.undo());
             }
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
@@ -889,7 +895,7 @@ function addStringMultilineTagEditorWidget(node) {
                 selectionEnd
             );
 
-            textarea.value = newText;
+            setTextareaValue(newText);
             state.addToHistory(newText);
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
@@ -913,7 +919,7 @@ function addStringMultilineTagEditorWidget(node) {
         // Remove trailing spaces
         text = text.split("\n").map(line => line.trimEnd()).join("\n");
 
-        textarea.value = text;
+        setTextareaValue(text);
         state.addToHistory(text);
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
@@ -980,7 +986,7 @@ function addStringMultilineTagEditorWidget(node) {
                 if (preset.isComplexTag) {
                     const selectionStart = textarea.selectionStart;
                     const newText = textarea.value.substring(0, selectionStart) + preset.tag + " " + textarea.value.substring(selectionStart);
-                    textarea.value = newText;
+                    setTextareaValue(newText);
                     state.addToHistory(newText);
                     state.saveToLocalStorage(storageKey);
                     widget.callback?.(widget.value);
