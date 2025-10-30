@@ -18,10 +18,15 @@ try:
 except ImportError:
     folder_paths = None
 
-# Import perth with warnings disabled
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import perth
+# Import perth with warnings disabled and graceful fallback
+try:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import perth
+    PERTH_AVAILABLE = True
+except ImportError:
+    perth = None
+    PERTH_AVAILABLE = False
 
 from .models.t3 import T3
 from .models.s3tokenizer import S3_SR, drop_invalid_tokens

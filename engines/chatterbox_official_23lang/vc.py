@@ -14,10 +14,15 @@ try:
 except ImportError:
     folder_paths = None
 
-# Import perth with warnings disabled
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import perth
+# Import perth with warnings disabled and graceful fallback
+try:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import perth
+    PERTH_AVAILABLE = True
+except ImportError:
+    perth = None
+    PERTH_AVAILABLE = False
 
 # Import safetensors for multilanguage model support
 from safetensors.torch import load_file

@@ -27,11 +27,6 @@ from engines.chatterbox.models.s3gen import S3GEN_SR
 from engines.chatterbox.models.t3.modules.cond_enc import T3Cond
 from engines.chatterbox.tts import Conditionals, punc_norm
 
-# Suppress perth warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import perth
-
 
 class StatelessChatterBoxWrapper:
     """
