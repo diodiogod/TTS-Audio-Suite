@@ -246,29 +246,12 @@ class StringMultilineTagEditor:
         except Exception as e:
             print(f"⚠️ Failed to deserialize state: {e}")
 
-    def process_text(self, text: str) -> Tuple[str]:
-        """Main processing function - returns text for TTS nodes"""
-        # Validate syntax
-        is_valid, error = self._validate_tag_syntax(text)
-        if not is_valid:
-            print(f"⚠️ TTS Tag Editor: {error}")
-
-        # Check if SRT format
-        is_srt, _ = self._validate_srt_format(text)
-        if is_srt:
-            print(f"🎬 TTS Tag Editor: SRT format detected")
-
-        # Parse existing tags for analysis
-        tags = self._parse_existing_tags(text)
-        if tags:
-            print(f"🎭 TTS Tag Editor: Found {len(tags)} tags")
-            for tag in tags[:3]:  # Show first 3 tags
-                if tag["language"]:
-                    print(f"   [{tag['language']}:{tag['character']}]")
-                else:
-                    print(f"   [{tag['character']}]")
-
-        return (text,)
+    def process_text(self) -> Tuple[str]:
+        """Main processing function - returns text from widget"""
+        # This node doesn't process anything - the widget handles all editing
+        # The text value is managed entirely by the frontend widget via getValue/setValue
+        # This method just returns an empty string since actual output comes from the widget
+        return ("",)
 
 
 # Register the node
