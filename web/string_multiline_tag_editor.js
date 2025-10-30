@@ -193,25 +193,27 @@ function addStringMultilineTagEditorWidget(node) {
     editorContainer.style.gap = "0";
     editorContainer.style.width = "100%";
     editorContainer.style.height = "100%";
-    editorContainer.style.minHeight = "400px";
     editorContainer.style.background = "#1a1a1a";
     editorContainer.style.borderRadius = "4px";
     editorContainer.style.overflow = "hidden";
+    editorContainer.style.flexDirection = "row";
 
     // Create sidebar
     const sidebar = document.createElement("div");
     sidebar.className = "string-multiline-tag-editor-sidebar";
-    sidebar.style.width = "200px";
-    sidebar.style.minWidth = "200px";
-    sidebar.style.maxWidth = "200px";
+    sidebar.style.width = "220px";
+    sidebar.style.minWidth = "220px";
+    sidebar.style.maxWidth = "220px";
     sidebar.style.height = "100%";
     sidebar.style.background = "#222";
     sidebar.style.borderRight = "1px solid #444";
-    sidebar.style.padding = "8px";
+    sidebar.style.padding = "10px";
     sidebar.style.overflowY = "auto";
     sidebar.style.overflowX = "hidden";
     sidebar.style.fontSize = "11px";
     sidebar.style.flexShrink = "0";
+    sidebar.style.display = "flex";
+    sidebar.style.flexDirection = "column";
 
     // Create textarea
     const textarea = document.createElement("textarea");
@@ -219,7 +221,7 @@ function addStringMultilineTagEditorWidget(node) {
     textarea.value = state.text;
     textarea.placeholder = "Enter text with tags...\n\nExamples:\n[Alice] Hello!\n[Bob|seed:42] Hi!\ntext [char] more text";
     textarea.spellcheck = false;
-    textarea.style.flex = "1";
+    textarea.style.flex = "1 1 auto";
     textarea.style.fontFamily = "monospace";
     textarea.style.fontSize = "13px";
     textarea.style.padding = "10px";
@@ -229,6 +231,8 @@ function addStringMultilineTagEditorWidget(node) {
     textarea.style.outline = "none";
     textarea.style.margin = "0";
     textarea.style.resize = "none";
+    textarea.style.minHeight = "0";
+    textarea.style.width = "100%";
 
     editorContainer.appendChild(sidebar);
     editorContainer.appendChild(textarea);
@@ -245,7 +249,13 @@ function addStringMultilineTagEditorWidget(node) {
     });
 
     widget.inputEl = textarea;
-    widget.options.minNodeSize = [1200, 500];
+    widget.options.minNodeSize = [900, 600];
+    widget.options.maxWidth = 1400;
+
+    // Set initial node size on creation
+    setTimeout(() => {
+        node.setSize([900, 600]);
+    }, 0);
 
     // ==================== SIDEBAR CONTROLS ====================
 
