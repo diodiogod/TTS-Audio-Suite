@@ -327,7 +327,7 @@ function addStringMultilineTagEditorWidget(node) {
     const setTextareaValue = (newText) => {
         textarea.value = newText;
         updateHighlights();
-        widget.value = newText; // Keep widget value in sync for ComfyUI
+        // widget.getValue() will return textarea.value, so this updates the output
     };
 
     // Sync scroll between textarea and highlights
@@ -356,9 +356,12 @@ function addStringMultilineTagEditorWidget(node) {
     // Create the widget - this is the ONLY widget for this node
     const widget = node.addDOMWidget("text_output", "customtext", editorContainer, {
         getValue() {
-            return textarea.value;
+            const value = textarea.value;
+            console.log("🏷️ Widget getValue called, returning:", value.substring(0, 50) + (value.length > 50 ? "..." : ""));
+            return value;
         },
         setValue(v) {
+            console.log("🏷️ Widget setValue called with:", (v || "").substring(0, 50));
             textarea.value = v;
             state.text = v;
             updateHighlights(); // Just update highlights, don't call setTextareaValue
@@ -451,34 +454,25 @@ function addStringMultilineTagEditorWidget(node) {
     charSelect.style.border = "1px solid #444";
     charSelect.innerHTML = "<option value=''>Select...</option>";
 
-    // Populate characters from the node's discovered characters
+    // Populate characters with default character names
     const populateCharacters = () => {
         try {
-            // Get characters from the node's Python backend
-            if (node.nodeData && node.nodeData.class_type === "StringMultilineTagEditor") {
-                // The node instance should have access to discovered characters
-                // Try to get them from the node's internal state
-                if (node.nodeData.widgets_values && Array.isArray(node.nodeData.widgets_values)) {
-                    // Characters might be stored in widget values
-                }
-
-                // For now, show common default character names that most TTS engines have
-                const defaultCharacters = ["Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry"];
-                defaultCharacters.forEach(char => {
-                    const option = document.createElement("option");
-                    option.value = char;
-                    option.textContent = char;
-                    charSelect.appendChild(option);
-                });
-                console.log(`✅ Loaded ${defaultCharacters.length} default character voices`);
-            }
+            // Show common default character names that most TTS engines have
+            const defaultCharacters = ["Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry"];
+            defaultCharacters.forEach(char => {
+                const option = document.createElement("option");
+                option.value = char;
+                option.textContent = char;
+                charSelect.appendChild(option);
+            });
+            console.log(`✅ Loaded ${defaultCharacters.length} default character voices`);
         } catch (err) {
-            console.warn("Could not load characters:", err);
+            console.warn("Could not populate characters:", err);
         }
     };
 
-    // Load characters after a short delay to ensure ComfyUI is ready
-    setTimeout(populateCharacters, 500);
+    // Load characters immediately
+    populateCharacters();
 
     const charInput = document.createElement("input");
     charInput.type = "text";
