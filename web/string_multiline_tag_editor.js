@@ -839,14 +839,13 @@ function addStringMultilineTagEditorWidget(node) {
                 state.presets[presetKey] = {
                     tag: currentTag,
                     parameters: {
-                        seed: seedInput.value,
-                        temperature: tempSlider.value,
-                        pause: pauseInput.value,
-                        language: langSelect.value
+                        language: langSelect.value,
+                        lastSeed: state.lastSeed,
+                        lastTemperature: state.lastTemperature
                     }
                 };
                 state.saveToLocalStorage(storageKey);
-                alert(`✅ Preset ${presetNum} saved!`);
+                alert(`✅ Preset ${presetNum} saved!\nCharacter: ${currentTag}\nLanguage: ${langSelect.value || 'none'}`);
             } else {
                 alert("⚠️ Please select or enter a character first");
             }
@@ -859,17 +858,13 @@ function addStringMultilineTagEditorWidget(node) {
                 state.lastCharacter = preset.tag;
 
                 if (preset.parameters) {
-                    if (preset.parameters.seed) seedInput.value = preset.parameters.seed;
-                    if (preset.parameters.temperature) {
-                        tempSlider.value = preset.parameters.temperature;
-                        tempLabel.textContent = `Temp: ${tempSlider.value}`;
-                    }
-                    if (preset.parameters.pause) pauseInput.value = preset.parameters.pause;
                     if (preset.parameters.language) langSelect.value = preset.parameters.language;
+                    if (preset.parameters.lastSeed) state.lastSeed = preset.parameters.lastSeed;
+                    if (preset.parameters.lastTemperature) state.lastTemperature = preset.parameters.lastTemperature;
                 }
 
                 state.saveToLocalStorage(storageKey);
-                alert(`✅ Preset ${presetNum} loaded!`);
+                alert(`✅ Preset ${presetNum} loaded!\nCharacter: ${preset.tag}`);
             } else {
                 alert("⚠️ This preset is empty");
             }
