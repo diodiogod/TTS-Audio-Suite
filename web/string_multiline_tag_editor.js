@@ -334,6 +334,27 @@ function addStringMultilineTagEditorWidget(node) {
     charSelect.style.border = "1px solid #444";
     charSelect.innerHTML = "<option value=''>Select...</option>";
 
+    // Populate characters from available voices
+    const populateCharacters = () => {
+        fetch("/api/tts_audio_suite/available_characters")
+            .then(r => r.json())
+            .then(data => {
+                if (data.characters && Array.isArray(data.characters)) {
+                    data.characters.forEach(char => {
+                        const option = document.createElement("option");
+                        option.value = char;
+                        option.textContent = char;
+                        charSelect.appendChild(option);
+                    });
+                    console.log(`✅ Loaded ${data.characters.length} available characters`);
+                }
+            })
+            .catch(err => console.warn("Could not load characters:", err));
+    };
+
+    // Load characters after a short delay to ensure ComfyUI is ready
+    setTimeout(populateCharacters, 500);
+
     const charInput = document.createElement("input");
     charInput.type = "text";
     charInput.placeholder = "Custom";
@@ -404,102 +425,194 @@ function addStringMultilineTagEditorWidget(node) {
     langSection.appendChild(langLabel);
     langSection.appendChild(langSelect);
 
-    // Parameter controls
+    // Parameter controls - with dynamic input based on parameter type
     const paramSection = document.createElement("div");
     paramSection.style.marginBottom = "8px";
     paramSection.style.paddingBottom = "8px";
     paramSection.style.borderBottom = "1px solid #444";
 
     const paramLabel = document.createElement("div");
-    paramLabel.textContent = "Parameters";
+    paramLabel.textContent = "Add Parameter";
     paramLabel.style.fontWeight = "bold";
     paramLabel.style.marginBottom = "5px";
     paramLabel.style.fontSize = "11px";
 
-    const seedInput = document.createElement("input");
-    seedInput.type = "number";
-    seedInput.min = "0";
-    seedInput.max = "4294967295";
-    seedInput.placeholder = "Seed";
-    seedInput.style.width = "100%";
-    seedInput.style.marginBottom = "3px";
-    seedInput.style.padding = "3px";
-    seedInput.style.fontSize = "10px";
-    seedInput.style.background = "#2a2a2a";
-    seedInput.style.color = "#eee";
-    seedInput.style.border = "1px solid #444";
-    seedInput.value = state.lastSeed;
+    const paramSelect = document.createElement("select");
+    paramSelect.style.width = "100%";
+    paramSelect.style.marginBottom = "5px";
+    paramSelect.style.padding = "3px";
+    paramSelect.style.fontSize = "10px";
+    paramSelect.style.background = "#2a2a2a";
+    paramSelect.style.color = "#eee";
+    paramSelect.style.border = "1px solid #444";
+    paramSelect.innerHTML = `
+        <option value="">Select parameter...</option>
+        <option value="seed">Seed</option>
+        <option value="temperature">Temperature</option>
+        <option value="cfg">CFG Scale</option>
+        <option value="speed">Speed</option>
+        <option value="steps">Steps</option>
+    `;
 
-    seedInput.addEventListener("change", () => {
-        state.lastSeed = seedInput.value;
-        state.saveToLocalStorage(storageKey);
+    // Container for dynamic input
+    const paramInputContainer = document.createElement("div");
+    paramInputContainer.style.marginBottom = "5px";
+
+    // Create different input types
+    const createSeedInput = () => {
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = "0";
+        input.max = "4294967295";
+        input.placeholder = "Seed value";
+        input.style.width = "100%";
+        input.style.padding = "3px";
+        input.style.fontSize = "10px";
+        input.style.background = "#2a2a2a";
+        input.style.color = "#eee";
+        input.style.border = "1px solid #444";
+        input.value = state.lastSeed || "0";
+        return input;
+    };
+
+    const createTempSlider = () => {
+        const container = document.createElement("div");
+        const label = document.createElement("div");
+        label.style.fontSize = "9px";
+        label.style.marginBottom = "2px";
+        label.style.color = "#999";
+        label.textContent = `Temp: ${state.lastTemperature.toFixed(2)}`;
+
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = "0.1";
+        slider.max = "2.0";
+        slider.step = "0.1";
+        slider.style.width = "100%";
+        slider.value = state.lastTemperature;
+        slider.dataset.label = label;
+
+        slider.addEventListener("input", () => {
+            label.textContent = `Temp: ${slider.value}`;
+        });
+
+        container.appendChild(label);
+        container.appendChild(slider);
+        container.sliderValue = slider;
+        return container;
+    };
+
+    const createGenericInput = (param) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = `${param} value`;
+        input.style.width = "100%";
+        input.style.padding = "3px";
+        input.style.fontSize = "10px";
+        input.style.background = "#2a2a2a";
+        input.style.color = "#eee";
+        input.style.border = "1px solid #444";
+        return input;
+    };
+
+    let currentInput = null;
+
+    // Change input when parameter is selected
+    paramSelect.addEventListener("change", () => {
+        paramInputContainer.innerHTML = "";
+
+        if (!paramSelect.value) {
+            currentInput = null;
+            return;
+        }
+
+        if (paramSelect.value === "seed") {
+            currentInput = createSeedInput();
+        } else if (paramSelect.value === "temperature") {
+            currentInput = createTempSlider();
+        } else {
+            currentInput = createGenericInput(paramSelect.value);
+        }
+
+        paramInputContainer.appendChild(currentInput);
     });
 
-    const tempLabel = document.createElement("label");
-    tempLabel.style.display = "block";
-    tempLabel.style.marginBottom = "3px";
-    tempLabel.style.fontSize = "10px";
-    tempLabel.style.color = "#ccc";
-    tempLabel.textContent = `Temp: ${state.lastTemperature.toFixed(2)}`;
+    const addParamBtn = document.createElement("button");
+    addParamBtn.textContent = "Add to Tag";
+    addParamBtn.style.width = "100%";
+    addParamBtn.style.padding = "4px";
+    addParamBtn.style.cursor = "pointer";
+    addParamBtn.style.fontSize = "10px";
+    addParamBtn.style.background = "#3a3a3a";
+    addParamBtn.style.color = "#eee";
+    addParamBtn.style.border = "1px solid #555";
+    addParamBtn.style.borderRadius = "2px";
 
-    const tempSlider = document.createElement("input");
-    tempSlider.type = "range";
-    tempSlider.min = "0.1";
-    tempSlider.max = "2.0";
-    tempSlider.step = "0.1";
-    tempSlider.style.width = "100%";
-    tempSlider.style.marginBottom = "5px";
-    tempSlider.value = state.lastTemperature;
+    addParamBtn.addEventListener("click", () => {
+        if (!paramSelect.value || !currentInput) {
+            alert("⚠️ Please select a parameter and enter a value");
+            return;
+        }
 
-    tempSlider.addEventListener("input", () => {
-        tempLabel.textContent = `Temp: ${tempSlider.value}`;
-        state.lastTemperature = parseFloat(tempSlider.value);
-        state.saveToLocalStorage(storageKey);
+        let paramValue;
+        if (paramSelect.value === "temperature") {
+            paramValue = currentInput.sliderValue.value;
+        } else {
+            paramValue = currentInput.value;
+        }
+
+        if (!paramValue) {
+            alert("⚠️ Please enter a value");
+            return;
+        }
+
+        const paramStr = `${paramSelect.value}:${paramValue}`;
+
+        // Try to find and modify existing tag at cursor or selection
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const text = textarea.value;
+
+        // Find if cursor is inside a tag
+        let tagStart = text.lastIndexOf("[", selectionStart);
+        let tagEnd = text.indexOf("]", selectionEnd);
+
+        if (tagStart !== -1 && tagEnd !== -1 && tagEnd > selectionStart) {
+            // We're inside a tag, add parameter to it
+            const tagContent = text.substring(tagStart + 1, tagEnd);
+            const newTagContent = `${tagContent}|${paramStr}`;
+            const newText = text.substring(0, tagStart + 1) + newTagContent + text.substring(tagEnd);
+
+            textarea.value = newText;
+            state.addToHistory(newText);
+            state.saveToLocalStorage(storageKey);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+
+            alert(`✅ Added ${paramSelect.value} to tag!`);
+        } else {
+            // No tag selected, insert as new parameter tag
+            const paramTag = `[${paramStr}]`;
+            const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
+
+            textarea.value = newText;
+            state.addToHistory(newText);
+            state.saveToLocalStorage(storageKey);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+
+            alert(`✅ Added parameter tag!`);
+        }
+
+        paramSelect.value = "";
+        paramInputContainer.innerHTML = "";
+        currentInput = null;
     });
-
-    const pauseLabel = document.createElement("label");
-    pauseLabel.style.display = "block";
-    pauseLabel.style.marginBottom = "3px";
-    pauseLabel.style.fontSize = "10px";
-    pauseLabel.style.color = "#ccc";
-    pauseLabel.textContent = "Pause";
-
-    const pauseInput = document.createElement("input");
-    pauseInput.type = "text";
-    pauseInput.placeholder = "1s";
-    pauseInput.style.width = "100%";
-    pauseInput.style.marginBottom = "4px";
-    pauseInput.style.padding = "3px";
-    pauseInput.style.fontSize = "10px";
-    pauseInput.style.background = "#2a2a2a";
-    pauseInput.style.color = "#eee";
-    pauseInput.style.border = "1px solid #444";
-    pauseInput.value = state.lastPauseDuration;
-
-    pauseInput.addEventListener("change", () => {
-        state.lastPauseDuration = pauseInput.value;
-        state.saveToLocalStorage(storageKey);
-    });
-
-    const insertPauseBtn = document.createElement("button");
-    insertPauseBtn.textContent = "Insert Pause";
-    insertPauseBtn.style.width = "100%";
-    insertPauseBtn.style.padding = "4px";
-    insertPauseBtn.style.cursor = "pointer";
-    insertPauseBtn.style.marginBottom = "5px";
-    insertPauseBtn.style.fontSize = "10px";
-    insertPauseBtn.style.background = "#3a3a3a";
-    insertPauseBtn.style.color = "#eee";
-    insertPauseBtn.style.border = "1px solid #555";
-    insertPauseBtn.style.borderRadius = "2px";
 
     paramSection.appendChild(paramLabel);
-    paramSection.appendChild(seedInput);
-    paramSection.appendChild(tempLabel);
-    paramSection.appendChild(tempSlider);
-    paramSection.appendChild(pauseLabel);
-    paramSection.appendChild(pauseInput);
-    paramSection.appendChild(insertPauseBtn);
+    paramSection.appendChild(paramSelect);
+    paramSection.appendChild(paramInputContainer);
+    paramSection.appendChild(addParamBtn);
 
     // Preset controls
     const presetSection = document.createElement("div");
