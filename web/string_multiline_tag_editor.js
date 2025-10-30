@@ -197,6 +197,40 @@ function addStringMultilineTagEditorWidget(node) {
     editorContainer.style.borderRadius = "4px";
     editorContainer.style.overflow = "hidden";
     editorContainer.style.flexDirection = "row";
+    editorContainer.style.position = "relative";
+
+    // Create notification toast at bottom
+    const notificationToast = document.createElement("div");
+    notificationToast.style.position = "absolute";
+    notificationToast.style.bottom = "10px";
+    notificationToast.style.left = "50%";
+    notificationToast.style.transform = "translateX(-50%)";
+    notificationToast.style.background = "rgba(0, 0, 0, 0.8)";
+    notificationToast.style.color = "#0f0";
+    notificationToast.style.padding = "8px 12px";
+    notificationToast.style.borderRadius = "3px";
+    notificationToast.style.fontSize = "11px";
+    notificationToast.style.opacity = "0";
+    notificationToast.style.pointerEvents = "none";
+    notificationToast.style.transition = "opacity 0.3s ease";
+    notificationToast.style.zIndex = "100";
+    notificationToast.style.maxWidth = "300px";
+    notificationToast.style.textAlign = "center";
+    notificationToast.style.whiteSpace = "nowrap";
+    notificationToast.style.overflow = "hidden";
+    notificationToast.style.textOverflow = "ellipsis";
+
+    editorContainer.appendChild(notificationToast);
+
+    // Helper function to show notification
+    const showNotification = (message, duration = 2000) => {
+        notificationToast.textContent = message;
+        notificationToast.style.opacity = "1";
+
+        setTimeout(() => {
+            notificationToast.style.opacity = "0";
+        }, duration);
+    };
 
     // Create sidebar
     const sidebar = document.createElement("div");
@@ -776,16 +810,15 @@ function addStringMultilineTagEditorWidget(node) {
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
-        alert("✅ Text formatted!");
     });
 
     // Validation
     validateBtn.addEventListener("click", () => {
         const validation = TagUtilities.validateTagSyntax(textarea.value);
         if (validation.valid) {
-            alert("✅ Tag syntax is valid!");
+            showNotification("✅ Tag syntax is valid!");
         } else {
-            alert("❌ Syntax error: " + validation.error);
+            showNotification("❌ " + validation.error, 3000);
         }
     });
 
@@ -807,7 +840,7 @@ function addStringMultilineTagEditorWidget(node) {
                     isComplexTag: true
                 };
                 state.saveToLocalStorage(storageKey);
-                console.log(`✅ Preset ${presetNum} saved from selection: ${selectedText}`);
+                showNotification(`✅ Preset ${presetNum} saved from selection`);
                 return;
             }
 
@@ -823,9 +856,9 @@ function addStringMultilineTagEditorWidget(node) {
                     }
                 };
                 state.saveToLocalStorage(storageKey);
-                console.log(`✅ Preset ${presetNum} saved!\nCharacter: ${currentTag}\nLanguage: ${langSelect.value || 'none'}`);
+                showNotification(`✅ Preset ${presetNum} saved: ${currentTag}`);
             } else {
-                console.warn("⚠️ Please select or enter a character first, or select text in the editor");
+                showNotification("⚠️ Select text or enter character", 2500);
             }
         });
 
@@ -842,7 +875,7 @@ function addStringMultilineTagEditorWidget(node) {
                     state.saveToLocalStorage(storageKey);
                     widget.callback?.(widget.value);
                     historyStatus.textContent = state.getHistoryStatus();
-                    console.log(`✅ Preset ${presetNum} inserted: ${preset.tag}`);
+                    showNotification(`✅ Preset ${presetNum} inserted`);
                 } else {
                     // Otherwise load character + parameters
                     charInput.value = preset.tag;
@@ -855,10 +888,10 @@ function addStringMultilineTagEditorWidget(node) {
                     }
 
                     state.saveToLocalStorage(storageKey);
-                    console.log(`✅ Preset ${presetNum} loaded!\nCharacter: ${preset.tag}`);
+                    showNotification(`✅ Preset ${presetNum} loaded: ${preset.tag}`);
                 }
             } else {
-                console.warn("⚠️ This preset is empty");
+                showNotification("⚠️ Preset is empty", 2000);
             }
         });
 
@@ -866,9 +899,9 @@ function addStringMultilineTagEditorWidget(node) {
             if (presetKey in state.presets) {
                 delete state.presets[presetKey];
                 state.saveToLocalStorage(storageKey);
-                alert(`✅ Preset ${presetNum} deleted!`);
+                showNotification(`✅ Preset ${presetNum} deleted`);
             } else {
-                alert("⚠️ This preset is already empty");
+                showNotification("⚠️ Preset already empty", 2000);
             }
         });
     });
