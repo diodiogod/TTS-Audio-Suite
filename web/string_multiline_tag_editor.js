@@ -543,13 +543,11 @@ function addStringMultilineTagEditorWidget(node) {
 
     addParamBtn.addEventListener("click", () => {
         if (!paramTypeSelect.value || !currentParamInput) {
-            alert("⚠️ Please select a parameter type first");
             return;
         }
 
         const paramValue = currentParamInput.getValue();
         if (!paramValue) {
-            alert("⚠️ Please enter a value");
             return;
         }
 
@@ -573,7 +571,6 @@ function addStringMultilineTagEditorWidget(node) {
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
-            alert(`✅ Added ${paramTypeSelect.value} to tag!`);
         } else {
             // Outside tag - create new parameter tag
             const paramTag = `[${paramStr}]`;
@@ -584,13 +581,9 @@ function addStringMultilineTagEditorWidget(node) {
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
-            alert(`✅ Added parameter tag!`);
         }
 
-        // Reset
-        paramTypeSelect.value = "";
-        paramInputWrapper.innerHTML = "";
-        currentParamInput = null;
+        // Keep the value so user doesn't have to re-enter it
     });
 
     paramSection.appendChild(paramLabel);
@@ -801,6 +794,24 @@ function addStringMultilineTagEditorWidget(node) {
         const presetNum = presetKey.split("_")[1];
 
         buttons.save.addEventListener("click", () => {
+            // First check if user selected text in textarea (like [de:Alice|seed:42|temp:0.8])
+            const selectionStart = textarea.selectionStart;
+            const selectionEnd = textarea.selectionEnd;
+            let selectedText = "";
+
+            if (selectionStart !== selectionEnd) {
+                selectedText = textarea.value.substring(selectionStart, selectionEnd);
+                // Store the selected text as the preset
+                state.presets[presetKey] = {
+                    tag: selectedText,
+                    isComplexTag: true
+                };
+                state.saveToLocalStorage(storageKey);
+                console.log(`✅ Preset ${presetNum} saved from selection: ${selectedText}`);
+                return;
+            }
+
+            // Otherwise save character + language preset
             const currentTag = charInput.value.trim() || charSelect.value;
             if (currentTag) {
                 state.presets[presetKey] = {
@@ -812,28 +823,42 @@ function addStringMultilineTagEditorWidget(node) {
                     }
                 };
                 state.saveToLocalStorage(storageKey);
-                alert(`✅ Preset ${presetNum} saved!\nCharacter: ${currentTag}\nLanguage: ${langSelect.value || 'none'}`);
+                console.log(`✅ Preset ${presetNum} saved!\nCharacter: ${currentTag}\nLanguage: ${langSelect.value || 'none'}`);
             } else {
-                alert("⚠️ Please select or enter a character first");
+                console.warn("⚠️ Please select or enter a character first, or select text in the editor");
             }
         });
 
         buttons.load.addEventListener("click", () => {
             if (presetKey in state.presets) {
                 const preset = state.presets[presetKey];
-                charInput.value = preset.tag;
-                state.lastCharacter = preset.tag;
 
-                if (preset.parameters) {
-                    if (preset.parameters.language) langSelect.value = preset.parameters.language;
-                    if (preset.parameters.lastSeed) state.lastSeed = preset.parameters.lastSeed;
-                    if (preset.parameters.lastTemperature) state.lastTemperature = preset.parameters.lastTemperature;
+                // If it's a complex tag saved from selection, insert it at cursor
+                if (preset.isComplexTag) {
+                    const selectionStart = textarea.selectionStart;
+                    const newText = textarea.value.substring(0, selectionStart) + preset.tag + " " + textarea.value.substring(selectionStart);
+                    textarea.value = newText;
+                    state.addToHistory(newText);
+                    state.saveToLocalStorage(storageKey);
+                    widget.callback?.(widget.value);
+                    historyStatus.textContent = state.getHistoryStatus();
+                    console.log(`✅ Preset ${presetNum} inserted: ${preset.tag}`);
+                } else {
+                    // Otherwise load character + parameters
+                    charInput.value = preset.tag;
+                    state.lastCharacter = preset.tag;
+
+                    if (preset.parameters) {
+                        if (preset.parameters.language) langSelect.value = preset.parameters.language;
+                        if (preset.parameters.lastSeed) state.lastSeed = preset.parameters.lastSeed;
+                        if (preset.parameters.lastTemperature) state.lastTemperature = preset.parameters.lastTemperature;
+                    }
+
+                    state.saveToLocalStorage(storageKey);
+                    console.log(`✅ Preset ${presetNum} loaded!\nCharacter: ${preset.tag}`);
                 }
-
-                state.saveToLocalStorage(storageKey);
-                alert(`✅ Preset ${presetNum} loaded!\nCharacter: ${preset.tag}`);
             } else {
-                alert("⚠️ This preset is empty");
+                console.warn("⚠️ This preset is empty");
             }
         });
 
