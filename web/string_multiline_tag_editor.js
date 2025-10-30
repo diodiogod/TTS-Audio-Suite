@@ -310,13 +310,13 @@ function addStringMultilineTagEditorWidget(node) {
         // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm)
         html = html.replace(
             /(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/g,
-            '<span style="color: #ffa500;">$1</span>' // Orange for SRT timings
+            '<span style="color: #ffff00; font-weight: bold; text-shadow: 0 0 4px #ffff00;">$1</span>' // Bright yellow with glow for SRT timings
         );
 
         // Highlight tags [...]
         html = html.replace(
             /(\[[^\]]+\])/g,
-            '<span style="color: #00ff00;">$1</span>' // Green for tags
+            '<span style="color: #00ff00; font-weight: bold; text-shadow: 0 0 4px #00ff00;">$1</span>' // Bright green with glow for tags
         );
 
         highlightsOverlay.innerHTML = html;
@@ -573,12 +573,17 @@ function addStringMultilineTagEditorWidget(node) {
             input.min = "0";
             input.max = "4294967295";
             input.placeholder = "0";
+            input.value = state.lastSeed || "0";
             input.style.width = "100%";
             input.style.padding = "3px";
             input.style.fontSize = "10px";
             input.style.background = "#2a2a2a";
             input.style.color = "#eee";
             input.style.border = "1px solid #444";
+            input.addEventListener("change", () => {
+                state.lastSeed = parseInt(input.value) || 0;
+                state.saveToLocalStorage(storageKey);
+            });
             wrapper.appendChild(input);
             wrapper.getValue = () => input.value;
             return wrapper;
@@ -587,17 +592,19 @@ function addStringMultilineTagEditorWidget(node) {
             label.style.fontSize = "9px";
             label.style.marginBottom = "2px";
             label.style.color = "#999";
-            label.textContent = "Temp: 0.7";
+            label.textContent = `Temp: ${state.lastTemperature}`;
 
             const slider = document.createElement("input");
             slider.type = "range";
             slider.min = "0.1";
             slider.max = "2.0";
             slider.step = "0.1";
-            slider.value = "0.7";
+            slider.value = state.lastTemperature;
             slider.style.width = "100%";
             slider.addEventListener("input", () => {
                 label.textContent = `Temp: ${slider.value}`;
+                state.lastTemperature = parseFloat(slider.value);
+                state.saveToLocalStorage(storageKey);
             });
 
             wrapper.appendChild(label);
@@ -760,6 +767,24 @@ function addStringMultilineTagEditorWidget(node) {
         presetSection.appendChild(presetContainer);
     }
 
+    // Restore preset button glow states based on saved presets
+    const updatePresetGlows = () => {
+        Object.entries(presetButtons).forEach(([presetKey, buttons]) => {
+            if (presetKey in state.presets && state.presets[presetKey]) {
+                // Preset exists - keep load button glowing green to show it has data
+                buttons.load.style.background = "#00cc00";
+                buttons.load.style.boxShadow = "0 0 8px #00cc00";
+            } else {
+                // Preset empty - normal style
+                buttons.load.style.background = "#3a3a3a";
+                buttons.load.style.boxShadow = "none";
+            }
+        });
+    };
+
+    // Update glow on load
+    updatePresetGlows();
+
     // Validation controls
     const validSection = document.createElement("div");
 
@@ -841,6 +866,8 @@ function addStringMultilineTagEditorWidget(node) {
     charSelect.addEventListener("change", () => {
         if (charSelect.value) {
             charInput.value = charSelect.value;
+            state.lastCharacter = charSelect.value;
+            state.saveToLocalStorage(storageKey);
         }
     });
 
@@ -922,15 +949,7 @@ function addStringMultilineTagEditorWidget(node) {
                 };
                 state.saveToLocalStorage(storageKey);
                 showNotification(`✅ Preset ${presetNum} saved from selection`);
-
-                // Green glow feedback
-                const originalBg = buttons.save.style.background;
-                buttons.save.style.background = "#00cc00";
-                buttons.save.style.boxShadow = "0 0 8px #00cc00";
-                setTimeout(() => {
-                    buttons.save.style.background = originalBg;
-                    buttons.save.style.boxShadow = "none";
-                }, 600);
+                updatePresetGlows();
                 return;
             }
 
@@ -947,15 +966,7 @@ function addStringMultilineTagEditorWidget(node) {
                 };
                 state.saveToLocalStorage(storageKey);
                 showNotification(`✅ Preset ${presetNum} saved: ${currentTag}`);
-
-                // Green glow feedback
-                const originalBg = buttons.save.style.background;
-                buttons.save.style.background = "#00cc00";
-                buttons.save.style.boxShadow = "0 0 8px #00cc00";
-                setTimeout(() => {
-                    buttons.save.style.background = originalBg;
-                    buttons.save.style.boxShadow = "none";
-                }, 600);
+                updatePresetGlows();
             } else {
                 showNotification("⚠️ Select text or enter character", 2500);
             }
@@ -999,6 +1010,7 @@ function addStringMultilineTagEditorWidget(node) {
                 delete state.presets[presetKey];
                 state.saveToLocalStorage(storageKey);
                 showNotification(`✅ Preset ${presetNum} deleted`);
+                updatePresetGlows();
             } else {
                 showNotification("⚠️ Preset already empty", 2000);
             }
