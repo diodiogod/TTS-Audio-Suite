@@ -1565,6 +1565,7 @@ Your support helps maintain and improve this project for the entire community!
 
 | Workflow                   | Description                                      | Status               | Files                                                                      |
 | -------------------------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
+| **🤐 Voice Cleaning** | Audio restoration & cleanup with dual tool pipeline | ✅ **New in v4.13**   | [📁 JSON](example_workflows/Voice%20Cleaning%20-%20🤐%20Noise%20or%20Vocal%20Removal%20+%20🤐%20Voice%20Fixer.json) |
 | **🌈 IndexTTS-2 Integration** | IndexTTS-2 engine with advanced emotion control | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)            |
 | **📝 F5 TTS + Text Normalizer** | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json) |
 | **VibeVoice Integration**  | VibeVoice long-form TTS with multi-speaker support | ✅ **Compatible**     | [📁 JSON](example_workflows/VibeVoice%20integration.json)                 |
