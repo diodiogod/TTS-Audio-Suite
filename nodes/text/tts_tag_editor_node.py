@@ -25,13 +25,7 @@ class StringMultilineTagEditor:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {
-                "text": ("STRING", {
-                    "multiline": True,
-                    "default": "Enter your text here...\n\nExamples:\n[Alice] Hello there!\n[Bob|seed:42] Nice to meet you.\ntext text [char] more text",
-                    "tooltip": "TTS text with character tags and parameters.\n\nSupported formats:\n• [Character] text\n• [language:Character] text for multilingual\n• text [Character|seed:42] more text (mid-sentence)\n• [pause:1s] for timing\n• [Character|seed:42|temperature:0.5] for parameters"
-                }),
-            },
+            "required": {},
             "optional": {}
         }
 

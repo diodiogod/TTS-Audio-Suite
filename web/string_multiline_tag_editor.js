@@ -180,7 +180,7 @@ class TagUtilities {
 }
 
 // Create the widget
-function addStringMultilineTagEditorWidget(node, inputSpec) {
+function addStringMultilineTagEditorWidget(node) {
     const storageKey = `string_multiline_tag_editor_${node.id}`;
 
     // Load persisted state
@@ -233,8 +233,8 @@ function addStringMultilineTagEditorWidget(node, inputSpec) {
     editorContainer.appendChild(sidebar);
     editorContainer.appendChild(textarea);
 
-    // Create the widget - this is the ONLY widget for this input
-    const widget = node.addDOMWidget(inputSpec.name || "text", "customtext", editorContainer, {
+    // Create the widget - this is the ONLY widget for this node
+    const widget = node.addDOMWidget("text_output", "customtext", editorContainer, {
         getValue() {
             return textarea.value;
         },
@@ -798,15 +798,19 @@ app.registerExtension({
     name: "StringMultilineTagEditor",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.name === "StringMultilineTagEditor") {
+            // Override onNodeCreated to create our custom widget
+            const originalOnNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
-                this.widgets = this.widgets || [];
-                const inputSpec = {
-                    name: "text",
-                    type: "STRING",
-                    default: "",
-                    multiline: true
-                };
-                addStringMultilineTagEditorWidget(this, inputSpec);
+                // Call original to set up the node
+                if (originalOnNodeCreated) {
+                    originalOnNodeCreated.call(this);
+                }
+
+                // Remove any existing widgets (there shouldn't be any since we have no inputs)
+                this.widgets = [];
+
+                // Create our custom widget
+                addStringMultilineTagEditorWidget(this);
             };
         }
     }
