@@ -425,25 +425,178 @@ function addStringMultilineTagEditorWidget(node) {
     langSection.appendChild(langLabel);
     langSection.appendChild(langSelect);
 
-    // Parameter controls - placeholder section
+    // Parameter controls - dynamic parameter selector
     const paramSection = document.createElement("div");
     paramSection.style.marginBottom = "8px";
     paramSection.style.paddingBottom = "8px";
     paramSection.style.borderBottom = "1px solid #444";
 
     const paramLabel = document.createElement("div");
-    paramLabel.textContent = "Parameters";
+    paramLabel.textContent = "Add Parameter";
     paramLabel.style.fontWeight = "bold";
     paramLabel.style.marginBottom = "5px";
     paramLabel.style.fontSize = "11px";
 
-    const paramInfo = document.createElement("div");
-    paramInfo.style.fontSize = "10px";
-    paramInfo.style.color = "#999";
-    paramInfo.textContent = "Add parameters via 'Add Parameter' section";
+    // Parameter type selector
+    const paramTypeSelect = document.createElement("select");
+    paramTypeSelect.style.width = "100%";
+    paramTypeSelect.style.marginBottom = "5px";
+    paramTypeSelect.style.padding = "3px";
+    paramTypeSelect.style.fontSize = "10px";
+    paramTypeSelect.style.background = "#2a2a2a";
+    paramTypeSelect.style.color = "#eee";
+    paramTypeSelect.style.border = "1px solid #444";
+    paramTypeSelect.innerHTML = `
+        <option value="">Select parameter...</option>
+        <option value="seed">Seed</option>
+        <option value="temperature">Temperature</option>
+        <option value="cfg">CFG Scale</option>
+        <option value="speed">Speed</option>
+        <option value="steps">Steps</option>
+    `;
+
+    // Input container that changes based on parameter type
+    const paramInputWrapper = document.createElement("div");
+    paramInputWrapper.style.marginBottom = "5px";
+
+    // Helper to create input for a parameter type
+    const createParamInput = (type) => {
+        const wrapper = document.createElement("div");
+
+        if (type === "seed") {
+            const input = document.createElement("input");
+            input.type = "number";
+            input.min = "0";
+            input.max = "4294967295";
+            input.placeholder = "0";
+            input.style.width = "100%";
+            input.style.padding = "3px";
+            input.style.fontSize = "10px";
+            input.style.background = "#2a2a2a";
+            input.style.color = "#eee";
+            input.style.border = "1px solid #444";
+            wrapper.appendChild(input);
+            wrapper.getValue = () => input.value;
+            return wrapper;
+        } else if (type === "temperature") {
+            const label = document.createElement("div");
+            label.style.fontSize = "9px";
+            label.style.marginBottom = "2px";
+            label.style.color = "#999";
+            label.textContent = "Temp: 0.7";
+
+            const slider = document.createElement("input");
+            slider.type = "range";
+            slider.min = "0.1";
+            slider.max = "2.0";
+            slider.step = "0.1";
+            slider.value = "0.7";
+            slider.style.width = "100%";
+            slider.addEventListener("input", () => {
+                label.textContent = `Temp: ${slider.value}`;
+            });
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(slider);
+            wrapper.getValue = () => slider.value;
+            return wrapper;
+        } else {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = `${type} value`;
+            input.style.width = "100%";
+            input.style.padding = "3px";
+            input.style.fontSize = "10px";
+            input.style.background = "#2a2a2a";
+            input.style.color = "#eee";
+            input.style.border = "1px solid #444";
+            wrapper.appendChild(input);
+            wrapper.getValue = () => input.value;
+            return wrapper;
+        }
+    };
+
+    let currentParamInput = null;
+
+    // When parameter type changes, update the input
+    paramTypeSelect.addEventListener("change", () => {
+        paramInputWrapper.innerHTML = "";
+        if (paramTypeSelect.value) {
+            currentParamInput = createParamInput(paramTypeSelect.value);
+            paramInputWrapper.appendChild(currentParamInput);
+        } else {
+            currentParamInput = null;
+        }
+    });
+
+    // Add parameter button
+    const addParamBtn = document.createElement("button");
+    addParamBtn.textContent = "Add to Tag";
+    addParamBtn.style.width = "100%";
+    addParamBtn.style.padding = "4px";
+    addParamBtn.style.cursor = "pointer";
+    addParamBtn.style.fontSize = "10px";
+    addParamBtn.style.background = "#3a3a3a";
+    addParamBtn.style.color = "#eee";
+    addParamBtn.style.border = "1px solid #555";
+    addParamBtn.style.borderRadius = "2px";
+
+    addParamBtn.addEventListener("click", () => {
+        if (!paramTypeSelect.value || !currentParamInput) {
+            alert("⚠️ Please select a parameter type first");
+            return;
+        }
+
+        const paramValue = currentParamInput.getValue();
+        if (!paramValue) {
+            alert("⚠️ Please enter a value");
+            return;
+        }
+
+        const paramStr = `${paramTypeSelect.value}:${paramValue}`;
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const text = textarea.value;
+
+        // Find if cursor is inside a tag
+        let tagStart = text.lastIndexOf("[", selectionStart);
+        let tagEnd = text.indexOf("]", selectionEnd);
+
+        if (tagStart !== -1 && tagEnd !== -1 && tagEnd > selectionStart) {
+            // Inside a tag - add parameter to it
+            const tagContent = text.substring(tagStart + 1, tagEnd);
+            const newTagContent = `${tagContent}|${paramStr}`;
+            const newText = text.substring(0, tagStart + 1) + newTagContent + text.substring(tagEnd);
+
+            textarea.value = newText;
+            state.addToHistory(newText);
+            state.saveToLocalStorage(storageKey);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+            alert(`✅ Added ${paramTypeSelect.value} to tag!`);
+        } else {
+            // Outside tag - create new parameter tag
+            const paramTag = `[${paramStr}]`;
+            const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
+
+            textarea.value = newText;
+            state.addToHistory(newText);
+            state.saveToLocalStorage(storageKey);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+            alert(`✅ Added parameter tag!`);
+        }
+
+        // Reset
+        paramTypeSelect.value = "";
+        paramInputWrapper.innerHTML = "";
+        currentParamInput = null;
+    });
 
     paramSection.appendChild(paramLabel);
-    paramSection.appendChild(paramInfo);
+    paramSection.appendChild(paramTypeSelect);
+    paramSection.appendChild(paramInputWrapper);
+    paramSection.appendChild(addParamBtn);
 
     // Preset controls
     const presetSection = document.createElement("div");
