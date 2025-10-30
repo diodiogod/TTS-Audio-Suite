@@ -595,10 +595,21 @@ function addStringMultilineTagEditorWidget(node) {
         let tagEnd = text.indexOf("]", selectionEnd);
 
         if (tagStart !== -1 && tagEnd !== -1 && tagEnd > selectionStart) {
-            // Inside a tag - add parameter to it
-            const tagContent = text.substring(tagStart + 1, tagEnd);
-            const newTagContent = `${tagContent}|${paramStr}`;
-            const newText = text.substring(0, tagStart + 1) + newTagContent + text.substring(tagEnd);
+            // Inside a tag - add or replace parameter
+            let tagContent = text.substring(tagStart + 1, tagEnd);
+            const paramType = paramTypeSelect.value;
+
+            // Check if parameter already exists and replace it
+            const paramRegex = new RegExp(`${paramType}:[^|\\]]+`);
+            if (paramRegex.test(tagContent)) {
+                // Replace existing parameter
+                tagContent = tagContent.replace(paramRegex, paramStr);
+            } else {
+                // Add new parameter
+                tagContent = `${tagContent}|${paramStr}`;
+            }
+
+            const newText = text.substring(0, tagStart + 1) + tagContent + text.substring(tagEnd);
 
             textarea.value = newText;
             state.addToHistory(newText);
@@ -841,6 +852,15 @@ function addStringMultilineTagEditorWidget(node) {
                 };
                 state.saveToLocalStorage(storageKey);
                 showNotification(`✅ Preset ${presetNum} saved from selection`);
+
+                // Green glow feedback
+                const originalBg = buttons.save.style.background;
+                buttons.save.style.background = "#00cc00";
+                buttons.save.style.boxShadow = "0 0 8px #00cc00";
+                setTimeout(() => {
+                    buttons.save.style.background = originalBg;
+                    buttons.save.style.boxShadow = "none";
+                }, 600);
                 return;
             }
 
@@ -857,6 +877,15 @@ function addStringMultilineTagEditorWidget(node) {
                 };
                 state.saveToLocalStorage(storageKey);
                 showNotification(`✅ Preset ${presetNum} saved: ${currentTag}`);
+
+                // Green glow feedback
+                const originalBg = buttons.save.style.background;
+                buttons.save.style.background = "#00cc00";
+                buttons.save.style.boxShadow = "0 0 8px #00cc00";
+                setTimeout(() => {
+                    buttons.save.style.background = originalBg;
+                    buttons.save.style.boxShadow = "none";
+                }, 600);
             } else {
                 showNotification("⚠️ Select text or enter character", 2500);
             }
