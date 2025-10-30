@@ -268,7 +268,7 @@ function addStringMultilineTagEditorWidget(node) {
     highlightsOverlay.style.padding = "10px";
     highlightsOverlay.style.fontFamily = "monospace";
     highlightsOverlay.style.fontSize = "13px";
-    highlightsOverlay.style.color = "transparent";
+    highlightsOverlay.style.color = "transparent"; // Regular text invisible, only spans show
     highlightsOverlay.style.background = "#1a1a1a";
     highlightsOverlay.style.border = "none";
     highlightsOverlay.style.overflow = "hidden";
@@ -276,6 +276,8 @@ function addStringMultilineTagEditorWidget(node) {
     highlightsOverlay.style.whiteSpace = "pre-wrap";
     highlightsOverlay.style.wordWrap = "break-word";
     highlightsOverlay.style.lineHeight = "1.4";
+    highlightsOverlay.style.textRendering = "optimizeLegibility";
+    highlightsOverlay.style.WebkitFontSmoothing = "antialiased";
 
     // Create textarea
     const textarea = document.createElement("textarea");
@@ -307,16 +309,16 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
 
-        // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm) - bright yellow
+        // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm) - bright orange
         html = html.replace(
             /(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/g,
-            '<span style="color: #ffff00;">$1</span>' // Bright yellow for SRT timings
+            '<span style="color: #ffaa00; font-weight: bold;">$1</span>'
         );
 
-        // Highlight tags [...] - bright green
+        // Highlight tags [...] - bright cyan
         html = html.replace(
             /(\[[^\]]+\])/g,
-            '<span style="color: #00ff00;">$1</span>' // Bright green for tags
+            '<span style="color: #00ffff; font-weight: bold;">$1</span>'
         );
 
         highlightsOverlay.innerHTML = html;
