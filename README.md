@@ -48,12 +48,20 @@ Project          Voice            Speech         New TTS Engine │
 Renamed          Conversion       Analyzer       Voice Cloning  │
 TTS Audio Suite  + Streaming                                    │
                                                                 ▼
-       v4.9 ◄─────────── v4.8 ◄─────────────── v4.6 ◄───────────┘
-       Sep 25            Sep 25                Aug 25
-       │                 │                     │
-       IndexTTS-2        Chatterbox            VibeVoice
-       Emotion           Multilingual          New TTS Engine
-       Control           Official (23-lang)    90min Generation
+v4.9 ◄─────────────── v4.8 ◄────────────────── v4.6 ◄───────────┘
+Sep 25                Sep 25                    Aug 25
+│                     │                         │
+IndexTTS-2            Chatterbox                VibeVoice
+Emotion               Multilingual              New TTS Engine
+Control               Official (23-lang)        90min Generation
+│
+▼
+v4.12.0 ──────────►
+Oct 25
+│
+Per-Segment
+Parameter
+Switching
 ```
 
 <details>
@@ -502,17 +510,18 @@ Arabic (ar), Danish (da), German (de), Greek (el), English (en), Spanish (es), F
 
 **🆚 vs Community Models:**
 
-| Feature | Chatterbox Multilingual TTS | Community Models |
-|---------|----------------------------|------------------|
-| Languages | 23 native languages | 11 finetuned variants |
-| Model Loading | Single model, parameter switching | Separate model per language |
-| Voice Cloning | Zero-shot across all languages | Per-model training |
-| Official Support | ✅ ResembleAI official | Community maintained |
-| Character Integration | ✅ Full integration | ✅ Full integration |
-| SRT Support | ✅ Advanced timing modes | ✅ Advanced timing modes |
-| Performance | Optimized single-model | Multiple model overhead |
+| Feature               | Chatterbox Multilingual TTS       | Community Models            |
+| --------------------- | --------------------------------- | --------------------------- |
+| Languages             | 23 native languages               | 11 finetuned variants       |
+| Model Loading         | Single model, parameter switching | Separate model per language |
+| Voice Cloning         | Zero-shot across all languages    | Per-model training          |
+| Official Support      | ✅ ResembleAI official             | Community maintained        |
+| Character Integration | ✅ Full integration                | ✅ Full integration          |
+| SRT Support           | ✅ Advanced timing modes           | ✅ Advanced timing modes     |
+| Performance           | Optimized single-model            | Multiple model overhead     |
 
 **🎭 Character Example:**
+
 ```
 [En:Alice] Hello everyone! [De:Hans] Guten Tag! [Es:Maria] ¡Hola! [pause:2s] [En:Alice] That was amazing multilingual switching!
 ```
@@ -530,12 +539,14 @@ Try angle brackets `<emotion>` to experiment:
 ```
 
 **Available v2 Tokens:**
+
 - **Emotions**: `<giggle>`, `<laughter>`, `<sigh>`, `<cry>`, `<gasp>`, `<groan>`
 - **Speech Modifiers**: `<whisper>`, `<mumble>`, `<singing>`, `<humming>`
 - **Sounds**: `<cough>`, `<sneeze>`, `<sniff>`, `<inhale>`, `<exhale>`
 - **And more!** See the **[📖 Complete v2 Special Tokens Guide](docs/CHATTERBOX_V2_SPECIAL_TOKENS.md)** for all 30+ tokens
 
 **Model Version Selection:**
+
 - **v2** (default): Enhanced tokenization with experimental emotion/sound tokens
 - **v1**: Original model without special tokens
 
@@ -621,6 +632,7 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 * **🔗 Engine Integration**: Compatible with all TTS engines - F5-TTS, ChatterBox, Higgs Audio 2, VibeVoice, IndexTTS-2
 
 **Perfect for:**
+
 - Improving Polish, German, French pronunciation in F5-TTS
 - Processing multilingual content with special characters
 - Standardizing text input across different TTS engines
@@ -673,6 +685,7 @@ Beyond character switching and language control, you can now override generation
 **📖 [Complete Per-Segment Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
 
 Perfect for:
+
 - Creating consistent character voices with fixed seeds across segments
 - Varying emotional intensity within a single narration
 - Fine-tuning generation quality per-segment without regenerating everything
@@ -810,11 +823,11 @@ For portable installations, follow these steps:
    ```
 
 3. Run the install script to automatically handle all dependencies. **Important:** Use the `python.exe` executable located in your ComfyUI portable installation.
-
+   
    ```bash
    ../../../python_embeded/python.exe install.py
    ```
-
+   
    The script will automatically install all required Python packages and detect any missing system dependencies.
 
 #### 2. Direct Installation with venv
@@ -848,11 +861,11 @@ If you have a direct installation with a virtual environment (venv), follow thes
    ```
 
 4. Run the install script to automatically handle all dependencies:
-
+   
    ```bash
    python install.py
    ```
-
+   
    The script will automatically install all required Python packages and detect any missing system dependencies.
 
 #### 3. Installation through the ComfyUI Manager
@@ -870,7 +883,7 @@ If you have a direct installation with a virtual environment (venv), follow thes
 4. Activate your ComfyUI virtual environment (see instructions in "Direct Installation with venv").
 
 5. If you encounter issues, run the install script to manually install dependencies:
-
+   
    ```bash
    python install.py
    ```
@@ -938,7 +951,7 @@ To update the node to the latest version:
    ```
 
 3. Reinstall the dependencies (in case they have been updated):
-
+   
    ```bash
    python install.py
    ```
@@ -1099,6 +1112,7 @@ ComfyUI/models/TTS/chatterbox_official_23lang/
 ```
 
 **Model Selection:**
+
 - Choose "ChatterBox Official 23-Lang" from Unified TTS Engine dropdown
 - Select model version (v1 or v2) in the Engine Configuration node
 - **Auto-download**: Missing v2 files download automatically on first use (only ~2.2GB if v1 already installed)
@@ -1398,11 +1412,11 @@ ComfyUI/models/TTS/IndexTTS/
 
 **Available IndexTTS-2 Models (Auto-Download):**
 
-| Model                | Description                           | Source                                                                 | Size            | Auto-Download |
-| -------------------- | ------------------------------------- | ---------------------------------------------------------------------- | --------------- | ------------- |
-| IndexTTS-2           | Main TTS engine with emotion control  | [IndexTeam/IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2)   | Multiple files  | ✅             |
-| w2v-bert-2.0         | W2V-BERT semantic feature extractor  | [facebook/w2v-bert-2.0](https://huggingface.co/facebook/w2v-bert-2.0) | ~2GB            | ✅             |
-| qwen0.6bemo4-merge   | QwenEmotion text analysis (built-in) | Included with IndexTTS-2                                               | Part of main    | ✅             |
+| Model              | Description                          | Source                                                                | Size           | Auto-Download |
+| ------------------ | ------------------------------------ | --------------------------------------------------------------------- | -------------- | ------------- |
+| IndexTTS-2         | Main TTS engine with emotion control | [IndexTeam/IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2)   | Multiple files | ✅             |
+| w2v-bert-2.0       | W2V-BERT semantic feature extractor  | [facebook/w2v-bert-2.0](https://huggingface.co/facebook/w2v-bert-2.0) | ~2GB           | ✅             |
+| qwen0.6bemo4-merge | QwenEmotion text analysis (built-in) | Included with IndexTTS-2                                              | Part of main   | ✅             |
 
 **Key Features:**
 
@@ -1563,14 +1577,14 @@ Your support helps maintain and improve this project for the entire community!
 
 ### Specific Workflows
 
-| Workflow                   | Description                                      | Status               | Files                                                                      |
-| -------------------------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
-| **🤐 Voice Cleaning** | Audio restoration & cleanup with dual tool pipeline | ✅ **New in v4.13**   | [📁 JSON](example_workflows/Voice%20Cleaning%20-%20🤐%20Noise%20or%20Vocal%20Removal%20+%20🤐%20Voice%20Fixer.json) |
-| **🌈 IndexTTS-2 Integration** | IndexTTS-2 engine with advanced emotion control | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)            |
-| **📝 F5 TTS + Text Normalizer** | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json) |
-| **VibeVoice Integration**  | VibeVoice long-form TTS with multi-speaker support | ✅ **Compatible**     | [📁 JSON](example_workflows/VibeVoice%20integration.json)                 |
-| **ChatterBox Integration** | General ChatterBox TTS and Voice Conversion      | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                 |
-| **F5-TTS Speech Editor**   | Interactive waveform analysis for F5-TTS editing | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json) |
+| Workflow                        | Description                                                | Status               | Files                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **🤐 Voice Cleaning**           | Audio restoration & cleanup with dual tool pipeline        | ✅ **New in v4.13**   | [📁 JSON](example_workflows/Voice%20Cleaning%20-%20🤐%20Noise%20or%20Vocal%20Removal%20+%20🤐%20Voice%20Fixer.json) |
+| **🌈 IndexTTS-2 Integration**   | IndexTTS-2 engine with advanced emotion control            | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)                                                     |
+| **📝 F5 TTS + Text Normalizer** | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)                     |
+| **VibeVoice Integration**       | VibeVoice long-form TTS with multi-speaker support         | ✅ **Compatible**     | [📁 JSON](example_workflows/VibeVoice%20integration.json)                                                           |
+| **ChatterBox Integration**      | General ChatterBox TTS and Voice Conversion                | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                                                          |
+| **F5-TTS Speech Editor**        | Interactive waveform analysis for F5-TTS editing           | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json)                                          |
 
 > **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases all engines and features in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and supports ChatterBox, F5-TTS, and Higgs Audio 2 engines.
 > 
