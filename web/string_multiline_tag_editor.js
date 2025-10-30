@@ -992,6 +992,15 @@ function addStringMultilineTagEditorWidget(node) {
                     state.saveToLocalStorage(storageKey);
                     widget.callback?.(widget.value);
                     historyStatus.textContent = state.getHistoryStatus();
+
+                    // Move caret to after the inserted text
+                    const newCaretPos = selectionStart + preset.tag.length + 1; // +1 for the space after tag
+                    setTimeout(() => {
+                        textarea.selectionStart = newCaretPos;
+                        textarea.selectionEnd = newCaretPos;
+                        textarea.focus();
+                    }, 0);
+
                     showNotification(`✅ Preset ${presetNum} inserted`);
                 } else {
                     // Otherwise load character + parameters
