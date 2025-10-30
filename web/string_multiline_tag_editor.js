@@ -615,23 +615,6 @@ function addStringMultilineTagEditorWidget(node) {
         }
     });
 
-    // Insert pause button
-    insertPauseBtn.addEventListener("click", () => {
-        state.lastPauseDuration = pauseInput.value || "1s";
-        const pauseTag = `[pause:${state.lastPauseDuration}]`;
-        const newText = TagUtilities.insertTagAtPosition(
-            textarea.value,
-            pauseTag,
-            textarea.selectionStart
-        );
-
-        textarea.value = newText;
-        state.addToHistory(newText);
-        state.saveToLocalStorage(storageKey);
-        widget.callback?.(widget.value);
-        historyStatus.textContent = state.getHistoryStatus();
-    });
-
     // Format button - normalize spacing and structure
     formatBtn.addEventListener("click", () => {
         let text = textarea.value;
