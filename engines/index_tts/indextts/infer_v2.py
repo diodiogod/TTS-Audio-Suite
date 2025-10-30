@@ -777,9 +777,15 @@ class QwenEmotion:
         import torch
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_dir,
-            dtype=torch.float16,  # Updated from deprecated torch_dtype
+            torch_dtype=torch.float16,
             device_map="auto"
         )
+        # Disable KV-cache to avoid incompatibilities with certain transformers versions
+        if hasattr(self.model, 'generation_config'):
+            try:
+                self.model.generation_config.use_cache = False
+            except Exception:
+                pass
         self.prompt = "文本情感分类"
         self.cn_key_to_en = {
             "高兴": "happy",
