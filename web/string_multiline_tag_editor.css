@@ -1,0 +1,304 @@
+/**
+ * 🏷️ String Multiline Tag Editor Styles
+ * Color-coded tags, SRT formatting, and responsive UI
+ */
+
+/* Container and layout */
+.string-multiline-tag-editor-container {
+    display: flex;
+    gap: 10px;
+    min-height: 300px;
+    background: #1a1a1a;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.string-multiline-tag-editor-sidebar {
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
+    background: #222;
+    border-right: 1px solid #333;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 12px;
+}
+
+.string-multiline-tag-editor-textarea {
+    flex: 1;
+    background: #1a1a1a;
+    color: #eee;
+    font-family: "Monaco", "Menlo", "Ubuntu Mono", "Courier New", monospace;
+    font-size: 14px;
+    padding: 10px;
+    border: 1px solid #333;
+    border-radius: 2px;
+    resize: none;
+    outline: none;
+}
+
+.string-multiline-tag-editor-textarea:focus {
+    border-color: #555;
+    background: #222;
+}
+
+/* Sidebar sections */
+.string-multiline-tag-editor-sidebar > div {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #444;
+}
+
+.string-multiline-tag-editor-sidebar > div:last-child {
+    border-bottom: none;
+}
+
+.string-multiline-tag-editor-sidebar label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #ddd;
+}
+
+.string-multiline-tag-editor-sidebar input[type="text"],
+.string-multiline-tag-editor-sidebar input[type="number"],
+.string-multiline-tag-editor-sidebar select {
+    width: 100%;
+    padding: 6px 4px;
+    margin-bottom: 6px;
+    background: #2a2a2a;
+    color: #eee;
+    border: 1px solid #444;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.string-multiline-tag-editor-sidebar input[type="text"]:focus,
+.string-multiline-tag-editor-sidebar input[type="number"]:focus,
+.string-multiline-tag-editor-sidebar select:focus {
+    outline: none;
+    border-color: #666;
+    background: #333;
+}
+
+.string-multiline-tag-editor-sidebar input[type="range"] {
+    width: 100%;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+/* Button styles */
+.string-multiline-tag-editor-sidebar button {
+    background: #3a3a3a;
+    color: #eee;
+    border: 1px solid #555;
+    padding: 6px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.string-multiline-tag-editor-sidebar button:hover {
+    background: #4a4a4a;
+    border-color: #666;
+}
+
+.string-multiline-tag-editor-sidebar button:active {
+    background: #555;
+    border-color: #777;
+}
+
+/* History controls */
+.string-multiline-tag-editor-sidebar .history-controls {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.string-multiline-tag-editor-sidebar .history-status {
+    font-size: 11px;
+    text-align: center;
+    color: #999;
+    padding: 4px;
+}
+
+/* Character section */
+.string-multiline-tag-editor-sidebar .character-section select {
+    margin-bottom: 6px;
+}
+
+/* Language section */
+.string-multiline-tag-editor-sidebar .language-section select {
+    margin-bottom: 0;
+}
+
+/* Parameter section */
+.string-multiline-tag-editor-sidebar .parameter-section {
+}
+
+.string-multiline-tag-editor-sidebar .temp-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #999;
+}
+
+/* Preset section */
+.string-multiline-tag-editor-sidebar .preset-container {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+
+.string-multiline-tag-editor-sidebar .preset-container:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.string-multiline-tag-editor-sidebar .preset-title {
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #bbb;
+}
+
+.string-multiline-tag-editor-sidebar .preset-controls {
+    display: flex;
+    gap: 3px;
+}
+
+.string-multiline-tag-editor-sidebar .preset-controls button {
+    flex: 1;
+    padding: 4px 2px;
+    font-size: 11px;
+    margin-bottom: 0;
+}
+
+/* SRT Controls */
+.srt-controls-section {
+    background: #1f2a3a;
+    padding: 8px;
+    border-radius: 2px;
+    border-left: 3px solid #4a7ba7;
+}
+
+.srt-controls-section label {
+    color: #7cb8e6;
+}
+
+.srt-nav-container {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.srt-entry-indicator {
+    flex: 1;
+    font-size: 11px;
+    text-align: center;
+    padding: 4px;
+    background: #2a3a4a;
+    border-radius: 2px;
+    color: #7cb8e6;
+}
+
+/* Tag highlighting in textarea (using background) */
+.string-multiline-tag-editor-textarea {
+    background-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 100%
+    );
+    background-attachment: fixed;
+}
+
+/* Scrollbar styling */
+.string-multiline-tag-editor-sidebar::-webkit-scrollbar,
+.string-multiline-tag-editor-textarea::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.string-multiline-tag-editor-sidebar::-webkit-scrollbar-track,
+.string-multiline-tag-editor-textarea::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.string-multiline-tag-editor-sidebar::-webkit-scrollbar-thumb,
+.string-multiline-tag-editor-textarea::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+.string-multiline-tag-editor-sidebar::-webkit-scrollbar-thumb:hover,
+.string-multiline-tag-editor-textarea::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Firefox scrollbar */
+.string-multiline-tag-editor-sidebar,
+.string-multiline-tag-editor-textarea {
+    scrollbar-color: #444 #1a1a1a;
+    scrollbar-width: thin;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .string-multiline-tag-editor-sidebar {
+        width: 160px;
+        min-width: 160px;
+        max-width: 160px;
+        font-size: 11px;
+    }
+
+    .string-multiline-tag-editor-sidebar button {
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+
+    .string-multiline-tag-editor-textarea {
+        font-size: 12px;
+    }
+}
+
+/* Compact mode for small screens */
+@media (max-width: 800px) {
+    .string-multiline-tag-editor-container {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    .string-multiline-tag-editor-sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #333;
+        max-height: 150px;
+        padding: 8px;
+    }
+
+    .string-multiline-tag-editor-textarea {
+        min-height: 300px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .string-multiline-tag-editor-sidebar {
+        display: none;
+    }
+
+    .string-multiline-tag-editor-textarea {
+        border: 1px solid #ccc;
+        background: white;
+        color: black;
+    }
+}

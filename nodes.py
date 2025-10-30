@@ -265,6 +265,14 @@ except Exception as e:
     print(f"❌ Phoneme Text Normalizer failed: {e}")
     PHONEME_TEXT_NORMALIZER_AVAILABLE = False
 
+try:
+    string_multiline_tag_editor_module = load_node_module("string_multiline_tag_editor_node", "text/tts_tag_editor_node.py")
+    StringMultilineTagEditor = string_multiline_tag_editor_module.StringMultilineTagEditor
+    STRING_MULTILINE_TAG_EDITOR_AVAILABLE = True
+except Exception as e:
+    print(f"❌ String Multiline Tag Editor failed: {e}")
+    STRING_MULTILINE_TAG_EDITOR_AVAILABLE = False
+
 # Import foundation components for compatibility
 from utils.system.import_manager import import_manager
 
@@ -480,6 +488,10 @@ if LOAD_RVC_MODEL_AVAILABLE:
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:
     NODE_CLASS_MAPPINGS["PhonemeTextNormalizer"] = PhonemeTextNormalizer
     NODE_DISPLAY_NAME_MAPPINGS["PhonemeTextNormalizer"] = "📝 Phoneme Text Normalizer"
+
+if STRING_MULTILINE_TAG_EDITOR_AVAILABLE:
+    NODE_CLASS_MAPPINGS["StringMultilineTagEditor"] = StringMultilineTagEditor
+    NODE_DISPLAY_NAME_MAPPINGS["StringMultilineTagEditor"] = "🏷️ String Multiline Tag Editor"
 
 # Register video analysis nodes
 if MOUTH_MOVEMENT_AVAILABLE:
