@@ -466,11 +466,27 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Make sidebar border-right resizable (invisible drag handle)
     let isResizing = false;
+    let lastClickTime = 0;
+    let lastClickX = 0;
 
     sidebar.addEventListener("mousedown", (e) => {
         // Only trigger resize if click is on the very right edge of sidebar (within 8px)
         const rect = sidebar.getBoundingClientRect();
         if (e.clientX > rect.right - 8) {
+            // Check for double-click
+            const currentTime = Date.now();
+            if (currentTime - lastClickTime < 300 && Math.abs(e.clientX - lastClickX) < 5) {
+                // Double-click detected - reset to defaults
+                setSidebarWidth(220); // Default width
+                setUIScale(1.0); // Default UI scale
+                setFontSize(14); // Default font size
+                showNotification("🔄 Reset: Sidebar width, UI scale, and font size to defaults");
+                lastClickTime = 0; // Reset to prevent triple-click
+                return;
+            }
+            lastClickTime = currentTime;
+            lastClickX = e.clientX;
+
             isResizing = true;
             e.preventDefault();
         }
