@@ -464,33 +464,41 @@ function addStringMultilineTagEditorWidget(node) {
 
     textareaWrapper.appendChild(editor);
 
-    // Create resizable divider between sidebar and editor
-    const resizer = document.createElement("div");
-    resizer.style.width = "5px";
-    resizer.style.height = "100%";
-    resizer.style.background = "#333";
-    resizer.style.cursor = "col-resize";
-    resizer.style.userSelect = "none";
-    resizer.style.flexShrink = "0";
-    resizer.style.borderLeft = "1px solid #444";
-    resizer.style.borderRight = "1px solid #555";
-
+    // Make sidebar border-right resizable (invisible drag handle)
     let isResizing = false;
 
-    resizer.addEventListener("mousedown", (e) => {
-        isResizing = true;
-        e.preventDefault();
+    sidebar.addEventListener("mousedown", (e) => {
+        // Only trigger resize if click is on the very right edge of sidebar (within 8px)
+        const rect = sidebar.getBoundingClientRect();
+        if (e.clientX > rect.right - 8) {
+            isResizing = true;
+            e.preventDefault();
+        }
     });
 
     document.addEventListener("mousemove", (e) => {
         if (!isResizing) return;
         const editorContainerRect = editorContainer.getBoundingClientRect();
-        const newWidth = e.clientX - editorContainerRect.left - 2.5; // 2.5 is half resizer width
+        const newWidth = e.clientX - editorContainerRect.left;
         setSidebarWidth(newWidth);
     });
 
     document.addEventListener("mouseup", () => {
         isResizing = false;
+    });
+
+    // Change cursor to col-resize when hovering near the right edge of sidebar
+    sidebar.addEventListener("mousemove", (e) => {
+        const rect = sidebar.getBoundingClientRect();
+        if (e.clientX > rect.right - 8) {
+            sidebar.style.cursor = "col-resize";
+        } else {
+            sidebar.style.cursor = "default";
+        }
+    });
+
+    sidebar.addEventListener("mouseleave", () => {
+        sidebar.style.cursor = "default";
     });
 
     // Ctrl+wheel on sidebar to change UI scale
@@ -504,7 +512,6 @@ function addStringMultilineTagEditorWidget(node) {
     });
 
     editorContainer.appendChild(sidebar);
-    editorContainer.appendChild(resizer);
     editorContainer.appendChild(textareaWrapper);
 
     // Initial highlight
