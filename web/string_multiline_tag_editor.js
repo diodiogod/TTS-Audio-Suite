@@ -404,7 +404,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Function to update font size and persist it
     const setFontSize = (newSize) => {
-        newSize = Math.max(8, Math.min(32, newSize)); // Clamp between 8px and 32px
+        newSize = Math.max(2, Math.min(120, newSize)); // Clamp between 2px and 120px
         state.fontSize = newSize;
         editor.style.fontSize = newSize + "px";
         state.saveToLocalStorage(storageKey);
@@ -623,8 +623,8 @@ function addStringMultilineTagEditorWidget(node) {
 
     const fontSizeInput = document.createElement("input");
     fontSizeInput.type = "number";
-    fontSizeInput.min = "8";
-    fontSizeInput.max = "32";
+    fontSizeInput.min = "2";
+    fontSizeInput.max = "120";
     fontSizeInput.value = state.fontSize;
     fontSizeInput.style.padding = "4px 6px";
     fontSizeInput.style.fontSize = "10px";
@@ -1424,7 +1424,7 @@ function addStringMultilineTagEditorWidget(node) {
     // Font size input change
     fontSizeInput.addEventListener("change", () => {
         let newSize = parseInt(fontSizeInput.value) || 14;
-        newSize = Math.max(8, Math.min(32, newSize)); // Clamp 8-32px
+        newSize = Math.max(2, Math.min(120, newSize)); // Clamp 2-120px
         setFontSize(newSize);
         fontSizeInput.value = newSize;
     });
@@ -1432,7 +1432,7 @@ function addStringMultilineTagEditorWidget(node) {
     // Font size input live preview
     fontSizeInput.addEventListener("input", () => {
         let newSize = parseInt(fontSizeInput.value) || state.fontSize;
-        newSize = Math.max(8, Math.min(32, newSize)); // Clamp during input
+        newSize = Math.max(2, Math.min(120, newSize)); // Clamp during input
         editor.style.fontSize = newSize + "px";
         fontSizeDisplay.textContent = newSize + "px";
     });
