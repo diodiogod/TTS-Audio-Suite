@@ -22,6 +22,7 @@ class EditorState {
         this.lastCursorPosition = 0;
         this.discoveredCharacters = {};
         this.fontSize = 14; // Default font size in pixels
+        this.fontFamily = "monospace"; // Default font family
         this.sidebarWidth = 220; // Default sidebar width in pixels
         this.uiScale = 1.0; // UI scaling factor for sidebar elements
     }
@@ -371,6 +372,7 @@ function addStringMultilineTagEditorWidget(node) {
     const textareaWrapper = document.createElement("div");
     textareaWrapper.style.flex = "1 1 auto";
     textareaWrapper.style.display = "flex";
+    textareaWrapper.style.flexDirection = "column";
     textareaWrapper.style.minHeight = "0";
     textareaWrapper.style.width = "100%";
 
@@ -379,7 +381,7 @@ function addStringMultilineTagEditorWidget(node) {
     editor.contentEditable = "true";
     editor.className = "comfy-multiline-input";
     editor.style.flex = "1 1 auto";
-    editor.style.fontFamily = "monospace";
+    editor.style.fontFamily = state.fontFamily;
     editor.style.fontSize = state.fontSize + "px";
     editor.style.padding = "10px";
     editor.style.border = "none";
@@ -550,6 +552,93 @@ function addStringMultilineTagEditorWidget(node) {
     // Initial highlight
     updateHighlights();
 
+    // Create font selector floating box (above editor)
+    const fontBox = document.createElement("div");
+    fontBox.style.background = "#2a2a2a";
+    fontBox.style.border = "1px solid #444";
+    fontBox.style.borderBottom = "1px solid #333";
+    fontBox.style.padding = "8px 10px";
+    fontBox.style.display = "flex";
+    fontBox.style.gap = "12px";
+    fontBox.style.alignItems = "center";
+    fontBox.style.flexShrink = "0";
+
+    // Font family dropdown
+    const fontFamilyLabel = document.createElement("div");
+    fontFamilyLabel.textContent = "Font:";
+    fontFamilyLabel.style.fontWeight = "bold";
+    fontFamilyLabel.style.fontSize = "10px";
+    fontFamilyLabel.style.color = "#bbb";
+    fontFamilyLabel.style.minWidth = "35px";
+
+    const fontFamilySelect = document.createElement("select");
+    fontFamilySelect.style.padding = "4px 6px";
+    fontFamilySelect.style.fontSize = "10px";
+    fontFamilySelect.style.background = "#1a1a1a";
+    fontFamilySelect.style.color = "#eee";
+    fontFamilySelect.style.border = "1px solid #555";
+    fontFamilySelect.style.borderRadius = "2px";
+    fontFamilySelect.style.cursor = "pointer";
+    fontFamilySelect.style.flex = "1";
+
+    // Add common monospace fonts - using canonical fallback chains
+    const fontFamilies = [
+        { label: "Monospace", value: "monospace" },
+        { label: "Courier New", value: "Courier New, monospace" },
+        { label: "Courier", value: "Courier, monospace" },
+        { label: "Georgia", value: "Georgia, serif" },
+        { label: "Times", value: "Times New Roman, serif" },
+        { label: "Arial", value: "Arial, sans-serif" },
+        { label: "Verdana", value: "Verdana, sans-serif" }
+    ];
+
+    fontFamilies.forEach(font => {
+        const option = document.createElement("option");
+        option.value = font.value;
+        option.textContent = font.label;
+        fontFamilySelect.appendChild(option);
+    });
+
+    // Font size control
+    const fontSizeLabel = document.createElement("div");
+    fontSizeLabel.textContent = "Size:";
+    fontSizeLabel.style.fontWeight = "bold";
+    fontSizeLabel.style.fontSize = "10px";
+    fontSizeLabel.style.color = "#bbb";
+    fontSizeLabel.style.minWidth = "35px";
+
+    const fontSizeInput = document.createElement("input");
+    fontSizeInput.type = "number";
+    fontSizeInput.min = "8";
+    fontSizeInput.max = "32";
+    fontSizeInput.value = state.fontSize;
+    fontSizeInput.style.padding = "4px 6px";
+    fontSizeInput.style.fontSize = "10px";
+    fontSizeInput.style.background = "#1a1a1a";
+    fontSizeInput.style.color = "#eee";
+    fontSizeInput.style.border = "1px solid #555";
+    fontSizeInput.style.borderRadius = "2px";
+    fontSizeInput.style.width = "50px";
+
+    const fontSizeDisplay = document.createElement("div");
+    fontSizeDisplay.textContent = state.fontSize + "px";
+    fontSizeDisplay.style.fontSize = "10px";
+    fontSizeDisplay.style.color = "#999";
+    fontSizeDisplay.style.minWidth = "30px";
+    fontSizeDisplay.style.textAlign = "right";
+
+    // Assemble font box
+    fontBox.appendChild(fontFamilyLabel);
+    fontBox.appendChild(fontFamilySelect);
+    fontBox.appendChild(fontSizeLabel);
+    fontBox.appendChild(fontSizeInput);
+    fontBox.appendChild(fontSizeDisplay);
+
+    // Set initial font family selection
+    fontFamilySelect.value = state.fontFamily;
+
+    // Add font box to textareaWrapper (above editor)
+    textareaWrapper.appendChild(fontBox);
     textareaWrapper.appendChild(editor);
 
     // Create floating invisible divider on top of everything for resizing
@@ -1298,6 +1387,29 @@ function addStringMultilineTagEditorWidget(node) {
             const newSize = state.fontSize + delta;
             setFontSize(newSize);
         }
+    });
+
+    // Font family selector change
+    fontFamilySelect.addEventListener("change", () => {
+        editor.style.fontFamily = fontFamilySelect.value;
+        state.fontFamily = fontFamilySelect.value;
+        state.saveToLocalStorage(storageKey);
+    });
+
+    // Font size input change
+    fontSizeInput.addEventListener("change", () => {
+        let newSize = parseInt(fontSizeInput.value) || 14;
+        newSize = Math.max(8, Math.min(32, newSize)); // Clamp 8-32px
+        setFontSize(newSize);
+        fontSizeInput.value = newSize;
+    });
+
+    // Font size input live preview
+    fontSizeInput.addEventListener("input", () => {
+        let newSize = parseInt(fontSizeInput.value) || state.fontSize;
+        newSize = Math.max(8, Math.min(32, newSize)); // Clamp during input
+        editor.style.fontSize = newSize + "px";
+        fontSizeDisplay.textContent = newSize + "px";
     });
 
     // Character select dropdown
