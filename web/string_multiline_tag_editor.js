@@ -1307,11 +1307,11 @@ function addStringMultilineTagEditorWidget(node) {
     // Format button - normalize spacing and structure
     formatBtn.addEventListener("click", () => {
         let text = getPlainText();
-        // Normalize spacing around tags
-        text = text.replace(/\s*\[\s*/g, "[").replace(/\s*\]/g, "]");
-        // Ensure space after closing bracket
-        text = text.replace(/\]([^\s])/g, "] $1");
-        // Remove trailing spaces
+        // Normalize spacing around tags (but preserve newlines before tags)
+        text = text.replace(/ *\[ */g, "[").replace(/ *\]/g, "]");
+        // Ensure space after closing bracket (unless followed by newline)
+        text = text.replace(/\]([^\s\n])/g, "] $1");
+        // Remove trailing spaces from each line
         text = text.split("\n").map(line => line.trimEnd()).join("\n");
 
         setEditorText(text);
