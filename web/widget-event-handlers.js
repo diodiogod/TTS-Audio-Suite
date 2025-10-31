@@ -80,6 +80,22 @@ export function attachAllEventHandlers(
     editor.addEventListener("keydown", (e) => {
         if (document.activeElement !== editor) return;
 
+        // Allow Enter to create newlines in contenteditable
+        if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+            // Prevent default and manually insert newline to avoid ComfyUI interference
+            e.preventDefault();
+            e.stopPropagation();
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const br = document.createElement("br");
+            range.insertNode(br);
+            range.setStartAfter(br);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            return;
+        }
+
         if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
             // Alt+L: Add Language Tag
             if (e.key === "l" || e.key === "L") {
@@ -295,9 +311,15 @@ export function attachAllEventHandlers(
     // Format button
     formatBtn.addEventListener("click", () => {
         let text = getPlainText();
-        text = text.replace(/\s*\[\s*/g, "[").replace(/\s*\]/g, "]");
-        text = text.replace(/([^\n\[])\[/g, "$1 [");
+        // Normalize spacing around brackets: multiple spaces/tabs become single space
+        text = text.replace(/[ \t]+\[/g, " [").replace(/\[[ \t]+/g, "[");
+        // Remove spaces/tabs before ], but keep newlines
+        text = text.replace(/[ \t]+\]/g, "]").replace(/\][ \t]+/g, "]");
+        // Add space before tags only if not after newline or space
+        text = text.replace(/([^\n\s\[])\[/g, "$1 [");
+        // Add space after closing bracket if followed by non-space/non-newline
         text = text.replace(/\]([^\s\n])/g, "] $1");
+        // Trim end of each line but preserve newlines
         text = text.split("\n").map(line => line.trimEnd()).join("\n");
 
         setEditorText(text);
