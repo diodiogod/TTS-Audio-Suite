@@ -1406,7 +1406,8 @@ function addStringMultilineTagEditorWidget(node) {
         if ((e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             const delta = e.deltaY > 0 ? -1 : 1; // Negative scroll = zoom out, positive = zoom in
-            const newSize = state.fontSize + delta;
+            let newSize = state.fontSize + delta;
+            newSize = Math.max(2, Math.min(120, newSize)); // Clamp 2-120px
             setFontSize(newSize);
             // Sync the input field with the new font size
             fontSizeInput.value = newSize;
