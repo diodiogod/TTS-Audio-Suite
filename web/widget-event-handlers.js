@@ -204,9 +204,8 @@ export function attachAllEventHandlers(
                     const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
                     return `${lang}:${charPart}${rest}`;
                 } else {
-                    // It's a parameter tag (like seed:5), insert language with pipe separator: [de:|seed:5]
-                    const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
-                    return `${lang}:${rest}`;
+                    // It's a parameter tag (like seed:5), insert language with pipe separator: [de:|seed:5|steps:3]
+                    return `${lang}:|${tagContent}`;
                 }
             } else {
                 // No colon at all, just a character name - prepend language
