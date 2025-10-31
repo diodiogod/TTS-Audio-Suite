@@ -185,4 +185,26 @@ __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 # Define web directory for JavaScript files
 WEB_DIRECTORY = "./web"
 
+# Register API endpoint for widget data
+def setup_api_routes():
+    """Setup API routes for widget communication"""
+    try:
+        import server
+
+        @server.routes.get("/api/tts-audio-suite/available-characters")
+        async def get_available_characters_endpoint(request):
+            """API endpoint to get available TTS character voices"""
+            try:
+                from utils.voice.discovery import get_available_characters
+                characters = list(get_available_characters())
+                return {"characters": sorted(characters)}
+            except Exception as e:
+                print(f"⚠️ Error retrieving available characters: {e}")
+                return {"characters": [], "error": str(e)}
+    except Exception as e:
+        print(f"⚠️ Could not setup API routes: {e}")
+
+# Setup API routes when extension loads
+setup_api_routes()
+
 # nodes.py already handles all the startup output and status reporting

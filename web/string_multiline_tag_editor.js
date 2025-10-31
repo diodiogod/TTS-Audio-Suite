@@ -721,7 +721,7 @@ function addStringMultilineTagEditorWidget(node) {
     charSelect.innerHTML = "<option value=''>Select...</option>";
 
     // Populate characters with default character names
-    const populateCharacters = () => {
+    const populateCharacters = async () => {
         try {
             // Get discovered characters from voice system
             let characters = [];
@@ -736,7 +736,22 @@ function addStringMultilineTagEditorWidget(node) {
                 }
             }
 
-            // Fall back to defaults if no discovered characters
+            // Try to fetch from API endpoint if no characters found locally
+            if (characters.length === 0) {
+                try {
+                    const response = await fetch("/api/tts-audio-suite/available-characters");
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.characters && Array.isArray(data.characters)) {
+                            characters = data.characters;
+                        }
+                    }
+                } catch (err) {
+                    // API endpoint may not exist yet, silently continue
+                }
+            }
+
+            // Fall back to defaults if still no characters
             if (characters.length === 0) {
                 characters = ["Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry"];
             }
@@ -754,7 +769,7 @@ function addStringMultilineTagEditorWidget(node) {
         }
     };
 
-    // Load characters immediately
+    // Load characters immediately (returns promise but we don't need to await)
     populateCharacters();
 
     const charInput = document.createElement("input");
