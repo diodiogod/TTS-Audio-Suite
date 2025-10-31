@@ -185,6 +185,86 @@ class TagUtilities {
             return text.substring(0, position) + tag + " " + text.substring(position);
         }
     }
+
+    static modifyTagContent(text, caretPos, modifyFn) {
+        // Universal tag modification logic - used by both parameter and character insertion
+        // modifyFn(tagContent) should return new tagContent for inside-tag cases
+        // Returns {newText, newCaretPos} or null if no modification
+
+        const selectionStart = caretPos;
+        const isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
+
+        // Check if caret is INSIDE a tag (between [ and ])
+        let isInsideTag = false;
+        let tagStartInside = -1;
+        let tagEndInside = -1;
+
+        if (!isRightAfterTag) {
+            // Look for the nearest tag that contains this position
+            let bracketDepth = 0;
+            for (let i = selectionStart - 1; i >= 0; i--) {
+                if (text[i] === "]") {
+                    bracketDepth++;
+                } else if (text[i] === "[") {
+                    if (bracketDepth === 0) {
+                        tagStartInside = i;
+                        let innerDepth = 1;
+                        for (let j = i + 1; j < text.length; j++) {
+                            if (text[j] === "[") {
+                                innerDepth++;
+                            } else if (text[j] === "]") {
+                                innerDepth--;
+                                if (innerDepth === 0) {
+                                    tagEndInside = j;
+                                    if (tagEndInside > selectionStart) {
+                                        isInsideTag = true;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    } else {
+                        bracketDepth--;
+                    }
+                }
+            }
+        }
+
+        if (isRightAfterTag || isInsideTag) {
+            let tagStart, tagEnd;
+
+            if (isRightAfterTag) {
+                tagEnd = selectionStart - 1;
+                let bracketDepth = 1;
+                tagStart = -1;
+                for (let i = tagEnd - 1; i >= 0; i--) {
+                    if (text[i] === "]") {
+                        bracketDepth++;
+                    } else if (text[i] === "[") {
+                        bracketDepth--;
+                        if (bracketDepth === 0) {
+                            tagStart = i;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                tagStart = tagStartInside;
+                tagEnd = tagEndInside;
+            }
+
+            if (tagStart !== -1 && tagStart < tagEnd) {
+                let tagContent = text.substring(tagStart + 1, tagEnd);
+                tagContent = modifyFn(tagContent);
+                const newText = text.substring(0, tagStart + 1) + tagContent + "]" + text.substring(tagEnd + 1);
+                const newCaretPos = tagStart + 1 + tagContent.length + 1;
+                return { newText, newCaretPos };
+            }
+        }
+
+        return null;
+    }
 }
 
 // Create the widget
@@ -925,137 +1005,44 @@ function addStringMultilineTagEditorWidget(node) {
         const paramStr = `${paramTypeSelect.value}:${paramValue}`;
         const text = getPlainText();
         const caretPos = getCaretPos();
-        const selectionStart = caretPos;
-        const selectionEnd = caretPos;
 
-        // Check if caret is right after the closing bracket OR inside a tag
-        const isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
+        // Try to modify existing tag
+        const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
+            const paramType = paramTypeSelect.value;
+            const paramRegex = new RegExp(`${paramType}:[^|\\]]+`);
 
-        // Check if caret is INSIDE a tag (between [ and ])
-        let isInsideTag = false;
-        let tagStartInside = -1;
-        let tagEndInside = -1;
-
-        if (!isRightAfterTag) {
-            // Look for the nearest tag that contains this position
-            let bracketDepth = 0;
-            for (let i = selectionStart - 1; i >= 0; i--) {
-                if (text[i] === "]") {
-                    bracketDepth++;
-                } else if (text[i] === "[") {
-                    if (bracketDepth === 0) {
-                        // Found the opening bracket
-                        tagStartInside = i;
-                        // Now find the closing bracket
-                        let innerDepth = 1;
-                        for (let j = i + 1; j < text.length; j++) {
-                            if (text[j] === "[") {
-                                innerDepth++;
-                            } else if (text[j] === "]") {
-                                innerDepth--;
-                                if (innerDepth === 0) {
-                                    tagEndInside = j;
-                                    if (tagEndInside > selectionStart) {
-                                        isInsideTag = true;
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                        break;
-                    } else {
-                        bracketDepth--;
-                    }
-                }
-            }
-        }
-
-        if (isRightAfterTag || isInsideTag) {
-            let tagStart, tagEnd;
-
-            if (isRightAfterTag) {
-                // Find the matching opening bracket for this closing bracket
-                tagEnd = selectionStart - 1;
-
-                // Scan backwards to find the matching opening bracket, counting bracket pairs
-                let bracketDepth = 1;
-                tagStart = -1;
-                for (let i = tagEnd - 1; i >= 0; i--) {
-                    if (text[i] === "]") {
-                        bracketDepth++;
-                    } else if (text[i] === "[") {
-                        bracketDepth--;
-                        if (bracketDepth === 0) {
-                            tagStart = i;
-                            break;
-                        }
-                    }
-                }
+            if (paramRegex.test(tagContent)) {
+                // Replace existing parameter
+                return tagContent.replace(paramRegex, paramStr);
             } else {
-                // Use the tag positions we found when checking if inside tag
-                tagStart = tagStartInside;
-                tagEnd = tagEndInside;
+                // Add new parameter
+                return `${tagContent}|${paramStr}`;
             }
+        });
 
-            // Verify the tag is valid (opening bracket found before closing)
-            if (tagStart !== -1 && tagStart < tagEnd) {
-                // Inside a valid tag - add or replace parameter
-                let tagContent = text.substring(tagStart + 1, tagEnd);
-                const paramType = paramTypeSelect.value;
-
-                // Check if parameter already exists and replace it
-                const paramRegex = new RegExp(`${paramType}:[^|\\]]+`);
-                if (paramRegex.test(tagContent)) {
-                    // Replace existing parameter
-                    tagContent = tagContent.replace(paramRegex, paramStr);
-                } else {
-                    // Add new parameter
-                    tagContent = `${tagContent}|${paramStr}`;
-                }
-
-                const newText = text.substring(0, tagStart + 1) + tagContent + "]" + text.substring(tagEnd + 1);
-
-                setEditorText(newText);
-                // Move caret to right after the closing bracket
-                const newCaretPos = tagStart + 1 + tagContent.length + 1; // +1 for [, +1 for ]
-                setTimeout(() => {
-                    setCaretPos(newCaretPos);
-                    state.addToHistory(newText, newCaretPos);
-                    state.saveToLocalStorage(storageKey);
-                }, 0);
-                widget.callback?.(widget.value);
-                historyStatus.textContent = state.getHistoryStatus();
-            } else {
-                // Invalid tag structure, create new tag instead
-                const paramTag = `[${paramStr}]`;
-                const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
-                setEditorText(newText);
-                // Move caret to right after the new tag
-                const newCaretPos = selectionStart + paramTag.length;
-                setTimeout(() => {
-                    setCaretPos(newCaretPos);
-                    state.addToHistory(newText, newCaretPos);
-                    state.saveToLocalStorage(storageKey);
-                }, 0);
-                widget.callback?.(widget.value);
-                historyStatus.textContent = state.getHistoryStatus();
-            }
+        if (result) {
+            // Modified existing tag
+            setEditorText(result.newText);
+            setTimeout(() => {
+                setCaretPos(result.newCaretPos);
+                state.addToHistory(result.newText, result.newCaretPos);
+                state.saveToLocalStorage(storageKey);
+            }, 0);
         } else {
-            // Caret is NOT right after a tag - create new parameter tag at caret position
+            // Create new parameter tag at caret position
             const paramTag = `[${paramStr}]`;
-            const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
+            const newText = text.substring(0, caretPos) + paramTag + " " + text.substring(caretPos);
+            const newCaretPos = caretPos + paramTag.length + 1;
 
             setEditorText(newText);
-            // Move caret to right after the new tag
-            const newCaretPos = selectionStart + paramTag.length;
             setTimeout(() => {
                 setCaretPos(newCaretPos);
                 state.addToHistory(newText, newCaretPos);
                 state.saveToLocalStorage(storageKey);
             }, 0);
-            widget.callback?.(widget.value);
-            historyStatus.textContent = state.getHistoryStatus();
         }
+        widget.callback?.(widget.value);
+        historyStatus.textContent = state.getHistoryStatus();
 
         // Keep the value so user doesn't have to re-enter it
     });
@@ -1292,29 +1279,41 @@ function addStringMultilineTagEditorWidget(node) {
     // Add character button
     addCharBtn.addEventListener("click", () => {
         const char = charInput.value.trim() || charSelect.value;
-        if (!char) {
-            return;
-        }
+        if (!char) return;
 
         state.lastCharacter = char;
         const text = getPlainText();
         const caretPos = getCaretPos();
-        const selectionStart = caretPos;
-        const selectionEnd = caretPos;
 
-        // Create tag - just the character, no parameters yet
-        const charTag = `[${char}]`;
-        const newText = text.substring(0, selectionStart) + charTag + " " + text.substring(selectionStart);
+        // Try to modify existing tag
+        const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
+            const parts = tagContent.split("|");
+            parts[0] = char; // Replace character (first part)
+            return parts.join("|");
+        });
 
-        setEditorText(newText);
-        // Move cursor to right after the new tag
-        const newCaretPos = selectionStart + charTag.length + 1;
-        setTimeout(() => {
-            setCaretPos(newCaretPos);
-            state.addToHistory(newText, newCaretPos);
-            state.saveToLocalStorage(storageKey);
-            editor.focus();
-        }, 0);
+        if (result) {
+            // Modified existing tag
+            setEditorText(result.newText);
+            setTimeout(() => {
+                setCaretPos(result.newCaretPos);
+                state.addToHistory(result.newText, result.newCaretPos);
+                state.saveToLocalStorage(storageKey);
+            }, 0);
+        } else {
+            // Create new tag at caret position
+            const charTag = `[${char}]`;
+            const newText = text.substring(0, caretPos) + charTag + " " + text.substring(caretPos);
+            const newCaretPos = caretPos + charTag.length + 1;
+
+            setEditorText(newText);
+            setTimeout(() => {
+                setCaretPos(newCaretPos);
+                state.addToHistory(newText, newCaretPos);
+                state.saveToLocalStorage(storageKey);
+                editor.focus();
+            }, 0);
+        }
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
