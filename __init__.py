@@ -189,18 +189,20 @@ WEB_DIRECTORY = "./web"
 def setup_api_routes():
     """Setup API routes for widget communication"""
     try:
-        import server
+        import json
+        from server import PromptServer
+        from aiohttp import web
 
-        @server.routes.get("/api/tts-audio-suite/available-characters")
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/available-characters")
         async def get_available_characters_endpoint(request):
             """API endpoint to get available TTS character voices"""
             try:
                 from utils.voice.discovery import get_available_characters
                 characters = list(get_available_characters())
-                return {"characters": sorted(characters)}
+                return web.json_response({"characters": sorted(characters)})
             except Exception as e:
                 print(f"⚠️ Error retrieving available characters: {e}")
-                return {"characters": [], "error": str(e)}
+                return web.json_response({"characters": [], "error": str(e)})
     except Exception as e:
         print(f"⚠️ Could not setup API routes: {e}")
 
