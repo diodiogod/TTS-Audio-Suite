@@ -1259,6 +1259,7 @@ function addStringMultilineTagEditorWidget(node) {
     editor.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "z") {
             e.preventDefault();
+            e.stopPropagation(); // Prevent event from bubbling to ComfyUI
             let entry;
             if (e.shiftKey) {
                 entry = state.redo();
