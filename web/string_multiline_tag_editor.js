@@ -730,7 +730,6 @@ function addStringMultilineTagEditorWidget(node) {
     widgetWrapper.style.width = "100%";
     widgetWrapper.style.height = "100%";
     widgetWrapper.style.position = "relative";
-    widgetWrapper.style.overflow = "hidden"; // Clip overflow when resizing
     widgetWrapper.appendChild(editorContainer);
 
     // Now add fontBox to widgetWrapper as floating element
@@ -740,7 +739,9 @@ function addStringMultilineTagEditorWidget(node) {
     fontBox.style.right = "10px"; // Some margin on right
     fontBox.style.zIndex = "999";
     fontBox.style.pointerEvents = "auto";
-    fontBox.style.whiteSpace = "nowrap";
+    fontBox.style.minWidth = "0"; // Allow shrinking below natural width
+    fontBox.style.overflow = "hidden"; // Clip content if it gets too small
+    fontBox.style.textOverflow = "ellipsis";
     widgetWrapper.appendChild(fontBox);
 
     // Create the widget - this provides the "text" input for the node
