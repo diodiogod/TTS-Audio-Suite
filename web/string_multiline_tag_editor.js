@@ -734,7 +734,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Now add fontBox to widgetWrapper as floating element
     fontBox.style.position = "absolute";
-    fontBox.style.top = "-52px"; // Float above the node (more offset)
+    fontBox.style.top = "-35px"; // Float above the node (less offset, closer to node)
     fontBox.style.left = state.sidebarWidth + "px"; // Align with textarea area (account for sidebar)
     fontBox.style.right = "10px"; // Some margin on right
     fontBox.style.zIndex = "999";
