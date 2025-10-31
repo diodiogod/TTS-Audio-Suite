@@ -195,11 +195,15 @@ def setup_api_routes():
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/available-characters")
         async def get_available_characters_endpoint(request):
-            """API endpoint to get available TTS character voices"""
+            """API endpoint to get available TTS character voices including aliases"""
             try:
-                from utils.voice.discovery import get_available_characters
+                from utils.voice.discovery import get_available_characters, voice_discovery
                 characters = list(get_available_characters())
-                return web.json_response({"characters": sorted(characters)})
+                # Also get character aliases
+                aliases = list(voice_discovery._character_aliases.keys()) if hasattr(voice_discovery, '_character_aliases') else []
+                # Combine and deduplicate
+                all_chars = sorted(set(characters + aliases))
+                return web.json_response({"characters": all_chars})
             except Exception as e:
                 print(f"⚠️ Error retrieving available characters: {e}")
                 return web.json_response({"characters": [], "error": str(e)})
