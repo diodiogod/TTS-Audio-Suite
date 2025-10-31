@@ -1047,7 +1047,8 @@ function addStringMultilineTagEditorWidget(node) {
             // Create new parameter tag at caret position
             const paramTag = `[${paramStr}]`;
             const newText = text.substring(0, caretPos) + paramTag + " " + text.substring(caretPos);
-            const newCaretPos = caretPos + paramTag.length + 1;
+            // Position caret right after ] so next parameter add detects this tag
+            const newCaretPos = caretPos + paramTag.length;
 
             setEditorText(newText);
             setTimeout(() => {
