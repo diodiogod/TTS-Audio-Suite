@@ -1,5 +1,5 @@
 """
-🏷️ String Multiline Tag Editor
+🏷️ Multiline TTS Tag Editor
 
 A sophisticated multiline text editor with sidebar controls for TTS-specific tags,
 character switching, parameter control, pause insertion, and preset management.

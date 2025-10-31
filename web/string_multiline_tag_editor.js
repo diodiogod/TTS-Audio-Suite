@@ -1,5 +1,5 @@
 /**
- * 🏷️ String Multiline Tag Editor
+ * 🏷️ Multiline TTS Tag Editor
  * Advanced multiline text editor with TTS tag support, undo/redo, and full persistence
  */
 

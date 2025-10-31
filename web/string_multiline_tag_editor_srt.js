@@ -1,5 +1,5 @@
 /**
- * SRT-Specific Features for String Multiline Tag Editor
+ * SRT-Specific Features for Multiline TTS Tag Editor
  * Handles SRT format detection, validation, highlighting, and per-entry operations
  */
 

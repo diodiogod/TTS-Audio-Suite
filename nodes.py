@@ -270,7 +270,7 @@ try:
     StringMultilineTagEditor = string_multiline_tag_editor_module.StringMultilineTagEditor
     STRING_MULTILINE_TAG_EDITOR_AVAILABLE = True
 except Exception as e:
-    print(f"❌ String Multiline Tag Editor failed: {e}")
+    print(f"❌ Multiline TTS Tag Editor failed: {e}")
     STRING_MULTILINE_TAG_EDITOR_AVAILABLE = False
 
 # Import foundation components for compatibility
@@ -491,7 +491,7 @@ if PHONEME_TEXT_NORMALIZER_AVAILABLE:
 
 if STRING_MULTILINE_TAG_EDITOR_AVAILABLE:
     NODE_CLASS_MAPPINGS["StringMultilineTagEditor"] = StringMultilineTagEditor
-    NODE_DISPLAY_NAME_MAPPINGS["StringMultilineTagEditor"] = "🏷️ String Multiline Tag Editor"
+    NODE_DISPLAY_NAME_MAPPINGS["StringMultilineTagEditor"] = "🏷️ Multiline TTS Tag Editor"
 
 # Register video analysis nodes
 if MOUTH_MOVEMENT_AVAILABLE:
