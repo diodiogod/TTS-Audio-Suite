@@ -432,6 +432,9 @@ function addStringMultilineTagEditorWidget(node) {
         // Highlight punctuation - light salmon
         html = html.replace(/[?!;]/g, '\x00PUNCT_START\x00$&\x00PUNCT_END\x00');
 
+        // Highlight multiple spaces (2 or more) - subtle background
+        html = html.replace(/  +/g, '\x00SPACE_START\x00$&\x00SPACE_END\x00');
+
         // Escape HTML
         html = html
             .replace(/&/g, "&amp;")
@@ -445,7 +448,8 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #00ffff; font-weight: bold;">$1</span>')
             .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #66ff66; font-weight: bold;">$1</span>')
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #ffcc33; font-weight: bold;">$1</span>')
-            .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>');
+            .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>')
+            .replace(/\x00SPACE_START\x00(.*?)\x00SPACE_END\x00/g, '<span style="background: #2a2a2a; color: #eee;">$1</span>');
 
         // Update only if changed to avoid flicker
         if (editor.innerHTML !== html) {
