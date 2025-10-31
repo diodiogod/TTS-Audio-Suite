@@ -266,5 +266,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "StringMultilineTagEditor": "🏷️ String Multiline Tag Editor"
+    "StringMultilineTagEditor": "🏷️ Multiline TTS Tag Editor"
 }

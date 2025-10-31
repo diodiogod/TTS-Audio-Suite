@@ -22,6 +22,8 @@ class EditorState {
         this.lastCursorPosition = 0;
         this.discoveredCharacters = {};
         this.fontSize = 14; // Default font size in pixels
+        this.sidebarWidth = 220; // Default sidebar width in pixels
+        this.uiScale = 1.0; // UI scaling factor for sidebar elements
     }
 
     addToHistory(text, caretPos = 0) {
@@ -238,22 +240,48 @@ function addStringMultilineTagEditorWidget(node) {
         }, duration);
     };
 
-    // Create sidebar
+    // Create sidebar with resizable width and UI scaling
     const sidebar = document.createElement("div");
     sidebar.className = "string-multiline-tag-editor-sidebar";
-    sidebar.style.width = "220px";
-    sidebar.style.minWidth = "220px";
-    sidebar.style.maxWidth = "220px";
+    sidebar.style.width = state.sidebarWidth + "px";
+    sidebar.style.minWidth = "150px";
+    sidebar.style.maxWidth = "400px";
     sidebar.style.height = "100%";
     sidebar.style.background = "#222";
     sidebar.style.borderRight = "1px solid #444";
     sidebar.style.padding = "10px";
     sidebar.style.overflowY = "auto";
     sidebar.style.overflowX = "hidden";
-    sidebar.style.fontSize = "11px";
+    sidebar.style.fontSize = (11 * state.uiScale) + "px";
     sidebar.style.flexShrink = "0";
     sidebar.style.display = "flex";
     sidebar.style.flexDirection = "column";
+    sidebar.style.position = "relative";
+
+    // Function to update sidebar width and persist
+    const setSidebarWidth = (newWidth) => {
+        newWidth = Math.max(150, Math.min(400, newWidth)); // Clamp between 150px and 400px
+        state.sidebarWidth = newWidth;
+        sidebar.style.width = newWidth + "px";
+        state.saveToLocalStorage(storageKey);
+    };
+
+    // Function to update UI scale
+    const setUIScale = (factor) => {
+        factor = Math.max(0.7, Math.min(1.5, factor)); // Clamp between 0.7 and 1.5
+        state.uiScale = factor;
+        sidebar.style.fontSize = (11 * factor) + "px";
+
+        // Update all button and input sizes
+        const buttons = sidebar.querySelectorAll("button, input[type='text'], input[type='number'], select");
+        buttons.forEach(btn => {
+            const baseFontSize = 10;
+            btn.style.fontSize = (baseFontSize * factor) + "px";
+            btn.style.padding = (4 * factor) + "px " + (6 * factor) + "px";
+        });
+
+        state.saveToLocalStorage(storageKey);
+    };
 
     // Create editor wrapper for contenteditable
     const textareaWrapper = document.createElement("div");
@@ -436,7 +464,47 @@ function addStringMultilineTagEditorWidget(node) {
 
     textareaWrapper.appendChild(editor);
 
+    // Create resizable divider between sidebar and editor
+    const resizer = document.createElement("div");
+    resizer.style.width = "5px";
+    resizer.style.height = "100%";
+    resizer.style.background = "#333";
+    resizer.style.cursor = "col-resize";
+    resizer.style.userSelect = "none";
+    resizer.style.flexShrink = "0";
+    resizer.style.borderLeft = "1px solid #444";
+    resizer.style.borderRight = "1px solid #555";
+
+    let isResizing = false;
+
+    resizer.addEventListener("mousedown", (e) => {
+        isResizing = true;
+        e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        if (!isResizing) return;
+        const editorContainerRect = editorContainer.getBoundingClientRect();
+        const newWidth = e.clientX - editorContainerRect.left - 2.5; // 2.5 is half resizer width
+        setSidebarWidth(newWidth);
+    });
+
+    document.addEventListener("mouseup", () => {
+        isResizing = false;
+    });
+
+    // Ctrl+wheel on sidebar to change UI scale
+    sidebar.addEventListener("wheel", (e) => {
+        if ((e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1; // Negative scroll = zoom in, positive = zoom out
+            const newScale = state.uiScale + delta;
+            setUIScale(newScale);
+        }
+    });
+
     editorContainer.appendChild(sidebar);
+    editorContainer.appendChild(resizer);
     editorContainer.appendChild(textareaWrapper);
 
     // Initial highlight
@@ -584,6 +652,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const addCharBtn = document.createElement("button");
     addCharBtn.textContent = "Add Char";
+    addCharBtn.title = "Insert selected character tag at cursor position";
     addCharBtn.style.width = "100%";
     addCharBtn.style.padding = "4px";
     addCharBtn.style.cursor = "pointer";
@@ -647,7 +716,7 @@ function addStringMultilineTagEditorWidget(node) {
     paramLabel.style.marginBottom = "5px";
     paramLabel.style.fontSize = "11px";
 
-    // Parameter type selector
+    // Parameter type selector with all supported parameters
     const paramTypeSelect = document.createElement("select");
     paramTypeSelect.style.width = "100%";
     paramTypeSelect.style.marginBottom = "5px";
@@ -658,11 +727,27 @@ function addStringMultilineTagEditorWidget(node) {
     paramTypeSelect.style.border = "1px solid #444";
     paramTypeSelect.innerHTML = `
         <option value="">Select parameter...</option>
-        <option value="seed">Seed</option>
-        <option value="temperature">Temperature</option>
-        <option value="cfg">CFG Scale</option>
-        <option value="speed">Speed</option>
-        <option value="steps">Steps</option>
+        <optgroup label="Universal">
+            <option value="seed">Seed</option>
+            <option value="temperature">Temperature</option>
+        </optgroup>
+        <optgroup label="ChatterBox">
+            <option value="cfg">CFG Weight</option>
+            <option value="exaggeration">Exaggeration</option>
+        </optgroup>
+        <optgroup label="F5-TTS / Higgs">
+            <option value="speed">Speed</option>
+        </optgroup>
+        <optgroup label="Higgs / VibeVoice / IndexTTS">
+            <option value="top_p">Top P</option>
+            <option value="top_k">Top K</option>
+        </optgroup>
+        <optgroup label="VibeVoice / IndexTTS">
+            <option value="steps">Inference Steps</option>
+        </optgroup>
+        <optgroup label="IndexTTS">
+            <option value="emotion_alpha">Emotion Alpha</option>
+        </optgroup>
     `;
 
     // Input container that changes based on parameter type
@@ -670,16 +755,30 @@ function addStringMultilineTagEditorWidget(node) {
     paramInputWrapper.style.marginBottom = "5px";
 
     // Helper to create input for a parameter type
+    const paramConfig = {
+        seed: { type: "number", min: 0, max: 4294967295, step: 1, default: 0 },
+        temperature: { type: "slider", min: 0.1, max: 2.0, step: 0.1, default: 0.7, label: "Temp" },
+        cfg: { type: "slider", min: 0.0, max: 20.0, step: 0.1, default: 7.0, label: "CFG" },
+        speed: { type: "slider", min: 0.5, max: 2.0, step: 0.1, default: 1.0, label: "Speed" },
+        exaggeration: { type: "slider", min: 0.0, max: 2.0, step: 0.1, default: 1.0, label: "Exag" },
+        top_p: { type: "slider", min: 0.0, max: 1.0, step: 0.01, default: 0.95, label: "Top P" },
+        top_k: { type: "number", min: 1, max: 100, step: 1, default: 50 },
+        steps: { type: "number", min: 1, max: 100, step: 1, default: 30 },
+        emotion_alpha: { type: "slider", min: 0.0, max: 1.0, step: 0.05, default: 0.5, label: "Emotion" }
+    };
+
     const createParamInput = (type) => {
         const wrapper = document.createElement("div");
+        const config = paramConfig[type] || { type: "text" };
 
-        if (type === "seed") {
+        if (config.type === "number") {
             const input = document.createElement("input");
             input.type = "number";
-            input.min = "0";
-            input.max = "4294967295";
-            input.placeholder = "0";
-            input.value = state.lastSeed || "0";
+            input.min = config.min;
+            input.max = config.max;
+            input.step = config.step;
+            input.placeholder = config.default.toString();
+            input.value = config.default;
             input.style.width = "100%";
             input.style.padding = "3px";
             input.style.fontSize = "10px";
@@ -687,29 +786,29 @@ function addStringMultilineTagEditorWidget(node) {
             input.style.color = "#eee";
             input.style.border = "1px solid #444";
             input.addEventListener("change", () => {
-                state.lastSeed = parseInt(input.value) || 0;
+                state[`last${type.charAt(0).toUpperCase() + type.slice(1)}`] = input.value;
                 state.saveToLocalStorage(storageKey);
             });
             wrapper.appendChild(input);
             wrapper.getValue = () => input.value;
             return wrapper;
-        } else if (type === "temperature") {
+        } else if (config.type === "slider") {
             const label = document.createElement("div");
             label.style.fontSize = "9px";
             label.style.marginBottom = "2px";
             label.style.color = "#999";
-            label.textContent = `Temp: ${state.lastTemperature}`;
+            label.textContent = `${config.label}: ${config.default}`;
 
             const slider = document.createElement("input");
             slider.type = "range";
-            slider.min = "0.1";
-            slider.max = "2.0";
-            slider.step = "0.1";
-            slider.value = state.lastTemperature;
+            slider.min = config.min;
+            slider.max = config.max;
+            slider.step = config.step;
+            slider.value = config.default;
             slider.style.width = "100%";
             slider.addEventListener("input", () => {
-                label.textContent = `Temp: ${slider.value}`;
-                state.lastTemperature = parseFloat(slider.value);
+                label.textContent = `${config.label}: ${slider.value}`;
+                state[`last${type.charAt(0).toUpperCase() + type.slice(1)}`] = slider.value;
                 state.saveToLocalStorage(storageKey);
             });
 
@@ -759,6 +858,7 @@ function addStringMultilineTagEditorWidget(node) {
     // Add parameter button
     const addParamBtn = document.createElement("button");
     addParamBtn.textContent = "Add to Tag";
+    addParamBtn.title = "Add selected parameter to tag at cursor or create new parameter tag";
     addParamBtn.style.width = "100%";
     addParamBtn.style.padding = "4px";
     addParamBtn.style.cursor = "pointer";
@@ -958,6 +1058,13 @@ function addStringMultilineTagEditorWidget(node) {
         ["Save", "Load", "Del"].forEach(btnText => {
             const btn = document.createElement("button");
             btn.textContent = btnText;
+            if (btnText === "Save") {
+                btn.title = "Save current tag or text as preset (glows green when data exists)";
+            } else if (btnText === "Load") {
+                btn.title = "Load preset into text at cursor position";
+            } else {
+                btn.title = "Delete this preset";
+            }
             btn.style.flex = "1";
             btn.style.padding = "3px";
             btn.style.fontSize = "9px";
@@ -998,6 +1105,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const formatBtn = document.createElement("button");
     formatBtn.textContent = "Format";
+    formatBtn.title = "Normalize spacing and structure of tags and text";
     formatBtn.style.width = "100%";
     formatBtn.style.padding = "4px";
     formatBtn.style.marginBottom = "4px";
@@ -1010,6 +1118,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const validateBtn = document.createElement("button");
     validateBtn.textContent = "Validate";
+    validateBtn.title = "Check tag syntax for errors and issues";
     validateBtn.style.width = "100%";
     validateBtn.style.padding = "4px";
     validateBtn.style.cursor = "pointer";
