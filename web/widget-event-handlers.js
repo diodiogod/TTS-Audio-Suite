@@ -5,6 +5,7 @@
  */
 
 import { TagUtilities } from "./tag-utilities.js";
+import { isLanguageCode } from "./language-constants.js";
 
 export function attachAllEventHandlers(
     editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
@@ -193,13 +194,21 @@ export function attachAllEventHandlers(
             const firstPart = pipeIndex === -1 ? tagContent : tagContent.substring(0, pipeIndex);
 
             if (firstPart.includes(":")) {
-                // Already has language code, replace just the language part
                 const colonIndex = firstPart.indexOf(":");
-                const charPart = firstPart.substring(colonIndex + 1);
-                const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
-                return `${lang}:${charPart}${rest}`;
+                const beforeColon = firstPart.substring(0, colonIndex);
+
+                // Check if it's a language code using the supported languages list
+                if (isLanguageCode(beforeColon)) {
+                    // It's already a language tag, replace the language part
+                    const charPart = firstPart.substring(colonIndex + 1);
+                    const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
+                    return `${lang}:${charPart}${rest}`;
+                } else {
+                    // It's a parameter tag (like seed:5), just prepend language
+                    return `${lang}:${tagContent}`;
+                }
             } else {
-                // No language code yet, prepend it
+                // No colon at all, just a character name - prepend language
                 return `${lang}:${tagContent}`;
             }
         });

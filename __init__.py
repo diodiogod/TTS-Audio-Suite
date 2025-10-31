@@ -203,6 +203,17 @@ def setup_api_routes():
             except Exception as e:
                 print(f"⚠️ Error retrieving available characters: {e}")
                 return web.json_response({"characters": [], "error": str(e)})
+
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/available-languages")
+        async def get_available_languages_endpoint(request):
+            """API endpoint to get available language codes"""
+            try:
+                # Supported language codes for tag editor
+                languages = ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"]
+                return web.json_response({"languages": languages})
+            except Exception as e:
+                print(f"⚠️ Error retrieving available languages: {e}")
+                return web.json_response({"languages": [], "error": str(e)})
     except Exception as e:
         print(f"⚠️ Could not setup API routes: {e}")
 

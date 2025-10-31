@@ -5,6 +5,7 @@
  */
 
 import { TagUtilities } from "./tag-utilities.js";
+import { getSupportedLanguages } from "./language-constants.js";
 
 export function buildHistorySection(state, storageKey) {
     const historySection = document.createElement("div");
@@ -182,7 +183,7 @@ export function buildLanguageSection(state, storageKey) {
     langSelect.style.color = "#eee";
     langSelect.style.border = "1px solid #444";
 
-    const languages = ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"];
+    const languages = getSupportedLanguages();
     langSelect.innerHTML = "<option value=''>Select...</option>";
     languages.forEach(lang => {
         const option = document.createElement("option");
