@@ -21,6 +21,7 @@ class EditorState {
         this.sidebarExpanded = true;
         this.lastCursorPosition = 0;
         this.discoveredCharacters = {};
+        this.fontSize = 14; // Default font size in pixels
     }
 
     addToHistory(text, caretPos = 0) {
@@ -267,7 +268,7 @@ function addStringMultilineTagEditorWidget(node) {
     editor.className = "comfy-multiline-input";
     editor.style.flex = "1 1 auto";
     editor.style.fontFamily = "monospace";
-    editor.style.fontSize = "13px";
+    editor.style.fontSize = state.fontSize + "px";
     editor.style.padding = "10px";
     editor.style.border = "none";
     editor.style.background = "#1a1a1a";
@@ -286,6 +287,14 @@ function addStringMultilineTagEditorWidget(node) {
     editor.style.MozTabSize = "4";
     editor.style.caretColor = "#eee";
     editor.spellcheck = false;
+
+    // Function to update font size and persist it
+    const setFontSize = (newSize) => {
+        newSize = Math.max(8, Math.min(32, newSize)); // Clamp between 8px and 32px
+        state.fontSize = newSize;
+        editor.style.fontSize = newSize + "px";
+        state.saveToLocalStorage(storageKey);
+    };
 
     // Initialize with text
     editor.textContent = state.text;
@@ -1023,14 +1032,52 @@ function addStringMultilineTagEditorWidget(node) {
 
     // ==================== EVENT HANDLERS ====================
 
-    // Editor input - add to history
+    // Editor input - add to history with smart debouncing
+    let historyDebounceTimer = null;
+    let lastHistoryText = "";
+
+    const flushHistory = () => {
+        const plainText = getPlainText();
+        if (plainText !== lastHistoryText) {
+            const caretPos = getCaretPos();
+            state.addToHistory(plainText, caretPos);
+            lastHistoryText = plainText;
+        }
+    };
+
     editor.addEventListener("input", (e) => {
         const plainText = getPlainText();
-        const caretPos = getCaretPos();
-        state.addToHistory(plainText, caretPos);
+
+        // Update display immediately
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
-        historyStatus.textContent = state.getHistoryStatus();
+
+        // Clear existing debounce timer
+        if (historyDebounceTimer !== null) {
+            clearTimeout(historyDebounceTimer);
+        }
+
+        // Set new debounce timer - adds to history after user stops typing for 500ms
+        historyDebounceTimer = setTimeout(() => {
+            flushHistory();
+            historyStatus.textContent = state.getHistoryStatus();
+            historyDebounceTimer = null;
+        }, 500);
+    });
+
+    // Also flush history on specific actions (paste, cut, etc)
+    editor.addEventListener("paste", (e) => {
+        setTimeout(() => {
+            flushHistory();
+            historyStatus.textContent = state.getHistoryStatus();
+        }, 0);
+    });
+
+    editor.addEventListener("cut", (e) => {
+        setTimeout(() => {
+            flushHistory();
+            historyStatus.textContent = state.getHistoryStatus();
+        }, 0);
     });
 
     // Undo/Redo buttons - restore text and caret position from history
@@ -1067,6 +1114,16 @@ function addStringMultilineTagEditorWidget(node) {
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
+        }
+    });
+
+    // Ctrl+scroll to change font size
+    editor.addEventListener("wheel", (e) => {
+        if ((e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -1 : 1; // Negative scroll = zoom out, positive = zoom in
+            const newSize = state.fontSize + delta;
+            setFontSize(newSize);
         }
     });
 
