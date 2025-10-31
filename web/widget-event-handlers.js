@@ -188,19 +188,20 @@ export function attachAllEventHandlers(
 
         // Try to modify existing tag
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
-            const parts = tagContent.split("|");
-            const firstPart = parts[0];
+            // Check if already has language code (contains colon in first part before pipe)
+            const pipeIndex = tagContent.indexOf("|");
+            const firstPart = pipeIndex === -1 ? tagContent : tagContent.substring(0, pipeIndex);
 
-            // Check if first part is language code (contains colon) or character name
             if (firstPart.includes(":")) {
-                // Already has language, replace it
-                const langPart = firstPart.split(":")[1];
-                parts[0] = `${lang}:${langPart}`;
+                // Already has language code, replace just the language part
+                const colonIndex = firstPart.indexOf(":");
+                const charPart = firstPart.substring(colonIndex + 1);
+                const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
+                return `${lang}:${charPart}${rest}`;
             } else {
-                // Add language code before character
-                parts[0] = `${lang}:${firstPart}`;
+                // No language code yet, prepend it
+                return `${lang}:${tagContent}`;
             }
-            return parts.join("|");
         });
 
         if (result) {
