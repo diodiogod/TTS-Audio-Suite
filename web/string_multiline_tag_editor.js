@@ -1288,7 +1288,15 @@ function addStringMultilineTagEditorWidget(node) {
         // Try to modify existing tag
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
             const parts = tagContent.split("|");
-            parts[0] = char; // Replace character (first part)
+            // Check if first part is already a character (no colon) or a parameter (has colon)
+            const firstPartIsParam = parts[0].includes(":");
+            if (firstPartIsParam) {
+                // No character yet, prepend it
+                parts.unshift(char);
+            } else {
+                // Character exists, replace it
+                parts[0] = char;
+            }
             return parts.join("|");
         });
 
