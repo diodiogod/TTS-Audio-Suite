@@ -5,7 +5,6 @@
  */
 
 import { TagUtilities } from "./tag-utilities.js";
-import { getSupportedLanguages } from "./language-constants.js";
 
 export function buildHistorySection(state, storageKey) {
     const historySection = document.createElement("div");
@@ -182,15 +181,40 @@ export function buildLanguageSection(state, storageKey) {
     langSelect.style.background = "#2a2a2a";
     langSelect.style.color = "#eee";
     langSelect.style.border = "1px solid #444";
-
-    const languages = getSupportedLanguages();
     langSelect.innerHTML = "<option value=''>Select...</option>";
-    languages.forEach(lang => {
-        const option = document.createElement("option");
-        option.value = lang;
-        option.textContent = lang.toUpperCase();
-        langSelect.appendChild(option);
-    });
+
+    const populateLanguages = async () => {
+        try {
+            const response = await fetch("/api/tts-audio-suite/available-languages");
+            if (response.ok) {
+                const data = await response.json();
+                if (data.languages && Array.isArray(data.languages)) {
+                    langSelect.innerHTML = "<option value=''>Select...</option>";
+                    data.languages.forEach(lang => {
+                        const option = document.createElement("option");
+                        option.value = lang;
+                        option.textContent = lang.toUpperCase();
+                        langSelect.appendChild(option);
+                    });
+                    console.log(`✅ Loaded ${data.languages.length} language codes`);
+                }
+            }
+        } catch (err) {
+            console.warn("Could not load languages from API, using fallback:", err);
+            // Fallback to hardcoded list
+            const fallbackLanguages = ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"];
+            langSelect.innerHTML = "<option value=''>Select...</option>";
+            fallbackLanguages.forEach(lang => {
+                const option = document.createElement("option");
+                option.value = lang;
+                option.textContent = lang.toUpperCase();
+                langSelect.appendChild(option);
+            });
+        }
+    };
+
+    populateLanguages();
+
     langSelect.value = state.lastLanguage;
 
     langSelect.addEventListener("change", () => {
