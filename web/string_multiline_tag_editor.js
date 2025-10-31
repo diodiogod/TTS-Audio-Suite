@@ -348,6 +348,10 @@ function addStringMultilineTagEditorWidget(node) {
         if (resizeDivider) {
             resizeDivider.style.left = (newWidth - 3) + "px"; // 3px left + 3px right of border
         }
+        // Update fontBox position to align with sidebar resize
+        if (fontBox) {
+            fontBox.style.left = newWidth + "px";
+        }
         state.saveToLocalStorage(storageKey);
     };
 
@@ -555,13 +559,15 @@ function addStringMultilineTagEditorWidget(node) {
     // Create font selector floating box (above editor)
     const fontBox = document.createElement("div");
     fontBox.style.background = "#2a2a2a";
-    fontBox.style.border = "1px solid #444";
-    fontBox.style.borderBottom = "1px solid #333";
+    fontBox.style.border = "1px solid #555";
+    fontBox.style.borderRadius = "4px";
     fontBox.style.padding = "8px 10px";
     fontBox.style.display = "flex";
     fontBox.style.gap = "12px";
     fontBox.style.alignItems = "center";
     fontBox.style.flexShrink = "0";
+    fontBox.style.height = "32px";
+    fontBox.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.5)";
 
     // Font family dropdown
     const fontFamilyLabel = document.createElement("div");
@@ -637,8 +643,8 @@ function addStringMultilineTagEditorWidget(node) {
     // Set initial font family selection
     fontFamilySelect.value = state.fontFamily;
 
-    // Add font box to textareaWrapper (above editor)
-    textareaWrapper.appendChild(fontBox);
+    // Font box will be appended to widgetWrapper after it's created (see below)
+
     textareaWrapper.appendChild(editor);
 
     // Create floating invisible divider on top of everything for resizing
@@ -717,8 +723,27 @@ function addStringMultilineTagEditorWidget(node) {
         updateHighlights();
     };
 
+    // Create wrapper container for the widget (allows floating elements above)
+    const widgetWrapper = document.createElement("div");
+    widgetWrapper.style.display = "flex";
+    widgetWrapper.style.flexDirection = "column";
+    widgetWrapper.style.width = "100%";
+    widgetWrapper.style.height = "100%";
+    widgetWrapper.style.position = "relative";
+    widgetWrapper.appendChild(editorContainer);
+
+    // Now add fontBox to widgetWrapper as floating element
+    fontBox.style.position = "absolute";
+    fontBox.style.top = "-45px"; // Float above the node
+    fontBox.style.left = state.sidebarWidth + "px"; // Align with textarea area (account for sidebar)
+    fontBox.style.right = "10px"; // Some margin on right
+    fontBox.style.zIndex = "999";
+    fontBox.style.pointerEvents = "auto";
+    fontBox.style.whiteSpace = "nowrap";
+    widgetWrapper.appendChild(fontBox);
+
     // Create the widget - this provides the "text" input for the node
-    const widget = node.addDOMWidget("text", "customtext", editorContainer, {
+    const widget = node.addDOMWidget("text", "customtext", widgetWrapper, {
         getValue() {
             return getPlainText();
         },
