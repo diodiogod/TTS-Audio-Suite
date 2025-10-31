@@ -348,10 +348,6 @@ function addStringMultilineTagEditorWidget(node) {
         if (resizeDivider) {
             resizeDivider.style.left = (newWidth - 3) + "px"; // 3px left + 3px right of border
         }
-        // Update fontBox position to align with sidebar resize
-        if (fontBox) {
-            fontBox.style.left = newWidth + "px";
-        }
         state.saveToLocalStorage(storageKey);
     };
 
@@ -559,15 +555,13 @@ function addStringMultilineTagEditorWidget(node) {
     // Create font selector floating box (above editor)
     const fontBox = document.createElement("div");
     fontBox.style.background = "#2a2a2a";
-    fontBox.style.border = "1px solid #555";
-    fontBox.style.borderRadius = "4px";
+    fontBox.style.border = "1px solid #444";
+    fontBox.style.borderBottom = "1px solid #333";
     fontBox.style.padding = "8px 10px";
     fontBox.style.display = "flex";
     fontBox.style.gap = "12px";
     fontBox.style.alignItems = "center";
     fontBox.style.flexShrink = "0";
-    fontBox.style.height = "32px";
-    fontBox.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.5)";
 
     // Font family dropdown
     const fontFamilyLabel = document.createElement("div");
@@ -587,15 +581,29 @@ function addStringMultilineTagEditorWidget(node) {
     fontFamilySelect.style.cursor = "pointer";
     fontFamilySelect.style.flex = "1";
 
-    // Add common monospace fonts - using canonical fallback chains
+    // Add diverse fonts - web-safe alternatives (no external dependencies needed)
+    // Includes programming-friendly monospace and general purpose fonts
     const fontFamilies = [
-        { label: "Monospace", value: "monospace" },
+        // Monospace fonts (best for code/TTS)
+        { label: "Monospace (System)", value: "monospace" },
         { label: "Courier New", value: "Courier New, monospace" },
         { label: "Courier", value: "Courier, monospace" },
+        { label: "Lucida Console", value: "Lucida Console, monospace" },
+        { label: "Lucida Typewriter", value: "Lucida Typewriter, monospace" },
+        { label: "Liberation Mono", value: "Liberation Mono, monospace" },
+        // Serif fonts
         { label: "Georgia", value: "Georgia, serif" },
-        { label: "Times", value: "Times New Roman, serif" },
+        { label: "Times New Roman", value: "Times New Roman, serif" },
+        { label: "Garamond", value: "Garamond, serif" },
+        { label: "Palatino", value: "Palatino Linotype, serif" },
+        // Sans-serif fonts
         { label: "Arial", value: "Arial, sans-serif" },
-        { label: "Verdana", value: "Verdana, sans-serif" }
+        { label: "Helvetica", value: "Helvetica, sans-serif" },
+        { label: "Verdana", value: "Verdana, sans-serif" },
+        { label: "Trebuchet MS", value: "Trebuchet MS, sans-serif" },
+        { label: "Impact", value: "Impact, sans-serif" },
+        // Decorative
+        { label: "Comic Sans", value: "Comic Sans MS, cursive" }
     ];
 
     fontFamilies.forEach(font => {
@@ -643,8 +651,8 @@ function addStringMultilineTagEditorWidget(node) {
     // Set initial font family selection
     fontFamilySelect.value = state.fontFamily;
 
-    // Font box will be appended to widgetWrapper after it's created (see below)
-
+    // Add font box to textareaWrapper (above editor)
+    textareaWrapper.appendChild(fontBox);
     textareaWrapper.appendChild(editor);
 
     // Create floating invisible divider on top of everything for resizing
@@ -669,6 +677,9 @@ function addStringMultilineTagEditorWidget(node) {
     let lastClickTime = 0;
     let lastClickX = 0;
 
+    let initialMouseX = 0; // Track initial mouse position
+    let initialSidebarWidth = 0; // Track sidebar width at start of drag
+
     resizeDivider.addEventListener("mousedown", (e) => {
         // Check for double-click to reset
         const currentTime = Date.now();
@@ -684,14 +695,19 @@ function addStringMultilineTagEditorWidget(node) {
         lastClickTime = currentTime;
         lastClickX = e.clientX;
 
+        // Store initial values for smooth dragging
+        initialMouseX = e.clientX;
+        initialSidebarWidth = state.sidebarWidth;
+
         isResizing = true;
         e.preventDefault();
     });
 
     document.addEventListener("mousemove", (e) => {
         if (!isResizing) return;
-        const editorContainerRect = editorContainer.getBoundingClientRect();
-        const newWidth = e.clientX - editorContainerRect.left;
+        // Calculate delta from initial position and apply to initial width
+        const delta = e.clientX - initialMouseX;
+        const newWidth = initialSidebarWidth + delta;
         setSidebarWidth(newWidth);
         updateDividerPosition();
     });
@@ -723,29 +739,8 @@ function addStringMultilineTagEditorWidget(node) {
         updateHighlights();
     };
 
-    // Create wrapper container for the widget (allows floating elements above)
-    const widgetWrapper = document.createElement("div");
-    widgetWrapper.style.display = "flex";
-    widgetWrapper.style.flexDirection = "column";
-    widgetWrapper.style.width = "100%";
-    widgetWrapper.style.height = "100%";
-    widgetWrapper.style.position = "relative";
-    widgetWrapper.appendChild(editorContainer);
-
-    // Now add fontBox to widgetWrapper as floating element
-    fontBox.style.position = "absolute";
-    fontBox.style.top = "-35px"; // Float above the node (less offset, closer to node)
-    fontBox.style.left = state.sidebarWidth + "px"; // Align with textarea area (account for sidebar)
-    fontBox.style.right = "10px"; // Some margin on right
-    fontBox.style.zIndex = "999";
-    fontBox.style.pointerEvents = "auto";
-    fontBox.style.minWidth = "0"; // Allow shrinking below natural width
-    fontBox.style.overflow = "hidden"; // Clip content if it gets too small
-    fontBox.style.textOverflow = "ellipsis";
-    widgetWrapper.appendChild(fontBox);
-
     // Create the widget - this provides the "text" input for the node
-    const widget = node.addDOMWidget("text", "customtext", widgetWrapper, {
+    const widget = node.addDOMWidget("text", "customtext", editorContainer, {
         getValue() {
             return getPlainText();
         },
