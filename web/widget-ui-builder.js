@@ -5,6 +5,10 @@
  */
 
 import { TagUtilities } from "./tag-utilities.js";
+import { loadSupportedLanguages } from "./language-constants.js";
+
+// Load supported languages into memory on module load
+loadSupportedLanguages();
 
 export function buildHistorySection(state, storageKey) {
     const historySection = document.createElement("div");

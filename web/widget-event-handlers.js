@@ -215,8 +215,8 @@ export function attachAllEventHandlers(
                 if (isLanguageCode(beforeColon)) {
                     // It's already a language tag - only update if language is different
                     if (beforeColon === lang) {
-                        // Same language already exists, don't add duplicate
-                        return null;
+                        // Same language already exists, return unchanged
+                        return tagContent;
                     } else {
                         // Replace the language part with new language
                         const charPart = firstPart.substring(colonIndex + 1);
