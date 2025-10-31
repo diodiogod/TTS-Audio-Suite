@@ -1083,6 +1083,7 @@ function addStringMultilineTagEditorWidget(node) {
     presetSection.appendChild(presetLabel);
 
     const presetButtons = {};
+    const presetTitles = {}; // Store references to title elements for updating
 
     for (let i = 1; i <= 3; i++) {
         const presetKey = `preset_${i}`;
@@ -1095,6 +1096,7 @@ function addStringMultilineTagEditorWidget(node) {
         presetTitle.style.marginBottom = "3px";
         presetTitle.style.color = "#bbb";
         presetTitle.textContent = `P${i}`;
+        presetTitles[presetKey] = presetTitle; // Store for later updates
 
         const presetControls = document.createElement("div");
         presetControls.style.display = "flex";
@@ -1129,22 +1131,33 @@ function addStringMultilineTagEditorWidget(node) {
         presetSection.appendChild(presetContainer);
     }
 
-    // Restore preset button glow states based on saved presets
+    // Update preset titles and glow states based on saved presets
     const updatePresetGlows = () => {
         Object.entries(presetButtons).forEach(([presetKey, buttons]) => {
+            const presetNum = presetKey.split("_")[1];
             if (presetKey in state.presets && state.presets[presetKey]) {
-                // Preset exists - keep load button glowing green to show it has data
+                // Preset exists - update title and glow
+                const preset = state.presets[presetKey];
+                let displayName = preset.tag;
+
+                // Limit to 15 characters, add ellipsis if longer
+                if (displayName.length > 15) {
+                    displayName = displayName.substring(0, 15) + "...";
+                }
+
+                presetTitles[presetKey].textContent = displayName;
                 buttons.load.style.background = "#00cc00";
                 buttons.load.style.boxShadow = "0 0 8px #00cc00";
             } else {
-                // Preset empty - normal style
+                // Preset empty - reset to P1/P2/P3
+                presetTitles[presetKey].textContent = `P${presetNum}`;
                 buttons.load.style.background = "#3a3a3a";
                 buttons.load.style.boxShadow = "none";
             }
         });
     };
 
-    // Update glow on load
+    // Update glow and titles on load
     updatePresetGlows();
 
     // Validation controls
