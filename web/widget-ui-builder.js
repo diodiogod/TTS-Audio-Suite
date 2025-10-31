@@ -196,6 +196,8 @@ export function buildLanguageSection(state, storageKey) {
                         option.textContent = lang.toUpperCase();
                         langSelect.appendChild(option);
                     });
+                    // Restore saved language AFTER options are populated
+                    langSelect.value = state.lastLanguage;
                     console.log(`✅ Loaded ${data.languages.length} language codes`);
                 }
             }
@@ -210,12 +212,12 @@ export function buildLanguageSection(state, storageKey) {
                 option.textContent = lang.toUpperCase();
                 langSelect.appendChild(option);
             });
+            // Restore saved language AFTER options are populated
+            langSelect.value = state.lastLanguage;
         }
     };
 
     populateLanguages();
-
-    langSelect.value = state.lastLanguage;
 
     langSelect.addEventListener("change", () => {
         state.lastLanguage = langSelect.value;

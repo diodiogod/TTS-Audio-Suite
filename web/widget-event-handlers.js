@@ -145,10 +145,24 @@ export function attachAllEventHandlers(
 
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
             const parts = tagContent.split("|");
-            const firstPartIsParam = parts[0].includes(":");
-            if (firstPartIsParam) {
-                parts.unshift(char);
+            const firstPart = parts[0];
+
+            // Check if first part has a colon
+            if (firstPart.includes(":")) {
+                const colonIndex = firstPart.indexOf(":");
+                const beforeColon = firstPart.substring(0, colonIndex);
+
+                // Check if it's a language code (not a parameter)
+                if (isLanguageCode(beforeColon)) {
+                    // It's a language:character format, replace the character part
+                    const langCode = beforeColon;
+                    parts[0] = `${langCode}:${char}`;
+                } else {
+                    // It's a parameter (like seed:5), prepend character
+                    parts.unshift(char);
+                }
             } else {
+                // No colon, just a character name - replace it
                 parts[0] = char;
             }
             return parts.join("|");
