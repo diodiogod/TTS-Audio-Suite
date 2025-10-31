@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.13.2
+# TTS Audio Suite v4.14.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -85,7 +85,7 @@ Switching
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
-  - [⚙️ Per-Segment Parameter Switching](#️-per-segment-parameter-switching)
+  - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -151,7 +151,7 @@ Switching
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
-- ⚙️ **Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis with inline tags → **[📖 Complete Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
+- 🏷️ **Multiline TTS Tag Editor & Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using a new multiline string editor node that makes building complex tags easier and more visual, with character/language/parameter dropdowns for quick selection, preset management, and tag validation → **[📖 Complete Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
 - 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
 - 📝 **Multilingual Text Processing** - Universal Phoneme Text Normalizer with IPA phonemization, Unicode decomposition, and character mapping for improved pronunciation quality across languages (Experimental)
 - 😤 **Emotion Control** - ChatterBox exaggeration parameter for expressive speech + IndexTTS-2 advanced emotion control with dynamic text analysis, character tags, and 8-emotion vectors → **[📖 IndexTTS-2 Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
@@ -645,11 +645,19 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 </details>
 
 <details>
-<summary><h3>⚙️ Per-Segment Parameter Switching</h3></summary>
+<summary><h3>🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching</h3></summary>
 
-**NEW in v4.12.0**: Fine-grained per-segment control over TTS generation parameters across all engines!
+**NEW in v4.12.0**: Fine-grained per-segment control over TTS generation parameters across all engines with an interactive tag editor!
 
-Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. This enables dynamic control over individual audio segments without modifying node defaults.
+Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. The new **🏷️ Multiline TTS Tag Editor** node makes building complex tags easier and more visual with:
+- **Rich Text Editor**: Multiline editor with resizable font sizes (2-120px), multiple font families, and customizable UI scaling
+- **Visual Tag Management**: Character/language/parameter dropdowns for quick selection, inline tag validation with syntax checking
+- **Preset System**: Save and load up to 3 preset configurations for rapid tag reuse
+- **Keyboard Shortcuts**: Alt+L/C/P for tag insertion, Alt+1/2/3 for preset loading
+- **History & Undo/Redo**: Full edit history with Alt+Z for undo (Alt+Shift+Z for redo)
+- **Tag Formatting**: Auto-format button for proper spacing and structure
+
+This enables dynamic control over individual audio segments without modifying node defaults.
 
 **🎯 Key Features:**
 

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.0] - 2025-10-31
+
+### Added
+
+- Add 🏷️ Multiline TTS Tag Editor with rich text editing and tag management
+- Major Features:
+- Interactive tag editor with character/language/parameter dropdowns
+- Preset system to save and load up to 3 configurations
+- Full undo/redo history with keyboard shortcuts
+- Syntax highlighting for tags and SRT timings
+- Resizable fonts (2-120px) and 16 web-safe fonts
+- Customizable UI scaling and sidebar width
+- Per-node unique storage for multiple editors in same workflow
+- Toast notifications for feedback
+- Tag formatting and validation
+
+### Changed
+
+- Select text to prepend tags or modify existing tags
 ## [4.13.2] - 2025-10-30
 
 ### Added
