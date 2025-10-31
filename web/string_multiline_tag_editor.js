@@ -552,7 +552,7 @@ function addStringMultilineTagEditorWidget(node) {
     const resizeDivider = document.createElement("div");
     resizeDivider.style.position = "absolute";
     resizeDivider.style.top = "0";
-    resizeDivider.style.width = "8px"; // Invisible grabable area (4px left, 4px right of border)
+    resizeDivider.style.width = "6px"; // Invisible grabable area (3px left, 3px right of border)
     resizeDivider.style.height = "100%";
     resizeDivider.style.cursor = "col-resize";
     resizeDivider.style.zIndex = "1000"; // On top of everything
@@ -562,7 +562,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Update divider position when sidebar width changes (centered on border)
     const updateDividerPosition = () => {
-        resizeDivider.style.left = (state.sidebarWidth - 4) + "px"; // 4px left + 4px right of border
+        resizeDivider.style.left = (state.sidebarWidth - 3) + "px"; // 3px left + 3px right of border
     };
     updateDividerPosition();
 
