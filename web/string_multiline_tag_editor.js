@@ -1408,6 +1408,9 @@ function addStringMultilineTagEditorWidget(node) {
             const delta = e.deltaY > 0 ? -1 : 1; // Negative scroll = zoom out, positive = zoom in
             const newSize = state.fontSize + delta;
             setFontSize(newSize);
+            // Sync the input field with the new font size
+            fontSizeInput.value = newSize;
+            fontSizeDisplay.textContent = newSize + "px";
         }
     });
 
