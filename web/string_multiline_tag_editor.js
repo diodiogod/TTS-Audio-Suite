@@ -1140,9 +1140,13 @@ function addStringMultilineTagEditorWidget(node) {
                 const preset = state.presets[presetKey];
                 let displayName = preset.tag;
 
-                // Limit to 15 characters, add ellipsis if longer
-                if (displayName.length > 15) {
-                    displayName = displayName.substring(0, 15) + "...";
+                // Truncate based on panel width - estimate 50px per char at 10px font
+                // Sidebar width - margins/padding = available space
+                const availableWidth = state.sidebarWidth - 30; // Account for padding
+                const maxChars = Math.max(8, Math.floor(availableWidth / 6)); // At least 8 chars
+
+                if (displayName.length > maxChars) {
+                    displayName = displayName.substring(0, maxChars) + "...";
                 }
 
                 presetTitles[presetKey].textContent = displayName;
