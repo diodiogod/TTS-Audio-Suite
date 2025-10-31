@@ -23,13 +23,13 @@ class EditorState {
         this.discoveredCharacters = {};
     }
 
-    addToHistory(text) {
+    addToHistory(text, caretPos = 0) {
         // Remove any future history if we've undone something
         if (this.historyIndex < this.history.length - 1) {
             this.history = this.history.slice(0, this.historyIndex + 1);
         }
 
-        this.history.push(text);
+        this.history.push({ text, caretPos });
         this.historyIndex = this.history.length - 1;
 
         // Keep history size reasonable (limit to 100 states)
@@ -44,19 +44,23 @@ class EditorState {
     undo() {
         if (this.historyIndex > 0) {
             this.historyIndex--;
-            this.text = this.history[this.historyIndex];
-            return this.text;
+            const entry = this.history[this.historyIndex];
+            this.text = entry.text;
+            return entry;
         }
-        return this.text;
+        const current = this.history[this.historyIndex] || { text: this.text, caretPos: 0 };
+        return current;
     }
 
     redo() {
         if (this.historyIndex < this.history.length - 1) {
             this.historyIndex++;
-            this.text = this.history[this.historyIndex];
-            return this.text;
+            const entry = this.history[this.historyIndex];
+            this.text = entry.text;
+            return entry;
         }
-        return this.text;
+        const current = this.history[this.historyIndex] || { text: this.text, caretPos: 0 };
+        return current;
     }
 
     getHistoryStatus() {
@@ -304,11 +308,26 @@ function addStringMultilineTagEditorWidget(node) {
     const getCaretPos = () => {
         const selection = window.getSelection();
         if (selection.rangeCount === 0) return 0;
+
         const range = selection.getRangeAt(0);
         const preRange = range.cloneRange();
         preRange.selectNodeContents(editor);
         preRange.setEnd(range.endContainer, range.endOffset);
-        return preRange.toString().length;
+
+        // Count plain text characters (without HTML spans)
+        const tempDiv = document.createElement('div');
+        tempDiv.appendChild(preRange.cloneContents());
+
+        // Remove all span elements for counting
+        const spans = tempDiv.querySelectorAll('span');
+        spans.forEach(span => {
+            while (span.firstChild) {
+                span.parentNode.insertBefore(span.firstChild, span);
+            }
+            span.parentNode.removeChild(span);
+        });
+
+        return tempDiv.textContent.length;
     };
 
     // Restore caret position after update
@@ -756,26 +775,73 @@ function addStringMultilineTagEditorWidget(node) {
         const selectionStart = caretPos;
         const selectionEnd = caretPos;
 
-        // Only add to a tag if caret is RIGHT AFTER the closing bracket
+        // Check if caret is right after the closing bracket OR inside a tag
         const isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
 
-        if (isRightAfterTag) {
-            // Find the matching opening bracket for this closing bracket
-            let tagEnd = selectionStart - 1;
+        // Check if caret is INSIDE a tag (between [ and ])
+        let isInsideTag = false;
+        let tagStartInside = -1;
+        let tagEndInside = -1;
 
-            // Scan backwards to find the matching opening bracket, counting bracket pairs
-            let bracketDepth = 1;
-            let tagStart = -1;
-            for (let i = tagEnd - 1; i >= 0; i--) {
+        if (!isRightAfterTag) {
+            // Look for the nearest tag that contains this position
+            let bracketDepth = 0;
+            for (let i = selectionStart - 1; i >= 0; i--) {
                 if (text[i] === "]") {
                     bracketDepth++;
                 } else if (text[i] === "[") {
-                    bracketDepth--;
                     if (bracketDepth === 0) {
-                        tagStart = i;
+                        // Found the opening bracket
+                        tagStartInside = i;
+                        // Now find the closing bracket
+                        let innerDepth = 1;
+                        for (let j = i + 1; j < text.length; j++) {
+                            if (text[j] === "[") {
+                                innerDepth++;
+                            } else if (text[j] === "]") {
+                                innerDepth--;
+                                if (innerDepth === 0) {
+                                    tagEndInside = j;
+                                    if (tagEndInside > selectionStart) {
+                                        isInsideTag = true;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
                         break;
+                    } else {
+                        bracketDepth--;
                     }
                 }
+            }
+        }
+
+        if (isRightAfterTag || isInsideTag) {
+            let tagStart, tagEnd;
+
+            if (isRightAfterTag) {
+                // Find the matching opening bracket for this closing bracket
+                tagEnd = selectionStart - 1;
+
+                // Scan backwards to find the matching opening bracket, counting bracket pairs
+                let bracketDepth = 1;
+                tagStart = -1;
+                for (let i = tagEnd - 1; i >= 0; i--) {
+                    if (text[i] === "]") {
+                        bracketDepth++;
+                    } else if (text[i] === "[") {
+                        bracketDepth--;
+                        if (bracketDepth === 0) {
+                            tagStart = i;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // Use the tag positions we found when checking if inside tag
+                tagStart = tagStartInside;
+                tagEnd = tagEndInside;
             }
 
             // Verify the tag is valid (opening bracket found before closing)
@@ -797,8 +863,13 @@ function addStringMultilineTagEditorWidget(node) {
                 const newText = text.substring(0, tagStart + 1) + tagContent + "]" + text.substring(tagEnd + 1);
 
                 setEditorText(newText);
-                state.addToHistory(newText);
-                state.saveToLocalStorage(storageKey);
+                // Move caret to right after the closing bracket
+                const newCaretPos = tagStart + 1 + tagContent.length + 1; // +1 for [, +1 for ]
+                setTimeout(() => {
+                    setCaretPos(newCaretPos);
+                    state.addToHistory(newText, newCaretPos);
+                    state.saveToLocalStorage(storageKey);
+                }, 0);
                 widget.callback?.(widget.value);
                 historyStatus.textContent = state.getHistoryStatus();
             } else {
@@ -806,8 +877,13 @@ function addStringMultilineTagEditorWidget(node) {
                 const paramTag = `[${paramStr}]`;
                 const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
                 setEditorText(newText);
-                state.addToHistory(newText);
-                state.saveToLocalStorage(storageKey);
+                // Move caret to right after the new tag
+                const newCaretPos = selectionStart + paramTag.length;
+                setTimeout(() => {
+                    setCaretPos(newCaretPos);
+                    state.addToHistory(newText, newCaretPos);
+                    state.saveToLocalStorage(storageKey);
+                }, 0);
                 widget.callback?.(widget.value);
                 historyStatus.textContent = state.getHistoryStatus();
             }
@@ -817,8 +893,13 @@ function addStringMultilineTagEditorWidget(node) {
             const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
 
             setEditorText(newText);
-            state.addToHistory(newText);
-            state.saveToLocalStorage(storageKey);
+            // Move caret to right after the new tag
+            const newCaretPos = selectionStart + paramTag.length;
+            setTimeout(() => {
+                setCaretPos(newCaretPos);
+                state.addToHistory(newText, newCaretPos);
+                state.saveToLocalStorage(storageKey);
+            }, 0);
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
         }
@@ -944,22 +1025,28 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Editor input - add to history
     editor.addEventListener("input", (e) => {
-        state.addToHistory(getPlainText());
+        const plainText = getPlainText();
+        const caretPos = getCaretPos();
+        state.addToHistory(plainText, caretPos);
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
 
-    // Undo/Redo buttons
+    // Undo/Redo buttons - restore text and caret position from history
     undoBtn.addEventListener("click", () => {
-        setEditorText(state.undo());
+        const entry = state.undo();
+        setEditorText(entry.text);
+        setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
 
     redoBtn.addEventListener("click", () => {
-        setEditorText(state.redo());
+        const entry = state.redo();
+        setEditorText(entry.text);
+        setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
@@ -969,11 +1056,14 @@ function addStringMultilineTagEditorWidget(node) {
     editor.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "z") {
             e.preventDefault();
+            let entry;
             if (e.shiftKey) {
-                setEditorText(state.redo());
+                entry = state.redo();
             } else {
-                setEditorText(state.undo());
+                entry = state.undo();
             }
+            setEditorText(entry.text);
+            setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
@@ -1008,17 +1098,16 @@ function addStringMultilineTagEditorWidget(node) {
             );
 
             setEditorText(newText);
-            state.addToHistory(newText);
-            state.saveToLocalStorage(storageKey);
-            widget.callback?.(widget.value);
-            historyStatus.textContent = state.getHistoryStatus();
-
             // Move cursor after tag
             const newCaretPos = selectionStart + tag.length + 1;
             setTimeout(() => {
                 setCaretPos(newCaretPos);
+                state.addToHistory(newText, newCaretPos);
+                state.saveToLocalStorage(storageKey);
                 editor.focus();
             }, 0);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
         }
     });
 
@@ -1033,8 +1122,12 @@ function addStringMultilineTagEditorWidget(node) {
         text = text.split("\n").map(line => line.trimEnd()).join("\n");
 
         setEditorText(text);
-        state.addToHistory(text);
-        state.saveToLocalStorage(storageKey);
+        // Restore caret to start after formatting
+        setTimeout(() => {
+            state.addToHistory(text, 0);
+            state.saveToLocalStorage(storageKey);
+            setCaretPos(0);
+        }, 0);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
@@ -1100,17 +1193,16 @@ function addStringMultilineTagEditorWidget(node) {
                     const selectionStart = caretPos;
                     const newText = getPlainText().substring(0, selectionStart) + preset.tag + " " + getPlainText().substring(selectionStart);
                     setEditorText(newText);
-                    state.addToHistory(newText);
-                    state.saveToLocalStorage(storageKey);
-                    widget.callback?.(widget.value);
-                    historyStatus.textContent = state.getHistoryStatus();
-
                     // Move caret to after the inserted text
                     const newCaretPos = selectionStart + preset.tag.length + 1; // +1 for the space after tag
                     setTimeout(() => {
                         setCaretPos(newCaretPos);
+                        state.addToHistory(newText, newCaretPos);
+                        state.saveToLocalStorage(storageKey);
                         editor.focus();
                     }, 0);
+                    widget.callback?.(widget.value);
+                    historyStatus.textContent = state.getHistoryStatus();
 
                     showNotification(`✅ Preset ${presetNum} inserted`);
                 } else {
