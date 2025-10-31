@@ -216,7 +216,7 @@ class TagUtilities {
                                 innerDepth--;
                                 if (innerDepth === 0) {
                                     tagEndInside = j;
-                                    if (tagEndInside > selectionStart) {
+                                    if (tagEndInside >= selectionStart) {
                                         isInsideTag = true;
                                     }
                                     break;
