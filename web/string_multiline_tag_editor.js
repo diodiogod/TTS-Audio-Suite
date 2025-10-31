@@ -664,7 +664,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const undoBtn = document.createElement("button");
     undoBtn.textContent = "↶";
-    undoBtn.title = "Undo (Ctrl+Z)";
+    undoBtn.title = "Undo (Alt+Z)";
     undoBtn.style.flex = "1";
     undoBtn.style.padding = "4px";
     undoBtn.style.cursor = "pointer";
@@ -676,7 +676,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const redoBtn = document.createElement("button");
     redoBtn.textContent = "↷";
-    redoBtn.title = "Redo (Ctrl+Shift+Z)";
+    redoBtn.title = "Redo (Alt+Shift+Z)";
     redoBtn.style.flex = "1";
     redoBtn.style.padding = "4px";
     redoBtn.style.cursor = "pointer";
@@ -1255,17 +1255,12 @@ function addStringMultilineTagEditorWidget(node) {
         historyStatus.textContent = state.getHistoryStatus();
     });
 
-    // Keyboard shortcuts for undo/redo
+    // Keyboard shortcuts for undo/redo: Alt+Z (undo), Alt+Shift+Z (redo)
+    // Avoids conflict with ComfyUI's Ctrl+Z global undo
     editor.addEventListener("keydown", (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        if (document.activeElement === editor && e.altKey && e.key === "z") {
             e.preventDefault();
-            e.stopPropagation(); // Prevent event from bubbling to ComfyUI
-            let entry;
-            if (e.shiftKey) {
-                entry = state.redo();
-            } else {
-                entry = state.undo();
-            }
+            let entry = e.shiftKey ? state.redo() : state.undo();
             setEditorText(entry.text);
             setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
             state.saveToLocalStorage(storageKey);
