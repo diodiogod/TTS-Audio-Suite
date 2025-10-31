@@ -95,7 +95,13 @@ export class TagUtilities {
         // Returns {newText, newCaretPos} or null if no modification
 
         const selectionStart = caretPos;
-        const isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
+        // Check if right after tag, or after tag with one space
+        let isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
+        let spaceAfterTag = false;
+        if (!isRightAfterTag && selectionStart > 1 && text[selectionStart - 1] === " " && text[selectionStart - 2] === "]") {
+            isRightAfterTag = true;
+            spaceAfterTag = true;
+        }
 
         // Check if caret is INSIDE a tag (between [ and ])
         let isInsideTag = false;
@@ -138,7 +144,7 @@ export class TagUtilities {
             let tagStart, tagEnd;
 
             if (isRightAfterTag) {
-                tagEnd = selectionStart - 1;
+                tagEnd = spaceAfterTag ? selectionStart - 2 : selectionStart - 1;
                 let bracketDepth = 1;
                 tagStart = -1;
                 for (let i = tagEnd - 1; i >= 0; i--) {
