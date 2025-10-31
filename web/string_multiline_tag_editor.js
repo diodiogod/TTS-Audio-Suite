@@ -17,6 +17,7 @@ class EditorState {
         this.lastSeed = 0;
         this.lastTemperature = 0.7;
         this.lastPauseDuration = "1s";
+        this.lastParameterType = ""; // Persist selected parameter type
         this.sidebarExpanded = true;
         this.lastCursorPosition = 0;
         this.discoveredCharacters = {};
@@ -302,23 +303,60 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Function to highlight syntax
     const updateHighlights = () => {
-        let html = textarea.value
-            // Escape HTML
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+        let html = textarea.value;
+
+        // Highlight SRT sequence numbers ONLY if followed by valid timestamp line - bright red
+        // Pattern: line with only digits, followed by newline, then valid timestamp
+        html = html.replace(
+            /^(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/gm,
+            '\x00NUM_START\x00$1\x00NUM_END\x00\n$2'
+        );
 
         // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm) - bright orange
+        // Do this BEFORE HTML escaping so regex can match the actual arrow
         html = html.replace(
-            /(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/g,
-            '<span style="color: #ffaa00; font-weight: bold;">$1</span>'
+            /\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}/g,
+            '\x00SRT_START\x00$&\x00SRT_END\x00'
         );
 
         // Highlight tags [...] - bright cyan
         html = html.replace(
             /(\[[^\]]+\])/g,
-            '<span style="color: #00ffff; font-weight: bold;">$1</span>'
+            '\x00TAG_START\x00$1\x00TAG_END\x00'
         );
+
+        // Highlight commas - pale yellow
+        html = html.replace(
+            /,/g,
+            '\x00COMMA_START\x00,\x00COMMA_END\x00'
+        );
+
+        // Highlight periods/dots - golden yellow
+        html = html.replace(
+            /\./g,
+            '\x00PERIOD_START\x00.\x00PERIOD_END\x00'
+        );
+
+        // Highlight question marks, exclamation marks, semicolons - light salmon
+        html = html.replace(
+            /[?!;]/g,
+            '\x00PUNCT_START\x00$&\x00PUNCT_END\x00'
+        );
+
+        // NOW escape HTML
+        html = html
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        // Replace placeholders with actual styled spans
+        html = html
+            .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff5555; font-weight: bold;">$1</span>')
+            .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #ffaa00; font-weight: bold;">$1</span>')
+            .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #00ffff; font-weight: bold;">$1</span>')
+            .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #ffdd66;">$1</span>')
+            .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #ffcc33; font-weight: bold;">$1</span>')
+            .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>');
 
         highlightsOverlay.innerHTML = html;
     };
@@ -647,10 +685,20 @@ function addStringMultilineTagEditorWidget(node) {
         if (paramTypeSelect.value) {
             currentParamInput = createParamInput(paramTypeSelect.value);
             paramInputWrapper.appendChild(currentParamInput);
+            // Persist the selected parameter type
+            state.lastParameterType = paramTypeSelect.value;
+            state.saveToLocalStorage(storageKey);
         } else {
             currentParamInput = null;
         }
     });
+
+    // Restore previously selected parameter type
+    if (state.lastParameterType) {
+        paramTypeSelect.value = state.lastParameterType;
+        const changeEvent = new Event("change");
+        paramTypeSelect.dispatchEvent(changeEvent);
+    }
 
     // Add parameter button
     const addParamBtn = document.createElement("button");
