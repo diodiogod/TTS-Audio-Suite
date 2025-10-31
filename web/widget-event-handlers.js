@@ -183,6 +183,21 @@ export function attachAllEventHandlers(
         }
     });
 
+    // Helper to get selected text and its position
+    const getSelection = () => {
+        const sel = window.getSelection();
+        if (sel.toString().length === 0) return null;
+
+        const range = sel.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(editor);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const start = preRange.toString().length;
+        const end = start + range.toString().length;
+
+        return { start, end, text: range.toString() };
+    };
+
     // Add character button
     addCharBtn.addEventListener("click", () => {
         const char = charInput.value.trim() || charSelect.value;
@@ -190,7 +205,17 @@ export function attachAllEventHandlers(
 
         state.lastCharacter = char;
         const text = getPlainText();
-        const caretPos = getCaretPos();
+
+        // Check if text is selected
+        const selection = getSelection();
+        let caretPos;
+        if (selection && selection.text.match(/^\s*\[/)) {
+            // Selected text starts with a tag - find position right after the opening bracket
+            const leadingWhitespace = selection.text.match(/^\s*/)[0].length;
+            caretPos = selection.start + leadingWhitespace + 1; // position after [
+        } else {
+            caretPos = selection ? selection.start : getCaretPos();
+        }
 
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
             const parts = tagContent.split("|");
@@ -225,9 +250,19 @@ export function attachAllEventHandlers(
                 state.saveToLocalStorage(storageKey);
             }, 0);
         } else {
+            // No existing tag found - create new one
             const charTag = `[${char}]`;
-            const newText = text.substring(0, caretPos) + charTag + " " + text.substring(caretPos);
-            const newCaretPos = caretPos + charTag.length + 1;
+            let newText, newCaretPos;
+
+            if (selection) {
+                // Selected text: insert tag at beginning of selection
+                newText = text.substring(0, selection.start) + charTag + " " + text.substring(selection.start);
+                newCaretPos = selection.start + charTag.length + 1;
+            } else {
+                // No selection: insert at caret position
+                newText = text.substring(0, caretPos) + charTag + " " + text.substring(caretPos);
+                newCaretPos = caretPos + charTag.length + 1;
+            }
 
             setEditorText(newText);
             setTimeout(() => {
@@ -248,7 +283,17 @@ export function attachAllEventHandlers(
 
         state.lastLanguage = lang;
         const text = getPlainText();
-        const caretPos = getCaretPos();
+
+        // Check if text is selected
+        const selection = getSelection();
+        let caretPos;
+        if (selection && selection.text.match(/^\s*\[/)) {
+            // Selected text starts with a tag - find position right after the opening bracket
+            const leadingWhitespace = selection.text.match(/^\s*/)[0].length;
+            caretPos = selection.start + leadingWhitespace + 1; // position after [
+        } else {
+            caretPos = selection ? selection.start : getCaretPos();
+        }
 
         // Try to modify existing tag
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
@@ -291,10 +336,19 @@ export function attachAllEventHandlers(
                 state.saveToLocalStorage(storageKey);
             }, 0);
         } else {
-            // Create new language tag at caret position
+            // Create new language tag
             const langTag = `[${lang}:]`;
-            const newText = text.substring(0, caretPos) + langTag + " " + text.substring(caretPos);
-            const newCaretPos = caretPos + langTag.length + 1;
+            let newText, newCaretPos;
+
+            if (selection) {
+                // Selected text: insert tag at beginning of selection
+                newText = text.substring(0, selection.start) + langTag + " " + text.substring(selection.start);
+                newCaretPos = selection.start + langTag.length + 1;
+            } else {
+                // No selection: insert at caret position
+                newText = text.substring(0, caretPos) + langTag + " " + text.substring(caretPos);
+                newCaretPos = caretPos + langTag.length + 1;
+            }
 
             setEditorText(newText);
             setTimeout(() => {

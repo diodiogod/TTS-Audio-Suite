@@ -6,7 +6,7 @@
 
 import { TagUtilities } from "./tag-utilities.js";
 
-export function buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus) {
+export function buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor) {
     const paramSection = document.createElement("div");
     paramSection.style.marginBottom = "8px";
     paramSection.style.paddingBottom = "8px";
@@ -133,6 +133,21 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
 
     let currentParamInput = null;
 
+    // Helper to get selected text and its position
+    const getSelection = () => {
+        const sel = window.getSelection();
+        if (sel.toString().length === 0) return null;
+
+        const range = sel.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(editor);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const start = preRange.toString().length;
+        const end = start + range.toString().length;
+
+        return { start, end, text: range.toString() };
+    };
+
     paramTypeSelect.addEventListener("change", () => {
         paramInputWrapper.innerHTML = "";
         if (paramTypeSelect.value) {
@@ -176,7 +191,17 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
 
         const paramStr = `${paramTypeSelect.value}:${paramValue}`;
         const text = getPlainText();
-        const caretPos = getCaretPos();
+
+        // Check if text is selected
+        const selection = getSelection();
+        let caretPos;
+        if (selection && selection.text.match(/^\s*\[/)) {
+            // Selected text starts with a tag - find position right after the opening bracket
+            const leadingWhitespace = selection.text.match(/^\s*/)[0].length;
+            caretPos = selection.start + leadingWhitespace + 1; // position after [
+        } else {
+            caretPos = selection ? selection.start : getCaretPos();
+        }
 
         // Try to modify existing tag
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
@@ -201,11 +226,19 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
                 state.saveToLocalStorage(storageKey);
             }, 0);
         } else {
-            // Create new parameter tag at caret position
+            // Create new parameter tag
             const paramTag = `[${paramStr}]`;
-            const newText = text.substring(0, caretPos) + paramTag + " " + text.substring(caretPos);
-            // Position caret right after ] so next parameter add detects this tag
-            const newCaretPos = caretPos + paramTag.length;
+            let newText, newCaretPos;
+
+            if (selection) {
+                // Selected text: insert tag at beginning of selection
+                newText = text.substring(0, selection.start) + paramTag + " " + text.substring(selection.start);
+                newCaretPos = selection.start + paramTag.length;
+            } else {
+                // No selection: insert at caret position
+                newText = text.substring(0, caretPos) + paramTag + " " + text.substring(caretPos);
+                newCaretPos = caretPos + paramTag.length;
+            }
 
             setEditorText(newText);
             setTimeout(() => {

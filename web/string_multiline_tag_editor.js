@@ -465,7 +465,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Parameter controls - dynamic parameter selector
     // Build parameter section
-    const paramData = buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus);
+    const paramData = buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor);
     const { paramSection, paramTypeSelect, paramInputWrapper, addParamBtn, createParamInput, getCurrentParamInput, setCurrentParamInput } = paramData;
     let currentParamInput = paramData.getCurrentParamInput();
 
