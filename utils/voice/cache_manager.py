@@ -8,6 +8,7 @@ import os
 import json
 import time
 import threading
+import socket
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set, Callable
 from datetime import datetime, timedelta
@@ -130,19 +131,29 @@ class VoiceDiscoveryCacheManager:
             # Call the refresh callback to get updated data
             if self._refresh_callback:
                 with self._refresh_lock:
-                    result = self._refresh_callback()
-                    if isinstance(result, tuple):
-                        updated_data, was_updated = result
-                    else:
-                        updated_data = result
-                        was_updated = False
+                    try:
+                        result = self._refresh_callback()
+                        if isinstance(result, tuple):
+                            updated_data, was_updated = result
+                        else:
+                            updated_data = result
+                            was_updated = False
 
-                    if updated_data:
-                        self.save_cache(updated_data)
-                        # Return whether cache was actually updated
-                        return was_updated
+                        if updated_data:
+                            self.save_cache(updated_data)
+                            # Return whether cache was actually updated
+                            return was_updated
+                    except Exception:
+                        pass  # Silently fail - background refresh is optional
         except Exception:
-            pass  # Silently fail - background refresh is optional
+            pass  # Handle any outer exceptions silently
+        finally:
+            # Properly close any lingering sockets on Windows before thread exit
+            try:
+                import gc
+                gc.collect()  # Force garbage collection to clean up resources
+            except Exception:
+                pass
 
     def stop_background_refresh(self):
         """Stop the background refresh thread."""
