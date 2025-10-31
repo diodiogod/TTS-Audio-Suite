@@ -175,6 +175,7 @@ export function buildLanguageSection(state, storageKey) {
 
     const langSelect = document.createElement("select");
     langSelect.style.width = "100%";
+    langSelect.style.marginBottom = "4px";
     langSelect.style.padding = "3px";
     langSelect.style.fontSize = "10px";
     langSelect.style.background = "#2a2a2a";
@@ -182,7 +183,7 @@ export function buildLanguageSection(state, storageKey) {
     langSelect.style.border = "1px solid #444";
 
     const languages = ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"];
-    langSelect.innerHTML = "<option value=''>No language</option>";
+    langSelect.innerHTML = "<option value=''>Select...</option>";
     languages.forEach(lang => {
         const option = document.createElement("option");
         option.value = lang;
@@ -196,10 +197,23 @@ export function buildLanguageSection(state, storageKey) {
         state.saveToLocalStorage(storageKey);
     });
 
+    const addLangBtn = document.createElement("button");
+    addLangBtn.textContent = "Add Language Tag";
+    addLangBtn.title = "Insert language tag [lang:] or [lang:Character] at cursor";
+    addLangBtn.style.width = "100%";
+    addLangBtn.style.padding = "4px";
+    addLangBtn.style.cursor = "pointer";
+    addLangBtn.style.fontSize = "10px";
+    addLangBtn.style.background = "#3a3a3a";
+    addLangBtn.style.color = "#eee";
+    addLangBtn.style.border = "1px solid #555";
+    addLangBtn.style.borderRadius = "2px";
+
     langSection.appendChild(langLabel);
     langSection.appendChild(langSelect);
+    langSection.appendChild(addLangBtn);
 
-    return { langSection, langSelect };
+    return { langSection, langSelect, addLangBtn };
 }
 
 export function buildValidationSection() {

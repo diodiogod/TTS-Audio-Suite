@@ -313,6 +313,12 @@ This extension features a **unified modular architecture** supporting multiple T
 
 ## Web Interface Components
 
+### TTS Tag Editor (Modularized Architecture)
+
+**web/string_multiline_tag_editor.js**, **widget-event-handlers.js**, **widget-ui-builder.js**, **widget-parameter-section.js**, **widget-preset-system.js**, **editor-state.js**, **tag-utilities.js**, **syntax-highlighter.js**, **font-controls.js** - Modular TTS tag editor with event handling, UI sections, parameters, presets, state management, tag utilities, syntax highlighting, and font controls for character/parameter tag editing with undo/redo, formatting, and persistence
+
+### Audio Analysis
+
 **web/audio_analyzer_interface.js** - Main ComfyUI integration and node communication for Audio Wave Analyzer
 
 **web/audio_analyzer_core.js** - Core JavaScript functionality for waveform visualization

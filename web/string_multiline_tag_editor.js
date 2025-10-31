@@ -461,7 +461,7 @@ function addStringMultilineTagEditorWidget(node) {
     const { charSection, charSelect, charInput, addCharBtn } = charData;
 
     const langData = buildLanguageSection(state, storageKey);
-    const { langSection, langSelect } = langData;
+    const { langSection, langSelect, addLangBtn } = langData;
 
     // Parameter controls - dynamic parameter selector
     // Build parameter section
@@ -493,7 +493,7 @@ function addStringMultilineTagEditorWidget(node) {
     // Consolidates all addEventListener calls into a single module function
     attachAllEventHandlers(
         editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
-        undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect,
+        undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
         showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale

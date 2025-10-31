@@ -8,7 +8,7 @@ import { TagUtilities } from "./tag-utilities.js";
 
 export function attachAllEventHandlers(
     editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
-    undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect,
+    undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
     showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale
@@ -164,6 +164,58 @@ export function attachAllEventHandlers(
             const charTag = `[${char}]`;
             const newText = text.substring(0, caretPos) + charTag + " " + text.substring(caretPos);
             const newCaretPos = caretPos + charTag.length + 1;
+
+            setEditorText(newText);
+            setTimeout(() => {
+                setCaretPos(newCaretPos);
+                state.addToHistory(newText, newCaretPos);
+                state.saveToLocalStorage(storageKey);
+                editor.focus();
+            }, 0);
+        }
+        widget.callback?.(widget.value);
+        historyStatus.textContent = state.getHistoryStatus();
+    });
+
+    // Add language tag button
+    addLangBtn.addEventListener("click", () => {
+        const lang = langSelect.value;
+        if (!lang) return;
+
+        state.lastLanguage = lang;
+        const text = getPlainText();
+        const caretPos = getCaretPos();
+
+        // Try to modify existing tag
+        const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
+            const parts = tagContent.split("|");
+            const firstPart = parts[0];
+
+            // Check if first part is language code (contains colon) or character name
+            if (firstPart.includes(":")) {
+                // Already has language, replace it
+                const langPart = firstPart.split(":")[1];
+                parts[0] = `${lang}:${langPart}`;
+            } else {
+                // Add language code before character
+                parts[0] = `${lang}:${firstPart}`;
+            }
+            return parts.join("|");
+        });
+
+        if (result) {
+            // Modified existing tag
+            setEditorText(result.newText);
+            setTimeout(() => {
+                setCaretPos(result.newCaretPos);
+                state.addToHistory(result.newText, result.newCaretPos);
+                state.saveToLocalStorage(storageKey);
+            }, 0);
+        } else {
+            // Create new language tag at caret position
+            const langTag = `[${lang}:]`;
+            const newText = text.substring(0, caretPos) + langTag + " " + text.substring(caretPos);
+            const newCaretPos = caretPos + langTag.length + 1;
 
             setEditorText(newText);
             setTimeout(() => {
