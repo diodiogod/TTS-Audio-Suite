@@ -250,117 +250,139 @@ function addStringMultilineTagEditorWidget(node) {
     sidebar.style.display = "flex";
     sidebar.style.flexDirection = "column";
 
-    // Create textarea wrapper for syntax highlighting
+    // Create editor wrapper for contenteditable
     const textareaWrapper = document.createElement("div");
-    textareaWrapper.style.position = "relative";
     textareaWrapper.style.flex = "1 1 auto";
     textareaWrapper.style.display = "flex";
     textareaWrapper.style.minHeight = "0";
     textareaWrapper.style.width = "100%";
 
-    // Create highlights overlay (behind textarea) - use textarea for identical wrapping
-    const highlightsOverlay = document.createElement("textarea");
-    highlightsOverlay.readOnly = true;
-    highlightsOverlay.disabled = true;
-    highlightsOverlay.style.position = "absolute";
-    highlightsOverlay.style.top = "0";
-    highlightsOverlay.style.left = "0";
-    highlightsOverlay.style.width = "100%";
-    highlightsOverlay.style.height = "100%";
-    highlightsOverlay.style.margin = "0";
-    highlightsOverlay.style.padding = "10px";
-    highlightsOverlay.style.fontFamily = "monospace";
-    highlightsOverlay.style.fontSize = "13px";
-    highlightsOverlay.style.color = "#eee"; // Same as textarea text
-    highlightsOverlay.style.background = "#1a1a1a";
-    highlightsOverlay.style.border = "none";
-    highlightsOverlay.style.overflow = "hidden";
-    highlightsOverlay.style.pointerEvents = "none";
-    highlightsOverlay.style.userSelect = "none";
-    highlightsOverlay.style.lineHeight = "1.4";
-    highlightsOverlay.style.letterSpacing = "0";
-    highlightsOverlay.style.wordSpacing = "0";
-    highlightsOverlay.style.tabSize = "4";
-    highlightsOverlay.style.MozTabSize = "4";
-    highlightsOverlay.style.resize = "none";
-    highlightsOverlay.style.outline = "none";
-    // Must match textarea exactly
-    highlightsOverlay.wrap = "soft";
+    // Create contenteditable div - replaces both textarea and overlay
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    editor.className = "comfy-multiline-input";
+    editor.style.flex = "1 1 auto";
+    editor.style.fontFamily = "monospace";
+    editor.style.fontSize = "13px";
+    editor.style.padding = "10px";
+    editor.style.border = "none";
+    editor.style.background = "#1a1a1a";
+    editor.style.color = "#eee";
+    editor.style.outline = "none";
+    editor.style.margin = "0";
+    editor.style.minHeight = "0";
+    editor.style.width = "100%";
+    editor.style.lineHeight = "1.4";
+    editor.style.letterSpacing = "0";
+    editor.style.wordSpacing = "0";
+    editor.style.whiteSpace = "pre-wrap";
+    editor.style.wordWrap = "break-word";
+    editor.style.overflowWrap = "break-word";
+    editor.style.tabSize = "4";
+    editor.style.MozTabSize = "4";
+    editor.style.caretColor = "#eee";
+    editor.spellcheck = false;
 
-    // Create textarea with transparent background so overlay shows through
-    const textarea = document.createElement("textarea");
-    textarea.className = "comfy-multiline-input";
-    textarea.value = state.text;
-    textarea.placeholder = "Enter text with tags...\n\nExamples:\n[Alice] Hello!\n[Bob|seed:42] Hi!\ntext [char] more text";
-    textarea.spellcheck = false;
-    textarea.style.flex = "1 1 auto";
-    textarea.style.fontFamily = "monospace";
-    textarea.style.fontSize = "13px";
-    textarea.style.padding = "10px";
-    textarea.style.border = "none";
-    textarea.style.background = "transparent"; // Let overlay show through
-    textarea.style.color = "transparent"; // Hide textarea text, show overlay colors instead
-    textarea.style.outline = "none";
-    textarea.style.margin = "0";
-    textarea.style.resize = "none";
-    textarea.style.minHeight = "0";
-    textarea.style.width = "100%";
-    textarea.style.position = "relative";
-    textarea.style.zIndex = "1";
-    textarea.style.lineHeight = "1.4";
-    textarea.style.letterSpacing = "0";
-    textarea.style.wordSpacing = "0";
-    textarea.style.caretColor = "#eee"; // Keep cursor visible
+    // Initialize with text
+    editor.textContent = state.text;
 
-    // Function to highlight syntax
+    // Helper to get plain text (strip HTML for state management)
+    const getPlainText = () => {
+        const clone = editor.cloneNode(true);
+        // Remove all spans, keeping just the text
+        const spans = clone.querySelectorAll('span');
+        spans.forEach(span => {
+            while (span.firstChild) {
+                span.parentNode.insertBefore(span.firstChild, span);
+            }
+            span.parentNode.removeChild(span);
+        });
+        return clone.textContent;
+    };
+
+    // Save caret position before update
+    const getCaretPos = () => {
+        const selection = window.getSelection();
+        if (selection.rangeCount === 0) return 0;
+        const range = selection.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(editor);
+        preRange.setEnd(range.endContainer, range.endOffset);
+        return preRange.toString().length;
+    };
+
+    // Restore caret position after update
+    const setCaretPos = (pos) => {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        let charCount = 0;
+        let nodeStack = [editor];
+        let node;
+        let foundStart = false;
+
+        while (!foundStart && (node = nodeStack.pop())) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nextCharCount = charCount + node.length;
+                if (pos <= nextCharCount) {
+                    range.setStart(node, pos - charCount);
+                    foundStart = true;
+                }
+                charCount = nextCharCount;
+            } else {
+                let i = node.childNodes.length;
+                while (i--) {
+                    nodeStack.push(node.childNodes[i]);
+                }
+            }
+        }
+
+        if (foundStart) {
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    };
+
+    // Function to highlight syntax in contenteditable
     const updateHighlights = () => {
-        let html = textarea.value;
+        const plainText = getPlainText();
+        const caretPos = getCaretPos();
+        let html = plainText;
 
-        // Highlight SRT sequence numbers ONLY if followed by valid timestamp line - bright red
-        // Pattern: line with only digits (allow trailing spaces), followed by newline, then valid timestamp
+        // Highlight SRT sequence numbers - bright red
         html = html.replace(
             /^(\d+)\s*\n(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/gm,
             '\x00NUM_START\x00$1\x00NUM_END\x00\n$2'
         );
 
-        // Highlight SRT timings (HH:MM:SS,mmm --> HH:MM:SS,mmm) - bright orange
-        // Do this BEFORE HTML escaping so regex can match the actual arrow
+        // Highlight SRT timings - bright orange
         html = html.replace(
             /\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}/g,
             '\x00SRT_START\x00$&\x00SRT_END\x00'
         );
 
-        // Highlight tags [...] - bright cyan
+        // Highlight tags - bright cyan
         html = html.replace(
             /(\[[^\]]+\])/g,
             '\x00TAG_START\x00$1\x00TAG_END\x00'
         );
 
         // Highlight commas - pale yellow
-        html = html.replace(
-            /,/g,
-            '\x00COMMA_START\x00,\x00COMMA_END\x00'
-        );
+        html = html.replace(/,/g, '\x00COMMA_START\x00,\x00COMMA_END\x00');
 
-        // Highlight periods/dots - golden yellow
-        html = html.replace(
-            /\./g,
-            '\x00PERIOD_START\x00.\x00PERIOD_END\x00'
-        );
+        // Highlight periods - golden yellow
+        html = html.replace(/\./g, '\x00PERIOD_START\x00.\x00PERIOD_END\x00');
 
-        // Highlight question marks, exclamation marks, semicolons - light salmon
-        html = html.replace(
-            /[?!;]/g,
-            '\x00PUNCT_START\x00$&\x00PUNCT_END\x00'
-        );
+        // Highlight punctuation - light salmon
+        html = html.replace(/[?!;]/g, '\x00PUNCT_START\x00$&\x00PUNCT_END\x00');
 
-        // NOW escape HTML
+        // Escape HTML
         html = html
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
 
-        // Replace placeholders with actual styled spans
+        // Replace placeholders with spans
         html = html
             .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff5555; font-weight: bold;">$1</span>')
             .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #ffaa00; font-weight: bold;">$1</span>')
@@ -369,32 +391,22 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #ffcc33; font-weight: bold;">$1</span>')
             .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>');
 
-        highlightsOverlay.innerHTML = html;
+        // Update only if changed to avoid flicker
+        if (editor.innerHTML !== html) {
+            editor.innerHTML = html;
+            setCaretPos(caretPos);
+        }
     };
 
-    // Helper function to update textarea value, highlights, and widget value in sync
-    const setTextareaValue = (newText) => {
-        textarea.value = newText;
-        updateHighlights();
-        // widget.getValue() will return textarea.value, so this updates the output
-    };
-
-    // Sync scroll between textarea and highlights
-    textarea.addEventListener("scroll", () => {
-        highlightsOverlay.scrollTop = textarea.scrollTop;
-        highlightsOverlay.scrollLeft = textarea.scrollLeft;
-    });
-
-    // Update highlights on input
-    textarea.addEventListener("input", () => {
-        updateHighlights();
-    });
-    textarea.addEventListener("change", () => {
+    // Update on input
+    editor.addEventListener("input", () => {
         updateHighlights();
     });
 
-    textareaWrapper.appendChild(highlightsOverlay);
-    textareaWrapper.appendChild(textarea);
+    // Initial highlight
+    updateHighlights();
+
+    textareaWrapper.appendChild(editor);
 
     editorContainer.appendChild(sidebar);
     editorContainer.appendChild(textareaWrapper);
@@ -402,19 +414,24 @@ function addStringMultilineTagEditorWidget(node) {
     // Initial highlight
     updateHighlights();
 
+    // Helper to set editor text (updates display and state)
+    const setEditorText = (newText) => {
+        editor.textContent = newText;
+        state.text = newText;
+        updateHighlights();
+    };
+
     // Create the widget - this provides the "text" input for the node
     const widget = node.addDOMWidget("text", "customtext", editorContainer, {
         getValue() {
-            return textarea.value;
+            return getPlainText();
         },
         setValue(v) {
-            textarea.value = v;
-            state.text = v;
-            updateHighlights();
+            setEditorText(v);
         }
     });
 
-    widget.inputEl = textarea;
+    widget.inputEl = editor;
     widget.options.minNodeSize = [900, 600];
     widget.options.maxWidth = 1400;
 
@@ -734,9 +751,10 @@ function addStringMultilineTagEditorWidget(node) {
         }
 
         const paramStr = `${paramTypeSelect.value}:${paramValue}`;
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
-        const text = textarea.value;
+        const text = getPlainText();
+        const caretPos = getCaretPos();
+        const selectionStart = caretPos;
+        const selectionEnd = caretPos;
 
         // Only add to a tag if caret is RIGHT AFTER the closing bracket
         const isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
@@ -778,7 +796,7 @@ function addStringMultilineTagEditorWidget(node) {
 
                 const newText = text.substring(0, tagStart + 1) + tagContent + "]" + text.substring(tagEnd + 1);
 
-                setTextareaValue(newText);
+                setEditorText(newText);
                 state.addToHistory(newText);
                 state.saveToLocalStorage(storageKey);
                 widget.callback?.(widget.value);
@@ -787,7 +805,7 @@ function addStringMultilineTagEditorWidget(node) {
                 // Invalid tag structure, create new tag instead
                 const paramTag = `[${paramStr}]`;
                 const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
-                setTextareaValue(newText);
+                setEditorText(newText);
                 state.addToHistory(newText);
                 state.saveToLocalStorage(storageKey);
                 widget.callback?.(widget.value);
@@ -798,7 +816,7 @@ function addStringMultilineTagEditorWidget(node) {
             const paramTag = `[${paramStr}]`;
             const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
 
-            setTextareaValue(newText);
+            setEditorText(newText);
             state.addToHistory(newText);
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
@@ -924,9 +942,9 @@ function addStringMultilineTagEditorWidget(node) {
 
     // ==================== EVENT HANDLERS ====================
 
-    // Textarea input - add to history
-    textarea.addEventListener("input", (e) => {
-        state.addToHistory(e.target.value);
+    // Editor input - add to history
+    editor.addEventListener("input", (e) => {
+        state.addToHistory(getPlainText());
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
@@ -934,27 +952,27 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Undo/Redo buttons
     undoBtn.addEventListener("click", () => {
-        setTextareaValue(state.undo());
+        setEditorText(state.undo());
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
 
     redoBtn.addEventListener("click", () => {
-        setTextareaValue(state.redo());
+        setEditorText(state.redo());
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
         historyStatus.textContent = state.getHistoryStatus();
     });
 
     // Keyboard shortcuts for undo/redo
-    textarea.addEventListener("keydown", (e) => {
+    editor.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "z") {
             e.preventDefault();
             if (e.shiftKey) {
-                setTextareaValue(state.redo());
+                setEditorText(state.redo());
             } else {
-                setTextareaValue(state.undo());
+                setEditorText(state.undo());
             }
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
@@ -976,12 +994,12 @@ function addStringMultilineTagEditorWidget(node) {
         const char = charInput.value.trim() || charSelect.value;
         if (char) {
             state.lastCharacter = char;
-            const selectionStart = textarea.selectionStart;
-            const selectionEnd = textarea.selectionEnd;
+            const selectionStart = caretPos;
+            const selectionEnd = caretPos;
 
             const tag = `[${char}]`;
             const newText = TagUtilities.insertTagAtPosition(
-                textarea.value,
+                getPlainText(),
                 tag,
                 selectionStart,
                 selectionStart !== selectionEnd,
@@ -989,23 +1007,24 @@ function addStringMultilineTagEditorWidget(node) {
                 selectionEnd
             );
 
-            setTextareaValue(newText);
+            setEditorText(newText);
             state.addToHistory(newText);
             state.saveToLocalStorage(storageKey);
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
 
             // Move cursor after tag
+            const newCaretPos = selectionStart + tag.length + 1;
             setTimeout(() => {
-                textarea.selectionStart = textarea.selectionEnd = selectionStart + tag.length + 1;
-                textarea.focus();
+                setCaretPos(newCaretPos);
+                editor.focus();
             }, 0);
         }
     });
 
     // Format button - normalize spacing and structure
     formatBtn.addEventListener("click", () => {
-        let text = textarea.value;
+        let text = getPlainText();
         // Normalize spacing around tags
         text = text.replace(/\s*\[\s*/g, "[").replace(/\s*\]/g, "]");
         // Ensure space after closing bracket
@@ -1013,7 +1032,7 @@ function addStringMultilineTagEditorWidget(node) {
         // Remove trailing spaces
         text = text.split("\n").map(line => line.trimEnd()).join("\n");
 
-        setTextareaValue(text);
+        setEditorText(text);
         state.addToHistory(text);
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
@@ -1022,7 +1041,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Validation
     validateBtn.addEventListener("click", () => {
-        const validation = TagUtilities.validateTagSyntax(textarea.value);
+        const validation = TagUtilities.validateTagSyntax(getPlainText());
         if (validation.valid) {
             showNotification("✅ Tag syntax is valid!");
         } else {
@@ -1036,12 +1055,12 @@ function addStringMultilineTagEditorWidget(node) {
 
         buttons.save.addEventListener("click", () => {
             // First check if user selected text in textarea (like [de:Alice|seed:42|temp:0.8])
-            const selectionStart = textarea.selectionStart;
-            const selectionEnd = textarea.selectionEnd;
+            const selectionStart = caretPos;
+            const selectionEnd = caretPos;
             let selectedText = "";
 
             if (selectionStart !== selectionEnd) {
-                selectedText = textarea.value.substring(selectionStart, selectionEnd);
+                selectedText = getPlainText().substring(selectionStart, selectionEnd);
                 // Store the selected text as the preset
                 state.presets[presetKey] = {
                     tag: selectedText,
@@ -1078,9 +1097,9 @@ function addStringMultilineTagEditorWidget(node) {
 
                 // If it's a complex tag saved from selection, insert it at cursor
                 if (preset.isComplexTag) {
-                    const selectionStart = textarea.selectionStart;
-                    const newText = textarea.value.substring(0, selectionStart) + preset.tag + " " + textarea.value.substring(selectionStart);
-                    setTextareaValue(newText);
+                    const selectionStart = caretPos;
+                    const newText = getPlainText().substring(0, selectionStart) + preset.tag + " " + getPlainText().substring(selectionStart);
+                    setEditorText(newText);
                     state.addToHistory(newText);
                     state.saveToLocalStorage(storageKey);
                     widget.callback?.(widget.value);
@@ -1089,9 +1108,8 @@ function addStringMultilineTagEditorWidget(node) {
                     // Move caret to after the inserted text
                     const newCaretPos = selectionStart + preset.tag.length + 1; // +1 for the space after tag
                     setTimeout(() => {
-                        textarea.selectionStart = newCaretPos;
-                        textarea.selectionEnd = newCaretPos;
-                        textarea.focus();
+                        setCaretPos(newCaretPos);
+                        editor.focus();
                     }, 0);
 
                     showNotification(`✅ Preset ${presetNum} inserted`);
@@ -1127,19 +1145,19 @@ function addStringMultilineTagEditorWidget(node) {
     });
 
     // Middle mouse button panning support
-    textarea.addEventListener("pointerdown", (e) => {
+    editor.addEventListener("pointerdown", (e) => {
         if (e.button === 1) {
             app.canvas.processMouseDown(e);
         }
     });
 
-    textarea.addEventListener("pointermove", (e) => {
+    editor.addEventListener("pointermove", (e) => {
         if ((e.buttons & 4) === 4) {
             app.canvas.processMouseMove(e);
         }
     });
 
-    textarea.addEventListener("pointerup", (e) => {
+    editor.addEventListener("pointerup", (e) => {
         if (e.button === 1) {
             app.canvas.processMouseUp(e);
         }
