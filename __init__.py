@@ -206,14 +206,16 @@ def setup_api_routes():
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/available-languages")
         async def get_available_languages_endpoint(request):
-            """API endpoint to get available language codes"""
+            """API endpoint to get available language codes from the canonical language mapper"""
             try:
-                # Supported language codes for tag editor
-                languages = ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"]
+                from utils.models.language_mapper import LANGUAGE_ALIASES
+                # Get all unique canonical language codes (the values in LANGUAGE_ALIASES)
+                languages = sorted(set(LANGUAGE_ALIASES.values()))
                 return web.json_response({"languages": languages})
             except Exception as e:
                 print(f"⚠️ Error retrieving available languages: {e}")
-                return web.json_response({"languages": [], "error": str(e)})
+                # Fallback list
+                return web.json_response({"languages": ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"], "error": str(e)})
     except Exception as e:
         print(f"⚠️ Could not setup API routes: {e}")
 
