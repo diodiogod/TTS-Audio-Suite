@@ -76,9 +76,42 @@ export function attachAllEventHandlers(
         historyStatus.textContent = state.getHistoryStatus();
     });
 
-    // Keyboard shortcuts for undo/redo
+    // Keyboard shortcuts for undo/redo and tag/preset insertion
     editor.addEventListener("keydown", (e) => {
-        if (document.activeElement === editor && e.altKey && e.key === "z") {
+        if (document.activeElement !== editor) return;
+
+        if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+            // Alt+L: Add Language Tag
+            if (e.key === "l" || e.key === "L") {
+                e.preventDefault();
+                addLangBtn.click();
+            }
+            // Alt+C: Add Character
+            else if (e.key === "c" || e.key === "C") {
+                e.preventDefault();
+                addCharBtn.click();
+            }
+            // Alt+P: Add Parameter
+            else if (e.key === "p" || e.key === "P") {
+                e.preventDefault();
+                addParamBtn.click();
+            }
+            // Alt+1/2/3: Load Preset
+            else if (e.key === "1") {
+                e.preventDefault();
+                presetButtons.preset_1?.load?.click?.();
+            }
+            else if (e.key === "2") {
+                e.preventDefault();
+                presetButtons.preset_2?.load?.click?.();
+            }
+            else if (e.key === "3") {
+                e.preventDefault();
+                presetButtons.preset_3?.load?.click?.();
+            }
+        }
+        // Alt+Z: Undo, Alt+Shift+Z: Redo
+        else if (e.altKey && e.key === "z") {
             e.preventDefault();
             let entry = e.shiftKey ? state.redo() : state.undo();
             setEditorText(entry.text);
