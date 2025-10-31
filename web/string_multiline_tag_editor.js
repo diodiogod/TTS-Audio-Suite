@@ -548,32 +548,45 @@ function addStringMultilineTagEditorWidget(node) {
 
     textareaWrapper.appendChild(editor);
 
-    // Make sidebar border-right resizable (invisible drag handle)
+    // Create floating invisible divider on top of everything for resizing
+    const resizeDivider = document.createElement("div");
+    resizeDivider.style.position = "absolute";
+    resizeDivider.style.top = "0";
+    resizeDivider.style.width = "8px"; // Invisible grabable area (4px left, 4px right of border)
+    resizeDivider.style.height = "100%";
+    resizeDivider.style.cursor = "col-resize";
+    resizeDivider.style.zIndex = "1000"; // On top of everything
+    resizeDivider.style.userSelect = "none";
+    resizeDivider.style.background = "transparent"; // Invisible
+    editorContainer.appendChild(resizeDivider);
+
+    // Update divider position when sidebar width changes (centered on border)
+    const updateDividerPosition = () => {
+        resizeDivider.style.left = (state.sidebarWidth - 4) + "px"; // 4px left + 4px right of border
+    };
+    updateDividerPosition();
+
     let isResizing = false;
     let lastClickTime = 0;
     let lastClickX = 0;
 
-    sidebar.addEventListener("mousedown", (e) => {
-        // Only trigger resize if click is on the very right edge of sidebar (within 8px)
-        const rect = sidebar.getBoundingClientRect();
-        if (e.clientX > rect.right - 8) {
-            // Check for double-click
-            const currentTime = Date.now();
-            if (currentTime - lastClickTime < 300 && Math.abs(e.clientX - lastClickX) < 5) {
-                // Double-click detected - reset to defaults
-                setSidebarWidth(220); // Default width
-                setUIScale(1.0); // Default UI scale
-                setFontSize(14); // Default font size
-                showNotification("🔄 Reset: Sidebar width, UI scale, and font size to defaults");
-                lastClickTime = 0; // Reset to prevent triple-click
-                return;
-            }
-            lastClickTime = currentTime;
-            lastClickX = e.clientX;
-
-            isResizing = true;
-            e.preventDefault();
+    resizeDivider.addEventListener("mousedown", (e) => {
+        // Check for double-click to reset
+        const currentTime = Date.now();
+        if (currentTime - lastClickTime < 300 && Math.abs(e.clientX - lastClickX) < 5) {
+            // Double-click detected - reset to defaults
+            setSidebarWidth(220); // Default width
+            setUIScale(1.0); // Default UI scale
+            setFontSize(14); // Default font size
+            showNotification("🔄 Reset: Sidebar width, UI scale, and font size to defaults");
+            lastClickTime = 0; // Reset to prevent triple-click
+            return;
         }
+        lastClickTime = currentTime;
+        lastClickX = e.clientX;
+
+        isResizing = true;
+        e.preventDefault();
     });
 
     document.addEventListener("mousemove", (e) => {
@@ -581,24 +594,11 @@ function addStringMultilineTagEditorWidget(node) {
         const editorContainerRect = editorContainer.getBoundingClientRect();
         const newWidth = e.clientX - editorContainerRect.left;
         setSidebarWidth(newWidth);
+        updateDividerPosition();
     });
 
     document.addEventListener("mouseup", () => {
         isResizing = false;
-    });
-
-    // Change cursor to col-resize when hovering near the right edge of sidebar
-    sidebar.addEventListener("mousemove", (e) => {
-        const rect = sidebar.getBoundingClientRect();
-        if (e.clientX > rect.right - 8) {
-            sidebar.style.cursor = "col-resize";
-        } else {
-            sidebar.style.cursor = "default";
-        }
-    });
-
-    sidebar.addEventListener("mouseleave", () => {
-        sidebar.style.cursor = "default";
     });
 
     // Ctrl+wheel on sidebar to change UI scale
