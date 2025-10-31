@@ -213,10 +213,16 @@ export function attachAllEventHandlers(
 
                 // Check if it's a language code using the supported languages list
                 if (isLanguageCode(beforeColon)) {
-                    // It's already a language tag, replace the language part
-                    const charPart = firstPart.substring(colonIndex + 1);
-                    const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
-                    return `${lang}:${charPart}${rest}`;
+                    // It's already a language tag - only update if language is different
+                    if (beforeColon === lang) {
+                        // Same language already exists, don't add duplicate
+                        return null;
+                    } else {
+                        // Replace the language part with new language
+                        const charPart = firstPart.substring(colonIndex + 1);
+                        const rest = pipeIndex === -1 ? "" : tagContent.substring(pipeIndex);
+                        return `${lang}:${charPart}${rest}`;
+                    }
                 } else {
                     // It's a parameter tag (like seed:5), insert language with pipe separator: [de:|seed:5|steps:3]
                     return `${lang}:|${tagContent}`;
