@@ -423,7 +423,7 @@ function addStringMultilineTagEditorWidget(node) {
             '\x00TAG_START\x00$1\x00TAG_END\x00'
         );
 
-        // Highlight commas - pale yellow
+        // Highlight commas - green
         html = html.replace(/,/g, '\x00COMMA_START\x00,\x00COMMA_END\x00');
 
         // Highlight periods - golden yellow
@@ -443,7 +443,7 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff5555; font-weight: bold;">$1</span>')
             .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #ffaa00; font-weight: bold;">$1</span>')
             .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #00ffff; font-weight: bold;">$1</span>')
-            .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #ffdd66;">$1</span>')
+            .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #66ff66; font-weight: bold;">$1</span>')
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #ffcc33; font-weight: bold;">$1</span>')
             .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>');
 
