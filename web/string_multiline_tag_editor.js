@@ -1378,13 +1378,12 @@ function addStringMultilineTagEditorWidget(node) {
         const presetNum = presetKey.split("_")[1];
 
         buttons.save.addEventListener("click", () => {
-            // First check if user selected text in textarea (like [de:Alice|seed:42|temp:0.8])
-            const selectionStart = caretPos;
-            const selectionEnd = caretPos;
+            // First check if user selected text in editor (like [de:Alice|seed:42|temp:0.8])
+            const selection = window.getSelection();
             let selectedText = "";
 
-            if (selectionStart !== selectionEnd) {
-                selectedText = getPlainText().substring(selectionStart, selectionEnd);
+            if (selection.toString().length > 0) {
+                selectedText = selection.toString();
                 // Store the selected text as the preset
                 state.presets[presetKey] = {
                     tag: selectedText,
@@ -1418,26 +1417,26 @@ function addStringMultilineTagEditorWidget(node) {
         buttons.load.addEventListener("click", () => {
             if (presetKey in state.presets) {
                 const preset = state.presets[presetKey];
+                const currentCaretPos = getCaretPos(); // Get current caret position when button is clicked
+                const text = getPlainText();
 
-                // If it's a complex tag saved from selection, insert it at cursor
-                if (preset.isComplexTag) {
-                    const selectionStart = caretPos;
-                    const newText = getPlainText().substring(0, selectionStart) + preset.tag + " " + getPlainText().substring(selectionStart);
-                    setEditorText(newText);
-                    // Move caret to after the inserted text
-                    const newCaretPos = selectionStart + preset.tag.length + 1; // +1 for the space after tag
-                    setTimeout(() => {
-                        setCaretPos(newCaretPos);
-                        state.addToHistory(newText, newCaretPos);
-                        state.saveToLocalStorage(storageKey);
-                        editor.focus();
-                    }, 0);
-                    widget.callback?.(widget.value);
-                    historyStatus.textContent = state.getHistoryStatus();
+                // Always insert the preset tag at the current caret position
+                const newText = text.substring(0, currentCaretPos) + preset.tag + " " + text.substring(currentCaretPos);
+                setEditorText(newText);
 
-                    showNotification(`✅ Preset ${presetNum} inserted`);
-                } else {
-                    // Otherwise load character + parameters
+                // Move caret to after the inserted text
+                const newCaretPos = currentCaretPos + preset.tag.length + 1; // +1 for the space after tag
+                setTimeout(() => {
+                    setCaretPos(newCaretPos);
+                    state.addToHistory(newText, newCaretPos);
+                    state.saveToLocalStorage(storageKey);
+                    editor.focus();
+                }, 0);
+                widget.callback?.(widget.value);
+                historyStatus.textContent = state.getHistoryStatus();
+
+                // If it's a simple character preset, also update the sidebar for convenience
+                if (!preset.isComplexTag && preset.tag) {
                     charInput.value = preset.tag;
                     state.lastCharacter = preset.tag;
 
@@ -1446,10 +1445,9 @@ function addStringMultilineTagEditorWidget(node) {
                         if (preset.parameters.lastSeed) state.lastSeed = preset.parameters.lastSeed;
                         if (preset.parameters.lastTemperature) state.lastTemperature = preset.parameters.lastTemperature;
                     }
-
-                    state.saveToLocalStorage(storageKey);
-                    showNotification(`✅ Preset ${presetNum} loaded: ${preset.tag}`);
                 }
+
+                showNotification(`✅ Preset ${presetNum} inserted at cursor`);
             } else {
                 showNotification("⚠️ Preset is empty", 2000);
             }
