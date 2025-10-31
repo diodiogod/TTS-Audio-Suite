@@ -643,15 +643,32 @@ function addStringMultilineTagEditorWidget(node) {
     // Populate characters with default character names
     const populateCharacters = () => {
         try {
-            // Show common default character names that most TTS engines have
-            const defaultCharacters = ["Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry"];
-            defaultCharacters.forEach(char => {
+            // Get discovered characters from voice system
+            let characters = [];
+
+            // Try to get characters from discovered voices
+            if (state.discoveredCharacters && typeof state.discoveredCharacters === 'object') {
+                // If it's an object/dict, get the keys (character names)
+                if (!Array.isArray(state.discoveredCharacters)) {
+                    characters = Object.keys(state.discoveredCharacters);
+                } else {
+                    characters = state.discoveredCharacters;
+                }
+            }
+
+            // Fall back to defaults if no discovered characters
+            if (characters.length === 0) {
+                characters = ["Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry"];
+            }
+
+            // Add characters to dropdown
+            characters.forEach(char => {
                 const option = document.createElement("option");
                 option.value = char;
                 option.textContent = char;
                 charSelect.appendChild(option);
             });
-            console.log(`✅ Loaded ${defaultCharacters.length} default character voices`);
+            console.log(`✅ Loaded ${characters.length} character voices`);
         } catch (err) {
             console.warn("Could not populate characters:", err);
         }
@@ -1275,33 +1292,31 @@ function addStringMultilineTagEditorWidget(node) {
     // Add character button
     addCharBtn.addEventListener("click", () => {
         const char = charInput.value.trim() || charSelect.value;
-        if (char) {
-            state.lastCharacter = char;
-            const selectionStart = caretPos;
-            const selectionEnd = caretPos;
-
-            const tag = `[${char}]`;
-            const newText = TagUtilities.insertTagAtPosition(
-                getPlainText(),
-                tag,
-                selectionStart,
-                selectionStart !== selectionEnd,
-                selectionStart,
-                selectionEnd
-            );
-
-            setEditorText(newText);
-            // Move cursor after tag
-            const newCaretPos = selectionStart + tag.length + 1;
-            setTimeout(() => {
-                setCaretPos(newCaretPos);
-                state.addToHistory(newText, newCaretPos);
-                state.saveToLocalStorage(storageKey);
-                editor.focus();
-            }, 0);
-            widget.callback?.(widget.value);
-            historyStatus.textContent = state.getHistoryStatus();
+        if (!char) {
+            return;
         }
+
+        state.lastCharacter = char;
+        const text = getPlainText();
+        const caretPos = getCaretPos();
+        const selectionStart = caretPos;
+        const selectionEnd = caretPos;
+
+        // Create tag - just the character, no parameters yet
+        const charTag = `[${char}]`;
+        const newText = text.substring(0, selectionStart) + charTag + " " + text.substring(selectionStart);
+
+        setEditorText(newText);
+        // Move cursor to right after the new tag
+        const newCaretPos = selectionStart + charTag.length + 1;
+        setTimeout(() => {
+            setCaretPos(newCaretPos);
+            state.addToHistory(newText, newCaretPos);
+            state.saveToLocalStorage(storageKey);
+            editor.focus();
+        }, 0);
+        widget.callback?.(widget.value);
+        historyStatus.textContent = state.getHistoryStatus();
     });
 
     // Format button - normalize spacing and structure
