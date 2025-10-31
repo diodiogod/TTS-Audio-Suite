@@ -343,6 +343,10 @@ function addStringMultilineTagEditorWidget(node) {
         newWidth = Math.max(150, Math.min(400, newWidth)); // Clamp between 150px and 400px
         state.sidebarWidth = newWidth;
         sidebar.style.width = newWidth + "px";
+        // Update divider position to match new sidebar width
+        if (resizeDivider) {
+            resizeDivider.style.left = (newWidth - 3) + "px"; // 3px left + 3px right of border
+        }
         state.saveToLocalStorage(storageKey);
     };
 
