@@ -258,8 +258,10 @@ function addStringMultilineTagEditorWidget(node) {
     textareaWrapper.style.minHeight = "0";
     textareaWrapper.style.width = "100%";
 
-    // Create highlights overlay (behind textarea)
-    const highlightsOverlay = document.createElement("pre");
+    // Create highlights overlay (behind textarea) - use textarea for identical wrapping
+    const highlightsOverlay = document.createElement("textarea");
+    highlightsOverlay.readOnly = true;
+    highlightsOverlay.disabled = true;
     highlightsOverlay.style.position = "absolute";
     highlightsOverlay.style.top = "0";
     highlightsOverlay.style.left = "0";
@@ -274,9 +276,16 @@ function addStringMultilineTagEditorWidget(node) {
     highlightsOverlay.style.border = "none";
     highlightsOverlay.style.overflow = "hidden";
     highlightsOverlay.style.pointerEvents = "none";
-    highlightsOverlay.style.whiteSpace = "pre-wrap";
-    highlightsOverlay.style.wordWrap = "break-word";
+    highlightsOverlay.style.userSelect = "none";
     highlightsOverlay.style.lineHeight = "1.4";
+    highlightsOverlay.style.letterSpacing = "0";
+    highlightsOverlay.style.wordSpacing = "0";
+    highlightsOverlay.style.tabSize = "4";
+    highlightsOverlay.style.MozTabSize = "4";
+    highlightsOverlay.style.resize = "none";
+    highlightsOverlay.style.outline = "none";
+    // Must match textarea exactly
+    highlightsOverlay.wrap = "soft";
 
     // Create textarea with transparent background so overlay shows through
     const textarea = document.createElement("textarea");
@@ -299,6 +308,8 @@ function addStringMultilineTagEditorWidget(node) {
     textarea.style.position = "relative";
     textarea.style.zIndex = "1";
     textarea.style.lineHeight = "1.4";
+    textarea.style.letterSpacing = "0";
+    textarea.style.wordSpacing = "0";
     textarea.style.caretColor = "#eee"; // Keep cursor visible
 
     // Function to highlight syntax
@@ -306,9 +317,9 @@ function addStringMultilineTagEditorWidget(node) {
         let html = textarea.value;
 
         // Highlight SRT sequence numbers ONLY if followed by valid timestamp line - bright red
-        // Pattern: line with only digits, followed by newline, then valid timestamp
+        // Pattern: line with only digits (allow trailing spaces), followed by newline, then valid timestamp
         html = html.replace(
-            /^(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/gm,
+            /^(\d+)\s*\n(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/gm,
             '\x00NUM_START\x00$1\x00NUM_END\x00\n$2'
         );
 
@@ -727,34 +738,63 @@ function addStringMultilineTagEditorWidget(node) {
         const selectionEnd = textarea.selectionEnd;
         const text = textarea.value;
 
-        // Find if cursor is inside a tag
-        let tagStart = text.lastIndexOf("[", selectionStart);
-        let tagEnd = text.indexOf("]", selectionEnd);
+        // Only add to a tag if caret is RIGHT AFTER the closing bracket
+        const isRightAfterTag = selectionStart > 0 && text[selectionStart - 1] === "]";
 
-        if (tagStart !== -1 && tagEnd !== -1 && tagEnd > selectionStart) {
-            // Inside a tag - add or replace parameter
-            let tagContent = text.substring(tagStart + 1, tagEnd);
-            const paramType = paramTypeSelect.value;
+        if (isRightAfterTag) {
+            // Find the matching opening bracket for this closing bracket
+            let tagEnd = selectionStart - 1;
 
-            // Check if parameter already exists and replace it
-            const paramRegex = new RegExp(`${paramType}:[^|\\]]+`);
-            if (paramRegex.test(tagContent)) {
-                // Replace existing parameter
-                tagContent = tagContent.replace(paramRegex, paramStr);
-            } else {
-                // Add new parameter
-                tagContent = `${tagContent}|${paramStr}`;
+            // Scan backwards to find the matching opening bracket, counting bracket pairs
+            let bracketDepth = 1;
+            let tagStart = -1;
+            for (let i = tagEnd - 1; i >= 0; i--) {
+                if (text[i] === "]") {
+                    bracketDepth++;
+                } else if (text[i] === "[") {
+                    bracketDepth--;
+                    if (bracketDepth === 0) {
+                        tagStart = i;
+                        break;
+                    }
+                }
             }
 
-            const newText = text.substring(0, tagStart + 1) + tagContent + text.substring(tagEnd);
+            // Verify the tag is valid (opening bracket found before closing)
+            if (tagStart !== -1 && tagStart < tagEnd) {
+                // Inside a valid tag - add or replace parameter
+                let tagContent = text.substring(tagStart + 1, tagEnd);
+                const paramType = paramTypeSelect.value;
 
-            setTextareaValue(newText);
-            state.addToHistory(newText);
-            state.saveToLocalStorage(storageKey);
-            widget.callback?.(widget.value);
-            historyStatus.textContent = state.getHistoryStatus();
+                // Check if parameter already exists and replace it
+                const paramRegex = new RegExp(`${paramType}:[^|\\]]+`);
+                if (paramRegex.test(tagContent)) {
+                    // Replace existing parameter
+                    tagContent = tagContent.replace(paramRegex, paramStr);
+                } else {
+                    // Add new parameter
+                    tagContent = `${tagContent}|${paramStr}`;
+                }
+
+                const newText = text.substring(0, tagStart + 1) + tagContent + "]" + text.substring(tagEnd + 1);
+
+                setTextareaValue(newText);
+                state.addToHistory(newText);
+                state.saveToLocalStorage(storageKey);
+                widget.callback?.(widget.value);
+                historyStatus.textContent = state.getHistoryStatus();
+            } else {
+                // Invalid tag structure, create new tag instead
+                const paramTag = `[${paramStr}]`;
+                const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
+                setTextareaValue(newText);
+                state.addToHistory(newText);
+                state.saveToLocalStorage(storageKey);
+                widget.callback?.(widget.value);
+                historyStatus.textContent = state.getHistoryStatus();
+            }
         } else {
-            // Outside tag - create new parameter tag
+            // Caret is NOT right after a tag - create new parameter tag at caret position
             const paramTag = `[${paramStr}]`;
             const newText = text.substring(0, selectionStart) + paramTag + " " + text.substring(selectionStart);
 

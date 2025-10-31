@@ -42,6 +42,12 @@
     background: #222;
 }
 
+/* Text selection styling - make selection visible with contrast */
+.string-multiline-tag-editor-textarea::selection {
+    background: #0088ff;
+    color: #fff;
+}
+
 /* Sidebar sections */
 .string-multiline-tag-editor-sidebar > div {
     margin-bottom: 15px;
