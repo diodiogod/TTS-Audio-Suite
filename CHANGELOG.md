@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.1] - 2025-11-01
+
+### Added
+
+- Regular typing now works without triggering ComfyUI shortcuts
+- Alt+L/C/P/Z and Alt+1/2/3 shortcuts now respond correctly
+- Enter key creates newlines without delays or caret jumping
+- Improved overall text editing experience
+
+### Fixed
+
+- Fix keyboard shortcuts and text input in tag editor
 ## [4.14.0] - 2025-10-31
 
 ### Added

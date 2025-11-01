@@ -14,6 +14,28 @@ export function attachAllEventHandlers(
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
     showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale
 ) {
+    // Block ComfyUI shortcuts when editor is focused, but allow Enter and Alt combinations
+    editor.addEventListener("keydown", (e) => {
+        // Don't block Enter or Alt key combinations - we have handlers for those
+        if (e.key !== "Enter" && !e.altKey) {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }
+    }, true); // Use capture phase to intercept before other handlers
+
+    // Manually handle Enter key to insert newline
+    editor.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && document.activeElement === editor) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.execCommand("insertLineBreak");
+            // Trigger input event to update history
+            setTimeout(() => {
+                editor.dispatchEvent(new Event("input", { bubbles: true }));
+            }, 0);
+        }
+    });
+
     // Editor input - add to history with smart debouncing
     let historyDebounceTimer = null;
     let lastHistoryText = "";
@@ -80,22 +102,6 @@ export function attachAllEventHandlers(
     editor.addEventListener("keydown", (e) => {
         if (document.activeElement !== editor) return;
 
-        // Allow Enter to create newlines in contenteditable
-        if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
-            // Prevent default and manually insert newline to avoid ComfyUI interference
-            e.preventDefault();
-            e.stopPropagation();
-            const selection = window.getSelection();
-            const range = selection.getRangeAt(0);
-            const br = document.createElement("br");
-            range.insertNode(br);
-            range.setStartAfter(br);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            return;
-        }
-
         if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
             // Alt+L: Add Language Tag
             if (e.key === "l" || e.key === "L") {
@@ -126,8 +132,8 @@ export function attachAllEventHandlers(
                 presetButtons.preset_3?.load?.click?.();
             }
         }
-        // Alt+Z: Undo, Alt+Shift+Z: Redo
-        else if (e.altKey && e.key === "z") {
+        // Alt+Z: Undo, Alt+Shift+Z: Redo (also allow with shift)
+        if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "z" || e.key === "Z")) {
             e.preventDefault();
             let entry = e.shiftKey ? state.redo() : state.undo();
             setEditorText(entry.text);
