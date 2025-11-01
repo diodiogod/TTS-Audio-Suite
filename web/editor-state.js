@@ -5,7 +5,25 @@
 
 export class EditorState {
     constructor() {
-        this.text = "";
+        this.text = `[pause:1s] Enter your text here...
+
+Examples:
+[Alice] Hello there!
+[Bob|seed:42] Nice to meet you.
+text text [char] more text [pause:1s]
+
+SRT example:
+1
+00:00:00,000 --> 00:00:03,000
+[Alice] Welcome to this presentation.
+
+2
+00:00:03,500 --> 00:00:07,000
+[en:Bob|seed:42] Let me explain the details.
+
+3
+00:00:07,500 --> 00:00:10,000
+[Alice|temperature:0.5] Thank you for listening!`;
         this.history = [];
         this.historyIndex = -1;
         this.presets = {};
