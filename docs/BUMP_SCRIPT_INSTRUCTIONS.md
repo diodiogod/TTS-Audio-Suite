@@ -1,5 +1,7 @@
 # Version Bump Instructions for ComfyUI ChatterBox Voice
 
+**⚠️ ALWAYS specify which component/engine is affected in changelog (e.g., "Fix Multiline TTS Tag Editor text persistence" not just "Fix text persistence")**
+
 ## Quick Reference for Future Version Bumps
 
 ### Recommended Command (Separate Commit & Changelog)
@@ -176,12 +178,14 @@ python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
 - **Example**: If refactoring broke something then fixed it, only mention the refactoring benefit
 
 **🎯 CRITICAL: Always Specify Engine/Component When Applicable**
-- **Include engine name in titles**: Users need to know which TTS engine is affected
-- **❌ Bad**: "Fix SRT processing issues" 
+- **Include engine name OR component name in titles**: Users need to know which TTS engine or node/feature is affected
+- **❌ Bad**: "Fix SRT processing issues"
 - **✅ Good**: "Fix ChatterBox SRT processing issues"
+- **❌ Bad**: "Fix text persistence in workflows"
+- **✅ Good**: "Fix Multiline TTS Tag Editor text persistence in workflows"
 - **❌ Bad**: "Fix voice cloning errors"
 - **✅ Good**: "Fix Higgs Audio voice cloning errors"
-- **❌ Bad**: "Improve audio quality" 
+- **❌ Bad**: "Improve audio quality"
 - **✅ Good**: "Improve F5-TTS audio quality"
 
 **Engine-Specific Title Examples:**
