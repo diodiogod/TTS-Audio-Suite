@@ -18,8 +18,12 @@ import { attachAllEventHandlers } from "./widget-event-handlers.js";
 function addStringMultilineTagEditorWidget(node) {
     const storageKey = `string_multiline_tag_editor_${node.id}`;
 
-    // Load persisted state
-    const state = EditorState.loadFromLocalStorage(storageKey);
+    // Load persisted state from localStorage
+    let state = EditorState.loadFromLocalStorage(storageKey);
+
+    // Create a temporary state to check default text
+    const defaultState = new EditorState();
+    const defaultText = defaultState.text;
 
     // Create main editor container (this will be THE widget)
     const editorContainer = document.createElement("div");
@@ -438,7 +442,21 @@ function addStringMultilineTagEditorWidget(node) {
             return getPlainText();
         },
         setValue(v) {
-            setEditorText(v);
+            // Workflow value takes priority ONLY if it's not the default example text
+            // This allows shared workflows to load their data, while keeping localStorage
+            // for persistent sessions of the same workflow
+            if (v && v !== defaultText) {
+                // Workflow has custom data - use it (shared workflow or new value)
+                setEditorText(v);
+                state.text = v;
+            } else if (state.text !== defaultText) {
+                // localStorage has custom data - keep it (same session, persistent)
+                setEditorText(state.text);
+            } else {
+                // Both are default or empty - use workflow value
+                setEditorText(v || defaultText);
+                state.text = v || defaultText;
+            }
         }
     });
 
