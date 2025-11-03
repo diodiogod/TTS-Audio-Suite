@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.2] - 2025-11-03
+
+### Added
+
+- Text now persists when saving and loading workflows in different ComfyUI installations
+- Undo/redo history is properly preserved when reloading within same session
+- Local edits persist across reloads while maintaining workflow-shared values
+
+### Fixed
+
+- Fix Multiline TTS Tag Editor text persistence in saved workflows
 ## [4.14.1] - 2025-11-01
 
 ### Added
