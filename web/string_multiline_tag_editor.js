@@ -442,20 +442,22 @@ function addStringMultilineTagEditorWidget(node) {
             return getPlainText();
         },
         setValue(v) {
-            // Workflow value takes priority ONLY if it's not the default example text
-            // This allows shared workflows to load their data, while keeping localStorage
-            // for persistent sessions of the same workflow
-            if (v && v !== defaultText) {
-                // Workflow has custom data - use it (shared workflow or new value)
+            // Priority order:
+            // 1. If localStorage has custom data (not default) → use it (persistent edits)
+            // 2. If workflow has custom data (not default) → use it (shared workflow)
+            // 3. Otherwise use workflow value or default
+            if (state.text && state.text !== defaultText) {
+                // localStorage has custom data - keep it (same session, persistent edits)
+                setEditorText(state.text);
+            } else if (v && v !== defaultText) {
+                // Workflow has custom data - use it (first load of shared workflow)
                 setEditorText(v);
                 state.text = v;
-            } else if (state.text !== defaultText) {
-                // localStorage has custom data - keep it (same session, persistent)
-                setEditorText(state.text);
             } else {
-                // Both are default or empty - use workflow value
-                setEditorText(v || defaultText);
-                state.text = v || defaultText;
+                // Both are default or empty - use workflow value or default
+                const textToUse = v || defaultText;
+                setEditorText(textToUse);
+                state.text = textToUse;
             }
         }
     });
