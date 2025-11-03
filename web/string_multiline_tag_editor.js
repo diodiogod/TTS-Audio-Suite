@@ -18,8 +18,10 @@ import { attachAllEventHandlers } from "./widget-event-handlers.js";
 function addStringMultilineTagEditorWidget(node) {
     const storageKey = `string_multiline_tag_editor_${node.id}`;
 
-    // Load persisted state from localStorage
-    let state = EditorState.loadFromLocalStorage(storageKey);
+    // Don't load from localStorage yet - wait for workflow value first
+    // We'll load localStorage in setValue if needed
+    let state = new EditorState(); // Start with fresh state
+    let isConfigured = false; // Flag to know if onConfigure already loaded the state
 
     // Create a temporary state to check default text
     const defaultState = new EditorState();
@@ -442,19 +444,41 @@ function addStringMultilineTagEditorWidget(node) {
             return getPlainText();
         },
         setValue(v) {
+            console.log(`🏷️ setValue called: v="${v}"  state.text="${state.text?.substring(0,30)}" isConfigured=${isConfigured}`);
+
+            // Skip loading if onConfigure already loaded the full state with history
+            if (isConfigured) {
+                console.log("Skipping setValue loading (already configured by onConfigure)");
+                return;
+            }
+
+            // Load localStorage for this specific node only when setValue is called
+            // This ensures we don't mix up data between different node instances
+            if (state.text === defaultText) {
+                // State hasn't been customized yet - try loading from localStorage
+                const savedState = EditorState.loadFromLocalStorage(storageKey);
+                if (savedState.text && savedState.text !== defaultText) {
+                    console.log("Loading from localStorage");
+                    Object.assign(state, savedState);
+                }
+            }
+
             // Priority order:
             // 1. If localStorage has custom data (not default) → use it (persistent edits)
             // 2. If workflow has custom data (not default) → use it (shared workflow)
             // 3. Otherwise use workflow value or default
             if (state.text && state.text !== defaultText) {
                 // localStorage has custom data - keep it (same session, persistent edits)
+                console.log("Using localStorage");
                 setEditorText(state.text);
             } else if (v && v !== defaultText) {
                 // Workflow has custom data - use it (first load of shared workflow)
+                console.log("Using workflow value");
                 setEditorText(v);
                 state.text = v;
             } else {
                 // Both are default or empty - use workflow value or default
+                console.log("Using default or workflow value");
                 const textToUse = v || defaultText;
                 setEditorText(textToUse);
                 state.text = textToUse;
@@ -465,6 +489,50 @@ function addStringMultilineTagEditorWidget(node) {
     widget.inputEl = editor;
     widget.options.minNodeSize = [900, 600];
     widget.options.maxWidth = 1400;
+
+    // Ensure widget value is properly loaded from workflow
+    // ComfyUI loads widget values, but we need to handle them properly
+    const originalSetValue = widget.setValue.bind(widget);
+    widget.setValue = function(v) {
+        originalSetValue(v);
+        if (v !== undefined) {
+            widget.value = v;
+        }
+    };
+
+    // Hook into node's onConfigure to load workflow values
+    // This is called after node creation with the workflow data
+    const originalOnConfigure = node.onConfigure?.bind(node) || (() => {});
+    node.onConfigure = function(info) {
+        console.log(`🏷️ onConfigure called with widgets_values:`, info?.widgets_values);
+        const result = originalOnConfigure(info);
+
+        // First try to load full state from localStorage (includes history)
+        const savedState = EditorState.loadFromLocalStorage(storageKey);
+        if (savedState && savedState.text && savedState.text !== defaultText) {
+            console.log(`✓ Loading from localStorage with history (${savedState.history?.length || 0} entries)`);
+            // Copy all properties from savedState to state (don't reassign state ref)
+            Object.assign(state, savedState);
+            setEditorText(state.text);
+            widget.value = state.text;
+            historyStatus.textContent = state.getHistoryStatus();
+            isConfigured = true; // Mark that we've loaded the full state
+        } else if (info && Array.isArray(info.widgets_values) && info.widgets_values[0]) {
+            // Fall back to workflow value if no localStorage
+            const workflowValue = info.widgets_values[0];
+            console.log(`✓ Loading workflow value: "${workflowValue}"`);
+            setEditorText(workflowValue);
+            state.text = workflowValue;
+            widget.value = workflowValue;
+            // Initialize history with this value as the first entry
+            state.history = [{text: workflowValue, caretPos: 0}];
+            state.historyIndex = 0;
+            historyStatus.textContent = state.getHistoryStatus();
+            isConfigured = true; // Mark that we've configured from workflow
+        }
+
+        return result;
+    };
 
     // Set initial node size on creation
     setTimeout(() => {
@@ -543,10 +611,10 @@ app.registerExtension({
                     originalOnNodeCreated.call(this);
                 }
 
-                // Remove any existing widgets (there shouldn't be any since we have no inputs)
-                this.widgets = [];
+                // Remove the default widget from the widgets array so it doesn't render
+                this.widgets.shift();
 
-                // Create our custom widget
+                // Create our custom widget (becomes the FIRST widget now)
                 addStringMultilineTagEditorWidget(this);
             };
         }

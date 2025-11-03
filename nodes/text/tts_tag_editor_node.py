@@ -26,7 +26,7 @@ class StringMultilineTagEditor:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING", {"default": "", "forceInput": True}),
+                "text": ("STRING", {"default": ""}),
             },
             "optional": {}
         }
