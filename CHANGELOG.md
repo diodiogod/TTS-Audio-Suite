@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.4] - 2025-11-04
+
+### Added
+
+- Models now load from TTS/voicefixer/ directory instead of ~/.cache/
+- Respects extra_model_paths.yaml for shared model directories
+
+### Changed
+
+- Better integration with ComfyUI model management system
+
+### Fixed
+
+- Fix Voice Fixer model loading to use correct directory
 ## [4.14.3] - 2025-11-03
 
 ### Added

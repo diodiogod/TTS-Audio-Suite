@@ -3,15 +3,20 @@ import numpy as np
 import os
 from voicefixer_bundled.tools.path import root_path
 
+# Import path resolution from TTS Audio Suite
+try:
+    from utils.models.extra_paths import get_preferred_download_path
+    _voicefixer_dir = get_preferred_download_path('TTS', engine_name='voicefixer')
+except:
+    # Fallback if utils not available
+    _voicefixer_dir = os.path.join(os.path.expanduser("~"), ".cache/voicefixer/synthesis_module/44100")
+
 
 class Config:
     @classmethod
     def refresh(cls, sr):
         if sr == 44100:
-            Config.ckpt = os.path.join(
-                os.path.expanduser("~"),
-                ".cache/voicefixer/synthesis_module/44100/model.ckpt-1490000_trimed.pt",
-            )
+            Config.ckpt = os.path.join(_voicefixer_dir, "model.ckpt-1490000_trimed.pt")
             Config.cond_channels = 512
             Config.m_channels = 768
             Config.resstack_depth = [8, 8, 8, 8]
@@ -30,10 +35,7 @@ class Config:
                 "Error: Vocoder currently only support 44100 samplerate."
             )
 
-    ckpt = os.path.join(
-        os.path.expanduser("~"),
-        ".cache/voicefixer/synthesis_module/44100/model.ckpt-1490000_trimed.pt",
-    )
+    ckpt = os.path.join(_voicefixer_dir, "model.ckpt-1490000_trimed.pt")
     m_channels = 384
     bits = 10
     opt = "Ralamb"

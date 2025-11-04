@@ -4,6 +4,14 @@ from voicefixer_bundled.tools.wav import *
 from voicefixer_bundled.restorer.model import VoiceFixer as voicefixer_fe
 import os
 
+# Import path resolution from TTS Audio Suite
+try:
+    from utils.models.extra_paths import get_preferred_download_path
+    _voicefixer_dir = get_preferred_download_path('TTS', engine_name='voicefixer')
+except:
+    # Fallback if utils not available
+    _voicefixer_dir = os.path.join(os.path.expanduser("~"), ".cache/voicefixer")
+
 EPS = 1e-8
 
 
@@ -11,11 +19,8 @@ class VoiceFixer(nn.Module):
     def __init__(self):
         super(VoiceFixer, self).__init__()
         self._model = voicefixer_fe(channels=2, sample_rate=44100)
-        # print(os.path.join(os.path.expanduser('~'), ".cache/voicefixer/analysis_module/checkpoints/epoch=15_trimed_bn.ckpt"))
-        self.analysis_module_ckpt = os.path.join(
-                    os.path.expanduser("~"),
-                    ".cache/voicefixer/analysis_module/checkpoints/vf.ckpt",
-        )
+        # Use TTS directory instead of cache
+        self.analysis_module_ckpt = os.path.join(_voicefixer_dir, "vf.ckpt")
         if(not os.path.exists(self.analysis_module_ckpt)):
             raise RuntimeError("Error 0: The checkpoint for analysis module (vf.ckpt) is not found in ~/.cache/voicefixer/analysis_module/checkpoints. \
                                 By default the checkpoint should be download automatically by this program. Something bad may happened.\

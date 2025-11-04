@@ -192,28 +192,13 @@ MODE 2 - TRAIN MODE (Seriously Degraded):
                 sys.stdout = StringIO()
 
                 try:
-                    # Patch vocoder config BEFORE any imports that use it
-                    import voicefixer_bundled.vocoder.config as vocoder_config
-                    vocoder_config.Config.ckpt = vocoder_ckpt
-
-                    # Import from bundled version
+                    # Import from bundled version (already patched to use TTS directory)
                     from voicefixer_bundled.base import VoiceFixer as VoiceFixerClass
                     VoiceFixer = VoiceFixerClass
                 finally:
                     sys.stdout = old_stdout
 
-                # Monkey-patch torch.load to intercept analysis checkpoint loading
-                original_torch_load = torch.load
-
-                def patched_load(path, *args, **kwargs):
-                    # If loading the default cache path, redirect to our checkpoint
-                    if "analysis_module/checkpoints/vf.ckpt" in str(path):
-                        print(f"   Redirecting analysis checkpoint from {path} to {analysis_ckpt}")
-                        return original_torch_load(analysis_ckpt, *args, **kwargs)
-                    return original_torch_load(path, *args, **kwargs)
-
-                torch.load = patched_load
-                print("✅ VoiceFixer imported and patched successfully")
+                print("✅ VoiceFixer imported successfully (using TTS directory for models)")
 
             print("Initializing VoiceFixer...")
             self.voicefixer = VoiceFixer()
