@@ -74,10 +74,9 @@ class ComfyUIModelWrapper:
         
         # ComfyUI compatibility attributes
         # Convert device to torch.device object for ComfyUI compatibility
-        device_name = model_info.device
-        if device_name == "auto":
-            device_name = "cuda" if torch.cuda.is_available() else "cpu"
-        
+        from utils.device import resolve_torch_device
+        device_name = resolve_torch_device(model_info.device)
+
         # ComfyUI expects torch.device objects, not strings
         if isinstance(device_name, str):
             if device_name == "cuda":

@@ -230,13 +230,8 @@ class ChatterboxOfficial23LangTTS:
         print(f"📦 Loading ChatterBox Official 23-Lang model from: {ckpt_dir}")
         
         # Resolve "auto" device to actual device
-        if device == "auto":
-            if torch.cuda.is_available():
-                actual_device = "cuda"
-            else:
-                actual_device = "cpu"
-        else:
-            actual_device = device
+        from utils.device import resolve_torch_device
+        actual_device = resolve_torch_device(device)
         
         # Always load to CPU first for non-CUDA devices to handle CUDA-saved models
         # (Following official ResembleAI implementation)
@@ -368,13 +363,8 @@ class ChatterboxOfficial23LangTTS:
         print(f"🇮🇹 Loading unified {language} ChatterBox model from: {ckpt_dir}")
         
         # Resolve "auto" device to actual device
-        if device == "auto":
-            if torch.cuda.is_available():
-                actual_device = "cuda"
-            else:
-                actual_device = "cpu"
-        else:
-            actual_device = device
+        from utils.device import resolve_torch_device
+        actual_device = resolve_torch_device(device)
         
         # Load the unified model file
         unified_model_path = ckpt_dir / "chatterbox_italian_final.pt"

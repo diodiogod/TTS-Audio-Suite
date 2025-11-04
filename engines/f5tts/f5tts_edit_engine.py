@@ -21,10 +21,8 @@ class F5TTSEditEngine:
     
     def _resolve_device(self, device: str) -> str:
         """Resolve device string from 'auto' to actual device"""
-        if device == "auto":
-            import torch
-            return "cuda" if torch.cuda.is_available() else "cpu"
-        return device
+        from utils.device import resolve_torch_device
+        return resolve_torch_device(device)
     
     def perform_f5tts_edit(self, audio_tensor: torch.Tensor, sample_rate: int,
                           original_text: str, target_text: str,

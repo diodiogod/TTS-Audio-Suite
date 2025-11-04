@@ -127,8 +127,8 @@ class HiggsAudioEngine:
             enable_cuda_graphs: Whether to enable CUDA Graph optimization
         """        
         # Auto-detect device
-        if device == "auto":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+        from utils.device import resolve_torch_device
+        device = resolve_torch_device(device)
         
         # Loading Higgs Audio 2 engine silently
         

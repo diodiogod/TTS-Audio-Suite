@@ -38,9 +38,8 @@ class GPUAwareBatchProcessor:
     
     def _resolve_device(self, device: str) -> str:
         """Resolve device string to actual device."""
-        if device == "auto":
-            return "cuda" if torch.cuda.is_available() else "cpu"
-        return device
+        from utils.device import resolve_torch_device
+        return resolve_torch_device(device)
     
     def _determine_optimal_workers(self) -> int:
         """

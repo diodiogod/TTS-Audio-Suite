@@ -193,8 +193,8 @@ class VibeVoiceEngine:
             raise RuntimeError(f"Failed to get VibeVoice model '{model_name}'")
         
         # Determine device
-        if device == "auto":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+        from utils.device import resolve_torch_device
+        device = resolve_torch_device(device)
         
         print(f"🔄 Loading VibeVoice model '{model_name}' on {device}...")
         if attention_mode != "auto":

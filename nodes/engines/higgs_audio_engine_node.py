@@ -131,9 +131,9 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "default": "higgs-audio-v2-3B",
                     "tooltip": "Higgs Audio 2 model selection:\n• higgs-audio-v2-3B: Main 3B parameter model with best quality and voice cloning capabilities\n• Future models will appear here when available\n\nThe model handles voice cloning, multi-speaker generation, and natural speech synthesis."
                 }),
-                "device": (["auto", "cuda", "cpu"], {
+                "device": (["auto", "cuda", "cpu", "mps"], {
                     "default": "auto",
-                    "tooltip": "Computation device selection:\n• auto: Automatically choose CUDA GPU if available, fallback to CPU\n• cuda: Force GPU acceleration (requires NVIDIA GPU with CUDA)\n• cpu: Force CPU-only processing (slower but works on any hardware)\n\nRecommended: Leave on 'auto' unless you have specific hardware requirements."
+                    "tooltip": "Computation device selection:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, CPU fallback)\n• cuda: Force GPU acceleration (requires NVIDIA GPU with CUDA)\n• cpu: Force CPU-only processing (slower but works on any hardware)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)\n\nRecommended: Leave on 'auto' unless you have specific hardware requirements."
                 }),
                 "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker (Conversation)", "Native Multi-Speaker (System Context)"], {
                     "default": "Custom Character Switching",

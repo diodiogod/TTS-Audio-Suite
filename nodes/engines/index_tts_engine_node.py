@@ -60,9 +60,9 @@ class IndexTTSEngineNode(BaseTTSNode):
                     "default": model_paths[0] if model_paths else "IndexTTS-2",
                     "tooltip": "IndexTTS-2 model selection:\n• local:ModelName: Use locally installed model (respects extra_model_paths.yaml)\n• ModelName: Auto-download model if not found locally\n• Downloads respect extra_model_paths.yaml configuration"
                 }),
-                "device": (["auto", "cuda", "cpu"], {
+                "device": (["auto", "cuda", "cpu", "mps"], {
                     "default": "auto",
-                    "tooltip": "Device to run IndexTTS-2 model on. 'auto' selects best available."
+                    "tooltip": "Device to run IndexTTS-2 model on:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
                 }),
                 
                 # IndexTTS-2 Unique Features

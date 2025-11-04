@@ -112,14 +112,12 @@ class IndexTTSEngine:
 
     def _resolve_device(self, device: str) -> str:
         """Resolve device string to actual device."""
-        if device == "auto":
-            if torch.cuda.is_available():
-                return "cuda:0"
-            elif hasattr(torch, "mps") and torch.backends.mps.is_available():
-                return "mps"
-            else:
-                return "cpu"
-        return device
+        from utils.device import resolve_torch_device
+        resolved = resolve_torch_device(device)
+        # Index TTS expects cuda:0 instead of cuda
+        if resolved == "cuda":
+            return "cuda:0"
+        return resolved
         
     def _ensure_model_loaded(self):
         """Load the IndexTTS-2 model using unified model interface."""
