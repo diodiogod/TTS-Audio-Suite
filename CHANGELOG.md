@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.5] - 2025-11-04
+
+### Added
+
+- Add MPS (Apple Silicon) GPU acceleration support
+- Automatic device detection prioritizes available hardware
+- 'auto' mode now detects: Apple Silicon MPS → NVIDIA CUDA → CPU fallback
+- MPS device option added to all engine configuration nodes
+
+### Changed
+
+- All TTS engines now support Apple Metal Performance Shaders (MPS)
+
+### Fixed
+
+- Full backward compatibility - no breaking changes
 ## [4.14.4] - 2025-11-04
 
 ### Added
