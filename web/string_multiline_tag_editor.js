@@ -14,14 +14,21 @@ import { buildPresetSection } from "./widget-preset-system.js";
 import { attachAllEventHandlers } from "./widget-event-handlers.js";
 
 
+// Counter to ensure unique storage keys even when node.id is -1
+let widgetCounter = 0;
+
 // Create the widget
 function addStringMultilineTagEditorWidget(node) {
-    const storageKey = `string_multiline_tag_editor_${node.id}`;
+    // Use widget counter as fallback when node.id is -1 (not yet assigned)
+    const uniqueId = node.id !== -1 ? node.id : `widget_${widgetCounter++}`;
+    const storageKey = `string_multiline_tag_editor_${uniqueId}`;
 
     // Don't load from localStorage yet - wait for workflow value first
     // We'll load localStorage in setValue if needed
     let state = new EditorState(); // Start with fresh state
     let isConfigured = false; // Flag to know if onConfigure already loaded the state
+    let hasSetInitialValue = false; // Track if we've set the initial workflow value
+    let onConfigureCallCount = 0; // Track how many times onConfigure has been called
 
     // Create a temporary state to check default text
     const defaultState = new EditorState();
@@ -444,21 +451,17 @@ function addStringMultilineTagEditorWidget(node) {
             return getPlainText();
         },
         setValue(v) {
-            console.log(`🏷️ setValue called: v="${v}"  state.text="${state.text?.substring(0,30)}" isConfigured=${isConfigured}`);
-
-            // Skip loading if onConfigure already loaded the full state with history
-            if (isConfigured) {
-                console.log("Skipping setValue loading (already configured by onConfigure)");
+            // Skip loading if we've already processed the workflow value via onConfigure
+            if (isConfigured && hasSetInitialValue) {
                 return;
             }
 
             // Load localStorage for this specific node only when setValue is called
             // This ensures we don't mix up data between different node instances
-            if (state.text === defaultText) {
+            if (state.text === defaultText && !hasSetInitialValue) {
                 // State hasn't been customized yet - try loading from localStorage
                 const savedState = EditorState.loadFromLocalStorage(storageKey);
                 if (savedState.text && savedState.text !== defaultText) {
-                    console.log("Loading from localStorage");
                     Object.assign(state, savedState);
                 }
             }
@@ -467,21 +470,21 @@ function addStringMultilineTagEditorWidget(node) {
             // 1. If localStorage has custom data (not default) → use it (persistent edits)
             // 2. If workflow has custom data (not default) → use it (shared workflow)
             // 3. Otherwise use workflow value or default
-            if (state.text && state.text !== defaultText) {
+            if (state.text && state.text !== defaultText && !hasSetInitialValue) {
                 // localStorage has custom data - keep it (same session, persistent edits)
-                console.log("Using localStorage");
                 setEditorText(state.text);
-            } else if (v && v !== defaultText) {
+                hasSetInitialValue = true;
+            } else if (v && v !== defaultText && !hasSetInitialValue) {
                 // Workflow has custom data - use it (first load of shared workflow)
-                console.log("Using workflow value");
                 setEditorText(v);
                 state.text = v;
-            } else {
+                hasSetInitialValue = true;
+            } else if (!hasSetInitialValue) {
                 // Both are default or empty - use workflow value or default
-                console.log("Using default or workflow value");
                 const textToUse = v || defaultText;
                 setEditorText(textToUse);
                 state.text = textToUse;
+                hasSetInitialValue = true;
             }
         }
     });
@@ -504,31 +507,54 @@ function addStringMultilineTagEditorWidget(node) {
     // This is called after node creation with the workflow data
     const originalOnConfigure = node.onConfigure?.bind(node) || (() => {});
     node.onConfigure = function(info) {
-        console.log(`🏷️ onConfigure called with widgets_values:`, info?.widgets_values);
+        onConfigureCallCount++;
         const result = originalOnConfigure(info);
 
-        // First try to load full state from localStorage (includes history)
-        const savedState = EditorState.loadFromLocalStorage(storageKey);
-        if (savedState && savedState.text && savedState.text !== defaultText) {
-            console.log(`✓ Loading from localStorage with history (${savedState.history?.length || 0} entries)`);
-            // Copy all properties from savedState to state (don't reassign state ref)
-            Object.assign(state, savedState);
-            setEditorText(state.text);
-            widget.value = state.text;
-            historyStatus.textContent = state.getHistoryStatus();
-            isConfigured = true; // Mark that we've loaded the full state
-        } else if (info && Array.isArray(info.widgets_values) && info.widgets_values[0]) {
-            // Fall back to workflow value if no localStorage
+        // Load workflow value when onConfigure is called (user opened a file)
+        if (info && Array.isArray(info.widgets_values) && info.widgets_values[0]) {
             const workflowValue = info.widgets_values[0];
-            console.log(`✓ Loading workflow value: "${workflowValue}"`);
-            setEditorText(workflowValue);
-            state.text = workflowValue;
+
+            // Try to load full state from localStorage first (includes history)
+            const savedState = EditorState.loadFromLocalStorage(storageKey);
+            if (savedState && savedState.text && savedState.history && savedState.history.length > 0) {
+                // We have localStorage with history - this means we had local edits
+                Object.assign(state, savedState);
+
+                // Use onConfigureCallCount to distinguish reload from new workflow
+                // First call = initial load, preserve localStorage (it's either reload or user edits)
+                // Subsequent calls = file opened or workflow reloaded, reset if text changed
+                if (onConfigureCallCount === 1) {
+                    // First time seeing this node - keep the loaded history
+                    // Just make sure text matches workflow so they're in sync
+                    state.text = workflowValue;
+                } else {
+                    // Subsequent calls - check if workflow changed
+                    if (state.lastWorkflowValue && workflowValue !== state.lastWorkflowValue) {
+                        // Workflow value changed - user opened a different file
+                        state.text = workflowValue;
+                        state.history = [{text: workflowValue, caretPos: 0}];
+                        state.historyIndex = 0;
+                    } else {
+                        // Workflow unchanged or first time tracking it - preserve history (page reload)
+                        state.text = workflowValue;
+                    }
+                }
+
+                state.lastWorkflowValue = workflowValue;
+                setEditorText(state.text);
+            } else {
+                // No localStorage or no history - just use workflow value
+                setEditorText(workflowValue);
+                state.text = workflowValue;
+                state.history = [{text: workflowValue, caretPos: 0}];
+                state.historyIndex = 0;
+                state.lastWorkflowValue = workflowValue;
+            }
+
             widget.value = workflowValue;
-            // Initialize history with this value as the first entry
-            state.history = [{text: workflowValue, caretPos: 0}];
-            state.historyIndex = 0;
             historyStatus.textContent = state.getHistoryStatus();
             isConfigured = true; // Mark that we've configured from workflow
+            hasSetInitialValue = true; // Mark that we've set the initial value from workflow
         }
 
         return result;

@@ -51,6 +51,8 @@ export function attachAllEventHandlers(
 
     editor.addEventListener("input", (e) => {
         const plainText = getPlainText();
+        // Update state.text immediately so it's current when saved to localStorage
+        state.text = plainText;
         state.saveToLocalStorage(storageKey);
         widget.callback?.(widget.value);
 

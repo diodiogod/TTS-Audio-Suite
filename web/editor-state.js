@@ -40,6 +40,7 @@ SRT example:
         this.fontFamily = "monospace";
         this.sidebarWidth = 220;
         this.uiScale = 1.0;
+        this.lastWorkflowValue = ""; // Track the last workflow value we loaded to detect file changes
     }
 
     addToHistory(text, caretPos = 0) {
