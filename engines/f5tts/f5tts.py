@@ -107,6 +107,10 @@ class ChatterBoxF5TTS:
     
     def __init__(self, model_name: str, device: str, ckpt_dir: Optional[str] = None):
         """Initialize F5-TTS model similar to ChatterboxTTS pattern"""
+        # Resolve "auto" device to actual device
+        from utils.device import resolve_torch_device
+        device = resolve_torch_device(device)
+
         self.sr = F5TTS_SAMPLE_RATE
         self.device = device
         self.model_name = model_name
@@ -114,8 +118,8 @@ class ChatterBoxF5TTS:
         self.f5tts_model = None
         self.vocoder = None
         self.mel_spec_type = "vocos"  # Default vocoder
-        
-        
+
+
         # Initialize F5-TTS
         self._load_f5tts()
 

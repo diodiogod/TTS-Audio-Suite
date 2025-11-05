@@ -215,7 +215,11 @@ class ChatterboxTTS:
     @classmethod
     def from_local(cls, ckpt_dir, device, language=None) -> 'ChatterboxTTS':
         ckpt_dir = Path(ckpt_dir)
-        
+
+        # Resolve "auto" device to actual device
+        from utils.device import resolve_torch_device
+        device = resolve_torch_device(device)
+
         # Handle Italian unified model (special architecture)
         if language and is_unified_model(language):
             return cls._load_unified_model(ckpt_dir, device, language)
