@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.10] - 2025-11-05
+
+### Added
+
+- Character switching now works correctly with proper character voice files
+- Timing reports show proper emoji indicators (🐰 compress, 🐌 expand) matching other engines
+- Unified timing engine functions ensure consistent report format across all modes
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang SRT character switching and timing report consistency
+- Audio segments maintain correct SRT order despite language-grouped processing
+- Fixes issue #157
 ## [4.14.9] - 2025-11-05
 
 ### Added

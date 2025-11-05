@@ -186,6 +186,7 @@ Back to the main narrator voice for the conclusion.""",
             )
 
             print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
+            self.tts_model = engine
             return engine
             
         except Exception as e:

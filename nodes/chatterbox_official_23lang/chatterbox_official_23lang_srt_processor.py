@@ -110,8 +110,9 @@ class ChatterboxOfficial23LangSRTProcessor:
             # This ensures that if config was updated via update_config(), we use the new values
 
             # Generate audio for each SRT segment
-            audio_segments = []
-            timing_segments = []
+            # Pre-allocate to maintain correct order (matching F5-TTS approach)
+            audio_segments = [None] * len(srt_segments)
+            timing_segments = [None] * len(srt_segments)
             total_duration = 0.0
             all_subtitle_segments = []
             subtitle_language_groups = {}
@@ -460,102 +461,93 @@ class ChatterboxOfficial23LangSRTProcessor:
 
                     # Calculate actual duration
                     actual_duration = len(segment_audio) / self.sample_rate
-                    audio_segments.append(segment_audio)
-                    timing_segments.append({
+                    # Assign to correct index to maintain SRT order
+                    audio_segments[i] = segment_audio
+                    timing_segments[i] = {
                         'expected': expected_duration,
                         'actual': actual_duration,
                         'start': segment_start,
                         'end': segment_end,
                         'sequence': subtitle.sequence
-                    })
+                    }
 
                     print(f"📺 ChatterBox Official 23-Lang SRT Segment {i+1}/{len(srt_segments)} (Seq {subtitle.sequence}): "
                           f"Generated {actual_duration:.2f}s audio (expected {expected_duration:.2f}s)")
 
                     total_duration += actual_duration
             
+            # Filter out None entries (empty subtitles) - keep segments in order
+            audio_segments_filtered = []
+            timing_segments_filtered = []
+            srt_segments_filtered = []
+            for i, (audio, timing, subtitle) in enumerate(zip(audio_segments, timing_segments, srt_segments)):
+                if audio is not None:
+                    audio_segments_filtered.append(audio)
+                    timing_segments_filtered.append(timing)
+                    srt_segments_filtered.append(subtitle)
+
+            # Use filtered segments for assembly
+            audio_segments = audio_segments_filtered
+            timing_segments = timing_segments_filtered
+            srt_segments = srt_segments_filtered
+
             # Use existing timing and assembly utilities
             timing_engine = TimingEngine(sample_rate=self.sample_rate)
             assembly_engine = AudioAssemblyEngine(sample_rate=self.sample_rate)
-            
-            # Handle timing mode routing properly
+
+            # Calculate adjustments based on timing mode
             if current_timing_mode == "smart_natural":
-                # Calculate smart timing adjustments
                 adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
-                    audio_segments, 
+                    audio_segments,
                     srt_segments,
                     timing_params.get("timing_tolerance", 2.0),
                     timing_params.get("max_stretch_ratio", 1.0),
                     timing_params.get("min_stretch_ratio", 0.5),
                     torch.device('cpu')
                 )
-                
-                # Use unified assembly method with proper routing
                 final_audio = assembly_engine.assemble_by_timing_mode(
                     audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
                     adjustments=adjustments, processed_segments=processed_segments
                 )
             elif current_timing_mode == "concatenate":
-                # Use existing modular timing engine for concatenate mode
                 adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, srt_segments)
                 final_audio = assembly_engine.assemble_by_timing_mode(
                     audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
                     fade_duration=timing_params.get("fade_for_StretchToFit", 0.01)
                 )
-            else:
-                # For other modes (pad_with_silence, stretch_to_fit) - use unified assembly
+            elif current_timing_mode == "pad_with_silence":
+                _, adjustments = timing_engine.calculate_overlap_timing(audio_segments, srt_segments)
+                final_audio = assembly_engine.assemble_by_timing_mode(
+                    audio_segments, srt_segments, current_timing_mode, torch.device('cpu')
+                )
+            else:  # stretch_to_fit
+                # For stretch_to_fit - use standard timing calculation
+                from engines.chatterbox_official_23lang.audio_timing import calculate_timing_adjustments
+                natural_durations = [len(seg) / self.sample_rate for seg in audio_segments]
+                target_timings = [(sub.start_time, sub.end_time) for sub in srt_segments]
+                adjustments = calculate_timing_adjustments(natural_durations, target_timings)
+
+                # Add sequence and text info for reporting
+                for i, (adj, subtitle) in enumerate(zip(adjustments, srt_segments)):
+                    adj['sequence'] = subtitle.sequence
+                    adj['original_text'] = subtitle.text
+
                 final_audio = assembly_engine.assemble_by_timing_mode(
                     audio_segments, srt_segments, current_timing_mode, torch.device('cpu'),
                     fade_duration=timing_params.get("fade_for_StretchToFit", 0.01)
                 )
-                
-                # Use existing overlap timing calculation for pad_with_silence
-                if current_timing_mode == "pad_with_silence":
-                    _, adjustments = timing_engine.calculate_overlap_timing(audio_segments, srt_segments)
-                else:
-                    # For stretch_to_fit - create minimal adjustments (stretch logic handled by assembly)
-                    adjustments = []
-                    for i, (segment, subtitle) in enumerate(zip(audio_segments, srt_segments)):
-                        natural_duration = len(segment) / self.sample_rate
-                        target_duration = subtitle.end_time - subtitle.start_time
-                        stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
-                        
-                        adjustments.append({
-                            'segment_index': i,
-                            'sequence': subtitle.sequence,
-                            'start_time': subtitle.start_time,
-                            'end_time': subtitle.end_time,
-                            'natural_audio_duration': natural_duration,
-                            'original_srt_start': subtitle.start_time,
-                            'original_srt_end': subtitle.end_time,
-                            'original_srt_duration': target_duration,
-                            'original_text': subtitle.text,
-                            'final_srt_start': subtitle.start_time,
-                            'final_srt_end': subtitle.end_time,
-                            'needs_stretching': True,
-                            'stretch_factor_applied': stretch_factor,
-                            'stretch_factor': stretch_factor,
-                            'stretch_type': 'time_stretch' if abs(stretch_factor - 1.0) > 0.01 else 'none',
-                            'final_segment_duration': target_duration,
-                            'actions': [f"Audio stretched from {natural_duration:.2f}s to {target_duration:.2f}s (factor: {stretch_factor:.2f}x)"]
-                        })
             
-            # Map adjustment keys for report generator compatibility
-            mapped_adjustments = []
-            for adj in adjustments:
-                mapped_adj = adj.copy()
-                mapped_adj['start_time'] = adj.get('final_srt_start', adj.get('original_srt_start', 0))
-                mapped_adj['end_time'] = adj.get('final_srt_end', adj.get('original_srt_end', 0))  
-                mapped_adj['natural_duration'] = adj.get('natural_audio_duration', 0)
-                mapped_adjustments.append(mapped_adj)
-            
+            # Use adjustments from timing engine (consistent with other engines like Index TTS)
+            # No manual mapping needed - the timing engine functions return the proper structure
+
             # Generate reports
             report_generator = SRTReportGenerator()
             timing_report = report_generator.generate_timing_report(
-                srt_segments, mapped_adjustments, current_timing_mode, has_overlaps, mode_switched
+                srt_segments, adjustments, current_timing_mode, has_overlaps, mode_switched,
+                timing_mode if mode_switched else None
             )
             adjusted_srt = report_generator.generate_adjusted_srt_string(
-                srt_segments, mapped_adjustments, current_timing_mode
+                srt_segments, adjustments, current_timing_mode
             )
             
             # Generate info
