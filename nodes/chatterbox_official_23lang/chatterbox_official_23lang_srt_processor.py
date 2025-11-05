@@ -153,8 +153,9 @@ class ChatterboxOfficial23LangSRTProcessor:
                 segment_objects = cp.parse_text_segments(subtitle.text)
 
                 # Convert to 4-tuple format with parameters
-                # Use original_character (before alias resolution) to preserve the actual character from the tag
-                character_segments_with_lang = [(seg.original_character or seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
+                # Use resolved character (seg.character) which contains the actual voice file name after alias resolution
+                # e.g., "Alice" alias resolves to "female_01"
+                character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
 
                 # Check if we have character switching, language switching, or parameter changes
                 characters = list(set(char for char, _, _, _ in character_segments_with_lang))
@@ -278,24 +279,80 @@ class ChatterboxOfficial23LangSRTProcessor:
                         else:
                             segment_audio = torch.zeros(int(expected_duration * self.sample_rate))
 
-                    elif subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
-                        # Use modular multilingual engine for character/language switching (lines 1158-1227)
+                    elif subtitle_type == 'multicharacter':
+                        # Multi-character in same segment - process each character with their voice
                         characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+                        print(f"🎭 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
+
+                        segment_audio_parts = []
+                        for seg_idx, (char, text, seg_lang, seg_params) in enumerate(character_segments_with_lang):
+                            # Get character-specific voice reference
+                            char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
+
+                            # Apply segment parameters if any
+                            seg_exag = current_exaggeration
+                            seg_temp = current_temperature
+                            seg_cfg = current_cfg_weight
+                            seg_seed_val = seed
+
+                            if seg_params:
+                                segment_config = apply_segment_parameters(
+                                    {'exaggeration': current_exaggeration, 'temperature': current_temperature, 'cfg_weight': current_cfg_weight, 'seed': seed},
+                                    seg_params,
+                                    "chatterbox_official_23lang"
+                                )
+                                seg_exag = segment_config.get('exaggeration', current_exaggeration)
+                                seg_temp = segment_config.get('temperature', current_temperature)
+                                seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
+                                seg_seed_val = segment_config.get('seed', seed)
+
+                            if not text.strip():
+                                continue
+
+                            # Generate audio for this character with their voice
+                            segment_wav, _ = self.tts_node.generate_speech(
+                                text=text,
+                                language=seg_lang,
+                                device=current_device,
+                                model_version=current_model_version,
+                                exaggeration=seg_exag,
+                                temperature=seg_temp,
+                                cfg_weight=seg_cfg,
+                                repetition_penalty=current_repetition_penalty,
+                                min_p=current_min_p,
+                                top_p=current_top_p,
+                                seed=seg_seed_val,
+                                reference_audio=None,
+                                audio_prompt_path=char_voice if isinstance(char_voice, str) else "",
+                                enable_audio_cache=True,
+                                character=char  # Pass character name so their voice is used
+                            )
+
+                            # Extract waveform from ComfyUI format
+                            if isinstance(segment_wav, dict) and "waveform" in segment_wav:
+                                segment_wav = segment_wav["waveform"]
+
+                            # Ensure proper tensor format
+                            if segment_wav.dim() == 3:
+                                segment_wav = segment_wav.squeeze(0).squeeze(0)
+                            elif segment_wav.dim() == 2:
+                                segment_wav = segment_wav.squeeze(0)
+
+                            segment_audio_parts.append(segment_wav)
+
+                        # Concatenate all parts
+                        if segment_audio_parts:
+                            segment_audio = torch.cat(segment_audio_parts, dim=-1)
+                        else:
+                            segment_audio = torch.zeros(int(expected_duration * self.sample_rate))
+
+                    elif subtitle_type == 'multilingual':
+                        # Multi-language in same segment - use multilingual engine for proper handling
                         languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
+                        print(f"🌍 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
 
-                        if len(languages) > 1:
-                            print(f"🌍 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
-                        if len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator"):
-                            print(f"🎭 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
-
-                        # Lazy load modular components
-                        if not hasattr(self, 'multilingual_engine') or self.multilingual_engine is None:
-                            from utils.voice.multilingual_engine import MultilingualEngine
-                            from engines.adapters.chatterbox_adapter import ChatterBoxEngineAdapter
-                            self.multilingual_engine = MultilingualEngine("chatterbox")
-                            self.chatterbox_adapter = ChatterBoxEngineAdapter(self)
-
-                        # Extract first segment's parameters if any (will be applied to entire subtitle)
+                        # For now, treat multilingual as simple (use first language) - complex multilingual needs special handling
+                        # Extract first segment's parameters if any
                         first_params = None
                         for _, _, _, seg_params in character_segments_with_lang:
                             if seg_params:
@@ -317,25 +374,29 @@ class ChatterboxOfficial23LangSRTProcessor:
                             seg_temp = segment_config.get('temperature', current_temperature)
                             seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
                             seg_seed_val = segment_config.get('seed', seed)
-                            print(f"  📊 SRT: Applying segment parameters: {first_params}")
 
-                        # Use modular multilingual engine
-                        result = self.multilingual_engine.process_multilingual_text(
+                        # Generate with first language for multilingual segments
+                        segment_audio, _ = self.tts_node.generate_speech(
                             text=subtitle.text,
-                            engine_adapter=self.chatterbox_adapter,
-                            model=lang_code,
+                            language=lang_code,  # Use the language group's language
                             device=current_device,
-                            main_audio_reference=voice_refs.get('narrator'),
-                            main_text_reference="",
-                            temperature=seg_temp,
+                            model_version=current_model_version,
                             exaggeration=seg_exag,
+                            temperature=seg_temp,
                             cfg_weight=seg_cfg,
+                            repetition_penalty=current_repetition_penalty,
+                            min_p=current_min_p,
+                            top_p=current_top_p,
                             seed=seg_seed_val,
+                            reference_audio=None,
+                            audio_prompt_path=voice_refs.get('narrator', ""),
                             enable_audio_cache=True,
-                            crash_protection_template=""
+                            character="narrator"
                         )
 
-                        segment_audio = result.audio
+                        # Extract waveform from ComfyUI format
+                        if isinstance(segment_audio, dict) and "waveform" in segment_audio:
+                            segment_audio = segment_audio["waveform"]
 
                         # Ensure proper tensor format
                         if segment_audio.dim() == 3:
