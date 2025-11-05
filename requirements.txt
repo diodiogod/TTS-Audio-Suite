@@ -71,17 +71,15 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # Optional performance enhancements
 # sageattention  # Optional: GPU-optimized mixed-precision attention for VibeVoice (requires CUDA SM80+)
 
-# Computer vision (safe)
-pillow
-
 # --- PROBLEMATIC PACKAGES ---
-# These are installed by install.py with special handling:
+# These are installed by install.py with special handling (NOT here in requirements.txt):
 # - librosa (--no-deps): Forces numpy downgrade
 # - descript-audio-codec (--no-deps): Conflicts with protobuf
 # - cached-path (--no-deps): Forces package downgrades
 # - torchcrepe (--no-deps): Conflicts via librosa dependency
 # - onnxruntime (--no-deps): Forces numpy 2.3.x, needed for OpenSeeFace
-# - opencv-python (--no-deps): Forces numpy downgrade
+# - opencv-python (--no-deps): Forces numpy downgrade via numpy<2.3.0 constraint
+# - gradio (--no-deps): Forces pydantic, pillow, pydantic-core downgrades
 
 # --- PYTHON 3.13 NOTES ---
 # ✅ All TTS engines work (ChatterBox, F5-TTS, Higgs Audio)

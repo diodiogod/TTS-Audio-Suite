@@ -775,10 +775,50 @@ class TTSAudioInstaller:
             self.log(f"Error checking NumPy compatibility for audio-separator: {e}", "WARNING")
             self.log("Skipping audio-separator - vocal removal will use bundled implementations", "INFO")
 
+    def install_gradio_and_opencv_dependencies(self):
+        """Pre-install dependencies for gradio and opencv-python to prevent downgrades"""
+        self.log("Pre-installing gradio and opencv-python dependencies (before --no-deps)", "INFO")
+
+        # Gradio dependencies that need specific versions to prevent downgrades
+        # These are the versions that gradio would force us to downgrade to
+        gradio_safe_deps = [
+            "fastapi<1.0,>=0.115.2",      # FastAPI for gradio server
+            "starlette<1.0,>=0.40.0",     # Web framework
+            "pydantic>=2.0,<2.12",        # NOT <2.12 - keep current 2.12.4+
+            "pydantic-core>=2.33.2",      # Keep at 2.33.2 minimum (we want 2.41.5+ but this is minimum)
+            "pillow>=8.0,<12.0",          # Keep pillow at current version (12.0.0) by being flexible
+            "gradio-client==1.13.3",      # Specific version for gradio compatibility
+            "websockets<16.0,>=13.0",     # WebSocket support
+            "python-multipart>=0.0.18",   # Form parsing
+            "uvicorn>=0.14.0",            # ASGI server
+        ]
+
+        # Install gradio safe dependencies individually to avoid downgrade cascade
+        for dep in gradio_safe_deps:
+            self.run_pip_command(
+                ["install", dep],
+                f"Pre-installing gradio dependency: {dep}",
+                ignore_errors=True  # Some may already be installed
+            )
+
+        # OpenCV dependencies are minimal but we ensure no surprises
+        opencv_safe_deps = [
+            # OpenCV-python has minimal dependencies, mostly already installed
+            # Just ensure numpy is protected (already done by install_numpy_with_constraints)
+        ]
+
+        # Install opencv safe dependencies if needed
+        for dep in opencv_safe_deps:
+            self.run_pip_command(
+                ["install", dep],
+                f"Pre-installing opencv-python dependency: {dep}",
+                ignore_errors=True
+            )
+
     def install_problematic_packages(self):
         """Install packages that cause conflicts using --no-deps"""
         self.log("Installing problematic packages with --no-deps to prevent conflicts", "WARNING")
-        
+
         problematic_packages = [
             "librosa",              # Forces numpy downgrade - compatibility handled by runtime numba disabling for Python 3.13
             "descript-audio-codec", # Pulls unnecessary deps, conflicts with protobuf
@@ -786,12 +826,13 @@ class TTSAudioInstaller:
             "cached-path",          # Forces package downgrades
             "torchcrepe",          # Conflicts via librosa dependency
             "onnxruntime",         # For OpenSeeFace, but forces numpy 2.3.x
-            "opencv-python",       # Forces numpy downgrade from 2.x to 1.26.x
+            "opencv-python",       # Forces numpy downgrade from 2.x to 1.26.x - dependencies pre-installed
+            "gradio",              # Forces pydantic, pillow, pydantic-core downgrades - dependencies pre-installed
         ]
-        
+
         for package in problematic_packages:
             self.run_pip_command(
-                ["install", package, "--no-deps"], 
+                ["install", package, "--no-deps"],
                 f"Installing {package} (--no-deps)",
                 ignore_errors=True  # Some may already be satisfied
             )
@@ -1176,6 +1217,7 @@ def main():
         installer.install_numpy_with_constraints()
         installer.install_audio_separator_if_compatible()  # Install audio-separator only if numpy>=2
         installer.install_rvc_dependencies()
+        installer.install_gradio_and_opencv_dependencies()  # Pre-install deps before --no-deps
         installer.install_problematic_packages()
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
