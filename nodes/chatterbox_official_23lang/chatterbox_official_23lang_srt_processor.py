@@ -50,9 +50,14 @@ class ChatterboxOfficial23LangSRTProcessor:
         self.config = engine_config.copy()
         self.sample_rate = 24000  # ChatterBox Official 23-Lang uses 24000 Hz (S3GEN_SR)
 
-        # Initialize adapter once - this loads the model
+        # Initialize adapter
         self.adapter = ChatterBoxEngineAdapter(tts_node)
-        print(f"⚙️ ChatterBox Official 23-Lang SRT: Adapter initialized, model will load on first use")
+
+        # Load model once at initialization
+        language = engine_config.get("language", "English")
+        device = engine_config.get("device", "auto")
+        self.adapter.load_base_model(language, device)
+        print(f"⚙️ ChatterBox Official 23-Lang SRT: Model loaded ({language} on {device})")
 
     def process_srt_content(self, srt_content: str, voice_mapping: Dict[str, Any],
                            seed: int, timing_mode: str, timing_params: Dict[str, Any],
