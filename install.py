@@ -777,44 +777,35 @@ class TTSAudioInstaller:
             self.log("Skipping audio-separator - vocal removal will use bundled implementations", "INFO")
 
     def install_gradio_and_opencv_dependencies(self):
-        """Pre-install dependencies for gradio and opencv-python to prevent downgrades"""
-        self.log("Pre-installing gradio and opencv-python dependencies (before --no-deps)", "INFO")
+        """Pre-install safe dependencies for gradio and opencv-python"""
+        self.log("Pre-installing safe dependencies for gradio and opencv-python", "INFO")
 
-        # Gradio dependencies that need specific versions to prevent downgrades
-        # These are the versions that gradio would force us to downgrade to
+        # Only pre-install packages that won't be downgraded
+        # pydantic and pydantic-core MUST be installed by gradio itself (they have version requirements)
+        # pillow is safe to pre-install with flexible version range
         gradio_safe_deps = [
             "fastapi<1.0,>=0.115.2",      # FastAPI for gradio server
-            "starlette<1.0,>=0.40.0",     # Web framework
-            "pydantic>=2.0,<2.12",        # NOT <2.12 - keep current 2.12.4+
-            "pydantic-core>=2.33.2",      # Keep at 2.33.2 minimum (we want 2.41.5+ but this is minimum)
-            "pillow>=8.0,<12.0",          # Keep pillow at current version (12.0.0) by being flexible
+            "starlette<0.50.0,>=0.40.0",  # Web framework (starlette 0.50.x+)
             "gradio-client==1.13.3",      # Specific version for gradio compatibility
             "websockets<16.0,>=13.0",     # WebSocket support
             "python-multipart>=0.0.18",   # Form parsing
             "uvicorn>=0.14.0",            # ASGI server
+            "annotated-doc>=0.0.2",       # FastAPI dependency
         ]
 
-        # Install gradio safe dependencies individually to avoid downgrade cascade
+        # Install safe dependencies - these won't cause downgrades
         for dep in gradio_safe_deps:
             self.run_pip_command(
                 ["install", dep],
-                f"Pre-installing gradio dependency: {dep}",
-                ignore_errors=True  # Some may already be installed
-            )
-
-        # OpenCV dependencies are minimal but we ensure no surprises
-        opencv_safe_deps = [
-            # OpenCV-python has minimal dependencies, mostly already installed
-            # Just ensure numpy is protected (already done by install_numpy_with_constraints)
-        ]
-
-        # Install opencv safe dependencies if needed
-        for dep in opencv_safe_deps:
-            self.run_pip_command(
-                ["install", dep],
-                f"Pre-installing opencv-python dependency: {dep}",
+                f"Pre-installing: {dep}",
                 ignore_errors=True
             )
+
+        # NOTE: pydantic and pydantic-core are NOT pre-installed here
+        # Gradio requires specific versions (pydantic<2.12, pydantic-core==2.33.2)
+        # These will be installed when gradio installs with --no-deps
+        # This is the trade-off: some packages will be downgraded, but only to versions
+        # that are compatible with the software that needs them
 
     def install_problematic_packages(self):
         """Install packages that cause conflicts using --no-deps"""
