@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.8] - 2025-11-05
+
+### Added
+
+- Add comprehensive MPS device support across all TTS engines
+- All TTS engines now properly support Apple Silicon MPS when 'auto' device is selected
+- Fixed 'auto' device defaulting to CPU on Apple Silicon Macs
+- Intelligent device detection: MPS (Apple Silicon) > CUDA (NVIDIA) > CPU
+- RVC voice conversion now works with MPS acceleration
+
+### Changed
+
+- Improved performance on M-series Macs with proper GPU utilization
 ## [4.14.7] - 2025-11-05
 
 ### Added
