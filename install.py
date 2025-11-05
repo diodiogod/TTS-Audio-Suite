@@ -538,9 +538,9 @@ class TTSAudioInstaller:
             # Basic utilities (safe)
             "requests",
             "dacite",
-            "opencv-python",
-            "pillow",
-            
+            # NOTE: opencv-python and pillow installed via install_problematic_packages() with --no-deps
+            # to prevent forced numpy/pillow downgrades
+
             # SAFE packages from DEPENDENCY_TESTING_RESULTS.md
             "s3tokenizer>=0.1.7",          # SAFE - Heavy dependencies but NO conflicts
             "vector-quantize-pytorch",     # SAFE - Clean install
@@ -548,9 +548,9 @@ class TTSAudioInstaller:
             "diffusers>=0.30.0",          # SAFE - Likely safe
             # "audio-separator>=0.35.2",    # MOVED - Requires numpy>=2, installed conditionally
             "hydra-core>=1.3.0",          # SAFE - Clean install, minimal dependencies
-            
+
             # Dependencies for --no-deps packages based on PyPI metadata
-            
+
             # For librosa (when installed with --no-deps)
             "lazy_loader>=0.1",            # Required by librosa
             "msgpack>=1.0",               # Required by librosa
@@ -559,11 +559,12 @@ class TTSAudioInstaller:
             "typing_extensions>=4.1.1",   # Required by librosa
             "decorator>=4.3.0",           # Required by librosa
             "joblib>=1.0",                # Required by librosa
-            
+
             # For VibeVoice (when installed with --no-deps) - only safe dependencies
             "ml-collections",             # Required by VibeVoice
             "absl-py",                    # Required by VibeVoice (Google's Python utilities)
-            "gradio",                     # Required by VibeVoice (may already be available)
+            # NOTE: gradio installed via install_problematic_packages() with --no-deps
+            # to prevent forced pydantic/pydantic-core downgrades
             "av",                         # Required by VibeVoice (PyAV - audio/video processing)
             "scikit-learn>=1.1.0",        # Required by librosa
             
