@@ -4,6 +4,9 @@ import sys
 import torch
 from multiprocessing import cpu_count
 
+# Get the directory where this config.py file is located
+_CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
+
 
 def use_fp32_config():
     for config_file in [
@@ -13,9 +16,10 @@ def use_fp32_config():
         "48k_v2.json",
         "32k_v2.json",
     ]:
-        with open(f"configs/{config_file}", "r") as f:
+        config_path = os.path.join(_CONFIG_DIR, config_file)
+        with open(config_path, "r") as f:
             strr = f.read().replace("true", "false")
-        with open(f"configs/{config_file}", "w") as f:
+        with open(config_path, "w") as f:
             f.write(strr)
 
 
