@@ -205,7 +205,8 @@ class IndexTTSEngine:
 
         # CRITICAL FIX: Reload model to correct device if it was offloaded
         # IMPORTANT: Always check against the INTENDED device (cuda if available), not self.device which gets updated to CPU
-        target_device = "cuda" if torch.cuda.is_available() else "cpu"
+        from utils.device import resolve_torch_device
+        target_device = resolve_torch_device("auto")
 
         # Check if model was offloaded to CPU and needs to be reloaded
         if self._tts_engine is not None and hasattr(self._tts_engine, 'semantic_model'):

@@ -91,8 +91,9 @@ class VibeVoiceEngineAdapter:
             self.current_model_name == model_name):
             # Model already loaded, just ensure it's on the correct device if needed
             if hasattr(self.current_model, 'parameters'):
+                from utils.device import resolve_torch_device
                 current_device = next(self.current_model.parameters()).device
-                target_device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+                target_device = resolve_torch_device(device)
                 if current_device.type != target_device:
                     # Only move device if actually different - this prevents unnecessary moves
                     print(f"🔄 VibeVoice: Moving existing model from {current_device} to {target_device}")

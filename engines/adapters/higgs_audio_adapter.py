@@ -187,9 +187,10 @@ class HiggsAudioEngineAdapter:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
                     
                     # Move to same device as the model to prevent device mismatch
-                    target_device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+                    from utils.device import resolve_torch_device
+                    target_device = resolve_torch_device(device)
                     waveform = waveform.float().to(target_device)
-                    
+
                     reference_audio = {"waveform": waveform, "sample_rate": sample_rate}
                     print(f"  📁 Loaded reference audio on {target_device}")
                 except Exception as e:
@@ -197,7 +198,8 @@ class HiggsAudioEngineAdapter:
             elif isinstance(char_audio, dict):
                 # Already in ComfyUI format - ensure tensors are on correct device
                 reference_audio = {}
-                target_device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+                from utils.device import resolve_torch_device
+                target_device = resolve_torch_device(device)
                 
                 for key, value in char_audio.items():
                     if torch.is_tensor(value):

@@ -170,7 +170,8 @@ class VibeVoiceEngine:
                 except Exception as e:
                     print(f"⚠️ Failed to re-patch SageAttention: {e}")
             self.current_model_name = self.__class__._shared_model_name
-            self.device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+            from utils.device import resolve_torch_device
+            self.device = resolve_torch_device(device)
             self._original_device = device  # Store original device setting for auto detection
             return
         
@@ -830,7 +831,8 @@ class VibeVoiceEngine:
         # CRITICAL FIX: Reload model to correct device if it was offloaded
         # When models are cached, the model reference persists but may be on wrong device after "Clear VRAM"
         # IMPORTANT: Always check against the INTENDED device (cuda if available), not self.device which may have been updated to CPU
-        target_device = "cuda" if torch.cuda.is_available() else "cpu"
+        from utils.device import resolve_torch_device
+        target_device = resolve_torch_device("auto")
 
         # Check current device by examining actual parameters (not model.device attribute which can be stale)
         current_device = None
