@@ -623,7 +623,8 @@ class RMVPE:
         self.is_half = is_half
         self.onnx = onnx
         if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            from utils.device import resolve_torch_device
+            device = resolve_torch_device("auto")
         self.device = device
         self.mel_extractor = MelSpectrogram(
             is_half, 128, 16000, 1024, 160, None, 30, 8000

@@ -170,7 +170,8 @@ class MinimalRVCWrapper:
                     model_size += param.numel() * param.element_size()
 
             # Wrap the model_data dict with RVCModelWrapper so it supports weakref and .to()
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            from utils.device import resolve_torch_device
+            device = resolve_torch_device("auto")
             rvc_wrapped = RVCModelWrapper(model_data, device)
 
             # Create ModelInfo for the RVC model
@@ -210,13 +211,15 @@ class MinimalRVCWrapper:
             hubert_wrapped = SimpleModelWrapper(hubert_model)
 
             # Create ModelInfo for the Hubert model
+            from utils.device import resolve_torch_device
+            hubert_device = resolve_torch_device("auto")
             model_info = ModelInfo(
                 model=hubert_wrapped,
                 model_type="hubert",
                 engine="rvc",
-                device="cuda" if torch.cuda.is_available() else "cpu",
+                device=hubert_device,
                 memory_size=model_size,
-                load_device="cuda" if torch.cuda.is_available() else "cpu"
+                load_device=hubert_device
             )
 
             # Wrap the model so ComfyUI can manage it
@@ -355,9 +358,11 @@ class MinimalRVCWrapper:
             from engines.rvc.impl.vc_infer_pipeline import get_vc, vc_single
             from engines.rvc.impl.lib.model_utils import load_hubert
             from engines.rvc.impl.config import config
-            
+            from utils.device import resolve_torch_device
+
             # CRITICAL FIX: Reload models to correct device if they were offloaded
-            target_device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Use intelligent device detection with MPS support
+            target_device = resolve_torch_device("auto")
 
             # Load RVC model (with caching to prevent VRAM spikes)
             cache_key = f"{model_path}:{index_path}"

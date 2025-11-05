@@ -289,7 +289,8 @@ class RVCEngine:
         # CRITICAL FIX: Reload models to correct device if they were offloaded
         # Check if models need to be moved back to GPU after "Clear VRAM"
         import torch
-        target_device = "cuda" if torch.cuda.is_available() else "cpu"
+        from utils.device import resolve_torch_device
+        target_device = resolve_torch_device("auto")
 
         # Check RVC models
         for model_name, model in self.rvc_models.items():
