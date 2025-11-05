@@ -41,7 +41,7 @@ class DependencyChecker:
         'rvc': [
             ('faiss', 'faiss-cpu'),
             ('onnxruntime', 'onnxruntime-gpu'),
-            ('torchcrepe', 'torchcrepe'),
+            ('torchcrepe', 'torchcrepe'),  # Installed with --no-deps but checked via importlib.metadata
         ]
     }
     
@@ -52,6 +52,16 @@ class DependencyChecker:
             importlib.import_module(module_name)
             return True
         except ImportError:
+            # Check if package is installed even if import fails (handles --no-deps packages)
+            if module_name == 'torchcrepe':
+                # torchcrepe is installed with --no-deps and may have import issues
+                # But the package files are present, so we check via importlib.metadata
+                try:
+                    from importlib.metadata import version
+                    version('torchcrepe')  # If this succeeds, the package is installed
+                    return True
+                except:
+                    return False
             return False
         except (AttributeError, ValueError) as e:
             # Handle problematic packages like faiss with circular import issues

@@ -9,7 +9,7 @@ except ImportError:
     # Don't do anything - __init__.py already handled compatibility testing
 
 # Version and constants
-VERSION = "4.14.5"
+VERSION = "4.14.6"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70

@@ -511,11 +511,12 @@ class TTSAudioInstaller:
     def install_core_dependencies(self):
         """Install safe core dependencies that don't cause conflicts"""
         self.log("Checking and installing core dependencies (with smart checking)", "INFO")
-        
+
         core_packages = [
             # Audio and basic utilities (PyTorch installed separately with CUDA)
             "soundfile>=0.12.0",
             "sounddevice>=0.4.0",
+            "torchcodec>=0.2.0",  # Required by torchaudio for audio file loading
             
             # Text processing (safe)
             "jieba",

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.6] - 2025-11-04
+
+### Fixed
+
+- Fix audio loading and German model download issues
+- Fixed missing torchcodec dependency preventing audio file loading in Character Voices node
+- Fixed RVC voice conversion dependency checking for proper detection
+- Fixed German (havok2) ChatterBox model download 404 error by using correct model folder
 ## [4.14.5] - 2025-11-04
 
 ### Added

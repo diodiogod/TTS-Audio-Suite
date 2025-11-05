@@ -27,7 +27,7 @@ CHATTERBOX_MODELS = {
     "German (havok2)": {
         "repo": "havok2/Kartoffelbox-v0.1_0.65h2",
         "format": "safetensors",
-        "subdirectory": "merged_model_v2",
+        "subdirectory": "finetuned_by_h2",
         "description": "Hybrid German model (65% multi-speaker + 35% Kartoffelbox) - User-rated best quality"
     },
     "Norwegian": {
