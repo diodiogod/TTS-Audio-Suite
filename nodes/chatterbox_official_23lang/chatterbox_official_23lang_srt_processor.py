@@ -2,12 +2,11 @@
 ChatterBox Official 23-Lang SRT Processor - Handles SRT processing for ChatterBox Official 23-Lang
 Internal processor used by UnifiedTTSSRTNode - not a ComfyUI node itself
 
-Uses direct adapter pattern (like VibeVoice/HiggsAudio) for clean architecture:
-- Load model once at initialization
-- Call adapter.generate_segment_audio() for each SRT segment
-- Support character switching via [CharacterName] tags with voice discovery
-- Support language switching via [language:] tags passed as language_id parameter
-- Support parameter switching via [seed:X], [exaggeration:Y] tags per segment
+Uses the TEXT processor's generate_speech() method which already handles:
+- Character switching via [CharacterName] tags with voice discovery
+- Language switching via [language:] tags
+- Parameter switching via [seed:X], [exaggeration:Y] tags
+This ensures character/language switching works correctly instead of duplicating complex logic.
 """
 
 import torch
@@ -23,8 +22,6 @@ project_root = os.path.dirname(nodes_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.text.segment_parameters import apply_segment_parameters
-from utils.voice.discovery import get_available_characters, get_character_mapping
 from engines.adapters.chatterbox_adapter import ChatterBoxEngineAdapter
 
 
@@ -32,10 +29,10 @@ class ChatterboxOfficial23LangSRTProcessor:
     """
     ChatterBox Official 23-Lang SRT Processor - Internal SRT processing engine for ChatterBox Official 23-Lang
 
-    Uses direct adapter pattern:
-    - Single model load at initialization via adapter
-    - Per-segment generation with language/character/parameter switching
-    - Voice discovery for character switching
+    Uses TEXT processor method generate_speech() for each segment to handle:
+    - Character/language/parameter switching automatically
+    - Voice discovery and aliasing
+    - Proper audio reference handling
     """
 
     def __init__(self, tts_node, engine_config: Dict[str, Any]):
@@ -50,7 +47,7 @@ class ChatterboxOfficial23LangSRTProcessor:
         self.config = engine_config.copy()
         self.sample_rate = 24000  # ChatterBox Official 23-Lang uses 24000 Hz (S3GEN_SR)
 
-        # Initialize adapter
+        # Initialize adapter for model management
         self.adapter = ChatterBoxEngineAdapter(tts_node)
 
         # Load model once at initialization
@@ -65,11 +62,8 @@ class ChatterboxOfficial23LangSRTProcessor:
         """
         Process SRT content with ChatterBox Official 23-Lang TTS engine.
 
-        Uses direct adapter pattern:
-        - Parse SRT segments
-        - For each segment: extract character/language/parameter tags
-        - Call adapter.generate_segment_audio() with proper parameters
-        - Handle timing and assembly using existing utilities
+        For each SRT segment, calls the TEXT processor's generate_speech() method which
+        automatically handles character/language/parameter switching based on tags.
 
         Args:
             srt_content: SRT subtitle content
@@ -101,7 +95,6 @@ class ChatterboxOfficial23LangSRTProcessor:
         try:
             # Import required utilities
             from utils.timing.parser import SRTParser
-            from utils.text.character_parser import character_parser as cp
             from utils.timing.engine import TimingEngine
             from utils.timing.assembly import AudioAssemblyEngine
             from utils.timing.reporting import SRTReportGenerator
@@ -120,33 +113,17 @@ class ChatterboxOfficial23LangSRTProcessor:
                 timing_mode, has_overlaps, "ChatterBox Official 23-Lang SRT"
             )
 
-            # Set up character parser with available characters
-            available_chars = get_available_characters()
-            cp.set_available_characters(list(available_chars))
-            cp.reset_session_cache()
-            cp.set_engine_aware_default_language(self.config.get("language", "English"), "chatterbox")
+            # Get narrator voice if provided
+            narrator_voice = voice_mapping.get("narrator", "")
+            if isinstance(narrator_voice, str):
+                narrator_audio_path = self.tts_node.handle_reference_audio(None, narrator_voice) if narrator_voice else ""
+            else:
+                narrator_audio_path = self.tts_node.handle_reference_audio(narrator_voice, "")
 
-            # Build voice references for characters
-            voice_refs = {'narrator': None}
-            narrator_voice_input = voice_mapping.get("narrator", "")
-            if narrator_voice_input:
-                if isinstance(narrator_voice_input, str):
-                    voice_refs['narrator'] = self.tts_node.handle_reference_audio(None, narrator_voice_input)
-                else:
-                    voice_refs['narrator'] = self.tts_node.handle_reference_audio(narrator_voice_input, "")
+            if narrator_audio_path:
+                print(f"📖 SRT: Using narrator voice reference: {narrator_audio_path}")
 
-                if voice_refs['narrator']:
-                    print(f"📖 SRT: Using narrator voice reference: {voice_refs['narrator']}")
-
-            try:
-                char_mapping = get_character_mapping(list(available_chars), "chatterbox")
-                for char in available_chars:
-                    char_audio_path, _ = char_mapping.get(char, (voice_refs['narrator'], None))
-                    voice_refs[char] = char_audio_path
-            except Exception:
-                pass
-
-            # Generate audio for each SRT segment using adapter directly
+            # Generate audio for each SRT segment using TEXT processor method
             audio_segments = []
             timing_segments = []
 
@@ -164,138 +141,38 @@ class ChatterboxOfficial23LangSRTProcessor:
 
                 print(f"📺 Generating SRT segment {i+1}/{len(srt_segments)} (Seq {subtitle.sequence})...")
 
-                # Parse character/language/parameter tags in this segment
-                segment_objects = cp.parse_text_segments(subtitle.text)
-                character_segments_with_lang = [
-                    (seg.original_character or seg.character, seg.text, seg.language,
-                     seg.parameters if seg.parameters else {})
-                    for seg in segment_objects
-                ]
+                # Generate audio for this segment - let TEXT processor handle character/language switching
+                # The TEXT processor's generate_speech() method handles:
+                # - Character switching via [CharacterName] tags
+                # - Language switching via [language:] tags
+                # - Parameter switching via [seed:X], [exaggeration:Y] tags
+                segment_audio, _ = self.tts_node.generate_speech(
+                    text=subtitle.text,  # Full segment text with all tags
+                    language=current_language,  # Base language (character parser will override with tags)
+                    device=current_device,
+                    model_version=current_model_version,
+                    exaggeration=current_exaggeration,
+                    temperature=current_temperature,
+                    cfg_weight=current_cfg_weight,
+                    repetition_penalty=current_repetition_penalty,
+                    min_p=current_min_p,
+                    top_p=current_top_p,
+                    seed=seed,
+                    reference_audio=None,
+                    audio_prompt_path=narrator_audio_path,
+                    enable_audio_cache=True,
+                    character="narrator"  # Base character (parser will override with tags)
+                )
 
-                # Check what types of switching are needed
-                characters = list(set(char for char, _, _, _ in character_segments_with_lang))
-                languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
-                has_parameter_changes = len(set(str(params) for _, _, _, params in character_segments_with_lang)) > 1
+                # Extract waveform from ComfyUI format
+                if isinstance(segment_audio, dict) and "waveform" in segment_audio:
+                    segment_audio = segment_audio["waveform"]
 
-                has_char_switching = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
-                has_lang_switching = len(languages) > 1
-
-                if has_char_switching or has_lang_switching or has_parameter_changes:
-                    # Complex segment - process each part individually
-                    print(f"🔀 Segment {i+1}: Multiple parts (characters: {characters}, languages: {languages})")
-                    segment_audio_parts = []
-
-                    for seg_idx, (char, text, seg_lang, seg_params) in enumerate(character_segments_with_lang):
-                        if not text.strip():
-                            continue
-
-                        # Get character voice reference
-                        char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
-
-                        # Apply segment-specific parameters
-                        seg_exag = current_exaggeration
-                        seg_temp = current_temperature
-                        seg_cfg = current_cfg_weight
-                        seg_seed_val = seed
-
-                        if seg_params:
-                            segment_config = apply_segment_parameters(
-                                {
-                                    'exaggeration': current_exaggeration,
-                                    'temperature': current_temperature,
-                                    'cfg_weight': current_cfg_weight,
-                                    'seed': seed
-                                },
-                                seg_params,
-                                "chatterbox_official_23lang"
-                            )
-                            seg_exag = segment_config.get('exaggeration', current_exaggeration)
-                            seg_temp = segment_config.get('temperature', current_temperature)
-                            seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
-                            seg_seed_val = segment_config.get('seed', seed)
-                            print(f"  📊 Part {seg_idx+1}: {char} [{seg_lang}] params={seg_params}")
-
-                        # Generate audio for this part via adapter
-                        part_audio = self.adapter.generate_segment_audio(
-                            text=text,
-                            char_audio=char_voice if isinstance(char_voice, str) else None,
-                            character=char,
-                            current_language=seg_lang,
-                            exaggeration=seg_exag,
-                            temperature=seg_temp,
-                            cfg_weight=seg_cfg,
-                            seed=seg_seed_val,
-                            device=current_device,
-                            enable_audio_cache=True
-                        )
-
-                        # Ensure proper tensor format
-                        if isinstance(part_audio, dict) and "waveform" in part_audio:
-                            part_audio = part_audio["waveform"]
-
-                        if part_audio.dim() == 3:
-                            part_audio = part_audio.squeeze(0).squeeze(0)
-                        elif part_audio.dim() == 2:
-                            part_audio = part_audio.squeeze(0)
-
-                        segment_audio_parts.append(part_audio)
-
-                    # Concatenate all parts
-                    if segment_audio_parts:
-                        segment_audio = torch.cat(segment_audio_parts, dim=-1)
-                    else:
-                        segment_audio = torch.zeros(int(expected_duration * self.sample_rate))
-
-                else:
-                    # Simple segment - single call
-                    single_char, single_text, single_lang, single_params = character_segments_with_lang[0]
-
-                    seg_exag = current_exaggeration
-                    seg_temp = current_temperature
-                    seg_cfg = current_cfg_weight
-                    seg_seed_val = seed
-
-                    if single_params:
-                        segment_config = apply_segment_parameters(
-                            {
-                                'exaggeration': current_exaggeration,
-                                'temperature': current_temperature,
-                                'cfg_weight': current_cfg_weight,
-                                'seed': seed
-                            },
-                            single_params,
-                            "chatterbox_official_23lang"
-                        )
-                        seg_exag = segment_config.get('exaggeration', current_exaggeration)
-                        seg_temp = segment_config.get('temperature', current_temperature)
-                        seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
-                        seg_seed_val = segment_config.get('seed', seed)
-                        print(f"  📊 Parameters: {single_params}")
-
-                    char_voice = voice_refs.get(single_char, voice_refs.get("narrator", None))
-
-                    # Generate via adapter
-                    segment_audio = self.adapter.generate_segment_audio(
-                        text=single_text,
-                        char_audio=char_voice if isinstance(char_voice, str) else None,
-                        character=single_char,
-                        current_language=single_lang,
-                        exaggeration=seg_exag,
-                        temperature=seg_temp,
-                        cfg_weight=seg_cfg,
-                        seed=seg_seed_val,
-                        device=current_device,
-                        enable_audio_cache=True
-                    )
-
-                    # Ensure proper tensor format
-                    if isinstance(segment_audio, dict) and "waveform" in segment_audio:
-                        segment_audio = segment_audio["waveform"]
-
-                    if segment_audio.dim() == 3:
-                        segment_audio = segment_audio.squeeze(0).squeeze(0)
-                    elif segment_audio.dim() == 2:
-                        segment_audio = segment_audio.squeeze(0)
+                # Ensure proper tensor format
+                if segment_audio.dim() == 3:
+                    segment_audio = segment_audio.squeeze(0).squeeze(0)
+                elif segment_audio.dim() == 2:
+                    segment_audio = segment_audio.squeeze(0)
 
                 # Calculate actual duration and add to segments
                 actual_duration = len(segment_audio) / self.sample_rate
