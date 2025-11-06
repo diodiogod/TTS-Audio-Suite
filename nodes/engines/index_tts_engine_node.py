@@ -148,16 +148,16 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 }),
 
                 # New Optimization Parameters (Added for backward compatibility with existing workflows)
-                "use_torch_compile": (["false", "true"], {
-                    "default": "false",
+                "use_torch_compile": ("BOOLEAN", {
+                    "default": False,
                     "tooltip": "Enable torch.compile optimization for S2Mel mel-spectrogram generation stage. Provides 1.5-2x speedup. Requires compatible PyTorch version."
                 }),
-                "use_accel": (["false", "true"], {
-                    "default": "false",
+                "use_accel": ("BOOLEAN", {
+                    "default": False,
                     "tooltip": "Enable GPT2 acceleration with FlashAttention and KV-cache optimization. Provides 1.5-3x speedup for GPT2 stage. REQUIRES: flash-attn library (pip install flash-attn)"
                 }),
-                "stream_return": (["false", "true"], {
-                    "default": "false",
+                "stream_return": ("BOOLEAN", {
+                    "default": False,
                     "tooltip": "Enable streaming mode for low-latency audio generation. Returns generator yielding audio chunks instead of complete file."
                 }),
                 "more_segment_before": ("INT", {
@@ -293,10 +293,7 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 cuda_kernel_option = False
             # "auto" stays as None for auto-detection
             
-            # Parse optimization parameters
-            torch_compile_bool = use_torch_compile.lower() == "true" if isinstance(use_torch_compile, str) else use_torch_compile
-            accel_bool = use_accel.lower() == "true" if isinstance(use_accel, str) else use_accel
-            stream_return_bool = stream_return.lower() == "true" if isinstance(stream_return, str) else stream_return
+            # Parameters are now boolean toggles (no conversion needed)
 
             # Create configuration dictionary
             config = {
@@ -324,9 +321,9 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 "is_dynamic_template": is_dynamic_template,
                 "engine_type": "index_tts",
                 # New optimization parameters
-                "use_torch_compile": torch_compile_bool,
-                "use_accel": accel_bool,
-                "stream_return": stream_return_bool,
+                "use_torch_compile": use_torch_compile,
+                "use_accel": use_accel,
+                "stream_return": stream_return,
                 "more_segment_before": more_segment_before,
             }
             
@@ -340,13 +337,13 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
             print(f"   Chunking: max_tokens={max_text_tokens_per_segment}, silence={interval_silence}ms")
             # Report optimization and streaming parameters
             optimizations = []
-            if torch_compile_bool:
+            if use_torch_compile:
                 optimizations.append("torch.compile")
-            if accel_bool:
+            if use_accel:
                 optimizations.append("GPT2 accel")
             if optimizations:
                 print(f"   Optimizations: {', '.join(optimizations)}")
-            if stream_return_bool:
+            if stream_return:
                 print(f"   Streaming: enabled (more_segment_before={more_segment_before})")
             
             # Return engine data for consumption by unified TTS nodes
