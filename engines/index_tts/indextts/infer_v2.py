@@ -38,7 +38,7 @@ import torch.nn.functional as F
 class IndexTTS2:
     def __init__(
             self, cfg_path="checkpoints/config.yaml", model_dir="checkpoints", use_fp16=False, device=None,
-            use_cuda_kernel=None,use_deepspeed=False
+            use_cuda_kernel=None,use_deepspeed=False, use_torch_compile=False
     ):
         """
         Args:
@@ -48,6 +48,7 @@ class IndexTTS2:
             device (str): device to use (e.g., 'cuda:0', 'cpu'). If None, it will be set automatically based on the availability of CUDA or MPS.
             use_cuda_kernel (None | bool): whether to use BigVGan custom fused activation CUDA kernel, only for CUDA device.
             use_deepspeed (bool): whether to use DeepSpeed or not.
+            use_torch_compile (bool): whether to use torch.compile for optimization or not.
         """
         if device is not None:
             self.device = device
@@ -75,6 +76,7 @@ class IndexTTS2:
         self.model_dir = model_dir
         self.dtype = torch.float16 if self.use_fp16 else None
         self.stop_mel_token = self.cfg.gpt.stop_mel_token
+        self.use_torch_compile = use_torch_compile
 
         # Initialize QwenEmotion for text-based emotion control if available
         self.qwen_emo = None
@@ -222,6 +224,13 @@ class IndexTTS2:
         )
         self.s2mel = s2mel.to(self.device)
         self.s2mel.models['cfm'].estimator.setup_caches(max_batch_size=1, max_seq_length=8192)
+
+        # Enable torch.compile optimization if requested
+        if self.use_torch_compile:
+            print(">> Enabling torch.compile optimization")
+            self.s2mel.enable_torch_compile()
+            print(">> torch.compile optimization enabled successfully")
+
         self.s2mel.eval()
         print(">> s2mel weights restored from:", s2mel_path)
 
@@ -429,7 +438,29 @@ class IndexTTS2:
               emo_audio_prompt=None, emo_alpha=1.0,
               emo_vector=None,
               use_emo_text=False, emo_text=None, use_random=False, interval_silence=200,
-              verbose=False, max_text_tokens_per_segment=120, **generation_kwargs):
+              verbose=False, max_text_tokens_per_segment=120, stream_return=False, more_segment_before=0, **generation_kwargs):
+        if stream_return:
+            return self.infer_generator(
+                spk_audio_prompt, text, output_path,
+                emo_audio_prompt, emo_alpha,
+                emo_vector,
+                use_emo_text, emo_text, use_random, interval_silence,
+                verbose, max_text_tokens_per_segment, stream_return, more_segment_before, **generation_kwargs
+            )
+        else:
+            return list(self.infer_generator(
+                spk_audio_prompt, text, output_path,
+                emo_audio_prompt, emo_alpha,
+                emo_vector,
+                use_emo_text, emo_text, use_random, interval_silence,
+                verbose, max_text_tokens_per_segment, stream_return, more_segment_before, **generation_kwargs
+            ))[0]
+
+    def infer_generator(self, spk_audio_prompt, text, output_path,
+              emo_audio_prompt=None, emo_alpha=1.0,
+              emo_vector=None,
+              use_emo_text=False, emo_text=None, use_random=False, interval_silence=200,
+              verbose=False, max_text_tokens_per_segment=120, stream_return=False, more_segment_before=0, **generation_kwargs):
         print(">> starting inference...")
         self._set_gr_progress(0, "starting inference...")
         if verbose:
@@ -574,6 +605,14 @@ class IndexTTS2:
         text_tokens_list = self.tokenizer.tokenize(text)
         segments = self.tokenizer.split_segments(text_tokens_list, max_text_tokens_per_segment)
         segments_count = len(segments)
+
+        # Warn if input text contains UNK tokens
+        text_token_ids = self.tokenizer.convert_tokens_to_ids(text_tokens_list)
+        if self.tokenizer.unk_token_id in text_token_ids:
+            print(f"  >> Warning: input text contains {text_token_ids.count(self.tokenizer.unk_token_id)} unknown tokens (id={self.tokenizer.unk_token_id}):")
+            print( "     Tokens which can't be encoded: ", [t for t, id in zip(text_tokens_list, text_token_ids) if id == self.tokenizer.unk_token_id])
+            print(f"     Consider updating the BPE model or modifying the text to avoid unknown tokens.")
+
         if verbose:
             print("text_tokens_list:", text_tokens_list)
             print("segments count:", segments_count)
@@ -754,12 +793,12 @@ class IndexTTS2:
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
             torchaudio.save(output_path, wav.type(torch.int16), sampling_rate)
             print(">> wav file saved to:", output_path)
-            return output_path
+            yield output_path
         else:
             # 返回以符合Gradio的格式要求
             wav_data = wav.type(torch.int16)
             wav_data = wav_data.numpy().T
-            return (sampling_rate, wav_data)
+            yield (sampling_rate, wav_data)
 
 
 def find_most_similar_cosine(query_vector, matrix):
