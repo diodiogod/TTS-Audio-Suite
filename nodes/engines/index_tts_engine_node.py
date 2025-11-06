@@ -140,11 +140,29 @@ class IndexTTSEngineNode(BaseTTSNode):
 • Direct AUDIO - Any audio input for emotion reference
 Character emotion tags [Alice:emotion_ref] will override this for specific characters."""
                 }),
-                
+
                 # CUDA Kernel Option
                 "use_cuda_kernel": (["auto", "true", "false"], {
                     "default": "auto",
                     "tooltip": "Use BigVGAN CUDA kernels for faster vocoding. Auto-detects availability."
+                }),
+
+                # New Optimization Parameters (Added for backward compatibility with existing workflows)
+                "use_torch_compile": (["false", "true"], {
+                    "default": "false",
+                    "tooltip": "Enable torch.compile optimization for S2Mel mel-spectrogram generation stage. Provides 1.5-2x speedup. Requires compatible PyTorch version."
+                }),
+                "use_accel": (["false", "true"], {
+                    "default": "false",
+                    "tooltip": "Enable GPT2 acceleration with FlashAttention and KV-cache optimization. Provides 1.5-3x speedup for GPT2 stage. REQUIRES: flash-attn library (pip install flash-attn)"
+                }),
+                "stream_return": (["false", "true"], {
+                    "default": "false",
+                    "tooltip": "Enable streaming mode for low-latency audio generation. Returns generator yielding audio chunks instead of complete file."
+                }),
+                "more_segment_before": ("INT", {
+                    "default": 0, "min": 0, "max": 80, "step": 5,
+                    "tooltip": "Streaming segmentation parameter. Higher values produce first audio chunk faster but may affect quality. Only used when stream_return is enabled. Recommended: 0-20."
                 }),
             }
         }
@@ -213,6 +231,10 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
         use_deepspeed: bool,
         use_cuda_kernel: str = "auto",
         emotion_control = None,
+        use_torch_compile: str = "false",
+        use_accel: str = "false",
+        stream_return: str = "false",
+        more_segment_before: int = 0,
     ):
         """
         Create IndexTTS-2 engine adapter with configuration.
@@ -271,6 +293,11 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 cuda_kernel_option = False
             # "auto" stays as None for auto-detection
             
+            # Parse optimization parameters
+            torch_compile_bool = use_torch_compile.lower() == "true" if isinstance(use_torch_compile, str) else use_torch_compile
+            accel_bool = use_accel.lower() == "true" if isinstance(use_accel, str) else use_accel
+            stream_return_bool = stream_return.lower() == "true" if isinstance(stream_return, str) else stream_return
+
             # Create configuration dictionary
             config = {
                 "model_path": model_path,
@@ -295,7 +322,12 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 "emotion_vector": emotion_vector,
                 "use_cuda_kernel": cuda_kernel_option,
                 "is_dynamic_template": is_dynamic_template,
-                "engine_type": "index_tts"
+                "engine_type": "index_tts",
+                # New optimization parameters
+                "use_torch_compile": torch_compile_bool,
+                "use_accel": accel_bool,
+                "stream_return": stream_return_bool,
+                "more_segment_before": more_segment_before,
             }
             
             print(f"⚙️ IndexTTS-2: Configured on {device}")

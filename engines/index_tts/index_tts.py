@@ -27,7 +27,8 @@ class IndexTTSEngine:
     
     def __init__(self, model_dir: str = "IndexTTS-2", device: str = "auto",
                  use_fp16: bool = True, use_cuda_kernel: Optional[bool] = None,
-                 use_deepspeed: bool = False):
+                 use_deepspeed: bool = False, use_torch_compile: bool = False,
+                 use_accel: bool = False):
         """
         Initialize IndexTTS-2 engine.
 
@@ -37,6 +38,8 @@ class IndexTTSEngine:
             use_fp16: Whether to use FP16 for faster inference
             use_cuda_kernel: Use BigVGAN CUDA kernels (auto-detect if None)
             use_deepspeed: Use DeepSpeed for optimization
+            use_torch_compile: Enable torch.compile optimization for S2Mel stage
+            use_accel: Enable GPT2 acceleration with FlashAttention
         """
         # Resolve model directory using extra_model_paths
         self.model_dir = self._find_model_directory(model_dir)
@@ -45,6 +48,8 @@ class IndexTTSEngine:
         self.use_fp16 = use_fp16 and self.device != "cpu"
         self.use_cuda_kernel = use_cuda_kernel
         self.use_deepspeed = use_deepspeed
+        self.use_torch_compile = use_torch_compile
+        self.use_accel = use_accel
 
         self._tts_engine = None
         self._model_config = None
@@ -134,7 +139,9 @@ class IndexTTSEngine:
             additional_params={
                 "use_fp16": self.use_fp16,
                 "use_cuda_kernel": self.use_cuda_kernel,
-                "use_deepspeed": self.use_deepspeed
+                "use_deepspeed": self.use_deepspeed,
+                "use_torch_compile": self.use_torch_compile,
+                "use_accel": self.use_accel
             }
         )
         

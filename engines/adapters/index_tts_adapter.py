@@ -33,21 +33,25 @@ class IndexTTSAdapter:
         self.engine = None
         self.audio_cache = get_audio_cache()
     
-    def initialize_engine(self, 
+    def initialize_engine(self,
                          model_path: Optional[str] = None,
                          device: str = "auto",
                          use_fp16: bool = True,
                          use_cuda_kernel: Optional[bool] = None,
-                         use_deepspeed: bool = False):
+                         use_deepspeed: bool = False,
+                         use_torch_compile: bool = False,
+                         use_accel: bool = False):
         """
         Initialize IndexTTS-2 engine.
-        
+
         Args:
             model_path: Path to model directory (auto-downloaded if None)
             device: Target device
             use_fp16: Use FP16 for inference
             use_cuda_kernel: Use BigVGAN CUDA kernels
             use_deepspeed: Use DeepSpeed optimization
+            use_torch_compile: Enable torch.compile optimization for S2Mel stage
+            use_accel: Enable GPT2 acceleration with FlashAttention
         """
         # Auto-download model if not provided or if "auto-download" is specified
         if model_path is None or model_path == "auto-download":
@@ -56,14 +60,16 @@ class IndexTTSAdapter:
                 model_path = index_tts_downloader.download_model()
             else:
                 model_path = index_tts_downloader.get_model_path()
-                
+
         # Initialize engine
         self.engine = IndexTTSEngine(
             model_dir=model_path,
             device=device,
             use_fp16=use_fp16,
             use_cuda_kernel=use_cuda_kernel,
-            use_deepspeed=use_deepspeed
+            use_deepspeed=use_deepspeed,
+            use_torch_compile=use_torch_compile,
+            use_accel=use_accel
         )
         
     
@@ -86,6 +92,9 @@ class IndexTTSAdapter:
                 num_beams: int = 3,
                 repetition_penalty: float = 10.0,
                 max_mel_tokens: int = 1500,
+                # Streaming parameters
+                stream_return: bool = False,
+                more_segment_before: int = 0,
                 **kwargs) -> torch.Tensor:
         """
         Generate speech with IndexTTS-2.
