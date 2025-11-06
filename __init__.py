@@ -56,13 +56,11 @@ try:
 except ImportError:
     pass
 
-# Suppress torchaudio 2.9+ TorchCodec migration warnings (informational only, no action needed)
+# TorchCodec note: Removed torchcodec dependency to eliminate FFmpeg system requirement
+# torchaudio.load() works fine with fallback backends (soundfile, scipy)
 import warnings
 import sys
 import os
-
-warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec", category=UserWarning)
-warnings.filterwarnings("ignore", message="In 2.9, this function's implementation will be changed to use torchaudio.save_with_torchcodec", category=UserWarning)
 
 # Version disclosure for troubleshooting
 def print_critical_versions():

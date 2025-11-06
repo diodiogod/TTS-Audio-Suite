@@ -180,8 +180,8 @@ class HiggsAudioEngineAdapter:
             if isinstance(char_audio, str) and os.path.exists(char_audio):
                 # Load audio file
                 try:
-                    import torchaudio
-                    waveform, sample_rate = torchaudio.load(char_audio)
+                    from utils.audio.processing import AudioProcessingUtils
+                    waveform, sample_rate = AudioProcessingUtils.safe_load_audio(char_audio)
                     if waveform.dim() == 2 and waveform.size(0) > 1:
                         # Convert to mono if stereo
                         waveform = torch.mean(waveform, dim=0, keepdim=True)

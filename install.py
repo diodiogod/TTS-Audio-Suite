@@ -5,6 +5,10 @@ Handles Python 3.13 compatibility and dependency conflicts automatically.
 
 This script is called by ComfyUI Manager to install all required dependencies
 for the TTS Audio Suite custom node with proper conflict resolution.
+
+NOTE: torchcodec (audio codec library) was removed to eliminate FFmpeg system
+dependency. torchaudio.load() works fine with fallback backends (soundfile, scipy).
+No quality loss - only negligible audio loading speed difference.
 """
 
 import subprocess
@@ -516,7 +520,6 @@ class TTSAudioInstaller:
             # Audio and basic utilities (PyTorch installed separately with CUDA)
             "soundfile>=0.12.0",
             "sounddevice>=0.4.0",
-            "torchcodec>=0.2.0",  # Required by torchaudio for audio file loading
             
             # Text processing (safe)
             "jieba",

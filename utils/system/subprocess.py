@@ -53,8 +53,9 @@ def main():
         
         print(f"🔄 Subprocess: Loading reference audio from {args.reference_audio}...")
         
-        # Load reference audio
-        ref_audio, sample_rate = torchaudio.load(args.reference_audio)
+        # Load reference audio with fallback support
+        from utils.audio.processing import AudioProcessingUtils
+        ref_audio, sample_rate = AudioProcessingUtils.safe_load_audio(args.reference_audio)
         
         # Ensure mono audio
         if ref_audio.shape[0] > 1:

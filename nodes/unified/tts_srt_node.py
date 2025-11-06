@@ -522,9 +522,9 @@ Hello! This is unified SRT TTS with character switching.
                 audio_path, reference_text = load_voice_reference(narrator_voice)
                 
                 if audio_path and os.path.exists(audio_path):
-                    # Load audio tensor
-                    import torchaudio
-                    waveform, sample_rate = torchaudio.load(audio_path)
+                    # Load audio tensor with fallback support
+                    from utils.audio.processing import AudioProcessingUtils
+                    waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
                     

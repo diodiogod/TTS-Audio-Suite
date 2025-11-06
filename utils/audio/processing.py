@@ -15,7 +15,41 @@ class AudioProcessingUtils:
     """
     Utility class for common audio processing operations.
     """
-    
+
+    @staticmethod
+    def safe_load_audio(audio_path: str) -> Tuple[torch.Tensor, int]:
+        """
+        Load audio file with automatic fallback support.
+
+        Tries torchaudio.load() first, falls back to scipy.wavfile if needed.
+        This ensures compatibility without torchcodec dependency.
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            (waveform tensor, sample_rate)
+
+        Raises:
+            Exception: If all loading methods fail
+        """
+        try:
+            # Try torchaudio first (supports multiple formats)
+            return torchaudio.load(audio_path)
+        except Exception:
+            # Fallback to scipy for WAV files
+            try:
+                from scipy.io import wavfile as scipy_wavfile
+                sample_rate, waveform_np = scipy_wavfile.read(audio_path)
+                waveform = torch.from_numpy(waveform_np).float()
+                if waveform.ndim == 1:
+                    waveform = waveform.unsqueeze(0)
+                else:
+                    waveform = waveform.T
+                return waveform, sample_rate
+            except Exception as e:
+                raise RuntimeError(f"Failed to load audio file {audio_path}: {e}")
+
     @staticmethod
     def get_audio_duration(audio: torch.Tensor, sample_rate: int) -> float:
         """

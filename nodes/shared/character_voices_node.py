@@ -114,10 +114,14 @@ Leave empty to use text from selected character's files."""
                 audio_path, folder_reference_text = load_voice_reference(voice_name)
                 
                 if audio_path and os.path.exists(audio_path):
-                    # Load audio tensor from file
-                    import torchaudio
-                    waveform, sample_rate = torchaudio.load(audio_path)
-                    
+                    # Load audio tensor from file with automatic fallback support
+                    try:
+                        from utils.audio.processing import AudioProcessingUtils
+                        waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
+                    except Exception as e:
+                        print(f"❌ Character Voices: Failed to load audio file: {audio_path}")
+                        return None, ""
+
                     # Convert to mono if stereo
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)

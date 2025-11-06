@@ -115,8 +115,8 @@ class HiggsAudioTTSProcessor:
                     # Priority 3: Check mapped narrator (e.g., David Attenborough from alias map)
                     mapped_narrator = character_mapping.get("narrator", (None, None))
                     if mapped_narrator[0] and os.path.exists(mapped_narrator[0]):
-                        import torchaudio
-                        waveform, sample_rate = torchaudio.load(mapped_narrator[0])
+                        from utils.audio.processing import AudioProcessingUtils
+                        waveform, sample_rate = AudioProcessingUtils.safe_load_audio(mapped_narrator[0])
                         if waveform.shape[0] > 1:
                             waveform = torch.mean(waveform, dim=0, keepdim=True)
                         narrator_voice_dict = {"waveform": waveform, "sample_rate": sample_rate}
@@ -141,8 +141,8 @@ class HiggsAudioTTSProcessor:
                         
                     audio_path, char_ref_text = character_mapping.get(character, (None, None))
                     if audio_path and os.path.exists(audio_path):
-                        import torchaudio
-                        waveform, sample_rate = torchaudio.load(audio_path)
+                        from utils.audio.processing import AudioProcessingUtils
+                        waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
                         if waveform.shape[0] > 1:
                             waveform = torch.mean(waveform, dim=0, keepdim=True)
                         voice_refs[character] = {"waveform": waveform, "sample_rate": sample_rate}

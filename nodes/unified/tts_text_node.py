@@ -352,8 +352,8 @@ Back to the main narrator voice for the conclusion.""",
                                 if audio_path:
                                     # Load character-specific audio
                                     try:
-                                        import torchaudio
-                                        waveform, sample_rate = torchaudio.load(audio_path)
+                                        from utils.audio.processing import AudioProcessingUtils
+                                        waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
                                         voice_mapping[char] = {"waveform": waveform, "sample_rate": sample_rate}
                                         print(f"🎭 VibeVoice: Using character-specific voice for '{char}'")
                                     except Exception as e:
@@ -480,9 +480,9 @@ Back to the main narrator voice for the conclusion.""",
                 # print(f"🐛 TTS_TEXT: Dropdown - audio_path={audio_path}, exists={os.path.exists(audio_path) if audio_path else False}")
                 
                 if audio_path and os.path.exists(audio_path):
-                    # Load audio tensor
-                    import torchaudio
-                    waveform, sample_rate = torchaudio.load(audio_path)
+                    # Load audio tensor with fallback support
+                    from utils.audio.processing import AudioProcessingUtils
+                    waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
                     

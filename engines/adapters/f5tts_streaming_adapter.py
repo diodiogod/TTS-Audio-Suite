@@ -312,8 +312,8 @@ class F5TTSStreamingAdapter(StreamingEngineAdapter):
                 reference_audio, reference_text = self.node._load_reference_audio(voice_path)
             else:
                 # Simple loading fallback
-                import torchaudio
-                reference_audio, _ = torchaudio.load(voice_path)
+                from utils.audio.processing import AudioProcessingUtils
+                reference_audio, _ = AudioProcessingUtils.safe_load_audio(voice_path)
                 
                 # Check for text file
                 text_path = voice_path.replace('.wav', '.txt').replace('.mp3', '.txt')
