@@ -470,10 +470,41 @@ class MinimalRVCWrapper:
                 rms_mix_rate=rms_mix_rate,
                 **kwargs
             )
-            
+
             if result:
                 output_audio, output_sr = result
                 print(f"✅ Minimal wrapper RVC conversion completed")
+
+                # CRITICAL FIX for issue #158: Clear pitch extraction models after conversion
+                # These models (RMVPE, FCPE, Crepe, etc.) are stored as instance variables
+                # in the VC/FeatureExtractor object and accumulate in VRAM on repeated conversions
+                try:
+                    import gc
+
+                    # Clear pitch extractor cache from VC instance
+                    if hasattr(model_data['vc'], 'model_rmvpe'):
+                        print("🗑️ Clearing cached RMVPE pitch model...")
+                        del model_data['vc'].model_rmvpe
+
+                    if hasattr(model_data['vc'], 'model_fcpe'):
+                        print("🗑️ Clearing cached FCPE pitch model...")
+                        del model_data['vc'].model_fcpe
+
+                    if hasattr(model_data['vc'], 'model_crepe'):
+                        print("🗑️ Clearing cached Crepe pitch model...")
+                        del model_data['vc'].model_crepe
+
+                    # Force garbage collection to free VRAM immediately
+                    gc.collect()
+
+                    # Clear CUDA cache
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+
+                    print("✅ VRAM freed after conversion")
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not fully clear pitch models: {e}")
+
                 return (output_audio, output_sr)
             else:
                 print("❌ RVC conversion returned None")

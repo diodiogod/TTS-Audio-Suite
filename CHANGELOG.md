@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.12] - 2025-11-05
+
+### Added
+
+- Clear cached pitch extraction models (RMVPE, FCPE) after each conversion completes
+- Prevent OutOfMemory errors when performing multiple conversions in succession
+
+### Changed
+
+- Maintain model caching performance for frequently-used RVC and Hubert models
+
+### Fixed
+
+- Fix RVC progressive VRAM buildup on repeated voice conversions
+- Resolve VRAM accumulation that occurred with each RVC conversion
 ## [4.14.11] - 2025-11-05
 
 ### Added
