@@ -120,6 +120,8 @@ class MinimalRVCWrapper:
         self.reference_path = None
         self._model_cache = {}  # Cache loaded RVC models to prevent VRAM spikes
         self._hubert_cache = {}  # Cache Hubert models separately
+        self._last_registered_rvc_path = None  # Track last registered RVC model to avoid unloading it
+        self._last_registered_hubert_path = None  # Track last registered Hubert model to avoid unloading it
         self._setup_reference_path()
         
     def clear_model_cache(self):
@@ -163,6 +165,35 @@ class MinimalRVCWrapper:
             from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo
             from engines.rvc.rvc_engine import RVCModelWrapper
 
+            # CRITICAL FIX for issue #158 (part 2): Remove old RVC models before registering new one
+            # When switching between different RVC character models, we need to unload the previous one
+            # otherwise they accumulate in VRAM
+            # BUT: Don't unload the model we just loaded (tracked by _last_registered_rvc_path)
+            if hasattr(model_management, 'current_loaded_models') and model_path != self._last_registered_rvc_path:
+                models_to_remove = []
+                for wrapper in model_management.current_loaded_models:
+                    if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "rvc" and wrapper.model_info.model_type == "rvc_voice":
+                        # Found an old RVC model, mark it for removal
+                        models_to_remove.append(wrapper)
+
+                for old_wrapper in models_to_remove:
+                    try:
+                        # Unload the old model from GPU to CPU first
+                        if hasattr(old_wrapper, 'partially_unload'):
+                            old_wrapper.partially_unload('cpu', old_wrapper._memory_size)
+                        print(f"🗑️ Unloaded previous RVC model to free VRAM")
+                    except Exception as e:
+                        print(f"⚠️ Could not unload old RVC model: {e}")
+
+                    # Remove from ComfyUI's tracking
+                    try:
+                        model_management.current_loaded_models.remove(old_wrapper)
+                    except (ValueError, AttributeError):
+                        pass
+
+            # Track that we're about to register this model
+            self._last_registered_rvc_path = model_path
+
             # Estimate model size for VRAM tracking
             model_size = 0
             if 'net_g' in model_data and hasattr(model_data['net_g'], 'parameters'):
@@ -190,16 +221,44 @@ class MinimalRVCWrapper:
             # Register with ComfyUI's model list - this makes Clear VRAM work
             if hasattr(model_management, 'current_loaded_models'):
                 model_management.current_loaded_models.append(wrapper)
-                print(f"✅ Re-registered RVC model with ComfyUI model management")
+                print(f"✅ Registered new RVC model with ComfyUI model management")
 
         except Exception as e:
-            print(f"⚠️ Could not re-register RVC with ComfyUI management: {e}")
+            print(f"⚠️ Could not register RVC with ComfyUI management: {e}")
 
     def _register_hubert_model_with_comfyui(self, hubert_model, hubert_path):
         """Register Hubert model with ComfyUI model management"""
         try:
             import comfy.model_management as model_management
             from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo, SimpleModelWrapper
+
+            # CRITICAL FIX for issue #158 (part 2): Remove old Hubert models before registering new one
+            # When switching between different Hubert models, unload the previous one to free VRAM
+            # BUT: Don't unload the model we just loaded (tracked by _last_registered_hubert_path)
+            if hasattr(model_management, 'current_loaded_models') and hubert_path != self._last_registered_hubert_path:
+                models_to_remove = []
+                for wrapper in model_management.current_loaded_models:
+                    if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "rvc" and wrapper.model_info.model_type == "hubert":
+                        # Found an old Hubert model, mark it for removal
+                        models_to_remove.append(wrapper)
+
+                for old_wrapper in models_to_remove:
+                    try:
+                        # Unload the old model from GPU to CPU first
+                        if hasattr(old_wrapper, 'partially_unload'):
+                            old_wrapper.partially_unload('cpu', old_wrapper._memory_size)
+                        print(f"🗑️ Unloaded previous Hubert model to free VRAM")
+                    except Exception as e:
+                        print(f"⚠️ Could not unload old Hubert model: {e}")
+
+                    # Remove from ComfyUI's tracking
+                    try:
+                        model_management.current_loaded_models.remove(old_wrapper)
+                    except (ValueError, AttributeError):
+                        pass
+
+            # Track that we're about to register this model
+            self._last_registered_hubert_path = hubert_path
 
             # Estimate model size for VRAM tracking
             model_size = 0
@@ -228,10 +287,10 @@ class MinimalRVCWrapper:
             # Register with ComfyUI's model list - this makes Clear VRAM work
             if hasattr(model_management, 'current_loaded_models'):
                 model_management.current_loaded_models.append(wrapper)
-                print(f"✅ Re-registered Hubert model with ComfyUI model management")
+                print(f"✅ Registered new Hubert model with ComfyUI model management")
 
         except Exception as e:
-            print(f"⚠️ Could not re-register Hubert with ComfyUI management: {e}")
+            print(f"⚠️ Could not register Hubert with ComfyUI management: {e}")
 
     def _setup_reference_path(self):
         """Setup path to implementation (moved from docs to proper engine location)"""

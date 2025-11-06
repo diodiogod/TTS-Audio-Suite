@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.13] - 2025-11-06
+
+### Added
+
+- Prevent VRAM accumulation when switching between different RVC models
+- Properly unload old models when loading new ones to free GPU memory
+- Support multiple RVC and Hubert model variants without VRAM leaks
+
+### Changed
+
+- Preserve model caching performance by only unloading when model actually changes
+
+### Fixed
+
+- Fix RVC VRAM buildup when switching between character voice models
+- Fix chimpmunk audio output caused by device dtype mismatches
 ## [4.14.12] - 2025-11-05
 
 ### Added
