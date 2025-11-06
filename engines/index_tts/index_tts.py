@@ -331,15 +331,24 @@ class IndexTTSEngine:
             
             # Load generated audio
             audio, sample_rate = torchaudio.load(output_path)
-            
+
+            # CRITICAL FIX: Normalize audio amplitude on Linux
+            # IndexTTS-2 saves int16 audio that's already at max amplitude.
+            # On Linux, torchaudio.load() doesn't auto-normalize int16->float32,
+            # causing extremely loud/distorted audio. We need to normalize to [-1, 1] range.
+            max_val = torch.abs(audio).max()
+            if max_val > 1.0:
+                # Audio is in int16 range or higher - normalize to [-1, 1]
+                audio = audio / max_val if max_val > 0 else audio
+
             # Convert to expected format [1, samples] at 22050 Hz
             if sample_rate != 22050:
                 resampler = torchaudio.transforms.Resample(sample_rate, 22050)
                 audio = resampler(audio)
-                
+
             if audio.shape[0] != 1:
                 audio = audio.mean(dim=0, keepdim=True)  # Convert to mono
-                
+
             return audio
             
         finally:

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.15] - 2025-11-06
+
+### Added
+
+- Added amplitude normalization for IndexTTS-2 generated audio
+- Audio should now have normal volume levels consistent with Windows behavior
+
+### Fixed
+
+- Fix IndexTTS-2 generating extremely loud and distorted audio on Linux
+- Tentative fix for Linux-specific audio distortion issue
 ## [4.14.14] - 2025-11-06
 
 ### Changed
