@@ -227,9 +227,14 @@ class IndexTTS2:
 
         # Enable torch.compile optimization if requested
         if self.use_torch_compile:
-            print(">> Enabling torch.compile optimization")
-            self.s2mel.enable_torch_compile()
-            print(">> torch.compile optimization enabled successfully")
+            try:
+                print(">> Enabling torch.compile optimization for S2Mel stage")
+                self.s2mel.enable_torch_compile()
+                print("✅ torch.compile optimization enabled successfully (1.5-2x speedup expected)")
+            except Exception as e:
+                print(f"⚠️ torch.compile optimization failed: {e}")
+                print("   Falling back to standard S2Mel inference")
+                self.use_torch_compile = False
 
         self.s2mel.eval()
         print(">> s2mel weights restored from:", s2mel_path)

@@ -426,12 +426,21 @@ class UnifiedVoice(nn.Module):
             use_cache=True,
         )
 
+        if self.use_accel:
+            if not torch.cuda.is_available():
+                print("⚠️ GPT2 acceleration requested but CUDA not available, falling back to standard inference")
+            else:
+                # Check if flash attention is available
+                try:
+                    import flash_attn
+                    print("✅ Flash-attn detected, enabling GPT2 acceleration")
+                except ImportError:
+                    print("⚠️ GPT2 acceleration requested but flash-attn not installed")
+                    print("   Install with: pip install flash-attn")
+                    print("   Falling back to standard inference")
+                    self.use_accel = False
+
         if self.use_accel and torch.cuda.is_available():
-            # Check if flash attention is available
-            try:
-                import flash_attn
-            except ImportError:
-                raise ImportError("flash_attn is required for acceleration but not installed. Please install from https://github.com/Dao-AILab/flash-attention/releases/")
 
             from indextts.accel import GPT2AccelModel, AccelInferenceEngine
 
