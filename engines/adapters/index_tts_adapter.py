@@ -220,6 +220,8 @@ class IndexTTSAdapter:
             max_mel_tokens=max_mel_tokens,
             max_text_tokens_per_segment=max_text_tokens_per_segment,
             interval_silence=interval_silence,
+            stream_return=stream_return,
+            more_segment_before=more_segment_before,
             **kwargs  # Include seed and other kwargs in cache key
         )
 
