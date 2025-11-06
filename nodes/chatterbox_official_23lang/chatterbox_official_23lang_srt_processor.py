@@ -42,24 +42,28 @@ class ChatterboxOfficial23LangSRTProcessor:
     
     def process_srt_content(self, srt_content: str, voice_mapping: Dict[str, Any],
                            seed: int, timing_mode: str, timing_params: Dict[str, Any],
-                           tts_params: Optional[Dict[str, Any]] = None) -> Tuple[torch.Tensor, str, str, str]:
+                           tts_params: Optional[Dict[str, Any]] = None, batch_size: int = 0) -> Tuple[torch.Tensor, str, str, str]:
         """
         Process SRT content with ChatterBox Official 23-Lang TTS engine
-        
+
         Args:
             srt_content: SRT subtitle content
-            voice_mapping: Voice mapping for characters  
+            voice_mapping: Voice mapping for characters
             seed: Random seed for generation
             timing_mode: How to align audio with SRT timings
             timing_params: Additional timing parameters (fade, stretch ratios, etc.)
             tts_params: Current TTS parameters from UI (exaggeration, temperature, etc.)
-            
+            batch_size: Batch size for streaming (0 = disabled/sequential, >1 = streaming with workers)
+
         Returns:
             Tuple of (audio_output, generation_info, timing_report, adjusted_srt)
         """
         # Use actual runtime TTS parameters instead of config defaults
         if tts_params is None:
             tts_params = {}
+
+        # Store batch_size in config for use during processing
+        self.config["batch_size"] = batch_size
             
         # Get current parameters with proper fallbacks
         current_exaggeration = tts_params.get('exaggeration', self.config.get("exaggeration", 0.5))
@@ -259,7 +263,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                                 reference_audio=None,
                                 audio_prompt_path=char_voice if isinstance(char_voice, str) else "",
                                 enable_audio_cache=True,
-                                character=char
+                                character=char,
+                                batch_size=self.config.get("batch_size", 0)
                             )
 
                             # Extract waveform from ComfyUI format
@@ -326,7 +331,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                                 reference_audio=None,
                                 audio_prompt_path=char_voice if isinstance(char_voice, str) else "",
                                 enable_audio_cache=True,
-                                character=char  # Pass character name so their voice is used
+                                character=char,  # Pass character name so their voice is used
+                                batch_size=self.config.get("batch_size", 0)
                             )
 
                             # Extract waveform from ComfyUI format
@@ -392,7 +398,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                             reference_audio=None,
                             audio_prompt_path=voice_refs.get('narrator', ""),
                             enable_audio_cache=True,
-                            character="narrator"
+                            character="narrator",
+                            batch_size=self.config.get("batch_size", 0)
                         )
 
                         # Extract waveform from ComfyUI format
@@ -446,7 +453,8 @@ class ChatterboxOfficial23LangSRTProcessor:
                             reference_audio=None,
                             audio_prompt_path=narrator_voice_path,
                             enable_audio_cache=True,
-                            character="narrator"
+                            character="narrator",
+                            batch_size=self.config.get("batch_size", 0)
                         )
 
                         # Extract waveform from ComfyUI format

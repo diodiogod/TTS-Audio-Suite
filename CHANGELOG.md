@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.14] - 2025-11-06
+
+### Changed
+
+- Improve multilingual model caching to recognize same model across different language parameters
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang SRT processing and model caching issues
+- Fix batch_size=0 not disabling streaming in SRT mode (was always using streaming)
+- Fix model reloading when switching between SRT and TEXT nodes with same engine on first execution
 ## [4.14.13] - 2025-11-06
 
 ### Added

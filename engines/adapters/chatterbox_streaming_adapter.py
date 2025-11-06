@@ -103,6 +103,7 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
             if has_streaming_method:
                 # Build inputs dict like the old system
                 inputs = {
+                    "character": segment.character,  # CRITICAL: Character is needed for caching
                     "exaggeration": kwargs.get("exaggeration", 0.5),
                     "temperature": kwargs.get("temperature", 0.8),
                     "cfg_weight": kwargs.get("cfg_weight", 0.5),

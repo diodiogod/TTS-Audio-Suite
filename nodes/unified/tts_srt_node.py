@@ -305,7 +305,8 @@ Hello! This is unified SRT TTS with character switching.
                             seed=seed,
                             timing_mode=timing_mode,
                             timing_params=timing_params,
-                            tts_params=tts_params
+                            tts_params=tts_params,
+                            batch_size=batch_size
                         )
                 
                 engine_instance = ChatterboxOfficial23LangSRTWrapper(config)

@@ -209,22 +209,26 @@ class UnifiedModelInterface:
             config.model_type,
             config.model_name,
             config.device,
-            config.language or "default",
         ]
-        
+
+        # CRITICAL FIX: ChatterBox Official 23-Lang is multilingual - language shouldn't affect cache
+        # Only single-language models should include language in the key
+        if config.engine_name != "chatterbox_official_23lang":
+            components.append(config.language or "default")
+
         # Add path/repo info if available
         if config.model_path:
             components.append(f"path:{Path(config.model_path).name}")
         elif config.repo_id:
             components.append(f"repo:{config.repo_id}")
-        
+
         # Add additional_params to ensure attention_mode, quantization, etc. trigger reloads
         if config.additional_params:
             # Sort params for consistent cache keys
             sorted_params = sorted(config.additional_params.items())
             params_str = "_".join([f"{k}:{v}" for k, v in sorted_params])
             components.append(f"params:{params_str}")
-        
+
         cache_key = "_".join(components)
         # print(f"🔑 Generated cache key: {cache_key}")  # Debug only when needed
         return cache_key

@@ -169,7 +169,18 @@ Back to the main narrator voice for the conclusion.""",
     def load_tts_model(self, device: str, language: str, model_version: str = "v2"):
         """
         Override base method to load ChatterBox Official 23-Lang models using unified interface.
+        ChatterBox Official 23-Lang is a single multilingual model - no need to reload for language changes.
+        Only reload if model_version or device changes.
         """
+        # CRITICAL FIX: Check if same model (same version and device) is already loaded
+        # ChatterBox Official 23-Lang supports all 23 languages in one model - language changes don't require reload
+        if (hasattr(self, 'tts_model') and self.tts_model is not None and
+            hasattr(self, 'model_version') and self.model_version == model_version and
+            hasattr(self, 'device') and self.device == device):
+            print(f"💾 ChatterBox Official 23-Lang (v{model_version}) already loaded on {device}, reusing for language '{language}'")
+            self.current_language = language  # Just update language parameter
+            return self.tts_model
+
         print(f"🌍 Loading ChatterBox Official 23-Lang model for {language} on {device}")
 
         # Use unified model interface for ComfyUI VRAM management
@@ -187,6 +198,9 @@ Back to the main narrator voice for the conclusion.""",
 
             print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
             self.tts_model = engine
+            self.device = device
+            self.model_version = model_version
+            self.current_language = language
             return engine
             
         except Exception as e:
@@ -279,8 +293,9 @@ Back to the main narrator voice for the conclusion.""",
         )
         
         self.device = device
+        self.model_version = model_version
         self.current_language = language
-        
+
         # Return the model for smart_model_loader
         return self.tts_model
     
