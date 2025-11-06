@@ -310,13 +310,16 @@ class IndexTTSProcessor:
                             interval_silence=current_config.get('interval_silence', 200),
                             max_text_tokens_per_segment=current_config.get('max_text_tokens_per_segment', 120),
                             seed=current_config.get('seed', seed),
+                            do_sample=current_config.get('do_sample', True),
                             temperature=current_config.get('temperature', 0.8),
                             top_p=current_config.get('top_p', 0.8),
                             top_k=current_config.get('top_k', 30),
                             length_penalty=current_config.get('length_penalty', 0.0),
                             num_beams=current_config.get('num_beams', 3),
                             repetition_penalty=current_config.get('repetition_penalty', 10.0),
-                            max_mel_tokens=current_config.get('max_mel_tokens', 1500)
+                            max_mel_tokens=current_config.get('max_mel_tokens', 1500),
+                            stream_return=current_config.get('stream_return', False),
+                            more_segment_before=current_config.get('more_segment_before', 0)
                         )
                         
                         # Clean up temp files
@@ -403,13 +406,16 @@ class IndexTTSProcessor:
                         interval_silence=current_config.get('interval_silence', 200),
                         max_text_tokens_per_segment=current_config.get('max_text_tokens_per_segment', 120),
                         seed=current_config.get('seed', seed),
+                        do_sample=current_config.get('do_sample', True),
                         temperature=current_config.get('temperature', 0.8),
                         top_p=current_config.get('top_p', 0.8),
                         top_k=current_config.get('top_k', 30),
                         length_penalty=current_config.get('length_penalty', 0.0),
                         num_beams=current_config.get('num_beams', 3),
                         repetition_penalty=current_config.get('repetition_penalty', 10.0),
-                        max_mel_tokens=current_config.get('max_mel_tokens', 1500)
+                        max_mel_tokens=current_config.get('max_mel_tokens', 1500),
+                        stream_return=current_config.get('stream_return', False),
+                        more_segment_before=current_config.get('more_segment_before', 0)
                     )
                     
                     # Clean up temp files

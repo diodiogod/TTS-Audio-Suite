@@ -336,8 +336,18 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
             if is_dynamic_template:
                 emotion_desc += " (dynamic template)"
             print(f"   Emotion: {emotion_desc}")
-            print(f"   Generation: temp={temperature}, top_p={top_p}, top_k={top_k}")
+            print(f"   Generation: temp={temperature}, top_p={top_p}, top_k={top_k}, do_sample={do_sample}, num_beams={num_beams}")
             print(f"   Chunking: max_tokens={max_text_tokens_per_segment}, silence={interval_silence}ms")
+            # Report optimization and streaming parameters
+            optimizations = []
+            if torch_compile_bool:
+                optimizations.append("torch.compile")
+            if accel_bool:
+                optimizations.append("GPT2 accel")
+            if optimizations:
+                print(f"   Optimizations: {', '.join(optimizations)}")
+            if stream_return_bool:
+                print(f"   Streaming: enabled (more_segment_before={more_segment_before})")
             
             # Return engine data for consumption by unified TTS nodes
             engine_data = {

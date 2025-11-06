@@ -208,10 +208,12 @@ class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
             'emotion_text': params.get('emotion_text', ''),
             'use_random': params.get('use_random', False),
             'seed': params.get('seed', 0),  # Seed for reproducible generation
+            'do_sample': params.get('do_sample', True),  # Affects sampling vs greedy decoding
             'temperature': temperature,
             'top_p': top_p,
             'top_k': params.get('top_k', 30),
             'length_penalty': params.get('length_penalty', 0.0),
+            'num_beams': params.get('num_beams', 3),  # Beam search quality parameter
             'repetition_penalty': params.get('repetition_penalty', 10.0),
             'max_mel_tokens': params.get('max_mel_tokens', 1500),
             'max_text_tokens_per_segment': params.get('max_text_tokens_per_segment', 120),
@@ -219,6 +221,10 @@ class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
             'model_name': params.get('model_name', 'IndexTTS-2'),
             'device': params.get('device', 'auto'),
             'character': params.get('character', 'narrator'),
+            'use_torch_compile': params.get('use_torch_compile', False),  # Optimization may affect output precision
+            'use_accel': params.get('use_accel', False),  # Optimization may affect output precision
+            'stream_return': params.get('stream_return', False),  # Streaming mode changes output format
+            'more_segment_before': params.get('more_segment_before', 0),  # Streaming segmentation affects first-chunk timing
             'engine': 'index_tts'
         }
         
