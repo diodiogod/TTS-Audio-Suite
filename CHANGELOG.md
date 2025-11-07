@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.18] - 2025-11-07
+
+### Added
+
+- when processing audio. Root cause: local numpy imports inside exception
+- handlers shadowed the module-level import, leaving 'np' undefined when
+- exceptions didn't occur but code later tried to use it.
+- Fixed by removing redundant local imports and using module-level numpy.
+
+### Fixed
+
+- Fix Higgs Audio numpy scope error
+- Higgs Audio engine would crash with 'cannot access local variable np'
 ## [4.14.17] - 2025-11-07
 
 ### Added
