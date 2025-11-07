@@ -114,16 +114,13 @@ class MinimalRVCWrapper:
     Minimal wrapper that directly calls the working reference implementation
     Uses direct imports from the reference directory without copying code
     """
-    
     def __init__(self):
         self.hubert_model = None
         self.reference_path = None
         self._model_cache = {}  # Cache loaded RVC models to prevent VRAM spikes
         self._hubert_cache = {}  # Cache Hubert models separately
-        self._last_registered_rvc_path = None  # Track last registered RVC model to avoid unloading it
-        self._last_registered_hubert_path = None  # Track last registered Hubert model to avoid unloading it
         self._setup_reference_path()
-        
+
     def clear_model_cache(self):
         """Clear cached models to free VRAM"""
         import torch
@@ -165,34 +162,8 @@ class MinimalRVCWrapper:
             from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo
             from engines.rvc.rvc_engine import RVCModelWrapper
 
-            # CRITICAL FIX for issue #158 (part 2): Remove old RVC models before registering new one
-            # When switching between different RVC character models, we need to unload the previous one
-            # otherwise they accumulate in VRAM
-            # BUT: Don't unload the model we just loaded (tracked by _last_registered_rvc_path)
-            if hasattr(model_management, 'current_loaded_models') and model_path != self._last_registered_rvc_path:
-                models_to_remove = []
-                for wrapper in model_management.current_loaded_models:
-                    if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "rvc" and wrapper.model_info.model_type == "rvc_voice":
-                        # Found an old RVC model, mark it for removal
-                        models_to_remove.append(wrapper)
-
-                for old_wrapper in models_to_remove:
-                    try:
-                        # Unload the old model from GPU to CPU first
-                        if hasattr(old_wrapper, 'partially_unload'):
-                            old_wrapper.partially_unload('cpu', old_wrapper._memory_size)
-                        print(f"🗑️ Unloaded previous RVC model to free VRAM")
-                    except Exception as e:
-                        print(f"⚠️ Could not unload old RVC model: {e}")
-
-                    # Remove from ComfyUI's tracking
-                    try:
-                        model_management.current_loaded_models.remove(old_wrapper)
-                    except (ValueError, AttributeError):
-                        pass
-
-            # Track that we're about to register this model
-            self._last_registered_rvc_path = model_path
+            # Just register the model with ComfyUI - let ComfyUI's free_memory() handle unloading when needed
+            # (follows the same pattern as other TTS engines like ChatterBox, F5-TTS)
 
             # Estimate model size for VRAM tracking
             model_size = 0
@@ -232,33 +203,8 @@ class MinimalRVCWrapper:
             import comfy.model_management as model_management
             from utils.models.comfyui_model_wrapper.base_wrapper import ComfyUIModelWrapper, ModelInfo, SimpleModelWrapper
 
-            # CRITICAL FIX for issue #158 (part 2): Remove old Hubert models before registering new one
-            # When switching between different Hubert models, unload the previous one to free VRAM
-            # BUT: Don't unload the model we just loaded (tracked by _last_registered_hubert_path)
-            if hasattr(model_management, 'current_loaded_models') and hubert_path != self._last_registered_hubert_path:
-                models_to_remove = []
-                for wrapper in model_management.current_loaded_models:
-                    if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "rvc" and wrapper.model_info.model_type == "hubert":
-                        # Found an old Hubert model, mark it for removal
-                        models_to_remove.append(wrapper)
-
-                for old_wrapper in models_to_remove:
-                    try:
-                        # Unload the old model from GPU to CPU first
-                        if hasattr(old_wrapper, 'partially_unload'):
-                            old_wrapper.partially_unload('cpu', old_wrapper._memory_size)
-                        print(f"🗑️ Unloaded previous Hubert model to free VRAM")
-                    except Exception as e:
-                        print(f"⚠️ Could not unload old Hubert model: {e}")
-
-                    # Remove from ComfyUI's tracking
-                    try:
-                        model_management.current_loaded_models.remove(old_wrapper)
-                    except (ValueError, AttributeError):
-                        pass
-
-            # Track that we're about to register this model
-            self._last_registered_hubert_path = hubert_path
+            # Just register the model with ComfyUI - let ComfyUI's free_memory() handle unloading when needed
+            # (follows the same pattern as other TTS engines like ChatterBox, F5-TTS)
 
             # Estimate model size for VRAM tracking
             model_size = 0
@@ -312,8 +258,8 @@ class MinimalRVCWrapper:
         if self.reference_path not in sys.path:
             sys.path.insert(0, self.reference_path)  # For config, vc_infer_pipeline, etc.
     
-    def convert_voice(self, 
-                     audio: np.ndarray, 
+    def convert_voice(self,
+                     audio: np.ndarray,
                      sample_rate: int,
                      model_path: str,
                      index_path: Optional[str] = None,
@@ -326,6 +272,7 @@ class MinimalRVCWrapper:
         """
         Perform voice conversion using direct reference calls
         """
+
         try:
             print(f"🎵 Minimal wrapper RVC conversion: {f0_method} method, pitch: {f0_up_key}")
             
@@ -534,35 +481,41 @@ class MinimalRVCWrapper:
                 output_audio, output_sr = result
                 print(f"✅ Minimal wrapper RVC conversion completed")
 
-                # CRITICAL FIX for issue #158: Clear pitch extraction models after conversion
-                # These models (RMVPE, FCPE, Crepe, etc.) are stored as instance variables
-                # in the VC/FeatureExtractor object and accumulate in VRAM on repeated conversions
+                # CRITICAL FIX for issue #158: Comprehensive cleanup to prevent VRAM accumulation
                 try:
                     import gc
 
-                    # Clear pitch extractor cache from VC instance
+                    # Step 1: Clear pitch extraction models from VC instance
                     if hasattr(model_data['vc'], 'model_rmvpe'):
-                        print("🗑️ Clearing cached RMVPE pitch model...")
+                        print("🗑️ Clearing RMVPE pitch model...")
                         del model_data['vc'].model_rmvpe
-
                     if hasattr(model_data['vc'], 'model_fcpe'):
-                        print("🗑️ Clearing cached FCPE pitch model...")
+                        print("🗑️ Clearing FCPE pitch model...")
                         del model_data['vc'].model_fcpe
-
                     if hasattr(model_data['vc'], 'model_crepe'):
-                        print("🗑️ Clearing cached Crepe pitch model...")
+                        print("🗑️ Clearing Crepe pitch model...")
                         del model_data['vc'].model_crepe
 
-                    # Force garbage collection to free VRAM immediately
-                    gc.collect()
+                    # Step 2: Move output audio to CPU and clear any GPU tensors
+                    if isinstance(output_audio, torch.Tensor):
+                        output_audio = output_audio.detach().cpu().numpy()
 
-                    # Clear CUDA cache
+                    # Step 3: Clean up pitch extractors only (they accumulate the most)
+                    # RVC and Hubert models stay cached - ComfyUI's free_memory() will unload them
+                    # as needed when VRAM is actually tight (follows other TTS engines' approach)
+                    print("✅ Pitch extractors cleaned, RVC/Hubert models remain cached")
+
+                    # Step 4: Force garbage collection and CUDA cleanup
+                    gc.collect()
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+                        torch.cuda.empty_cache()
 
-                    print("✅ VRAM freed after conversion")
+                    print("✅ VRAM cleanup completed")
+
                 except Exception as e:
-                    print(f"⚠️ Warning: Could not fully clear pitch models: {e}")
+                    print(f"⚠️ Warning during cleanup: {e}")
 
                 return (output_audio, output_sr)
             else:

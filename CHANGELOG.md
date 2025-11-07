@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.16] - 2025-11-06
+
+### Added
+
+- RVC and Hubert models now properly registered with ComfyUI
+- Pitch extraction models automatically cleaned up after conversion
+- Memory is intelligently freed when VRAM is needed by other operations
+- ComfyUI's Clear VRAM button now properly unloads all RVC models
+
+### Fixed
+
+- Fix RVC voice conversion VRAM buildup
 ## [4.14.15] - 2025-11-06
 
 ### Added
