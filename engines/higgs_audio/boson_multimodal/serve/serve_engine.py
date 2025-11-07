@@ -517,8 +517,20 @@ class HiggsAudioServeEngine:
         audio_ids_l = []
         for audio_content in audio_contents:
             if audio_content.audio_url not in ["placeholder", ""]:
-                # Use torchaudio instead of librosa for Python 3.13 compatibility
-                raw_audio_tensor, sample_rate = torchaudio.load(audio_content.audio_url)
+                # Use torchaudio with PyTorch 2.9 TorchCodec error handling
+                try:
+                    raw_audio_tensor, sample_rate = torchaudio.load(audio_content.audio_url)
+                except RuntimeError as e:
+                    if "torchcodec" in str(e).lower():
+                        # TorchCodec DLL error on PyTorch 2.9 - use scipy
+                        from scipy.io import wavfile as scipy_wavfile
+                        import numpy as np
+                        sample_rate, audio_np = scipy_wavfile.read(audio_content.audio_url)
+                        raw_audio_tensor = torch.from_numpy(audio_np.astype(np.float32) / 32767.0)
+                        if raw_audio_tensor.ndim == 1:
+                            raw_audio_tensor = raw_audio_tensor.unsqueeze(0)
+                    else:
+                        raise
                 # Resample if needed
                 if sample_rate != self.audio_tokenizer.sampling_rate:
                     resampler = torchaudio.transforms.Resample(sample_rate, self.audio_tokenizer.sampling_rate)
@@ -526,8 +538,20 @@ class HiggsAudioServeEngine:
                 # Convert to numpy and squeeze to 1D if needed
                 raw_audio = raw_audio_tensor.squeeze().numpy()
             elif audio_content.raw_audio is not None:
-                # Use torchaudio instead of librosa for Python 3.13 compatibility
-                raw_audio_tensor, sample_rate = torchaudio.load(BytesIO(base64.b64decode(audio_content.raw_audio)))
+                # Use torchaudio with PyTorch 2.9 TorchCodec error handling
+                try:
+                    raw_audio_tensor, sample_rate = torchaudio.load(BytesIO(base64.b64decode(audio_content.raw_audio)))
+                except RuntimeError as e:
+                    if "torchcodec" in str(e).lower():
+                        # TorchCodec DLL error on PyTorch 2.9 - use scipy via BytesIO
+                        from scipy.io import wavfile as scipy_wavfile
+                        import numpy as np
+                        sample_rate, audio_np = scipy_wavfile.read(BytesIO(base64.b64decode(audio_content.raw_audio)))
+                        raw_audio_tensor = torch.from_numpy(audio_np.astype(np.float32) / 32767.0)
+                        if raw_audio_tensor.ndim == 1:
+                            raw_audio_tensor = raw_audio_tensor.unsqueeze(0)
+                    else:
+                        raise
                 # Resample if needed
                 if sample_rate != self.audio_tokenizer.sampling_rate:
                     resampler = torchaudio.transforms.Resample(sample_rate, self.audio_tokenizer.sampling_rate)
