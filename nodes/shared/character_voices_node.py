@@ -122,15 +122,7 @@ Leave empty to use text from selected character's files."""
                         print(f"❌ Character Voices: Failed to load audio file: {audio_path}")
                         return None, ""
 
-                    # CRITICAL FIX: Normalize audio to [-1, 1] range
-                    # PyTorch 2.9 torchaudio.load() returns raw int16 values instead of normalized float
-                    # This causes distortion when tensor is converted back to file
-                    max_val = torch.max(torch.abs(waveform))
-                    if max_val > 1.0:
-                        # Audio is in int16 range (±32767), normalize to float [-1, 1]
-                        waveform = waveform / 32767.0
-                        print(f"✅ Normalized audio from int16 range to float [-1, 1]")
-
+                    # Audio is automatically normalized by safe_load_audio() to [-1, 1] range
                     # Convert to mono if stereo
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)

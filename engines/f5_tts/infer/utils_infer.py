@@ -410,7 +410,9 @@ def infer_process(
     auto_phonemization=True,
 ):
     # Split the input text into batches
-    audio, sr = torchaudio.load(ref_audio)
+    # Use safe_load_audio to handle PyTorch 2.9 TorchCodec DLL errors and int16 normalization
+    from utils.audio.processing import AudioProcessingUtils
+    audio, sr = AudioProcessingUtils.safe_load_audio(ref_audio)
     max_chars = int(len(ref_text.encode("utf-8")) / (audio.shape[-1] / sr) * (22 - audio.shape[-1] / sr) * speed)
     gen_text_batches = chunk_text(gen_text, max_chars=max_chars)
     for i, gen_text in enumerate(gen_text_batches):

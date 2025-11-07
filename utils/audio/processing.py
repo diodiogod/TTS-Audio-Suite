@@ -24,20 +24,24 @@ class AudioProcessingUtils:
         Tries torchaudio.load() first, falls back to scipy.wavfile if needed.
         This ensures compatibility without torchcodec dependency.
 
+        IMPORTANT: Normalizes int16 audio to float [-1, 1] range.
+        PyTorch 2.9 changed torchaudio.load() to return raw int16 values instead
+        of normalized float, so we normalize all loaded audio to [-1, 1] range.
+
         Args:
             audio_path: Path to audio file
 
         Returns:
-            (waveform tensor, sample_rate)
+            (waveform tensor in [-1, 1] float32 range, sample_rate)
 
         Raises:
             Exception: If all loading methods fail
         """
         try:
             # Try torchaudio first (supports multiple formats)
-            return torchaudio.load(audio_path)
+            waveform, sr = torchaudio.load(audio_path)
         except Exception:
-            # Fallback to scipy for WAV files
+            # Fallback to scipy for WAV files (handles TorchCodec DLL errors on PyTorch 2.9)
             try:
                 from scipy.io import wavfile as scipy_wavfile
                 sample_rate, waveform_np = scipy_wavfile.read(audio_path)
@@ -46,9 +50,18 @@ class AudioProcessingUtils:
                     waveform = waveform.unsqueeze(0)
                 else:
                     waveform = waveform.T
-                return waveform, sample_rate
+                sr = sample_rate
             except Exception as e:
                 raise RuntimeError(f"Failed to load audio file {audio_path}: {e}")
+
+        # CRITICAL: Normalize int16 range to float [-1, 1]
+        # PyTorch 2.9 torchaudio.load() returns raw int16 values (±32767)
+        # instead of normalized float like PyTorch 2.8 did
+        max_val = torch.max(torch.abs(waveform))
+        if max_val > 1.0:
+            waveform = waveform / 32767.0
+
+        return waveform, sr
 
     @staticmethod
     def get_audio_duration(audio: torch.Tensor, sample_rate: int) -> float:
