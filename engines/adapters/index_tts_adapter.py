@@ -256,6 +256,9 @@ class IndexTTSAdapter:
 
         # Filter out seed from kwargs (used for caching but not supported by IndexTTS engine)
         engine_kwargs = {k: v for k, v in kwargs.items() if k != 'seed'}
+        # Add streaming parameters to engine kwargs
+        engine_kwargs['stream_return'] = stream_return
+        engine_kwargs['more_segment_before'] = more_segment_before
 
         # Apply consistent emotion priority: emotion_audio takes precedence over other emotion controls
         # This ensures consistent behavior whether using character tags or direct engine inputs
@@ -298,13 +301,17 @@ class IndexTTSAdapter:
             raise RuntimeError(
                 f"❌ IndexTTS-2 ran out of GPU memory during generation.\n{audio_analysis}"
             ) from e
-        
-        # Cache the result
-        duration = audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
-        self.audio_cache.cache_audio(cache_key, audio, duration)
-        # print(f"💾 IndexTTS-2 CACHED audio with key: {cache_key}")
-        
-        return audio
+
+        # Handle streaming vs non-streaming returns
+        if stream_return:
+            # In streaming mode, audio is a generator - return it as-is without caching
+            return audio
+        else:
+            # Cache the result for non-streaming mode
+            duration = audio.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
+            self.audio_cache.cache_audio(cache_key, audio, duration)
+            # print(f"💾 IndexTTS-2 CACHED audio with key: {cache_key}")
+            return audio
     
     def _process_character_tags_with_emotions(self, text: str) -> List[Dict[str, Any]]:
         """
