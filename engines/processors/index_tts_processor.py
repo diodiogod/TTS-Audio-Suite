@@ -17,6 +17,38 @@ project_root = os.path.dirname(engines_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+
+def save_audio_safe(filepath: str, waveform: torch.Tensor, sample_rate: int):
+    """
+    Save audio to file, using soundfile fallback if torchaudio fails (PyTorch 2.9+ TorchCodec issue).
+
+    Args:
+        filepath: Path to save to
+        waveform: Audio tensor
+        sample_rate: Sample rate in Hz
+    """
+    try:
+        # Try torchaudio first (preferred)
+        torchaudio.save(filepath, waveform, sample_rate)
+    except RuntimeError as e:
+        if "torchcodec" in str(e).lower() or "libtorchcodec" in str(e).lower():
+            # TorchCodec error - fallback to soundfile
+            try:
+                import soundfile as sf
+                # Convert tensor to numpy and handle shape
+                audio_np = waveform.cpu().detach().numpy()
+                # soundfile expects (samples, channels) format
+                if audio_np.ndim == 2:
+                    if audio_np.shape[0] <= 2:
+                        # Likely (channels, samples) - transpose
+                        audio_np = audio_np.T
+                sf.write(filepath, audio_np, sample_rate)
+            except Exception as fallback_err:
+                raise RuntimeError(f"Both torchaudio and soundfile save failed: {e} -> {fallback_err}")
+        else:
+            # Different error - re-raise
+            raise
+
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import CharacterParser
@@ -234,7 +266,7 @@ class IndexTTSProcessor:
                                 # Ensure 2D tensor for torchaudio.save (channels, samples)
                                 if waveform.dim() == 3:
                                     waveform = waveform.squeeze(0)  # Remove batch dimension
-                                ta.save(tmp_file.name, waveform, char_audio_dict['sample_rate'])
+                                save_audio_safe(tmp_file.name, waveform, char_audio_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                         elif character.lower() == "narrator" and narrator_voice_dict and 'waveform' in narrator_voice_dict:
                             # Fallback to narrator voice for narrator character
@@ -243,7 +275,7 @@ class IndexTTSProcessor:
                                 # Ensure 2D tensor for torchaudio.save (channels, samples)
                                 if waveform.dim() == 3:
                                     waveform = waveform.squeeze(0)  # Remove batch dimension
-                                ta.save(tmp_file.name, waveform, narrator_voice_dict['sample_rate'])
+                                save_audio_safe(tmp_file.name, waveform, narrator_voice_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                                 print(f"✅ Using fallback narrator voice for character: {character}")
                         
@@ -271,7 +303,7 @@ class IndexTTSProcessor:
                                             emotion_waveform = emotion_waveform.squeeze(0)
                                         elif emotion_waveform.dim() == 1:
                                             emotion_waveform = emotion_waveform.unsqueeze(0)
-                                        ta.save(tmp_file.name, emotion_waveform, emotion_from_config['sample_rate'])
+                                        save_audio_safe(tmp_file.name, emotion_waveform, emotion_from_config['sample_rate'])
                                         emotion_audio_path = tmp_file.name
                                     print(f"🎭 Using connected engine emotion audio for character: {character}")
                                 else:
@@ -347,14 +379,14 @@ class IndexTTSProcessor:
                     speaker_audio_path = None
                     if narrator_audio and 'waveform' in narrator_audio:
                         with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                            ta.save(tmp_file.name, narrator_audio['waveform'], narrator_audio['sample_rate'])
+                            save_audio_safe(tmp_file.name, narrator_audio['waveform'], narrator_audio['sample_rate'])
                             speaker_audio_path = tmp_file.name
                     
                     # Ensure we have a speaker audio path - always use narrator if available  
                     if not speaker_audio_path:
                         if narrator_voice_dict and 'waveform' in narrator_voice_dict:
                             with tf.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                                ta.save(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
+                                save_audio_safe(tmp_file.name, narrator_voice_dict['waveform'], narrator_voice_dict['sample_rate'])
                                 speaker_audio_path = tmp_file.name
                     
                     # Handle emotion_audio - convert tensor to file path if needed
@@ -369,7 +401,7 @@ class IndexTTSProcessor:
                                 emotion_waveform = emotion_waveform.squeeze(0)
                             elif emotion_waveform.dim() == 1:
                                 emotion_waveform = emotion_waveform.unsqueeze(0)
-                            ta.save(tmp_file.name, emotion_waveform, emotion_audio_path['sample_rate'])
+                            save_audio_safe(tmp_file.name, emotion_waveform, emotion_audio_path['sample_rate'])
                             emotion_audio_path = tmp_file.name
                         print(f"🎭 Using connected engine emotion audio for simple text segment")
                     elif emotion_audio_path:

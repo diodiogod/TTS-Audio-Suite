@@ -10,13 +10,6 @@ import warnings
 from utils.models.unified_model_interface import unified_model_interface, UnifiedModelConfig
 from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
 
-# Apply PyTorch compatibility patches before using any PyTorch operations
-try:
-    from utils.compatibility.pytorch_patches import PyTorchPatches
-    PyTorchPatches.patch_torchaudio_torchcodec(verbose=False)
-except ImportError:
-    pass
-
 
 class IndexTTSEngine:
     """
@@ -156,8 +149,15 @@ class IndexTTSEngine:
         print("🔄 IndexTTS-2: Initializing engine (first run may take 2-3 minutes to load models)...")
         print("   Loading: QwenEmotion → GPT → Semantic Codec → S2Mel → CampPlus → BigVGAN...")
         self._tts_engine = unified_model_interface.load_model(self._model_config)
-
+        
         print(f"✅ IndexTTS-2 engine loaded via unified interface on {self.device}")
+        print("⚡ Next generations will be much faster (models cached in VRAM)")
+        
+        # Performance warning for non-Python 3.13 environments
+        import sys
+        if sys.version_info[:2] != (3, 13):
+            print("⚠️ Performance warning: IndexTTS-2 tested on Python 3.13 performs smoothly")
+            print("⚠️ Our Python 3.12 tests showed HIGH VRAM spikes during generation")
     
     def generate(
         self,
@@ -315,7 +315,7 @@ class IndexTTSEngine:
             result = self._tts_engine.infer(
                 spk_audio_prompt=speaker_audio,
                 text=text,
-                output_path=output_path,
+                output_path=None,
                 emo_audio_prompt=emotion_audio,
                 emo_alpha=emotion_alpha,
                 emo_vector=emotion_vector,
@@ -335,44 +335,27 @@ class IndexTTSEngine:
                 max_mel_tokens=max_mel_tokens,
                 **kwargs
             )
-            
-            # Load generated audio
-            audio, sample_rate = torchaudio.load(output_path)
 
-            # CRITICAL FIX: Normalize audio amplitude
-            # IndexTTS-2 saves int16 audio. Depending on how it's loaded:
-            # - soundfile: returns float32 already in [-1, 1] range
-            # - torchaudio (Linux): returns raw int16 values (0-32768)
-            # - torchaudio (Windows): varies by version
-            # PyTorch 2.9 generates audio with values > 1.0 that cause clipping when saved as int16
-            max_val = torch.abs(audio).max()
-            if max_val > 1.0:
-                # Audio is either raw int16 or over-amplitude float from PyTorch 2.9
-                # First clamp to [-1, 1] to prevent clipping
-                audio = torch.clamp(audio, -1.0, 1.0)
-                # Then check if it needs int16 scaling normalization
-                if max_val > 32.0:  # Likely raw int16 (0-32768 range)
-                    # Divide by 32768.0 (int16 max) to get proper [-1, 1] range
-                    audio = audio / 32768.0
-            # If max_val <= 1.0, audio is already normalized (soundfile or proper torchaudio)
+            # Get audio tensor directly from infer result
+            # infer() with output_path=None returns a tuple (sampling_rate, wav_data)
+            # where wav_data is a numpy array of shape (samples, channels) in int16 format
+            sampling_rate, wav_data = result
 
-            # Convert to expected format [1, samples] at 22050 Hz
-            if sample_rate != 22050:
-                resampler = torchaudio.transforms.Resample(sample_rate, 22050)
-                audio = resampler(audio)
+            # Convert numpy array (int16) to torch tensor (float32)
+            # int16 range is -32768 to 32767, normalize to -1.0 to 1.0
+            audio = torch.from_numpy(wav_data).float() / 32768.0
 
+            # wav_data is shape (samples, channels), convert to (channels, samples)
+            audio = audio.T
+
+            # Ensure audio is in shape [1, samples] (mono)
             if audio.shape[0] != 1:
-                audio = audio.mean(dim=0, keepdim=True)  # Convert to mono
+                audio = audio.mean(dim=0, keepdim=True)
 
             return audio
-            
+
         finally:
-            # Clean up temporary file
-            if os.path.exists(output_path):
-                try:
-                    os.unlink(output_path)
-                except OSError:
-                    pass
+            pass
     
     def get_sample_rate(self) -> int:
         """Get the native sample rate of the engine."""
