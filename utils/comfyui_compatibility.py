@@ -44,7 +44,15 @@ def ensure_python312_cudnn_fix():
 
 def apply_all_compatibility_patches():
     """Apply all necessary ComfyUI compatibility patches."""
-    # This is called at startup but the real fix is applied per-node
+    # Python 3.12 CUDNN fix
     if sys.version_info[:2] == (3, 12):
         print("🩹 TTS Audio Suite: Python 3.12 CUDNN fix ready (will apply before TTS generation)")
-    pass
+
+    # Apply PyTorch 2.9+ TorchCodec global patches - CRITICAL for Windows users
+    # PyTorch 2.9 made torchaudio.save/load depend on TorchCodec which doesn't support Windows
+    # This globally monkey-patches torchaudio to use scipy instead (pure Python, no dependencies)
+    try:
+        from utils.compatibility.pytorch_patches import apply_pytorch_patches
+        apply_pytorch_patches(verbose=True)
+    except Exception as e:
+        print(f"⚠️ Warning: Could not apply PyTorch patches: {e}")
