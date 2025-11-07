@@ -84,7 +84,7 @@ Back to the main narrator voice for the conclusion.""",
                     "default": "English",
                     "tooltip": "Language model to use for text-to-speech generation. Local models are preferred over remote downloads."
                 }),
-                "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
+                "device": (["auto", "cuda", "xpu", "cpu"], {"default": "auto"}),
                 "exaggeration": ("FLOAT", {
                     "default": 0.5, 
                     "min": 0.25, 

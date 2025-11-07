@@ -109,7 +109,7 @@ Hello! This is F5-TTS SRT with character switching.
                     "default": "",
                     "tooltip": "Direct reference text input (required when using opt_reference_audio or when reference_audio_file is 'none')."
                 }),
-                "device": (["auto", "cuda", "cpu"], {
+                "device": (["auto", "cuda", "xpu", "cpu"], {
                     "default": "auto",
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),

@@ -107,7 +107,7 @@ The audio will match these exact timings.""",
                     "default": "English",
                     "tooltip": "Language model to use for text-to-speech generation. Local models are preferred over remote downloads."
                 }),
-                "device": (["auto", "cuda", "cpu"], {"default": "auto", "tooltip": "The device to run the TTS model on (auto, cuda, or cpu)."}),
+                "device": (["auto", "cuda", "xpu", "cpu"], {"default": "auto", "tooltip": "The device to run the TTS model on (auto, cuda, xpu, or cpu)."}),
                 "exaggeration": ("FLOAT", {
                     "default": 0.5,
                     "min": 0.25,

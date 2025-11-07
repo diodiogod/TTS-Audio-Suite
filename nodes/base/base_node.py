@@ -343,7 +343,7 @@ class BaseChatterBoxNode:
         """
         return {
             "required": {
-                "device": (["auto", "cuda", "cpu"], {"default": "auto"}),
+                "device": (["auto", "cuda", "xpu", "cpu"], {"default": "auto"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 2**32 - 1}),
             },
             "optional": {

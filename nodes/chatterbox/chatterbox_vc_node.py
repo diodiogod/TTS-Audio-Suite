@@ -53,7 +53,7 @@ class ChatterboxVCNode(BaseVCNode):
                 "source_audio": ("AUDIO", {"tooltip": "The original voice audio you want to convert to sound like the target voice"}),
                 "target_audio": ("AUDIO", {"tooltip": "The reference voice audio whose characteristics will be applied to the source audio"}),
                 "refinement_passes": ("INT", {"default": 1, "min": 1, "max": 30, "step": 1, "tooltip": "Number of conversion iterations. Each pass refines the output to sound more like the target. Recommended: Max 5 passes - more can cause distortions. Each iteration is deterministic to reduce degradation."}),
-                "device": (["auto", "cuda", "cpu"], {"default": "auto", "tooltip": "Processing device: 'auto' selects best available, 'cuda' for GPU acceleration, 'cpu' for compatibility"}),
+                "device": (["auto", "cuda", "xpu", "cpu"], {"default": "auto", "tooltip": "Processing device: 'auto' selects best available, 'cuda' for GPU acceleration, 'xpu' for Intel GPU, 'cpu' for compatibility"}),
             }
         }
 

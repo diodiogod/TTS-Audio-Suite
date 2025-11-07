@@ -55,9 +55,9 @@ class VibeVoiceEngineNode(BaseTTSNode):
                     "default": "vibevoice-1.5B",
                     "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n\nBoth support multi-speaker and long-form generation."
                 }),
-                "device": (["auto", "cuda", "cpu", "mps"], {
+                "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
-                    "tooltip": "Computation device:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, CPU fallback)\n• cuda: Force GPU (requires NVIDIA GPU, ~7GB VRAM)\n• cpu: Force CPU processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)\n\nRecommended: 'auto' for automatic selection."
+                    "tooltip": "Computation device:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, XPU on Intel, CPU fallback)\n• cuda: Force GPU (requires NVIDIA GPU, ~7GB VRAM)\n• xpu: Intel GPU acceleration (requires Intel PyTorch XPU)\n• cpu: Force CPU processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)\n\nRecommended: 'auto' for automatic selection."
                 }),
                 "quantize_llm_4bit": ("BOOLEAN", {
                     "default": False,

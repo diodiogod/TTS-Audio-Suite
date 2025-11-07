@@ -69,7 +69,7 @@ class F5TTSEditNode(BaseF5TTSNode):
                     "default": "1.42,2.44\n4.04,4.9",
                     "tooltip": "Edit regions as 'start,end' in seconds (one per line). These are the time regions to replace."
                 }),
-                "device": (["auto", "cuda", "cpu"], {
+                "device": (["auto", "cuda", "xpu", "cpu"], {
                     "default": "auto",
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),

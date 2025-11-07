@@ -121,9 +121,9 @@ class ChatterBoxEngineNode(BaseTTSNode):
                     "default": "English",
                     "tooltip": "ChatterBox language model to use for text-to-speech generation. Local models are preferred over remote downloads."
                 }),
-                "device": (["auto", "cuda", "cpu", "mps"], {
+                "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
-                    "tooltip": "Device to run ChatterBox model on:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
+                    "tooltip": "Device to run ChatterBox model on:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, XPU on Intel, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• xpu: Intel GPU (requires Intel PyTorch XPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
                 }),
                 "exaggeration": ("FLOAT", {
                     "default": 0.5, 

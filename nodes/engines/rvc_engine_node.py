@@ -157,9 +157,9 @@ Models will auto-download if not present. Choose language-specific models for be
                     "tooltip": "Output sample rate (0=use input rate). 44100/48000 recommended for high quality"
                 }),
                 
-                "device": (["auto", "cuda", "cpu", "mps"], {
+                "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
-                    "tooltip": "Processing device:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
+                    "tooltip": "Processing device:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, XPU on Intel, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• xpu: Intel GPU (requires Intel PyTorch XPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
                 })
             }
         }

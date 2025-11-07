@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.19] - 2025-11-07
+
+### Added
+
+- Add Intel XPU (Intel GPU) support with automatic detection
+- Tentative XPU support for Intel GPU acceleration
+- Auto-detection in device selection (MPS > CUDA > XPU > CPU)
+- Available on all TTS and processing nodes
+- Requires separate Intel PyTorch extension installation
+- Note: XPU support not validated on Intel hardware yet - feedback welcome
 ## [4.14.18] - 2025-11-07
 
 ### Added

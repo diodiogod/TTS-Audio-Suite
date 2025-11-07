@@ -44,9 +44,9 @@ class F5TTSEngineNode(BaseF5TTSNode):
                     "default": "F5TTS_v1_Base",
                     "tooltip": "F5-TTS model variant to use. F5TTS_Base is the standard model, F5TTS_v1_Base is improved version, E2TTS_Base is enhanced variant. Note: This was previously called 'model' in individual nodes."
                 }),
-                "device": (["auto", "cuda", "cpu", "mps"], {
+                "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
-                    "tooltip": "Device to run F5-TTS model on:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
+                    "tooltip": "Device to run F5-TTS model on:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, XPU on Intel, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• xpu: Intel GPU (requires Intel PyTorch XPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
                 }),
                 "temperature": ("FLOAT", {
                     "default": 0.8, "min": 0.1, "max": 2.0, "step": 0.1,

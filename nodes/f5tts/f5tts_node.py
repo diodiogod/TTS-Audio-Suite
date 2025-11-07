@@ -69,7 +69,7 @@ class F5TTSNode(BaseF5TTSNode):
                     "default": "",
                     "tooltip": "Direct reference text input (required when using opt_reference_audio)."
                 }),
-                "device": (["auto", "cuda", "cpu"], {
+                "device": (["auto", "cuda", "xpu", "cpu"], {
                     "default": "auto",
                     "tooltip": "Device to run F5-TTS model on. 'auto' selects best available (GPU if available, otherwise CPU)."
                 }),
