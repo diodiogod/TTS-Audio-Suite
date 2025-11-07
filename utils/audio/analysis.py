@@ -81,29 +81,24 @@ class AudioAnalyzer:
         if ext not in supported_exts:
             raise ValueError(f"Unsupported audio format: {ext}. Supported formats: {supported_exts}")
         
+        # Use safe_load_audio for proper PyTorch 2.9 TorchCodec handling and int16 normalization
         try:
-            # Try torchaudio first
-            audio, sr = torchaudio.load(audio_path)
-            # print(f"✅ Loaded audio using torchaudio: {audio_path}")  # Debug: load method
-            
+            audio, sr = AudioProcessingUtils.safe_load_audio(audio_path)
         except Exception as e:
-            print(f"⚠️ Torchaudio failed: {e}")  # Keep: important fallback info
+            # If safe_load_audio fails and librosa is available, try it as final fallback
             if LIBROSA_AVAILABLE:
                 try:
-                    # Fallback to librosa for better format support
+                    print(f"⚠️ safe_load_audio failed: {e}, falling back to librosa")
                     audio_np, sr = librosa.load(audio_path, sr=None, mono=False)
-                    
+
                     # Convert to torch tensor
                     if audio_np.ndim == 1:
                         audio = torch.from_numpy(audio_np).unsqueeze(0)
                     else:
                         audio = torch.from_numpy(audio_np)
-                    
-                    # print(f"✅ Loaded audio using librosa: {audio_path}")  # Debug: fallback success
-                    
+
                 except Exception as e2:
-                    print(f"❌ Librosa also failed: {e2}")  # Keep: critical error
-                    raise RuntimeError(f"Failed to load audio file with both torchaudio and librosa: {e}, {e2}")
+                    raise RuntimeError(f"Failed to load audio file with all methods: {e}, librosa: {e2}")
             else:
                 raise RuntimeError(f"Failed to load audio file: {e}. Consider installing librosa for better format support.")
         
