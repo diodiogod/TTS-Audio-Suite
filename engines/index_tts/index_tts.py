@@ -10,7 +10,7 @@ import warnings
 from utils.models.unified_model_interface import unified_model_interface, UnifiedModelConfig
 from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
 
-# Apply PyTorch TorchCodec patch before using torchaudio
+# Apply PyTorch compatibility patches before using any PyTorch operations
 try:
     from utils.compatibility.pytorch_patches import PyTorchPatches
     PyTorchPatches.patch_torchaudio_torchcodec(verbose=False)
@@ -156,15 +156,8 @@ class IndexTTSEngine:
         print("🔄 IndexTTS-2: Initializing engine (first run may take 2-3 minutes to load models)...")
         print("   Loading: QwenEmotion → GPT → Semantic Codec → S2Mel → CampPlus → BigVGAN...")
         self._tts_engine = unified_model_interface.load_model(self._model_config)
-        
+
         print(f"✅ IndexTTS-2 engine loaded via unified interface on {self.device}")
-        print("⚡ Next generations will be much faster (models cached in VRAM)")
-        
-        # Performance warning for non-Python 3.13 environments
-        import sys
-        if sys.version_info[:2] != (3, 13):
-            print("⚠️ Performance warning: IndexTTS-2 tested on Python 3.13 performs smoothly")
-            print("⚠️ Our Python 3.12 tests showed HIGH VRAM spikes during generation")
     
     def generate(
         self,
@@ -346,15 +339,22 @@ class IndexTTSEngine:
             # Load generated audio
             audio, sample_rate = torchaudio.load(output_path)
 
-            # CRITICAL FIX: Normalize audio amplitude on Linux
-            # IndexTTS-2 saves int16 audio that's already at max amplitude.
-            # On Linux, torchaudio.load() doesn't auto-normalize int16->float32,
-            # causing extremely loud/distorted audio. We need to normalize to [-1, 1] range.
+            # CRITICAL FIX: Normalize audio amplitude
+            # IndexTTS-2 saves int16 audio. Depending on how it's loaded:
+            # - soundfile: returns float32 already in [-1, 1] range
+            # - torchaudio (Linux): returns raw int16 values (0-32768)
+            # - torchaudio (Windows): varies by version
+            # PyTorch 2.9 generates audio with values > 1.0 that cause clipping when saved as int16
             max_val = torch.abs(audio).max()
             if max_val > 1.0:
-                # Audio is in int16 range (values 0-32768) - normalize using proper int16 scaling
-                # Divide by 32768.0 (int16 max) to get proper [-1, 1] range
-                audio = audio / 32768.0
+                # Audio is either raw int16 or over-amplitude float from PyTorch 2.9
+                # First clamp to [-1, 1] to prevent clipping
+                audio = torch.clamp(audio, -1.0, 1.0)
+                # Then check if it needs int16 scaling normalization
+                if max_val > 32.0:  # Likely raw int16 (0-32768 range)
+                    # Divide by 32768.0 (int16 max) to get proper [-1, 1] range
+                    audio = audio / 32768.0
+            # If max_val <= 1.0, audio is already normalized (soundfile or proper torchaudio)
 
             # Convert to expected format [1, samples] at 22050 Hz
             if sample_rate != 22050:

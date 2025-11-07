@@ -663,13 +663,14 @@ def register_index_tts_factory():
         """Factory for IndexTTS-2 models with ComfyUI integration"""
         import os
         import sys
-        
+
         # Extract parameters
         model_path = kwargs.get("model_path")
         device = kwargs.get("device", "auto")
         use_fp16 = kwargs.get("use_fp16", True)
         use_cuda_kernel = kwargs.get("use_cuda_kernel", None)
         use_deepspeed = kwargs.get("use_deepspeed", False)
+        use_torch_compile = kwargs.get("use_torch_compile", False)
         
         if not model_path or not os.path.exists(model_path):
             raise RuntimeError(f"IndexTTS-2 model not found at {model_path}. Auto-download should have been triggered earlier.")
@@ -730,7 +731,8 @@ def register_index_tts_factory():
                 device=device,
                 use_fp16=use_fp16 and device != "cpu",
                 use_cuda_kernel=use_cuda_kernel,
-                use_deepspeed=use_deepspeed
+                use_deepspeed=use_deepspeed,
+                use_torch_compile=use_torch_compile
             )
             
             print(f"✅ IndexTTS-2 model loaded via unified interface on {device}")

@@ -759,6 +759,15 @@ class IndexTTS2:
                                                                    ref_mel, style, None, diffusion_steps,
                                                                    inference_cfg_rate=inference_cfg_rate)
                     vc_target = vc_target[:, :, ref_mel.size(-1):]
+
+                    # Debug: Check S2Mel output
+                    s2mel_min = vc_target.min().item()
+                    s2mel_max = vc_target.max().item()
+                    s2mel_mean = vc_target.mean().item()
+                    s2mel_std = vc_target.std().item()
+                    import sys
+                    print(f">> S2Mel output: min={s2mel_min:.3f}, max={s2mel_max:.3f}, mean={s2mel_mean:.3f}, std={s2mel_std:.3f}", flush=True, file=sys.stderr)
+
                     s2mel_time += time.perf_counter() - m_start_time
 
                     m_start_time = time.perf_counter()
@@ -767,6 +776,11 @@ class IndexTTS2:
                     print(wav.shape)
                     bigvgan_time += time.perf_counter() - m_start_time
                     wav = wav.squeeze(1)
+
+                # Debug: Check audio values before clamping to detect PyTorch 2.9 issues
+                wav_min_before = wav.min().item()
+                wav_max_before = wav.max().item()
+                print(f">> BigVGAN output before clamping: min={wav_min_before:.6f}, max={wav_max_before:.6f}")
 
                 wav = torch.clamp(32767 * wav, -32767.0, 32767.0)
                 if verbose:
