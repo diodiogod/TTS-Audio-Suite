@@ -27,12 +27,19 @@ class PyTorchPatches:
         """
         Patch torchaudio.save() and torchaudio.load() to use scipy instead of TorchCodec.
 
-        Issue: PyTorch 2.9.0+cu128 has TorchCodec incompatibility on Windows
-        causing "Could not load libtorchcodec" errors during WAV file operations.
+        Issues Fixed:
+        1. PyTorch 2.9.0+cu128 TorchCodec incompatibility on Windows
+           - Symptom: "Could not load libtorchcodec" errors during WAV file operations
+           - Root cause: TorchCodec DLL doesn't support Windows
+           - Fix: Globally monkey-patch to use scipy.io.wavfile (pure Python, no native deps)
 
-        Solution: Globally monkey-patch save/load to use scipy.io.wavfile which is pure Python
-        with no native dependencies (no FFmpeg, no TorchCodec DLL).
+        2. PyTorch 2.9 changed torchaudio.load() behavior
+           - Returns raw int16 values (±32767) instead of normalized float [-1, 1]
+           - Handled by safe_load_audio() utility function which normalizes audio after loading
+           - This global patch ensures scipy fallback also normalizes consistently
 
+        Implementation: Globally monkey-patches save/load for WAV files to use scipy,
+        which is pure Python with no dependencies (no FFmpeg, no TorchCodec DLL).
         This fixes ALL direct torchaudio.save/load calls across the entire codebase without
         needing individual fixes in every file.
         """

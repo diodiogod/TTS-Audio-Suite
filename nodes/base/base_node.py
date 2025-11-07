@@ -46,13 +46,21 @@ except ImportError:
     # Try import again
     from utils.models.manager import model_manager
 
-# Import save_audio_safe function for handling TorchCodec failures on PyTorch 2.9+
+# Defense-in-depth: save_audio_safe provides fallback for PyTorch 2.9 TorchCodec issues
+# The global monkey-patch in __init__.py handles most cases, but this function provides
+# an additional layer of protection with scipy fallback if torchaudio.save() fails.
 try:
     from engines.processors.index_tts_processor import save_audio_safe
 except ImportError:
     # Fallback: define it locally with scipy as primary fallback (no TorchCodec dependency)
     def save_audio_safe(filepath: str, waveform: torch.Tensor, sample_rate: int):
-        """Save audio to file, using scipy (pure Python, no TorchCodec) if torchaudio fails."""
+        """
+        Save audio to file with defense-in-depth fallback handling.
+
+        With the global PyTorch 2.9 patch applied at startup, torchaudio.save() should
+        not fail. However, this function provides an extra layer of protection by falling
+        back to scipy if needed.
+        """
         try:
             import torchaudio
             torchaudio.save(filepath, waveform, sample_rate)

@@ -14,7 +14,14 @@ import os
 import sys
 
 # CRITICAL: Apply PyTorch 2.9 TorchCodec patches BEFORE any other imports
-# This must be done before utils.compatibility or any module imports torchaudio
+#
+# Timing is critical: The monkey-patch must be applied BEFORE torchaudio is imported
+# by any other module. If we wait until after other imports, torchaudio will already
+# be loaded and our monkey-patch won't affect the already-imported module references.
+#
+# This solves TWO PyTorch 2.9 issues:
+# 1. TorchCodec DLL incompatibility on Windows - Global patch uses scipy instead
+# 2. PyTorch 2.9's changed torchaudio.load() returning raw int16 - safe_load_audio() normalizes
 try:
     # Load pytorch_patches directly by file path to avoid package import issues
     pytorch_patches_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "pytorch_patches.py")
@@ -22,7 +29,7 @@ try:
     pytorch_patches_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(pytorch_patches_module)
 
-    # Apply the patches
+    # Apply the patches (will only apply on PyTorch 2.9+, silently skip on older versions)
     pytorch_patches_module.apply_pytorch_patches(verbose=True)
 except Exception as e:
     print(f"⚠️ Warning: Could not apply PyTorch patches: {e}")
