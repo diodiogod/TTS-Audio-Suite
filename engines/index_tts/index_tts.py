@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import tempfile
 import folder_paths
+import numpy as np
 from typing import Optional, Union, List, Dict, Any
 import warnings
 
@@ -311,6 +312,19 @@ class IndexTTSEngine:
             output_path = tmp_file.name
             
         try:
+            # Filter out unsupported kwargs (e.g., speech_speed from external nodes)
+            supported_kwargs = {}
+            unsupported_keys = []
+            for key, value in kwargs.items():
+                # Only pass known generation parameters
+                if key not in ['speech_speed', 'speed', 'rate']:  # Filter out speed-related params
+                    supported_kwargs[key] = value
+                else:
+                    unsupported_keys.append(key)
+
+            if unsupported_keys:
+                print(f"⚠️ Filtering unsupported kwargs: {unsupported_keys}")
+
             # Call IndexTTS-2 inference
             result = self._tts_engine.infer(
                 spk_audio_prompt=speaker_audio,
@@ -333,7 +347,7 @@ class IndexTTSEngine:
                 num_beams=num_beams,
                 repetition_penalty=repetition_penalty,
                 max_mel_tokens=max_mel_tokens,
-                **kwargs
+                **supported_kwargs
             )
 
             # Get audio tensor directly from infer result
@@ -341,16 +355,41 @@ class IndexTTSEngine:
             # where wav_data is a numpy array of shape (samples, channels) in int16 format
             sampling_rate, wav_data = result
 
-            # Convert numpy array (int16) to torch tensor (float32)
-            # int16 range is -32768 to 32767, normalize to -1.0 to 1.0
-            audio = torch.from_numpy(wav_data).float() / 32768.0
+            # Debug: Check the actual values we're receiving
+            print(f"🔍 DEBUG: wav_data dtype={wav_data.dtype}, shape={wav_data.shape}")
+            print(f"🔍 DEBUG: wav_data min={wav_data.min()}, max={wav_data.max()}")
 
-            # wav_data is shape (samples, channels), convert to (channels, samples)
-            audio = audio.T
+            # Convert numpy array (int16) to float32 following ComfyUI-IndexTTS2 reference
+            if isinstance(wav_data, torch.Tensor):
+                wav_data = wav_data.cpu().numpy()
+            wav_data = np.asarray(wav_data)
 
-            # Ensure audio is in shape [1, samples] (mono)
-            if audio.shape[0] != 1:
-                audio = audio.mean(dim=0, keepdim=True)
+            if wav_data.dtype == np.int16:
+                wav_data = wav_data.astype(np.float32) / 32767.0
+            elif wav_data.dtype != np.float32:
+                wav_data = wav_data.astype(np.float32)
+
+            # Handle mono/stereo conversion like reference implementation
+            mono = wav_data
+            if mono.ndim == 2:
+                # wav_data is (samples, channels)
+                if mono.shape[0] <= 8 and mono.shape[1] > mono.shape[0]:
+                    # Shape looks like (channels, samples) - transpose
+                    mono = mono.T
+                # Now average channels if needed
+                if mono.shape[-1] > 1:  # Multiple channels
+                    mono = mono.mean(axis=-1)
+            elif mono.ndim > 2:
+                mono = mono.reshape(-1, mono.shape[-1]).mean(axis=0)
+            if mono.ndim != 1:
+                mono = mono.flatten()
+
+            # Clip to valid range and convert to tensor [1, samples]
+            mono = np.clip(mono, -1.0, 1.0)
+            audio = torch.from_numpy(mono[None, :].astype(np.float32))
+
+            print(f"🔍 DEBUG: final audio dtype={audio.dtype}, shape={audio.shape}")
+            print(f"🔍 DEBUG: final audio min={audio.min():.6f}, max={audio.max():.6f}")
 
             return audio
 
