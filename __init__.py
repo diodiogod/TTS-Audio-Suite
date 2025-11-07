@@ -2,7 +2,7 @@
 TTS Audio Suite - Universal multi-engine TTS extension for ComfyUI
 Unified architecture supporting ChatterBox, F5-TTS, and future engines like RVC:
 • 🎤 TTS Text (unified text-to-speech)
-• 📺 TTS SRT (unified SRT subtitle timing)  
+• 📺 TTS SRT (unified SRT subtitle timing)
 • 🔄 Voice Changer (unified voice conversion)
 • ⚙️ Engine nodes (ChatterBox, F5-TTS)
 • 🎭 Character Voices (voice reference management)
@@ -12,6 +12,20 @@ Unified architecture supporting ChatterBox, F5-TTS, and future engines like RVC:
 import importlib.util
 import os
 import sys
+
+# CRITICAL: Apply PyTorch 2.9 TorchCodec patches BEFORE any other imports
+# This must be done before utils.compatibility or any module imports torchaudio
+try:
+    # Load pytorch_patches directly by file path to avoid package import issues
+    pytorch_patches_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "pytorch_patches.py")
+    spec = importlib.util.spec_from_file_location("pytorch_patches_module", pytorch_patches_path)
+    pytorch_patches_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pytorch_patches_module)
+
+    # Apply the patches
+    pytorch_patches_module.apply_pytorch_patches(verbose=True)
+except Exception as e:
+    print(f"⚠️ Warning: Could not apply PyTorch patches: {e}")
 
 # Smart Numba Compatibility System - tests and applies fixes only when needed
 try:
@@ -48,13 +62,6 @@ except ImportError:
     else:
         # Only show warning when JIT is disabled (indicates a problem)
         pass
-
-# Apply ComfyUI compatibility patches
-try:
-    from utils.comfyui_compatibility import apply_all_compatibility_patches
-    apply_all_compatibility_patches()
-except ImportError:
-    pass
 
 # TorchCodec note: Removed torchcodec dependency to eliminate FFmpeg system requirement
 # torchaudio.load() works fine with fallback backends (soundfile, scipy)
