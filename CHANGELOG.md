@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.17] - 2025-11-07
+
+### Added
+
+- Root issues fixed:
+- PyTorch 2.9 changed torchaudio.load() to return raw int16 values instead of normalized audio in [-1, 1] range
+- TorchCodec DLL incompatibility on Windows prevented voice conversion and other features from working
+- Character Voices node wasn't normalizing audio from files, causing 1.5x amplification
+- Changes made:
+- Centralized audio loading with automatic int16 normalization across the suite
+- Windows voice conversion and F5-TTS now working without TorchCodec DLL errors
+- Comprehensive documentation of fixes in code comments
+
+### Fixed
+
+- Fix IndexTTS-2 audio distortion on PyTorch 2.9 with Windows voice conversion compatibility
+- Issue resolved: Audio distortion in IndexTTS-2 and multiple engines (F5-TTS, ChatterBox, Voice Changer) on PyTorch 2.9
+- Global PyTorch 2.9 compatibility patch applied at startup (before any module imports torchaudio)
+- Safe audio loading utilities with scipy fallback for better compatibility
 ## [4.14.16] - 2025-11-06
 
 ### Added
