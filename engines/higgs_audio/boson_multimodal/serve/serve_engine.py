@@ -524,7 +524,6 @@ class HiggsAudioServeEngine:
                     if "torchcodec" in str(e).lower():
                         # TorchCodec DLL error on PyTorch 2.9 - use scipy
                         from scipy.io import wavfile as scipy_wavfile
-                        import numpy as np
                         sample_rate, audio_np = scipy_wavfile.read(audio_content.audio_url)
                         raw_audio_tensor = torch.from_numpy(audio_np.astype(np.float32) / 32767.0)
                         if raw_audio_tensor.ndim == 1:
@@ -545,7 +544,6 @@ class HiggsAudioServeEngine:
                     if "torchcodec" in str(e).lower():
                         # TorchCodec DLL error on PyTorch 2.9 - use scipy via BytesIO
                         from scipy.io import wavfile as scipy_wavfile
-                        import numpy as np
                         sample_rate, audio_np = scipy_wavfile.read(BytesIO(base64.b64decode(audio_content.raw_audio)))
                         raw_audio_tensor = torch.from_numpy(audio_np.astype(np.float32) / 32767.0)
                         if raw_audio_tensor.ndim == 1:
