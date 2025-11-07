@@ -369,23 +369,21 @@ class IndexTTSEngine:
             elif wav_data.dtype != np.float32:
                 wav_data = wav_data.astype(np.float32)
 
-            # Handle mono/stereo conversion like reference implementation
+            # Handle mono/stereo conversion matching reference implementation exactly
             mono = wav_data
             if mono.ndim == 2:
-                # wav_data is (samples, channels)
                 if mono.shape[0] <= 8 and mono.shape[1] > mono.shape[0]:
-                    # Shape looks like (channels, samples) - transpose
-                    mono = mono.T
-                # Now average channels if needed
-                if mono.shape[-1] > 1:  # Multiple channels
+                    # Shape is (channels, samples) - average channels
+                    mono = mono.mean(axis=0)
+                else:
+                    # Shape is (samples, channels) - average channels
                     mono = mono.mean(axis=-1)
             elif mono.ndim > 2:
                 mono = mono.reshape(-1, mono.shape[-1]).mean(axis=0)
             if mono.ndim != 1:
                 mono = mono.flatten()
 
-            # Clip to valid range and convert to tensor [1, samples]
-            mono = np.clip(mono, -1.0, 1.0)
+            # Convert to tensor [1, samples] format expected by our pipeline
             audio = torch.from_numpy(mono[None, :].astype(np.float32))
 
             print(f"🔍 DEBUG: final audio dtype={audio.dtype}, shape={audio.shape}")
