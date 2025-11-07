@@ -10,6 +10,13 @@ import warnings
 from utils.models.unified_model_interface import unified_model_interface, UnifiedModelConfig
 from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
 
+# Apply PyTorch TorchCodec patch before using torchaudio
+try:
+    from utils.compatibility.pytorch_patches import PyTorchPatches
+    PyTorchPatches.patch_torchaudio_torchcodec(verbose=False)
+except ImportError:
+    pass
+
 
 class IndexTTSEngine:
     """
@@ -345,8 +352,9 @@ class IndexTTSEngine:
             # causing extremely loud/distorted audio. We need to normalize to [-1, 1] range.
             max_val = torch.abs(audio).max()
             if max_val > 1.0:
-                # Audio is in int16 range or higher - normalize to [-1, 1]
-                audio = audio / max_val if max_val > 0 else audio
+                # Audio is in int16 range (values 0-32768) - normalize using proper int16 scaling
+                # Divide by 32768.0 (int16 max) to get proper [-1, 1] range
+                audio = audio / 32768.0
 
             # Convert to expected format [1, samples] at 22050 Hz
             if sample_rate != 22050:
