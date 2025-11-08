@@ -59,9 +59,8 @@ Control               Official (23-lang)        90min Generation
 v4.12.0 ──────────►
 Oct 25
 │
-Per-Segment
-Parameter
-Switching
+Per-Seg Parameter
+Switching [seed:24]
 ```
 
 <details>
