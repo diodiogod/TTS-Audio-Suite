@@ -56,7 +56,7 @@ Emotion               Multilingual              New TTS Engine
 Control               Official (23-lang)        90min Generation
 │
 ▼
-v4.12.0 ──────────►
+v4.12 ──────────►
 Oct 25
 │
 Per-Seg Parameter
