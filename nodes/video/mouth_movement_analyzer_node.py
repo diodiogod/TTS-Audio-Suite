@@ -481,9 +481,12 @@ class MouthMovementAnalyzerNode(BaseNode):
                 movement_frames.extend(range(segment.start_frame, segment.end_frame + 1))
                 confidence_scores.append(segment.confidence)
             
-            # Get preview path if generated
-            preview_path = analyzer.get_preview_video() if hasattr(analyzer, 'get_preview_video') else None
-            
+            # Get preview path if generated - regenerate with annotations
+            if preview_mode:
+                preview_path = self._create_filtered_preview(analyzer, timing_data, timing_data.segments)
+            else:
+                preview_path = analyzer.get_preview_video() if hasattr(analyzer, 'get_preview_video') else None
+
             # Cache both analysis results (for reuse) and filtered results (for this specific parameter set)
             self._cache_analysis(cache_key, timing_data, movement_frames, confidence_scores, preview_path)  # Analysis cache
             self._cache_analysis(full_cache_key, timing_data, movement_frames, confidence_scores, preview_path)  # Filtered cache
@@ -502,7 +505,9 @@ class MouthMovementAnalyzerNode(BaseNode):
         
         # Prepare UI data for video preview (combine Preview Bridge file handling with Save Video video display)
         ui_data = {}
-        
+
+        logger.info(f"Preview conditions: preview_mode={preview_mode}, CV2_AVAILABLE={CV2_AVAILABLE}, preview_path={preview_path}")
+
         if preview_mode and CV2_AVAILABLE and preview_path:
             if os.path.exists(preview_path):
                 try:

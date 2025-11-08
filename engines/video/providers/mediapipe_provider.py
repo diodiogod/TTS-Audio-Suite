@@ -383,7 +383,13 @@ class MediaPipeProvider(AbstractProvider):
         )
         
         logger.info(f"Analysis complete: {len(filtered_segments)} segments detected (filtered from {len(segments)})")
-        
+
+        # Create preview video if requested
+        if preview_mode and frame_data:
+            logger.info(f"Generating preview video with {len(frame_data)} frames...")
+            preview_frames = [f['frame'] for f in frame_data]
+            self._create_preview_video(preview_frames, fps, width, height)
+
         return timing_data
     
     def detect_movement(self, frame: np.ndarray) -> Tuple[bool, float, Optional[np.ndarray]]:
