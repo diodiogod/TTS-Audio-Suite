@@ -956,51 +956,41 @@ class MediaPipeProvider(AbstractProvider):
         return getattr(self, 'preview_video', None)
     
     def _create_preview_video(self, frames: List[np.ndarray], fps: float, width: int, height: int):
-        """Create preview video with movement annotations - create both MP4 and WebP for compatibility"""
+        """Create preview video with movement annotations in temp directory"""
         if not frames:
             return
-        
-        # Create output path in ComfyUI output directory like Save Video does
+
+        # Create preview in temp directory (not output)
         import folder_paths
         import os
-        
-        output_dir = folder_paths.get_output_directory()
-        os.makedirs(output_dir, exist_ok=True)
-        
+        import tempfile
+
+        try:
+            temp_dir = folder_paths.get_temp_directory()
+        except:
+            temp_dir = tempfile.gettempdir()
+
+        os.makedirs(temp_dir, exist_ok=True)
+
         # Generate unique filename
         import time
         timestamp = int(time.time())
-        filename_mp4 = f"mouth_preview_{timestamp}.mp4"
-        filename_webp = f"mouth_preview_{timestamp}.webp"
-        output_path_mp4 = os.path.join(output_dir, filename_mp4)
-        output_path_webp = os.path.join(output_dir, filename_webp)
-        
-        # Create MP4 video
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path_mp4, fourcc, fps, (width, height))
-        
-        if not out.isOpened():
-            logger.error(f"Failed to open video writer for {output_path_mp4}")
-            return
-        
-        for frame in frames:
-            out.write(frame)
-        
-        out.release()
-        
-        # Create WEBM video for native ComfyUI display (like SaveWEBM - better performance)
+        filename_webm = f"mouth_preview_{timestamp}.webm"
+        output_path_webm = os.path.join(temp_dir, filename_webm)
+
+        # Create WEBM video for native ComfyUI display - optimized for fast preview
         try:
             import av
             from fractions import Fraction
-            
+
             # Convert BGR frames to RGB
             rgb_frames = []
             for frame in frames:
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 rgb_frames.append(rgb_frame)
-            
-            # Create WEBM using av library like SaveWEBM does - optimized for fast preview
-            container = av.open(output_path_webp.replace('.webp', '.webm'), mode="w")
+
+            # Create WEBM using av library - optimized for fast preview
+            container = av.open(output_path_webm, mode="w")
             stream = container.add_stream("libvpx-vp9", rate=Fraction(round(fps * 1000), 1000))
             stream.width = width
             stream.height = height
@@ -1011,26 +1001,23 @@ class MediaPipeProvider(AbstractProvider):
                 "speed": "8",  # Fastest encoding speed
                 "cpu-used": "8"  # Maximum CPU efficiency mode
             }
-            
+
             for rgb_frame in rgb_frames:
                 av_frame = av.VideoFrame.from_ndarray(rgb_frame, format="rgb24")
                 for packet in stream.encode(av_frame):
                     container.mux(packet)
-            
+
             # Flush encoder
             for packet in stream.encode():
                 container.mux(packet)
-            
+
             container.close()
-            
-            webm_path = output_path_webp.replace('.webp', '.webm')
-            self.preview_video = webm_path
-            logger.info(f"Preview WEBM created: {webm_path}")
-            
+
+            self.preview_video = output_path_webm
+            logger.info(f"Preview WEBM created in temp: {output_path_webm}")
+
         except Exception as e:
-            logger.warning(f"Failed to create WEBM, falling back to MP4: {e}")
-            self.preview_video = output_path_mp4
-            logger.info(f"Preview MP4 created: {output_path_mp4}")
+            logger.error(f"Failed to create preview WEBM: {e}")
     
     def annotate_frame(
         self,

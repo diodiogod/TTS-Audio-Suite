@@ -511,31 +511,12 @@ class MouthMovementAnalyzerNode(BaseNode):
         if preview_mode and CV2_AVAILABLE and preview_path:
             if os.path.exists(preview_path):
                 try:
-                    # Verify file exists and log details
-                    if not os.path.exists(preview_path):
-                        logger.error(f"Preview video file does not exist: {preview_path}")
-                        return
-                    
+                    # Preview is already in temp directory from provider
+                    preview_filename = os.path.basename(preview_path)
                     file_size = os.path.getsize(preview_path)
-                    logger.info(f"Preview video file exists: {preview_path} ({file_size} bytes)")
-                    
-                    # Store preview in ComfyUI's temp directory instead of output directory
-                    try:
-                        # Try ComfyUI temp directory first
-                        temp_dir = folder_paths.get_temp_directory()
-                    except:
-                        # Fallback to system temp if ComfyUI doesn't have get_temp_directory
-                        import tempfile
-                        temp_dir = tempfile.gettempdir()
-                    
-                    preview_filename = f"viseme_preview_{cache_key[:8]}_{int(time.time())}.webm"
-                    preview_temp_path = os.path.join(temp_dir, preview_filename)
-                    
-                    # Copy preview to temp directory
-                    import shutil
-                    shutil.copy2(preview_path, preview_temp_path)
-                    
-                    # Create UI data for ComfyUI display using temp location
+                    logger.info(f"Preview video ready in temp: {preview_path} ({file_size} bytes)")
+
+                    # Create UI data for ComfyUI display
                     results = [{
                         "filename": preview_filename,
                         "subfolder": "",
@@ -545,13 +526,6 @@ class MouthMovementAnalyzerNode(BaseNode):
                         "images": results,
                         "animated": (True,)  # This triggers native animation display
                     }
-                    
-                    # Verify temp file exists
-                    if os.path.exists(preview_temp_path):
-                        temp_size = os.path.getsize(preview_temp_path)
-                        logger.info(f"Preview video ready in ComfyUI temp: {preview_temp_path} ({temp_size} bytes)")
-                    else:
-                        logger.error(f"Preview video not found in temp: {preview_temp_path}")
                     
                 except Exception as e:
                     logger.warning(f"Failed to prepare video preview: {e}")
