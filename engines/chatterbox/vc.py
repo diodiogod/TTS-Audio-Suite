@@ -47,14 +47,11 @@ class ChatterboxVC:
         self.sr = S3GEN_SR
         self.s3gen = s3gen
         self.device = device
-        # Initialize watermarker silently (but disabled by default)
-        if PERTH_AVAILABLE:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                self.watermarker = perth.PerthImplicitWatermarker()
-        else:
-            self.watermarker = None
-        self.enable_watermarking = False  # Disabled by default for maximum compatibility
+        # Watermarking disabled by default for maximum compatibility
+        # Set to True to enable watermarking (requires perth library)
+        self.enable_watermarking = False
+        self.watermarker = None
+        self._watermarker_init_attempted = False
         if ref_dict is None:
             self.ref_dict = None
         else:
@@ -84,6 +81,24 @@ class ChatterboxVC:
             }
 
         return self
+
+    def _init_watermarker_if_needed(self):
+        """Initialize watermarker on first use if enabled"""
+        if self.enable_watermarking and not self._watermarker_init_attempted:
+            self._watermarker_init_attempted = True
+            try:
+                if PERTH_AVAILABLE and hasattr(perth, 'PerthImplicitWatermarker'):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        self.watermarker = perth.PerthImplicitWatermarker()
+                        if self.watermarker is None:
+                            raise ValueError("PerthImplicitWatermarker returned None")
+                else:
+                    raise AttributeError("PerthImplicitWatermarker not available in perth module")
+            except Exception as e:
+                print(f"❌ Failed to initialize watermarker: {e}")
+                self.watermarker = None
+                self.enable_watermarking = False
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxVC':
@@ -321,6 +336,8 @@ class ChatterboxVC:
                 ref_dict=self.ref_dict,
             )
             wav = wav.squeeze(0).detach().cpu().numpy()
+            # Initialize watermarker lazily if needed
+            self._init_watermarker_if_needed()
             if self.enable_watermarking and self.watermarker is not None:
                 watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
                 return torch.from_numpy(watermarked_wav).unsqueeze(0)
