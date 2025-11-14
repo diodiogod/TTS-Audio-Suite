@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.22] - 2025-11-13
+
+### Added
+
+- Device Management:
+- Cache 'auto' device resolution for consistent cache keys across sessions
+- Consolidate device resolution to use single torch_device_resolver function
+- Prevent unnecessary model reloads when switching device settings
+- Architecture:
+
+### Changed
+
+- Performance & VRAM:
+- Improve cache hit rates by resolving devices before cache key generation
+- Simplify model loading to unified interface for better maintainability
+
+### Fixed
+
+- Fix model loading cache issues and improve device handling
+- Fix device type mismatches in model loading comparisons
+- Fix Python 3.12 VRAM spikes in voice conversion operations
+
+### Removed
+
+- Remove redundant SmartModelLoader caching system from F5-TTS
 ## [4.14.21] - 2025-11-13
 
 ### Added
