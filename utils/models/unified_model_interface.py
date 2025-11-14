@@ -8,23 +8,10 @@ RVC, etc.) should use this interface instead of direct caching.
 
 import torch
 from typing import Any, Dict, Optional, Callable, Union
-from dataclasses import dataclass
 from pathlib import Path
 
 from utils.models.comfyui_model_wrapper import tts_model_manager, ModelInfo
-
-
-@dataclass
-class UnifiedModelConfig:
-    """Configuration for unified model loading"""
-    engine_name: str        # "chatterbox", "f5tts", "higgs_audio", "rvc"
-    model_type: str         # "tts", "vc", "tokenizer", "hubert", "separator"
-    model_name: str         # Model identifier
-    device: str             # Target device
-    language: Optional[str] = "English"  # For multilingual models
-    model_path: Optional[str] = None     # Local path if available
-    repo_id: Optional[str] = None        # HuggingFace repo ID
-    additional_params: Optional[Dict[str, Any]] = None  # Engine-specific params
+from utils.models.factory_config import ModelLoadConfig
 
 
 class UnifiedModelInterface:
@@ -108,31 +95,31 @@ class UnifiedModelInterface:
             print(f"⚠️ PyTorch consistency check failed: {e}")
             self._pytorch_warning_shown = True
 
-    def load_model(self, config: UnifiedModelConfig, force_reload: bool = False) -> Any:
+    def load_model(self, config: ModelLoadConfig, force_reload: bool = False) -> Any:
         """
         Load a model using the unified interface.
-        
+
         Args:
-            config: Model configuration
+            config: Model configuration (ModelLoadConfig)
             force_reload: Force reload even if cached
-            
+
         Returns:
             The loaded model (unwrapped from ComfyUI wrapper)
-            
+
         Raises:
             ValueError: If no factory is registered for the engine/model type
             RuntimeError: If model loading fails
         """
         # Check PyTorch consistency on first model load
         self._check_pytorch_consistency()
-        
+
         # Generate unique cache key
         cache_key = self._generate_cache_key(config)
-        
+
         # Check if force reload is needed
         if force_reload:
             tts_model_manager.remove_model(cache_key)
-        
+
         # Get existing model if cached
         wrapper = tts_model_manager.get_model(cache_key)
         if wrapper is not None:
@@ -151,27 +138,15 @@ class UnifiedModelInterface:
             if wrapper_device_resolved != target_device:
                 wrapper.model_load(target_device)
             return wrapper.model
-        
+
         # Find appropriate factory
         factory_key = f"{config.engine_name}_{config.model_type}"
         if factory_key not in self._model_factories:
             raise ValueError(f"No model factory registered for {factory_key}")
-        
+
         factory_func = self._model_factories[factory_key]
-        
-        # Prepare factory arguments (device will be added by model manager)
-        factory_kwargs = {
-            "model_name": config.model_name,
-            "language": config.language,
-            "model_path": config.model_path,
-            "repo_id": config.repo_id,
-        }
-        
-        # Add engine-specific parameters
-        if config.additional_params:
-            factory_kwargs.update(config.additional_params)
-        
-        # Use ComfyUI model manager to load
+
+        # Use ComfyUI model manager to load (pass config to factory)
         wrapper = tts_model_manager.load_model(
             model_factory_func=factory_func,
             model_key=cache_key,
@@ -179,18 +154,18 @@ class UnifiedModelInterface:
             engine=config.engine_name,
             device=config.device,
             force_reload=force_reload,
-            **factory_kwargs
+            config=config  # Pass entire config to factory
         )
-        
+
         return wrapper.model
     
-    def unload_model(self, config: UnifiedModelConfig) -> bool:
+    def unload_model(self, config: ModelLoadConfig) -> bool:
         """
         Unload a specific model.
-        
+
         Args:
             config: Model configuration to unload
-            
+
         Returns:
             True if model was unloaded, False if not found
         """
@@ -209,7 +184,7 @@ class UnifiedModelInterface:
         """Get statistics about loaded models"""
         return tts_model_manager.get_stats()
     
-    def _generate_cache_key(self, config: UnifiedModelConfig) -> str:
+    def _generate_cache_key(self, config: ModelLoadConfig) -> str:
         """Generate unique cache key for model configuration"""
         components = [
             config.engine_name,
@@ -270,7 +245,7 @@ def load_tts_model(engine_name: str,
     Returns:
         Loaded TTS model
     """
-    config = UnifiedModelConfig(
+    config = ModelLoadConfig(
         engine_name=engine_name,
         model_type="tts",
         model_name=model_name,
@@ -294,7 +269,7 @@ def load_vc_model(engine_name: str,
     """
     Convenience function to load Voice Conversion models.
     """
-    config = UnifiedModelConfig(
+    config = ModelLoadConfig(
         engine_name=engine_name,
         model_type="vc",
         model_name=model_name,
@@ -318,7 +293,7 @@ def load_auxiliary_model(engine_name: str,
     """
     Convenience function to load auxiliary models (tokenizers, HuBERT, etc.).
     """
-    config = UnifiedModelConfig(
+    config = ModelLoadConfig(
         engine_name=engine_name,
         model_type=model_type,
         model_name=model_name,
@@ -405,47 +380,41 @@ def register_chatterbox_factory():
             else:
                 raise e  # Already trying English, fail
     
-    def chatterbox_tts_factory(**kwargs):
+    def chatterbox_tts_factory(config: ModelLoadConfig):
         try:
             from engines.chatterbox.tts import ChatterboxTTS
         except ImportError:
             ChatterboxTTS = None
-        
+
         if ChatterboxTTS is None:
             raise RuntimeError("ChatterboxTTS not available - check installation")
-        
-        device = kwargs.get("device", "auto")
-        language = kwargs.get("language", "English")
-        model_path = kwargs.get("model_path")
-        
-        return load_chatterbox_with_mixing(ChatterboxTTS, device, language, model_path)
-    
-    def chatterbox_vc_factory(**kwargs):
+
+        return load_chatterbox_with_mixing(ChatterboxTTS, config.device, config.language or "English", config.model_path)
+
+    def chatterbox_vc_factory(config: ModelLoadConfig):
         try:
             from engines.chatterbox.vc import ChatterboxVC
             from engines.chatterbox.language_models import supports_voice_conversion, get_vc_supported_languages
         except ImportError:
             ChatterboxVC = None
             supports_voice_conversion = None
-        
+
         if ChatterboxVC is None:
             raise RuntimeError("ChatterboxVC not available - check installation or add bundled version")
-        
-        device = kwargs.get("device", "auto")
-        language = kwargs.get("language", "English")
-        model_path = kwargs.get("model_path")
-        
+
+        language = config.language or "English"
+
         # Check if language supports VC before attempting to load
         if supports_voice_conversion and not supports_voice_conversion(language):
             print(f"❌ {language} model does not support voice conversion")
-            print(f"   Voice conversion requires s3gen component which is missing from this model")  
+            print(f"   Voice conversion requires s3gen component which is missing from this model")
             print(f"   Try English model (confirmed working) or German models (tested working)")
             print(f"   Other language models may not have VC components")
-            
+
             raise RuntimeError(f"Voice conversion not supported for {language} model. "
                              f"Try English or German models instead.")
-        
-        return load_chatterbox_with_mixing(ChatterboxVC, device, language, model_path)
+
+        return load_chatterbox_with_mixing(ChatterboxVC, config.device, language, config.model_path)
     
     unified_model_interface.register_model_factory("chatterbox", "tts", chatterbox_tts_factory)
     unified_model_interface.register_model_factory("chatterbox", "vc", chatterbox_vc_factory)
@@ -453,17 +422,12 @@ def register_chatterbox_factory():
 
 def register_f5tts_factory():
     """Register F5-TTS model factories"""
-    def f5tts_factory(**kwargs):
+    def f5tts_factory(config: ModelLoadConfig):
         from engines.f5tts.f5tts import ChatterBoxF5TTS
         import os
         import folder_paths
 
-        device = kwargs.get("device", "auto")
-        model_name = kwargs.get("model_name", "F5TTS_Base")
-
-        # Resolve device to actual device (handles "auto")
-        from utils.device import resolve_torch_device
-        resolved_device = resolve_torch_device(device)
+        model_name = config.model_name or "F5TTS_Base"
 
         # Try local first, then HuggingFace
         try:
@@ -482,10 +446,10 @@ def register_f5tts_factory():
 
             if local_path:
                 print(f"📁 Using local F5-TTS model: {local_path}")
-                return ChatterBoxF5TTS.from_local(local_path, resolved_device, model_name)
+                return ChatterBoxF5TTS.from_local(local_path, config.device, model_name)
             else:
                 print(f"📥 Loading F5-TTS model '{model_name}' from HuggingFace")
-                return ChatterBoxF5TTS.from_pretrained(resolved_device, model_name)
+                return ChatterBoxF5TTS.from_pretrained(config.device, model_name)
 
         except Exception as e:
             raise RuntimeError(f"Failed to load F5-TTS model '{model_name}': {e}")
@@ -495,38 +459,38 @@ def register_f5tts_factory():
 
 def register_higgs_audio_factory():
     """Register Higgs Audio model factories with stateless wrapper for ComfyUI integration"""
-    def higgs_audio_factory(**kwargs):
+    def higgs_audio_factory(config: ModelLoadConfig):
         from engines.higgs_audio.boson_multimodal.serve.serve_engine import HiggsAudioServeEngine
         from engines.higgs_audio.higgs_audio import HiggsAudioEngine
         from engines.higgs_audio.stateless_wrapper import create_stateless_higgs_wrapper
-        
-        model_name = kwargs.get("model_name")
-        device = kwargs.get("device", "cuda")
-        model_path = kwargs.get("model_path", model_name)
-        tokenizer_path = kwargs.get("tokenizer_path")
-        enable_cuda_graphs = kwargs.get("enable_cuda_graphs", True)
-        
+
+        model_name = config.model_name
+        device = config.device or "cuda"
+        model_path = config.model_path or model_name
+        tokenizer_path = config.additional_params.get("tokenizer_path") if config.additional_params else None
+        enable_cuda_graphs = config.additional_params.get("enable_cuda_graphs", True) if config.additional_params else True
+
         # Check if we need to force recreate due to CUDA Graph corruption
-        force_recreate = kwargs.get("_force_recreate", False)
+        force_recreate = config.additional_params.get("_force_recreate", False) if config.additional_params else False
         if force_recreate:
             print(f"🔥 Force recreating Higgs Audio engine due to CUDA Graph corruption")
-        
+
         # Log CUDA Graph setting
         perf_mode = "High Performance (CUDA Graphs ON)" if enable_cuda_graphs else "Memory Safe (CUDA Graphs OFF)"
         print(f"🔧 Higgs Audio mode: {perf_mode}")
-        
+
         # Create the base HiggsAudioEngine but initialize manually to avoid circular dependency
         base_engine = HiggsAudioEngine()
-        
+
         # Manually set up the engine properties to avoid calling initialize_engine
         base_engine.model_path = model_path
         base_engine.tokenizer_path = tokenizer_path
         base_engine.device = device
-        
+
         # Get smart paths using the engine's methods
         model_path_for_engine = base_engine._get_smart_model_path(model_path)
         tokenizer_path_for_engine = base_engine._get_smart_tokenizer_path(tokenizer_path)
-        
+
         # Configure CUDA Graph settings based on toggle
         if enable_cuda_graphs:
             print(f"🚀 Loading Higgs Audio model directly on {device} for optimal performance...")
@@ -534,15 +498,15 @@ def register_higgs_audio_factory():
             kv_cache_lengths = [1024, 2048, 4096]  # StaticCache for CUDA Graph optimization
         else:
             print(f"🚀 Loading Higgs Audio model directly on {device} (CUDA Graphs disabled for memory safety)...")
-            cache_type = "DynamicCache" 
+            cache_type = "DynamicCache"
             # Still need cache buckets but they won't use StaticCache
             kv_cache_lengths = [1024, 2048, 4096]  # Same sizes but will use DynamicCache
-            
+
             # Disable CUDA Graph compilation at environment level
             import os
             os.environ['PYTORCH_DISABLE_CUDA_GRAPH'] = '1'
             os.environ['TORCH_COMPILE_DISABLE'] = '1'
-        
+
         serve_engine = HiggsAudioServeEngine(
             model_name_or_path=model_path_for_engine,
             audio_tokenizer_name_or_path=tokenizer_path_for_engine,
@@ -550,34 +514,34 @@ def register_higgs_audio_factory():
             kv_cache_lengths=kv_cache_lengths,
             enable_cuda_graphs=enable_cuda_graphs
         )
-        
+
         # Settings are already stored by the constructor
-        
+
         print(f"✅ Higgs Audio model loaded directly on {device}")
-        
+
         # Set the serve engine on the base engine
         base_engine.engine = serve_engine
-        
+
         # Wrap with stateless wrapper for ComfyUI model management compatibility
         stateless_wrapper = create_stateless_higgs_wrapper(base_engine)
-        
+
         print(f"📦 Higgs Audio engine ready (via unified interface)")
         return stateless_wrapper
-    
+
     unified_model_interface.register_model_factory("higgs_audio", "tts", higgs_audio_factory)
 
 
 def register_rvc_factory():
     """Register RVC model factories"""
-    def rvc_factory(**kwargs):
+    def rvc_factory(config: ModelLoadConfig):
         """Load RVC model and wrap it for ComfyUI management"""
         from engines.rvc.impl.vc_infer_pipeline import get_vc
         from engines.rvc.impl.config import config as rvc_config
         from engines.rvc.rvc_engine import RVCModelWrapper
 
-        model_path = kwargs.get("model_path")
-        index_path = kwargs.get("index_path")
-        device = kwargs.get("device", "cuda")
+        model_path = config.model_path
+        index_path = config.additional_params.get("index_path") if config.additional_params else None
+        device = config.device or "cuda"
 
         if not model_path:
             raise ValueError("RVC factory requires model_path")
@@ -589,25 +553,25 @@ def register_rvc_factory():
         wrapped_model = RVCModelWrapper(model_data, device)
 
         return wrapped_model
-    
-    def hubert_factory(**kwargs):
+
+    def hubert_factory(config: ModelLoadConfig):
         from engines.rvc.impl.lib.model_utils import load_hubert
-        model_path = kwargs.get("model_path")
-        config = kwargs.get("config", {})
-        return load_hubert(model_path, config)
-    
-    def mdx23c_separator_factory(**kwargs):
+        model_path = config.model_path
+        config_dict = config.additional_params.get("config", {}) if config.additional_params else {}
+        return load_hubert(model_path, config_dict)
+
+    def mdx23c_separator_factory(config: ModelLoadConfig):
         from engines.rvc.impl.lib.mdx23c import MDX23C
-        model_path = kwargs.get("model_path")
-        device = kwargs.get("device", "cuda")
+        model_path = config.model_path
+        device = config.device or "cuda"
         return MDX23C(model_path, device)
-    
-    def demucs_separator_factory(**kwargs):
+
+    def demucs_separator_factory(config: ModelLoadConfig):
         from engines.rvc.impl.lib.uvr5_pack.demucs.pretrained import get_model
-        model_name = kwargs.get("model_name", "htdemucs")
-        device = kwargs.get("device", "cuda")
+        model_name = config.model_name or "htdemucs"
+        device = config.device or "cuda"
         return get_model(model_name).to(device)
-    
+
     unified_model_interface.register_model_factory("rvc", "vc", rvc_factory)
     unified_model_interface.register_model_factory("rvc", "hubert", hubert_factory)
     unified_model_interface.register_model_factory("rvc", "separator_mdx", mdx23c_separator_factory)
@@ -616,7 +580,7 @@ def register_rvc_factory():
 
 def register_vibevoice_factory():
     """Register VibeVoice model factory"""
-    def vibevoice_factory(**kwargs):
+    def vibevoice_factory(config: ModelLoadConfig):
         """Factory for VibeVoice models with ComfyUI integration"""
 
         # Ensure accelerate is imported before VibeVoice engine
@@ -627,16 +591,16 @@ def register_vibevoice_factory():
             print(f"⚠️ Unified Interface: accelerate not available: {e}")
 
         from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
-        
+
         # Extract parameters
-        model_name = kwargs.get("model_name", "vibevoice-1.5B")
-        device = kwargs.get("device", "auto")
-        attention_mode = kwargs.get("attention_mode", "auto")
-        quantize_llm_4bit = kwargs.get("quantize_llm_4bit", False)
-        
+        model_name = config.model_name or "vibevoice-1.5B"
+        device = config.device or "auto"
+        attention_mode = config.additional_params.get("attention_mode", "auto") if config.additional_params else "auto"
+        quantize_llm_4bit = config.additional_params.get("quantize_llm_4bit", False) if config.additional_params else False
+
         # Create engine instance
         engine = VibeVoiceEngine()
-        
+
         # Initialize with parameters
         engine.initialize_engine(
             model_name=model_name,
@@ -644,29 +608,29 @@ def register_vibevoice_factory():
             attention_mode=attention_mode,
             quantize_llm_4bit=quantize_llm_4bit
         )
-        
+
         print(f"✅ VibeVoice model '{model_name}' loaded via unified interface")
-        
+
         # Return the engine which contains both model and processor
         return engine
-    
+
     unified_model_interface.register_model_factory("vibevoice", "tts", vibevoice_factory)
 
 
 def register_index_tts_factory():
     """Register IndexTTS-2 model factory"""
-    def index_tts_factory(**kwargs):
+    def index_tts_factory(config: ModelLoadConfig):
         """Factory for IndexTTS-2 models with ComfyUI integration"""
         import os
         import sys
 
         # Extract parameters
-        model_path = kwargs.get("model_path")
-        device = kwargs.get("device", "auto")
-        use_fp16 = kwargs.get("use_fp16", True)
-        use_cuda_kernel = kwargs.get("use_cuda_kernel", None)
-        use_deepspeed = kwargs.get("use_deepspeed", False)
-        use_torch_compile = kwargs.get("use_torch_compile", False)
+        model_path = config.model_path
+        device = config.device or "auto"
+        use_fp16 = config.additional_params.get("use_fp16", True) if config.additional_params else True
+        use_cuda_kernel = config.additional_params.get("use_cuda_kernel", None) if config.additional_params else None
+        use_deepspeed = config.additional_params.get("use_deepspeed", False) if config.additional_params else False
+        use_torch_compile = config.additional_params.get("use_torch_compile", False) if config.additional_params else False
         
         if not model_path or not os.path.exists(model_path):
             raise RuntimeError(f"IndexTTS-2 model not found at {model_path}. Auto-download should have been triggered earlier.")
@@ -744,18 +708,18 @@ def register_index_tts_factory():
 
 def register_chatterbox_23lang_factory():
     """Register ChatterBox Official 23-Lang model factory"""
-    def chatterbox_23lang_factory(**kwargs):
+    def chatterbox_23lang_factory(config: ModelLoadConfig):
         """Factory for ChatterBox Official 23-Lang models with ComfyUI integration"""
         from engines.chatterbox_official_23lang.tts import ChatterboxOfficial23LangTTS
         import folder_paths
         import os
         import torch
-        
+
         # Extract parameters
-        device = kwargs.get("device", "auto")
-        model_name = kwargs.get("model_name", "Official 23-Lang")  # Always same model
-        language = kwargs.get("language", "english")  # This is the actual language to use
-        model_version = kwargs.get("model_version", "v2")  # v1 or v2
+        device = config.device or "auto"
+        model_name = config.model_name or "Official 23-Lang"  # Always same model
+        language = config.language or "english"  # This is the actual language to use
+        model_version = config.additional_params.get("model_version", "v2") if config.additional_params else "v2"  # v1 or v2
 
         # Determine device
         if device == "auto":

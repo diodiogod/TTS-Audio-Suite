@@ -235,6 +235,14 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/models/unified_model_interface.py** - Universal model loading interface providing standardized factory pattern for all engines (ChatterBox, F5-TTS, Higgs Audio, RVC, Audio Separation) with ComfyUI integration
 
+**utils/models/factory_config.py** - Standardized `ModelLoadConfig` dataclass for consistent factory parameters across all TTS engines
+
+**utils/models/engine_registry.py** - Engine capability registry defining what each engine supports (voice conversion, multilingual switching, corruption recovery, etc.)
+
+**utils/models/fallback_handler.py** - Generic fallback chain utility for graceful model loading degradation (e.g., try local → download → fallback language)
+
+**utils/models/exceptions.py** - Standardized exception hierarchy for all model loading operations (TTSModelLoadingError, TTSModelNotFoundError, TTSDeviceError, etc.)
+
 **utils/models/extra_paths.py** - ComfyUI extra_model_paths.yaml integration system enabling shared model directories across multiple ComfyUI installations with intelligent path resolution and fallback support
 
 ### Audio Processing

@@ -8,7 +8,8 @@ import numpy as np
 from typing import Optional, Union, List, Dict, Any
 import warnings
 
-from utils.models.unified_model_interface import unified_model_interface, UnifiedModelConfig
+from utils.models.unified_model_interface import unified_model_interface
+from utils.models.factory_config import ModelLoadConfig
 from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
 
 
@@ -131,7 +132,7 @@ class IndexTTSEngine:
             return
             
         # Create model configuration
-        self._model_config = UnifiedModelConfig(
+        self._model_config = ModelLoadConfig(
             engine_name="index_tts",
             model_type="tts",
             model_name="IndexTTS-2",

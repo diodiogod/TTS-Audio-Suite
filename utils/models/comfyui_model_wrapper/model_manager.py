@@ -228,9 +228,15 @@ class ComfyUITTSModelManager:
             except Exception as gc_error:
                 print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
         
-        # Ensure device parameter is available to factory function
-        factory_kwargs['device'] = device
-        model = model_factory_func(**factory_kwargs)
+        # Call factory function with config if provided, otherwise use **kwargs
+        if 'config' in factory_kwargs:
+            # New pattern: factory receives ModelLoadConfig object
+            config = factory_kwargs.pop('config')
+            model = model_factory_func(config)
+        else:
+            # Legacy pattern: factory receives **kwargs
+            factory_kwargs['device'] = device
+            model = model_factory_func(**factory_kwargs)
         
         # Calculate memory usage
         memory_size = ComfyUIModelWrapper.calculate_model_memory(model)
