@@ -124,16 +124,18 @@ class BaseChatterBoxNode:
     def resolve_device(self, device: str) -> str:
         """
         Resolve device string to actual device.
-        
+
+        Uses centralized torch_device_resolver for consistent device detection
+        across all node types. Supports MPS (Apple Silicon), CUDA, XPU, and CPU.
+
         Args:
-            device: Device specification ('auto', 'cuda', 'cpu')
-            
+            device: Device specification ('auto', 'cuda', 'mps', 'xpu', 'cpu')
+
         Returns:
-            Resolved device string
+            Resolved device string ('cuda', 'mps', 'xpu', or 'cpu')
         """
-        if device == "auto":
-            return "cuda" if torch.cuda.is_available() else "cpu"
-        return device
+        from utils.device import resolve_torch_device
+        return resolve_torch_device(device)
     
     def set_seed(self, seed: int):
         """

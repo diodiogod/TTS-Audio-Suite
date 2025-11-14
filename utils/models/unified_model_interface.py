@@ -140,8 +140,15 @@ class UnifiedModelInterface:
             from utils.device import resolve_torch_device
             target_device = resolve_torch_device(config.device)
 
+            # Resolve wrapper's current device for consistent comparison
+            # wrapper.current_device might be string or torch.device object
+            wrapper_device_resolved = resolve_torch_device(
+                wrapper.current_device if isinstance(wrapper.current_device, str)
+                else str(wrapper.current_device)
+            )
+
             # Reload if device mismatch (handles both explicit devices and "auto" resolution)
-            if wrapper.current_device != target_device:
+            if wrapper_device_resolved != target_device:
                 wrapper.model_load(target_device)
             return wrapper.model
         
