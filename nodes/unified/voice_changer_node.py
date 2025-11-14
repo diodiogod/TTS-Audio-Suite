@@ -34,6 +34,7 @@ BaseVCNode = base_module.BaseVCNode
 
 from utils.audio.processing import AudioProcessingUtils
 from utils.config_sanitizer import ConfigSanitizer
+from utils.comfyui_compatibility import ensure_python312_cudnn_fix
 import comfy.model_management as model_management
 
 # AnyType for flexible input types (accepts any data type)
@@ -406,21 +407,24 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             print(f"❌ Failed to create engine VC node instance: {e}")
             return None
 
-    def convert_voice(self, TTS_engine: Dict[str, Any], source_audio: Dict[str, Any], 
+    def convert_voice(self, TTS_engine: Dict[str, Any], source_audio: Dict[str, Any],
                      narrator_target: Dict[str, Any], refinement_passes: int):
         """
         Convert voice using the selected engine.
         This is a DELEGATION WRAPPER that preserves all original VC functionality.
-        
+
         Args:
             TTS_engine: Engine configuration from engine nodes
             source_audio: Source audio to convert
             narrator_target: Target voice characteristics (renamed for consistency)
             refinement_passes: Number of conversion iterations
-            
+
         Returns:
             Tuple of (converted_audio, conversion_info)
         """
+        # Apply Python 3.12 CUDNN fix before voice conversion to prevent VRAM spikes
+        ensure_python312_cudnn_fix()
+
         try:
             # Check if this is an RVC_ENGINE (RVCEngineAdapter) or TTS_ENGINE (dict)
             if hasattr(TTS_engine, 'engine_type') and TTS_engine.engine_type == "rvc":
