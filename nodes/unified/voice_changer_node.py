@@ -322,9 +322,15 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         try:
             engine_type = engine_data.get("engine_type")
             config = engine_data.get("config", {})
-            
+
+            # Resolve device in config to prevent cache misses when switching between "auto" and actual device
+            from utils.device import resolve_torch_device
+            config_for_cache = dict(config)  # Make a copy to avoid modifying original
+            if 'device' in config_for_cache:
+                config_for_cache['device'] = resolve_torch_device(config_for_cache.get('device', 'auto'))
+
             # Create cache key based on engine type and stable config
-            cache_key = f"{engine_type}_{hashlib.md5(str(sorted(config.items())).encode()).hexdigest()[:8]}"
+            cache_key = f"{engine_type}_{hashlib.md5(str(sorted(config_for_cache.items())).encode()).hexdigest()[:8]}"
             
             # Check if we have a cached instance with the same configuration
             if cache_key in self._cached_engine_instances:

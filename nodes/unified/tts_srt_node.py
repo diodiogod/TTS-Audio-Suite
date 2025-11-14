@@ -163,12 +163,16 @@ Hello! This is unified SRT TTS with character switching.
             engine_type = engine_data.get("engine_type")
             # Extract the nested config - engine_data has structure {engine_type, config, adapter_class}
             config = engine_data.get("config", engine_data)
-            
+
+            # Resolve device to prevent cache misses when switching between "auto" and actual device
+            from utils.device import resolve_torch_device
+            resolved_device = resolve_torch_device(config.get('device', 'auto'))
+
             # Create cache key based only on stable parameters that affect engine instance creation
             stable_params = {
                 'engine_type': config.get('engine_type'),
                 'model': config.get('model'),
-                'device': config.get('device'),
+                'device': resolved_device,  # Use resolved device, not "auto"
                 'adapter_class': config.get('adapter_class')
             }
             

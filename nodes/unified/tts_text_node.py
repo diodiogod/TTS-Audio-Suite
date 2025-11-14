@@ -154,11 +154,15 @@ Back to the main narrator voice for the conclusion.""",
                 config = engine_data
             
             # Create cache key based on stable parameters that affect engine instance creation
+            # Resolve device to prevent cache misses when switching between "auto" and actual device
+            from utils.device import resolve_torch_device
+            resolved_device = resolve_torch_device(config.get('device', 'auto'))
+
             # For VibeVoice, include chunk_minutes since it fundamentally changes behavior
             stable_params = {
                 'engine_type': engine_type,
                 'model': config.get('model'),
-                'device': config.get('device'),
+                'device': resolved_device,  # Use resolved device, not "auto"
                 'adapter_class': engine_data.get('adapter_class')
             }
             
