@@ -455,52 +455,41 @@ def register_f5tts_factory():
     """Register F5-TTS model factories"""
     def f5tts_factory(**kwargs):
         from engines.f5tts.f5tts import ChatterBoxF5TTS
-        from utils.models.smart_loader import smart_model_loader
-        
+        import os
+        import folder_paths
+
         device = kwargs.get("device", "auto")
         model_name = kwargs.get("model_name", "F5TTS_Base")
-        
-        # Use Smart Loader for consistency with the base node approach
-        def f5tts_load_callback(device: str, model: str) -> Any:
-            """Factory callback for F5-TTS model loading"""
-            # Try local first, then HuggingFace
-            try:
-                # Check for local models
-                import os
-                import folder_paths
-                search_paths = [
-                    os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", model),
-                    os.path.join(folder_paths.models_dir, "F5-TTS", model),  # Legacy
-                    os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", model)  # Legacy
-                ]
-                
-                local_path = None
-                for path in search_paths:
-                    if os.path.exists(path):
-                        local_path = path
-                        break
-                
-                if local_path:
-                    print(f"📁 Using local F5-TTS model: {local_path}")
-                    return ChatterBoxF5TTS.from_local(local_path, device, model)
-                else:
-                    print(f"📥 Loading F5-TTS model '{model}' from HuggingFace")
-                    return ChatterBoxF5TTS.from_pretrained(device, model)
-                    
-            except Exception as e:
-                raise RuntimeError(f"Failed to load F5-TTS model '{model}': {e}")
-        
-        model, _ = smart_model_loader.load_model_if_needed(
-            engine_type="f5tts",
-            model_name=model_name,
-            current_model=None,  # Factory always loads fresh
-            device=device,
-            load_callback=f5tts_load_callback,
-            force_reload=False
-        )
-        
-        return model
-    
+
+        # Resolve device to actual device (handles "auto")
+        from utils.device import resolve_torch_device
+        resolved_device = resolve_torch_device(device)
+
+        # Try local first, then HuggingFace
+        try:
+            # Check for local models
+            search_paths = [
+                os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", model_name),
+                os.path.join(folder_paths.models_dir, "F5-TTS", model_name),  # Legacy
+                os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", model_name)  # Legacy
+            ]
+
+            local_path = None
+            for path in search_paths:
+                if os.path.exists(path):
+                    local_path = path
+                    break
+
+            if local_path:
+                print(f"📁 Using local F5-TTS model: {local_path}")
+                return ChatterBoxF5TTS.from_local(local_path, resolved_device, model_name)
+            else:
+                print(f"📥 Loading F5-TTS model '{model_name}' from HuggingFace")
+                return ChatterBoxF5TTS.from_pretrained(resolved_device, model_name)
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to load F5-TTS model '{model_name}': {e}")
+
     unified_model_interface.register_model_factory("f5tts", "tts", f5tts_factory)
 
 

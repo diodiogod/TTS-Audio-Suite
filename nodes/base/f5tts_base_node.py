@@ -85,111 +85,36 @@ class BaseF5TTSNode(BaseChatterBoxNode):
     
     def load_f5tts_model(self, model_name: str = "F5TTS_Base", device: str = "auto", force_reload: bool = False):
         """
-        Load F5-TTS model using universal smart model loader
+        Load F5-TTS model using unified model interface for ComfyUI integration
         """
         if not self.f5tts_available:
             raise ImportError(F5TTS_ERROR_MESSAGES["import_error"])
-        
+
         device = self.resolve_device(device)
         self.device = device
-        
+
         # Normalize model name for caching consistency
         normalized_model_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
-        
-        # Use unified model interface for ComfyUI integration
+
+        # Use unified model interface for ComfyUI integration and caching
         from utils.models.unified_model_interface import load_tts_model
-        
-        try:
-            # Load F5-TTS model through unified interface for ComfyUI memory management  
-            wrapped_model = load_tts_model(
-                engine_name="f5tts",
-                model_name=normalized_model_name,
-                device=device,
-                language="default",  # Use default for F5-TTS since model name distinguishes models
-                force_reload=force_reload
-            )
-            
-            self.f5tts_model = wrapped_model
-            was_cached = not force_reload  # Assume cached unless forced
-            
-        except Exception as e:
-            print(f"⚠️ Failed to load F5-TTS via unified interface: {e}")
-            print("🔄 Falling back to direct Smart Loader...")
-            
-            # Fallback to direct Smart Loader if unified interface fails
-            from utils.models.smart_loader import smart_model_loader
-            
-            def f5tts_load_callback(device: str, model: str) -> Any:
-                """Callback for F5-TTS model loading"""
-                from engines.f5tts import ChatterBoxF5TTS
-                
-                # Try to find local models first
-                model_paths = self._find_f5tts_models(model)
-                
-                model_loaded = False
-                last_error = None
-                
-                for source, path in model_paths:
-                    try:
-                        if source == "comfyui" and path:
-                            # Load from local ComfyUI models directory
-                            normalized_name = model.replace("local:", "") if model.startswith("local:") else model
-                            return ChatterBoxF5TTS.from_local(path, device, normalized_name)
-                        else:
-                            # Load from HuggingFace - but check if we have local files first
-                            local_path = None
-                            if model in ["F5TTS_Base", "F5TTS_v1_Base", "E2TTS_Base"]:
-                                import folder_paths
-                                # Try TTS path first, then legacy
-                                search_paths = [
-                                    os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", model),
-                                    os.path.join(folder_paths.models_dir, "F5-TTS", model),  # Legacy
-                                    os.path.join(folder_paths.models_dir, "Checkpoints", "F5-TTS", model)  # Legacy
-                                ]
-                                
-                                potential_path = None
-                                for path in search_paths:
-                                    if os.path.exists(path):
-                                        potential_path = path
-                                        break
-                                if potential_path:
-                                    local_path = potential_path
-                            
-                            if local_path:
-                                # Use local files even for non-local model names for consistency
-                                return ChatterBoxF5TTS.from_local(local_path, device, model)
-                            else:
-                                # True HuggingFace download
-                                return ChatterBoxF5TTS.from_pretrained(device, model)
-                            
-                    except Exception as e:
-                        print(f"⚠️ Failed to load F5-TTS model from {source}: {str(e)}")
-                        last_error = e
-                        continue
-                
-                # If we get here, all sources failed
-                error_msg = f"Failed to load F5-TTS model '{model}' from any source"
-                if last_error:
-                    error_msg += f". Last error: {last_error}"
-                raise RuntimeError(error_msg)
-            
-            self.f5tts_model, was_cached = smart_model_loader.load_model_if_needed(
-                engine_type="f5tts",
-                model_name=normalized_model_name,
-                current_model=getattr(self, 'f5tts_model', None),
-                device=device,
-                load_callback=f5tts_load_callback,
-                force_reload=force_reload
-            )
-            
-            # Store normalized model name for cache validation
-            self.current_model_name = normalized_model_name
-            return self.f5tts_model
-            
-        except ImportError:
-            raise ImportError(F5TTS_ERROR_MESSAGES["import_error"])
-        except Exception as e:
-            raise RuntimeError(f"Failed to load F5-TTS model: {e}")
+
+        # Load F5-TTS model through unified interface
+        # This handles:
+        # - ComfyUI memory management
+        # - Consistent caching across sessions
+        # - Local and HuggingFace model loading
+        wrapped_model = load_tts_model(
+            engine_name="f5tts",
+            model_name=normalized_model_name,
+            device=device,
+            language="default",  # Use default for F5-TTS since model name distinguishes models
+            force_reload=force_reload
+        )
+
+        self.f5tts_model = wrapped_model
+        self.current_model_name = normalized_model_name
+        return self.f5tts_model
     
     def _find_f5tts_models(self, model_name: str = None) -> List[Tuple[str, Optional[str]]]:
         """Find F5-TTS models following existing pattern"""
