@@ -1011,8 +1011,8 @@ Back to the main narrator voice for the conclusion.""",
         from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
         
         # Convert expanded_segments_with_lang to indexed format for streaming
-        # expanded_segments_with_lang is (idx, char, text, lang) but we need (idx, char, text, lang)
-        indexed_segments = [(idx, char, text, lang) for idx, char, text, lang in expanded_segments_with_lang]
+        # expanded_segments_with_lang is (idx, char, text, lang, params) - extract only what we need
+        indexed_segments = [(idx, char, text, lang) for idx, char, text, lang, _ in expanded_segments_with_lang]
         
         # Convert to universal streaming segments
         segments = StreamingCoordinator.convert_node_data_to_segments(
@@ -1257,7 +1257,9 @@ Back to the main narrator voice for the conclusion.""",
             return segment_audio
             
         except Exception as e:
+            import traceback
             print(f"❌ Streaming segment failed: {e}")
+            print(f"   Traceback: {traceback.format_exc()}")
             # Return silence instead of crashing
             if hasattr(self, 'tts_model') and self.tts_model:
                 sr = self.tts_model.sr

@@ -119,10 +119,10 @@ class T3HuggingfaceBackend(LlamaPreTrainedModel, GenerationMixin):
             past_key_values=pkv,
             use_cache=use_cache,
             output_attentions=False,  # Always disable attention outputs
-            output_hidden_states=True,
             return_dict=True,
         )
-        hidden_states = tfmr_out.hidden_states[-1]  # (B, seq, dim)
+        # Use last_hidden_state directly instead of hidden_states (transformers compatibility)
+        hidden_states = tfmr_out.last_hidden_state  # (B, seq, dim)
 
         logits = self.speech_head(hidden_states)
         # assert inputs_embeds.size(0) == 1 # (disabled for CFG)

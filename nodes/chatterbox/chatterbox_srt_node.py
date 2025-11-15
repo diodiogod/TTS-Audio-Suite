@@ -755,7 +755,7 @@ The audio will match these exact timings.""",
 
                             # Build segment data with original character info and parameters
                             segment_data = []
-                            for seg_idx, (char, text, seg_lang) in enumerate(character_segments_with_lang):
+                            for seg_idx, (char, text, seg_lang, _) in enumerate(character_segments_with_lang):
                                 # Get original character and parameters from detailed segments if available
                                 if seg_idx < len(detailed_segments):
                                     segment_obj = detailed_segments[seg_idx]

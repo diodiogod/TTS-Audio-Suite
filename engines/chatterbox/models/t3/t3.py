@@ -394,7 +394,6 @@ class T3(nn.Module):
                 past_key_values=cache,
                 use_cache=True,
                 output_attentions=False,
-                output_hidden_states=True,
                 return_dict=True
             )
             

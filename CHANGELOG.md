@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.27] - 2025-11-15
+
+### Added
+
+- Streaming now works correctly with batch_size > 1 for parallel processing
+- All streaming segments complete successfully without NoneType errors
+
+### Fixed
+
+- Fix ChatterBox streaming batch processing
+- Fix tuple unpacking errors in multi-character streaming mode
+- Fix transformers compatibility issue causing streaming segment crashes
+- Add better error logging for debugging streaming failures
 ## [4.14.26] - 2025-11-15
 
 ### Added
