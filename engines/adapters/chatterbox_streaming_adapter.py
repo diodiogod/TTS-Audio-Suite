@@ -305,35 +305,25 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
         # Check if node has generation method
         if hasattr(self.node, '_generate_tts_with_pause_tags'):
             print(f"🏷️ ADAPTER: Calling _generate_tts_with_pause_tags for '{text[:30]}...'")
-            
-            # Temporarily replace stateless wrapper with underlying model for pause tag processing
-            original_model = getattr(self.node, 'tts_model', None)
-            try:
-                # Load the correct model for this language and extract underlying model if needed
-                self.load_model_for_language(language, kwargs.get('device', 'auto'))
-                
-                if hasattr(self.node, 'tts_model') and hasattr(self.node.tts_model, 'model'):
-                    self.node.tts_model = self.node.tts_model.model
-                    print(f"🔓 ADAPTER: Extracted underlying model for pause tag processing")
-                
-                # Generate stable audio component for cache consistency
-                from utils.audio.audio_hash import generate_stable_audio_component
-                stable_audio_component = generate_stable_audio_component(
-                    kwargs.get("reference_audio"), voice_path
-                )
-                
-                # Use pause tag-aware generation
-                return self.node._generate_tts_with_pause_tags(
-                    text, voice_path, exaggeration, temperature, cfg_weight,
-                    language, True, character=character, seed=seed,
-                    enable_cache=enable_cache,
-                    crash_protection_template=crash_protection,
-                    stable_audio_component=stable_audio_component
-                )
-            finally:
-                # Restore original model
-                if original_model is not None:
-                    self.node.tts_model = original_model
+
+            # Load the correct model for this language
+            self.load_model_for_language(language, kwargs.get('device', 'auto'))
+
+            # Generate stable audio component for cache consistency
+            from utils.audio.audio_hash import generate_stable_audio_component
+            stable_audio_component = generate_stable_audio_component(
+                kwargs.get("reference_audio"), voice_path
+            )
+
+            # Use pause tag-aware generation
+            # Note: tts_model is now a wrapper with __getattr__ forwarding, no unwrapping needed
+            return self.node._generate_tts_with_pause_tags(
+                text, voice_path, exaggeration, temperature, cfg_weight,
+                language, True, character=character, seed=seed,
+                enable_cache=enable_cache,
+                crash_protection_template=crash_protection,
+                stable_audio_component=stable_audio_component
+            )
         elif hasattr(self.node, 'tts_model') and self.node.tts_model:
             # Direct model generation
             return self.node.tts_model.generate(

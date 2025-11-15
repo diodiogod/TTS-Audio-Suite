@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.26] - 2025-11-15
+
+### Added
+
+- Eliminates 'Model not wrapped - using legacy path' warning
+- Ensures Clear VRAM button works correctly for all cached model instances
+
+### Fixed
+
+- Fix model wrapper consistency for Clear VRAM support
+- Fix cached models returning unwrapped instances instead of ComfyUI wrappers
+
+### Removed
+
+- Remove obsolete model unwrapping code from streaming adapter
 ## [4.14.25] - 2025-11-15
 
 ### Added

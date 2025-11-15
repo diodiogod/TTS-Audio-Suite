@@ -137,7 +137,7 @@ class UnifiedModelInterface:
             # Reload if device mismatch (handles both explicit devices and "auto" resolution)
             if wrapper_device_resolved != target_device:
                 wrapper.model_load(target_device)
-            return wrapper.model
+            return wrapper
 
         # Find appropriate factory
         factory_key = f"{config.engine_name}_{config.model_type}"
