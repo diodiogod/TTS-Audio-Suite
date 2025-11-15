@@ -157,7 +157,7 @@ class UnifiedModelInterface:
             config=config  # Pass entire config to factory
         )
 
-        return wrapper.model
+        return wrapper
     
     def unload_model(self, config: ModelLoadConfig) -> bool:
         """

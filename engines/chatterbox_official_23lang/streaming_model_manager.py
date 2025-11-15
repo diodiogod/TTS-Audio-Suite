@@ -30,42 +30,38 @@ class StreamingModelManager:
         return models
     
     def preload_models(self, language_codes: List[str], model_manager, device: str) -> None:
-        """Pre-load all required models for the given languages using universal smart loader."""
+        """Pre-load all required models for the given languages using unified interface."""
         required_models = self.get_required_models(language_codes)
         available_languages = get_available_languages()
-        
+
         print(f"🚀 STREAMING: Pre-loading {len(required_models)} models for {len(language_codes)} languages")
-        
-        # Use universal smart model loader for consistency
-        from utils.models.smart_loader import smart_model_loader
-        
+
+        # Use unified interface for consistency
+        from utils.models.unified_model_interface import load_tts_model
+
         for model_name in required_models:
             if model_name in self.preloaded_models:
                 print(f"♻️ {model_name} already loaded in streaming cache")
                 continue
-                
+
             if model_name not in available_languages:
                 print(f"⚠️ {model_name} model not available, using English fallback")
                 model_name = 'English'
-            
-            # Use smart loader to get or load the model
+
+            # Use unified interface to load the model
             try:
-                model_instance, was_cached = smart_model_loader.load_model_if_needed(
-                    engine_type="chatterbox",
+                model_instance = load_tts_model(
+                    engine_name="chatterbox_official_23lang",
                     model_name=model_name,
-                    current_model=self.preloaded_models.get(model_name),
                     device=device,
-                    load_callback=lambda d, m: model_manager.load_tts_model(d, m)
+                    language=model_name,
+                    force_reload=False
                 )
-                
+
                 # Store reference in our streaming cache
                 self.preloaded_models[model_name] = model_instance
-                
-                if was_cached:
-                    print(f"♻️ STREAMING: Reused {model_name} from smart loader (ID: {id(model_instance)})")
-                else:
-                    print(f"✅ STREAMING: Loaded {model_name} via smart loader (ID: {id(model_instance)})")
-                    
+                print(f"✅ STREAMING: Loaded {model_name} (ID: {id(model_instance)})")
+
             except Exception as e:
                 print(f"❌ Failed to load {model_name}: {e}")
                 # Try fallback to English if not already English

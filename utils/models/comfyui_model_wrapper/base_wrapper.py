@@ -365,3 +365,10 @@ class ComfyUIModelWrapper:
     
     def __repr__(self):
         return f"ComfyUIModelWrapper({self.model_info.model_type}:{self.model_info.engine}, {self._memory_size // 1024 // 1024}MB, device={self.current_device})"
+
+    def __getattr__(self, name):
+        """Forward attribute access to wrapped model for backward compatibility"""
+        # Avoid infinite recursion - only forward if attribute not in wrapper
+        if name in ['model', 'model_info', 'current_device', '_memory_size']:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        return getattr(self.model, name)

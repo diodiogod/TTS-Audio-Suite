@@ -849,29 +849,10 @@ class VibeVoiceEngine:
             except StopIteration:
                 pass
 
-        # Reload through unified interface if device mismatch
+        # Reload model if device mismatch (wrapper handles this automatically after Tier 2)
         if current_device and current_device != str(target_device):
-            # print(f"🔄 Reloading VibeVoice model from {current_device} to {target_device} via wrapper")
-
-            # Find and call wrapper's model_load() instead of direct .to()
-            try:
-                from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
-                wrapper_found = False
-                for cache_key, wrapper in tts_model_manager._model_cache.items():
-                    if hasattr(wrapper, 'model') and wrapper.model is self:
-                        wrapper.model_load(target_device)
-                        # print(f"✅ Reloaded VibeVoice via wrapper - ComfyUI management stays in sync")
-                        wrapper_found = True
-                        break
-
-                if not wrapper_found:
-                    # Fallback: direct .to() if wrapper not found
-                    print(f"⚠️ Wrapper not found for VibeVoice, using direct .to()")
-                    self.to(target_device)
-            except Exception as e:
-                # Fallback to direct .to()
-                print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
-                self.to(target_device)
+            # Just move to target device - if wrapped, wrapper's model_load was already called by node
+            self.to(target_device)
 
         # Handle caching if enabled (following ChatterBox pattern)
         if enable_cache:

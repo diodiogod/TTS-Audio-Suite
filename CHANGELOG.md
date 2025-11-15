@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.23] - 2025-11-14
+
+### Added
+
+- Standardize all engine model loading through unified interface
+- Add centralized engine capability registry
+- Add generic fallback handler for language switching
+- Standardize model configuration across all engines
+- Clean up legacy wrapper-searching code patterns
+
+### Changed
+
+- Improve architecture:
+- Better ComfyUI integration for memory management
+
+### Fixed
+
+- Complete model loading refactor addressing issue #14
+- Fix model loading architecture issues:
+- Fix 'Clear VRAM' button not working with TTS models
+- Fix Higgs Audio models loading twice (cache duplication bug)
+- Improve error handling consistency across all TTS engines
+
+### Removed
+
+- Remove duplicate SmartModelLoader caching system
+- Remove 'Wrapper not found' warning messages
 ## [4.14.22] - 2025-11-13
 
 ### Added

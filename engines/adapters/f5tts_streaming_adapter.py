@@ -159,30 +159,18 @@ class F5TTSStreamingAdapter(StreamingEngineAdapter):
             if self._current_model == model_name and self._current_language == language:
                 return True
             
-            # Use universal smart model loader
-            from utils.models.smart_loader import smart_model_loader
-            
-            def f5tts_load_callback(device: str, model: str):
-                """Callback for F5-TTS model loading"""
-                if hasattr(self.node, 'load_f5tts_model'):
-                    # Use node's existing model loading (which now uses smart loader internally)
-                    return self.node.load_f5tts_model(model, device)
-                else:
-                    # Fallback: try to load directly
-                    from engines.f5tts.f5tts import F5TTSEngine
-                    engine = F5TTSEngine()
-                    engine.load_model(model, device)
-                    return engine
-            
-            # Use smart loader to get or load the model
-            model_instance, was_cached = smart_model_loader.load_model_if_needed(
-                engine_type="f5tts",
+            # Use unified interface for model loading
+            from utils.models.unified_model_interface import load_tts_model
+
+            # Load model via unified interface
+            model_instance = load_tts_model(
+                engine_name="f5tts",
                 model_name=model_name,
-                current_model=getattr(self.node, 'f5tts_model', None),
                 device=device,
-                load_callback=f5tts_load_callback
+                language=language,
+                force_reload=False
             )
-            
+
             # Update node's model reference and our tracking
             if hasattr(self.node, 'f5tts_model'):
                 self.node.f5tts_model = model_instance
@@ -190,16 +178,13 @@ class F5TTSStreamingAdapter(StreamingEngineAdapter):
                 self.node.f5tts = model_instance
             else:
                 self.node.f5tts = model_instance
-            
+
             # Cache the model for local reuse and update tracking
             self._loaded_models[model_name] = model_instance
             self._current_model = model_name
             self._current_language = language
-            
-            if was_cached:
-                print(f"♻️ F5TTS STREAMING: Reused {model_name} from smart loader")
-            else:
-                print(f"✅ F5TTS STREAMING: Loaded {model_name} via smart loader")
+
+            print(f"✅ F5TTS STREAMING: Loaded {model_name} via unified interface")
             
             return True
                 

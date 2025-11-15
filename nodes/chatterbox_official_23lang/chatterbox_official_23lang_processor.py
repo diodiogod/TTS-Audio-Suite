@@ -296,7 +296,6 @@ Back to the main narrator voice for the conclusion.""",
         self.model_version = model_version
         self.current_language = language
 
-        # Return the model for smart_model_loader
         return self.tts_model
     
     def _language_name_to_code(self, language_input: str) -> str:
@@ -362,23 +361,12 @@ Back to the main narrator voice for the conclusion.""",
                     # Reload through unified interface if device mismatch
                     # This ensures ComfyUI's model management stays in sync
                     if current_device != target_device_str:
-                        # print(f"🔄 Reloading ChatterBox model from {current_device} to {target_device_str} via wrapper")
-
-                        # Find and call wrapper's model_load() instead of direct .to()
-                        try:
-                            from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
-                            for cache_key, wrapper in tts_model_manager._model_cache.items():
-                                if hasattr(wrapper, 'model') and wrapper.model is self.tts_model:
-                                    wrapper.model_load(target_device)
-                                    # print(f"✅ Reloaded model via wrapper - ComfyUI management stays in sync")
-                                    break
-                            else:
-                                # Fallback: direct .to() if wrapper not found
-                                print(f"⚠️ Wrapper not found, using direct .to() - 'Clear VRAM' may not work")
-                                self.tts_model.to(target_device)
-                        except Exception as e:
-                            # Fallback to direct .to()
-                            print(f"⚠️ Wrapper reload failed ({e}), using direct .to()")
+                        # Unified interface returns wrapped models, so just call model_load
+                        if hasattr(self.tts_model, 'model_load'):
+                            self.tts_model.model_load(target_device)
+                        else:
+                            # Fallback for any legacy unwrapped models (shouldn't happen after Tier 2)
+                            print(f"⚠️ Model not wrapped - using direct .to() (legacy path)")
                             self.tts_model.to(target_device)
                 except StopIteration:
                     pass  # Model has no parameters
