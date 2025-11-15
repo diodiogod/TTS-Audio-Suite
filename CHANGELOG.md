@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.25] - 2025-11-15
+
+### Added
+
+- Add automatic 50000x scaling to make exaggeration parameter more intuitive (use normal 0.5-2.0 values instead of 10000+)
+- Expand exaggeration range to 0.0-5.0 for experimentation
+
+### Changed
+
+- Improve ChatterBox Official 23-Lang exaggeration control
+- Update tooltip with honest warning that this parameter has minimal effect in multilingual models due to ResembleAI training limitations
+
+### Fixed
+
+- Note: Classic ChatterBox exaggeration works as documented; issue only affects multilingual v1/v2 models
 ## [4.14.24] - 2025-11-15
 
 ### Fixed

@@ -154,11 +154,11 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
                     "tooltip": "Device to run ChatterBox model on:\n• auto: Automatically select best available (MPS on Apple Silicon, CUDA on NVIDIA, XPU on Intel, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU)\n• xpu: Intel GPU (requires Intel PyTorch XPU)\n• cpu: CPU-only processing (slower)\n• mps: Apple Metal Performance Shaders (Apple Silicon Macs only)"
                 }),
                 "exaggeration": ("FLOAT", {
-                    "default": 0.5, 
-                    "min": 0.25, 
-                    "max": 2.0, 
-                    "step": 0.05,
-                    "tooltip": "Speech exaggeration level for ChatterBox. Higher values create more dramatic and expressive speech."
+                    "default": 1.0,
+                    "min": 0.0,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "tooltip": "Emotion exaggeration control. WARNING: This parameter has minimal effect in the multilingual models (v1 and v2) due to model training issues. Values are internally scaled by 50000x. Even at extreme values (100000+), changes are barely noticeable. This appears to be a fundamental model limitation, not an implementation issue. Classic ChatterBox works as expected."
                 }),
                 "temperature": ("FLOAT", {
                     "default": 0.8, 
@@ -227,12 +227,16 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             # Import the adapter class
             from engines.adapters.chatterbox_official_23lang_adapter import ChatterBoxOfficial23LangEngineAdapter
 
+            # Scale exaggeration by 50000x for multilingual models due to training issues
+            # Multilingual models have extremely small emotion_adv_fc weights requiring massive values
+            scaled_exaggeration = exaggeration * 50000.0
+
             # Create configuration dictionary
             config = {
                 "model_version": model_version,
                 "language": language,
                 "device": device,
-                "exaggeration": exaggeration,
+                "exaggeration": scaled_exaggeration,
                 "temperature": temperature,
                 "cfg_weight": cfg_weight,
                 "repetition_penalty": repetition_penalty,
