@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.24] - 2025-11-15
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang audio generation failure
+- Fix crash when generating long audio with chunking enabled in single-character mode
+- Resolves tuple unpacking error (expected 3 values, got 4)
 ## [4.14.23] - 2025-11-14
 
 ### Added
