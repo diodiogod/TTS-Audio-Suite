@@ -4,11 +4,19 @@
 
 ## Quick Reference for Future Version Bumps
 
+### ⚠️ DO NOT CHECK CURRENT VERSION - The script auto-increments!
+
+**Simply run with `patch`, `minor`, or `major` - NO need to look up current version**
+
 ### Recommended Command (Separate Commit & Changelog)
 
 **⚠️ IMPORTANT: Use positional arguments, NOT --commit/--changelog flags**
 
 ```bash
+# EASIEST: Just use 'patch' - script auto-increments the version
+python3 scripts/bump_version_enhanced.py patch "<commit_desc>" "<changelog_desc>"
+
+# OR: Specify exact version if needed
 python3 scripts/bump_version_enhanced.py <version> "<commit_desc>" "<changelog_desc>"
 ```
 

@@ -385,10 +385,11 @@ class CharacterParser(ValidationMixin):
         )
         
         if should_apply_prefix:
-            # Avoid double-prefixing - check if [it] is already at the start
-            if not text.strip().startswith('[it]'):
-                return f"[it] {text.strip()}"
-        
+            # Avoid double-prefixing - check if [it] is already at the start (case-insensitive)
+            stripped_text = text.strip()
+            if not stripped_text.lower().startswith('[it]'):
+                return f"[it] {stripped_text}"
+
         return text
 
 
