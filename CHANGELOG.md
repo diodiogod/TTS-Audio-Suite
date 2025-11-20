@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.29] - 2025-11-19
+
+### Added
+
+- Add informative warnings for known PyTorch 2.9.0+xpu beam sampling issues
+
+### Changed
+
+- Improve cache management for Intel GPU devices
+
+### Fixed
+
+- Add IndexTTS-2 XPU (Intel GPU) compatibility improvements
+- Fix CPU core pinning at 100% on PyTorch 2.8.0+xpu during audio processing
+- Fix kaldi.fbank failures on PyTorch 2.8.0+xpu and 2.9.0+xpu
+- Fix tensors incorrectly moving to XPU when CPU device is explicitly selected
+- Note: Changes address GitHub issue #167 but are untested due to lack of Intel GPU hardware
 ## [4.14.28] - 2025-11-19
 
 ### Added

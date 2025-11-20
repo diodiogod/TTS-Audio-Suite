@@ -72,6 +72,40 @@ class IndexTTS2:
             self.use_cuda_kernel = False
             print(">> Be patient, it may take a while to run in CPU mode.")
 
+        # XPU compatibility: detect PyTorch version and XPU availability
+        self.is_xpu_device = self.device == "xpu"
+        self.xpu_audio_on_cpu = False  # Whether to run audio ops on CPU for XPU compatibility
+
+        # Force CPU mode when explicitly requested, even if XPU is available
+        if self.device == "cpu" and hasattr(torch, "xpu") and torch.xpu.is_available():
+            print("⚠️ CPU device explicitly requested - XPU detected but will not be used")
+            print("   All models and tensors will remain on CPU")
+            # Disable XPU to prevent accidental tensor placement on XPU
+            # Note: This doesn't actually disable XPU globally, but serves as a warning
+            os.environ.setdefault('ONEAPI_DEVICE_SELECTOR', 'opencl:cpu')
+
+        if self.is_xpu_device:
+            # Detect PyTorch version for XPU compatibility workarounds
+            torch_version = torch.__version__.split('+')[0]  # Remove +xpu suffix
+            major, minor = map(int, torch_version.split('.')[:2])
+
+            # PyTorch 2.8.0+xpu and 2.9.0+xpu have torchaudio.compliance.kaldi.fbank issues on XPU
+            # PyTorch 2.8.0+xpu also has mel_spectrogram issues on XPU
+            if (major == 2 and minor == 8) or (major == 2 and minor == 9) or (major == 2 and minor >= 10):
+                self.xpu_audio_on_cpu = True
+                print(f"⚠️ XPU detected with PyTorch {torch_version} - audio operations will run on CPU for compatibility")
+                print("   (mel_spectrogram and kaldi.fbank have known XPU issues)")
+
+                # Additional warning for PyTorch 2.9.0 beam sampling hang
+                if major == 2 and minor == 9:
+                    print("⚠️ WARNING: PyTorch 2.9.0+xpu has known beam sampling hang issues during generation")
+                    print("   If generation hangs at beam sample step, consider:")
+                    print("   - Downgrading to PyTorch 2.8.0+xpu, OR")
+                    print("   - Using num_beams=1 to disable beam search, OR")
+                    print("   - Setting device to 'cpu' if performance allows")
+            else:
+                print(f"✅ XPU detected with PyTorch {torch_version}")
+
         self.cfg = OmegaConf.load(cfg_path)
         self.model_dir = model_dir
         self.dtype = torch.float16 if self.use_fp16 else None
@@ -315,6 +349,11 @@ class IndexTTS2:
 
     @torch.no_grad()
     def get_emb(self, input_features, attention_mask):
+        # Ensure input tensors are on the correct device
+        # Fix for XPU tensor device leakage when CPU is selected
+        input_features = input_features.to(self.device)
+        attention_mask = attention_mask.to(self.device)
+
         vq_emb = self.semantic_model(
             input_features=input_features,
             attention_mask=attention_mask,
@@ -537,7 +576,11 @@ class IndexTTS2:
                 self.cache_s2mel_style = None
                 self.cache_s2mel_prompt = None
                 self.cache_mel = None
-                torch.cuda.empty_cache()
+                # Clear cache for current device (CUDA, XPU, or CPU)
+                if self.device.startswith("cuda"):
+                    torch.cuda.empty_cache()
+                elif self.device == "xpu":
+                    torch.xpu.empty_cache()
             audio, sr = self._load_and_cut_audio(spk_audio_prompt, 15, verbose)
             audio_22k = torchaudio.transforms.Resample(sr, 22050)(audio)
             audio_16k = torchaudio.transforms.Resample(sr, 16000)(audio)
@@ -550,12 +593,31 @@ class IndexTTS2:
             spk_cond_emb = self.get_emb(input_features, attention_mask)
 
             _, S_ref = self.semantic_codec.quantize(spk_cond_emb)
-            ref_mel = self.mel_fn(audio_22k.to(spk_cond_emb.device).float())
+
+            # XPU compatibility: run mel_spectrogram on CPU if needed
+            if self.xpu_audio_on_cpu:
+                # Process on CPU, then move result to target device
+                ref_mel = self.mel_fn(audio_22k.cpu().float())
+                ref_mel = ref_mel.to(spk_cond_emb.device)
+            else:
+                ref_mel = self.mel_fn(audio_22k.to(spk_cond_emb.device).float())
+
             ref_target_lengths = torch.LongTensor([ref_mel.size(2)]).to(ref_mel.device)
-            feat = torchaudio.compliance.kaldi.fbank(audio_16k.to(ref_mel.device),
-                                                     num_mel_bins=80,
-                                                     dither=0,
-                                                     sample_frequency=16000)
+
+            # XPU compatibility: run kaldi.fbank on CPU (has known XPU issues on 2.8.0 and 2.9.0)
+            if self.xpu_audio_on_cpu:
+                # Process on CPU, then move result to target device
+                feat = torchaudio.compliance.kaldi.fbank(audio_16k.cpu(),
+                                                         num_mel_bins=80,
+                                                         dither=0,
+                                                         sample_frequency=16000)
+                feat = feat.to(ref_mel.device)
+            else:
+                feat = torchaudio.compliance.kaldi.fbank(audio_16k.to(ref_mel.device),
+                                                         num_mel_bins=80,
+                                                         dither=0,
+                                                         sample_frequency=16000)
+
             feat = feat - feat.mean(dim=0, keepdim=True)  # feat2另外一个滤波器能量组特征[922, 80]
             style = self.campplus_model(feat.unsqueeze(0))  # 参考音频的全局style2[1,192]
 
@@ -591,7 +653,11 @@ class IndexTTS2:
         if self.cache_emo_cond is None or self.cache_emo_audio_prompt != emo_audio_prompt:
             if self.cache_emo_cond is not None:
                 self.cache_emo_cond = None
-                torch.cuda.empty_cache()
+                # Clear cache for current device (CUDA, XPU, or CPU)
+                if self.device.startswith("cuda"):
+                    torch.cuda.empty_cache()
+                elif self.device == "xpu":
+                    torch.xpu.empty_cache()
             emo_audio, _ = self._load_and_cut_audio(emo_audio_prompt, 15, verbose, sr=16000)
 
             emo_inputs = self.extract_features(emo_audio, sampling_rate=16000, return_tensors="pt")
