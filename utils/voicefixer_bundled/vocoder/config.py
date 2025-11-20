@@ -9,7 +9,7 @@ try:
     _voicefixer_dir = get_preferred_download_path('TTS', engine_name='voicefixer')
 except:
     # Fallback if utils not available
-    _voicefixer_dir = os.path.join(os.path.expanduser("~"), ".cache/voicefixer/synthesis_module/44100")
+    _voicefixer_dir = os.path.join(os.path.expanduser("~"), ".cache/voicefixer")
 
 
 class Config:

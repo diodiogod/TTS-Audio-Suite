@@ -5,6 +5,7 @@ Centralized downloading for all models (F5-TTS, ChatterBox, RVC, etc.) without c
 
 import os
 import requests
+import subprocess
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 import folder_paths
@@ -33,6 +34,81 @@ class UnifiedDownloader:
             print("⚠️ SSL certificate verification is DISABLED")
             print("   Set environment variable TTS_DISABLE_SSL_VERIFY=0 to re-enable")
     
+    def download_from_hf_cli(self, repo_id: str, filename: str, target_dir: str) -> bool:
+        """
+        Download a single file from HuggingFace using HF CLI (faster than HTTP).
+        Uses existing huggingface-hub dependency.
+
+        Args:
+            repo_id: HuggingFace repository ID (e.g., "Diogodiogod/voicefixer-models")
+            filename: Name of file in repo (e.g., "vf.ckpt")
+            target_dir: Local directory to save file
+
+        Returns:
+            True if successful, False otherwise
+        """
+        target_path = os.path.join(target_dir, filename)
+
+        # Check if already exists
+        if os.path.exists(target_path):
+            print(f"📁 File already exists: {filename}")
+            return True
+
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+
+            print(f"📥 Downloading {filename} from HuggingFace ({repo_id})...")
+
+            # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
+            # Set PYTHONIOENCODING to prevent Windows Unicode errors
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
+            # Try new command first (show live progress by not capturing output)
+            result = subprocess.run(
+                [
+                    "hf", "download",
+                    repo_id,
+                    filename,
+                    "--local-dir", target_dir
+                ],
+                check=False,
+                env=env
+            )
+
+            # If new command not found, try legacy command
+            if result.returncode != 0:
+                # Check if command exists by trying with capture first
+                test_result = subprocess.run(
+                    ["hf", "--version"],
+                    capture_output=True,
+                    check=False
+                )
+
+                if test_result.returncode != 0:
+                    # 'hf' command not available, use legacy
+                    result = subprocess.run(
+                        [
+                            "huggingface-cli", "download",
+                            repo_id,
+                            filename,
+                            "--local-dir", target_dir
+                        ],
+                        check=False,
+                        env=env
+                    )
+
+            if result.returncode == 0 and os.path.exists(target_path):
+                print(f"✅ Downloaded: {filename}")
+                return True
+            else:
+                print(f"❌ HF CLI download failed (exit code: {result.returncode})")
+                return False
+
+        except Exception as e:
+            print(f"❌ Error downloading {filename}: {e}")
+            return False
+
     def download_file(self, url: str, target_path: str, description: str = None) -> bool:
         """
         Download a file directly to target path with progress display.

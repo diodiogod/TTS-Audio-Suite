@@ -97,7 +97,7 @@ MODE 2 - TRAIN MODE (Seriously Degraded):
     RETURN_TYPES = ("AUDIO", "STRING")
     RETURN_NAMES = ("restored_audio", "info")
     FUNCTION = "restore_audio"
-    CATEGORY = "audio/restoration"
+    CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
 
     def __init__(self):
         self.voicefixer = None

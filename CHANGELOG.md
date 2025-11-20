@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.30] - 2025-11-20
+
+### Added
+
+- Move Voice Fixer to Audio Processing category alongside Noise/Vocal Removal
+- Much faster model downloads via HuggingFace instead of Zenodo
+- Show live download progress in console
+
+### Fixed
+
+- Fix Voice Fixer model loading and downloads
+- Fix Voice Fixer failing to find downloaded models (vocoder path bug)
+- Fix Windows Unicode errors during downloads
 ## [4.14.29] - 2025-11-19
 
 ### Added
