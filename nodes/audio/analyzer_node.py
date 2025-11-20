@@ -335,12 +335,12 @@ class AudioAnalyzerNode:
     def _create_segmented_audio(self, audio_tensor: torch.Tensor, sample_rate: int, regions: List[TimingRegion]) -> torch.Tensor:
         """
         Create audio containing only the detected regions, concatenated together.
-        
+
         Args:
             audio_tensor: Original audio tensor
             sample_rate: Sample rate of the audio
             regions: List of TimingRegion objects to extract
-            
+
         Returns:
             New audio tensor with only the selected regions
         """
@@ -348,40 +348,51 @@ class AudioAnalyzerNode:
             # No regions detected, return short silence in ComfyUI format
             silence = torch.zeros(1, int(0.1 * sample_rate))  # 0.1 second of silence
             return AudioProcessingUtils.format_for_comfyui(silence, sample_rate)
-        
+
+        # Normalize input tensor - remove batch dimension if present
+        # Audio can be: [samples], [channels, samples], or [batch, channels, samples]
+        working_tensor = audio_tensor
+        if working_tensor.dim() == 3:
+            # Remove batch dimension [batch, channels, samples] -> [channels, samples]
+            working_tensor = working_tensor.squeeze(0)
+        elif working_tensor.dim() > 3:
+            # Handle unexpected dimensions by squeezing down to 2D max
+            while working_tensor.dim() > 2:
+                working_tensor = working_tensor.squeeze(0)
+
         # Sort regions by start time
         sorted_regions = sorted(regions, key=lambda r: r.start_time)
-        
+
         segments = []
         for region in sorted_regions:
             # Convert time to sample indices
             start_sample = int(region.start_time * sample_rate)
             end_sample = int(region.end_time * sample_rate)
-            
+
             # Ensure indices are within bounds
-            audio_length = audio_tensor.shape[-1] if audio_tensor.dim() > 1 else len(audio_tensor)
+            audio_length = working_tensor.shape[-1] if working_tensor.dim() > 1 else len(working_tensor)
             start_sample = max(0, min(start_sample, audio_length))
             end_sample = max(start_sample, min(end_sample, audio_length))
-            
+
             if end_sample > start_sample:
                 # Extract the audio segment
-                if audio_tensor.dim() == 1:
-                    segment = audio_tensor[start_sample:end_sample]
+                if working_tensor.dim() == 1:
+                    segment = working_tensor[start_sample:end_sample]
                 else:
-                    segment = audio_tensor[:, start_sample:end_sample]
+                    segment = working_tensor[:, start_sample:end_sample]
                 segments.append(segment)
-        
+
         if not segments:
             # No valid segments found, return silence in ComfyUI format
             silence = torch.zeros(1, int(0.1 * sample_rate))
             return AudioProcessingUtils.format_for_comfyui(silence, sample_rate)
-        
+
         # Concatenate all segments
-        if audio_tensor.dim() == 1:
+        if working_tensor.dim() == 1:
             segmented_audio = torch.cat(segments, dim=0)
         else:
             segmented_audio = torch.cat(segments, dim=1)
-        
+
         # Format for ComfyUI
         return AudioProcessingUtils.format_for_comfyui(segmented_audio, sample_rate)
     

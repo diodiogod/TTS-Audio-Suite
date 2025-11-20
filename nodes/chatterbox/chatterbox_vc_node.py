@@ -124,20 +124,22 @@ class ChatterboxVCNode(BaseVCNode):
         source_temp.close()
         
         source_waveform = source_audio["waveform"]
-        if source_waveform.dim() == 3:
-            source_waveform = source_waveform.squeeze(0)  # Remove batch dimension
-        
+        # Normalize to 2D for torchaudio.save (channels, samples)
+        while source_waveform.dim() > 2:
+            source_waveform = source_waveform.squeeze(0)  # Remove batch/extra dimensions
+
         torchaudio.save(source_temp.name, source_waveform.cpu(), source_audio["sample_rate"])
         self._temp_files.append(source_temp.name)
-        
+
         # Save target audio to temporary file
         target_temp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         target_temp.close()
-        
+
         target_waveform = target_audio["waveform"]
-        if target_waveform.dim() == 3:
-            target_waveform = target_waveform.squeeze(0)  # Remove batch dimension
-        
+        # Normalize to 2D for torchaudio.save (channels, samples)
+        while target_waveform.dim() > 2:
+            target_waveform = target_waveform.squeeze(0)  # Remove batch/extra dimensions
+
         torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
         self._temp_files.append(target_temp.name)
         
@@ -217,9 +219,10 @@ class ChatterboxVCNode(BaseVCNode):
             target_temp.close()
             
             target_waveform = target_audio["waveform"]
-            if target_waveform.dim() == 3:
-                target_waveform = target_waveform.squeeze(0)
-            
+            # Normalize to 2D for torchaudio.save (channels, samples)
+            while target_waveform.dim() > 2:
+                target_waveform = target_waveform.squeeze(0)  # Remove batch/extra dimensions
+
             torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
             self._temp_files.append(target_temp.name)
             
@@ -252,9 +255,10 @@ class ChatterboxVCNode(BaseVCNode):
                     source_temp.close()
                     
                     source_waveform = current_audio["waveform"]
-                    if source_waveform.dim() == 3:
-                        source_waveform = source_waveform.squeeze(0)
-                    
+                    # Normalize to 2D for torchaudio.save (channels, samples)
+                    while source_waveform.dim() > 2:
+                        source_waveform = source_waveform.squeeze(0)  # Remove batch/extra dimensions
+
                     torchaudio.save(source_temp.name, source_waveform.cpu(), current_audio["sample_rate"])
                     self._temp_files.append(source_temp.name)
                     

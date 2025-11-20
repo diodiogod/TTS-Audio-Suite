@@ -245,8 +245,9 @@ class BaseChatterBoxNode:
             
             # Save waveform to temporary file
             waveform = normalized_audio["waveform"]
-            if waveform.dim() == 3:
-                waveform = waveform.squeeze(0)  # Remove batch dimension
+            # Normalize to 2D for torchaudio.save (channels, samples)
+            while waveform.dim() > 2:
+                waveform = waveform.squeeze(0)  # Remove batch/extra dimensions
 
             save_audio_safe(temp_file.name, waveform, normalized_audio["sample_rate"])
             
