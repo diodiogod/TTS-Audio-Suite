@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.33] - 2025-12-02
+
+### Changed
+
+- Cleaner console output during generation
+
+### Removed
+
+- Remove IndexTTS-2 debug output from console
+- Remove debug messages showing audio data types and ranges
 ## [4.14.32] - 2025-12-02
 
 ### Added

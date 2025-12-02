@@ -357,8 +357,8 @@ class IndexTTSEngine:
             sampling_rate, wav_data = result
 
             # Debug: Check the actual values we're receiving
-            print(f"🔍 DEBUG: wav_data dtype={wav_data.dtype}, shape={wav_data.shape}")
-            print(f"🔍 DEBUG: wav_data min={wav_data.min()}, max={wav_data.max()}")
+            # print(f"🔍 DEBUG: wav_data dtype={wav_data.dtype}, shape={wav_data.shape}")
+            # print(f"🔍 DEBUG: wav_data min={wav_data.min()}, max={wav_data.max()}")
 
             # Convert numpy array (int16) to float32 following ComfyUI-IndexTTS2 reference
             if isinstance(wav_data, torch.Tensor):
@@ -387,8 +387,8 @@ class IndexTTSEngine:
             # Convert to tensor [1, samples] format expected by our pipeline
             audio = torch.from_numpy(mono[None, :].astype(np.float32))
 
-            print(f"🔍 DEBUG: final audio dtype={audio.dtype}, shape={audio.shape}")
-            print(f"🔍 DEBUG: final audio min={audio.min():.6f}, max={audio.max():.6f}")
+            # print(f"🔍 DEBUG: final audio dtype={audio.dtype}, shape={audio.shape}")
+            # print(f"🔍 DEBUG: final audio min={audio.min():.6f}, max={audio.max():.6f}")
 
             return audio
 
