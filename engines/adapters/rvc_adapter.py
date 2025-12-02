@@ -160,7 +160,8 @@ class RVCEngineAdapter:
                     rms_mix_rate=rms_mix_rate,
                     resample_sr=resample_sr,
                     f0_autotune=f0_autotune,
-                    crepe_hop_length=crepe_hop_length
+                    crepe_hop_length=crepe_hop_length,
+                    **kwargs  # Pass through hubert_path and other engine parameters
                 )
                 
                 if result is None:

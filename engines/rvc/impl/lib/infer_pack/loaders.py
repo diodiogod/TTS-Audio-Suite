@@ -59,16 +59,108 @@ class HubertModelWithFinalProj(HubertModel):
     @staticmethod
     def from_safetensors(path: str, device="cpu", framework="pt"):
         assert path.endswith(".safetensors"), f"{path} must end with '.safetensors'"
-        
+
+        # Import needed for both RVC and transformers models
+        from transformers import HubertConfig, HubertModel
+        from safetensors.torch import load_file
+        import os
+        import torch
+
         with safe_open(path, framework=framework, device="cpu") as f:
             metadata = f.metadata()
             state_dict = {}
             for key in f.keys():
                 state_dict[key] = f.get_tensor(key)
-        model = HubertModelWithFinalProj(HubertConfig.from_dict(json.loads(metadata["config"])))
-        model.load_state_dict(state_dict=state_dict)
-        model.eval()
-        return model.to(device)
+
+        # Check if this is an RVC-format HuBERT (has config in metadata)
+        # metadata can be None, so check that first
+        if metadata and "config" in metadata:
+            # RVC format (content-vec, etc.)
+            model = HubertModelWithFinalProj(HubertConfig.from_dict(json.loads(metadata["config"])))
+            model.load_state_dict(state_dict=state_dict)
+            model.eval()
+            return model.to(device)
+        else:
+            # Standard transformers HuBERT (Japanese, Korean, Chinese, Large)
+            print(f"🔧 Loading transformers HuBERT model from safetensors")
+
+            # Get directory containing the config files
+            model_dir = os.path.dirname(path)
+
+            # Check if config.json exists
+            config_path = os.path.join(model_dir, 'config.json')
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"config.json not found at {config_path}. For transformers models, config.json must be downloaded.")
+
+            # Load model: create from config, then load weights from our custom-named file
+            try:
+
+                # Load config
+                print(f"🔧 Loading HuBERT config from: {config_path}")
+                config = HubertConfig.from_pretrained(config_path)
+
+                # Create model from config
+                base_model = HubertModel(config)
+
+                # Load weights from our custom-named safetensors file
+                print(f"🔧 Loading weights from: {os.path.basename(path)}")
+                model_state = load_file(path)
+                base_model.load_state_dict(model_state, strict=False)
+                base_model.eval()
+
+                # Wrap transformers HuBERT to add extract_features method for RVC compatibility
+                class TransformersHubertWrapper:
+                    """Wrapper to make transformers HuBERT compatible with RVC's interface"""
+                    def __init__(self, hubert_model):
+                        self.hubert = hubert_model
+                        self.device = next(hubert_model.parameters()).device
+
+                    def extract_features(self, source: torch.Tensor, version="v2", **kwargs):
+                        """Extract features compatible with RVC pipeline"""
+                        with torch.no_grad():
+                            output_layer = 9 if version == "v1" else 12
+
+                            # Save original dtype for output conversion
+                            original_dtype = source.dtype
+
+                            # Match input dtype to model dtype
+                            model_dtype = next(self.hubert.parameters()).dtype
+                            if source.dtype != model_dtype:
+                                source = source.to(model_dtype)
+
+                            # Get hidden states
+                            outputs = self.hubert(source, output_hidden_states=True)
+                            features = outputs.hidden_states[output_layer - 1]
+
+                            # Convert back to original dtype for RVC compatibility
+                            if features.dtype != original_dtype:
+                                features = features.to(original_dtype)
+
+                            return features
+
+                    def to(self, device_arg):
+                        """Move model to device"""
+                        self.hubert = self.hubert.to(device_arg)
+                        self.device = device_arg
+                        return self
+
+                    def parameters(self):
+                        """Return model parameters"""
+                        return self.hubert.parameters()
+
+                    def eval(self):
+                        """Set to eval mode"""
+                        self.hubert.eval()
+                        return self
+
+                wrapped_model = TransformersHubertWrapper(base_model)
+                print(f"✅ Transformers HuBERT loaded and wrapped for RVC compatibility")
+                return wrapped_model.to(device)
+            except Exception as e:
+                print(f"❌ Failed to load transformers HuBERT: {e}")
+                print(f"🔍 Config directory: {model_dir}")
+                print(f"🔍 Model file: {path}")
+                raise
 
     def to_safetensors(self, sf_filename: str, discard_names: Optional[List[str]]=[]):
         assert hasattr(self, "state_dict"), f"Model does not have state_dict"

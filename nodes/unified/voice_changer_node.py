@@ -193,6 +193,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     f0_method=config.get('f0_method', 'rmvpe'),
                     resample_sr=config.get('resample_sr', 0),
                     crepe_hop_length=160,
+                    hubert_path=config.get('hubert_path'),  # Pass user's HuBERT model selection
                 )
                 
                 # Convert back to ComfyUI audio format for next iteration

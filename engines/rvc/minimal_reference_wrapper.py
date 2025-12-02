@@ -407,7 +407,8 @@ class MinimalRVCWrapper:
                 self._register_rvc_model_with_comfyui(model_data, model_path)
 
             # Load Hubert model (with caching)
-            hubert_path = self._find_hubert_model()
+            # Respect user's hubert_path selection from RVC Engine node, fallback to auto-detection
+            hubert_path = kwargs.get('hubert_path') or self._find_hubert_model()
             if not hubert_path:
                 print("❌ Hubert model not found")
                 return None
@@ -554,6 +555,8 @@ class MinimalRVCWrapper:
             # Common Hubert model names and locations - RVC compatible first
             hubert_candidates = [
                 "content-vec-best.safetensors",  # RVC library expects this specifically
+                "hubert_base_jp.safetensors",    # Japanese HuBERT (safetensors)
+                "hubert_base_kr.safetensors",    # Korean HuBERT (safetensors)
                 "hubert_base.pt",
                 "chinese-hubert-base.pt",
                 "hubert_base_jp.pt",

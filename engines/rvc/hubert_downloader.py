@@ -39,15 +39,57 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
         return None
     
     # Create TTS/hubert directory if needed (new organization)
-    hubert_dir = os.path.join(models_dir, "TTS", "hubert")
+    base_hubert_dir = os.path.join(models_dir, "TTS", "hubert")
+
+    # For transformers models, use subdirectory to store config with model
+    if info.get('is_transformers') and info.get('model_dir'):
+        hubert_dir = os.path.join(base_hubert_dir, info['model_dir'])
+    else:
+        hubert_dir = base_hubert_dir
+
     os.makedirs(hubert_dir, exist_ok=True)
-    
-    # Full path for the model (new TTS organization)
+
+    # Full path for the model
     model_path = os.path.join(hubert_dir, filename)
-    
+
+    # Auto-migrate: Check if model exists in old location (flat structure) and needs to be moved to subdirectory
+    if info.get('is_transformers') and info.get('model_dir'):
+        old_location = os.path.join(base_hubert_dir, filename)
+        if os.path.exists(old_location) and not os.path.exists(model_path):
+            print(f"🔄 Migrating {filename} to subdirectory structure...")
+            print(f"   From: {old_location}")
+            print(f"   To: {model_path}")
+            try:
+                import shutil
+                shutil.move(old_location, model_path)
+                print(f"✅ Migration successful")
+
+                # Also migrate any .safetensors version if it exists
+                if filename.endswith('.pt'):
+                    old_safetensors = old_location.replace('.pt', '.safetensors')
+                    new_safetensors = model_path.replace('.pt', '.safetensors')
+                    if os.path.exists(old_safetensors) and not os.path.exists(new_safetensors):
+                        shutil.move(old_safetensors, new_safetensors)
+                        print(f"✅ Also migrated .safetensors version")
+                elif filename.endswith('.safetensors'):
+                    old_pt = old_location.replace('.safetensors', '.pt')
+                    new_pt = model_path.replace('.safetensors', '.pt')
+                    if os.path.exists(old_pt) and not os.path.exists(new_pt):
+                        shutil.move(old_pt, new_pt)
+                        print(f"✅ Also migrated .pt version")
+            except Exception as e:
+                print(f"⚠️ Migration failed: {e}")
+                print(f"   Will re-download to new location")
+
     # Check if already exists in new location
     if os.path.exists(model_path):
         print(f"✅ HuBERT model already exists: {filename}")
+        # For transformers models, ensure config files are also present
+        if info.get('is_transformers') and info.get('repo_id'):
+            config_path = os.path.join(hubert_dir, 'config.json')
+            if not os.path.exists(config_path):
+                print(f"⚠️ Model exists but config.json is missing, downloading config files...")
+                _download_transformers_config(info['repo_id'], hubert_dir)
         return model_path
         
     # Check if exists in legacy locations
@@ -88,11 +130,14 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
     
     # Download the model - try primary URL first, then fallback if needed
     print(f"📥 Downloading HuBERT model: {info['description']}")
-    
+
     # Try primary URL first
     download_result = _try_download(url, model_path, filename, info.get('size', 'Unknown'), progress_callback)
-    
+
     if download_result:
+        # For transformers models, also download config.json and preprocessor_config.json
+        if info.get('is_transformers') and info.get('repo_id'):
+            _download_transformers_config(info['repo_id'], hubert_dir)
         return download_result
     
     # If primary failed and we have a fallback URL, try it
@@ -126,6 +171,37 @@ def download_hubert_model(model_key: str, models_dir: str, progress_callback=Non
     
     print(f"❌ Failed to download {filename} from all sources")
     return None
+
+def _download_transformers_config(repo_id: str, target_dir: str):
+    """
+    Download config files needed for transformers models.
+
+    Args:
+        repo_id: HuggingFace repo ID (e.g., 'prj-beatrice/japanese-hubert-base-phoneme-ctc-v4')
+        target_dir: Directory to save config files
+    """
+    config_files = ['config.json', 'preprocessor_config.json']
+
+    for config_file in config_files:
+        config_path = os.path.join(target_dir, config_file)
+        if os.path.exists(config_path):
+            print(f"✅ {config_file} already exists")
+            continue
+
+        config_url = f"https://huggingface.co/{repo_id}/resolve/main/{config_file}"
+        try:
+            print(f"📥 Downloading {config_file}...")
+            response = requests.get(config_url, timeout=30)
+            response.raise_for_status()
+
+            with open(config_path, 'wb') as f:
+                f.write(response.content)
+            print(f"✅ Downloaded {config_file}")
+        except Exception as e:
+            print(f"⚠️ Failed to download {config_file}: {e}")
+            # preprocessor_config.json is optional, but config.json is critical
+            if config_file == 'config.json':
+                print(f"❌ config.json is required for transformers models")
 
 def _try_download(url: str, file_path: str, filename: str, size: str, progress_callback=None) -> Optional[str]:
     """
@@ -319,15 +395,31 @@ def find_or_download_hubert(model_key: str, models_dir: str) -> Optional[str]:
         # Model should already exist - check all possible locations
         filename = get_hubert_filename(model_key)
         if filename:
+            from .hubert_models import get_hubert_model_info
+            info = get_hubert_model_info(model_key)
+
             # Check all paths that should_download_hubert checks
             search_paths = [
                 os.path.join(models_dir, "TTS", "hubert", filename),    # New TTS organization
                 os.path.join(models_dir, "hubert", filename),           # Legacy
                 os.path.join(models_dir, filename)                       # Direct in models/
             ]
-            
+
+            # For transformers models, also check subdirectory
+            if info and info.get('is_transformers') and info.get('model_dir'):
+                subdir_path = os.path.join(models_dir, "TTS", "hubert", info['model_dir'], filename)
+                search_paths.insert(0, subdir_path)  # Check subdirectory first
+
             for model_path in search_paths:
                 if os.path.exists(model_path):
+                    # For transformers models, ensure config files exist
+                    if info and info.get('is_transformers') and info.get('repo_id'):
+                        model_dir = os.path.dirname(model_path)
+                        config_path = os.path.join(model_dir, 'config.json')
+                        if not os.path.exists(config_path):
+                            print(f"⚠️ Found {filename} but config.json is missing")
+                            print(f"📥 Downloading config files for transformers model...")
+                            _download_transformers_config(info['repo_id'], model_dir)
                     return model_path
     
     # Fallback to finding any available model
@@ -350,7 +442,7 @@ def find_best_available_hubert(models_dir: str) -> Optional[str]:
     
     # Priority order for auto-selection
     priority_order = [
-        'hubert-base-rvc',
+        'content-vec-best',
         'chinese-hubert-base',
         'hubert-base-japanese',
         'hubert-base-korean',
@@ -375,9 +467,9 @@ def find_best_available_hubert(models_dir: str) -> Optional[str]:
                 print(f"✅ Found HuBERT model: {file}")
                 return model_path
     
-    # Try to download hubert-base-rvc as fallback
+    # Try to download content-vec-best as fallback
     print("📥 No HuBERT model found, downloading recommended model...")
-    return download_hubert_model('hubert-base-rvc', models_dir)
+    return download_hubert_model('content-vec-best', models_dir)
 
 def ensure_hubert_model(model_key: str = "auto") -> Optional[str]:
     """

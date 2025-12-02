@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.32] - 2025-12-02
+
+### Added
+
+- Add support for language-specific HuBERT models (Japanese, Korean, Chinese, Large)
+- Add automatic model organization into subdirectories
+
+### Fixed
+
+- Fix RVC voice conversion HuBERT model loading issues
+- Fix Japanese HuBERT download failures (401 errors)
+- Fix user HuBERT model selection being ignored
+- Fix config.json conflicts between different HuBERT models
+- Add helpful error messages when HuBERT/RVC model dimensions don't match
+- Fix compatibility with transformers 4.46+ and Python 3.13
 ## [4.14.31] - 2025-11-20
 
 ### Changed

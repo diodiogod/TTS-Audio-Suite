@@ -21,6 +21,40 @@ def load_hubert(model_path: str, config):
     try:
         print(f"🔧 Loading HuBERT model: {model_path}")
         if model_path.endswith(".safetensors"):
+            # Check if this safetensors file needs migration to subdirectory
+            from engines.rvc.hubert_models import HUBERT_MODELS
+
+            model_filename = os.path.basename(model_path)
+            model_dir_path = os.path.dirname(model_path)
+
+            # Check if this is a transformers model that should be in a subdirectory
+            for key, info in HUBERT_MODELS.items():
+                if info.get('is_transformers') and info.get('filename') == model_filename and info.get('model_dir'):
+                    # Check if currently in flat directory (not already in subdirectory)
+                    if os.path.basename(model_dir_path) != info['model_dir']:
+                        target_subdir = os.path.join(model_dir_path, info['model_dir'])
+                        target_path = os.path.join(target_subdir, model_filename)
+
+                        # Migrate to subdirectory
+                        print(f"🔄 Migrating {model_filename} to subdirectory: {info['model_dir']}")
+                        os.makedirs(target_subdir, exist_ok=True)
+
+                        try:
+                            import shutil
+                            shutil.move(model_path, target_path)
+                            model_path = target_path  # Update path to new location
+                            print(f"✅ Migrated to: {target_path}")
+
+                            # Download config if missing
+                            from engines.rvc.hubert_downloader import _download_transformers_config
+                            config_path = os.path.join(target_subdir, 'config.json')
+                            if not os.path.exists(config_path) and info.get('repo_id'):
+                                print(f"📥 Downloading config.json for {key}...")
+                                _download_transformers_config(info['repo_id'], target_subdir)
+                        except Exception as migrate_error:
+                            print(f"⚠️ Migration failed: {migrate_error}")
+                    break
+
             try:
                 model = HubertModelWithFinalProj.from_safetensors(model_path, device=config.device)
                 print(f"✅ HuBERT safetensors model loaded successfully")
@@ -52,10 +86,79 @@ def load_hubert(model_path: str, config):
             # Fallback: Convert .pt file to .safetensors format for compatibility
             print(f"🔄 Converting .pt Hubert model to safetensors format: {model_path}")
 
-            # Generate safetensors path
-            safetensors_path = model_path.replace(".pt", ".safetensors")
-            if not safetensors_path.endswith(".safetensors"):
-                safetensors_path = model_path + ".safetensors"
+            # Determine if this is a transformers model that needs a subdirectory
+            # Import here to avoid circular dependency
+            from engines.rvc.hubert_models import HUBERT_MODELS
+
+            # Try to identify which model this is by filename
+            model_filename = os.path.basename(model_path)
+            target_subdir = None
+            model_key = None
+
+            for key, info in HUBERT_MODELS.items():
+                # Check if this filename matches a transformers model
+                if info.get('is_transformers') and info.get('filename'):
+                    # Match both .pt and .safetensors versions
+                    expected_pt = info['filename'].replace('.safetensors', '.pt')
+                    expected_safetensors = info['filename']
+                    if model_filename in [expected_pt, expected_safetensors, info['filename']]:
+                        target_subdir = info.get('model_dir')
+                        model_key = key
+                        break
+
+            # Generate safetensors path - use subdirectory if this is a transformers model
+            if target_subdir:
+                # Save to subdirectory
+                base_dir = os.path.dirname(model_path)
+                subdir_path = os.path.join(base_dir, target_subdir)
+                os.makedirs(subdir_path, exist_ok=True)
+                safetensors_filename = model_filename.replace(".pt", ".safetensors")
+                safetensors_path = os.path.join(subdir_path, safetensors_filename)
+                print(f"🔧 Transformers model detected ({model_key}), saving to subdirectory: {target_subdir}")
+
+                # Check if safetensors already exists in flat directory and needs migration
+                flat_safetensors = model_path.replace(".pt", ".safetensors")
+                if os.path.exists(flat_safetensors) and not os.path.exists(safetensors_path):
+                    print(f"🔄 Migrating existing safetensors to subdirectory...")
+                    try:
+                        import shutil
+                        shutil.move(flat_safetensors, safetensors_path)
+                        print(f"✅ Migrated: {os.path.basename(flat_safetensors)} -> {target_subdir}/")
+
+                        # Also download config.json if missing
+                        try:
+                            from engines.rvc.hubert_downloader import _download_transformers_config
+                            info = HUBERT_MODELS.get(model_key)
+                            if info and info.get('repo_id'):
+                                config_dir = os.path.dirname(safetensors_path)
+                                config_path = os.path.join(config_dir, 'config.json')
+                                if not os.path.exists(config_path):
+                                    print(f"📥 Downloading config.json for {model_key}...")
+                                    _download_transformers_config(info['repo_id'], config_dir)
+                        except Exception as config_error:
+                            print(f"⚠️ Could not download config after migration: {config_error}")
+
+                    except Exception as migrate_error:
+                        print(f"⚠️ Migration failed: {migrate_error}")
+            else:
+                # Use same directory for non-transformers models
+                safetensors_path = model_path.replace(".pt", ".safetensors")
+                if not safetensors_path.endswith(".safetensors"):
+                    safetensors_path = model_path + ".safetensors"
+
+            # For transformers models in subdirectories, ensure config exists even if model already exists
+            if target_subdir and model_key and os.path.exists(safetensors_path):
+                try:
+                    from engines.rvc.hubert_downloader import _download_transformers_config
+                    info = HUBERT_MODELS.get(model_key)
+                    if info and info.get('repo_id'):
+                        config_dir = os.path.dirname(safetensors_path)
+                        config_path = os.path.join(config_dir, 'config.json')
+                        if not os.path.exists(config_path):
+                            print(f"📥 Safetensors exists but config.json missing, downloading for {model_key}...")
+                            _download_transformers_config(info['repo_id'], config_dir)
+                except Exception as config_error:
+                    print(f"⚠️ Could not download missing config: {config_error}")
 
             # If safetensors version doesn't exist, create it
             if not os.path.exists(safetensors_path):
@@ -101,7 +204,24 @@ def load_hubert(model_path: str, config):
                     # Save as safetensors (without config metadata - this is the limitation)
                     save_file(state_dict, safetensors_path)
                     print(f"✅ Converted to safetensors: {safetensors_path}")
-                    print(f"⚠️ Note: Config metadata not preserved - may cause loading issues")
+
+                    # For transformers models, download config.json to the subdirectory
+                    if target_subdir and model_key:
+                        try:
+                            from engines.rvc.hubert_downloader import _download_transformers_config
+                            info = HUBERT_MODELS.get(model_key)
+                            if info and info.get('repo_id'):
+                                config_dir = os.path.dirname(safetensors_path)
+                                config_path = os.path.join(config_dir, 'config.json')
+                                if not os.path.exists(config_path):
+                                    print(f"📥 Downloading config.json for {model_key}...")
+                                    _download_transformers_config(info['repo_id'], config_dir)
+                                else:
+                                    print(f"✅ Config already exists: {config_path}")
+                        except Exception as config_error:
+                            print(f"⚠️ Could not download config: {config_error}")
+                    else:
+                        print(f"⚠️ Note: Config metadata not preserved - may cause loading issues")
 
                 except Exception as conv_error:
                     print(f"❌ Failed to convert model: {conv_error}")

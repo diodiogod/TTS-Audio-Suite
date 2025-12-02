@@ -40,8 +40,11 @@ HUBERT_MODELS = {
 • Improved pitch extraction for tonal patterns
 • Size: 378MB
 • Recommended for Japanese voices""",
-        "url": "https://huggingface.co/rinna/japanese-hubert-base/resolve/main/model.safetensors",
-        "size": "378MB", 
+        "url": "https://huggingface.co/prj-beatrice/japanese-hubert-base-phoneme-ctc-v4/resolve/main/model.safetensors",
+        "repo_id": "prj-beatrice/japanese-hubert-base-phoneme-ctc-v4",  # For downloading config
+        "is_transformers": True,  # Needs config.json to load
+        "model_dir": "hubert_base_jp",  # Subdirectory for model-specific config
+        "size": "378MB",
         "filename": "hubert_base_jp.safetensors"
     },
     
@@ -54,6 +57,9 @@ HUBERT_MODELS = {
 • Size: 1.26GB
 • Recommended for Korean voices""",
         "url": "https://huggingface.co/team-lucid/hubert-base-korean/resolve/main/model.safetensors",
+        "repo_id": "team-lucid/hubert-base-korean",  # For downloading config
+        "is_transformers": True,  # Needs config.json to load
+        "model_dir": "hubert_base_kr",  # Subdirectory for model-specific config
         "size": "1.26GB",
         "filename": "hubert_base_kr.safetensors"
     },
@@ -67,6 +73,9 @@ HUBERT_MODELS = {
 • Size: ~190MB
 • Best for Mandarin Chinese voices""",
         "url": "https://huggingface.co/TencentGameMate/chinese-hubert-base/resolve/main/pytorch_model.bin",
+        "repo_id": "TencentGameMate/chinese-hubert-base",  # For downloading config
+        "is_transformers": True,  # Needs config.json to load
+        "model_dir": "chinese_hubert_base",  # Subdirectory for model-specific config
         "size": "190MB",
         "filename": "chinese-hubert-base.pt"
     },
@@ -81,6 +90,9 @@ HUBERT_MODELS = {
 • Size: ~1.2GB
 • Slower but highest quality results""",
         "url": "https://huggingface.co/facebook/hubert-large-ls960-ft/resolve/main/pytorch_model.bin",
+        "repo_id": "facebook/hubert-large-ls960-ft",  # For downloading config
+        "is_transformers": True,  # Needs config.json to load
+        "model_dir": "hubert_large",  # Subdirectory for model-specific config
         "size": "1.2GB",
         "filename": "hubert_large.pt"
     }
@@ -149,13 +161,24 @@ def should_download_hubert(model_key: str, models_dir: str) -> bool:
     info = get_hubert_model_info(model_key)
     if not info or not info.get("filename"):
         return False
-        
-    # Check both TTS and legacy paths
+
+    # Build list of paths to check
+    check_paths = []
+
+    # For transformers models, check subdirectory first
+    if info.get('is_transformers') and info.get('model_dir'):
+        subdir_path = os.path.join(models_dir, "TTS", "hubert", info['model_dir'], info["filename"])
+        check_paths.append(subdir_path)
+
+    # Check standard paths
     tts_path = os.path.join(models_dir, "TTS", "hubert", info["filename"])
     legacy_path = os.path.join(models_dir, "hubert", info["filename"])
-    direct_path = os.path.join(models_dir, info["filename"])  # Some models might be directly in models/
-    
-    return not (os.path.exists(tts_path) or os.path.exists(legacy_path) or os.path.exists(direct_path))
+    direct_path = os.path.join(models_dir, info["filename"])
+
+    check_paths.extend([tts_path, legacy_path, direct_path])
+
+    # Return True if none exist (needs download)
+    return not any(os.path.exists(p) for p in check_paths)
 
 def get_hubert_download_url(model_key: str) -> Optional[str]:
     """Get the download URL for a HuBERT model."""

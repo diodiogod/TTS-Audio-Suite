@@ -67,7 +67,27 @@ class VC(FeatureExtractor):
             if self.is_half:
                 npy = npy.astype("float32")
 
-            score, ix = index.search(npy, k=1)
+            try:
+                score, ix = index.search(npy, k=1)
+            except AssertionError as e:
+                # FAISS dimension mismatch - HuBERT model doesn't match RVC model training
+                feature_dim = npy.shape[1]
+                index_dim = index.d
+                print(f"\n❌ HuBERT/RVC Model Mismatch!")
+                print(f"   HuBERT output: {feature_dim} dimensions")
+                print(f"   RVC index expects: {index_dim} dimensions")
+                print(f"\n💡 Solution:")
+                if index_dim == 768:
+                    print(f"   This RVC model was trained with content-vec-best (768-dim)")
+                    print(f"   Please select 'content-vec-best' as your HuBERT model")
+                elif index_dim == 1024:
+                    print(f"   This RVC model was trained with hubert-large (1024-dim)")
+                    print(f"   Please select 'hubert-large' as your HuBERT model")
+                else:
+                    print(f"   This RVC model expects a {index_dim}-dimensional HuBERT model")
+                print(f"   Current HuBERT produces {feature_dim} dimensions - incompatible!\n")
+                raise ValueError(f"HuBERT dimension mismatch: model outputs {feature_dim}d but RVC expects {index_dim}d features")
+
             weight = np.square(1 / score)
             weight /= weight.sum(axis=1, keepdims=True)
             npy = np.sum(big_npy[ix] * np.expand_dims(weight, axis=2), axis=1)
