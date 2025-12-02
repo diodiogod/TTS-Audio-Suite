@@ -108,13 +108,22 @@ def load_hubert(model_path: str, config):
 
             # Generate safetensors path - use subdirectory if this is a transformers model
             if target_subdir:
-                # Save to subdirectory
                 base_dir = os.path.dirname(model_path)
-                subdir_path = os.path.join(base_dir, target_subdir)
-                os.makedirs(subdir_path, exist_ok=True)
-                safetensors_filename = model_filename.replace(".pt", ".safetensors")
-                safetensors_path = os.path.join(subdir_path, safetensors_filename)
-                print(f"🔧 Transformers model detected ({model_key}), saving to subdirectory: {target_subdir}")
+
+                # Check if we're ALREADY in the correct subdirectory (avoid double-nesting)
+                if os.path.basename(base_dir) == target_subdir:
+                    # Already in subdirectory, use current location
+                    subdir_path = base_dir
+                    safetensors_filename = model_filename.replace(".pt", ".safetensors")
+                    safetensors_path = os.path.join(subdir_path, safetensors_filename)
+                    print(f"🔧 Transformers model ({model_key}) already in subdirectory: {target_subdir}")
+                else:
+                    # Need to create/use subdirectory
+                    subdir_path = os.path.join(base_dir, target_subdir)
+                    os.makedirs(subdir_path, exist_ok=True)
+                    safetensors_filename = model_filename.replace(".pt", ".safetensors")
+                    safetensors_path = os.path.join(subdir_path, safetensors_filename)
+                    print(f"🔧 Transformers model detected ({model_key}), saving to subdirectory: {target_subdir}")
 
                 # Check if safetensors already exists in flat directory and needs migration
                 flat_safetensors = model_path.replace(".pt", ".safetensors")
