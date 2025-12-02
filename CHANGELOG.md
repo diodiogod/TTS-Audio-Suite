@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.36] - 2025-12-02
+
+### Added
+
+- Add chunking support to RVC voice conversion
+- RVC engine now supports intelligent chunking for long audio files
+- Default 30s chunks prevent OOM on long RVC conversions
+- All refinement passes apply correctly to each chunk
+- Seamless audio quality with crossfade blending
+
+### Changed
+
+- Smart and fixed chunking modes work with RVC conversions
+
+### Fixed
+
+- Full compatibility with existing RVC parameters and models
 ## [4.14.35] - 2025-12-02
 
 ### Added

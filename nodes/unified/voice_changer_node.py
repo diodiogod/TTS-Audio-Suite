@@ -127,26 +127,154 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         except Exception as e:
             raise ValueError(f"Failed to process {input_name}: {e}")
 
-    def _handle_rvc_conversion(self, rvc_engine, source_audio, narrator_target, refinement_passes):
+    def _handle_rvc_chunked_conversion(self, source_chunks, source_sample_rate, rvc_engine,
+                                       narrator_target, refinement_passes, max_chunk_duration, chunk_method):
         """
-        Handle RVC engine voice conversion with iterative refinement support.
-        
+        Handle RVC conversion with chunking for long audio files.
+
+        Args:
+            source_chunks: List of source audio chunks
+            source_sample_rate: Sample rate of source audio
+            rvc_engine: RVCEngineAdapter instance
+            narrator_target: RVC_MODEL from Load RVC Character Model
+            refinement_passes: Number of refinement passes
+            max_chunk_duration: Max chunk duration for info display
+            chunk_method: Chunking method used
+
+        Returns:
+            Tuple of (converted_audio, conversion_info)
+        """
+        from utils.audio.chunk_combiner import ChunkCombiner
+
+        print(f"🔄 Voice Changer: RVC conversion with {refinement_passes} refinement passes")
+
+        # Check narrator_target
+        rvc_model = None
+        if narrator_target and isinstance(narrator_target, dict) and narrator_target.get('type') == 'rvc_model':
+            rvc_model = narrator_target
+            print(f"📥 Using RVC Character Model: {rvc_model.get('model_name', 'Unknown')}")
+
+        # Get RVC configuration
+        config = getattr(rvc_engine, 'config', {})
+
+        # Process each chunk
+        converted_chunks = []
+        total_chunks = len(source_chunks)
+
+        for i, chunk in enumerate(source_chunks, 1):
+            print(f"🔄 Processing chunk {i}/{total_chunks}...")
+
+            # Wrap chunk in AUDIO dict format
+            chunk_audio_dict = {
+                "waveform": chunk,
+                "sample_rate": source_sample_rate
+            }
+
+            # Convert audio tensor to format expected by RVC
+            audio_input = self._convert_audio_for_rvc(chunk_audio_dict)
+
+            # Perform all refinement passes for this chunk
+            current_audio_np = audio_input
+            for iteration in range(refinement_passes):
+                iteration_num = iteration + 1
+                if refinement_passes > 1:
+                    print(f"  🔄 Chunk {i}/{total_chunks}, pass {iteration_num}/{refinement_passes}...")
+
+                # RVC conversion
+                converted_audio_np, output_sample_rate = rvc_engine.convert_voice(
+                    audio_input=current_audio_np,
+                    rvc_model=rvc_model,
+                    pitch_shift=config.get('pitch_shift', 0),
+                    index_rate=config.get('index_rate', 0.75),
+                    rms_mix_rate=config.get('rms_mix_rate', 0.25),
+                    protect=config.get('protect', 0.25),
+                    f0_method=config.get('f0_method', 'rmvpe'),
+                    resample_sr=config.get('resample_sr', 0),
+                    crepe_hop_length=160,
+                    hubert_path=config.get('hubert_path'),
+                )
+
+                current_audio_np = converted_audio_np
+
+            # Convert final result back to tensor
+            converted_audio_dict = self._convert_audio_from_rvc(converted_audio_np, output_sample_rate)
+            converted_chunks.append(converted_audio_dict["waveform"])
+
+        # Combine chunks with crossfade
+        print(f"🔗 Combining {total_chunks} converted chunks with crossfade...")
+        combined_waveform = ChunkCombiner.combine_chunks(
+            converted_chunks,
+            method="crossfade",
+            crossfade_duration=0.05,
+            sample_rate=output_sample_rate
+        )
+
+        # Wrap final audio
+        converted_audio = {
+            "waveform": combined_waveform,
+            "sample_rate": output_sample_rate
+        }
+
+        # Build conversion info
+        model_name = rvc_model.get('model_name', 'Unknown') if rvc_model else 'No Model'
+        conversion_info = (
+            f"RVC Conversion: {model_name} model | "
+            f"Pitch: {config.get('pitch_shift', 0)} | "
+            f"Method: {config.get('f0_method', 'rmvpe')} | "
+            f"Chunking: {total_chunks} chunks ({chunk_method} mode, {max_chunk_duration}s max) | "
+            f"Refinement passes: {refinement_passes} | "
+            f"Device: {config.get('device', 'auto')}"
+        )
+
+        print(f"✅ RVC voice conversion completed with {refinement_passes} refinement passes (chunked)")
+        return converted_audio, conversion_info
+
+    def _handle_rvc_conversion(self, rvc_engine, source_audio, narrator_target, refinement_passes,
+                              max_chunk_duration=30, chunk_method="smart"):
+        """
+        Handle RVC engine voice conversion with iterative refinement support and intelligent chunking.
+
         Args:
             rvc_engine: RVCEngineAdapter instance
             source_audio: Source audio to convert
             narrator_target: Target voice characteristics (RVC_MODEL from Load RVC Character Model)
             refinement_passes: Number of conversion passes for iterative refinement
-            
+            max_chunk_duration: Maximum chunk duration in seconds (0 = disabled)
+            chunk_method: Chunking method - "smart" or "fixed"
+
         Returns:
             Tuple of (converted_audio, conversion_info)
         """
         try:
             # Extract audio data from flexible inputs
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
-            
+
+            # Get sample rate and waveform for chunking analysis
+            source_sample_rate = processed_source_audio.get("sample_rate", 22050)
+            source_waveform = processed_source_audio.get("waveform")
+            if source_waveform is None:
+                raise ValueError("Source audio missing waveform data")
+
+            # Check if chunking is needed
+            source_chunks = self._split_audio_into_chunks(
+                source_waveform,
+                source_sample_rate,
+                max_chunk_duration,
+                chunk_method
+            )
+
+            # If chunking is active, process chunks separately
+            if len(source_chunks) > 1:
+                return self._handle_rvc_chunked_conversion(
+                    source_chunks, source_sample_rate, rvc_engine, narrator_target,
+                    refinement_passes, max_chunk_duration, chunk_method
+                )
+
+            # No chunking needed - proceed with normal RVC conversion below
+
             # For RVC, narrator_target should be RVC_MODEL from 🎭 Load RVC Character Model
             print(f"🔄 Voice Changer: RVC conversion with {refinement_passes} refinement passes")
-            
+
             # Check if narrator_target is an RVC_MODEL
             rvc_model = None
             if narrator_target and isinstance(narrator_target, dict) and narrator_target.get('type') == 'rvc_model':
@@ -155,7 +283,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             else:
                 print("⚠️  Warning: narrator_target should be RVC Character Model for RVC conversion")
                 print("🔄 Attempting conversion without specific model...")
-            
+
             # Get RVC configuration from engine
             config = getattr(rvc_engine, 'config', {})
             
@@ -681,7 +809,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             # Check if this is an RVC_ENGINE (RVCEngineAdapter) or TTS_ENGINE (dict)
             if hasattr(TTS_engine, 'engine_type') and TTS_engine.engine_type == "rvc":
                 # This is an RVC_ENGINE adapter
-                return self._handle_rvc_conversion(TTS_engine, source_audio, narrator_target, refinement_passes)
+                return self._handle_rvc_conversion(TTS_engine, source_audio, narrator_target, refinement_passes,
+                                                   max_chunk_duration, chunk_method)
 
             # Validate TTS_ENGINE input (traditional dict format)
             if not TTS_engine or not isinstance(TTS_engine, dict):
