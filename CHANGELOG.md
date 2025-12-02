@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.35] - 2025-12-02
+
+### Added
+
+- Add intelligent chunking to Voice Changer node
+- Prevent OOM errors when converting long audio files (5+ minutes)
+- Fixed mode splits at exact intervals for continuous audio
+- Set max_chunk_duration to 0 to disable chunking entirely
+- Default 30s chunks work well for ChatterBox engines
+- RVC users can disable chunking or use larger chunk sizes
+- Full cache support for faster subsequent conversions
+
+### Changed
+
+- Smart mode splits at natural silences for seamless quality
+
+### Fixed
+
+- Fixes issue #184 (ChatterBox VC OOM on long audio)
+- Implements feature request from issue #24 (chunking support)
 ## [4.14.34] - 2025-12-02
 
 ### Added

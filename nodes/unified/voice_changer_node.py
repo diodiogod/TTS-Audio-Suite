@@ -8,7 +8,7 @@ import numpy as np
 import tempfile
 import os
 import hashlib
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # Use direct file imports that work when loaded via importlib
 import os
@@ -75,6 +75,14 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 "refinement_passes": ("INT", {
                     "default": 1, "min": 1, "max": 30, "step": 1,
                     "tooltip": "Number of conversion iterations. Each pass refines the output to sound more like the target. Recommended: Max 5 passes - more can cause distortions. Each iteration is deterministic to reduce degradation."
+                }),
+                "max_chunk_duration": ("INT", {
+                    "default": 30, "min": 0, "max": 300, "step": 5,
+                    "tooltip": "Maximum duration (in seconds) for each audio chunk. Prevents OOM on long audio. Set to 0 to disable chunking entirely (process full audio at once). Default 30s is safe for ChatterBox. RVC users can disable (0) or use higher values (60-120s). Increase if you have high VRAM (>16GB)."
+                }),
+                "chunk_method": (["smart", "fixed"], {
+                    "default": "smart",
+                    "tooltip": "Chunking method: 'smart' splits at silences for natural boundaries, 'fixed' splits at exact time intervals. Smart mode produces better quality by avoiding mid-word cuts."
                 }),
             }
         }
@@ -414,10 +422,245 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             print(f"❌ Failed to create engine VC node instance: {e}")
             return None
 
-    def convert_voice(self, TTS_engine: Dict[str, Any], source_audio: Dict[str, Any],
-                     narrator_target: Dict[str, Any], refinement_passes: int):
+    def _split_audio_into_chunks(self, audio: torch.Tensor, sample_rate: int,
+                                 max_duration: int, method: str = "smart") -> List[torch.Tensor]:
         """
-        Convert voice using the selected engine.
+        Split audio into chunks using intelligent silence detection or fixed time intervals.
+
+        Args:
+            audio: Audio tensor [batch, channels, samples] or [channels, samples]
+            sample_rate: Audio sample rate
+            max_duration: Maximum chunk duration in seconds (0 = disabled)
+            method: "smart" for silence-based or "fixed" for time-based splitting
+
+        Returns:
+            List of audio chunk tensors
+        """
+        # Normalize audio to [batch, channels, samples]
+        if audio.dim() == 2:
+            audio = audio.unsqueeze(0)  # Add batch dimension
+        elif audio.dim() == 1:
+            audio = audio.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
+
+        total_samples = audio.shape[-1]
+        duration = total_samples / sample_rate
+
+        # Chunking disabled (max_duration = 0) or audio is shorter than max duration
+        if max_duration == 0:
+            print(f"📊 Audio duration: {duration:.1f}s - chunking disabled, processing full audio")
+            return [audio]
+
+        if duration <= max_duration:
+            print(f"📊 Audio duration: {duration:.1f}s - no chunking needed")
+            return [audio]
+
+        print(f"📊 Audio duration: {duration:.1f}s - splitting into chunks (max {max_duration}s each)")
+
+        if method == "smart":
+            return self._smart_chunk_audio(audio, sample_rate, max_duration)
+        else:
+            return self._fixed_chunk_audio(audio, sample_rate, max_duration)
+
+    def _smart_chunk_audio(self, audio: torch.Tensor, sample_rate: int,
+                          max_duration: int) -> List[torch.Tensor]:
+        """
+        Split audio at silence points near target chunk boundaries.
+
+        Args:
+            audio: Audio tensor [batch, channels, samples]
+            sample_rate: Audio sample rate
+            max_duration: Target chunk duration in seconds
+
+        Returns:
+            List of audio chunk tensors
+        """
+        # Detect silences
+        silence_threshold = 0.01
+        min_silence_duration = 0.1
+
+        silent_regions = AudioProcessingUtils.detect_silence(
+            audio, silence_threshold, min_silence_duration, sample_rate
+        )
+
+        print(f"🔍 Silence detection: Found {len(silent_regions)} silent regions")
+        if silent_regions:
+            print(f"   First silence: {silent_regions[0][0]:.2f}s - {silent_regions[0][1]:.2f}s")
+            print(f"   Last silence: {silent_regions[-1][0]:.2f}s - {silent_regions[-1][1]:.2f}s")
+
+        if not silent_regions:
+            print("⚠️ No silences detected - falling back to fixed chunking")
+            return self._fixed_chunk_audio(audio, sample_rate, max_duration)
+
+        # Find optimal split points
+        chunks = []
+        current_pos = 0
+        total_samples = audio.shape[-1]
+        search_window = 5.0  # ±5 seconds search window
+
+        while current_pos < total_samples:
+            target_end = min(current_pos + int(max_duration * sample_rate), total_samples)
+
+            # Find best silence within search window
+            search_start = max(0, (target_end / sample_rate) - search_window)
+            search_end = min(total_samples / sample_rate, (target_end / sample_rate) + search_window)
+
+            best_silence = None
+            best_silence_duration = 0
+
+            for silence_start, silence_end in silent_regions:
+                silence_mid = (silence_start + silence_end) / 2
+                silence_duration = silence_end - silence_start
+
+                # Check if silence midpoint is within search window AND after current position
+                if search_start <= silence_mid <= search_end and silence_mid > (current_pos / sample_rate):
+                    # Prefer longer silences (more natural pauses)
+                    if silence_duration > best_silence_duration:
+                        best_silence = silence_mid
+                        best_silence_duration = silence_duration
+
+            if best_silence:
+                # Split at silence midpoint
+                split_sample = int(best_silence * sample_rate)
+
+                # Ensure we're making progress (split point must be after current position)
+                if split_sample <= current_pos:
+                    # Silence is behind us or at current position - use target instead
+                    chunks.append(audio[:, :, current_pos:target_end])
+                    current_pos = target_end
+                    print(f"  ✂️ Fixed split at {target_end/sample_rate:.2f}s (silence too early)")
+                else:
+                    chunks.append(audio[:, :, current_pos:split_sample])
+                    current_pos = split_sample
+                    print(f"  ✂️ Smart split at {best_silence:.2f}s (silence: {best_silence_duration:.2f}s)")
+            else:
+                # No suitable silence found - use target position
+                chunks.append(audio[:, :, current_pos:target_end])
+                current_pos = target_end
+                print(f"  ✂️ Fixed split at {target_end/sample_rate:.2f}s (no silence found)")
+
+        print(f"📦 Created {len(chunks)} smart chunks")
+        return chunks
+
+    def _fixed_chunk_audio(self, audio: torch.Tensor, sample_rate: int,
+                          max_duration: int) -> List[torch.Tensor]:
+        """
+        Split audio at fixed time intervals.
+
+        Args:
+            audio: Audio tensor [batch, channels, samples]
+            sample_rate: Audio sample rate
+            max_duration: Chunk duration in seconds
+
+        Returns:
+            List of audio chunk tensors
+        """
+        chunk_samples = int(max_duration * sample_rate)
+        total_samples = audio.shape[-1]
+
+        chunks = []
+        for start_sample in range(0, total_samples, chunk_samples):
+            end_sample = min(start_sample + chunk_samples, total_samples)
+            chunks.append(audio[:, :, start_sample:end_sample])
+
+        print(f"📦 Created {len(chunks)} fixed-duration chunks")
+        return chunks
+
+    def _process_chunks_with_conversion(self, source_chunks: List[torch.Tensor],
+                                       target_audio: Dict[str, Any],
+                                       engine_instance: Any,
+                                       engine_type: str,
+                                       refinement_passes: int,
+                                       config: Dict[str, Any],
+                                       sample_rate: int) -> tuple[torch.Tensor, int]:
+        """
+        Process audio chunks through voice conversion and combine results.
+
+        Args:
+            source_chunks: List of source audio chunks
+            target_audio: Target voice audio (full, not chunked)
+            engine_instance: Engine VC node instance
+            engine_type: Engine type string
+            refinement_passes: Number of refinement passes
+            config: Engine configuration
+            sample_rate: Audio sample rate
+
+        Returns:
+            Tuple of (combined_audio_tensor, output_sample_rate)
+        """
+        from utils.audio.chunk_combiner import ChunkCombiner
+
+        converted_chunks = []
+        total_chunks = len(source_chunks)
+
+        for i, chunk in enumerate(source_chunks, 1):
+            print(f"🔄 Processing chunk {i}/{total_chunks}...")
+
+            # Convert chunk to AUDIO dict format expected by engine nodes
+            chunk_audio_dict = {
+                "waveform": chunk,
+                "sample_rate": sample_rate
+            }
+
+            # Call engine-specific conversion
+            if engine_type == "chatterbox":
+                language = config.get("language", "English")
+                result = engine_instance.convert_voice(
+                    source_audio=chunk_audio_dict,
+                    target_audio=target_audio,
+                    refinement_passes=refinement_passes,
+                    device=config.get("device", "auto"),
+                    language=language
+                )
+                converted_chunk_audio = result[0]
+
+            elif engine_type == "chatterbox_official_23lang":
+                language = config.get("language", "English")
+                result = engine_instance.convert_voice(
+                    source_audio=chunk_audio_dict,
+                    target_audio=target_audio,
+                    refinement_passes=refinement_passes,
+                    device=config.get("device", "auto"),
+                    language=language
+                )
+                converted_chunk_audio = result[0]
+
+            else:
+                raise ValueError(f"Unsupported engine type for chunking: {engine_type}")
+
+            # Extract waveform tensor and sample rate from result
+            if isinstance(converted_chunk_audio, dict) and "waveform" in converted_chunk_audio:
+                converted_chunks.append(converted_chunk_audio["waveform"])
+                # Get output sample rate from first chunk (all chunks should have same rate)
+                if i == 1 and "sample_rate" in converted_chunk_audio:
+                    output_sample_rate = converted_chunk_audio["sample_rate"]
+            elif isinstance(converted_chunk_audio, torch.Tensor):
+                converted_chunks.append(converted_chunk_audio)
+            else:
+                raise ValueError(f"Unexpected conversion result type: {type(converted_chunk_audio)}")
+
+        # Use output sample rate if available, otherwise fallback to input sample rate
+        if 'output_sample_rate' not in locals():
+            output_sample_rate = sample_rate
+            print(f"⚠️ Using input sample rate {sample_rate}Hz for combining (output rate unknown)")
+        else:
+            print(f"🔊 Output sample rate: {output_sample_rate}Hz")
+
+        # Combine chunks using crossfade for smooth transitions
+        print(f"🔗 Combining {total_chunks} converted chunks with crossfade...")
+        combined_audio = ChunkCombiner.combine_chunks(
+            converted_chunks,
+            method="crossfade",
+            crossfade_duration=0.05,  # 50ms crossfade for smooth transitions
+            sample_rate=output_sample_rate
+        )
+
+        return combined_audio, output_sample_rate
+
+    def convert_voice(self, TTS_engine: Dict[str, Any], source_audio: Dict[str, Any],
+                     narrator_target: Dict[str, Any], refinement_passes: int,
+                     max_chunk_duration: int = 30, chunk_method: str = "smart"):
+        """
+        Convert voice using the selected engine with intelligent chunking for long audio.
         This is a DELEGATION WRAPPER that preserves all original VC functionality.
 
         Args:
@@ -425,6 +668,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             source_audio: Source audio to convert
             narrator_target: Target voice characteristics (renamed for consistency)
             refinement_passes: Number of conversion iterations
+            max_chunk_duration: Maximum chunk duration in seconds (prevents OOM on long audio)
+            chunk_method: Chunking method - "smart" (silence-based) or "fixed" (time-based)
 
         Returns:
             Tuple of (converted_audio, conversion_info)
@@ -462,29 +707,61 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             # Extract audio data from flexible inputs (support both AUDIO and NARRATOR_VOICE types)
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
             processed_narrator_target = self._extract_audio_from_input(narrator_target, "narrator_target")
-            
+
             # Create proper engine VC node instance to preserve ALL functionality
             engine_instance = self._create_proper_engine_node_instance(TTS_engine)
             if not engine_instance:
                 raise RuntimeError("Failed to create engine VC node instance")
-            
+
+            # Get sample rate from source audio
+            source_sample_rate = processed_source_audio.get("sample_rate", 22050)
+
+            # Extract waveform tensor for chunking analysis
+            source_waveform = processed_source_audio.get("waveform")
+            if source_waveform is None:
+                raise ValueError("Source audio missing waveform data")
+
+            # Split source audio into chunks if needed
+            source_chunks = self._split_audio_into_chunks(
+                source_waveform,
+                source_sample_rate,
+                max_chunk_duration,
+                chunk_method
+            )
+
             # Prepare parameters for the original VC node's convert_voice method
             if engine_type == "chatterbox":
                 # Extract language from engine config for multilingual VC support
                 language = config.get("language", "English")
                 print(f"🔄 Voice Changer: Using {language} language model for conversion")
-                
-                # ChatterBox VC parameters with language support
-                result = engine_instance.convert_voice(
-                    source_audio=processed_source_audio,
-                    target_audio=processed_narrator_target,  # Map narrator_target to target_audio for original node
-                    refinement_passes=refinement_passes,
-                    device=config.get("device", "auto"),
-                    language=language  # Pass language parameter to VC node
-                )
-                
-                # ChatterBox VC node returns only (converted_audio,)
-                converted_audio = result[0]
+
+                # Check if chunking is needed
+                if len(source_chunks) > 1:
+                    # Process with chunking
+                    converted_waveform, output_sample_rate = self._process_chunks_with_conversion(
+                        source_chunks,
+                        processed_narrator_target,
+                        engine_instance,
+                        engine_type,
+                        refinement_passes,
+                        config,
+                        source_sample_rate
+                    )
+                    # Wrap in AUDIO dict format with correct output sample rate
+                    converted_audio = {
+                        "waveform": converted_waveform,
+                        "sample_rate": output_sample_rate
+                    }
+                else:
+                    # No chunking needed - use original flow
+                    result = engine_instance.convert_voice(
+                        source_audio=processed_source_audio,
+                        target_audio=processed_narrator_target,
+                        refinement_passes=refinement_passes,
+                        device=config.get("device", "auto"),
+                        language=language
+                    )
+                    converted_audio = result[0]
                 
                 # Get detailed model information for debugging
                 model_source = "unknown"
@@ -504,11 +781,16 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     except ImportError:
                         model_repo = "ResembleAI/chatterbox"  # Fallback
                 
+                chunking_info = ""
+                if len(source_chunks) > 1:
+                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max)\n"
+
                 conversion_info = (
                     f"🔄 Voice Changer (Unified) - CHATTERBOX Engine:\n"
                     f"Language Model: {language}\n"
                     f"Model Source: {model_source}\n"
                     + (f"Repository: {model_repo}\n" if model_source == "huggingface" else "") +
+                    chunking_info +
                     f"Refinement passes: {refinement_passes}\n"
                     f"Device: {config.get('device', 'auto')}\n"
                     f"Conversion completed successfully"
@@ -518,18 +800,34 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 # Extract language from engine config for multilingual VC support
                 language = config.get("language", "English")
                 print(f"🔄 Voice Changer: Using {language} language model for ChatterBox Official 23-Lang conversion")
-                
-                # ChatterBox Official 23-Lang VC parameters with language support
-                result = engine_instance.convert_voice(
-                    source_audio=processed_source_audio,
-                    target_audio=processed_narrator_target,  # Map narrator_target to target_audio for processor
-                    refinement_passes=refinement_passes,
-                    device=config.get("device", "auto"),
-                    language=language  # Pass language parameter to VC processor
-                )
-                
-                # ChatterBox Official 23-Lang VC processor returns only (converted_audio,)
-                converted_audio = result[0]
+
+                # Check if chunking is needed
+                if len(source_chunks) > 1:
+                    # Process with chunking
+                    converted_waveform, output_sample_rate = self._process_chunks_with_conversion(
+                        source_chunks,
+                        processed_narrator_target,
+                        engine_instance,
+                        engine_type,
+                        refinement_passes,
+                        config,
+                        source_sample_rate
+                    )
+                    # Wrap in AUDIO dict format with correct output sample rate
+                    converted_audio = {
+                        "waveform": converted_waveform,
+                        "sample_rate": output_sample_rate
+                    }
+                else:
+                    # No chunking needed - use original flow
+                    result = engine_instance.convert_voice(
+                        source_audio=processed_source_audio,
+                        target_audio=processed_narrator_target,
+                        refinement_passes=refinement_passes,
+                        device=config.get("device", "auto"),
+                        language=language
+                    )
+                    converted_audio = result[0]
                 
                 # Get detailed model information for debugging
                 model_source = "unknown"
@@ -550,11 +848,16 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     except ImportError:
                         model_repo = "ResembleAI/chatterbox"  # Fallback
                 
+                chunking_info = ""
+                if len(source_chunks) > 1:
+                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max)\n"
+
                 conversion_info = (
                     f"🔄 Voice Changer (Unified) - CHATTERBOX OFFICIAL 23-LANG Engine:\n"
                     f"Language Model: {language}\n"
                     f"Model Source: {model_source}\n"
                     + (f"Repository: {model_repo}\n" if model_source == "huggingface" else "") +
+                    chunking_info +
                     f"Refinement passes: {refinement_passes}\n"
                     f"Device: {config.get('device', 'auto')}\n"
                     f"Conversion completed successfully"
