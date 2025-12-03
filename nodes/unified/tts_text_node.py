@@ -39,6 +39,7 @@ from utils.text.character_parser import parse_character_text, character_parser
 from utils.voice.multilingual_engine import MultilingualEngine
 from utils.config_sanitizer import ConfigSanitizer
 import comfy.model_management as model_management
+import folder_paths
 
 # Global audio cache for unified TTS segments
 GLOBAL_AUDIO_CACHE = {}
@@ -421,18 +422,35 @@ Back to the main narrator voice for the conclusion.""",
             elif engine_type == "index_tts":
                 # Create IndexTTS processor instance using the adapter pattern
                 from engines.processors.index_tts_processor import IndexTTSProcessor
-                
+
                 engine_instance = IndexTTSProcessor(config)
-                
+
                 # Cache the instance with timestamp (follow VibeVoice pattern)
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
                     'timestamp': time.time()
                 }
-                
+
                 return engine_instance
-                
+
+            elif engine_type == "step_audio_editx":
+                # Create Step Audio EditX wrapper instance
+                class StepAudioEditXWrapper:
+                    def __init__(self, config):
+                        self.config = config
+
+                engine_instance = StepAudioEditXWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -680,10 +698,10 @@ Back to the main narrator voice for the conclusion.""",
                 higgs_tts_spec = importlib.util.spec_from_file_location("higgs_audio_tts_processor_module", higgs_tts_processor_path)
                 higgs_tts_module = importlib.util.module_from_spec(higgs_tts_spec)
                 higgs_tts_spec.loader.exec_module(higgs_tts_module)
-                
+
                 HiggsAudioTTSProcessor = higgs_tts_module.HiggsAudioTTSProcessor
                 tts_processor = HiggsAudioTTSProcessor(engine_instance)
-                
+
                 # Clean delegation to TTS processor
                 result = tts_processor.generate_tts_speech(
                     text=text,
@@ -695,7 +713,80 @@ Back to the main narrator voice for the conclusion.""",
                     max_chars_per_chunk=max_chars_per_chunk,
                     silence_between_chunks_ms=silence_between_chunks_ms
                 )
-                
+
+            elif engine_type == "step_audio_editx":
+                # Import and create the Step Audio EditX TTS processor
+                step_audio_processor_path = os.path.join(nodes_dir, "step_audio_editx", "step_audio_editx_processor.py")
+                step_audio_spec = importlib.util.spec_from_file_location("step_audio_editx_processor_module", step_audio_processor_path)
+                step_audio_module = importlib.util.module_from_spec(step_audio_spec)
+                step_audio_spec.loader.exec_module(step_audio_module)
+
+                StepAudioEditXProcessor = step_audio_module.StepAudioEditXProcessor
+
+                # Create wrapper instance
+                class StepAudioEditXWrapper:
+                    def __init__(self):
+                        self.config = config
+
+                wrapper_instance = StepAudioEditXWrapper()
+                tts_processor = StepAudioEditXProcessor(wrapper_instance, config)
+
+                # Prepare voice mapping - discover all characters in text
+                from utils.text.character_parser import character_parser
+                from utils.voice.discovery import get_character_mapping
+                import tempfile
+                from utils.audio.processing import AudioProcessingUtils
+
+                # Parse characters from text
+                character_parser.reset_session_cache()
+                segment_objects = character_parser.parse_text_segments(text)
+                characters = list(set([seg.character for seg in segment_objects]))
+
+                # Get character voice mapping
+                character_mapping = get_character_mapping(characters, engine_type="step_audio_editx")
+
+                # Build voice mapping with Step Audio EditX format
+                voice_mapping = {}
+                for character in characters:
+                    # Special handling for narrator - use provided voice reference
+                    if character == "narrator" and audio_tensor is not None and reference_text:
+                        # Extract waveform from ComfyUI audio dict format
+                        waveform = audio_tensor['waveform'] if isinstance(audio_tensor, dict) else audio_tensor
+                        sr = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+
+                        # Save audio tensor to temporary file for Step Audio EditX
+                        temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
+                        voice_mapping[character] = {
+                            'prompt_audio_path': temp_file_path,
+                            'prompt_text': reference_text
+                        }
+                    else:
+                        # Use character-specific voice from voices/ folder
+                        audio_path, ref_text = character_mapping.get(character, (None, None))
+                        if audio_path and ref_text:
+                            voice_mapping[character] = {
+                                'prompt_audio_path': audio_path,
+                                'prompt_text': ref_text
+                            }
+
+                # Process text with character switching
+                audio_segments = tts_processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=(max_chars_per_chunk > 0),
+                    max_chars_per_chunk=max_chars_per_chunk if max_chars_per_chunk > 0 else 400
+                )
+
+                # Combine audio segments
+                combined_audio = tts_processor.combine_audio_segments(
+                    audio_segments,
+                    method="auto",
+                    silence_ms=silence_between_chunks_ms
+                )
+
+                result = (combined_audio, 24000)  # Step Audio EditX native sample rate
+
             elif engine_type == "vibevoice":
                 # VibeVoice uses the wrapper pattern - call directly through the wrapper's method
                 result = engine_instance.generate_tts_audio(
