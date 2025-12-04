@@ -55,3 +55,18 @@
 - **Required in adapters**: Generate stable audio hash, create cache key with all params, check cache BEFORE generation, store after with duration calc
 - **Cache key pattern**: `audio_cache.generate_cache_key(engine_type, text=..., audio_component=..., **all_params)`
 - **Duration calculation**: Update `_calculate_duration()` with engine sample rate (e.g., 24000 for Step Audio EditX, F5-TTS)
+
+### Model Lifecycle - __del__ Destructor
+- **CRITICAL**: Remove `__del__` from engine classes - causes automatic unload after generation ends (when object goes out of scope)
+- **Pattern**: F5-TTS and ChatterBox don't have `__del__`, only IndexTTS and StepAudio did (wrong)
+- **Correct behavior**: Models stay in VRAM for reuse; only unload on explicit Clear VRAM button, engine switch, or parameter change
+
+### Generation Info Reports - Modular Pattern
+- **CRITICAL - Consistency required**: ALL engines must use `ChunkCombiner` + `ChunkTimingHelper` for generation reports
+- **Correct pattern** (from ChatterBox 23-Lang, F5-TTS):
+  1. `combine_audio_segments()` method accepts `return_info=True` parameter
+  2. Uses `ChunkCombiner.combine_chunks()` with `return_info=True` to get `(audio, chunk_info)` tuple
+  3. In unified node: call `ChunkTimingHelper.enhance_generation_info(base_info, chunk_info)` for detailed timing
+- **Wrong**: Inline concatenation (`torch.cat`) without timing tracking, manual report formatting
+- **Example**: IndexTTS/StepAudio initially did inline concat - needed refactor to use ChunkCombiner
+- **Required info**: Duration, text length, segments/chunks count, chunk timing breakdown (start/end/text per chunk)

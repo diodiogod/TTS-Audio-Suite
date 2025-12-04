@@ -335,23 +335,33 @@ class StepAudioEditXProcessor:
     def combine_audio_segments(self,
                               segments: List[Dict],
                               method: str = "auto",
-                              silence_ms: int = 100) -> torch.Tensor:
+                              silence_ms: int = 100,
+                              text_length: int = 0,
+                              return_info: bool = False):
         """
-        Combine multiple audio segments.
+        Combine multiple audio segments with optional timing info.
 
         Args:
-            segments: List of audio dicts
+            segments: List of audio dicts with 'waveform' and 'text' keys
             method: Combination method
             silence_ms: Silence between segments
+            text_length: Total text length
+            return_info: If True, return (audio, chunk_info) tuple
 
         Returns:
-            Combined audio tensor
+            Combined audio tensor, or (tensor, chunk_info) if return_info=True
         """
         if not segments:
-            return torch.zeros(1, 1, 0)
+            empty = torch.zeros(1, 1, 0)
+            if return_info:
+                return empty, {"method_used": "none", "total_chunks": 0, "chunk_timings": []}
+            return empty
 
-        # Extract waveforms
+        sample_rate = 24000
+
+        # Extract waveforms and text
         waveforms = []
+        texts = []
         for seg in segments:
             wave = seg['waveform']
             if wave.dim() == 3:
@@ -359,38 +369,41 @@ class StepAudioEditXProcessor:
             if wave.dim() == 1:
                 wave = wave.unsqueeze(0)  # Add channel dim
             waveforms.append(wave)
+            texts.append(seg.get('text', ''))
 
-        # Determine combination method
-        if method == "auto":
-            # Auto-select based on content
-            total_samples = sum(w.shape[-1] for w in waveforms)
-            if total_samples > 24000 * 10:  # > 10 seconds
-                method = "silence_padding"
-            else:
-                method = "concatenate"
+        # Single segment
+        if len(waveforms) == 1:
+            combined = waveforms[0]
+            # Ensure 2D shape [channels, samples]
+            if combined.dim() == 1:
+                combined = combined.unsqueeze(0)
+            elif combined.dim() == 3:
+                combined = combined.squeeze(0)
 
-        # Combine based on method
-        if method == "silence_padding" and silence_ms > 0:
-            sample_rate = 24000
-            silence_samples = int(silence_ms * sample_rate / 1000)
-            silence = torch.zeros(1, silence_samples)
+            if return_info:
+                chunk_info = {
+                    "method_used": "none",
+                    "total_chunks": 1,
+                    "chunk_timings": [{"start": 0.0, "end": combined.shape[-1] / sample_rate, "text": texts[0]}]
+                }
+                return combined, chunk_info
+            return combined
 
-            combined_parts = []
-            for i, wave in enumerate(waveforms):
-                combined_parts.append(wave)
-                if i < len(waveforms) - 1:
-                    combined_parts.append(silence)
+        # Use unified ChunkCombiner for consistency
+        from utils.audio.chunk_combiner import ChunkCombiner
+        result = ChunkCombiner.combine_chunks(
+            audio_segments=waveforms,
+            method=method,
+            silence_ms=silence_ms,
+            crossfade_duration=0.1,
+            sample_rate=sample_rate,
+            text_length=text_length,
+            original_text=" ".join(texts),
+            text_chunks=texts,
+            return_info=return_info
+        )
 
-            combined = torch.cat(combined_parts, dim=-1)
-        else:
-            # Simple concatenation
-            combined = torch.cat(waveforms, dim=-1)
-
-        # Ensure proper shape
-        if combined.dim() == 2:
-            combined = combined.unsqueeze(0)  # Add batch dim
-
-        return combined
+        return result
 
     def cleanup(self):
         """Clean up resources"""

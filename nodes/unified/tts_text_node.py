@@ -840,19 +840,40 @@ Back to the main narrator voice for the conclusion.""",
                     max_chars_per_chunk=max_chars_per_chunk if max_chars_per_chunk > 0 else 400
                 )
 
-                # Combine audio segments
-                combined_audio = tts_processor.combine_audio_segments(
+                # Calculate clean text length (without tags)
+                import re
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                # Combine audio segments with timing info
+                combined_audio, chunk_info = tts_processor.combine_audio_segments(
                     audio_segments,
                     method="auto",
-                    silence_ms=silence_between_chunks_ms
+                    silence_ms=silence_between_chunks_ms,
+                    text_length=text_length,
+                    return_info=True
                 )
+
+                # Calculate audio duration
+                total_duration = combined_audio.shape[-1] / 24000.0
+                num_segments = len(audio_segments)
+
+                # Build detailed generation info
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters"
+                if num_segments > 1:
+                    avg_chars = text_length / num_segments
+                    base_info += f" using {num_segments} segments (avg {avg_chars:.0f} chars/segment)"
+                base_info += f" (Step Audio EditX, narrator: {char_display})"
+
+                # Enhance with chunk timing details
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
 
                 # Format as ComfyUI audio
                 audio_output = {
                     "waveform": combined_audio,
                     "sample_rate": 24000
                 }
-                generation_info = f"✅ Step Audio EditX generation complete. Default narrator: {char_display}"
                 result = (audio_output, generation_info)
 
             elif engine_type == "vibevoice":
@@ -872,19 +893,33 @@ Back to the main narrator voice for the conclusion.""",
                 
             elif engine_type == "index_tts":
                 # IndexTTS-2 uses processor pattern - call through processor with emotion support
-                audio_result = engine_instance.process_text(
+                audio_result, chunk_info = engine_instance.process_text(
                     text=text,
                     speaker_audio=audio_tensor,
                     reference_text=reference_text,
                     seed=seed,
                     enable_chunking=enable_chunking,
                     max_chars_per_chunk=max_chars_per_chunk,
-                    silence_between_chunks_ms=silence_between_chunks_ms
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    return_info=True
                 )
-                
+
+                # Calculate statistics
+                total_duration = audio_result.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
+                import re
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                # Build detailed generation info
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (IndexTTS-2, narrator: {char_display})"
+                base_info += "\n🎭 Character switching and emotion support enabled"
+
+                # Enhance with chunk timing details
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
                 # Format as ComfyUI audio format (processor returns tensor, we need dict)
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
-                generation_info = f"✅ IndexTTS-2 generation complete\n🎭 Character switching and emotion support enabled"
                 result = (formatted_audio, generation_info)
                 
             else:
