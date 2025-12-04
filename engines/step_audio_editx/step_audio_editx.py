@@ -245,9 +245,11 @@ class StepAudioEditXEngine:
             do_sample=do_sample
         )
 
-        # Ensure output is [1, samples] format
+        # Ensure output is [1, samples] format (2D)
         if audio_tensor.dim() == 1:
-            audio_tensor = audio_tensor.unsqueeze(0)
+            audio_tensor = audio_tensor.unsqueeze(0)  # [samples] -> [1, samples]
+        elif audio_tensor.dim() == 3:
+            audio_tensor = audio_tensor.squeeze(0)  # [1, 1, samples] -> [1, samples]
 
         return audio_tensor
 
@@ -326,9 +328,11 @@ class StepAudioEditXEngine:
                     torchaudio.save(tmp_file.name, audio_tensor.unsqueeze(0) if audio_tensor.dim() == 1 else audio_tensor, sample_rate)
                     current_audio_path = tmp_file.name
 
-        # Ensure output is [1, samples] format
+        # Ensure output is [1, samples] format (2D)
         if audio_tensor.dim() == 1:
-            audio_tensor = audio_tensor.unsqueeze(0)
+            audio_tensor = audio_tensor.unsqueeze(0)  # [samples] -> [1, samples]
+        elif audio_tensor.dim() == 3:
+            audio_tensor = audio_tensor.squeeze(0)  # [1, 1, samples] -> [1, samples]
 
         return audio_tensor
 

@@ -346,9 +346,11 @@ class StepAudioEditXEngineAdapter:
                 # Generate audio for text segment
                 audio_tensor = self._generate_direct(content, voice_ref, params, character_name)
 
-                # Ensure correct shape [1, samples]
+                # Ensure correct shape [1, samples] (2D)
                 if audio_tensor.dim() == 1:
-                    audio_tensor = audio_tensor.unsqueeze(0)
+                    audio_tensor = audio_tensor.unsqueeze(0)  # [samples] -> [1, samples]
+                elif audio_tensor.dim() == 3:
+                    audio_tensor = audio_tensor.squeeze(0)  # [1, 1, samples] -> [1, samples]
 
                 audio_parts.append(audio_tensor)
 
