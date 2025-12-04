@@ -49,6 +49,46 @@ class StepAudioEditXEngineAdapter:
         self.engine = None
         self.audio_cache = get_audio_cache()
 
+        # Job-level timing tracker (persists across blocks)
+        self.job_tracker = None
+
+    def start_job(self, total_blocks: int, block_texts: list):
+        """
+        Initialize job tracker for time estimation across all blocks.
+
+        Args:
+            total_blocks: Number of blocks to process
+            block_texts: List of text lengths for each block (for weighted progress)
+        """
+        import time
+        total_text = sum(block_texts)
+        self.job_tracker = {
+            'start_time': time.time(),
+            'total_blocks': total_blocks,
+            'blocks_completed': 0,
+            'block_texts': block_texts,
+            'total_text': total_text,
+            'text_completed': 0,
+            'current_block_text': 0
+        }
+
+    def set_current_block(self, block_idx: int):
+        """Set the current block being processed."""
+        if self.job_tracker:
+            self.job_tracker['current_block_text'] = self.job_tracker['block_texts'][block_idx]
+
+    def complete_block(self):
+        """Mark current block as completed."""
+        if self.job_tracker:
+            self.job_tracker['blocks_completed'] += 1
+            self.job_tracker['text_completed'] += self.job_tracker['current_block_text']
+            # Track total tokens from completed blocks
+            self.job_tracker['total_tokens'] = self.job_tracker.get('total_tokens', 0) + self.job_tracker.get('current_block_tokens', 0)
+
+    def end_job(self):
+        """Clear job tracker after job completion."""
+        self.job_tracker = None
+
     def load_base_model(self,
                        model_path: str,
                        device: str = "auto",
@@ -127,12 +167,104 @@ class StepAudioEditXEngineAdapter:
         # Get voice reference paths
         prompt_audio_path, prompt_text = self._extract_voice_reference(voice_ref)
 
-        # Create ComfyUI progress bar for generation tracking
+        # Create ComfyUI progress bar for generation tracking with time prediction
         max_new_tokens = params.get('max_new_tokens', 8192)
         progress_bar = None
         try:
             import comfy.utils
-            progress_bar = comfy.utils.ProgressBar(max_new_tokens)
+            import time
+
+            # Get job tracker from adapter (for total job time estimation)
+            job_tracker = self.job_tracker
+
+            class TimedProgressBar:
+                """Progress bar wrapper with time tracking and prediction."""
+                def __init__(self, total, tracker):
+                    self.total = total
+                    self.current = 0
+                    self.start_time = time.time()
+                    self.wrapped = comfy.utils.ProgressBar(total)
+                    self.last_print = 0
+                    self.tracker = tracker
+
+                def update(self, delta=1):
+                    self.current += delta
+                    self.wrapped.update(delta)
+
+                def get_job_elapsed(self):
+                    """Get total job elapsed time in seconds."""
+                    if self.tracker:
+                        return time.time() - self.tracker['start_time']
+                    return None
+
+                def get_job_remaining_str(self):
+                    """Calculate and return job remaining time string based on actual data."""
+                    if not self.tracker or self.tracker['total_text'] <= 0:
+                        return None
+
+                    total_elapsed = time.time() - self.tracker['start_time']
+                    if total_elapsed <= 0:
+                        return None
+
+                    text_completed = self.tracker['text_completed']
+                    current_block_text = self.tracker['current_block_text']
+                    total_text = self.tracker['total_text']
+                    total_tokens_completed = self.tracker.get('total_tokens', 0)
+                    total_tokens = total_tokens_completed + self.current
+
+                    # Update current block tokens in tracker
+                    self.tracker['current_block_tokens'] = self.current
+
+                    if total_tokens <= 0:
+                        return None
+
+                    # Wait for more data before showing prediction
+                    # Need at least 1 completed chunk OR 150+ tokens in first chunk
+                    if total_tokens_completed == 0 and self.current < 150:
+                        return None
+
+                    # Estimate how much of current block is done based on tokens
+                    # Use completed blocks to estimate tokens per char
+                    if text_completed > 0 and total_tokens_completed > 0:
+                        tokens_per_char = total_tokens_completed / text_completed
+                    elif current_block_text > 0 and self.current > 0:
+                        # First block - use conservative estimate based on current data
+                        # Typical ratio is ~0.5-1.0 tokens per char
+                        tokens_per_char = 0.7
+                    else:
+                        tokens_per_char = 0.7
+
+                    # Estimate expected tokens for current block
+                    expected_current_tokens = current_block_text * tokens_per_char if tokens_per_char > 0 else self.current * 2
+
+                    # Current block progress (0 to 1)
+                    current_block_progress = min(self.current / expected_current_tokens, 0.99) if expected_current_tokens > 0 else 0.5
+
+                    # Text done = completed + portion of current block
+                    effective_text_done = text_completed + (current_block_text * current_block_progress)
+
+                    # Remaining text
+                    remaining_text = total_text - effective_text_done
+
+                    # Current speed (tokens per second)
+                    tokens_per_sec = total_tokens / total_elapsed
+
+                    # Remaining tokens estimate
+                    remaining_tokens = remaining_text * tokens_per_char if tokens_per_char > 0 else remaining_text
+
+                    # Remaining time
+                    if tokens_per_sec > 0 and remaining_tokens > 0:
+                        remaining_secs = remaining_tokens / tokens_per_sec
+
+                        if remaining_secs < 60:
+                            return f"~{remaining_secs:.0f}s left"
+                        else:
+                            return f"~{remaining_secs/60:.1f}m left"
+
+                    # If no remaining text but still processing, show nothing
+                    return None
+
+            progress_bar = TimedProgressBar(max_new_tokens, job_tracker)
         except (ImportError, AttributeError):
             pass  # ComfyUI progress not available
 

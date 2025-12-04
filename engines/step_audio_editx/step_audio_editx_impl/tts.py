@@ -79,10 +79,26 @@ class InterruptionStoppingCriteria(StoppingCriteria):
             # Print progress with ASCII progress bar
             current_time = time.time()
             if current_time - self.last_print_time >= self.print_interval:
-                elapsed = current_time - self.start_time
-                it_per_sec = new_tokens / elapsed if elapsed > 0 else 0
-                progress_bar = self._make_progress_bar(new_tokens, self.max_tokens)
-                print(f"   Progress: {progress_bar} | Speed: {it_per_sec:.2f} it/s | Elapsed: {elapsed:.1f}s", end='\r')
+                block_elapsed = current_time - self.start_time
+                it_per_sec = new_tokens / block_elapsed if block_elapsed > 0 else 0
+                progress_bar_str = self._make_progress_bar(new_tokens, self.max_tokens)
+
+                # Check if progress bar has job time estimation
+                job_remaining = None
+                job_elapsed = None
+                if self.progress_bar:
+                    if hasattr(self.progress_bar, 'get_job_remaining_str'):
+                        job_remaining = self.progress_bar.get_job_remaining_str()
+                    if hasattr(self.progress_bar, 'get_job_elapsed'):
+                        job_elapsed = self.progress_bar.get_job_elapsed()
+
+                # Use job elapsed if available, otherwise block elapsed
+                elapsed = job_elapsed if job_elapsed else block_elapsed
+
+                if job_remaining:
+                    print(f"   Progress: {progress_bar_str} | {it_per_sec:.1f} it/s | {elapsed:.0f}s | {job_remaining}      ", end='\r')
+                else:
+                    print(f"   Progress: {progress_bar_str} | {it_per_sec:.1f} it/s | {elapsed:.0f}s      ", end='\r')
                 self.last_print_time = current_time
 
         return False  # Never stop generation (let max_new_tokens handle it)

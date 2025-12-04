@@ -153,11 +153,26 @@ class StepAudioEditXProcessor:
         grouped_segments = self._group_consecutive_character_objects(segment_objects)
         print(f"🔄 Step Audio EditX: Grouped {len(segment_objects)} segments into {len(grouped_segments)} character blocks")
 
+        # Calculate total chunks across all blocks for time estimation
+        # We need to estimate chunks based on text length and max_chars
+        chunk_texts = []
+        for _, segment_list in grouped_segments:
+            block_text = ' '.join(seg.text.strip() for seg in segment_list)
+            if enable_chunking and len(block_text) > max_chars:
+                # Estimate chunk count and sizes
+                chunks = self.chunker.split_into_chunks(block_text, max_chars)
+                for chunk in chunks:
+                    chunk_texts.append(len(chunk))
+            else:
+                chunk_texts.append(len(block_text))
+        self.adapter.start_job(total_blocks=len(chunk_texts), block_texts=chunk_texts)
+        self._chunk_idx = 0  # Track chunk index across all blocks
+
         for group_idx, (character, segment_list) in enumerate(grouped_segments):
             # Check for interruption before processing each character block
             if model_management.interrupt_processing:
                 raise InterruptedError(f"Step Audio EditX character block {group_idx + 1}/{len(grouped_segments)} ({character}) interrupted by user")
-            print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
+            print(f"\n🎤 Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
 
             # Combine text blocks for this character
             combined_text = ' '.join(seg.text.strip() for seg in segment_list)
@@ -174,6 +189,11 @@ class StepAudioEditXProcessor:
             # Process the combined character block with group parameters
             self._process_character_block(character, combined_text, voice_mapping, group_params,
                                         enable_chunking, max_chars, audio_segments)
+
+            print()  # New line after progress bar
+
+        # End job tracking
+        self.adapter.end_job()
 
         return audio_segments
 
@@ -255,10 +275,17 @@ class StepAudioEditXProcessor:
                 if model_management.interrupt_processing:
                     raise InterruptedError(f"Step Audio EditX chunk {chunk_idx + 1}/{len(chunks)} interrupted by user")
 
+                # Set current chunk for time tracking
+                self.adapter.set_current_block(self._chunk_idx)
+
                 # Process pause tags
                 audio_tensor = self.adapter.generate_with_pause_tags(
                     chunk, voice_ref, params, True, character
                 )
+
+                # Mark chunk as completed for time tracking
+                self.adapter.complete_block()
+                self._chunk_idx += 1
 
                 # Convert tensor back to dict format
                 audio_dict = {
@@ -284,10 +311,17 @@ class StepAudioEditXProcessor:
             print(combined_text)
             print("="*60)
 
+            # Set current segment for time tracking
+            self.adapter.set_current_block(self._chunk_idx)
+
             # Process pause tags
             audio_tensor = self.adapter.generate_with_pause_tags(
                 combined_text, voice_ref, params, True, character
             )
+
+            # Mark segment as completed for time tracking
+            self.adapter.complete_block()
+            self._chunk_idx += 1
 
             # Convert tensor back to dict format
             audio_dict = {
