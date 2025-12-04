@@ -342,16 +342,36 @@ class StepAudioEditXEngine:
 
         Critical for ComfyUI model management - ensures all components move together
         when models are detached to CPU and later reloaded to CUDA.
+
+        Note: Quantized models (int4/int8) cannot be moved with .to() - they're already
+        on the correct device from loading.
         """
         self.device = device
 
         # Move the underlying TTS engine if loaded
         if self._tts_engine is not None:
             # Step Audio has multiple components: LLM, tokenizer, vocoder
-            # Move each component
+            # Move each component, but skip for quantized models
             if hasattr(self._tts_engine, 'llm') and hasattr(self._tts_engine.llm, 'to'):
-                self._tts_engine.llm = self._tts_engine.llm.to(device)
+                # Check if model is quantized (bitsandbytes)
+                # Store flag to avoid repeated warnings
+                if not hasattr(self, '_quantized_move_warning_shown'):
+                    self._quantized_move_warning_shown = False
 
+                try:
+                    # Try to move - will fail for quantized models
+                    self._tts_engine.llm = self._tts_engine.llm.to(device)
+                except ValueError as e:
+                    if "is not supported for" in str(e) and ("8-bit" in str(e) or "4-bit" in str(e)):
+                        # Quantized model - can't be moved, skip
+                        if not self._quantized_move_warning_shown:
+                            print(f"⚠️ Skipping device move for quantized model: {e}")
+                            self._quantized_move_warning_shown = True
+                    else:
+                        # Different error - re-raise
+                        raise
+
+            # CosyVoice vocoder can still be moved (usually not quantized)
             if hasattr(self._tts_engine, 'cosy_model') and hasattr(self._tts_engine.cosy_model, 'to'):
                 self._tts_engine.cosy_model = self._tts_engine.cosy_model.to(device)
 

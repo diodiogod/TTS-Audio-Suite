@@ -37,8 +37,15 @@
 - **Global torch state**: Some engines (Step Audio EditX) use global `torch.manual_seed()` for reproducibility, not function parameters
 - **CUDA seeds**: Always set both `torch.manual_seed()` and `torch.cuda.manual_seed_all()` for GPU reproducibility
 
+### Quantization Support
+- **Device movement**: Bitsandbytes quantized models (int4/int8) CANNOT be moved with `.to()` - wrap in try-except
+- **VRAM clearing**: Quantized models stay on GPU; "Clear VRAM" must unload completely (not move to CPU)
+- **Error handling**: Catch `ValueError` with "is not supported for" and "8-bit"/"4-bit" in message
+
 ### Character Switching Implementation
 - **Missing voice fallback**: When `get_character_mapping()` returns `(None, None)` for a character, MUST still add entry to `voice_mapping` with fallback to narrator/default voice
 - **Voice mapping consistency**: All characters in parsed segments MUST have entries in `voice_mapping`, even if empty/None
 - **Adapter validation**: Adapters that require voice references (Step Audio EditX, F5-TTS) need graceful fallback when voice_ref is None
 - **Character parser interaction**: Character parser changes unknown characters to "narrator" - need to ensure original character names are preserved for voice mapping lookup
+- **Parser fix**: Add text tag characters to `available_characters` (lowercase) + set language defaults like IndexTTS
+- **Working pattern**: `all_available = set(get_available_characters())` + aliases + text tag chars (lowercase) + "narrator" → `set_available_characters(list(all_available))` + `set_character_language_default()` for each char
