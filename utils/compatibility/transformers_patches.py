@@ -32,9 +32,6 @@ class TransformersPatches:
     @classmethod
     def apply_all_patches(cls, verbose: bool = True):
         """Apply all necessary transformers compatibility patches"""
-        if verbose:
-            print("🔧 Applying transformers compatibility patches...")
-
         cls.patch_flash_attention_kwargs(verbose=verbose)
         cls.patch_base_streamer(verbose=verbose)
         # Skip DynamicCache patch - users should upgrade transformers instead
@@ -43,7 +40,7 @@ class TransformersPatches:
         cls.patch_accelerate_compatibility(verbose=verbose)
         cls.patch_step_audio_tokenization(verbose=verbose)
 
-        if verbose:
+        if verbose and len(cls._patches_applied) > 0:
             print(f"✅ Applied {len(cls._patches_applied)} transformers compatibility patches")
     
     @classmethod
@@ -306,9 +303,6 @@ class TransformersPatches:
             
             cls._patches_applied.add("vibevoice_generation_methods")
             
-            if verbose:
-                print("   🔧 VibeVoice generation methods patched")
-            
         except ImportError:
             # VibeVoice not installed, skip this patch
             pass
@@ -528,8 +522,6 @@ class TransformersPatches:
             if transformers_version < (4, 54):
                 return
 
-            if verbose:
-                print("   🔧 Applying Step Audio EditX tokenization patch for transformers 4.54+...")
 
             # The bug: transformers 4.54+ doesn't recognize audio tokens (<audio_65536> through <audio_74752>)
             # as special tokens, causing them to be split into multiple tokens instead of single token IDs.
@@ -575,9 +567,6 @@ class TransformersPatches:
                                                 pass  # May already be marked or method not available
 
                                 tokenizer._step_audio_tokens_marked = True
-
-                                if verbose:
-                                    print(f"   ✅ Marked audio tokens (65536-74752) as special in Step Audio EditX tokenizer")
                 except Exception as e:
                     # Silently fail - this is a best-effort patch
                     pass
@@ -588,9 +577,6 @@ class TransformersPatches:
             AutoTokenizer.from_pretrained = _patched_from_pretrained
 
             cls._patches_applied.add("step_audio_tokenization")
-
-            if verbose:
-                print("   ✅ Step Audio EditX tokenization patch applied (auto-adds audio tokens)")
 
         except ImportError as e:
             if verbose:
