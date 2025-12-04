@@ -631,6 +631,7 @@ def register_index_tts_factory():
         use_cuda_kernel = config.additional_params.get("use_cuda_kernel", None) if config.additional_params else None
         use_deepspeed = config.additional_params.get("use_deepspeed", False) if config.additional_params else False
         use_torch_compile = config.additional_params.get("use_torch_compile", False) if config.additional_params else False
+        low_vram = config.additional_params.get("low_vram", False) if config.additional_params else False
         
         if not model_path or not os.path.exists(model_path):
             raise RuntimeError(f"IndexTTS-2 model not found at {model_path}. Auto-download should have been triggered earlier.")
@@ -692,7 +693,8 @@ def register_index_tts_factory():
                 use_fp16=use_fp16 and device != "cpu",
                 use_cuda_kernel=use_cuda_kernel,
                 use_deepspeed=use_deepspeed,
-                use_torch_compile=use_torch_compile
+                use_torch_compile=use_torch_compile,
+                low_vram=low_vram
             )
             
             print(f"✅ IndexTTS-2 model loaded via unified interface on {device}")
@@ -704,7 +706,6 @@ def register_index_tts_factory():
             raise RuntimeError(f"Failed to load IndexTTS-2 model: {e}")
     
     unified_model_interface.register_model_factory("index_tts", "tts", index_tts_factory)
-
 
 def register_chatterbox_23lang_factory():
     """Register ChatterBox Official 23-Lang model factory"""
