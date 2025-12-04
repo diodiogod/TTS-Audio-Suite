@@ -165,7 +165,10 @@ class StepAudioEditXProcessor:
                     chunk_texts.append(len(chunk))
             else:
                 chunk_texts.append(len(block_text))
-        self.adapter.start_job(total_blocks=len(chunk_texts), block_texts=chunk_texts)
+        # Only start job if not already tracking (SRT processor manages job at higher level)
+        self._srt_mode = self.adapter.job_tracker is not None
+        if not self._srt_mode:
+            self.adapter.start_job(total_blocks=len(chunk_texts), block_texts=chunk_texts)
         self._chunk_idx = 0  # Track chunk index across all blocks
 
         for group_idx, (character, segment_list) in enumerate(grouped_segments):
@@ -192,8 +195,9 @@ class StepAudioEditXProcessor:
 
             print()  # New line after progress bar
 
-        # End job tracking
-        self.adapter.end_job()
+        # End job tracking (only if we started it)
+        if not self._srt_mode:
+            self.adapter.end_job()
 
         return audio_segments
 
@@ -275,16 +279,18 @@ class StepAudioEditXProcessor:
                 if model_management.interrupt_processing:
                     raise InterruptedError(f"Step Audio EditX chunk {chunk_idx + 1}/{len(chunks)} interrupted by user")
 
-                # Set current chunk for time tracking
-                self.adapter.set_current_block(self._chunk_idx)
+                # Set current chunk for time tracking (skip in SRT mode - managed at subtitle level)
+                if not self._srt_mode:
+                    self.adapter.set_current_block(self._chunk_idx)
 
                 # Process pause tags
                 audio_tensor = self.adapter.generate_with_pause_tags(
                     chunk, voice_ref, params, True, character
                 )
 
-                # Mark chunk as completed for time tracking
-                self.adapter.complete_block()
+                # Mark chunk as completed for time tracking (skip in SRT mode)
+                if not self._srt_mode:
+                    self.adapter.complete_block()
                 self._chunk_idx += 1
 
                 # Convert tensor back to dict format
@@ -317,16 +323,18 @@ class StepAudioEditXProcessor:
             print(combined_text)
             print("="*60)
 
-            # Set current segment for time tracking
-            self.adapter.set_current_block(self._chunk_idx)
+            # Set current segment for time tracking (skip in SRT mode - managed at subtitle level)
+            if not self._srt_mode:
+                self.adapter.set_current_block(self._chunk_idx)
 
             # Process pause tags
             audio_tensor = self.adapter.generate_with_pause_tags(
                 combined_text, voice_ref, params, True, character
             )
 
-            # Mark segment as completed for time tracking
-            self.adapter.complete_block()
+            # Mark segment as completed for time tracking (skip in SRT mode)
+            if not self._srt_mode:
+                self.adapter.complete_block()
             self._chunk_idx += 1
 
             # Convert tensor back to dict format

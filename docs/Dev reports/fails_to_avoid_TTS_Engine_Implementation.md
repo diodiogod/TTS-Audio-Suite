@@ -71,6 +71,18 @@
 - **Example**: IndexTTS/StepAudio initially did inline concat - needed refactor to use ChunkCombiner
 - **Required info**: Duration, text length, segments/chunks count, chunk timing breakdown (start/end/text per chunk)
 
+### Segment Parameter Registration
+- **Forgot to add**: New engines to `PARAMETER_ENGINES` in `utils/text/segment_parameters.py` for `[seed:X]` tag support
+
+### SRT Processor Import Pattern
+- **Wrong**: Using `from nodes.xxx import` - fails with `'nodes' is not a package`
+- **Correct**: Use `importlib.util.spec_from_file_location()` for cross-module imports in dynamically loaded processors
+
+### ComfyUI Audio Dict Format
+- **Wrong**: Passing `audio_tensor` directly to functions expecting raw tensor
+- **Correct**: Extract waveform with `audio_tensor.get('waveform')` - ComfyUI audio is `{"waveform": tensor, "sample_rate": int}`
+- **Also**: Check `AudioProcessingUtils.save_audio_to_temp_file(audio, sample_rate)` signature - it returns path, doesn't take path as arg
+
 ### ComfyUI Audio Tensor Shape
 - **CRITICAL**: ComfyUI expects **3D** `[batch, channels, samples]` NOT 2D `[channels, samples]`
 - **Error symptom**: `IndexError: Dimension out of range (expected to be in range of [-1, 0], but got 1)` in `save_audio()`

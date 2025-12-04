@@ -477,7 +477,53 @@ Hello! This is unified SRT TTS with character switching.
                     'timestamp': time.time()
                 }
                 return engine_instance
-                
+
+            elif engine_type == "step_audio_editx":
+                # Import and create the Step Audio EditX SRT processor
+                step_audio_srt_processor_path = os.path.join(nodes_dir, "step_audio_editx", "step_audio_editx_srt_processor.py")
+                step_audio_srt_spec = importlib.util.spec_from_file_location("step_audio_editx_srt_processor_module", step_audio_srt_processor_path)
+                step_audio_srt_module = importlib.util.module_from_spec(step_audio_srt_spec)
+                step_audio_srt_spec.loader.exec_module(step_audio_srt_module)
+
+                StepAudioEditXSRTProcessor = step_audio_srt_module.StepAudioEditXSRTProcessor
+
+                # Create a minimal wrapper node for the processor
+                class StepAudioEditXSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = StepAudioEditXSRTProcessor(self, config)
+
+                    def update_config(self, new_config):
+                        """Update configuration for both wrapper and processor"""
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def process_with_error_handling(self, func):
+                        """Error handling wrapper to match node interface"""
+                        try:
+                            return func()
+                        except Exception as e:
+                            raise e
+
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        """Format audio for ComfyUI output"""
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+                        elif audio_tensor.dim() == 2:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        return {"waveform": audio_tensor, "sample_rate": sample_rate}
+
+                engine_instance = StepAudioEditXSRTWrapper(config)
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -775,7 +821,41 @@ Hello! This is unified SRT TTS with character switching.
                     timing_mode=timing_mode,
                     timing_params=timing_params
                 )
-                
+
+            elif engine_type == "step_audio_editx":
+                # Use the Step Audio EditX SRT processor from the wrapper instance
+                # Step Audio EditX requires voice reference with prompt_audio_path and prompt_text
+                voice_mapping = {}
+                if audio_tensor:
+                    from utils.audio.processing import AudioProcessingUtils
+                    # Extract waveform from ComfyUI audio dict format
+                    waveform = audio_tensor.get('waveform') if isinstance(audio_tensor, dict) else audio_tensor
+                    sample_rate = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+                    # save_audio_to_temp_file returns the temp file path
+                    temp_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sample_rate)
+
+                    voice_mapping["narrator"] = {
+                        'prompt_audio_path': temp_path,
+                        'prompt_text': reference_text if reference_text else ""
+                    }
+
+                # Prepare timing parameters
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+
+                # Use the processor's main entry point
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params
+                )
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
             
@@ -814,11 +894,12 @@ Hello! This is unified SRT TTS with character switching.
             print(error_msg)
             import traceback
             traceback.print_exc()
-            
+
             # Return empty audio and error info (preserving original return structure)
-            empty_audio = AudioProcessingUtils.create_silence(1.0, 24000)
-            empty_comfy = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
-            
+            from utils.audio.processing import AudioProcessingUtils as APU
+            empty_audio = APU.create_silence(1.0, 24000)
+            empty_comfy = APU.format_for_comfyui(empty_audio, 24000)
+
             return (empty_comfy, error_msg, "Error: No timing report available", "Error: No adjusted SRT available")
 
 
