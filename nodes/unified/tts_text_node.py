@@ -854,6 +854,12 @@ Back to the main narrator voice for the conclusion.""",
                     return_info=True
                 )
 
+                # Ensure correct shape [channels, samples] for ComfyUI
+                if combined_audio.dim() == 1:
+                    combined_audio = combined_audio.unsqueeze(0)
+                elif combined_audio.dim() == 3:
+                    combined_audio = combined_audio.squeeze(0)
+
                 # Calculate audio duration
                 total_duration = combined_audio.shape[-1] / 24000.0
                 num_segments = len(audio_segments)

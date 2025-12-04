@@ -288,8 +288,14 @@ class StepAudioEditXProcessor:
                 self._chunk_idx += 1
 
                 # Convert tensor back to dict format
+                # Ensure 2D shape [channels, samples]
+                if audio_tensor.dim() == 1:
+                    audio_tensor = audio_tensor.unsqueeze(0)
+                elif audio_tensor.dim() == 3:
+                    audio_tensor = audio_tensor.squeeze(0)
+
                 audio_dict = {
-                    'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
+                    'waveform': audio_tensor,
                     'sample_rate': 24000,  # Step Audio EditX native sample rate
                     'character': character,
                     'text': chunk
@@ -324,8 +330,14 @@ class StepAudioEditXProcessor:
             self._chunk_idx += 1
 
             # Convert tensor back to dict format
+            # Ensure 2D shape [channels, samples]
+            if audio_tensor.dim() == 1:
+                audio_tensor = audio_tensor.unsqueeze(0)
+            elif audio_tensor.dim() == 3:
+                audio_tensor = audio_tensor.squeeze(0)
+
             audio_dict = {
-                'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
+                'waveform': audio_tensor,
                 'sample_rate': 24000,  # Step Audio EditX native sample rate
                 'character': character,
                 'text': combined_text
