@@ -785,7 +785,13 @@ Back to the main narrator voice for the conclusion.""",
                     silence_ms=silence_between_chunks_ms
                 )
 
-                result = (combined_audio, 24000)  # Step Audio EditX native sample rate
+                # Format as ComfyUI audio
+                audio_output = {
+                    "waveform": combined_audio,
+                    "sample_rate": 24000
+                }
+                generation_info = f"✅ Step Audio EditX generation complete. Default narrator: {char_display}"
+                result = (audio_output, generation_info)
 
             elif engine_type == "vibevoice":
                 # VibeVoice uses the wrapper pattern - call directly through the wrapper's method

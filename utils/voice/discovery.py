@@ -460,8 +460,8 @@ class VoiceDiscovery:
                 'source_folder': character_info['source_folder']
             }
         
-        # For audio+text engines (F5-TTS), we need both audio and text
-        if engine_type == "audio_and_text" or engine_type == "f5tts":  # Keep backward compatibility
+        # For audio+text engines (F5-TTS, Step Audio EditX), we need both audio and text
+        if engine_type == "audio_and_text" or engine_type == "f5tts" or engine_type == "step_audio_editx":  # Keep backward compatibility
             if character_info.get('text_content'):
                 return character_info
         
@@ -473,7 +473,7 @@ class VoiceDiscovery:
         
         Args:
             character_name: Name of the character
-            engine_type: "f5tts" (needs text) or "chatterbox" (audio only)
+            engine_type: "f5tts" or "step_audio_editx" (needs text) or "chatterbox" (audio only)
             
         Returns:
             Tuple of (audio_path, reference_text) or (None, None) if not found
@@ -493,7 +493,7 @@ class VoiceDiscovery:
         
         Args:
             characters: List of character names to look up
-            engine_type: "f5tts" or "chatterbox"
+            engine_type: "f5tts", "step_audio_editx" (needs text) or "chatterbox" (audio only)
             
         Returns:
             Dict mapping character names to (audio_path, reference_text) tuples

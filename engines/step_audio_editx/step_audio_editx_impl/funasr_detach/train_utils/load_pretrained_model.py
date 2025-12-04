@@ -106,7 +106,7 @@ def load_pretrained_model(
     dst_state = obj.state_dict()
     # import pdb;
     # pdb.set_trace()
-    print(f"ckpt: {path}")
+    # Checkpoint path (silent loading)
     if oss_bucket is None:
         src_state = torch.load(path, map_location=map_location)
     else:

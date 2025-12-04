@@ -94,14 +94,11 @@ class StepAudioEditXDownloader:
             # Use extra_model_paths configuration for downloads (respects YAML paths)
             try:
                 self.base_path = get_preferred_download_path(model_type='TTS', engine_name='step_audio_editx')
-                print(f"📁 Using YAML-configured download path: {self.base_path}")
             except Exception as e:
                 # Fallback to default if extra_paths fails
                 self.base_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx")
-                print(f"📁 Using default download path: {self.base_path}")
         else:
             self.base_path = base_path
-            print(f"📁 Using custom download path: {self.base_path}")
 
         # Ensure base directory exists
         os.makedirs(self.base_path, exist_ok=True)

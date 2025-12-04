@@ -5,7 +5,10 @@ from typing import Union
 import librosa
 import numpy as np
 import torch
-from torch_complex.tensor import ComplexTensor
+try:
+    from torch_complex.tensor import ComplexTensor
+except:
+    pass  # torch_complex is optional
 
 from funasr_detach.models.transformer.utils.nets_utils import make_pad_mask
 

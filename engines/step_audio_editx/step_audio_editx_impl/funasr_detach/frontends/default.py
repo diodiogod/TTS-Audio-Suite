@@ -11,7 +11,7 @@ import torch.nn as nn
 try:
     from torch_complex.tensor import ComplexTensor
 except:
-    print("Please install torch_complex firstly")
+    pass  # torch_complex is optional
 
 from funasr_detach.frontends.utils.log_mel import LogMel
 from funasr_detach.frontends.utils.stft import Stft

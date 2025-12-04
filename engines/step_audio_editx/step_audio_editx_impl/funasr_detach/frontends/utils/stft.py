@@ -8,7 +8,7 @@ import torch
 try:
     from torch_complex.tensor import ComplexTensor
 except:
-    print("Please install torch_complex firstly")
+    pass  # torch_complex is optional
 from funasr_detach.models.transformer.utils.nets_utils import make_pad_mask
 from funasr_detach.frontends.utils.complex_utils import is_complex
 

@@ -18,6 +18,7 @@ class PyTorchPatches:
     def apply_all_patches(cls, verbose: bool = True):
         """Apply all necessary PyTorch compatibility patches"""
         cls.patch_torchaudio_torchcodec(verbose=verbose)
+        cls.suppress_torchaudio_warnings(verbose=verbose)
 
         if verbose and cls._patches_applied:
             print(f"✅ Applied {len(cls._patches_applied)} PyTorch compatibility patches")
@@ -150,6 +151,41 @@ class PyTorchPatches:
             warnings.warn(f"scipy not available for torchaudio patch: {e}")
         except Exception as e:
             warnings.warn(f"torchaudio TorchCodec patching failed: {e}")
+
+    @classmethod
+    def suppress_torchaudio_warnings(cls, verbose: bool = True):
+        """
+        Suppress torchaudio's future API change warnings about TorchCodec migration.
+
+        These warnings appear when using torchaudio.load/save on PyTorch < 2.9:
+        - "In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec"
+        - "In 2.9, this function's implementation will be changed to use torchaudio.save_with_torchcodec"
+
+        Since we already have a global monkey-patch for PyTorch 2.9+, these warnings are noise.
+        """
+        if "torchaudio_warnings" in cls._patches_applied:
+            return
+
+        try:
+            # Suppress specific torchaudio deprecation warnings
+            warnings.filterwarnings(
+                'ignore',
+                message='.*load_with_torchcodec.*',
+                category=UserWarning
+            )
+            warnings.filterwarnings(
+                'ignore',
+                message='.*save_with_torchcodec.*',
+                category=UserWarning
+            )
+
+            cls._patches_applied.add("torchaudio_warnings")
+
+            if verbose:
+                print("   🔇 Suppressed torchaudio 2.9 migration warnings")
+
+        except Exception as e:
+            warnings.warn(f"torchaudio warning suppression failed: {e}")
 
     @classmethod
     def get_applied_patches(cls):

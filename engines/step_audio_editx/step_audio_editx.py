@@ -167,12 +167,9 @@ class StepAudioEditXEngine:
         )
 
         # Load via unified interface with progress indication
-        print("🔄 Step Audio EditX: Initializing engine (first run may take 2-3 minutes to load models)...")
-        print("   Loading: Audio Tokenizer → LLM (3B params) → CosyVoice Vocoder...")
+        print("🔄 Step Audio EditX: Initializing engine (first run: 2-3 min)...")
         self._tts_engine = unified_model_interface.load_model(self._model_config)
-
-        print(f"✅ Step Audio EditX engine loaded via unified interface on {self.device}")
-        print("⚡ Next generations will be much faster (models cached in VRAM)")
+        print(f"✅ Engine loaded on {self.device}")
 
     def clone(
         self,
@@ -181,7 +178,8 @@ class StepAudioEditXEngine:
         target_text: str,
         temperature: float = 0.7,
         do_sample: bool = True,
-        max_new_tokens: int = 8192
+        max_new_tokens: int = 8192,
+        progress_bar=None
     ) -> torch.Tensor:
         """
         Generate speech using zero-shot voice cloning.
@@ -193,6 +191,7 @@ class StepAudioEditXEngine:
             temperature: Sampling temperature (default: 0.7, hardcoded in original)
             do_sample: Use sampling (default: True, hardcoded in original)
             max_new_tokens: Maximum tokens to generate (default: 8192, hardcoded in original)
+            progress_bar: ComfyUI progress bar for generation tracking
 
         Returns:
             Generated audio as torch.Tensor with shape [1, samples]
@@ -235,11 +234,15 @@ class StepAudioEditXEngine:
                 except StopIteration:
                     pass
 
-        # Call original implementation
+        # Call original implementation with progress bar
         audio_tensor, sample_rate = self._tts_engine.clone(
             prompt_wav_path=prompt_wav_path,
             prompt_text=prompt_text,
-            target_text=target_text
+            target_text=target_text,
+            progress_bar=progress_bar,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=do_sample
         )
 
         # Ensure output is [1, samples] format

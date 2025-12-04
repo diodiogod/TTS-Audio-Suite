@@ -22,8 +22,10 @@ from funasr_detach.models.campplus.utils import sv_chunk, postprocess, distribut
 
 try:
     from funasr_detach.models.campplus.cluster_backend import ClusterBackend
-except:
-    print("If you want to use the speaker diarization, please `pip install hdbscan`")
+    _HDBSCAN_AVAILABLE = True
+except ImportError:
+    _HDBSCAN_AVAILABLE = False
+    # hdbscan only needed for speaker diarization (not used in TTS)
 
 
 def prepare_data_iterator(data_in, input_len=None, data_type=None, key=None):
@@ -165,7 +167,7 @@ class AutoModel:
     def build_model(self, **kwargs):
         assert "model" in kwargs
         if "model_conf" not in kwargs:
-            logging.info(
+            logging.debug(
                 "download models from model hub: {}".format(
                     kwargs.get("model_hub", "ms")
                 )
@@ -211,7 +213,7 @@ class AutoModel:
         # init_param
         init_param = kwargs.get("init_param", None)
         if init_param is not None:
-            logging.info(f"Loading pretrained params from {init_param}")
+            logging.debug(f"Loading pretrained params from {init_param}")
             load_pretrained_model(
                 model=model,
                 path=init_param,

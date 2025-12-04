@@ -8,7 +8,6 @@ import os
 import threading
 import torch
 import torchaudio
-import sox
 import tempfile
 
 
@@ -49,54 +48,8 @@ def trim_silence(audio, sr, keep_left_time=0.05, keep_right_time=0.22, hop_size=
     return trim_wav
 
 
-def volumn_adjust(audio16bit_torch, sr, volumn_ratio):
-    """使用sox进行音频音量调整
-    Args:
-        audio16bit_torch (Tensor): 输入音频张量 [1, samples]
-        volume_ratio (float): 音量比率，>1增大音量，<1降低音量
-
-    Returns:
-        Tensor: 调整音量后的音频张量
-    """
-    # 创建临时文件
-    with tempfile.NamedTemporaryFile(
-        suffix=".wav", delete=True
-    ) as temp_in, tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_out:
-        # 保存输入音频到临时文件
-        torchaudio.save(temp_in.name, audio16bit_torch, sr)  # 假设采样率为16000
-        # 创建sox转换器
-        tfm = sox.Transformer()
-        tfm.vol(volumn_ratio)  # 设置音量调整比率
-        # 应用音量调整
-        tfm.build_file(temp_in.name, temp_out.name)
-        # 读取处理后的音频
-        audio_changed, _ = torchaudio.load(temp_out.name)
-    return audio_changed
-
-
-def speech_adjust(audio16bit_torch, sr, speed_ratio):
-    """使用sox进行音频变速处理
-    Args:
-        audio16bit_torch (Tensor): 输入音频张量 [1, samples]
-        speed_ratio (float): 速度比率，>1加速，<1减速
-
-    Returns:
-        Tensor: 变速后的音频张量
-    """
-    # 创建临时文件
-    with tempfile.NamedTemporaryFile(
-        suffix=".wav", delete=True
-    ) as temp_in, tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_out:
-        # 保存输入音频到临时文件
-        torchaudio.save(temp_in.name, audio16bit_torch, sr)  # 假设采样率为16000
-        # 创建sox转换器
-        tfm = sox.Transformer()
-        tfm.tempo(speed_ratio)  # 设置变速比率
-        # 应用变速处理
-        tfm.build_file(temp_in.name, temp_out.name)
-        # 读取处理后的音频
-        audio_changed, _ = torchaudio.load(temp_out.name)
-    return audio_changed
+# Note: volumn_adjust() and speech_adjust() functions removed - they required sox which is not installed
+# These functions were unused dead code in the original Step Audio EditX implementation
 
 
 def audio_resample(audio16bit_torch, result_sr, target_sample_rate):

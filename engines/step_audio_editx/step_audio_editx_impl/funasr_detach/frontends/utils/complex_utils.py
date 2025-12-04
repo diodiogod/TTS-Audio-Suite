@@ -11,7 +11,7 @@ try:
     from torch_complex import functional as FC
     from torch_complex.tensor import ComplexTensor
 except:
-    print("Please install torch_complex firstly")
+    pass  # torch_complex is optional
 
 
 EPS = torch.finfo(torch.double).eps

@@ -90,4 +90,4 @@ class RegisterTables:
 tables = RegisterTables()
 
 # from funasr_detach.models.paraformer_streaming.model import ParaformerStreaming
-import funasr
+# import funasr  # Not needed - this is the bundled funasr_detach version

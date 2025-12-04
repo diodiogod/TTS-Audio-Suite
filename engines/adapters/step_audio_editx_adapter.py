@@ -127,6 +127,15 @@ class StepAudioEditXEngineAdapter:
         # Get voice reference paths
         prompt_audio_path, prompt_text = self._extract_voice_reference(voice_ref)
 
+        # Create ComfyUI progress bar for generation tracking
+        max_new_tokens = params.get('max_new_tokens', 8192)
+        progress_bar = None
+        try:
+            import comfy.utils
+            progress_bar = comfy.utils.ProgressBar(max_new_tokens)
+        except (ImportError, AttributeError):
+            pass  # ComfyUI progress not available
+
         # Generate using clone mode
         audio_tensor = self.engine.clone(
             prompt_wav_path=prompt_audio_path,
@@ -134,7 +143,8 @@ class StepAudioEditXEngineAdapter:
             target_text=text,
             temperature=params.get('temperature', 0.7),
             do_sample=params.get('do_sample', True),
-            max_new_tokens=params.get('max_new_tokens', 8192)
+            max_new_tokens=max_new_tokens,
+            progress_bar=progress_bar
         )
 
         return audio_tensor

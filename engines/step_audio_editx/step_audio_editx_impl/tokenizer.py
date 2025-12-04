@@ -10,10 +10,14 @@ import torchaudio
 import onnxruntime
 import whisper
 
-# Add step_audio_editx_impl to sys.path so internal modules can import each other
+# CRITICAL: Add our bundled directory FIRST to sys.path to prevent conflicts with other custom nodes
 _impl_dir = os.path.dirname(os.path.abspath(__file__))
-if _impl_dir not in sys.path:
-    sys.path.insert(0, _impl_dir)
+# Remove any existing paths that might conflict
+sys.path = [p for p in sys.path if 'Step_Audio_EditX_TTS' not in p and 'Step-Audio-EditX' not in p or p == _impl_dir]
+# Insert our bundled directory at the very beginning
+if _impl_dir in sys.path:
+    sys.path.remove(_impl_dir)
+sys.path.insert(0, _impl_dir)
 
 from funasr_detach import AutoModel
 from model_loader import model_loader, ModelSource
@@ -53,10 +57,11 @@ class StepAudioTokenizer:
                 f"This should have been auto-downloaded by the engine loader."
             )
 
-        print(f"🔄 Loading FunASR model from: {local_funasr_path}")
+        # Load FunASR model (silent - errors will be raised if fails)
         self.funasr_model = AutoModel(
             model=local_funasr_path,
-            device="cuda:0" if torch.cuda.is_available() else "cpu"
+            device="cuda:0" if torch.cuda.is_available() else "cpu",
+            disable_log=True  # Suppress verbose registration tables
         )
 
         # Tokenizer files are in encoder_path (Step-Audio-EditX directory)

@@ -41,6 +41,7 @@ class TransformersPatches:
         # cls.patch_dynamic_cache_properties(verbose=verbose)
         cls.patch_vibevoice_generation_methods(verbose=verbose)
         cls.patch_accelerate_compatibility(verbose=verbose)
+        cls.patch_step_audio_tokenization(verbose=verbose)
 
         if verbose:
             print(f"✅ Applied {len(cls._patches_applied)} transformers compatibility patches")
@@ -499,6 +500,103 @@ class TransformersPatches:
                 print(f"   ❌ accelerate not available: {e}")
         except Exception as e:
             warnings.warn(f"Accelerate compatibility patching failed: {e}")
+
+    @classmethod
+    def patch_step_audio_tokenization(cls, verbose: bool = True):
+        """
+        Patch Step Audio EditX tokenization bug in transformers 4.54+
+
+        Issue: transformers 4.54+ changed tokenization behavior causing Step Audio EditX
+               to generate silent audio. The tokenizer in 4.54+ doesn't properly handle
+               special audio tokens (<audio_XXXXX>) which should be single tokens but get
+               split into multiple tokens.
+
+        Root cause: Tokenizer changes in transformers 4.54+ affect how special tokens are processed
+
+        Solution: Monkey-patch tokenizer encode/decode methods to handle audio tokens correctly
+
+        Affects: Step Audio EditX TTS engine only
+        """
+        if "step_audio_tokenization" in cls._patches_applied:
+            return
+
+        try:
+            import transformers
+
+            # Only patch transformers 4.54+
+            transformers_version = tuple(map(int, transformers.__version__.split('.')[:2]))
+            if transformers_version < (4, 54):
+                return
+
+            if verbose:
+                print("   🔧 Applying Step Audio EditX tokenization patch for transformers 4.54+...")
+
+            # The bug: transformers 4.54+ doesn't recognize audio tokens (<audio_65536> through <audio_74752>)
+            # as special tokens, causing them to be split into multiple tokens instead of single token IDs.
+            #
+            # Root cause: Step Audio EditX model doesn't have an added_tokens.json file, and transformers 4.54+
+            # is stricter about requiring explicit special token registration.
+            #
+            # Fix: Monkey-patch AutoTokenizer.from_pretrained to automatically add audio tokens as special tokens
+            # when loading Step Audio EditX models.
+
+            from transformers import AutoTokenizer
+            _original_from_pretrained = AutoTokenizer.from_pretrained
+
+            def _patched_from_pretrained(pretrained_model_name_or_path, *args, **kwargs):
+                """Wrapper that marks Step Audio EditX audio tokens as special tokens"""
+                tokenizer = _original_from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
+
+                # Check if this is a Step Audio EditX model (has config with audio token range)
+                try:
+                    config_path = pretrained_model_name_or_path if isinstance(pretrained_model_name_or_path, str) else None
+                    if config_path and ('step' in config_path.lower() or 'audio' in config_path.lower()):
+                        # Check if tokenizer has the expected vocab size for Step Audio EditX
+                        if hasattr(tokenizer, 'vocab_size') and tokenizer.vocab_size >= 74752:
+                            # Check if tokens are already marked
+                            if not hasattr(tokenizer, '_step_audio_tokens_marked'):
+                                # Mark audio token IDs (65536-74752) as special tokens
+                                # This prevents them from being split during encoding
+                                if hasattr(tokenizer, 'all_special_ids'):
+                                    # Add audio token IDs to the set of special token IDs
+                                    audio_token_ids = set(range(65536, 74753))
+                                    tokenizer.all_special_ids = sorted(set(tokenizer.all_special_ids) | audio_token_ids)
+
+                                # Also mark in the tokenizer's internal structures
+                                if hasattr(tokenizer, '_tokenizer') and hasattr(tokenizer._tokenizer, 'token_to_id'):
+                                    # For fast tokenizers, mark tokens in the underlying tokenizer
+                                    for i in range(65536, 74753):
+                                        token_str = f"<audio_{i}>"
+                                        # These tokens should already exist in vocab, just mark them as special
+                                        if hasattr(tokenizer._tokenizer, 'add_special_tokens'):
+                                            try:
+                                                tokenizer._tokenizer.add_special_tokens([token_str])
+                                            except:
+                                                pass  # May already be marked or method not available
+
+                                tokenizer._step_audio_tokens_marked = True
+
+                                if verbose:
+                                    print(f"   ✅ Marked audio tokens (65536-74752) as special in Step Audio EditX tokenizer")
+                except Exception as e:
+                    # Silently fail - this is a best-effort patch
+                    pass
+
+                return tokenizer
+
+            # Apply the monkey-patch
+            AutoTokenizer.from_pretrained = _patched_from_pretrained
+
+            cls._patches_applied.add("step_audio_tokenization")
+
+            if verbose:
+                print("   ✅ Step Audio EditX tokenization patch applied (auto-adds audio tokens)")
+
+        except ImportError as e:
+            if verbose:
+                print(f"   ❌ transformers not available: {e}")
+        except Exception as e:
+            warnings.warn(f"Step Audio EditX tokenization patching failed: {e}")
 
     @classmethod
     def get_applied_patches(cls):

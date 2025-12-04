@@ -9,10 +9,14 @@ from typing import Optional, Dict, Any, Tuple
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-# Add step_audio_editx_impl to sys.path so internal modules can import each other
+# CRITICAL: Add our bundled directory FIRST to sys.path to prevent conflicts with other custom nodes
 _impl_dir = os.path.dirname(os.path.abspath(__file__))
-if _impl_dir not in sys.path:
-    sys.path.insert(0, _impl_dir)
+# Remove any existing paths that might conflict
+sys.path = [p for p in sys.path if 'Step_Audio_EditX_TTS' not in p and 'Step-Audio-EditX' not in p or p == _impl_dir]
+# Insert our bundled directory at the very beginning
+if _impl_dir in sys.path:
+    sys.path.remove(_impl_dir)
+sys.path.insert(0, _impl_dir)
 
 from funasr_detach import AutoModel
 
@@ -126,7 +130,7 @@ class UnifiedModelLoader:
         if quantization_config == "int8":
             # Use user-specified torch_dtype for compute, default to bfloat16
             compute_dtype = torch_dtype if torch_dtype is not None else torch.bfloat16
-            self.logger.info(f"🔧 INT8 quantization: using {compute_dtype} for compute operations")
+            self.logger.debug(f"INT8 quantization: using {compute_dtype} for compute operations")
 
             bnb_config = BitsAndBytesConfig(
                 load_in_8bit=True,
@@ -138,7 +142,7 @@ class UnifiedModelLoader:
         elif quantization_config == "int4":
             # Use user-specified torch_dtype for compute, default to bfloat16
             compute_dtype = torch_dtype if torch_dtype is not None else torch.bfloat16
-            self.logger.info(f"🔧 INT4 quantization: using {compute_dtype} for compute operations")
+            self.logger.debug(f"INT4 quantization: using {compute_dtype} for compute operations")
 
             bnb_config = BitsAndBytesConfig(
                 load_in_4bit=True,
@@ -151,7 +155,7 @@ class UnifiedModelLoader:
             }, False  # INT4 quantization handles torch_dtype internally, don't set it again
         elif quantization_config == "awq-4bit":
             # AWQ 4-bit quantization - requires special model path handling
-            self.logger.info(f"🔧 AWQ 4-bit quantization enabled")
+            self.logger.debug(f"AWQ 4-bit quantization enabled")
             return {}, True  # No special quantization_config, but allow torch_dtype setting
         else:
             raise ValueError(f"Unsupported quantization config: {quantization_config}. Supported: 'int4', 'int8', 'awq-4bit'")
@@ -178,9 +182,9 @@ class UnifiedModelLoader:
         if source == ModelSource.AUTO:
             source = self.detect_model_source(model_path)
 
-        self.logger.info(f"Loading Transformers model from {source}: {model_path}")
+        self.logger.debug(f"Loading Transformers model from {source}: {model_path}")
         if quantization_config:
-            self.logger.info(f"🔧 {quantization_config.upper()} quantization enabled")
+            self.logger.debug(f"{quantization_config.upper()} quantization enabled")
 
         # Prepare quantization configuration
         quantization_kwargs, should_set_torch_dtype = self._prepare_quantization_config(quantization_config, kwargs.get("torch_dtype"))
@@ -192,8 +196,14 @@ class UnifiedModelLoader:
                     "device_map": kwargs.get("device_map", "auto"),
                     "trust_remote_code": True,
                     "local_files_only": True,
-                    "attn_implementation": "eager"  # Step1ForCausalLM only supports eager mode
                 }
+
+                # CRITICAL: transformers 4.54+ has a bug with attn_implementation="eager"
+                # Only set it for older versions
+                import transformers as trans
+                trans_version = tuple(map(int, trans.__version__.split('.')[:2]))
+                if trans_version < (4, 54):
+                    load_kwargs["attn_implementation"] = "eager"
 
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
@@ -275,7 +285,46 @@ class UnifiedModelLoader:
             else:
                 raise ValueError(f"Unsupported model source: {source}")
 
-            self.logger.info(f"Successfully loaded model from {source}")
+            # CRITICAL: Put model in evaluation mode (disables dropout, batch norm training mode)
+            # Without this, the model generates garbage due to training-time randomness
+            model.eval()
+
+            # CRITICAL FIX for transformers 4.54+: Restore correct lm_head weights
+            # Bug: transformers 4.54+ incorrectly ties lm_head to embed_tokens even when they should be separate
+            # The Step-Audio-EditX model has different weights for lm_head (norm=227) vs embed_tokens (norm=255)
+            # but transformers 4.54+ ties them, causing wrong predictions (text tokens instead of audio tokens)
+            if hasattr(model, 'lm_head') and hasattr(model, 'model') and hasattr(model.model, 'embed_tokens'):
+                if model.lm_head.weight.data_ptr() == model.model.embed_tokens.weight.data_ptr():
+                    # Weights are tied - need to restore correct lm_head from checkpoint
+                    self.logger.info("Detected incorrect weight tying in transformers 4.54+, restoring lm_head weights...")
+
+                    # Load correct lm_head weights from safetensors
+                    from safetensors import safe_open
+                    import glob
+
+                    safetensors_files = glob.glob(os.path.join(model_path, "model*.safetensors"))
+                    if safetensors_files:
+                        # Try to find lm_head.weight in safetensors files
+                        lm_head_weight = None
+                        for st_file in sorted(safetensors_files):
+                            try:
+                                with safe_open(st_file, framework="pt", device="cpu") as f:
+                                    if "lm_head.weight" in f.keys():
+                                        lm_head_weight = f.get_tensor("lm_head.weight")
+                                        break
+                            except:
+                                continue
+
+                        if lm_head_weight is not None:
+                            # Untie the weights and restore correct lm_head
+                            model.lm_head.weight = torch.nn.Parameter(
+                                lm_head_weight.to(model.lm_head.weight.dtype).to(model.lm_head.weight.device).clone()
+                            )
+                            self.logger.info(f"Restored lm_head weights (norm: {model.lm_head.weight.norm().item():.2f})")
+                        else:
+                            self.logger.warning("Could not find lm_head.weight in safetensors, skipping fix")
+
+            self.logger.debug(f"Successfully loaded model from {source}")
             return model, tokenizer, model_path
 
         except Exception as e:
@@ -303,7 +352,7 @@ class UnifiedModelLoader:
         if source == ModelSource.AUTO:
             source = self.detect_model_source(model_path)
             
-        self.logger.info(f"Loading FunASR model from {source}: {model_path}")
+        self.logger.debug(f"Loading FunASR model from {source}: {model_path}")
 
         try:
             # Extract model_revision to avoid duplicate passing
@@ -328,7 +377,7 @@ class UnifiedModelLoader:
                 **kwargs
             )
 
-            self.logger.info(f"Successfully loaded FunASR model from {source}")
+            self.logger.debug(f"Successfully loaded FunASR model from {source}")
             return model
 
         except Exception as e:

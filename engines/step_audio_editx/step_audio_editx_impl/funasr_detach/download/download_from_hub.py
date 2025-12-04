@@ -41,7 +41,7 @@ def download_model(**kwargs):
         else:
             raise ValueError(f"Unsupported model_hub: {model_hub}")
 
-    print(f"Using model path: {model_or_path}")
+    # Model path used silently (printed every run)
     kwargs["model_path"] = model_or_path
     kwargs["repo_path"] = repo_path
 
@@ -63,35 +63,35 @@ def download_model(**kwargs):
     ):
         config = OmegaConf.load(os.path.join(model_or_path, "config.yaml"))
         kwargs = OmegaConf.merge(config, kwargs)
+
+        # Convert to dict to allow modifications, then convert back to OmegaConf
+        kwargs_dict = OmegaConf.to_container(kwargs, resolve=True)
+
         init_param = os.path.join(model_or_path, "model.pb")
-        kwargs["init_param"] = init_param
+        kwargs_dict["init_param"] = init_param
         if os.path.exists(os.path.join(model_or_path, "tokens.txt")):
-            kwargs["tokenizer_conf"]["token_list"] = os.path.join(
+            kwargs_dict["tokenizer_conf"]["token_list"] = os.path.join(
                 model_or_path, "tokens.txt"
             )
         if os.path.exists(os.path.join(model_or_path, "tokens.json")):
-            kwargs["tokenizer_conf"]["token_list"] = os.path.join(
+            kwargs_dict["tokenizer_conf"]["token_list"] = os.path.join(
                 model_or_path, "tokens.json"
             )
         if os.path.exists(os.path.join(model_or_path, "seg_dict")):
-            kwargs["tokenizer_conf"]["seg_dict"] = os.path.join(
+            kwargs_dict["tokenizer_conf"]["seg_dict"] = os.path.join(
                 model_or_path, "seg_dict"
             )
         if os.path.exists(os.path.join(model_or_path, "bpe.model")):
-            kwargs["tokenizer_conf"]["bpemodel"] = os.path.join(
+            kwargs_dict["tokenizer_conf"]["bpemodel"] = os.path.join(
                 model_or_path, "bpe.model"
             )
-        kwargs["model"] = config["model"]
+        kwargs_dict["model"] = config["model"]
         if os.path.exists(os.path.join(model_or_path, "am.mvn")):
-            kwargs["frontend_conf"]["cmvn_file"] = os.path.join(model_or_path, "am.mvn")
+            kwargs_dict["frontend_conf"]["cmvn_file"] = os.path.join(model_or_path, "am.mvn")
         if os.path.exists(os.path.join(model_or_path, "jieba_usr_dict")):
-            kwargs["jieba_usr_dict"] = os.path.join(model_or_path, "jieba_usr_dict")
+            kwargs_dict["jieba_usr_dict"] = os.path.join(model_or_path, "jieba_usr_dict")
 
-    # Ensure kwargs is an OmegaConf object before calling to_container
-    if not OmegaConf.is_config(kwargs):
-        kwargs = OmegaConf.create(kwargs)
-
-    return OmegaConf.to_container(kwargs, resolve=True)
+        return kwargs_dict
 
 
 def add_file_root_path(model_or_path: str, file_path_metas: dict, cfg={}):
@@ -143,7 +143,7 @@ def get_or_download_model_dir(
     with _cache_lock:
         if cache_key in _model_cache:
             cached_repo_dir = _model_cache[cache_key]
-            print(f"Using cached model for {repo_id}: {cached_repo_dir}")
+            # Using cached model silently (happens every run)
 
             # For subfolder case, construct the model_cache_dir from cached repo
             if subfolder:

@@ -827,16 +827,11 @@ def register_step_audio_editx_factory():
                 for file_dict in additional["files"]:
                     check_files.append(file_dict["local"])
 
-            print(f"DEBUG: Checking completeness of {model_path}")
-            print(f"DEBUG: Required files: {check_files[:5]}... ({len(check_files)} total)")
             is_complete = downloader._is_model_complete(model_path, check_files)
-            print(f"DEBUG: Model complete: {is_complete}")
 
             if not is_complete:
-                print(f"📥 Step-Audio-EditX model not found or incomplete, downloading (one-time setup)...")
+                print(f"📥 Step-Audio-EditX model incomplete, downloading...")
                 downloader.download_model("Step-Audio-EditX")
-            else:
-                print(f"✅ Step-Audio-EditX model already complete")
 
             # Check and download FunASR model (required for tokenizer)
             funasr_path = os.path.join(base_path, "FunASR-Paraformer")
@@ -845,15 +840,13 @@ def register_step_audio_editx_factory():
                 print(f"📥 FunASR model not found or incomplete, downloading (one-time setup)...")
                 downloader.download_model("FunASR-Paraformer")
 
-            # Initialize tokenizer
-            print(f"🔄 Loading Step Audio EditX tokenizer from {model_path}...")
+            # Initialize tokenizer (silent - errors will be raised if fails)
             tokenizer = StepAudioTokenizer(
                 encoder_path=model_path,
                 model_source=ModelSource.LOCAL  # Always use local for now
             )
 
-            # Initialize TTS engine
-            print(f"🔄 Loading Step Audio EditX TTS engine (3B LLM + CosyVoice)...")
+            # Initialize TTS engine (silent - errors will be raised if fails)
             engine = StepAudioTTS(
                 model_path=model_path,
                 audio_tokenizer=tokenizer,
