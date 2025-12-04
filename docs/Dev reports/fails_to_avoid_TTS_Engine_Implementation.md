@@ -49,3 +49,9 @@
 - **Character parser interaction**: Character parser changes unknown characters to "narrator" - need to ensure original character names are preserved for voice mapping lookup
 - **Parser fix**: Add text tag characters to `available_characters` (lowercase) + set language defaults like IndexTTS
 - **Working pattern**: `all_available = set(get_available_characters())` + aliases + text tag chars (lowercase) + "narrator" → `set_available_characters(list(all_available))` + `set_character_language_default()` for each char
+
+### Caching Implementation
+- **CRITICAL - Planned but skipped**: Caching listed in Phase 1 but often omitted during processor/adapter implementation. Verify with testing (run generation twice on same text - should show cache hit on second)
+- **Required in adapters**: Generate stable audio hash, create cache key with all params, check cache BEFORE generation, store after with duration calc
+- **Cache key pattern**: `audio_cache.generate_cache_key(engine_type, text=..., audio_component=..., **all_params)`
+- **Duration calculation**: Update `_calculate_duration()` with engine sample rate (e.g., 24000 for Step Audio EditX, F5-TTS)

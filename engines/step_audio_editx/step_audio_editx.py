@@ -388,7 +388,3 @@ class StepAudioEditXEngine:
         self._tts_engine = None
         self._tokenizer = None
         self._model_config = None
-
-    def __del__(self):
-        """Cleanup on deletion."""
-        self.unload()
