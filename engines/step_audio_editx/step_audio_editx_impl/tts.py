@@ -297,14 +297,9 @@ class StepAudioTTS:
                     logits_processor=LogitsProcessorList(logits_processors),
                     stopping_criteria=stopping_criteria
                 )
-                print(f"✅ Generated {output_ids.shape[1]} total tokens (including input {len(token_ids)} tokens)")
-                print(f"   Output shape: {output_ids.shape}")
 
                 # Extract only new tokens (skip input prompt and eos)
                 output_ids = output_ids[:, len(token_ids) : -1]
-                print(f"   New tokens generated: {output_ids.shape[1]}")
-                print(f"   First 20 new tokens: {output_ids[0, :20].tolist()}")
-                print(f"   Last 20 new tokens: {output_ids[0, -20:].tolist()}")
                 logger.debug("Voice cloning generation completed")
                 vq0206_codes_vocoder = torch.tensor([vq0206_codes], dtype=torch.long) - 65536
                 return (
