@@ -253,17 +253,20 @@ class StepAudioEditXEngine:
 
         return audio_tensor
 
-    def edit(
+    def edit_single(
         self,
         input_audio_path: str,
         audio_text: str,
         edit_type: str,
         edit_info: Optional[str] = None,
         text: Optional[str] = None,
-        n_edit_iterations: int = 1
+        progress_bar=None,
+        max_new_tokens: int = 8192,
+        temperature: float = 0.7,
+        do_sample: bool = True
     ) -> torch.Tensor:
         """
-        Edit audio with specified modification.
+        Perform a single edit pass on audio.
 
         Args:
             input_audio_path: Path to input audio file (0.5-30s)
@@ -271,7 +274,10 @@ class StepAudioEditXEngine:
             edit_type: Type of edit (emotion, style, speed, paralinguistic, denoising)
             edit_info: Specific edit value (e.g., 'happy', 'whisper', 'faster')
             text: Text for paralinguistic mode (where to insert effect)
-            n_edit_iterations: Number of iterative edits (1-5, default: 1)
+            progress_bar: ComfyUI progress bar for generation tracking
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            do_sample: Whether to use sampling
 
         Returns:
             Edited audio as torch.Tensor with shape [1, samples]
@@ -309,10 +315,56 @@ class StepAudioEditXEngine:
                 except StopIteration:
                     pass
 
-        # Perform iterative editing
+        # Perform single edit with progress tracking
+        audio_tensor, sample_rate = self._tts_engine.edit(
+            input_audio_path=input_audio_path,
+            audio_text=audio_text,
+            edit_type=edit_type,
+            edit_info=edit_info,
+            text=text,
+            progress_bar=progress_bar,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=do_sample
+        )
+
+        # Ensure output is [1, samples] format (2D)
+        if audio_tensor.dim() == 1:
+            audio_tensor = audio_tensor.unsqueeze(0)  # [samples] -> [1, samples]
+        elif audio_tensor.dim() == 3:
+            audio_tensor = audio_tensor.squeeze(0)  # [1, 1, samples] -> [1, samples]
+
+        return audio_tensor
+
+    def edit(
+        self,
+        input_audio_path: str,
+        audio_text: str,
+        edit_type: str,
+        edit_info: Optional[str] = None,
+        text: Optional[str] = None,
+        n_edit_iterations: int = 1
+    ) -> torch.Tensor:
+        """
+        Edit audio with specified modification (convenience wrapper for multiple iterations).
+
+        For caching support, use edit_single() directly from the node.
+
+        Args:
+            input_audio_path: Path to input audio file (0.5-30s)
+            audio_text: Transcript of input audio (REQUIRED)
+            edit_type: Type of edit (emotion, style, speed, paralinguistic, denoising)
+            edit_info: Specific edit value (e.g., 'happy', 'whisper', 'faster')
+            text: Text for paralinguistic mode (where to insert effect)
+            n_edit_iterations: Number of iterative edits (1-5, default: 1)
+
+        Returns:
+            Edited audio as torch.Tensor with shape [1, samples]
+        """
         current_audio_path = input_audio_path
+
         for i in range(n_edit_iterations):
-            audio_tensor, sample_rate = self._tts_engine.edit(
+            audio_tensor = self.edit_single(
                 input_audio_path=current_audio_path,
                 audio_text=audio_text,
                 edit_type=edit_type,
@@ -324,15 +376,8 @@ class StepAudioEditXEngine:
             if i < n_edit_iterations - 1:
                 comfyui_temp_dir = folder_paths.get_temp_directory()
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False, dir=comfyui_temp_dir) as tmp_file:
-                    # Save for next iteration
-                    torchaudio.save(tmp_file.name, audio_tensor.unsqueeze(0) if audio_tensor.dim() == 1 else audio_tensor, sample_rate)
+                    torchaudio.save(tmp_file.name, audio_tensor, self.get_sample_rate())
                     current_audio_path = tmp_file.name
-
-        # Ensure output is [1, samples] format (2D)
-        if audio_tensor.dim() == 1:
-            audio_tensor = audio_tensor.unsqueeze(0)  # [samples] -> [1, samples]
-        elif audio_tensor.dim() == 3:
-            audio_tensor = audio_tensor.squeeze(0)  # [1, 1, samples] -> [1, samples]
 
         return audio_tensor
 

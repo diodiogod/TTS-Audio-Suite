@@ -337,7 +337,11 @@ class StepAudioTTS:
         audio_text: str,
         edit_type: str,
         edit_info: Optional[str] = None,
-        text: Optional[str] = None
+        text: Optional[str] = None,
+        progress_bar=None,
+        max_new_tokens: int = 8192,
+        temperature: float = 0.7,
+        do_sample: bool = True
     ) -> Tuple[torch.Tensor, int]:
         """
         Edit audio based on specified edit type
@@ -348,12 +352,16 @@ class StepAudioTTS:
             edit_type: Type of edit (emotion, style, speed, etc.)
             edit_info: Specific edit information (happy, sad, etc.)
             text: Target text for para-linguistic editing
+            progress_bar: ComfyUI progress bar for generation tracking
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            do_sample: Whether to use sampling
 
         Returns:
             Tuple[torch.Tensor, int]: Edited audio tensor and sample rate
         """
         try:
-            logger.debug(f"Starting audio editing: {edit_type} - {edit_info}")            
+            logger.debug(f"Starting audio editing: {edit_type} - {edit_info}")
             vq0206_codes, vq02_codes_ori, vq06_codes_ori, speech_feat, _, speech_embedding = (
                 self.preprocess_prompt_wav(input_audio_path)
             )
@@ -371,12 +379,25 @@ class StepAudioTTS:
             logger.debug(f"Edit instruction: {instruct_prefix}")
             logger.debug(f"Encoded prompt length: {len(prompt_tokens)}")
 
+            # Get device from model
+            device = next(self.llm.parameters()).device
+            input_tensor = torch.tensor([prompt_tokens]).to(torch.long).to(device)
+
+            # Add stopping criteria with progress bar
+            stopping_criteria = None
+            if progress_bar is not None:
+                from transformers.generation.stopping_criteria import StoppingCriteriaList
+                stopping_criteria = StoppingCriteriaList([
+                    InterruptionStoppingCriteria(progress_bar, max_new_tokens)
+                ])
+
             output_ids = self.llm.generate(
-                torch.tensor([prompt_tokens]).to(torch.long).to("cuda"),
-                max_length=8192,
-                temperature=0.7,
-                do_sample=True,
+                input_tensor,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                do_sample=do_sample,
                 logits_processor=LogitsProcessorList([RepetitionAwareLogitsProcessor()]),
+                stopping_criteria=stopping_criteria
             )
             output_ids = output_ids[:, len(prompt_tokens) : -1]  # skip eos token
             vq0206_codes_vocoder = torch.tensor([vq0206_codes], dtype=torch.long) - 65536

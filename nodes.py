@@ -216,6 +216,15 @@ except Exception as e:
     print(f"❌ F5-TTS Edit Options failed: {e}")
     F5TTS_EDIT_OPTIONS_AVAILABLE = False
 
+# Load Step Audio EditX Audio Editor node
+try:
+    step_audio_editx_editor_module = load_node_module("step_audio_editx_audio_editor_node", "step_audio_editx_special/step_audio_editx_audio_editor_node.py")
+    StepAudioEditXAudioEditorNode = step_audio_editx_editor_module.StepAudioEditXAudioEditorNode
+    STEP_AUDIO_EDITX_EDITOR_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Step Audio EditX Audio Editor failed: {e}")
+    STEP_AUDIO_EDITX_EDITOR_AVAILABLE = False
+
 # Load RVC nodes
 try:
     rvc_engine_module = load_node_module("rvc_engine_node", "engines/rvc_engine_node.py")
@@ -453,6 +462,10 @@ if F5TTS_EDIT_AVAILABLE:
 if F5TTS_EDIT_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxF5TTSEditOptions"] = F5TTSEditOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["ChatterBoxF5TTSEditOptions"] = "🔧 F5-TTS Edit Options"
+
+if STEP_AUDIO_EDITX_EDITOR_AVAILABLE:
+    NODE_CLASS_MAPPINGS["StepAudioEditXAudioEditorNode"] = StepAudioEditXAudioEditorNode
+    NODE_DISPLAY_NAME_MAPPINGS["StepAudioEditXAudioEditorNode"] = "🎨 Step Audio EditX - Audio Editor"
 
 # Load video analysis nodes
 try:
