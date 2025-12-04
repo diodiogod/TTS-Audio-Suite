@@ -109,62 +109,6 @@ class RepetitionAwareLogitsProcessor(LogitsProcessor):
         return scores
 
 
-class AudioTokenBiasLogitsProcessor(LogitsProcessor):
-    """
-    Logits processor to bias generation towards audio tokens (65536-74752)
-
-    CRITICAL FIX for transformers 4.54+: In transformers 4.54+, the model generates
-    text tokens instead of audio tokens. This seems to be because transformers 4.54+
-    applies some vocab filtering that breaks models with large vocab sizes.
-
-    This processor detects when the model wants to generate from the wrong part of
-    the vocabulary and shifts the distribution to the correct range.
-    """
-    def __init__(self, audio_token_range=(65536, 74752), debug=False, apply_fix=True):
-        self.audio_start = audio_token_range[0]
-        self.audio_end = audio_token_range[1]
-        self.debug = debug
-        self.apply_fix = apply_fix
-        self.call_count = 0
-
-    def __call__(
-        self, input_ids: torch.LongTensor, scores: torch.FloatTensor
-    ) -> torch.FloatTensor:
-        self.call_count += 1
-
-        # Only debug first few calls
-        if self.debug and self.call_count <= 3:
-            # Check where the probability mass is
-            print(f"   🔍 Logits call {self.call_count}: scores.shape={scores.shape}")
-            probs = torch.softmax(scores, dim=-1)
-            text_mass = probs[:, :self.audio_start].sum().item()
-            audio_mass = probs[:, self.audio_start:self.audio_end+1].sum().item()
-            top5 = torch.topk(scores[0], 5)
-            print(f"      text_mass={text_mass:.3f}, audio_mass={audio_mass:.3f}")
-            print(f"      Top 5 tokens: {top5.indices.tolist()} (scores: {top5.values.tolist()})")
-
-            # Check if scores are even covering the full vocab
-            if scores.shape[-1] < 74752:
-                print(f"      ⚠️ WARNING: scores only cover {scores.shape[-1]} tokens, but vocab is 74752!")
-
-            # Check max values in audio range
-            audio_scores = scores[:, self.audio_start:self.audio_end+1]
-            audio_top5 = torch.topk(audio_scores[0], 5)
-            print(f"      Top 5 AUDIO tokens: {(audio_top5.indices + self.audio_start).tolist()} (scores: {audio_top5.values.tolist()})")
-
-        # If most probability is in text range, shift it to audio range
-        # This handles the case where transformers 4.54+ is looking at wrong vocab section
-        if self.apply_fix:
-            probs = torch.softmax(scores, dim=-1)
-            text_mass = probs[:, :self.audio_start].sum(dim=-1, keepdim=True)
-
-            if text_mass.item() > 0.5:  # Most probability in text range
-                # Shift the distribution: suppress text tokens, boost audio tokens
-                scores[:, :self.audio_start] = scores[:, :self.audio_start] - 10.0
-                scores[:, self.audio_start:self.audio_end+1] = scores[:, self.audio_start:self.audio_end+1] + 5.0
-
-        return scores
-
 class StepAudioTTS:
     """
     Step Audio TTS wrapper for voice cloning and audio editing tasks
@@ -317,10 +261,6 @@ class StepAudioTTS:
                     prompt_wav_tokens,
                 )
 
-                # DEBUG: Check audio tokens
-                print(f"🔍 DEBUG: prompt_wav_tokens sample (first 100 chars): {prompt_wav_tokens[:100]}")
-                print(f"🔍 DEBUG: Tokenizer vocab size: {len(self.tokenizer)}")
-
                 # Get device from model
                 device = next(self.llm.parameters()).device
                 input_tensor = torch.tensor([token_ids]).to(torch.long).to(device)
@@ -330,17 +270,6 @@ class StepAudioTTS:
                     torch.cuda.synchronize()
 
                 print(f"🔄 Generating audio tokens for text: '{target_text[:50]}...' (input tokens: {len(token_ids)})")
-                print(f"🔍 DEBUG: tokenizer.eos_token_id = {self.tokenizer.eos_token_id}")
-                print(f"🔍 DEBUG: tokenizer.pad_token_id = {self.tokenizer.pad_token_id}")
-                print(f"🔍 DEBUG: max_new_tokens parameter = {max_new_tokens}")
-                print(f"🔍 DEBUG: First 10 input tokens: {token_ids[:10]}")
-                print(f"🔍 DEBUG: Last 10 input tokens: {token_ids[-10:]}")
-                # DEBUG: Check if audio tokens are in the audio range (65536-74752)
-                audio_token_count = sum(1 for t in token_ids if 65536 <= t <= 74752)
-                print(f"🔍 DEBUG: Audio tokens in prompt: {audio_token_count}/{len(token_ids)}")
-                # Show a sample of tokens around position 50 (likely in audio token area)
-                if len(token_ids) > 100:
-                    print(f"🔍 DEBUG: Tokens 50-60: {token_ids[50:60]}")
 
                 # Add stopping criteria with progress bar
                 stopping_criteria = None
@@ -359,13 +288,6 @@ class StepAudioTTS:
                 transformers_version = tuple(map(int, transformers.__version__.split('.')[:2]))
 
                 logits_processors = [RepetitionAwareLogitsProcessor()]
-                # ALWAYS add debug processor to compare 4.53.3 vs 4.54+ logits
-                if transformers_version >= (4, 54):
-                    logits_processors.insert(0, AudioTokenBiasLogitsProcessor(debug=True, apply_fix=True))
-                    print(f"   🔧 AudioTokenBiasLogitsProcessor ACTIVE (transformers {transformers.__version__})")
-                else:
-                    logits_processors.insert(0, AudioTokenBiasLogitsProcessor(debug=True, apply_fix=False))
-                    print(f"   🔍 AudioTokenBiasLogitsProcessor DEBUG ONLY (transformers {transformers.__version__})")
 
                 output_ids = self.llm.generate(
                     input_tensor,
