@@ -737,8 +737,54 @@ Back to the main narrator voice for the conclusion.""",
                 import tempfile
                 from utils.audio.processing import AudioProcessingUtils
 
-                # Parse characters from text
+                # Parse characters from text - first extract character names from tags
+                import re
+                # Simple regex to extract character names from [Character] tags
+                character_tags = re.findall(r'\[([^\]]+)\]', text)
+                # Filter out pause tags and get unique characters
+                characters_from_tags = []
+                for tag in character_tags:
+                    if not tag.startswith('pause:'):
+                        # Extract character name (before | for parameters)
+                        character_name = tag.split('|')[0].strip()
+                        characters_from_tags.append(character_name)
+
+                # Add "narrator" as default character
+                all_characters = list(set(characters_from_tags + ["narrator"]))
+
+                # Set available characters so parser doesn't change them to "narrator"
+                # Also get character aliases and language defaults like IndexTTS does
+                from utils.voice.discovery import get_available_characters, voice_discovery
+
+                # Get available characters and aliases
+                available_chars = get_available_characters()
+                character_aliases = voice_discovery.get_character_aliases()
+
+                # Build complete available set
+                all_available = set()
+                if available_chars:
+                    all_available.update(available_chars)
+                for alias, target in character_aliases.items():
+                    all_available.add(alias.lower())
+                    all_available.add(target.lower())
+
+                # Add characters from text (lowercase for matching)
+                for char in characters_from_tags:
+                    all_available.add(char.lower())
+
+                # Add "narrator"
+                all_available.add("narrator")
+
+                character_parser.set_available_characters(list(all_available))
+
+                # Set language defaults
+                char_lang_defaults = voice_discovery.get_character_language_defaults()
+                for char, lang in char_lang_defaults.items():
+                    character_parser.set_character_language_default(char, lang)
+
                 character_parser.reset_session_cache()
+
+                # Now parse segments - characters will be preserved
                 segment_objects = character_parser.parse_text_segments(text)
                 characters = list(set([seg.character for seg in segment_objects]))
 
@@ -761,13 +807,32 @@ Back to the main narrator voice for the conclusion.""",
                             'prompt_text': reference_text
                         }
                     else:
-                        # Use character-specific voice from voices/ folder
+                        # Use character-specific voice from voices/ folder with fallback to narrator
                         audio_path, ref_text = character_mapping.get(character, (None, None))
                         if audio_path and ref_text:
                             voice_mapping[character] = {
                                 'prompt_audio_path': audio_path,
                                 'prompt_text': ref_text
                             }
+                            print(f"🎭 Step Audio EditX: Using character-specific voice for '{character}'")
+                        else:
+                            # Fallback to narrator voice for characters without voice files
+                            if audio_tensor is not None and reference_text:
+                                # Extract waveform from ComfyUI audio dict format
+                                waveform = audio_tensor['waveform'] if isinstance(audio_tensor, dict) else audio_tensor
+                                sr = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+
+                                # Save audio tensor to temporary file for Step Audio EditX
+                                temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
+                                voice_mapping[character] = {
+                                    'prompt_audio_path': temp_file_path,
+                                    'prompt_text': reference_text
+                                }
+                                print(f"🔄 Step Audio EditX: Using narrator voice fallback for '{character}'")
+                            else:
+                                # No narrator voice available - add empty entry (will cause error in adapter)
+                                voice_mapping[character] = None
+                                print(f"⚠️ Step Audio EditX: No voice available for '{character}' and no narrator fallback")
 
                 # Process text with character switching
                 audio_segments = tts_processor.process_text(

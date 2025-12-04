@@ -36,3 +36,9 @@
 ### Seed Control
 - **Global torch state**: Some engines (Step Audio EditX) use global `torch.manual_seed()` for reproducibility, not function parameters
 - **CUDA seeds**: Always set both `torch.manual_seed()` and `torch.cuda.manual_seed_all()` for GPU reproducibility
+
+### Character Switching Implementation
+- **Missing voice fallback**: When `get_character_mapping()` returns `(None, None)` for a character, MUST still add entry to `voice_mapping` with fallback to narrator/default voice
+- **Voice mapping consistency**: All characters in parsed segments MUST have entries in `voice_mapping`, even if empty/None
+- **Adapter validation**: Adapters that require voice references (Step Audio EditX, F5-TTS) need graceful fallback when voice_ref is None
+- **Character parser interaction**: Character parser changes unknown characters to "narrator" - need to ensure original character names are preserved for voice mapping lookup

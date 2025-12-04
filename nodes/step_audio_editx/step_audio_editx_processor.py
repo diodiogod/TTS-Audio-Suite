@@ -84,6 +84,39 @@ class StepAudioEditXProcessor:
         params['seed'] = seed
 
         # Parse character segments with parameter support
+        # Configure character parser like IndexTTS does
+        from utils.voice.discovery import get_available_characters, voice_discovery
+
+        # Get available characters and aliases
+        available_chars = get_available_characters()
+        character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        # Also add characters from text (extract from tags)
+        import re
+        character_tags = re.findall(r'\[([^\]]+)\]', text)
+        for tag in character_tags:
+            if not tag.startswith('pause:'):
+                character_name = tag.split('|')[0].strip().lower()
+                all_available.add(character_name)
+
+        # Add "narrator"
+        all_available.add("narrator")
+
+        character_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
+        char_lang_defaults = voice_discovery.get_character_language_defaults()
+        for char, lang in char_lang_defaults.items():
+            character_parser.set_character_language_default(char, lang)
+
         character_parser.reset_session_cache()
         segment_objects = character_parser.parse_text_segments(text)
 
