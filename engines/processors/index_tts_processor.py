@@ -139,7 +139,8 @@ class IndexTTSProcessor:
                     seed: int = 1,
                     enable_chunking: bool = True,
                     max_chars_per_chunk: int = 400,
-                    silence_between_chunks_ms: int = 100) -> torch.Tensor:
+                    silence_between_chunks_ms: int = 100,
+                    return_info: bool = False):
         """
         Process text and generate audio with IndexTTS-2.
 
@@ -151,9 +152,10 @@ class IndexTTSProcessor:
             enable_chunking: Whether to chunk long text (may be disabled for IndexTTS-2)
             max_chars_per_chunk: Maximum characters per chunk
             silence_between_chunks_ms: Silence between segments
+            return_info: If True, return (audio, chunk_info) tuple
 
         Returns:
-            Generated audio tensor
+            Generated audio tensor, or (tensor, chunk_info) if return_info=True
         """
         try:
             # Validate text input - prevent None text which causes NoneType errors
@@ -525,7 +527,40 @@ class IndexTTSProcessor:
                     result = result.unsqueeze(0)  # Add channel dimension
                 elif result.dim() == 3:
                     result = result.squeeze(0)  # Remove batch dimension
-            
+
+            # Build chunk info if requested
+            if return_info:
+                # Parse segments from text for timing estimation
+                import re
+                segments = re.split(r'(\[.*?\])', text)
+                text_segments = [s for s in segments if s and not s.startswith('[')]
+
+                total_duration = result.shape[-1] / self.sample_rate
+                chunk_info = {
+                    "method_used": "concatenate",
+                    "total_chunks": len(text_segments) if text_segments else 1,
+                    "chunk_timings": []
+                }
+
+                # Estimate timing per segment (rough approximation)
+                if text_segments:
+                    for i, seg_text in enumerate(text_segments):
+                        start_time = (i / len(text_segments)) * total_duration
+                        end_time = ((i + 1) / len(text_segments)) * total_duration
+                        chunk_info["chunk_timings"].append({
+                            "start": start_time,
+                            "end": end_time,
+                            "text": seg_text.strip()
+                        })
+                else:
+                    chunk_info["chunk_timings"].append({
+                        "start": 0.0,
+                        "end": total_duration,
+                        "text": text
+                    })
+
+                return result, chunk_info
+
             return result
             
         except Exception as e:
@@ -536,6 +571,64 @@ class IndexTTSProcessor:
             # Return silence on error
             return torch.zeros(1, self.sample_rate)  # 1 second of silence
     
+    def combine_audio_segments(self,
+                              segments: List[torch.Tensor],
+                              method: str = "concatenate",
+                              silence_ms: int = 100,
+                              text_chunks: Optional[List[str]] = None,
+                              text_length: int = 0,
+                              return_info: bool = False):
+        """
+        Combine audio segments using unified ChunkCombiner.
+
+        Args:
+            segments: List of audio tensors
+            method: Combination method
+            silence_ms: Silence between segments
+            text_chunks: Text for each segment
+            text_length: Total text length
+            return_info: If True, return (audio, chunk_info) tuple
+
+        Returns:
+            Combined audio tensor, or (tensor, chunk_info) if return_info=True
+        """
+        if not segments:
+            empty = torch.zeros(1, 0)
+            if return_info:
+                return empty, {"method_used": "none", "total_chunks": 0, "chunk_timings": []}
+            return empty
+
+        # Single segment
+        if len(segments) == 1:
+            if return_info:
+                chunk_info = {
+                    "method_used": "none",
+                    "total_chunks": 1,
+                    "chunk_timings": [{
+                        "start": 0.0,
+                        "end": segments[0].shape[-1] / self.sample_rate,
+                        "text": text_chunks[0] if text_chunks else ""
+                    }]
+                }
+                return segments[0], chunk_info
+            return segments[0]
+
+        # Use unified ChunkCombiner
+        from utils.audio.chunk_combiner import ChunkCombiner
+        result = ChunkCombiner.combine_chunks(
+            audio_segments=segments,
+            method=method,
+            silence_ms=silence_ms,
+            crossfade_duration=0.1,
+            sample_rate=self.sample_rate,
+            text_length=text_length,
+            original_text=" ".join(text_chunks) if text_chunks else "",
+            text_chunks=text_chunks,
+            return_info=return_info
+        )
+
+        return result
+
     def cleanup(self):
         """Clean up resources"""
         if self.adapter:

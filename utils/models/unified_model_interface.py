@@ -763,11 +763,117 @@ def register_chatterbox_23lang_factory():
     unified_model_interface.register_model_factory("chatterbox_official_23lang", "tts", chatterbox_23lang_factory)
 
 
+def register_step_audio_editx_factory():
+    """Register Step Audio EditX model factory"""
+    def step_audio_editx_factory(config: ModelLoadConfig):
+        """Factory for Step Audio EditX models with ComfyUI integration"""
+        import os
+        import sys
+        import torch
+
+        # Extract parameters
+        model_path = config.model_path
+        device = config.device or "auto"
+        torch_dtype_str = config.additional_params.get("torch_dtype", "bfloat16") if config.additional_params else "bfloat16"
+        quantization = config.additional_params.get("quantization", None) if config.additional_params else None
+
+        if not model_path or not os.path.exists(model_path):
+            raise RuntimeError(f"Step Audio EditX model not found at {model_path}. Auto-download should have been triggered earlier.")
+
+        try:
+            # Add bundled Step Audio EditX path to sys.path so internal imports work
+            bundled_path = os.path.join(os.path.dirname(__file__), "..", "..", "engines", "step_audio_editx")
+            bundled_path = os.path.abspath(bundled_path)
+            if bundled_path not in sys.path:
+                sys.path.insert(0, bundled_path)
+
+            # Import from bundled Step Audio EditX engine
+            from engines.step_audio_editx.step_audio_editx_impl.tts import StepAudioTTS
+            from engines.step_audio_editx.step_audio_editx_impl.tokenizer import StepAudioTokenizer
+            from engines.step_audio_editx.step_audio_editx_impl.model_loader import ModelSource
+
+            # Resolve torch dtype
+            dtype_map = {
+                "bfloat16": torch.bfloat16,
+                "float16": torch.float16,
+                "float32": torch.float32,
+                "auto": torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+            }
+            torch_dtype = dtype_map.get(torch_dtype_str, torch.bfloat16)
+
+            # Resolve device
+            if device == "auto":
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # Resolve quantization config
+            quantization_config = None
+            if quantization and quantization != "none":
+                quantization_config = quantization  # Will be 'int4', 'int8', etc.
+
+            # Auto-download all required models if not present
+            from engines.step_audio_editx.step_audio_editx_downloader import StepAudioEditXDownloader
+            downloader = StepAudioEditXDownloader()
+            base_path = os.path.dirname(model_path)
+
+            # Check and download Step-Audio-EditX main model (includes tokenizer files)
+            main_files = downloader.MODELS["Step-Audio-EditX"]["files"]
+            if main_files and isinstance(main_files[0], dict):
+                check_files = [f["local"] for f in main_files]
+            else:
+                check_files = main_files
+
+            # Also add additional downloads to completeness check
+            additional_downloads = downloader.MODELS["Step-Audio-EditX"].get("additional_downloads", [])
+            for additional in additional_downloads:
+                for file_dict in additional["files"]:
+                    check_files.append(file_dict["local"])
+
+            is_complete = downloader._is_model_complete(model_path, check_files)
+
+            if not is_complete:
+                print(f"📥 Step-Audio-EditX model incomplete, downloading...")
+                downloader.download_model("Step-Audio-EditX")
+
+            # Check and download FunASR model (required for tokenizer)
+            funasr_path = os.path.join(base_path, "FunASR-Paraformer")
+            funasr_files = downloader.MODELS["FunASR-Paraformer"]["files"]
+            if not downloader._is_model_complete(funasr_path, funasr_files):
+                print(f"📥 FunASR model not found or incomplete, downloading (one-time setup)...")
+                downloader.download_model("FunASR-Paraformer")
+
+            # Initialize tokenizer (silent - errors will be raised if fails)
+            tokenizer = StepAudioTokenizer(
+                encoder_path=model_path,
+                model_source=ModelSource.LOCAL  # Always use local for now
+            )
+
+            # Initialize TTS engine (silent - errors will be raised if fails)
+            engine = StepAudioTTS(
+                model_path=model_path,
+                audio_tokenizer=tokenizer,
+                model_source=ModelSource.LOCAL,
+                quantization_config=quantization_config,
+                torch_dtype=torch_dtype,
+                device_map=device
+            )
+
+            print(f"✅ Step Audio EditX model loaded via unified interface on {device}")
+            return engine
+
+        except ImportError as e:
+            raise ImportError(f"Step Audio EditX dependencies not available. Error: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load Step Audio EditX model: {e}")
+
+    unified_model_interface.register_model_factory("step_audio_editx", "tts", step_audio_editx_factory)
+
+
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
     register_chatterbox_23lang_factory()
-    register_f5tts_factory() 
+    register_f5tts_factory()
+    register_step_audio_editx_factory() 
     register_higgs_audio_factory()
     register_rvc_factory()
     register_vibevoice_factory()

@@ -13,15 +13,19 @@ import importlib.util
 import os
 import sys
 
-# CRITICAL: Apply PyTorch 2.9 TorchCodec patches BEFORE any other imports
+# CRITICAL: Apply compatibility patches BEFORE any other imports
 #
-# Timing is critical: The monkey-patch must be applied BEFORE torchaudio is imported
-# by any other module. If we wait until after other imports, torchaudio will already
-# be loaded and our monkey-patch won't affect the already-imported module references.
+# Timing is critical: The monkey-patches must be applied BEFORE libraries are imported
+# by any other module. If we wait until after other imports, they will already
+# be loaded and our monkey-patches won't affect the already-imported module references.
 #
-# This solves TWO PyTorch 2.9 issues:
+# PyTorch patches solve TWO PyTorch 2.9 issues:
 # 1. TorchCodec DLL incompatibility on Windows - Global patch uses scipy instead
 # 2. PyTorch 2.9's changed torchaudio.load() returning raw int16 - safe_load_audio() normalizes
+#
+# Transformers patches solve:
+# 1. Step Audio EditX tokenization bug in transformers 4.54+ (audio tokens not recognized)
+# 2. Various model compatibility issues
 try:
     # Load pytorch_patches directly by file path to avoid package import issues
     pytorch_patches_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "pytorch_patches.py")
@@ -33,6 +37,19 @@ try:
     pytorch_patches_module.apply_pytorch_patches(verbose=True)
 except Exception as e:
     print(f"⚠️ Warning: Could not apply PyTorch patches: {e}")
+
+# Apply transformers compatibility patches
+try:
+    # Load transformers_patches directly by file path
+    transformers_patches_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "transformers_patches.py")
+    spec = importlib.util.spec_from_file_location("transformers_patches_module", transformers_patches_path)
+    transformers_patches_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(transformers_patches_module)
+
+    # Apply the patches (will only apply on transformers 4.54+, silently skip on older versions)
+    transformers_patches_module.apply_transformers_patches(verbose=True)
+except Exception as e:
+    print(f"⚠️ Warning: Could not apply Transformers patches: {e}")
 
 # Smart Numba Compatibility System - tests and applies fixes only when needed
 try:

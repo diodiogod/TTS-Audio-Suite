@@ -181,6 +181,37 @@ class VibeVoiceCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class StepAudioEditXCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Step Audio EditX engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        """Generate Step Audio EditX cache key from parameters."""
+        # Fix floating point precision issues by rounding to 3 decimal places
+        temperature = params.get('temperature', 0.7)
+
+        if isinstance(temperature, (int, float)):
+            temperature = round(float(temperature), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),  # Stable voice hash
+            'prompt_text': params.get('prompt_text', ''),  # Reference text
+            'temperature': temperature,
+            'do_sample': params.get('do_sample', True),
+            'max_new_tokens': params.get('max_new_tokens', 8192),
+            'seed': params.get('seed', 0),
+            'model_path': params.get('model_path', 'Step-Audio-EditX'),
+            'device': params.get('device', 'auto'),
+            'torch_dtype': params.get('torch_dtype', 'bfloat16'),
+            'quantization': params.get('quantization', None),
+            'character': params.get('character', 'narrator'),
+            'engine': 'step_audio_editx'
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for IndexTTS-2 engine."""
     
@@ -242,6 +273,7 @@ class AudioCache:
             'chatterbox_official_23lang': ChatterBoxOfficial23LangCacheKeyGenerator(),  # Uses specialized generator with advanced params
             'higgs_audio': HiggsAudioCacheKeyGenerator(),
             'vibevoice': VibeVoiceCacheKeyGenerator(),
+            'step_audio_editx': StepAudioEditXCacheKeyGenerator(),
             'index_tts': IndexTTSCacheKeyGenerator()
         }
     
@@ -311,9 +343,12 @@ class AudioCache:
             num_samples = audio_tensor.shape[1]
         else:
             num_samples = audio_tensor.numel()
-        
+
         # Use engine-specific sample rates
-        sample_rate = 24000 if engine_type == 'f5tts' else 44100
+        if engine_type in ('f5tts', 'step_audio_editx'):
+            sample_rate = 24000
+        else:
+            sample_rate = 44100
         return num_samples / sample_rate
     
     def clear_cache(self):

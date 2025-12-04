@@ -4,7 +4,7 @@
 
 ---
 
-Don't ever make TODOs or PLACEHOLDERS during implementation.
+Don't ever make PLACEHOLDERS during implementation.
 
 ## Pre-Implementation Analysis
 
@@ -58,7 +58,7 @@ Don't ever make TODOs or PLACEHOLDERS during implementation.
 engines/[ENGINE_NAME]/
 ├── __init__.py                    # Engine initialization
 ├── [engine_name].py              # Core engine implementation
-├── [engine_name]_downloader.py   # Model auto-download (optional)
+├── [engine_name]_downloader.py   # Model auto-download (optional, should use universal downloader code not it's own)
 ├── stateless_wrapper.py          # Thread-safe wrapper (if needed)
 └── models/                       # Model-specific code (if needed)
 
@@ -368,16 +368,19 @@ def generate_srt_speech(self, srt_content: str, ...):
 **Where to Add Interrupt Checks:**
 
 1. **SRT Processors** - Add checks in main subtitle/segment loops:
+   
    - Before processing each subtitle/segment
    - Before processing character segments within a subtitle
    - Before timing assembly (after all audio generation)
 
 2. **Text Processors** - Add checks in main generation loops:
+   
    - Before character setup/loading
    - Before processing each character segment
    - Before processing chunks (if chunking is enabled)
 
 3. **Special Feature Processors** - Add checks in long-running operations:
+   
    - Before each major processing step
    - At natural breakpoints (before/after audio generation)
 
@@ -465,7 +468,7 @@ Also to test, requirements and dependencies need to be added.
 **Common Special Features:**
 
 - **Speech Editing** (F5-TTS): Edit specific words in audio
-- **Voice Conversion** (ChatterBox): Convert voice characteristics
+- **Voice Conversion** - speech2speech (ChatterBox): Convert voice characteristics
 - **Multi-Speaker** (Some engines): Multiple speakers in one generation
 - **Style Control**: Emotion, speaking rate, emphasis
 

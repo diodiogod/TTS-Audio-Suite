@@ -462,7 +462,3 @@ class IndexTTSEngine:
             unified_model_interface.unload_model(self._model_config)
         self._tts_engine = None
         self._model_config = None
-
-    def __del__(self):
-        """Cleanup on deletion."""
-        self.unload()

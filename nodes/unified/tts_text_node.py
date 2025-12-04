@@ -39,6 +39,7 @@ from utils.text.character_parser import parse_character_text, character_parser
 from utils.voice.multilingual_engine import MultilingualEngine
 from utils.config_sanitizer import ConfigSanitizer
 import comfy.model_management as model_management
+import folder_paths
 
 # Global audio cache for unified TTS segments
 GLOBAL_AUDIO_CACHE = {}
@@ -356,7 +357,6 @@ Back to the main narrator voice for the conclusion.""",
                                 if audio_path:
                                     # Load character-specific audio
                                     try:
-                                        from utils.audio.processing import AudioProcessingUtils
                                         waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
                                         voice_mapping[char] = {"waveform": waveform, "sample_rate": sample_rate}
                                         print(f"🎭 VibeVoice: Using character-specific voice for '{char}'")
@@ -421,18 +421,35 @@ Back to the main narrator voice for the conclusion.""",
             elif engine_type == "index_tts":
                 # Create IndexTTS processor instance using the adapter pattern
                 from engines.processors.index_tts_processor import IndexTTSProcessor
-                
+
                 engine_instance = IndexTTSProcessor(config)
-                
+
                 # Cache the instance with timestamp (follow VibeVoice pattern)
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
                     'timestamp': time.time()
                 }
-                
+
                 return engine_instance
-                
+
+            elif engine_type == "step_audio_editx":
+                # Create Step Audio EditX wrapper instance
+                class StepAudioEditXWrapper:
+                    def __init__(self, config):
+                        self.config = config
+
+                engine_instance = StepAudioEditXWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -482,10 +499,9 @@ Back to the main narrator voice for the conclusion.""",
                 # print(f"🐛 TTS_TEXT: Trying narrator_voice dropdown: {narrator_voice}")
                 audio_path, reference_text = load_voice_reference(narrator_voice)
                 # print(f"🐛 TTS_TEXT: Dropdown - audio_path={audio_path}, exists={os.path.exists(audio_path) if audio_path else False}")
-                
+
                 if audio_path and os.path.exists(audio_path):
                     # Load audio tensor with fallback support
-                    from utils.audio.processing import AudioProcessingUtils
                     waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
                     if waveform.shape[0] > 1:
                         waveform = torch.mean(waveform, dim=0, keepdim=True)
@@ -680,10 +696,10 @@ Back to the main narrator voice for the conclusion.""",
                 higgs_tts_spec = importlib.util.spec_from_file_location("higgs_audio_tts_processor_module", higgs_tts_processor_path)
                 higgs_tts_module = importlib.util.module_from_spec(higgs_tts_spec)
                 higgs_tts_spec.loader.exec_module(higgs_tts_module)
-                
+
                 HiggsAudioTTSProcessor = higgs_tts_module.HiggsAudioTTSProcessor
                 tts_processor = HiggsAudioTTSProcessor(engine_instance)
-                
+
                 # Clean delegation to TTS processor
                 result = tts_processor.generate_tts_speech(
                     text=text,
@@ -695,7 +711,177 @@ Back to the main narrator voice for the conclusion.""",
                     max_chars_per_chunk=max_chars_per_chunk,
                     silence_between_chunks_ms=silence_between_chunks_ms
                 )
-                
+
+            elif engine_type == "step_audio_editx":
+                # Import and create the Step Audio EditX TTS processor
+                step_audio_processor_path = os.path.join(nodes_dir, "step_audio_editx", "step_audio_editx_processor.py")
+                step_audio_spec = importlib.util.spec_from_file_location("step_audio_editx_processor_module", step_audio_processor_path)
+                step_audio_module = importlib.util.module_from_spec(step_audio_spec)
+                step_audio_spec.loader.exec_module(step_audio_module)
+
+                StepAudioEditXProcessor = step_audio_module.StepAudioEditXProcessor
+
+                # Create wrapper instance
+                class StepAudioEditXWrapper:
+                    def __init__(self):
+                        self.config = config
+
+                wrapper_instance = StepAudioEditXWrapper()
+                tts_processor = StepAudioEditXProcessor(wrapper_instance, config)
+
+                # Prepare voice mapping - discover all characters in text
+                from utils.text.character_parser import character_parser
+                from utils.voice.discovery import get_character_mapping
+                import tempfile
+
+                # Parse characters from text - first extract character names from tags
+                import re
+                # Simple regex to extract character names from [Character] tags
+                character_tags = re.findall(r'\[([^\]]+)\]', text)
+                # Filter out pause tags and get unique characters
+                characters_from_tags = []
+                for tag in character_tags:
+                    if not tag.startswith('pause:'):
+                        # Extract character name (before | for parameters)
+                        character_name = tag.split('|')[0].strip()
+                        characters_from_tags.append(character_name)
+
+                # Add "narrator" as default character
+                all_characters = list(set(characters_from_tags + ["narrator"]))
+
+                # Set available characters so parser doesn't change them to "narrator"
+                # Also get character aliases and language defaults like IndexTTS does
+                from utils.voice.discovery import get_available_characters, voice_discovery
+
+                # Get available characters and aliases
+                available_chars = get_available_characters()
+                character_aliases = voice_discovery.get_character_aliases()
+
+                # Build complete available set
+                all_available = set()
+                if available_chars:
+                    all_available.update(available_chars)
+                for alias, target in character_aliases.items():
+                    all_available.add(alias.lower())
+                    all_available.add(target.lower())
+
+                # Add characters from text (lowercase for matching)
+                for char in characters_from_tags:
+                    all_available.add(char.lower())
+
+                # Add "narrator"
+                all_available.add("narrator")
+
+                character_parser.set_available_characters(list(all_available))
+
+                # Set language defaults
+                char_lang_defaults = voice_discovery.get_character_language_defaults()
+                for char, lang in char_lang_defaults.items():
+                    character_parser.set_character_language_default(char, lang)
+
+                character_parser.reset_session_cache()
+
+                # Now parse segments - characters will be preserved
+                segment_objects = character_parser.parse_text_segments(text)
+                characters = list(set([seg.character for seg in segment_objects]))
+
+                # Get character voice mapping
+                character_mapping = get_character_mapping(characters, engine_type="step_audio_editx")
+
+                # Build voice mapping with Step Audio EditX format
+                voice_mapping = {}
+                for character in characters:
+                    # Special handling for narrator - use provided voice reference
+                    if character == "narrator" and audio_tensor is not None and reference_text:
+                        # Extract waveform from ComfyUI audio dict format
+                        waveform = audio_tensor['waveform'] if isinstance(audio_tensor, dict) else audio_tensor
+                        sr = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+
+                        # Save audio tensor to temporary file for Step Audio EditX
+                        temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
+                        voice_mapping[character] = {
+                            'prompt_audio_path': temp_file_path,
+                            'prompt_text': reference_text
+                        }
+                    else:
+                        # Use character-specific voice from voices/ folder with fallback to narrator
+                        audio_path, ref_text = character_mapping.get(character, (None, None))
+                        if audio_path and ref_text:
+                            voice_mapping[character] = {
+                                'prompt_audio_path': audio_path,
+                                'prompt_text': ref_text
+                            }
+                            print(f"🎭 Step Audio EditX: Using character-specific voice for '{character}'")
+                        else:
+                            # Fallback to narrator voice for characters without voice files
+                            if audio_tensor is not None and reference_text:
+                                # Extract waveform from ComfyUI audio dict format
+                                waveform = audio_tensor['waveform'] if isinstance(audio_tensor, dict) else audio_tensor
+                                sr = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+
+                                # Save audio tensor to temporary file for Step Audio EditX
+                                temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
+                                voice_mapping[character] = {
+                                    'prompt_audio_path': temp_file_path,
+                                    'prompt_text': reference_text
+                                }
+                                print(f"🔄 Step Audio EditX: Using narrator voice fallback for '{character}'")
+                            else:
+                                # No narrator voice available - add empty entry (will cause error in adapter)
+                                voice_mapping[character] = None
+                                print(f"⚠️ Step Audio EditX: No voice available for '{character}' and no narrator fallback")
+
+                # Process text with character switching
+                audio_segments = tts_processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=(max_chars_per_chunk > 0),
+                    max_chars_per_chunk=max_chars_per_chunk if max_chars_per_chunk > 0 else 400
+                )
+
+                # Calculate clean text length (without tags)
+                import re
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                # Combine audio segments with timing info
+                combined_audio, chunk_info = tts_processor.combine_audio_segments(
+                    audio_segments,
+                    method="auto",
+                    silence_ms=silence_between_chunks_ms,
+                    text_length=text_length,
+                    return_info=True
+                )
+
+                # Ensure correct shape [batch, channels, samples] for ComfyUI
+                if combined_audio.dim() == 1:
+                    combined_audio = combined_audio.unsqueeze(0).unsqueeze(0)  # [samples] -> [1, 1, samples]
+                elif combined_audio.dim() == 2:
+                    combined_audio = combined_audio.unsqueeze(0)  # [channels, samples] -> [1, channels, samples]
+
+                # Calculate audio duration
+                total_duration = combined_audio.shape[-1] / 24000.0
+                num_segments = len(audio_segments)
+
+                # Build detailed generation info
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters"
+                if num_segments > 1:
+                    avg_chars = text_length / num_segments
+                    base_info += f" using {num_segments} segments (avg {avg_chars:.0f} chars/segment)"
+                base_info += f" (Step Audio EditX, narrator: {char_display})"
+
+                # Enhance with chunk timing details
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                # Format as ComfyUI audio
+                audio_output = {
+                    "waveform": combined_audio,
+                    "sample_rate": 24000
+                }
+                result = (audio_output, generation_info)
+
             elif engine_type == "vibevoice":
                 # VibeVoice uses the wrapper pattern - call directly through the wrapper's method
                 result = engine_instance.generate_tts_audio(
@@ -713,19 +899,33 @@ Back to the main narrator voice for the conclusion.""",
                 
             elif engine_type == "index_tts":
                 # IndexTTS-2 uses processor pattern - call through processor with emotion support
-                audio_result = engine_instance.process_text(
+                audio_result, chunk_info = engine_instance.process_text(
                     text=text,
                     speaker_audio=audio_tensor,
                     reference_text=reference_text,
                     seed=seed,
                     enable_chunking=enable_chunking,
                     max_chars_per_chunk=max_chars_per_chunk,
-                    silence_between_chunks_ms=silence_between_chunks_ms
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    return_info=True
                 )
-                
+
+                # Calculate statistics
+                total_duration = audio_result.shape[-1] / 22050.0  # IndexTTS-2 uses 22050 Hz
+                import re
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                # Build detailed generation info
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (IndexTTS-2, narrator: {char_display})"
+                base_info += "\n🎭 Character switching and emotion support enabled"
+
+                # Enhance with chunk timing details
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
                 # Format as ComfyUI audio format (processor returns tensor, we need dict)
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
-                generation_info = f"✅ IndexTTS-2 generation complete\n🎭 Character switching and emotion support enabled"
                 result = (formatted_audio, generation_info)
                 
             else:

@@ -60,6 +60,13 @@ ninja>=1.11.0         # Build tool for CUDA kernel compilation (BigVGAN optimiza
 sentencepiece>=0.2.1  # Text tokenization
 textstat>=0.7.10      # Text statistics and readability
 
+# Step Audio EditX engine dependencies (safe)
+openai-whisper        # Mel spectrogram extraction for audio tokenizer
+funasr>=1.1.3         # FunASR speech processing toolkit
+hyperpyyaml           # YAML configuration parser
+protobuf>=3.20.0      # Protocol buffers (compatible with descript-audiotools)
+# onnxruntime installed by install.py with --no-deps to avoid conflicts
+
 # RVC voice conversion (safe)
 monotonic-alignment-search
 faiss-cpu>=1.7.4
