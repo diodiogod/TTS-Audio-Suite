@@ -70,3 +70,12 @@
 - **Wrong**: Inline concatenation (`torch.cat`) without timing tracking, manual report formatting
 - **Example**: IndexTTS/StepAudio initially did inline concat - needed refactor to use ChunkCombiner
 - **Required info**: Duration, text length, segments/chunks count, chunk timing breakdown (start/end/text per chunk)
+
+### ComfyUI Audio Tensor Shape
+- **CRITICAL**: ComfyUI expects **3D** `[batch, channels, samples]` NOT 2D `[channels, samples]`
+- **Error symptom**: `IndexError: Dimension out of range (expected to be in range of [-1, 0], but got 1)` in `save_audio()`
+- **Correct shape conversion**:
+  - 1D `[samples]` → 3D `[1, 1, samples]` (two unsqueeze)
+  - 2D `[channels, samples]` → 3D `[1, channels, samples]` (one unsqueeze)
+- **Wrong**: Squeezing 3D to 2D, or only adding one dimension to 1D
+- **Pattern**: `tensor.unsqueeze(0)` adds batch dim to 2D; check VibeVoice processor for reference

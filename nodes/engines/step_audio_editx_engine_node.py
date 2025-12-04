@@ -66,18 +66,18 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                     "tooltip": "VRAM reduction via quantization:\n• none: Best quality, 8GB VRAM (recommended)\n• int8: Good quality, 4GB VRAM\n• int4: Acceptable quality, 3GB VRAM\nUse if low on VRAM. Quality degrades with stronger quantization."
                 }),
 
-                # Generation Parameters (hardcoded in original for clone, exposed for compatibility)
+                # Generation Parameters (used by clone mode, edit mode has hardcoded values)
                 "temperature": ("FLOAT", {
                     "default": 0.7, "min": 0.1, "max": 2.0, "step": 0.1,
-                    "tooltip": "Sampling temperature for generation. Note: Clone mode uses 0.7 (hardcoded), edit mode uses 0.7 (hardcoded). This parameter is for future use."
+                    "tooltip": "Sampling temperature for generation.\n• Lower (0.3-0.5): More consistent, predictable output\n• Default (0.7): Balanced creativity and stability\n• Higher (1.0+): More varied, potentially unstable\nNote: Audio Editor uses hardcoded 0.7."
                 }),
                 "do_sample": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Enable sampling for generation. Note: Hardcoded to True in original implementation. This parameter is for future use."
+                    "tooltip": "Enable sampling for generation.\n• True: Uses temperature for varied output (recommended)\n• False: Greedy decoding, deterministic but may be repetitive\nNote: Audio Editor uses hardcoded True."
                 }),
                 "max_new_tokens": ("INT", {
                     "default": 8192, "min": 256, "max": 16384, "step": 256,
-                    "tooltip": "Maximum audio tokens to generate:\n• 2048: ~10s audio\n• 4096: ~20s audio\n• 8192: ~40s audio (default)\nHigher = more VRAM + time. Note: Clone mode uses 8192 (hardcoded). This parameter is for future use."
+                    "tooltip": "Maximum audio tokens to generate:\n• 2048: ~10s audio\n• 4096: ~20s audio\n• 8192: ~40s audio (default)\nHigher = more VRAM + longer generation time."
                 }),
             }
         }

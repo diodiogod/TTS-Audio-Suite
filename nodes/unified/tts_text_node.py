@@ -854,11 +854,11 @@ Back to the main narrator voice for the conclusion.""",
                     return_info=True
                 )
 
-                # Ensure correct shape [channels, samples] for ComfyUI
+                # Ensure correct shape [batch, channels, samples] for ComfyUI
                 if combined_audio.dim() == 1:
-                    combined_audio = combined_audio.unsqueeze(0)
-                elif combined_audio.dim() == 3:
-                    combined_audio = combined_audio.squeeze(0)
+                    combined_audio = combined_audio.unsqueeze(0).unsqueeze(0)  # [samples] -> [1, 1, samples]
+                elif combined_audio.dim() == 2:
+                    combined_audio = combined_audio.unsqueeze(0)  # [channels, samples] -> [1, channels, samples]
 
                 # Calculate audio duration
                 total_duration = combined_audio.shape[-1] / 24000.0

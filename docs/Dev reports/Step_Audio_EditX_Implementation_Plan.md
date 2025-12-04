@@ -21,6 +21,14 @@
 
 ---
 
+## Reference Implementations
+
+**Local copies available for reference:**
+- **Original (stepfun-ai)**: `IgnoredForGitHubDocs/For_reference/Step-Audio-EditX/`
+- **Saganaki22's ComfyUI**: `IgnoredForGitHubDocs/For_reference/ComfyUI-Step_Audio_EditX_TTS/`
+
+---
+
 ## Analysis of Both Implementations
 
 ### Original Step Audio EditX (stepfun-ai)
