@@ -208,9 +208,9 @@ class UnifiedModelLoader:
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
-                # Add torch_dtype based on quantization requirements
+                # Add dtype based on quantization requirements
                 if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["torch_dtype"] = kwargs.get("torch_dtype")
+                    load_kwargs["dtype"] = kwargs.get("torch_dtype")
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -239,9 +239,9 @@ class UnifiedModelLoader:
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
-                # Add torch_dtype based on quantization requirements
+                # Add dtype based on quantization requirements
                 if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["torch_dtype"] = kwargs.get("torch_dtype")
+                    load_kwargs["dtype"] = kwargs.get("torch_dtype")
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -268,9 +268,9 @@ class UnifiedModelLoader:
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
-                # Add torch_dtype based on quantization requirements
+                # Add dtype based on quantization requirements
                 if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["torch_dtype"] = kwargs.get("torch_dtype")
+                    load_kwargs["dtype"] = kwargs.get("torch_dtype")
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,

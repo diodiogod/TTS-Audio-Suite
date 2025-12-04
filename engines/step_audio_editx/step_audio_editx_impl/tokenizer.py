@@ -75,7 +75,10 @@ class StepAudioTokenizer:
 
         self.kms = torch.tensor(np.load(kms_path))
 
-        providers = ["CUDAExecutionProvider"]
+        # Auto-detect available ONNX providers (prefer CUDA if available)
+        available_providers = onnxruntime.get_available_providers()
+        providers = ["CUDAExecutionProvider"] if "CUDAExecutionProvider" in available_providers else ["CPUExecutionProvider"]
+
         session_option = onnxruntime.SessionOptions()
         session_option.graph_optimization_level = (
             onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL

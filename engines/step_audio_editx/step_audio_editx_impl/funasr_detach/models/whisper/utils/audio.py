@@ -5,7 +5,7 @@ from typing import Union
 try:
     import ffmpeg
 except:
-    print("Please Requires the ffmpeg CLI and `ffmpeg-python` package to be installed.")
+    pass  # ffmpeg is optional, will raise error if actually used
 
 import numpy as np
 import torch
