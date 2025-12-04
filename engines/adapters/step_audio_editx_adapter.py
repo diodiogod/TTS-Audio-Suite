@@ -147,12 +147,13 @@ class StepAudioEditXEngineAdapter:
             return self._generate_with_pauses(text, voice_ref, params, character_name)
         else:
             # Direct generation without pause processing
-            return self._generate_direct(text, voice_ref, params)
+            return self._generate_direct(text, voice_ref, params, character_name)
 
     def _generate_direct(self,
                         text: str,
                         voice_ref: Optional[Dict[str, Any]],
-                        params: Dict[str, Any]) -> torch.Tensor:
+                        params: Dict[str, Any],
+                        character_name: Optional[str] = None) -> torch.Tensor:
         """
         Direct generation without pause processing.
 
@@ -160,12 +161,42 @@ class StepAudioEditXEngineAdapter:
             text: Input text (clean, no pause tags)
             voice_ref: Voice reference dict
             params: Generation parameters
+            character_name: Character name for logging
 
         Returns:
             Audio tensor [1, samples]
         """
         # Get voice reference paths
         prompt_audio_path, prompt_text = self._extract_voice_reference(voice_ref)
+
+        # Generate cache key and check cache
+        from utils.audio.audio_hash import generate_stable_audio_component
+        audio_component = generate_stable_audio_component(
+            audio_file_path=prompt_audio_path
+        ) if prompt_audio_path else "default_voice"
+
+        cache_key = self.audio_cache.generate_cache_key(
+            'step_audio_editx',
+            text=text,
+            audio_component=audio_component,
+            prompt_text=prompt_text,
+            temperature=params.get('temperature', 0.7),
+            do_sample=params.get('do_sample', True),
+            max_new_tokens=params.get('max_new_tokens', 8192),
+            seed=params.get('seed', 0),
+            model_path=params.get('model_path', 'Step-Audio-EditX'),
+            device=params.get('device', 'auto'),
+            torch_dtype=params.get('torch_dtype', 'bfloat16'),
+            quantization=params.get('quantization', None),
+            character=character_name or 'narrator'
+        )
+
+        # Check cache
+        cached_audio = self.audio_cache.get_cached_audio(cache_key)
+        if cached_audio:
+            char_desc = character_name or 'narrator'
+            print(f"💾 Using cached Step Audio EditX audio for '{char_desc}': '{text[:30]}...'")
+            return cached_audio[0]
 
         # Create ComfyUI progress bar for generation tracking with time prediction
         max_new_tokens = params.get('max_new_tokens', 8192)
@@ -279,6 +310,10 @@ class StepAudioEditXEngineAdapter:
             progress_bar=progress_bar
         )
 
+        # Cache the result
+        duration = self.audio_cache._calculate_duration(audio_tensor, 'step_audio_editx')
+        self.audio_cache.cache_audio(cache_key, audio_tensor, duration)
+
         return audio_tensor
 
     def _generate_with_pauses(self,
@@ -309,7 +344,7 @@ class StepAudioEditXEngineAdapter:
         for segment_type, content in segments:
             if segment_type == 'text':
                 # Generate audio for text segment
-                audio_tensor = self._generate_direct(content, voice_ref, params)
+                audio_tensor = self._generate_direct(content, voice_ref, params, character_name)
 
                 # Ensure correct shape [1, samples]
                 if audio_tensor.dim() == 1:
