@@ -179,7 +179,11 @@ class StepAudioEditXAudioEditorNode:
         if duration < 0.5:
             raise ValueError(f"Input audio too short: {duration:.2f}s (minimum: 0.5s)")
         if duration > 30.0:
-            raise ValueError(f"Input audio too long: {duration:.2f}s (maximum: 30s)")
+            raise ValueError(
+                f"Input audio too long: {duration:.2f}s (maximum: 30s)\n\n"
+                f"This is a model architecture limitation of Step Audio EditX.\n"
+                f"For longer audio, split it manually at natural pauses and edit each segment separately."
+            )
         return duration
 
     def _get_edit_info_for_type(self, edit_type, emotion, style, speed):
