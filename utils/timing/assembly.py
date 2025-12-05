@@ -20,12 +20,13 @@ class AudioAssemblyEngine:
     def __init__(self, sample_rate: int):
         """
         Initialize audio assembly engine
-        
+
         Args:
             sample_rate: Audio sample rate
         """
         self.sample_rate = sample_rate
         self.stretcher_cache = {}  # Cache for time stretching instances
+        self.last_stretch_method_used = None  # Track last stretcher method used
         
     def assemble_concatenation(self, audio_segments: List[torch.Tensor],
                              fade_duration: float = 0.0) -> torch.Tensor:
@@ -192,15 +193,18 @@ class AudioAssemblyEngine:
         # Use the original TimedAudioAssembler from chatterbox - EXACT ORIGINAL BEHAVIOR
         try:
             from engines.chatterbox.audio_timing import TimedAudioAssembler
-            
+
             assembler = TimedAudioAssembler(self.sample_rate)
             final_audio = assembler.assemble_timed_audio(
                 audio_segments, target_timings, fade_duration=fade_duration
             )
+            # Track which stretcher method was used
+            self.last_stretch_method_used = assembler.get_stretch_method_used()
             return final_audio
-            
+
         except ImportError as e:
             # Fallback to basic assembly if chatterbox modules not available
+            self.last_stretch_method_used = "basic_fallback"
             return self._basic_stretch_assembly(audio_segments, target_timings, fade_duration)
     
     def assemble_with_overlaps(self, audio_segments: List[torch.Tensor],
@@ -575,15 +579,20 @@ class AudioAssemblyEngine:
     def get_assembly_info(self) -> Dict[str, Any]:
         """
         Get information about the assembly engine configuration
-        
+
         Returns:
             Dictionary with assembly engine info
         """
         return {
             'sample_rate': self.sample_rate,
             'cached_stretchers': list(self.stretcher_cache.keys()),
-            'available_methods': self._get_available_methods()
+            'available_methods': self._get_available_methods(),
+            'last_stretch_method_used': self.last_stretch_method_used
         }
+
+    def get_stretch_method_used(self) -> str:
+        """Get which stretching method was used in the last assembly"""
+        return self.last_stretch_method_used or "none"
     
     def _get_available_methods(self) -> List[str]:
         """Get list of available time stretching methods"""
@@ -604,7 +613,7 @@ class AudioAssemblyEngine:
         
         return methods
     
-    def assemble_by_timing_mode(self, audio_segments: List[torch.Tensor], 
+    def assemble_by_timing_mode(self, audio_segments: List[torch.Tensor],
                                subtitles: List, timing_mode: str, device,
                                adjustments: Optional[List[Dict]] = None,
                                processed_segments: Optional[List[torch.Tensor]] = None,

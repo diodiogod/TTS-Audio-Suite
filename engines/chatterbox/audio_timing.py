@@ -476,10 +476,10 @@ class TimedAudioAssembler:
             else:
                 raise AudioTimingError(f"Invalid stretcher_type: {stretcher_type}. Use 'ffmpeg' or 'phase_vocoder'")
     
-    def assemble_timed_audio(self, audio_segments: List[torch.Tensor], 
+    def assemble_timed_audio(self, audio_segments: List[torch.Tensor],
                            target_timings: List[Tuple[float, float]],
                            total_duration: Optional[float] = None,
-                           fade_duration: float = 0.01) -> torch.Tensor:
+                           fade_duration: float = 0.01) -> Tuple[torch.Tensor, str]:
         """
         Assemble audio segments with precise timing
         
@@ -582,7 +582,15 @@ class TimedAudioAssembler:
             self._place_segment_with_fade(output, audio_segment, start_sample, end_sample, fade_duration)
         
         return output
-    
+
+    def get_stretch_method_used(self) -> str:
+        """Get which stretching method was used in the last assembly"""
+        return self.stretch_method_used or "none"
+
+    def get_time_stretcher(self):
+        """Get the time stretcher object used (for backward compatibility)"""
+        return self.time_stretcher
+
     def _place_segment_with_fade(self, output: torch.Tensor, segment: torch.Tensor,
                                start_sample: int, end_sample: int, fade_duration: float):
         """

@@ -915,8 +915,22 @@ The audio will match these exact timings.""",
                 )
                 adjustments = smart_adjustments
             
+            # Get stretcher method info
+            stretch_method = None
+            if current_timing_mode == "stretch_to_fit" and 'assembler' in locals():
+                stretch_method = assembler.get_stretch_method_used()
+            elif current_timing_mode == "smart_natural" and hasattr(self, '_smart_natural_stretcher'):
+                stretch_method = self._smart_natural_stretcher
+            elif current_timing_mode == "concatenate" and 'assembler' in locals():
+                stretch_method = assembler.get_stretch_method_used()
+
             # Generate reports
-            timing_report = self._generate_timing_report(subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None)
+            timing_report = self._generate_timing_report(
+                subtitles, adjustments, current_timing_mode,
+                has_overlaps, mode_switched,
+                timing_mode if mode_switched else None,
+                stretch_method
+            )
             adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, current_timing_mode)
             
             # Generate info with cache status and stretching method - ORIGINAL LOGIC FROM LINES 1141-1168

@@ -289,41 +289,6 @@ class UnifiedModelLoader:
             # Without this, the model generates garbage due to training-time randomness
             model.eval()
 
-            # CRITICAL FIX for transformers 4.54+: Restore correct lm_head weights
-            # Bug: transformers 4.54+ incorrectly ties lm_head to embed_tokens even when they should be separate
-            # The Step-Audio-EditX model has different weights for lm_head (norm=227) vs embed_tokens (norm=255)
-            # but transformers 4.54+ ties them, causing wrong predictions (text tokens instead of audio tokens)
-            if hasattr(model, 'lm_head') and hasattr(model, 'model') and hasattr(model.model, 'embed_tokens'):
-                if model.lm_head.weight.data_ptr() == model.model.embed_tokens.weight.data_ptr():
-                    # Weights are tied - need to restore correct lm_head from checkpoint
-                    self.logger.info("Detected incorrect weight tying in transformers 4.54+, restoring lm_head weights...")
-
-                    # Load correct lm_head weights from safetensors
-                    from safetensors import safe_open
-                    import glob
-
-                    safetensors_files = glob.glob(os.path.join(model_path, "model*.safetensors"))
-                    if safetensors_files:
-                        # Try to find lm_head.weight in safetensors files
-                        lm_head_weight = None
-                        for st_file in sorted(safetensors_files):
-                            try:
-                                with safe_open(st_file, framework="pt", device="cpu") as f:
-                                    if "lm_head.weight" in f.keys():
-                                        lm_head_weight = f.get_tensor("lm_head.weight")
-                                        break
-                            except:
-                                continue
-
-                        if lm_head_weight is not None:
-                            # Untie the weights and restore correct lm_head
-                            model.lm_head.weight = torch.nn.Parameter(
-                                lm_head_weight.to(model.lm_head.weight.dtype).to(model.lm_head.weight.device).clone()
-                            )
-                            self.logger.info(f"Restored lm_head weights (norm: {model.lm_head.weight.norm().item():.2f})")
-                        else:
-                            self.logger.warning("Could not find lm_head.weight in safetensors, skipping fix")
-
             self.logger.debug(f"Successfully loaded model from {source}")
             return model, tokenizer, model_path
 

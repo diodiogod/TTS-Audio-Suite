@@ -769,12 +769,12 @@ Hello! This is F5-TTS SRT with character switching.
         
         return final_audio, adjustments
     
-    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None) -> str:
+    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None, stretch_method: str = None) -> str:
         """Generate detailed timing report."""
         # Delegate to reporting module
         from utils.timing.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
-        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, has_original_overlaps, mode_switched, original_mode)
+        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, has_original_overlaps, mode_switched, original_mode, stretch_method)
     
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings."""

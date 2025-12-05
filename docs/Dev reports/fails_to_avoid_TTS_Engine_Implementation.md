@@ -91,3 +91,9 @@
   - 2D `[channels, samples]` → 3D `[1, channels, samples]` (one unsqueeze)
 - **Wrong**: Squeezing 3D to 2D, or only adding one dimension to 1D
 - **Pattern**: `tensor.unsqueeze(0)` adds batch dim to 2D; check VibeVoice processor for reference
+
+### Step Audio EditX Sample Rate
+- **Symptom**: Pitch shift in edit/clone modes with external audio (44100 Hz, 48000 Hz)
+- **Cause**: Saving audio with wrong sample rate metadata → `torchaudio.load()` misinterprets data
+- **Fix**: Resample to 24000 Hz before saving temp files (edit node, TTS text node, TTS SRT node)
+- **Prevention**: Always resample to engine's native rate (24000 Hz for Step Audio EditX)

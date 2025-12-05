@@ -26,7 +26,7 @@ class SRTReportGenerator:
                 overlapping_segments.add(i)
         return overlapping_segments
     
-    def generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None) -> str:
+    def generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None, stretch_method: str = None) -> str:
         """Generate detailed timing report with original vs generated overlap distinction"""
         import numpy as np
         
@@ -55,9 +55,13 @@ No segments were processed due to immediate interruption.
             "=" * 50,
             f"Total subtitles: {len(subtitles)}",
             f"Total duration: {subtitles[-1].end_time:.3f}s",
-            "",
-            "Per-subtitle analysis:"
         ]
+
+        # Add stretcher method info if available
+        if stretch_method and timing_mode == "stretch_to_fit":
+            report_lines.append(f"Time stretcher: {stretch_method}")
+
+        report_lines.extend(["", "Per-subtitle analysis:"])
         
         if timing_mode == "smart_natural":
             # For smart_natural mode, iterate directly over the detailed adjustments report
