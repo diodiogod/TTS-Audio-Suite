@@ -831,6 +831,17 @@ Hello! This is unified SRT TTS with character switching.
                     # Extract waveform from ComfyUI audio dict format
                     waveform = audio_tensor.get('waveform') if isinstance(audio_tensor, dict) else audio_tensor
                     sample_rate = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+
+                    # CRITICAL: Step Audio EditX requires 24000 Hz audio
+                    # Resample if needed to prevent pitch shift
+                    target_sr = 24000  # CosyVoice native sample rate
+                    if sample_rate != target_sr:
+                        print(f"🎨 Step Audio EditX SRT: Resampling narrator audio from {sample_rate}Hz to {target_sr}Hz")
+                        import torchaudio
+                        resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=target_sr)
+                        waveform = resampler(waveform)
+                        sample_rate = target_sr
+
                     # save_audio_to_temp_file returns the temp file path
                     temp_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sample_rate)
 

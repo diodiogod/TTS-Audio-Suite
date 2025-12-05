@@ -797,6 +797,16 @@ Back to the main narrator voice for the conclusion.""",
                         waveform = audio_tensor['waveform'] if isinstance(audio_tensor, dict) else audio_tensor
                         sr = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
 
+                        # CRITICAL: Step Audio EditX requires 24000 Hz audio
+                        # Resample if needed to prevent pitch shift
+                        target_sr = 24000  # CosyVoice native sample rate
+                        if sr != target_sr:
+                            print(f"🎨 Step Audio EditX: Resampling narrator audio from {sr}Hz to {target_sr}Hz")
+                            import torchaudio
+                            resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=target_sr)
+                            waveform = resampler(waveform)
+                            sr = target_sr
+
                         # Save audio tensor to temporary file for Step Audio EditX
                         temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
                         voice_mapping[character] = {
@@ -818,6 +828,16 @@ Back to the main narrator voice for the conclusion.""",
                                 # Extract waveform from ComfyUI audio dict format
                                 waveform = audio_tensor['waveform'] if isinstance(audio_tensor, dict) else audio_tensor
                                 sr = audio_tensor.get('sample_rate', 24000) if isinstance(audio_tensor, dict) else 24000
+
+                                # CRITICAL: Step Audio EditX requires 24000 Hz audio
+                                # Resample if needed to prevent pitch shift
+                                target_sr = 24000  # CosyVoice native sample rate
+                                if sr != target_sr:
+                                    print(f"🎨 Step Audio EditX: Resampling fallback audio for '{character}' from {sr}Hz to {target_sr}Hz")
+                                    import torchaudio
+                                    resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=target_sr)
+                                    waveform = resampler(waveform)
+                                    sr = target_sr
 
                                 # Save audio tensor to temporary file for Step Audio EditX
                                 temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
