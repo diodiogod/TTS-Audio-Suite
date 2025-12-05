@@ -313,7 +313,11 @@ class StepAudioEditXAudioEditorNode:
             print(f"   Target: '{target_text_with_tags}'")
 
         else:
-            # For other edit types, get edit_info from dropdowns
+            # For other edit types, strip paralinguistic tags from transcript
+            # (they're only meaningful in paralinguistic mode)
+            clean_audio_text = ' '.join(strip_paralinguistic_tags(clean_audio_text).split())
+
+            # Get edit_info from dropdowns
             edit_info = self._get_edit_info_for_type(edit_type, emotion, style, speed)
 
             # Validate edit_info is set for types that need it
