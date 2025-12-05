@@ -79,9 +79,9 @@ class StepAudioEditXAudioEditorNode:
 
     @classmethod
     def INPUT_TYPES(cls):
-        # Build paralinguistic tags hint for tooltip
+        # Build paralinguistic tags hint for tooltip - show ALL tags
         available_tags = get_paralinguistic_options_for_ui()
-        tags_hint = ", ".join([f"<{t}>" for t in available_tags[:5]]) + "..."
+        tags_hint = ", ".join([f"<{t}>" for t in available_tags])
 
         return {
             "required": {
