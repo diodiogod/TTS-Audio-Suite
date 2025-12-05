@@ -40,9 +40,6 @@ class TransformersPatches:
         cls.patch_accelerate_compatibility(verbose=verbose)
         # Step Audio EditX tokenization patch no longer needed - fixed via config.json
         # cls.patch_step_audio_tokenization(verbose=verbose)
-
-        if verbose and len(cls._patches_applied) > 0:
-            print(f"✅ Applied {len(cls._patches_applied)} transformers compatibility patches")
     
     @classmethod
     def patch_flash_attention_kwargs(cls, verbose: bool = True):

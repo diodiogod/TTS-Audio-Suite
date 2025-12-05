@@ -20,9 +20,6 @@ class PyTorchPatches:
         cls.patch_torchaudio_torchcodec(verbose=verbose)
         cls.suppress_torchaudio_warnings(verbose=verbose)
 
-        if verbose and cls._patches_applied:
-            print(f"✅ Applied {len(cls._patches_applied)} PyTorch compatibility patches")
-
     @classmethod
     def patch_torchaudio_torchcodec(cls, verbose: bool = True):
         """
@@ -59,8 +56,6 @@ class PyTorchPatches:
             if torch_version < (2, 9):
                 return
 
-            if verbose:
-                print("🔧 Applying PyTorch 2.9 TorchCodec compatibility patches...")
 
             # Store original functions
             _original_torchaudio_save = torchaudio.save
