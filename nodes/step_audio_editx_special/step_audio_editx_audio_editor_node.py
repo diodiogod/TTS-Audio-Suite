@@ -354,12 +354,14 @@ class StepAudioEditXAudioEditorNode:
         # Find highest cached iteration to resume from
         start_iteration = 0
         current_tensor = audio_tensor
+        current_sample_rate = sample_rate  # Track current sample rate
 
         for i in range(n_edit_iterations, 0, -1):
             if i in cached_iterations:
                 print(f"💾 CACHE: Resuming from cached iteration {i}/{n_edit_iterations}")
                 current_tensor = cached_iterations[i]
                 start_iteration = i
+                current_sample_rate = step_audio_engine.get_sample_rate()  # Cached tensors are at engine sample rate
                 break
 
         # Save initial/resumed audio to temp file for engine
@@ -392,7 +394,22 @@ class StepAudioEditXAudioEditorNode:
                         save_tensor = save_tensor.unsqueeze(0)
                     elif save_tensor.dim() == 3:
                         save_tensor = save_tensor.squeeze(0)
-                    torchaudio.save(temp_audio_path, save_tensor.cpu(), step_audio_engine.get_sample_rate())
+
+                    # CRITICAL: Resample to engine's sample rate (24000 Hz) if needed
+                    # Input audio might be 44100 Hz, 48000 Hz, etc.
+                    # Saving with wrong sample rate causes pitch shift
+                    target_sample_rate = step_audio_engine.get_sample_rate()  # 24000 Hz
+                    if current_sample_rate != target_sample_rate:
+                        print(f"   Resampling audio from {current_sample_rate}Hz to {target_sample_rate}Hz")
+                        # Use torchaudio for resampling
+                        resampler = torchaudio.transforms.Resample(
+                            orig_freq=current_sample_rate,
+                            new_freq=target_sample_rate
+                        )
+                        resampled_tensor = resampler(save_tensor.cpu())
+                        torchaudio.save(temp_audio_path, resampled_tensor.cpu(), target_sample_rate)
+                    else:
+                        torchaudio.save(temp_audio_path, save_tensor.cpu(), current_sample_rate)
 
                 # Perform single edit with progress tracking
                 current_tensor = step_audio_engine.edit_single(
@@ -406,6 +423,9 @@ class StepAudioEditXAudioEditorNode:
                     temperature=temperature,
                     do_sample=do_sample
                 )
+
+                # Update sample rate - engine always returns 24000 Hz audio
+                current_sample_rate = step_audio_engine.get_sample_rate()
 
                 # Cache this iteration
                 self._cache_iteration_result(cache_key, iteration_num, current_tensor)
