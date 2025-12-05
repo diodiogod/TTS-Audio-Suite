@@ -154,17 +154,17 @@ class VibeVoiceSRTProcessor:
             adj['sequence'] = subtitle.sequence
         
         # Assemble final audio based on timing mode using existing utils
-        final_audio, final_adjustments = self._assemble_final_audio(
+        final_audio, final_adjustments, stretch_method = self._assemble_final_audio(
             audio_segments, subtitles, current_timing_mode, timing_params, adjustments
         )
-        
-        # Use final adjustments if returned (for smart_natural mode)
+
+        # Use final adjustments if returned (for smart_natural/concatenate mode)
         if final_adjustments is not None:
             adjustments = final_adjustments
-        
+
         # Generate reports using existing utils
         timing_report = self._generate_timing_report(
-            subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None
+            subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None, stretch_method
         )
         adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, current_timing_mode)
         
@@ -546,74 +546,75 @@ class VibeVoiceSRTProcessor:
             adjustments: Timing adjustments
             
         Returns:
-            Tuple of (final_audio_tensor, updated_adjustments_or_None)
+            Tuple of (final_audio_tensor, updated_adjustments_or_None, stretch_method_or_None)
         """
         sample_rate = 24000
-        
+        stretch_method = None
+
         if timing_mode == "stretch_to_fit":
             # Use time stretching to match exact timing
             assembler = self.TimedAudioAssembler(sample_rate)
             target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
             fade_duration = timing_params.get('fade_for_StretchToFit', 0.01)
-            final_audio = assembler.assemble_timed_audio(
+            final_audio, stretch_method = assembler.assemble_timed_audio(
                 audio_segments, target_timings, fade_duration=fade_duration
             )
-            return final_audio, None  # No updated adjustments
-        
+            return final_audio, None, stretch_method
+
         elif timing_mode == "pad_with_silence":
             # Add silence to match timing without stretching
             from utils.timing.assembly import AudioAssemblyEngine
             assembler = AudioAssemblyEngine(sample_rate)
             final_audio = assembler.assemble_with_overlaps(audio_segments, subtitles, torch.device('cpu'))
-            return final_audio, None  # No updated adjustments
-        
+            return final_audio, None, None
+
         elif timing_mode == "concatenate":
             # Concatenate audio naturally and recalculate SRT timings
             from utils.timing.engine import TimingEngine
             from utils.timing.assembly import AudioAssemblyEngine
-            
+
             timing_engine = TimingEngine(sample_rate)
             assembler = AudioAssemblyEngine(sample_rate)
-            
+
             # Calculate new timings for concatenation
             new_adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
-            
+
             # Assemble audio with optional crossfading
             fade_duration = timing_params.get('fade_for_StretchToFit', 0.01)
             final_audio = assembler.assemble_concatenation(audio_segments, fade_duration)
-            return final_audio, new_adjustments  # Return updated adjustments
-        
+            return final_audio, new_adjustments, None
+
         else:  # smart_natural
             # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
             from utils.timing.engine import TimingEngine
             from utils.timing.assembly import AudioAssemblyEngine
-            
+
             timing_engine = TimingEngine(sample_rate)
             assembler = AudioAssemblyEngine(sample_rate)
-            
+
             tolerance = timing_params.get('timing_tolerance', 2.0)
             max_stretch_ratio = timing_params.get('max_stretch_ratio', 1.0)
             min_stretch_ratio = timing_params.get('min_stretch_ratio', 0.5)
-            
+
             # Calculate smart adjustments - these have the detailed fields needed for reporting
             smart_adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
                 audio_segments, subtitles, tolerance, max_stretch_ratio, min_stretch_ratio, torch.device('cpu')
             )
-            
+
             # Assemble with smart natural timing
             final_audio = assembler.assemble_smart_natural(
                 audio_segments, processed_segments, smart_adjustments, subtitles, torch.device('cpu')
             )
-            return final_audio, smart_adjustments  # Return the detailed smart adjustments
+            return final_audio, smart_adjustments, None
     
-    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, 
-                               has_original_overlaps: bool = False, mode_switched: bool = False, 
-                               original_mode: str = None) -> str:
+    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str,
+                               has_original_overlaps: bool = False, mode_switched: bool = False,
+                               original_mode: str = None, stretch_method: str = None) -> str:
         """Generate detailed timing report using existing utils."""
         from utils.timing.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
-        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, 
-                                             has_original_overlaps, mode_switched, original_mode)
+        return reporter.generate_timing_report(subtitles, adjustments, timing_mode,
+                                             has_original_overlaps, mode_switched, original_mode, stretch_method)
     
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings using existing utils."""

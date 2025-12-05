@@ -636,7 +636,7 @@ Hello! This is F5-TTS SRT with character switching.
                             segment_timings.append((current_time, current_time + seg_duration))
                             current_time += seg_duration
                         
-                        audio_segments[subtitle_idx] = assembler.assemble_timed_audio(
+                        audio_segments[subtitle_idx], _ = assembler.assemble_timed_audio(
                             subtitle_segments, segment_timings, fade_duration=cross_fade_duration
                         )
                     
@@ -654,10 +654,11 @@ Hello! This is F5-TTS SRT with character switching.
                 adj['sequence'] = subtitle.sequence
             
             # Assemble final audio based on timing mode
+            stretch_method_used = None
             if current_timing_mode == "stretch_to_fit":
                 # Use time stretching to match exact timing
                 assembler = self.TimedAudioAssembler(self.f5tts_sample_rate)
-                final_audio = assembler.assemble_timed_audio(
+                final_audio, stretch_method_used = assembler.assemble_timed_audio(
                     audio_segments, target_timings, fade_duration=fade_for_StretchToFit
                 )
             elif current_timing_mode == "pad_with_silence":
@@ -698,8 +699,18 @@ Hello! This is F5-TTS SRT with character switching.
             if mode_switched:
                 print(f"⚠️ F5-TTS SRT: Mode switched from smart_natural to {current_timing_mode} due to overlapping subtitles")
             
+            # Get stretcher method info
+            stretch_method = None
+            if current_timing_mode == "stretch_to_fit":
+                stretch_method = stretch_method_used
+            elif current_timing_mode == "smart_natural" and hasattr(self, '_smart_natural_stretcher'):
+                stretch_method = self._smart_natural_stretcher
+            elif current_timing_mode == "concatenate":
+                # concatenate mode doesn't use stretching
+                pass
+
             # Generate reports
-            timing_report = self._generate_timing_report(subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None)
+            timing_report = self._generate_timing_report(subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None, stretch_method)
             adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, current_timing_mode)
             
             # Generate info with cache status

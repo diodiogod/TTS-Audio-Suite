@@ -581,7 +581,7 @@ class TimedAudioAssembler:
             # Place segment in output buffer with crossfading for overlaps
             self._place_segment_with_fade(output, audio_segment, start_sample, end_sample, fade_duration)
         
-        return output
+        return output, self.stretch_method_used or "none"
 
     def get_stretch_method_used(self) -> str:
         """Get which stretching method was used in the last assembly"""

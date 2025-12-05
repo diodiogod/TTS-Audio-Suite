@@ -370,7 +370,8 @@ class HiggsAudioSRTProcessor:
             assembler = AudioAssemblyEngine(self.sample_rate)
             audio_tensors = [seg["waveform"] for seg in audio_segments]
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            
+            stretch_method = None
+
             if current_timing_mode == "stretch_to_fit":
                 # Use the same modular approach as F5-TTS and ChatterBox
                 from utils.system.import_manager import import_manager
@@ -396,6 +397,7 @@ class HiggsAudioSRTProcessor:
                 
                 # Assemble final audio
                 final_audio_tensor = assembler.assemble_stretch_to_fit(audio_tensors, target_timings, fade_for_StretchToFit)
+                stretch_method = assembler.get_stretch_method_used()
             elif current_timing_mode == "pad_with_silence":
                 final_audio_tensor = assembler.assemble_with_overlaps(audio_tensors, srt_segments, device)
                 # Generate basic adjustments for reporting
@@ -434,9 +436,9 @@ class HiggsAudioSRTProcessor:
             from utils.audio.processing import AudioProcessingUtils
             formatted_audio = AudioProcessingUtils.format_for_comfyui(final_audio_tensor.cpu(), self.sample_rate)
             
-            # Generate proper timing report using unified utilities  
+            # Generate proper timing report using unified utilities
             reporter = SRTReportGenerator()
-            timing_report = reporter.generate_timing_report(srt_segments, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None)
+            timing_report = reporter.generate_timing_report(srt_segments, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None, stretch_method)
             
             # Generate adjusted SRT string
             adjusted_srt = reporter.generate_adjusted_srt_string(srt_segments, adjustments, current_timing_mode)

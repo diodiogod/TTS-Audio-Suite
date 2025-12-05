@@ -195,11 +195,11 @@ class AudioAssemblyEngine:
             from engines.chatterbox.audio_timing import TimedAudioAssembler
 
             assembler = TimedAudioAssembler(self.sample_rate)
-            final_audio = assembler.assemble_timed_audio(
+            final_audio, stretcher_method = assembler.assemble_timed_audio(
                 audio_segments, target_timings, fade_duration=fade_duration
             )
             # Track which stretcher method was used
-            self.last_stretch_method_used = assembler.get_stretch_method_used()
+            self.last_stretch_method_used = stretcher_method
             return final_audio
 
         except ImportError as e:

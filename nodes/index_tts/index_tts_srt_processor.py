@@ -147,7 +147,7 @@ class IndexTTSSRTProcessor:
             adj['sequence'] = subtitle.sequence
 
         # Assemble final audio based on timing mode using existing utils
-        final_audio, final_adjustments = self._assemble_final_audio(
+        final_audio, final_adjustments, stretch_method = self._assemble_final_audio(
             audio_segments, subtitles, current_timing_mode, timing_params, adjustments
         )
 
@@ -157,7 +157,7 @@ class IndexTTSSRTProcessor:
 
         # Generate reports using existing utils
         timing_report = self._generate_timing_report(
-            subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None
+            subtitles, adjustments, current_timing_mode, has_overlaps, mode_switched, timing_mode if mode_switched else None, stretch_method
         )
         adjusted_srt_string = self._generate_adjusted_srt_string(subtitles, adjustments, current_timing_mode)
 
@@ -268,24 +268,24 @@ class IndexTTSSRTProcessor:
             adjustments: Timing adjustments
 
         Returns:
-            Tuple of (final_audio_tensor, updated_adjustments_or_None)
+            Tuple of (final_audio_tensor, updated_adjustments_or_None, stretch_method_or_None)
         """
         if timing_mode == "stretch_to_fit":
             # Use time stretching to match exact timing
             assembler = self.TimedAudioAssembler(self.sample_rate)
             target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
             fade_duration = timing_params.get('fade_for_StretchToFit', 0.01)
-            final_audio = assembler.assemble_timed_audio(
+            final_audio, stretch_method_used = assembler.assemble_timed_audio(
                 audio_segments, target_timings, fade_duration=fade_duration
             )
-            return final_audio, None  # No updated adjustments
+            return final_audio, None, stretch_method_used
 
         elif timing_mode == "pad_with_silence":
             # Add silence to match timing without stretching
             from utils.timing.assembly import AudioAssemblyEngine
             assembler = AudioAssemblyEngine(self.sample_rate)
             final_audio = assembler.assemble_with_overlaps(audio_segments, subtitles, torch.device('cpu'))
-            return final_audio, None  # No updated adjustments
+            return final_audio, None, None
 
         elif timing_mode == "concatenate":
             # Concatenate audio naturally and recalculate SRT timings
@@ -301,7 +301,7 @@ class IndexTTSSRTProcessor:
             # Assemble audio with optional crossfading
             fade_duration = timing_params.get('fade_for_StretchToFit', 0.01)
             final_audio = assembler.assemble_concatenation(audio_segments, fade_duration)
-            return final_audio, new_adjustments  # Return updated adjustments
+            return final_audio, new_adjustments, None
 
         else:  # smart_natural
             # Smart balanced timing: use natural audio but add minimal adjustments within tolerance
@@ -328,12 +328,12 @@ class IndexTTSSRTProcessor:
 
     def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str,
                                has_original_overlaps: bool = False, mode_switched: bool = False,
-                               original_mode: str = None) -> str:
+                               original_mode: str = None, stretch_method: str = None) -> str:
         """Generate detailed timing report using existing utils."""
         from utils.timing.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
         return reporter.generate_timing_report(subtitles, adjustments, timing_mode,
-                                             has_original_overlaps, mode_switched, original_mode)
+                                             has_original_overlaps, mode_switched, original_mode, stretch_method)
 
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings using existing utils."""

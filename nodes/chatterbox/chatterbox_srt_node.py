@@ -888,7 +888,7 @@ The audio will match these exact timings.""",
             if current_timing_mode == "stretch_to_fit":
                 # Use time stretching to match exact timing - ORIGINAL IMPLEMENTATION
                 assembler = self.TimedAudioAssembler(self.tts_model.sr)
-                final_audio = assembler.assemble_timed_audio(
+                final_audio, stretch_method_used = assembler.assemble_timed_audio(
                     audio_segments, target_timings, fade_duration=fade_for_StretchToFit
                 )
             elif current_timing_mode == "pad_with_silence":
@@ -917,8 +917,8 @@ The audio will match these exact timings.""",
             
             # Get stretcher method info
             stretch_method = None
-            if current_timing_mode == "stretch_to_fit" and 'assembler' in locals():
-                stretch_method = assembler.get_stretch_method_used()
+            if current_timing_mode == "stretch_to_fit":
+                stretch_method = stretch_method_used if 'stretch_method_used' in locals() else None
             elif current_timing_mode == "smart_natural" and hasattr(self, '_smart_natural_stretcher'):
                 stretch_method = self._smart_natural_stretcher
             elif current_timing_mode == "concatenate" and 'assembler' in locals():
@@ -1061,12 +1061,12 @@ The audio will match these exact timings.""",
         
         return final_audio, adjustments
     
-    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None) -> str:
+    def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None, stretch_method: str = None) -> str:
         """Generate detailed timing report."""
         # Delegate to reporting module
         from utils.timing.reporting import SRTReportGenerator
         reporter = SRTReportGenerator()
-        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, has_original_overlaps, mode_switched, original_mode)
+        return reporter.generate_timing_report(subtitles, adjustments, timing_mode, has_original_overlaps, mode_switched, original_mode, stretch_method)
     
     def _generate_adjusted_srt_string(self, subtitles: List, adjustments: List[Dict], timing_mode: str) -> str:
         """Generate adjusted SRT string from final timings."""

@@ -552,7 +552,7 @@ class ChatterboxOfficial23LangSRTProcessor:
             report_generator = SRTReportGenerator()
             timing_report = report_generator.generate_timing_report(
                 srt_segments, adjustments, current_timing_mode, has_overlaps, mode_switched,
-                timing_mode if mode_switched else None
+                timing_mode if mode_switched else None, None
             )
             adjusted_srt = report_generator.generate_adjusted_srt_string(
                 srt_segments, adjustments, current_timing_mode
