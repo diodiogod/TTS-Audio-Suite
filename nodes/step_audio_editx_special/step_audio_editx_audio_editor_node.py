@@ -178,12 +178,18 @@ class StepAudioEditXAudioEditorNode:
 
             print("🔄 Loading Step Audio EditX engine via unified interface...")
 
+            # Resolve model path to actual filesystem path
+            import folder_paths
+            import os
+            model_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx", "Step-Audio-EditX")
+
             config = ModelLoadConfig(
                 engine_name="step_audio_editx",
                 model_type="tts",  # Use "tts" to match adapter's cache key
                 model_name="Step-Audio-EditX",
+                model_path=model_path,
                 device=resolve_torch_device("auto"),
-                torch_dtype="bfloat16"
+                additional_params={"torch_dtype": "bfloat16", "quantization": None}
             )
 
             self._engine = unified_model_interface.load_model(config)

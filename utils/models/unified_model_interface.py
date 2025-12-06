@@ -847,7 +847,7 @@ def register_step_audio_editx_factory():
             )
 
             # Initialize TTS engine (silent - errors will be raised if fails)
-            engine = StepAudioTTS(
+            tts_engine = StepAudioTTS(
                 model_path=model_path,
                 audio_tokenizer=tokenizer,
                 model_source=ModelSource.LOCAL,
@@ -856,8 +856,18 @@ def register_step_audio_editx_factory():
                 device_map=device
             )
 
+            # Wrap in StepAudioEditXEngine for compatibility with adapter and Audio Editor node
+            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
+            wrapper = StepAudioEditXEngine.__new__(StepAudioEditXEngine)
+            wrapper._tts_engine = tts_engine
+            wrapper._tokenizer = tokenizer
+            wrapper.device = device
+            wrapper.torch_dtype = torch_dtype
+            wrapper.quantization = quantization_config
+            wrapper.model_dir = model_path
+
             print(f"✅ Step Audio EditX model loaded via unified interface on {device}")
-            return engine
+            return wrapper
 
         except ImportError as e:
             raise ImportError(f"Step Audio EditX dependencies not available. Error: {e}")

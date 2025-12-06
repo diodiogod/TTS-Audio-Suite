@@ -105,14 +105,24 @@ class StepAudioEditXEngineAdapter:
         """
         from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
         from utils.device import resolve_torch_device
+        import folder_paths
+        import os
+
+        # Resolve model path to actual filesystem path
+        if not model_path or model_path == 'Step-Audio-EditX':
+            # Default path in ComfyUI models directory
+            model_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx", "Step-Audio-EditX")
 
         config = ModelLoadConfig(
             engine_name="step_audio_editx",
             model_type="tts",
-            model_name=model_path,
+            model_name="Step-Audio-EditX",
+            model_path=model_path,  # Pass actual filesystem path
             device=resolve_torch_device(device),
-            torch_dtype=torch_dtype,
-            quantization=quantization
+            additional_params={
+                "torch_dtype": torch_dtype,
+                "quantization": quantization
+            }
         )
 
         self.engine = unified_model_interface.load_model(config)
@@ -307,7 +317,7 @@ class StepAudioEditXEngineAdapter:
             pass  # ComfyUI progress not available
 
         # Generate using clone mode
-        audio_tensor = self.engine.clone(
+        result = self.engine.clone(
             prompt_wav_path=prompt_audio_path,
             prompt_text=prompt_text,
             target_text=text,
@@ -316,6 +326,12 @@ class StepAudioEditXEngineAdapter:
             max_new_tokens=max_new_tokens,
             progress_bar=progress_bar
         )
+
+        # Handle both wrapped (tensor) and unwrapped (tuple) returns
+        if isinstance(result, tuple):
+            audio_tensor, _ = result  # Unpack (audio, sample_rate) tuple
+        else:
+            audio_tensor = result
 
         # Cache the result
         duration = self.audio_cache._calculate_duration(audio_tensor, 'step_audio_editx')

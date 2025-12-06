@@ -305,6 +305,9 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
     - <speed:faster>, <speed:more_faster>
     - <denoise>, <vad>
 
+    NOTE: Paralinguistic tags REQUIRE space before them. This function auto-inserts
+    space if tag follows a word character (e.g., "word<Laughter>" → "word [Laughter]")
+
     Args:
         text: Input text with potential edit tags
 
@@ -331,7 +334,25 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
         clean_position = tag_start - offset
 
         # Add text before this tag
-        clean_parts.append(text[last_end:tag_start])
+        text_before = text[last_end:tag_start]
+
+        # Check if we need to add space before paralinguistic tag
+        # (when tag follows word character without space)
+        needs_space = False
+        if text_before and text_before[-1].isalnum():
+            # Check if this is a paralinguistic tag
+            parts = tag_content.split('|')
+            for part in parts:
+                first_word = part.split(':')[0].lower()
+                if first_word in STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS:
+                    needs_space = True
+                    break
+
+        if needs_space:
+            text_before += ' '
+            offset -= 1  # Compensate for added space
+
+        clean_parts.append(text_before)
 
         # Parse tag content (may have pipes for multiple effects)
         parts = tag_content.split('|')
