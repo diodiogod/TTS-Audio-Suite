@@ -356,7 +356,8 @@ class StepAudioEditXProcessor:
                     'sample_rate': 24000,  # Step Audio EditX native sample rate
                     'character': character,
                     'text': clean_chunk,  # Clean text for transcript
-                    'edit_tags': edit_tags if edit_tags else None  # Store for post-processing
+                    'original_text': chunk,  # Keep original for fallback parsing
+                    'edit_tags': edit_tags  # Keep as-is (list or empty list, not None)
                 }
                 audio_segments.append(audio_dict)
         else:
@@ -406,7 +407,8 @@ class StepAudioEditXProcessor:
                 'sample_rate': 24000,  # Step Audio EditX native sample rate
                 'character': character,
                 'text': clean_text,  # Clean text for transcript
-                'edit_tags': edit_tags if edit_tags else None  # Store for post-processing
+                'original_text': combined_text,  # Keep original for fallback parsing
+                'edit_tags': edit_tags  # Keep as-is (list or empty list, not None)
             }
             audio_segments.append(audio_dict)
 
@@ -452,7 +454,8 @@ class StepAudioEditXProcessor:
             'sample_rate': 24000,
             'character': character,
             'text': clean_text,
-            'edit_tags': edit_tags if edit_tags else None
+            'original_text': text,  # Keep original for fallback parsing
+            'edit_tags': edit_tags  # Keep as-is (list or empty list, not None)
         }
         audio_segments.append(audio_dict)
 

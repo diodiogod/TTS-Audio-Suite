@@ -314,6 +314,9 @@ class StepAudioEditXSRTProcessor:
             # Mark block as complete for progress tracking
             self.tts_processor.adapter.complete_block()
 
+            # NOTE: Edit post-processing already handled by tts_processor.process_text()
+            # in _process_character_switching() after all blocks complete
+
             # Combine segments if multiple (character switching within subtitle)
             if len(segments) == 1:
                 wav = segments[0]['waveform']
