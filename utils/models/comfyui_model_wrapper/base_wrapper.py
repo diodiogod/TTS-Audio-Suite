@@ -58,19 +58,21 @@ class ComfyUIModelWrapper:
     work with "Clear VRAM" buttons, and integrate properly with ComfyUI's ecosystem.
     """
     
-    def __init__(self, model: Any, model_info: ModelInfo):
+    def __init__(self, model: Any, model_info: ModelInfo, cache_key: str = None):
         """
         Initialize the wrapper.
-        
+
         Args:
             model: The actual model instance (ChatterBox, F5-TTS, etc.)
             model_info: Metadata about the model
+            cache_key: Optional cache key for this specific model instance
         """
         self.model = model
         self.model_info = model_info
         self.load_device = model_info.load_device
         self.current_device = model_info.device
         self._memory_size = model_info.memory_size
+        self._cache_key = cache_key  # Store cache key for ensure_device calls
         
         # ComfyUI compatibility attributes
         # Convert device to torch.device object for ComfyUI compatibility
@@ -200,7 +202,9 @@ class ComfyUIModelWrapper:
             try:
                 from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
                 # ensure_device() will clear other models and move this one - if it succeeds, we're done
-                if tts_model_manager.ensure_device(self.model_info.engine, str(target_device)):
+                # Pass cache_key so it knows which specific model to move (e.g., vibevoice-7B vs vibevoice-1.5B)
+                cache_key = getattr(self, '_cache_key', None)
+                if tts_model_manager.ensure_device(self.model_info.engine, str(target_device), model_cache_key=cache_key):
                     return  # Successfully moved by ensure_device(), don't do it again
             except RecursionError:
                 print(f"⚠️ Recursion detected in model_load, proceeding with direct load")

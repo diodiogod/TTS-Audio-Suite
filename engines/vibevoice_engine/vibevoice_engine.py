@@ -810,17 +810,18 @@ class VibeVoiceEngine:
             except StopIteration:
                 pass
 
-        # Reload model if device mismatch (wrapper handles this automatically after Tier 2)
+        # Reload model if device mismatch
+        # Note: If model is wrapped by unified interface, device movement is handled automatically
+        # This is only a fallback for unwrapped models or edge cases
         if current_device and current_device != str(target_device):
-            # Use unified model manager for device movement (handles clearing automatically)
-            try:
-                from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
-                if not tts_model_manager.ensure_device("vibevoice", str(target_device)):
-                    # Fallback to direct movement if not in manager cache
-                    self.to(target_device)
-            except Exception as e:
-                # Fallback to direct movement if manager not available
-                print(f"⚠️ Unified manager not available, using direct device movement: {e}")
+            # Normalize device strings for comparison (cuda:0 == cuda)
+            current_normalized = 'cuda' if current_device.startswith('cuda') else current_device
+            target_normalized = 'cuda' if str(target_device).startswith('cuda') else str(target_device)
+
+            if current_normalized != target_normalized:
+                print(f"⚠️ Device mismatch detected: model on {current_device}, expected {target_device}")
+                print(f"⚠️ This shouldn't happen with unified interface - model should already be on correct device")
+                # Direct movement as last resort (don't call ensure_device during generation - causes OOM)
                 self.to(target_device)
 
         # Handle caching if enabled (following ChatterBox pattern)

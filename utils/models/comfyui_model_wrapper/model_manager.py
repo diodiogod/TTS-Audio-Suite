@@ -275,9 +275,9 @@ class ComfyUITTSModelManager:
             load_device=device
         )
         
-        # Wrap for ComfyUI
-        wrapper = ComfyUIModelWrapper(model, model_info)
-        
+        # Wrap for ComfyUI, passing cache_key so wrapper knows which specific model it is
+        wrapper = ComfyUIModelWrapper(model, model_info, cache_key=model_key)
+
         # Cache the wrapper
         self._model_cache[model_key] = wrapper
         
@@ -388,7 +388,7 @@ class ComfyUITTSModelManager:
             
         print(f"🧹 Cleared {len(keys_to_remove)} models from cache")
         
-    def ensure_device(self, engine_name: str, target_device: str) -> bool:
+    def ensure_device(self, engine_name: str, target_device: str, model_cache_key: str = None) -> bool:
         """
         Ensure a model is on the target device, clearing other models if needed.
 
@@ -398,6 +398,7 @@ class ComfyUITTSModelManager:
         Args:
             engine_name: Name of the engine requesting device movement
             target_device: Target device ("cuda", "cpu", etc.)
+            model_cache_key: Optional specific model cache key (to distinguish vibevoice-7B from vibevoice-1.5B, etc.)
 
         Returns:
             True if successful, False otherwise
@@ -405,13 +406,21 @@ class ComfyUITTSModelManager:
         # Before moving to GPU, ALWAYS move other TTS models to CPU to free VRAM
         # (Don't delete them - keep in cache for fast reload)
         if target_device.startswith('cuda'):
-            print(f"🔍 ensure_device: Checking if need to clear VRAM for {engine_name}")
+            print(f"🔍 ensure_device: Checking if need to clear VRAM for {engine_name}" + (f" (key: {model_cache_key[:40]}...)" if model_cache_key else ""))
             cached_models = list(self._model_cache.keys())
             models_to_offload = []
 
             for cache_key in cached_models:
                 cached_wrapper = self._model_cache.get(cache_key)
-                if cached_wrapper and cached_wrapper.model_info.engine != engine_name and cached_wrapper._is_loaded_on_gpu:
+                # Clear models from different engines OR same engine but different cache key
+                # (e.g., vibevoice-7B on GPU should be cleared when loading vibevoice-1.5B)
+                should_offload = (
+                    cached_wrapper and
+                    cached_wrapper._is_loaded_on_gpu and
+                    (cached_wrapper.model_info.engine != engine_name or
+                     (model_cache_key is not None and cache_key != model_cache_key))
+                )
+                if should_offload:
                     models_to_offload.append((cache_key, cached_wrapper))
 
             if models_to_offload:
@@ -437,15 +446,23 @@ class ComfyUITTSModelManager:
 
         # Find the model for this engine
         wrapper = None
-        for cache_key, cached_wrapper in self._model_cache.items():
-            if cached_wrapper.model_info.engine == engine_name:
-                wrapper = cached_wrapper
-                break
+        if model_cache_key:
+            # If specific cache key provided, use it directly
+            wrapper = self._model_cache.get(model_cache_key)
+            if not wrapper:
+                print(f"⚠️ ensure_device: Specified model cache key not found: {model_cache_key[:60]}...")
+                return False
+        else:
+            # Fallback: find first model with matching engine (old behavior)
+            for cache_key, cached_wrapper in self._model_cache.items():
+                if cached_wrapper.model_info.engine == engine_name:
+                    wrapper = cached_wrapper
+                    break
 
-        if not wrapper:
-            # Model not in unified cache - engine must be managing it itself
-            # We've already cleared other models, so return False to let engine handle movement
-            return False
+            if not wrapper:
+                # Model not in unified cache - engine must be managing it itself
+                # We've already cleared other models, so return False to let engine handle movement
+                return False
 
         # Check if already on target device
         if wrapper.current_device == target_device:
