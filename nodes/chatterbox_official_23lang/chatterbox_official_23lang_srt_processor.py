@@ -496,9 +496,12 @@ class ChatterboxOfficial23LangSRTProcessor:
                             seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
                             seg_seed_val = segment_config.get('seed', seed)
 
+                        # Extract edit tags from multilingual text
+                        text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(subtitle.text)
+
                         # Generate with user's default language for multilingual narrator segments
                         segment_audio, _ = self.tts_node.generate_speech(
-                            text=subtitle.text,
+                            text=text_clean,
                             language=current_language,  # Narrator uses user's default language
                             device=current_device,
                             model_version=current_model_version,
@@ -526,6 +529,25 @@ class ChatterboxOfficial23LangSRTProcessor:
                         elif segment_audio.dim() == 2:
                             segment_audio = segment_audio.squeeze(0)
 
+                        # Handle edit tags for multilingual path
+                        if edit_tags:
+                            # Normalize audio before storing for editing
+                            segment_audio_normalized = segment_audio.squeeze().cpu()
+                            if segment_audio_normalized.dim() == 2:
+                                segment_audio_normalized = segment_audio_normalized.squeeze(0)
+
+                            all_segments_for_editing.append({
+                                'waveform': segment_audio_normalized,
+                                'sample_rate': self.sample_rate,
+                                'character': 'narrator',
+                                'text': text_clean,
+                                'original_text': subtitle.text,
+                                'edit_tags': edit_tags,
+                                'subtitle_index': i,
+                                'segment_index': 0  # Multilingual path has only one segment
+                            })
+                            segment_audio = None  # Placeholder - will be replaced after batch processing
+
                     else:  # subtitle_type == 'simple'
                         # Single character mode - model already loaded for this language group (lines 1229-1260)
                         single_char, single_text, single_lang, single_params = character_segments_with_lang[0]
@@ -551,12 +573,15 @@ class ChatterboxOfficial23LangSRTProcessor:
                         char_voice = voice_refs.get(single_char, voice_refs.get('narrator'))
                         char_voice_path = char_voice if isinstance(char_voice, str) else ""
 
+                        # Extract edit tags from text
+                        text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(single_text)
+
                         # Narrator should use user's default language, not alias language
                         actual_lang = current_language if single_char == "narrator" else single_lang
 
-                        # Direct generation for simple subtitles
+                        # Direct generation for simple subtitles (using clean text)
                         segment_audio, _ = self.tts_node.generate_speech(
-                            text=single_text,
+                            text=text_clean,
                             language=actual_lang,
                             device=current_device,
                             model_version=current_model_version,
@@ -583,6 +608,28 @@ class ChatterboxOfficial23LangSRTProcessor:
                             segment_audio = segment_audio.squeeze(0).squeeze(0)
                         elif segment_audio.dim() == 2:
                             segment_audio = segment_audio.squeeze(0)
+
+                        # Handle edit tags for simple path
+                        if edit_tags:
+                            # Normalize for edit processor
+                            if segment_audio.dim() == 1:
+                                segment_audio_normalized = segment_audio.unsqueeze(0)
+                            else:
+                                segment_audio_normalized = segment_audio
+
+                            # Store for batch processing
+                            all_segments_for_editing.append({
+                                'waveform': segment_audio_normalized,
+                                'sample_rate': self.sample_rate,
+                                'character': single_char,
+                                'text': text_clean,
+                                'original_text': single_text,
+                                'edit_tags': edit_tags,
+                                'subtitle_index': i,
+                                'segment_index': 0  # Simple path has only one segment
+                            })
+                            # Use placeholder
+                            segment_audio = None
 
                     # Skip duration calculation and storage for placeholders (handled in batch processing)
                     if segment_audio is not None:
@@ -633,49 +680,74 @@ class ChatterboxOfficial23LangSRTProcessor:
 
                 # Reconstruct each subtitle by combining its character segments
                 for sub_idx, segments_dict in processed_by_subtitle.items():
-                    # Get stored segment info
+                    # Get stored segment info (for multicharacter subtitles)
                     segment_info = subtitle_character_segments.get(sub_idx)
-                    if segment_info is None:
-                        continue
 
-                    # Replace None placeholders with processed audio
-                    parts = segment_info['parts']
-                    reconstructed_parts = []
-                    for part_idx, part in enumerate(parts):
-                        if part is None:
-                            # Find processed segment for this position
-                            if part_idx in segments_dict:
-                                waveform = segments_dict[part_idx]['waveform']
-                                # Normalize to 1D
-                                if waveform.dim() == 3:
-                                    waveform = waveform.squeeze(0).squeeze(0)
-                                elif waveform.dim() == 2:
-                                    waveform = waveform.squeeze(0)
-                                reconstructed_parts.append(waveform)
+                    if segment_info is not None:
+                        # Multicharacter path - reconstruct from parts
+                        parts = segment_info['parts']
+                        reconstructed_parts = []
+                        for part_idx, part in enumerate(parts):
+                            if part is None:
+                                # Find processed segment for this position
+                                if part_idx in segments_dict:
+                                    waveform = segments_dict[part_idx]['waveform']
+                                    # Normalize to 1D
+                                    if waveform.dim() == 3:
+                                        waveform = waveform.squeeze(0).squeeze(0)
+                                    elif waveform.dim() == 2:
+                                        waveform = waveform.squeeze(0)
+                                    reconstructed_parts.append(waveform)
+                            else:
+                                # Already has audio (no edit tags)
+                                reconstructed_parts.append(part)
+
+                        # Concatenate all character segments
+                        if reconstructed_parts:
+                            segment_audio = torch.cat(reconstructed_parts, dim=-1)
                         else:
-                            # Already has audio (no edit tags)
-                            reconstructed_parts.append(part)
+                            segment_audio = torch.zeros(int(segment_info['expected_duration'] * self.sample_rate))
 
-                    # Concatenate all character segments
-                    if reconstructed_parts:
-                        segment_audio = torch.cat(reconstructed_parts, dim=-1)
+                        actual_duration = len(segment_audio) / self.sample_rate
+
+                        # Store reconstructed audio
+                        audio_segments[sub_idx] = segment_audio
+                        timing_segments[sub_idx] = {
+                            'expected': segment_info['expected_duration'],
+                            'actual': actual_duration,
+                            'start': segment_info['start'],
+                            'end': segment_info['end'],
+                            'sequence': segment_info['sequence']
+                        }
                     else:
-                        segment_audio = torch.zeros(int(segment_info['expected_duration'] * self.sample_rate))
+                        # Simple path - direct replacement (only one segment)
+                        if 0 in segments_dict:
+                            waveform = segments_dict[0]['waveform']
+                            # Normalize to 1D or 2D
+                            if waveform.dim() == 3:
+                                waveform = waveform.squeeze(0)
+                            elif waveform.dim() == 1:
+                                waveform = waveform.unsqueeze(0)
 
-                    actual_duration = len(segment_audio) / self.sample_rate
+                            segment_audio = waveform
+                            actual_duration = segment_audio.size(1) / self.sample_rate
 
-                    # Store reconstructed audio
-                    audio_segments[sub_idx] = segment_audio
-                    timing_segments[sub_idx] = {
-                        'expected': segment_info['expected_duration'],
-                        'actual': actual_duration,
-                        'start': segment_info['start'],
-                        'end': segment_info['end'],
-                        'sequence': segment_info['sequence']
-                    }
+                            # Get expected duration from SRT
+                            srt_seg = srt_segments[sub_idx]
+                            expected_duration = srt_seg.end_time - srt_seg.start_time
+
+                            # Store processed audio
+                            audio_segments[sub_idx] = segment_audio
+                            timing_segments[sub_idx] = {
+                                'expected': expected_duration,
+                                'actual': actual_duration,
+                                'start': srt_seg.start_time,
+                                'end': srt_seg.end_time,
+                                'sequence': srt_seg.sequence
+                            }
 
                     srt_seg = srt_segments[sub_idx]
-                    print(f"✅ Post-processed subtitle {sub_idx+1} (Seq {srt_seg.sequence}): {actual_duration:.2f}s")
+                    print(f"✅ Post-processed subtitle {sub_idx+1} (Seq {srt_seg.sequence}): {timing_segments[sub_idx]['actual']:.2f}s")
 
             # Filter out None entries (empty subtitles) - keep segments in order
             audio_segments_filtered = []
