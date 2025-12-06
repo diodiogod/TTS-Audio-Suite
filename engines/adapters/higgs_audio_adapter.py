@@ -70,11 +70,15 @@ class HiggsAudioEngineAdapter:
         cuda_graph_corrupted = getattr(self.higgs_engine, '_cuda_graph_corrupted', False)
         needs_recreation = getattr(self.higgs_engine, '_needs_recreation', False)
         
-        if (current_model == model_name and 
-            self.higgs_engine.engine is not None and 
-            not cuda_graph_corrupted and 
+        if (current_model == model_name and
+            self.higgs_engine.engine is not None and
+            not cuda_graph_corrupted and
             not needs_recreation):
-            print(f"💾 Higgs Audio adapter: Model '{model_name}' already loaded - skipping base model load")
+            print(f"💾 Higgs Audio adapter: Model '{model_name}' already loaded - ensuring device and clearing other models")
+            # Even if model is loaded, ensure it's on the right device and clear other models
+            from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+            # This will clear other TTS models (like Step Audio EditX) from VRAM
+            tts_model_manager.ensure_device("higgs_audio", device)
             return
         
         if cuda_graph_corrupted or needs_recreation:
