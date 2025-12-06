@@ -725,15 +725,37 @@ class VibeVoiceEngineAdapter:
         from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 
         if not enable_pause_tags or not PauseTagProcessor.has_pause_tags(text):
-            # No pause tags, use normal generation (return tensor for backwards compatibility)
-            result = self.generate_segment(text, voice_ref, params, character)
-            waveform = result['waveform']
-            # Ensure proper tensor format
-            if waveform.dim() == 3:
-                waveform = waveform.squeeze(0)  # Remove batch dim
-            if waveform.dim() == 1:
-                waveform = waveform.unsqueeze(0)  # Add channel dim
-            return waveform
+            # No pause tags, but still need to check for edit tags
+            clean_text, edit_tags = get_edit_tags_for_segment(text)
+
+            # If there are edit tags, return segment dict format for post-processing
+            if edit_tags:
+                result = self.generate_segment(clean_text, voice_ref, params, character)
+                waveform = result['waveform']
+                # Ensure proper tensor format
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)
+                if waveform.dim() == 1:
+                    waveform = waveform.unsqueeze(0)
+
+                return [{
+                    'waveform': waveform,
+                    'sample_rate': 24000,
+                    'character': character,
+                    'text': clean_text,
+                    'original_text': text,
+                    'edit_tags': edit_tags
+                }]
+            else:
+                # No pause tags AND no edit tags - backwards compatible tensor return
+                result = self.generate_segment(text, voice_ref, params, character)
+                waveform = result['waveform']
+                # Ensure proper tensor format
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)  # Remove batch dim
+                if waveform.dim() == 1:
+                    waveform = waveform.unsqueeze(0)  # Add channel dim
+                return waveform
 
         print(f"🎵 VibeVoice: Processing pause tags in text")
 

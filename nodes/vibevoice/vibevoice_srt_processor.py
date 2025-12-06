@@ -339,40 +339,96 @@ class VibeVoiceSRTProcessor:
         
         for group_idx, (character, text_list) in enumerate(grouped_segments):
             voice_ref = voice_mapping.get(character)
-            
+
             if len(text_list) == 1:
                 # Single segment - generate normally
-                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                audio_result = self.adapter.generate_vibevoice_with_pause_tags(
                     text_list[0], voice_ref, params, True, character
                 )
             else:
                 # Multiple segments for same character - combine in VibeVoice format
                 print(f"🎤 SRT Block {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
                 combined_text = '\n'.join(f"Speaker 1: {text.strip()}" for text in text_list)
-                
+
                 print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{character}':")
                 print("="*60)
                 print(combined_text)
                 print("="*60)
-                
+
                 # Generate the combined character block
-                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                audio_result = self.adapter.generate_vibevoice_with_pause_tags(
                     combined_text, voice_ref, params, True, character
                 )
-            
-            # Ensure proper tensor format
-            if audio_tensor.dim() == 3:
-                audio_tensor = audio_tensor.squeeze(0)
-            if audio_tensor.dim() == 1:
-                audio_tensor = audio_tensor.unsqueeze(0)
-            
-            audio_parts.append(audio_tensor)
+
+            # Handle both tensor and segment dict formats
+            if isinstance(audio_result, list):
+                # Segment dicts with edit_tags - collect for post-processing
+                audio_parts.append(audio_result)
+            else:
+                # Plain tensor - backwards compatible path
+                audio_tensor = audio_result
+                # Ensure proper tensor format
+                if audio_tensor.dim() == 3:
+                    audio_tensor = audio_tensor.squeeze(0)
+                if audio_tensor.dim() == 1:
+                    audio_tensor = audio_tensor.unsqueeze(0)
+
+                audio_parts.append(audio_tensor)
         
         # Combine all character parts
-        if len(audio_parts) == 1:
-            return audio_parts[0]
+        # Check if any part is segment dict format (has edit tags)
+        has_segment_dicts = any(isinstance(part, list) for part in audio_parts)
+
+        if has_segment_dicts:
+            # Flatten and combine segment dicts
+            all_segments = []
+            for part in audio_parts:
+                if isinstance(part, list):
+                    all_segments.extend(part)
+                else:
+                    # Convert plain tensor to segment dict format
+                    all_segments.append({
+                        'waveform': part,
+                        'sample_rate': 24000,
+                        'character': character,
+                        'text': '',
+                        'original_text': '',
+                        'edit_tags': []
+                    })
+
+            # Apply edit post-processing
+            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            processed_segments = apply_edit_post_processing(
+                all_segments,
+                self.config,
+                pre_loaded_engine=self.adapter.vibevoice_engine
+            )
+
+            # Combine processed segments into single tensor
+            # First normalize all waveforms to 2D (channels, samples)
+            normalized_waveforms = []
+            for seg in processed_segments:
+                waveform = seg['waveform']
+                # Ensure 2D format: (channels, samples)
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                if waveform.dim() == 1:
+                    waveform = waveform.unsqueeze(0)  # Add channel dimension
+                normalized_waveforms.append(waveform)
+
+            # Now concatenate normalized waveforms
+            if len(normalized_waveforms) == 1:
+                combined = normalized_waveforms[0]
+            else:
+                combined = torch.cat(normalized_waveforms, dim=-1)
+
+            return combined
         else:
-            return torch.cat(audio_parts, dim=-1)
+            # All plain tensors - backwards compatible path
+            if len(audio_parts) == 1:
+                return audio_parts[0]
+            else:
+                return torch.cat(audio_parts, dim=-1)
     
     def _process_custom_character_switching_subtitle_with_params(self,
                                                                segment_objects,  # List of CharacterSegment objects
@@ -414,7 +470,7 @@ class VibeVoiceSRTProcessor:
 
             if len(segment_list) == 1:
                 # Single segment - generate normally with group parameters
-                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                audio_result = self.adapter.generate_vibevoice_with_pause_tags(
                     segment_list[0].text, voice_ref, group_params, True, character
                 )
             else:
@@ -428,25 +484,81 @@ class VibeVoiceSRTProcessor:
                 print("="*60)
 
                 # Generate the combined character block with group parameters
-                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+                audio_result = self.adapter.generate_vibevoice_with_pause_tags(
                     combined_text, voice_ref, group_params, True, character
                 )
 
-            # Ensure proper tensor format
-            if audio_tensor.dim() == 3:
-                audio_tensor = audio_tensor.squeeze(0)
-            if audio_tensor.dim() == 1:
-                audio_tensor = audio_tensor.unsqueeze(0)
+            # Handle both tensor and segment dict formats
+            if isinstance(audio_result, list):
+                # Segment dicts with edit_tags - collect for post-processing
+                audio_parts.append(audio_result)
+            else:
+                # Plain tensor - backwards compatible path
+                audio_tensor = audio_result
+                # Ensure proper tensor format
+                if audio_tensor.dim() == 3:
+                    audio_tensor = audio_tensor.squeeze(0)
+                if audio_tensor.dim() == 1:
+                    audio_tensor = audio_tensor.unsqueeze(0)
 
-            audio_parts.append(audio_tensor)
+                audio_parts.append(audio_tensor)
 
         # Combine all character parts
-        if len(audio_parts) == 0:
-            raise RuntimeError("No audio parts generated for subtitle")
-        elif len(audio_parts) == 1:
-            return audio_parts[0]
+        # Check if any part is segment dict format (has edit tags)
+        has_segment_dicts = any(isinstance(part, list) for part in audio_parts)
+
+        if has_segment_dicts:
+            # Flatten and combine segment dicts
+            all_segments = []
+            for part in audio_parts:
+                if isinstance(part, list):
+                    all_segments.extend(part)
+                else:
+                    # Convert plain tensor to segment dict format
+                    all_segments.append({
+                        'waveform': part,
+                        'sample_rate': 24000,
+                        'character': character,
+                        'text': '',
+                        'original_text': '',
+                        'edit_tags': []
+                    })
+
+            # Apply edit post-processing
+            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            processed_segments = apply_edit_post_processing(
+                all_segments,
+                self.config,
+                pre_loaded_engine=self.adapter.vibevoice_engine
+            )
+
+            # Combine processed segments into single tensor
+            # First normalize all waveforms to 2D (channels, samples)
+            normalized_waveforms = []
+            for seg in processed_segments:
+                waveform = seg['waveform']
+                # Ensure 2D format: (channels, samples)
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)  # Remove batch dimension
+                if waveform.dim() == 1:
+                    waveform = waveform.unsqueeze(0)  # Add channel dimension
+                normalized_waveforms.append(waveform)
+
+            # Now concatenate normalized waveforms
+            if len(normalized_waveforms) == 1:
+                combined = normalized_waveforms[0]
+            else:
+                combined = torch.cat(normalized_waveforms, dim=-1)
+
+            return combined
         else:
-            return torch.cat(audio_parts, dim=-1)
+            # All plain tensors - backwards compatible path
+            if len(audio_parts) == 0:
+                raise RuntimeError("No audio parts generated for subtitle")
+            elif len(audio_parts) == 1:
+                return audio_parts[0]
+            else:
+                return torch.cat(audio_parts, dim=-1)
 
     def _group_consecutive_character_objects_srt(self, segment_objects) -> List[Tuple[str, list]]:
         """
