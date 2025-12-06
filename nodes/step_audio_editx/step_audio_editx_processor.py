@@ -202,14 +202,16 @@ class StepAudioEditXProcessor:
             self.adapter.end_job()
 
         # Apply edit post-processing to segments with edit tags
-        # This applies Step Audio EditX edits (emotion, style, speed, paralinguistic)
-        # to segments that had inline edit tags like <Laughter:2>, <style:whisper>
-        # Pass the already-loaded engine from the adapter to avoid reloading
-        audio_segments = apply_edit_post_processing(
-            audio_segments,
-            self.config,
-            pre_loaded_engine=self.adapter.engine
-        )
+        # ONLY when NOT in SRT mode - SRT processor will batch process all segments at the end
+        if not self._srt_mode:
+            # This applies Step Audio EditX edits (emotion, style, speed, paralinguistic)
+            # to segments that had inline edit tags like <Laughter:2>, <style:whisper>
+            # Pass the already-loaded engine from the adapter to avoid reloading
+            audio_segments = apply_edit_post_processing(
+                audio_segments,
+                self.config,
+                pre_loaded_engine=self.adapter.engine
+            )
 
         return audio_segments
 

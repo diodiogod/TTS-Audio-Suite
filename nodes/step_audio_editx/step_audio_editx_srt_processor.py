@@ -272,6 +272,7 @@ class StepAudioEditXSRTProcessor:
         audio_segments = [None] * len(subtitles)
         natural_durations = [0.0] * len(subtitles)
         any_segment_cached = False
+        all_segments_for_editing = []  # Collect all segment dicts with edit_tags for batch processing
 
         # Start job tracking at SRT level with all subtitle text lengths
         subtitle_texts = [len(sub.text) for sub in subtitles]
@@ -314,28 +315,73 @@ class StepAudioEditXSRTProcessor:
             # Mark block as complete for progress tracking
             self.tts_processor.adapter.complete_block()
 
-            # NOTE: Edit post-processing already handled by tts_processor.process_text()
-            # in _process_character_switching() after all blocks complete
+            # Check if segments have edit tags that need post-processing
+            has_edit_tags = any(seg.get('edit_tags', []) for seg in segments)
 
-            # Combine segments if multiple (character switching within subtitle)
-            if len(segments) == 1:
-                wav = segments[0]['waveform']
+            if has_edit_tags:
+                # Tag segments with subtitle index and collect for batch processing
+                for seg in segments:
+                    seg['subtitle_index'] = i
+                all_segments_for_editing.extend(segments)
+                # Store placeholder - will be replaced after edit processing
+                audio_segments[i] = None
+                natural_durations[i] = 0.0
             else:
-                combined = self.tts_processor.combine_audio_segments(segments, method="auto", silence_ms=50)
-                wav = combined
+                # No edit tags - combine and store directly
+                if len(segments) == 1:
+                    wav = segments[0]['waveform']
+                else:
+                    combined = self.tts_processor.combine_audio_segments(segments, method="auto", silence_ms=50)
+                    wav = combined
 
-            # Ensure correct tensor format
-            if wav.dim() == 3:
-                wav = wav.squeeze(0)
-            elif wav.dim() == 1:
-                wav = wav.unsqueeze(0)
+                # Ensure correct tensor format
+                if wav.dim() == 3:
+                    wav = wav.squeeze(0)
+                elif wav.dim() == 1:
+                    wav = wav.unsqueeze(0)
 
-            natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.sample_rate)
-            audio_segments[i] = wav
-            natural_durations[i] = natural_duration
+                natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.sample_rate)
+                audio_segments[i] = wav
+                natural_durations[i] = natural_duration
 
         # End job tracking
         self.tts_processor.adapter.end_job()
+
+        # Apply edit post-processing to all segments at once (batch processing)
+        if all_segments_for_editing:
+            print(f"\n🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            processed_segments = apply_edit_post_processing(
+                all_segments_for_editing,
+                self.tts_processor.config,
+                pre_loaded_engine=self.tts_processor.adapter.engine
+            )
+
+            # Group processed segments back by subtitle index
+            segments_by_subtitle = {}
+            for seg in processed_segments:
+                sub_idx = seg.get('subtitle_index', -1)
+                if sub_idx not in segments_by_subtitle:
+                    segments_by_subtitle[sub_idx] = []
+                segments_by_subtitle[sub_idx].append(seg)
+
+            # Combine segments for each subtitle
+            for sub_idx, segs in segments_by_subtitle.items():
+                if sub_idx >= 0 and sub_idx < len(audio_segments):
+                    if len(segs) == 1:
+                        wav = segs[0]['waveform']
+                    else:
+                        combined = self.tts_processor.combine_audio_segments(segs, method="auto", silence_ms=50)
+                        wav = combined
+
+                    # Ensure correct tensor format
+                    if wav.dim() == 3:
+                        wav = wav.squeeze(0)
+                    elif wav.dim() == 1:
+                        wav = wav.unsqueeze(0)
+
+                    audio_segments[sub_idx] = wav
+                    natural_durations[sub_idx] = self.AudioTimingUtils.get_audio_duration(wav, self.sample_rate)
 
         return audio_segments, natural_durations, any_segment_cached
 

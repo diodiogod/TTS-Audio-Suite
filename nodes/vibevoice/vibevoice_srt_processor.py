@@ -209,6 +209,7 @@ class VibeVoiceSRTProcessor:
         audio_segments = [None] * len(subtitles)
         natural_durations = [0.0] * len(subtitles)
         any_segment_cached = False
+        all_segments_for_editing = []  # Collect all segment dicts with edit_tags for batch processing
         
         # Build complete voice references including character-specific voices
         complete_voice_refs = voice_mapping.copy()
@@ -302,13 +303,64 @@ class VibeVoiceSRTProcessor:
                     segment_objects, complete_voice_refs, seed
                 )
             
-            # Calculate duration and store
+            # Handle both tensor and segment dict list formats
             if wav is None:
                 raise RuntimeError(f"VibeVoice SRT subtitle {i+1}/{len(subtitles)}: Generation returned None")
-            natural_duration = self.AudioTimingUtils.get_audio_duration(wav, 24000)
-            audio_segments[i] = wav
-            natural_durations[i] = natural_duration
-        
+
+            if isinstance(wav, list):
+                # Segment dicts with edit_tags - store for batch processing
+                # Tag each segment with subtitle index for later assembly
+                for seg in wav:
+                    seg['subtitle_index'] = i
+                all_segments_for_editing.extend(wav)
+                # Store placeholder - will be replaced after edit processing
+                audio_segments[i] = None
+                natural_durations[i] = 0.0
+            else:
+                # Plain tensor - no edit tags
+                natural_duration = self.AudioTimingUtils.get_audio_duration(wav, 24000)
+                audio_segments[i] = wav
+                natural_durations[i] = natural_duration
+
+        # Apply edit post-processing to all segments at once (batch processing)
+        if all_segments_for_editing:
+            print(f"\n🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            processed_segments = apply_edit_post_processing(
+                all_segments_for_editing,
+                self.config,
+                pre_loaded_engine=self.adapter.vibevoice_engine
+            )
+
+            # Group processed segments back by subtitle index
+            segments_by_subtitle = {}
+            for seg in processed_segments:
+                sub_idx = seg.get('subtitle_index', -1)
+                if sub_idx not in segments_by_subtitle:
+                    segments_by_subtitle[sub_idx] = []
+                segments_by_subtitle[sub_idx].append(seg)
+
+            # Combine segments for each subtitle
+            for sub_idx, segs in segments_by_subtitle.items():
+                if sub_idx >= 0 and sub_idx < len(audio_segments):
+                    # Normalize and concatenate waveforms
+                    normalized_waveforms = []
+                    for seg in segs:
+                        waveform = seg['waveform']
+                        if waveform.dim() == 3:
+                            waveform = waveform.squeeze(0)
+                        if waveform.dim() == 1:
+                            waveform = waveform.unsqueeze(0)
+                        normalized_waveforms.append(waveform)
+
+                    if len(normalized_waveforms) == 1:
+                        combined = normalized_waveforms[0]
+                    else:
+                        combined = torch.cat(normalized_waveforms, dim=-1)
+
+                    audio_segments[sub_idx] = combined
+                    natural_durations[sub_idx] = self.AudioTimingUtils.get_audio_duration(combined, 24000)
+
         return audio_segments, natural_durations, any_segment_cached
     
     def _process_custom_character_switching_subtitle(self,
@@ -396,33 +448,9 @@ class VibeVoiceSRTProcessor:
                         'edit_tags': []
                     })
 
-            # Apply edit post-processing
-            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
-            processed_segments = apply_edit_post_processing(
-                all_segments,
-                self.config,
-                pre_loaded_engine=self.adapter.vibevoice_engine
-            )
-
-            # Combine processed segments into single tensor
-            # First normalize all waveforms to 2D (channels, samples)
-            normalized_waveforms = []
-            for seg in processed_segments:
-                waveform = seg['waveform']
-                # Ensure 2D format: (channels, samples)
-                if waveform.dim() == 3:
-                    waveform = waveform.squeeze(0)  # Remove batch dimension
-                if waveform.dim() == 1:
-                    waveform = waveform.unsqueeze(0)  # Add channel dimension
-                normalized_waveforms.append(waveform)
-
-            # Now concatenate normalized waveforms
-            if len(normalized_waveforms) == 1:
-                combined = normalized_waveforms[0]
-            else:
-                combined = torch.cat(normalized_waveforms, dim=-1)
-
-            return combined
+            # Don't apply edits yet - return segment dicts for batch processing at the end
+            # Caller will collect all segment dicts and apply edits once
+            return all_segments
         else:
             # All plain tensors - backwards compatible path
             if len(audio_parts) == 1:
@@ -524,33 +552,9 @@ class VibeVoiceSRTProcessor:
                         'edit_tags': []
                     })
 
-            # Apply edit post-processing
-            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
-            processed_segments = apply_edit_post_processing(
-                all_segments,
-                self.config,
-                pre_loaded_engine=self.adapter.vibevoice_engine
-            )
-
-            # Combine processed segments into single tensor
-            # First normalize all waveforms to 2D (channels, samples)
-            normalized_waveforms = []
-            for seg in processed_segments:
-                waveform = seg['waveform']
-                # Ensure 2D format: (channels, samples)
-                if waveform.dim() == 3:
-                    waveform = waveform.squeeze(0)  # Remove batch dimension
-                if waveform.dim() == 1:
-                    waveform = waveform.unsqueeze(0)  # Add channel dimension
-                normalized_waveforms.append(waveform)
-
-            # Now concatenate normalized waveforms
-            if len(normalized_waveforms) == 1:
-                combined = normalized_waveforms[0]
-            else:
-                combined = torch.cat(normalized_waveforms, dim=-1)
-
-            return combined
+            # Don't apply edits yet - return segment dicts for batch processing at the end
+            # Caller will collect all segment dicts and apply edits once
+            return all_segments
         else:
             # All plain tensors - backwards compatible path
             if len(audio_parts) == 0:
