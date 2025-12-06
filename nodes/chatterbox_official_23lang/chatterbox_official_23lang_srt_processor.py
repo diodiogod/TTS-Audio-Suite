@@ -20,6 +20,67 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment, parse_edit_tags_with_iterations
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+from utils.text.chatterbox_v2_special_tags import CHATTERBOX_V2_SPECIAL_TOKENS
+
+
+def extract_edit_tags_for_chatterbox(text: str):
+    """
+    Extract edit tags for ChatterBox, handling conflicts with native v2 tags.
+
+    Rules:
+    - <laughter> or <sigh> without iteration → ChatterBox native tag (leave as-is)
+    - <Laughter:2> or <Laughter:1> → Step EditX post-processing (extract)
+    - Warns user about potential confusion
+
+    Returns:
+        Tuple of (clean_text, edit_tags, has_conflicts)
+    """
+    import re
+
+    # Check for conflicts: tags that exist in both systems
+    conflict_tags = {'laughter', 'sigh'}  # Tags supported by both
+
+    # Find all angle bracket tags
+    all_tags = re.findall(r'<([^>]+)>', text)
+
+    has_native_conflict = False
+    has_editx_conflict = False
+
+    for tag_content in all_tags:
+        # Check if it's an iteration tag (has colon and number)
+        if ':' in tag_content:
+            tag_name = tag_content.split(':')[0].lower()
+            if tag_name in conflict_tags:
+                has_editx_conflict = True
+        else:
+            # Simple tag without iteration
+            tag_name = tag_content.lower()
+            if tag_name in conflict_tags and tag_name in CHATTERBOX_V2_SPECIAL_TOKENS:
+                has_native_conflict = True
+
+    # Print warning if conflicts detected
+    if has_native_conflict and has_editx_conflict:
+        print(f"\n🚨🚨🚨 TAG CONFLICT WARNING 🚨🚨🚨")
+        print(f"  ChatterBox has BOTH native tags (<laughter>) and Step EditX tags (<Laughter:2>)")
+        print(f"  Native <laughter> → ChatterBox built-in (may not work well)")
+        print(f"  EditX <Laughter:2> → Post-processing with Step Audio EditX")
+        print(f"  ⚠️  For best results: use <Laughter:N> format for ALL laughter/sigh effects")
+        print(f"🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨\n")
+    elif has_native_conflict:
+        print(f"ℹ️  Using ChatterBox native tags (<laughter>, <sigh>) - this will NOT use Step Audio EditX post-processing")
+        print(f"   For better quality: use Step EditX format with iterations (<Laughter:1>, <Sigh:1>)")
+
+    # Extract only tags with iterations (Step EditX post-processing)
+    clean_text, edit_tags = parse_edit_tags_with_iterations(text)
+
+    # Convert remaining native v2 tags for ChatterBox engine
+    # This handles tags like <giggle>, <sigh> that don't have iteration numbers
+    from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
+    clean_text = convert_v2_special_tags(clean_text)
+
+    return clean_text, edit_tags, (has_native_conflict or has_editx_conflict)
 
 
 class ChatterboxOfficial23LangSRTProcessor:
@@ -147,12 +208,23 @@ class ChatterboxOfficial23LangSRTProcessor:
             except Exception:
                 pass
 
+            # Initialize collection for batch edit processing
+            all_segments_for_editing = []
+            subtitle_edit_tags = {}  # Map subtitle index to edit tags
+
             # FIRST PASS: Analyze all subtitles and categorize them (lines 691-740 from regular ChatterBox)
             for i, subtitle in enumerate(srt_segments):
                 if not subtitle.text.strip():
                     # Empty subtitle - will be handled separately
                     all_subtitle_segments.append((i, subtitle, 'empty', None, None))
                     continue
+
+                # Extract edit tags BEFORE parsing character segments (ChatterBox-aware)
+                subtitle_text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(subtitle.text)
+                if edit_tags:
+                    subtitle_edit_tags[i] = (subtitle.text, subtitle_text_clean, edit_tags)
+                    # Use clean text for character parsing
+                    subtitle.text = subtitle_text_clean
 
                 # Parse character segments with parameters (handles both language and character tags)
                 segment_objects = cp.parse_text_segments(subtitle.text)
@@ -176,7 +248,11 @@ class ChatterboxOfficial23LangSRTProcessor:
                     if has_parameter_changes:
                         # Parameter changes require segment-by-segment processing
                         subtitle_type = 'parameter_switching'
+                    elif has_multiple_characters_in_subtitle:
+                        # Character switching takes priority (may also have multiple languages)
+                        subtitle_type = 'multicharacter'
                     elif has_multiple_languages_in_subtitle:
+                        # Multiple languages but single character (narrator only)
                         subtitle_type = 'multilingual'
                     else:
                         subtitle_type = 'multicharacter'
@@ -315,10 +391,13 @@ class ChatterboxOfficial23LangSRTProcessor:
                             if not text.strip():
                                 continue
 
+                            # Narrator should use user's default language, not character alias language
+                            actual_lang = current_language if char == "narrator" else seg_lang
+
                             # Generate audio for this character with their voice
                             segment_wav, _ = self.tts_node.generate_speech(
                                 text=text,
-                                language=seg_lang,
+                                language=actual_lang,
                                 device=current_device,
                                 model_version=current_model_version,
                                 exaggeration=seg_exag,
@@ -382,10 +461,10 @@ class ChatterboxOfficial23LangSRTProcessor:
                             seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
                             seg_seed_val = segment_config.get('seed', seed)
 
-                        # Generate with first language for multilingual segments
+                        # Generate with user's default language for multilingual narrator segments
                         segment_audio, _ = self.tts_node.generate_speech(
                             text=subtitle.text,
-                            language=lang_code,  # Use the language group's language
+                            language=current_language,  # Narrator uses user's default language
                             device=current_device,
                             model_version=current_model_version,
                             exaggeration=seg_exag,
@@ -433,14 +512,17 @@ class ChatterboxOfficial23LangSRTProcessor:
                             seg_seed_val = segment_config.get('seed', seed)
                             print(f"  📊 SRT: Applying segment parameters: {single_params}")
 
-                        # Get narrator voice for simple case (no character switching)
-                        narrator_voice = voice_refs.get('narrator')
-                        narrator_voice_path = narrator_voice if isinstance(narrator_voice, str) else ""
+                        # Get voice for single character
+                        char_voice = voice_refs.get(single_char, voice_refs.get('narrator'))
+                        char_voice_path = char_voice if isinstance(char_voice, str) else ""
+
+                        # Narrator should use user's default language, not alias language
+                        actual_lang = current_language if single_char == "narrator" else single_lang
 
                         # Direct generation for simple subtitles
                         segment_audio, _ = self.tts_node.generate_speech(
                             text=single_text,
-                            language=single_lang,
+                            language=actual_lang,
                             device=current_device,
                             model_version=current_model_version,
                             exaggeration=seg_exag,
@@ -451,9 +533,9 @@ class ChatterboxOfficial23LangSRTProcessor:
                             top_p=current_top_p,
                             seed=seg_seed_val,
                             reference_audio=None,
-                            audio_prompt_path=narrator_voice_path,
+                            audio_prompt_path=char_voice_path,
                             enable_audio_cache=True,
-                            character="narrator",
+                            character=single_char,
                             batch_size=self.config.get("batch_size", 0)
                         )
 
@@ -469,21 +551,85 @@ class ChatterboxOfficial23LangSRTProcessor:
 
                     # Calculate actual duration
                     actual_duration = len(segment_audio) / self.sample_rate
-                    # Assign to correct index to maintain SRT order
-                    audio_segments[i] = segment_audio
-                    timing_segments[i] = {
-                        'expected': expected_duration,
-                        'actual': actual_duration,
-                        'start': segment_start,
-                        'end': segment_end,
-                        'sequence': subtitle.sequence
-                    }
+
+                    # Check if this subtitle has edit tags for batch processing
+                    if i in subtitle_edit_tags:
+                        original_text, clean_text, edit_tags = subtitle_edit_tags[i]
+                        # Normalize dimensions
+                        waveform = segment_audio
+                        if waveform.dim() == 1:
+                            waveform = waveform.unsqueeze(0)
+
+                        # Store for batch edit processing
+                        all_segments_for_editing.append({
+                            'waveform': waveform,
+                            'sample_rate': self.sample_rate,
+                            'character': 'narrator',
+                            'text': clean_text,
+                            'original_text': original_text,
+                            'edit_tags': edit_tags,
+                            'subtitle_index': i
+                        })
+                        # Use placeholder
+                        audio_segments[i] = None
+                        timing_segments[i] = None
+                    else:
+                        # No edit tags - store directly
+                        audio_segments[i] = segment_audio
+                        timing_segments[i] = {
+                            'expected': expected_duration,
+                            'actual': actual_duration,
+                            'start': segment_start,
+                            'end': segment_end,
+                            'sequence': subtitle.sequence
+                        }
 
                     print(f"📺 ChatterBox Official 23-Lang SRT Segment {i+1}/{len(srt_segments)} (Seq {subtitle.sequence}): "
                           f"Generated {actual_duration:.2f}s audio (expected {expected_duration:.2f}s)")
 
                     total_duration += actual_duration
-            
+
+            # BATCH PROCESS all edits at once (after all generations complete)
+            if all_segments_for_editing:
+                print(f"\n🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+                from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+
+                processed_segments = apply_edit_post_processing(
+                    all_segments_for_editing,
+                    self.config,
+                    pre_loaded_engine=None  # ChatterBox doesn't have persistent engine ref
+                )
+
+                # Store processed segments back (replace placeholders)
+                for seg in processed_segments:
+                    sub_idx = seg.get('subtitle_index')
+                    if sub_idx is not None:
+                        waveform = seg['waveform']
+                        # Normalize dimensions
+                        if waveform.dim() == 3:
+                            waveform = waveform.squeeze(0)
+                        elif waveform.dim() == 1:
+                            waveform = waveform.unsqueeze(0)
+
+                        segment_audio = waveform
+                        actual_duration = segment_audio.size(1) / self.sample_rate
+
+                        # Get expected duration from original subtitle
+                        srt_seg = srt_segments[sub_idx]
+                        expected_duration = srt_seg.end_time - srt_seg.start_time
+
+                        # Replace placeholders
+                        audio_segments[sub_idx] = segment_audio
+                        timing_segments[sub_idx] = {
+                            'expected': expected_duration,
+                            'actual': actual_duration,
+                            'start': srt_seg.start_time,
+                            'end': srt_seg.end_time,
+                            'sequence': srt_seg.sequence
+                        }
+
+                        print(f"✅ Post-processed subtitle {sub_idx+1} (Seq {srt_seg.sequence}): {actual_duration:.2f}s")
+
             # Filter out None entries (empty subtitles) - keep segments in order
             audio_segments_filtered = []
             timing_segments_filtered = []
