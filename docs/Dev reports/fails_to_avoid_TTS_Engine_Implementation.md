@@ -97,3 +97,15 @@
 - **Cause**: Saving audio with wrong sample rate metadata → `torchaudio.load()` misinterprets data
 - **Fix**: Resample to 24000 Hz before saving temp files (edit node, TTS text node, TTS SRT node)
 - **Prevention**: Always resample to engine's native rate (24000 Hz for Step Audio EditX)
+
+### Unified Model Interface - Adapter & Node Consistency
+- **CRITICAL**: ALL engine loading must use `unified_model_interface.load_model()` for smart caching
+- **Symptom**: Model loads twice (once for TTS, once for editing/other nodes) - wasting VRAM and time
+- **Wrong pattern**: Creating engine instances directly (`engine = StepAudioEditXEngine()`) in adapters or nodes
+- **Correct pattern**:
+  1. **Adapter** `load_base_model()` uses `unified_model_interface.load_model(config)`
+  2. **Audio Editor node** uses `unified_model_interface.load_model(config)`
+  3. **Both use same `model_type`** (e.g., "tts") so cache keys match → engine reused
+- **Cache key components**: `engine_name`, `model_type`, `model_name`, `device`, `quantization`, etc.
+- **Fix Step Audio EditX**: Updated adapter and Audio Editor node to use unified interface with `model_type="tts"`
+- **Prevention**: When adding new engines, ALWAYS use unified interface in ALL code paths (adapters, nodes, processors)

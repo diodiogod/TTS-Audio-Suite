@@ -95,7 +95,7 @@ class StepAudioEditXEngineAdapter:
                        torch_dtype: str = "bfloat16",
                        quantization: Optional[str] = None):
         """
-        Load Step Audio EditX engine.
+        Load Step Audio EditX engine via unified interface (with caching).
 
         Args:
             model_path: Model identifier (local:ModelName or ModelName for auto-download)
@@ -103,12 +103,19 @@ class StepAudioEditXEngineAdapter:
             torch_dtype: Model precision (bfloat16/float16/float32/auto)
             quantization: Quantization mode (int4/int8 or None)
         """
-        self.engine = StepAudioEditXEngine(
-            model_dir=model_path,
-            device=device,
+        from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
+        from utils.device import resolve_torch_device
+
+        config = ModelLoadConfig(
+            engine_name="step_audio_editx",
+            model_type="tts",
+            model_name=model_path,
+            device=resolve_torch_device(device),
             torch_dtype=torch_dtype,
             quantization=quantization
         )
+
+        self.engine = unified_model_interface.load_model(config)
 
     def generate_with_pause_tags(self,
                                  text: str,

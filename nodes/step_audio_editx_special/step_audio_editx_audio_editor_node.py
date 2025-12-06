@@ -145,18 +145,24 @@ class StepAudioEditXAudioEditorNode:
                     f"  • Or leave tts_engine disconnected (uses default settings)"
                 )
 
-            # Get config and create engine with those settings
+            # Get config and load engine via unified interface (reuses if already loaded)
             config = tts_engine_data.get("config", {})
 
-            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
+            from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
+            from utils.device import resolve_torch_device
 
-            # Create engine with config from engine node
-            engine = StepAudioEditXEngine(
-                model_dir=config.get("model_path", "Step-Audio-EditX"),
-                device=config.get("device", "auto"),
+            # Build config for unified interface
+            model_config = ModelLoadConfig(
+                engine_name="step_audio_editx",
+                model_type="tts",  # Use "tts" to match adapter's cache key
+                model_name=config.get("model_path", "Step-Audio-EditX"),
+                device=resolve_torch_device(config.get("device", "auto")),
                 torch_dtype=config.get("torch_dtype", "bfloat16"),
                 quantization=config.get("quantization")
             )
+
+            # Load via unified interface (will reuse if already loaded)
+            engine = unified_model_interface.load_model(model_config)
 
             # Store generation params for potential use
             engine._temperature = config.get("temperature", 0.7)
@@ -165,11 +171,22 @@ class StepAudioEditXAudioEditorNode:
 
             return engine
 
-        # Create default engine if not provided
+        # Create default engine if not provided - use unified interface
         if self._engine is None:
-            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
-            print("🔄 Creating default Step Audio EditX engine...")
-            self._engine = StepAudioEditXEngine()
+            from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
+            from utils.device import resolve_torch_device
+
+            print("🔄 Loading Step Audio EditX engine via unified interface...")
+
+            config = ModelLoadConfig(
+                engine_name="step_audio_editx",
+                model_type="tts",  # Use "tts" to match adapter's cache key
+                model_name="Step-Audio-EditX",
+                device=resolve_torch_device("auto"),
+                torch_dtype="bfloat16"
+            )
+
+            self._engine = unified_model_interface.load_model(config)
 
         return self._engine
 
