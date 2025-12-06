@@ -373,6 +373,7 @@ class StepAudioEditXProcessor:
 
             # Extract edit tags BEFORE TTS generation
             clean_text, edit_tags = get_edit_tags_for_segment(combined_text)
+            print(f"🔍 DEBUG: Extracted {len(edit_tags)} edit tags from combined_text (len={len(combined_text)})")
             if edit_tags:
                 print(f"🎨 Found {len(edit_tags)} edit tag(s) for post-processing")
 

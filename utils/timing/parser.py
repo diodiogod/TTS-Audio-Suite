@@ -199,9 +199,11 @@ class SRTParser:
                 else: # len(lines) == 2, implies no text or only whitespace lines that were filtered out
                     text = ""
                 
-                # Clean up text (remove HTML tags, normalize whitespace but preserve newlines)
+                # Clean up text (remove HTML tags but preserve Step Audio EditX edit tags, normalize whitespace but preserve newlines)
                 # This will also handle the case where text is already ""
-                text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
+                # Preserve Step Audio EditX edit tags: <Laughter:2>, <style:whisper>, <emotion:happy>, <speed:faster>, etc.
+                # Pattern matches HTML tags but NOT edit tags (edit tags have alphanumeric+colon+pipe structure)
+                text = re.sub(r'<(?![a-zA-Z][a-zA-Z0-9_\-\s:|\d]*>)[^>]+>', '', text)  # Remove HTML tags only
                 # Normalize whitespace but preserve newlines for character parsing
                 text = re.sub(r'[ \t]+', ' ', text)  # Normalize spaces and tabs only
                 text = re.sub(r'\n+', '\n', text)   # Normalize multiple newlines to single
