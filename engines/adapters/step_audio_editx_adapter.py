@@ -324,6 +324,11 @@ class StepAudioEditXEngineAdapter:
         """
         Generate with pause tag processing.
 
+        NOTE: This returns a COMBINED audio tensor. Edit tags are NOT extracted here
+        because the processor needs to track individual segments for post-processing.
+        The processor should NOT call this for text with edit tags - it should
+        extract edit tags BEFORE pause processing.
+
         Args:
             text: Text with pause tags ([pause:2], [pause:1.5s], [pause:500ms])
             voice_ref: Voice reference dict

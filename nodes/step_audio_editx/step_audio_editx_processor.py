@@ -21,6 +21,8 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import character_parser
 from utils.text.segment_parameters import apply_segment_parameters
 from utils.text.pause_processor import PauseTagProcessor
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from engines.adapters.step_audio_editx_adapter import StepAudioEditXEngineAdapter
 
 
@@ -199,6 +201,16 @@ class StepAudioEditXProcessor:
         if not self._srt_mode:
             self.adapter.end_job()
 
+        # Apply edit post-processing to segments with edit tags
+        # This applies Step Audio EditX edits (emotion, style, speed, paralinguistic)
+        # to segments that had inline edit tags like <Laughter:2>, <style:whisper>
+        # Pass the already-loaded engine from the adapter to avoid reloading
+        audio_segments = apply_edit_post_processing(
+            audio_segments,
+            self.config,
+            pre_loaded_engine=self.adapter.engine
+        )
+
         return audio_segments
 
     def _group_consecutive_character_objects(self, segment_objects) -> List[Tuple[str, list]]:
@@ -251,6 +263,12 @@ class StepAudioEditXProcessor:
         """
         Process a combined character block (potentially with chunking).
 
+        IMPORTANT: Handles pause tags + edit tags correctly:
+        - Split by pause tags FIRST (each pause-segment gets separate generation)
+        - Extract edit tags from EACH pause segment
+        - This allows: "Hello <Laughter> [pause:1] World <Sigh>"
+          to apply Laughter to "Hello" and Sigh to "World"
+
         Args:
             character: Character name
             combined_text: Combined text for this character
@@ -260,6 +278,34 @@ class StepAudioEditXProcessor:
             max_chars: Max characters per chunk
             audio_segments: List to append results to
         """
+        # Check if text has pause tags - if so, split by pause FIRST
+        from utils.text.pause_processor import PauseTagProcessor
+
+        if PauseTagProcessor.has_pause_tags(combined_text):
+            # Split by pause tags to get individual pause-delimited segments
+            pause_segments, _ = PauseTagProcessor.parse_pause_tags(combined_text)
+
+            for seg_type, content in pause_segments:
+                if seg_type == 'text':
+                    # Process this pause-delimited text segment
+                    # (extract edit tags, generate, store with tags)
+                    self._process_single_text_segment(
+                        character, content, voice_mapping, params, audio_segments
+                    )
+                elif seg_type == 'pause':
+                    # Add silence segment
+                    silence = PauseTagProcessor.create_silence_segment(content, 24000)
+                    audio_dict = {
+                        'waveform': silence,
+                        'sample_rate': 24000,
+                        'character': character,
+                        'text': f'[pause:{content}s]',
+                        'edit_tags': None
+                    }
+                    audio_segments.append(audio_dict)
+            return
+
+        # No pause tags - process normally
         # Apply chunking if enabled and text is long
         if enable_chunking and len(combined_text) > max_chars:
             voice_ref = voice_mapping.get(character)
@@ -279,13 +325,18 @@ class StepAudioEditXProcessor:
                 if model_management.interrupt_processing:
                     raise InterruptedError(f"Step Audio EditX chunk {chunk_idx + 1}/{len(chunks)} interrupted by user")
 
+                # Extract edit tags BEFORE TTS generation
+                clean_chunk, edit_tags = get_edit_tags_for_segment(chunk)
+                if edit_tags:
+                    print(f"  🎨 Found {len(edit_tags)} edit tag(s) in chunk {chunk_idx + 1}")
+
                 # Set current chunk for time tracking (skip in SRT mode - managed at subtitle level)
                 if not self._srt_mode:
                     self.adapter.set_current_block(self._chunk_idx)
 
-                # Process pause tags
+                # Process pause tags with CLEAN text (edit tags removed)
                 audio_tensor = self.adapter.generate_with_pause_tags(
-                    chunk, voice_ref, params, True, character
+                    clean_chunk, voice_ref, params, True, character
                 )
 
                 # Mark chunk as completed for time tracking (skip in SRT mode)
@@ -304,7 +355,8 @@ class StepAudioEditXProcessor:
                     'waveform': audio_tensor,
                     'sample_rate': 24000,  # Step Audio EditX native sample rate
                     'character': character,
-                    'text': chunk
+                    'text': clean_chunk,  # Clean text for transcript
+                    'edit_tags': edit_tags if edit_tags else None  # Store for post-processing
                 }
                 audio_segments.append(audio_dict)
         else:
@@ -318,18 +370,23 @@ class StepAudioEditXProcessor:
             elif not voice_ref.get('prompt_audio_path') or not voice_ref.get('prompt_text'):
                 voice_note = " [⚠️ Missing prompt audio/text - will use default]"
 
+            # Extract edit tags BEFORE TTS generation
+            clean_text, edit_tags = get_edit_tags_for_segment(combined_text)
+            if edit_tags:
+                print(f"🎨 Found {len(edit_tags)} edit tag(s) for post-processing")
+
             print(f"🎭 Step Audio EditX - Generating for '{character}'{voice_note}:")
             print("="*60)
-            print(combined_text)
+            print(clean_text)
             print("="*60)
 
             # Set current segment for time tracking (skip in SRT mode - managed at subtitle level)
             if not self._srt_mode:
                 self.adapter.set_current_block(self._chunk_idx)
 
-            # Process pause tags
+            # Process pause tags with CLEAN text (edit tags removed)
             audio_tensor = self.adapter.generate_with_pause_tags(
-                combined_text, voice_ref, params, True, character
+                clean_text, voice_ref, params, True, character
             )
 
             # Mark segment as completed for time tracking (skip in SRT mode)
@@ -348,9 +405,56 @@ class StepAudioEditXProcessor:
                 'waveform': audio_tensor,
                 'sample_rate': 24000,  # Step Audio EditX native sample rate
                 'character': character,
-                'text': combined_text
+                'text': clean_text,  # Clean text for transcript
+                'edit_tags': edit_tags if edit_tags else None  # Store for post-processing
             }
             audio_segments.append(audio_dict)
+
+    def _process_single_text_segment(self,
+                                    character: str,
+                                    text: str,
+                                    voice_mapping: Dict[str, Any],
+                                    params: Dict,
+                                    audio_segments: List[Dict]) -> None:
+        """
+        Process a single text segment (no pause tags, no chunking).
+        Extracts edit tags and generates audio.
+
+        NOTE: This is called from pause-split path, so job tracking is NOT updated here.
+        The parent already set up job tracking at the block level.
+
+        Args:
+            character: Character name
+            text: Text segment (may contain edit tags)
+            voice_mapping: Voice mapping
+            params: Generation parameters
+            audio_segments: List to append result to
+        """
+        voice_ref = voice_mapping.get(character)
+
+        # Extract edit tags BEFORE generation
+        clean_text, edit_tags = get_edit_tags_for_segment(text)
+        if edit_tags:
+            print(f"  🎨 Found {len(edit_tags)} edit tag(s) in pause segment")
+
+        # Generate audio with CLEAN text (no edit tags, no pause tags)
+        # NOTE: Don't update job tracker - parent handles it
+        audio_tensor = self.adapter._generate_direct(clean_text, voice_ref, params, character)
+
+        # Ensure correct shape [1, samples] or [channels, samples]
+        if audio_tensor.dim() == 1:
+            audio_tensor = audio_tensor.unsqueeze(0)
+        elif audio_tensor.dim() == 3:
+            audio_tensor = audio_tensor.squeeze(0)
+
+        audio_dict = {
+            'waveform': audio_tensor,
+            'sample_rate': 24000,
+            'character': character,
+            'text': clean_text,
+            'edit_tags': edit_tags if edit_tags else None
+        }
+        audio_segments.append(audio_dict)
 
     def combine_audio_segments(self,
                               segments: List[Dict],

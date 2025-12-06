@@ -11,10 +11,23 @@ Usage:
     User writes: "Hello <Laughter> nice to meet you"
     Handler converts to: "Hello [Laughter] nice to meet you"
     Step Audio EditX processes: [Laughter] as paralinguistic insertion point
+
+Extended Inline Edit Tag Syntax (for post-processing any TTS engine):
+    <Laughter>           - paralinguistic, 1 iteration
+    <Laughter:3>         - paralinguistic, 3 iterations
+    <emotion:happy>      - emotion edit, 1 iteration
+    <emotion:happy:2>    - emotion edit, 2 iterations
+    <style:whisper:3>    - style edit, 3 iterations
+    <speed:faster>       - speed edit, 1 iteration
+
+Multiple tags can be combined:
+    <Laughter:2|style:whisper:1>  - pipe-separated in single tag
+    <Laughter:2><style:whisper>   - separate tags (equivalent)
 """
 
 import re
-from typing import Set, Tuple, Optional
+from typing import Set, Tuple, Optional, List
+from dataclasses import dataclass, field
 
 # Step Audio EditX paralinguistic tokens
 # Users should write these in <angle> brackets, we convert to [square] brackets
@@ -152,3 +165,256 @@ def get_supported_paralinguistic_tags() -> Set[str]:
 def get_paralinguistic_options_for_ui() -> list:
     """Get list of paralinguistic options for ComfyUI dropdown."""
     return sorted(PARALINGUISTIC_CANONICAL_FORMAT.values())
+
+
+# =============================================================================
+# EXTENDED INLINE EDIT TAG SYSTEM
+# =============================================================================
+# Supports <Laughter:2>, <emotion:happy:1>, <style:whisper:3>, <speed:faster>
+# for post-processing TTS output with Step Audio EditX
+
+@dataclass
+class EditTag:
+    """Represents a parsed edit tag with type, value, and iteration count."""
+    edit_type: str  # "paralinguistic", "emotion", "style", "speed", "denoise", "vad"
+    value: str      # The specific effect (e.g., "Laughter", "happy", "whisper", "faster")
+    iterations: int = 1  # Number of edit iterations (1-5)
+    position: Optional[int] = None  # Character position in text (for paralinguistic only)
+
+    def __repr__(self):
+        pos_str = f", pos={self.position}" if self.position is not None else ""
+        return f"EditTag({self.edit_type}:{self.value}:{self.iterations}{pos_str})"
+
+
+# Valid edit type values from Step Audio EditX edit_config.py
+VALID_EMOTIONS = {
+    'happy', 'angry', 'sad', 'humour', 'confusion', 'disgusted',
+    'empathy', 'embarrass', 'fear', 'surprised', 'excited',
+    'depressed', 'coldness', 'admiration', 'remove'
+}
+
+VALID_STYLES = {
+    'serious', 'arrogant', 'child', 'older', 'girl', 'pure',
+    'sister', 'sweet', 'ethereal', 'whisper', 'gentle', 'recite',
+    'generous', 'act_coy', 'warm', 'shy', 'comfort', 'authority',
+    'chat', 'radio', 'soulful', 'story', 'vivid', 'program',
+    'news', 'advertising', 'roar', 'murmur', 'shout', 'deeply', 'loudly',
+    'remove', 'exaggerated'
+}
+
+VALID_SPEEDS = {'faster', 'slower', 'more_faster', 'more_slower', 'more faster', 'more slower'}
+
+# For quick lookup
+EDIT_TYPE_VALUES = {
+    'emotion': VALID_EMOTIONS,
+    'style': VALID_STYLES,
+    'speed': VALID_SPEEDS,
+    'paralinguistic': set(PARALINGUISTIC_CANONICAL_FORMAT.values()),
+    'denoise': {'denoise'},
+    'vad': {'vad'}
+}
+
+
+def _parse_single_tag_part(part: str, current_position: int) -> Optional[EditTag]:
+    """
+    Parse a single tag part (e.g., "Laughter:2", "emotion:happy:1", "style:whisper").
+
+    Args:
+        part: Single tag part without angle brackets
+        current_position: Current character position in original text
+
+    Returns:
+        EditTag if valid, None otherwise
+    """
+    part = part.strip()
+    if not part:
+        return None
+
+    # Split by colon
+    components = part.split(':')
+
+    # Case 1: Paralinguistic tag - <Laughter> or <Laughter:2>
+    first_lower = components[0].lower()
+    if first_lower in STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS:
+        canonical = PARALINGUISTIC_CANONICAL_FORMAT.get(first_lower, components[0].title())
+        iterations = 1
+        if len(components) >= 2:
+            try:
+                iterations = max(1, min(5, int(components[1])))
+            except ValueError:
+                pass
+        return EditTag(
+            edit_type="paralinguistic",
+            value=canonical,
+            iterations=iterations,
+            position=current_position
+        )
+
+    # Case 2: Typed tag - <emotion:happy:2>, <style:whisper>, <speed:faster:1>
+    if len(components) >= 2:
+        type_name = components[0].lower()
+        value = components[1].lower()
+
+        # Validate type
+        if type_name not in EDIT_TYPE_VALUES:
+            return None
+
+        # Validate value
+        valid_values = EDIT_TYPE_VALUES[type_name]
+        if value not in valid_values:
+            # Try with underscores replaced by spaces for speed
+            if type_name == 'speed':
+                value_with_spaces = value.replace('_', ' ')
+                if value_with_spaces not in valid_values:
+                    return None
+                value = value_with_spaces
+            else:
+                return None
+
+        # Parse iterations
+        iterations = 1
+        if len(components) >= 3:
+            try:
+                iterations = max(1, min(5, int(components[2])))
+            except ValueError:
+                pass
+
+        # Position only matters for paralinguistic
+        position = current_position if type_name == "paralinguistic" else None
+
+        return EditTag(
+            edit_type=type_name,
+            value=value,
+            iterations=iterations,
+            position=position
+        )
+
+    return None
+
+
+def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
+    """
+    Parse all edit tags from text, return clean text and tag list.
+
+    Supports:
+    - <Laughter> → paralinguistic, 1 iter
+    - <Laughter:3> → paralinguistic, 3 iter
+    - <style:whisper:2> → style, 2 iter
+    - <emotion:happy> → emotion, 1 iter
+    - <Laughter:2|style:whisper:1> → multiple in one tag (pipe-separated)
+    - <speed:faster>, <speed:more_faster>
+    - <denoise>, <vad>
+
+    Args:
+        text: Input text with potential edit tags
+
+    Returns:
+        Tuple of (clean_text, list_of_EditTag)
+    """
+    edit_tags: List[EditTag] = []
+
+    # Pattern: <content> where content can include pipes, colons, alphanumeric, underscore, hyphen, space
+    # More permissive to capture all potential tags
+    pattern = r'<([a-zA-Z][a-zA-Z0-9_\-\s:|\d]*)>'
+
+    # Track position offset as we remove tags
+    offset = 0
+    clean_parts = []
+    last_end = 0
+
+    for match in re.finditer(pattern, text):
+        tag_content = match.group(1)
+        tag_start = match.start()
+        tag_end = match.end()
+
+        # Calculate position in clean text (where tag would be inserted)
+        clean_position = tag_start - offset
+
+        # Add text before this tag
+        clean_parts.append(text[last_end:tag_start])
+
+        # Parse tag content (may have pipes for multiple effects)
+        parts = tag_content.split('|')
+        tag_found = False
+
+        for part in parts:
+            edit_tag = _parse_single_tag_part(part, clean_position)
+            if edit_tag:
+                edit_tags.append(edit_tag)
+                tag_found = True
+
+        # If any valid tag was found, update offset (tag is removed)
+        if tag_found:
+            offset += (tag_end - tag_start)
+        else:
+            # Unknown tag - keep it in text
+            clean_parts.append(match.group(0))
+
+        last_end = tag_end
+
+    # Add remaining text
+    clean_parts.append(text[last_end:])
+
+    # Join and clean up whitespace
+    clean_text = ''.join(clean_parts)
+    clean_text = re.sub(r'  +', ' ', clean_text)
+    clean_text = clean_text.strip()
+
+    return clean_text, edit_tags
+
+
+def has_edit_tags(text: str) -> bool:
+    """
+    Quick check if text contains any valid edit tags.
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text contains valid edit tags
+    """
+    _, tags = parse_edit_tags_with_iterations(text)
+    return len(tags) > 0
+
+
+def get_edit_tags_for_segment(text: str) -> Tuple[str, List[EditTag]]:
+    """
+    Convenience function for segment processing.
+    Extracts edit tags and returns clean text for TTS.
+
+    This is the main entry point for segment_parameters.py integration.
+
+    Args:
+        text: Segment text potentially containing edit tags
+
+    Returns:
+        Tuple of (clean_text_for_tts, edit_tags_list)
+    """
+    return parse_edit_tags_with_iterations(text)
+
+
+def sort_edit_tags_for_processing(tags: List[EditTag]) -> List[EditTag]:
+    """
+    Sort edit tags in optimal processing order.
+
+    Processing order:
+    1. Non-paralinguistic edits first (emotion → style → speed → denoise/vad)
+    2. Paralinguistic edits last (position matters for sound insertion)
+
+    Args:
+        tags: List of EditTag objects
+
+    Returns:
+        Sorted list of EditTag objects
+    """
+    # Define priority order (lower = processed first)
+    type_priority = {
+        'emotion': 1,
+        'style': 2,
+        'speed': 3,
+        'denoise': 4,
+        'vad': 5,
+        'paralinguistic': 10  # Last, position-sensitive
+    }
+
+    return sorted(tags, key=lambda t: type_priority.get(t.edit_type, 99))
