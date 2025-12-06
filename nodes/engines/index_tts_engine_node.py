@@ -134,11 +134,7 @@ class IndexTTSEngineNode(BaseTTSNode):
             "optional": {
                 # Unified Emotion Control - Using multitype input for better connection suggestions
                 "emotion_control": (any_typ, {
-                    "tooltip": """• 🌈 Emotion Vectors - Manual emotion control sliders
-• 🎭 Character Voices (opt_narrator) - Audio-based emotion reference
-• 🌈 Text Emotion - AI-analyzed emotion from text
-• Direct AUDIO - Any audio input for emotion reference
-Character emotion tags [Alice:emotion_ref] will override this for specific characters."""
+                    "tooltip": "• 🌈 Emotion Vectors - Manual emotion control sliders\n• 🎭 Character Voices (opt_narrator) - Audio-based emotion reference\n• 🌈 Text Emotion - AI-analyzed emotion from text\n• Direct AUDIO - Any audio input for emotion reference\nCharacter emotion tags [Alice:emotion_ref] will override this for specific characters."
                 }),
 
                 # CUDA Kernel Option
@@ -163,6 +159,10 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 "more_segment_before": ("INT", {
                     "default": 0, "min": 0, "max": 80, "step": 5,
                     "tooltip": "Streaming segmentation parameter. Higher values produce first audio chunk faster but may affect quality. Only used when stream_return is enabled. Recommended: 0-20."
+                }),
+                "low_vram": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable Low VRAM mode. Keeps models on CPU and only moves them to GPU when needed. Prevents OOM on 8GB cards but is slower."
                 }),
             }
         }
@@ -235,6 +235,7 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
         use_accel: str = "false",
         stream_return: str = "false",
         more_segment_before: int = 0,
+        low_vram: bool = False,
     ):
         """
         Create IndexTTS-2 engine adapter with configuration.
@@ -325,6 +326,7 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 "use_accel": use_accel,
                 "stream_return": stream_return,
                 "more_segment_before": more_segment_before,
+                "low_vram": low_vram,
             }
             
             print(f"⚙️ IndexTTS-2: Configured on {device}")
@@ -345,6 +347,8 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 print(f"   Optimizations: {', '.join(optimizations)}")
             if stream_return:
                 print(f"   Streaming: enabled (more_segment_before={more_segment_before})")
+            if low_vram:
+                print(f"   Low VRAM: enabled (sequential offloading)")
             
             # Return engine data for consumption by unified TTS nodes
             engine_data = {

@@ -40,7 +40,8 @@ class IndexTTSAdapter:
                          use_cuda_kernel: Optional[bool] = None,
                          use_deepspeed: bool = False,
                          use_torch_compile: bool = False,
-                         use_accel: bool = False):
+                         use_accel: bool = False,
+                         low_vram: bool = False):
         """
         Initialize IndexTTS-2 engine.
 
@@ -52,6 +53,7 @@ class IndexTTSAdapter:
             use_deepspeed: Use DeepSpeed optimization
             use_torch_compile: Enable torch.compile optimization for S2Mel stage
             use_accel: Enable GPT2 acceleration with FlashAttention
+            low_vram: Enable Low VRAM mode (sequential offloading)
         """
         # Auto-download model if not provided or if "auto-download" is specified
         if model_path is None or model_path == "auto-download":
@@ -69,7 +71,8 @@ class IndexTTSAdapter:
             use_cuda_kernel=use_cuda_kernel,
             use_deepspeed=use_deepspeed,
             use_torch_compile=use_torch_compile,
-            use_accel=use_accel
+            use_accel=use_accel,
+            low_vram=low_vram
         )
         
     
