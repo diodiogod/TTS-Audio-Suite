@@ -367,6 +367,17 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
         # If any valid tag was found, update offset (tag is removed)
         if tag_found:
             offset += (tag_end - tag_start)
+
+            # Check if we need to add space AFTER paralinguistic tag
+            # (when tag is followed by word character without space)
+            text_after = text[tag_end:] if tag_end < len(text) else ""
+            if text_after and text_after[0].isalnum():
+                # Check if any of the tags we just parsed was paralinguistic
+                for tag in edit_tags:
+                    if tag.edit_type == 'paralinguistic':
+                        clean_parts.append(' ')
+                        offset -= 1  # Compensate for added space
+                        break
         else:
             # Unknown tag - keep it in text
             clean_parts.append(match.group(0))

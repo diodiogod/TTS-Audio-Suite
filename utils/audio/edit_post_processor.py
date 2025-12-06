@@ -136,8 +136,6 @@ def _apply_edit_via_node(
     style = value if edit_type == "style" else "none"
     speed = value if edit_type == "speed" else "none"
 
-    print(f"  🎨 Applying {edit_type}:{value} ({iterations} iteration{'s' if iterations > 1 else ''})")
-
     # Call the Audio Editor node (has progress bar built-in)
     edited_audio, _ = editor_node.edit_audio(
         input_audio=audio_dict,
@@ -223,10 +221,19 @@ def process_segments(
         if not _validate_audio_duration(waveform, sample_rate):
             continue
 
-        print(f"\n📝 Segment {idx + 1}: \"{transcript[:50]}{'...' if len(transcript) > 50 else ''}\"")
+        # Show segment being edited with clean formatting
+        original_text = segment.get('original_text', transcript)
+        print(f"\n📝 Segment {idx + 1} - Applying edit tags:")
+        print("="*60)
+        print(original_text)
+        print("="*60)
 
         # Sort tags for optimal processing order
         sorted_tags = sort_edit_tags_for_processing(edit_tags)
+
+        # Group paralinguistic tags together (they must be applied as one edit)
+        paralinguistic_tags = [t for t in sorted_tags if t.edit_type == 'paralinguistic']
+        non_paralinguistic_tags = [t for t in sorted_tags if t.edit_type != 'paralinguistic']
 
         # Create ComfyUI audio dict for the editor node
         current_audio_dict = {
@@ -234,9 +241,10 @@ def process_segments(
             'sample_rate': sample_rate
         }
 
-        # Apply each edit in sequence via Audio Editor node
-        for tag in sorted_tags:
+        # Apply non-paralinguistic edits first (emotion, style, speed)
+        for tag in non_paralinguistic_tags:
             try:
+                print(f"  🎨 Applying {tag.edit_type}:{tag.value} ({tag.iterations} iteration{'s' if tag.iterations > 1 else ''})")
                 edited_audio_dict = _apply_edit_via_node(
                     editor_node=editor_node,
                     audio_dict=current_audio_dict,
@@ -246,7 +254,57 @@ def process_segments(
                 # Use edited audio as input for next edit
                 current_audio_dict = edited_audio_dict
             except Exception as e:
-                print(f"⚠️ EditPostProcessor: Failed to apply {tag}: {e}")
+                print(f"     ❌ Failed: {e}")
+
+        # Apply all paralinguistic tags with proper iteration handling
+        if paralinguistic_tags:
+            try:
+                # Sort by position (descending) for insertion
+                sorted_para = sorted(paralinguistic_tags, key=lambda t: t.position or 0, reverse=True)
+                max_iterations = max(tag.iterations for tag in paralinguistic_tags)
+
+                # Print what we're applying
+                tag_summary = ", ".join([f"{t.value}:{t.iterations}" for t in paralinguistic_tags])
+                print(f"  🎨 Applying paralinguistic: {tag_summary} ({max_iterations} total iteration{'s' if max_iterations > 1 else ''})")
+
+                # Apply iterations - each iteration includes tags that still need processing
+                for iteration in range(1, max_iterations + 1):
+                    # Determine which tags are active in this iteration
+                    active_tags = [t for t in sorted_para if iteration <= t.iterations]
+
+                    if not active_tags:
+                        break  # All tags exhausted
+
+                    # Build audio_text with active tags (use angle brackets for Audio Editor)
+                    audio_text = transcript
+                    for tag in active_tags:
+                        position = tag.position if tag.position is not None else len(audio_text)
+                        position = min(position, len(audio_text))
+
+                        # Check if we need space after tag
+                        needs_space_after = (position < len(audio_text) and audio_text[position].isalnum())
+                        tag_text = f"<{tag.value}> " if needs_space_after else f"<{tag.value}>"
+
+                        audio_text = audio_text[:position] + tag_text + audio_text[position:]
+
+                    active_summary = ", ".join([t.value for t in reversed(active_tags)])
+                    print(f"     → Iteration {iteration}/{max_iterations}: [{active_summary}]")
+
+                    # Apply this iteration via Audio Editor node
+                    edited_audio_dict, _ = editor_node.edit_audio(
+                        input_audio=current_audio_dict,
+                        audio_text=audio_text,
+                        edit_type="paralinguistic",
+                        emotion="none",
+                        style="none",
+                        speed="none",
+                        n_edit_iterations=1,  # Always 1 iteration, we loop ourselves
+                        tts_engine=None
+                    )
+                    current_audio_dict = edited_audio_dict
+
+            except Exception as e:
+                print(f"     ❌ Failed: {e}")
                 import traceback
                 traceback.print_exc()
                 # Continue with unmodified audio for this tag

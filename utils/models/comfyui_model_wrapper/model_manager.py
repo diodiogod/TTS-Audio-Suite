@@ -121,6 +121,26 @@ class ComfyUITTSModelManager:
                 # Continue to create new model below
             else:
                 print(f"♻️ Reusing valid cached model: {model_type} ({engine})")
+
+                # Before loading to GPU, clear other models to make room
+                if wrapper.current_device != device and device != 'auto' and device.startswith('cuda'):
+                    # Clear models from different engines to free VRAM
+                    cached_models = list(self._model_cache.keys())
+                    models_to_clear = []
+
+                    for cache_key in cached_models:
+                        cached_wrapper = self._model_cache[cache_key]
+                        # Clear TTS models from different engines that are on GPU
+                        if (cached_wrapper.model_info.engine != engine and
+                            cached_wrapper.model_info.model_type == "tts" and
+                            cached_wrapper._is_loaded_on_gpu):
+                            models_to_clear.append(cache_key)
+
+                    if models_to_clear:
+                        print(f"🗑️ Clearing {len(models_to_clear)} TTS models to free VRAM for reused model")
+                        for key in models_to_clear:
+                            self.remove_model(key)
+
                 # Ensure model is loaded on correct device
                 if wrapper.current_device != device and device != 'auto':
                     wrapper.model_load(device)
@@ -183,34 +203,32 @@ class ComfyUITTSModelManager:
                 if model_type == "tts" and engine != "":
                     # Get current cache stats
                     cached_models = list(self._model_cache.keys())
-                    models_to_clear = []
-                    
+                    models_to_offload = []
+
                     for cache_key in cached_models:
                         wrapper = self._model_cache[cache_key]
-                        should_clear = False
-                        
-                        # Clear models from different engines to free VRAM
-                        if wrapper.model_info.engine != engine and wrapper.model_info.model_type == "tts":
-                            should_clear = True
-                        
-                        # VibeVoice-specific: Use CPU migration instead of direct clearing
-                        # This allows model reuse while preventing RAM accumulation
-                        elif engine == "vibevoice" and wrapper.model_info.engine == "vibevoice":
-                            if cache_key != model_key:  # Don't clear the model we're about to load
-                                print(f"🔄 VibeVoice: Moving existing model to CPU instead of clearing (allows reuse)")
-                                # Force CPU migration instead of deletion
-                                try:
-                                    wrapper.partially_unload('cpu', wrapper._memory_size)
-                                except:
-                                    should_clear = True  # Fallback to clearing if CPU migration fails
-                        
-                        if should_clear:
-                            models_to_clear.append(cache_key)
-                    
-                    if models_to_clear:
-                        print(f"🗑️ Clearing {len(models_to_clear)} TTS models to free VRAM")
-                        for key in models_to_clear:
-                            self.remove_model(key)
+
+                        # Move models from different engines to CPU to free VRAM
+                        # (Don't delete - keep in cache for fast reload)
+                        if wrapper.model_info.engine != engine and wrapper.model_info.model_type == "tts" and wrapper._is_loaded_on_gpu:
+                            models_to_offload.append((cache_key, wrapper))
+
+                    if models_to_offload:
+                        print(f"🗑️ Moving {len(models_to_offload)} TTS models to CPU to free VRAM")
+                        for key, wrapper in models_to_offload:
+                            try:
+                                wrapper.partially_unload('cpu', wrapper._memory_size)
+                            except Exception as e:
+                                print(f"⚠️ Failed to move {wrapper.model_info.engine} to CPU: {e}")
+                                # Keep in cache anyway - might recover later
+
+                        # Force CUDA to synchronize and free memory before loading next model
+                        import torch
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
+                            torch.cuda.empty_cache()
+                            import time
+                            time.sleep(0.1)
                             
             except Exception as e:
                 # Silently ignore memory management errors to avoid spam
@@ -301,13 +319,20 @@ class ComfyUITTSModelManager:
         """Remove a model from cache and ComfyUI tracking"""
         if model_key in self._model_cache:
             wrapper = self._model_cache[model_key]
-            
+
             # With stateless wrapper, Higgs Audio models can now be safely unloaded
             print(f"🗑️ Attempting to unload {wrapper.model_info.engine} model (stateless wrapper enabled)")
-            
+
+            # Measure VRAM before unload
+            vram_before = 0
+            if wrapper._is_loaded_on_gpu:
+                import torch
+                if torch.cuda.is_available():
+                    vram_before = torch.cuda.memory_allocated()
+
             # Normal destruction for all engines
             self._model_cache.pop(model_key)
-            
+
             # Remove from ComfyUI tracking if available
             if COMFYUI_AVAILABLE and model_management is not None:
                 try:
@@ -317,9 +342,29 @@ class ComfyUITTSModelManager:
                             print(f"🗑️ Removed model from ComfyUI tracking")
                 except Exception as e:
                     print(f"⚠️ Failed to remove from ComfyUI tracking: {e}")
-            
+
             # Unload from GPU
             wrapper.model_unload()
+
+            # Explicitly delete wrapper to release all references
+            del wrapper
+
+            # Force garbage collection
+            import gc
+            gc.collect()
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+                torch.cuda.empty_cache()
+
+            # Measure VRAM after unload and report actual freed amount
+            if vram_before > 0:
+                if torch.cuda.is_available():
+                    vram_after = torch.cuda.memory_allocated()
+                    freed = vram_before - vram_after
+                    print(f"📊 VRAM: {vram_before // 1024 // 1024}MB → {vram_after // 1024 // 1024}MB (freed {freed // 1024 // 1024}MB)")
+
             return True
         return False
         
@@ -343,19 +388,91 @@ class ComfyUITTSModelManager:
             
         print(f"🧹 Cleared {len(keys_to_remove)} models from cache")
         
+    def ensure_device(self, engine_name: str, target_device: str) -> bool:
+        """
+        Ensure a model is on the target device, clearing other models if needed.
+
+        This is the SINGLE point where device movement happens - all engines should call this
+        instead of doing their own .to(device) calls.
+
+        Args:
+            engine_name: Name of the engine requesting device movement
+            target_device: Target device ("cuda", "cpu", etc.)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # Before moving to GPU, ALWAYS move other TTS models to CPU to free VRAM
+        # (Don't delete them - keep in cache for fast reload)
+        if target_device.startswith('cuda'):
+            print(f"🔍 ensure_device: Checking if need to clear VRAM for {engine_name}")
+            cached_models = list(self._model_cache.keys())
+            models_to_offload = []
+
+            for cache_key in cached_models:
+                cached_wrapper = self._model_cache.get(cache_key)
+                if cached_wrapper and cached_wrapper.model_info.engine != engine_name and cached_wrapper._is_loaded_on_gpu:
+                    models_to_offload.append((cache_key, cached_wrapper))
+
+            if models_to_offload:
+                print(f"🗑️ BEFORE CLEARING: Moving {len(models_to_offload)} TTS models to CPU to make room for {engine_name}")
+                for key, wrapper in models_to_offload:
+                    # Move to CPU instead of deleting - keeps model in cache for fast reload
+                    try:
+                        wrapper.partially_unload('cpu', wrapper._memory_size)
+                    except Exception as e:
+                        print(f"⚠️ Failed to move {wrapper.model_info.engine} to CPU, removing instead: {e}")
+                        self.remove_model(key)
+
+                # CRITICAL: Force CUDA to synchronize and actually free the memory before loading next model
+                # Without this, the next model's .to(cuda) may fail with OOM because CUDA hasn't freed yet
+                print(f"⏳ AFTER CLEARING: Synchronizing CUDA to ensure memory is freed...")
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                    torch.cuda.empty_cache()
+                    import time
+                    time.sleep(0.1)  # Brief pause to ensure GPU memory is actually freed
+                print(f"✅ CLEARING COMPLETE: VRAM freed and ready for {engine_name}")
+
+        # Find the model for this engine
+        wrapper = None
+        for cache_key, cached_wrapper in self._model_cache.items():
+            if cached_wrapper.model_info.engine == engine_name:
+                wrapper = cached_wrapper
+                break
+
+        if not wrapper:
+            # Model not in unified cache - engine must be managing it itself
+            # We've already cleared other models, so return False to let engine handle movement
+            return False
+
+        # Check if already on target device
+        if wrapper.current_device == target_device:
+            return True
+
+        # Move the model to target device
+        try:
+            # Pass flag to prevent recursion (model_load shouldn't call ensure_device again)
+            wrapper.model_load(target_device, _from_ensure_device=True)
+            return True
+        except Exception as e:
+            print(f"❌ Failed to move {engine_name} to {target_device}: {e}")
+            return False
+
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics"""
         total_memory = sum(w.loaded_size() for w in self._model_cache.values())
         by_type = {}
         by_engine = {}
-        
+
         for wrapper in self._model_cache.values():
             model_type = wrapper.model_info.model_type
             engine = wrapper.model_info.engine
-            
+
             by_type[model_type] = by_type.get(model_type, 0) + 1
             by_engine[engine] = by_engine.get(engine, 0) + 1
-            
+
         return {
             'total_models': len(self._model_cache),
             'total_memory_mb': total_memory // 1024 // 1024,

@@ -294,23 +294,15 @@ class StepAudioEditXEngine:
                     first_param = next(self._tts_engine.llm.parameters())
                     current_device = str(first_param.device)
                     if current_device != target_device:
+                        # Use unified model manager for device movement (handles clearing automatically)
                         try:
-                            from utils.models.unified_model_interface import unified_model_interface
-                            wrapper_found = False
-                            if hasattr(unified_model_interface, 'model_manager'):
-                                for cache_key, wrapper in unified_model_interface.model_manager._model_cache.items():
-                                    model = wrapper.model if hasattr(wrapper, 'model') else None
-                                    if model is self:
-                                        wrapper.model_load(target_device)
-                                        wrapper_found = True
-                                        break
-                                    elif hasattr(model, 'model') and model.model is self:
-                                        wrapper.model_load(target_device)
-                                        wrapper_found = True
-                                        break
-                            if not wrapper_found:
+                            from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                            if not tts_model_manager.ensure_device("step_audio_editx", target_device):
+                                # Fallback to direct movement if not in manager cache
                                 self.to(target_device)
-                        except Exception:
+                        except Exception as e:
+                            # Fallback to direct movement if manager not available
+                            print(f"⚠️ Unified manager not available, using direct device movement: {e}")
                             self.to(target_device)
                 except StopIteration:
                     pass

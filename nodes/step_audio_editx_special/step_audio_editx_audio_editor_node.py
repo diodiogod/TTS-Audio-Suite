@@ -306,7 +306,8 @@ class StepAudioEditXAudioEditorNode:
 
         # Validate duration
         duration = self._validate_audio_duration(audio_tensor, sample_rate)
-        print(f"🎨 Step Audio EditX: Editing {duration:.2f}s audio with '{edit_type}' mode")
+        # Compact header for edit post-processor (detailed info shown by post-processor)
+        # print(f"🎨 Step Audio EditX: Editing {duration:.2f}s audio with '{edit_type}' mode")
 
         # Get engine
         step_audio_engine = self._get_or_create_engine(tts_engine)
@@ -332,8 +333,9 @@ class StepAudioEditXAudioEditorNode:
             # Convert <tags> to [tags] for engine, normalize whitespace
             target_text_with_tags = ' '.join(convert_step_audio_editx_tags(audio_text).split())
 
-            print(f"   Transcript: '{clean_audio_text}'")
-            print(f"   Target: '{target_text_with_tags}'")
+            print("   " + "="*60)
+            print(f"   {audio_text}")
+            print("   " + "="*60)
 
         else:
             # For other edit types, strip paralinguistic tags from transcript

@@ -183,7 +183,25 @@ class UnifiedModelInterface:
     def get_model_stats(self) -> Dict[str, Any]:
         """Get statistics about loaded models"""
         return tts_model_manager.get_stats()
-    
+
+    def get_cached_model(self, engine_name: str, model_type: str = "tts"):
+        """
+        Get cached model by engine name and type.
+
+        Args:
+            engine_name: Engine name (e.g., "vibevoice", "step_audio_editx")
+            model_type: Model type (default: "tts")
+
+        Returns:
+            Cached model wrapper or None if not found
+        """
+        # Search through cache for matching engine
+        from utils.models.manager import tts_model_manager
+        for cache_key in list(tts_model_manager._model_cache.keys()):
+            if cache_key.startswith(f"{engine_name}_{model_type}_"):
+                return tts_model_manager.get_model(cache_key)
+        return None
+
     def _generate_cache_key(self, config: ModelLoadConfig) -> str:
         """Generate unique cache key for model configuration"""
         components = [
@@ -891,3 +909,19 @@ def initialize_all_factories():
 
 # Auto-initialize on import
 initialize_all_factories()
+
+
+# Standalone helper functions for adapters
+def get_cached_model(engine_name: str, model_type: str = "tts"):
+    """
+    Get cached model by engine name and type.
+
+    Args:
+        engine_name: Engine name (e.g., "vibevoice", "step_audio_editx")
+        model_type: Model type (default: "tts")
+
+    Returns:
+        Cached model wrapper or None if not found
+    """
+    interface = UnifiedModelInterface()
+    return interface.get_cached_model(engine_name, model_type)

@@ -25,32 +25,60 @@ from utils.models.manager import model_manager
 class VibeVoiceEngineAdapter:
     """Engine-specific adapter for VibeVoice."""
     
-    def __init__(self, node_instance):
+    def __init__(self, node_instance, engine_config=None):
         """
         Initialize VibeVoice adapter.
-        
+
         Args:
             node_instance: TTS node instance using this adapter
+            engine_config: Optional engine configuration dict
         """
         self.node = node_instance
         self.engine_type = "vibevoice"
         self.model_manager = model_manager
         self.character_parser = CharacterParser()
         self.pause_processor = PauseTagProcessor()
-        
-        # VibeVoice model and processor (loaded via ModelManager)
-        self.current_model = None
-        self.current_processor = None
-        self.current_model_name = None
-        
-        # Create permanent engine instance for generation logic
-        from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
-        self.vibevoice_engine = VibeVoiceEngine()
-        
+
         # Track character to speaker mapping for native multi-speaker mode
         self._character_speaker_map = {}
         self._speaker_voices = []
-    
+
+        # Store model parameters from config
+        if engine_config:
+            self._model_name = engine_config.get('model', 'vibevoice-1.5B')
+            self._device = engine_config.get('device', 'auto')
+            self._attention_mode = engine_config.get('attention_mode', 'auto')
+            self._quantize_4bit = engine_config.get('quantize_llm_4bit', False)
+        else:
+            self._model_name = 'vibevoice-1.5B'
+            self._device = 'auto'
+            self._attention_mode = 'auto'
+            self._quantize_4bit = False
+
+    @property
+    def vibevoice_engine(self):
+        """Get VibeVoice engine, loading via unified interface if needed."""
+        from utils.models.unified_model_interface import load_tts_model
+
+        # Just call load - unified interface handles caching automatically
+        return load_tts_model(
+            engine_name="vibevoice",
+            model_name=self._model_name,
+            device=self._device,
+            attention_mode=self._attention_mode,
+            quantize_llm_4bit=self._quantize_4bit
+        )
+
+    @property
+    def current_model(self):
+        """Get current model from engine."""
+        return self.vibevoice_engine.model if self.vibevoice_engine else None
+
+    @property
+    def current_processor(self):
+        """Get current processor from engine."""
+        return self.vibevoice_engine.processor if self.vibevoice_engine else None
+
     def get_model_for_language(self, lang_code: str, default_model: str) -> str:
         """
         Get VibeVoice model name for specified language.
@@ -76,74 +104,23 @@ class VibeVoiceEngineAdapter:
     
     def load_base_model(self, model_name: str, device: str, attention_mode: str = "auto", quantize_llm_4bit: bool = False):
         """
-        Load base VibeVoice model using unified model interface for ComfyUI integration.
+        DEPRECATED: Model loading is now handled by unified TTS node.
+        This method is kept for backwards compatibility but does nothing.
+        The adapter now gets the engine dynamically from unified interface cache.
 
         Args:
-            model_name: Model name to load ("vibevoice-1.5B" or "vibevoice-7B")
-            device: Device to load model on
-            attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
-            quantize_llm_4bit: Enable 4-bit LLM quantization
+            model_name: Model name (ignored, kept for compatibility)
+            device: Device (ignored, kept for compatibility)
+            attention_mode: Attention mode (ignored, kept for compatibility)
+            quantize_llm_4bit: Quantization (ignored, kept for compatibility)
         """
-        # Check if model is already loaded with same parameters to avoid redundant loading
-        # This prevents the aggressive memory management from running on every generation
-        if (self.current_model is not None and
-            self.current_processor is not None and
-            self.current_model_name == model_name):
-            # Model already loaded, just ensure it's on the correct device if needed
-            if hasattr(self.current_model, 'parameters'):
-                from utils.device import resolve_torch_device
-                current_device = next(self.current_model.parameters()).device
-                target_device = resolve_torch_device(device)
-                if current_device.type != target_device:
-                    # Only move device if actually different - this prevents unnecessary moves
-                    print(f"🔄 VibeVoice: Moving existing model from {current_device} to {target_device}")
-                    self.current_model.to(target_device)
-            return
+        # Store parameters for reference (some code might check these)
+        self._cached_model_name = model_name
+        self._cached_device = device
+        self._cached_attention_mode = attention_mode
+        self._cached_quantize_4bit = quantize_llm_4bit
+        # Engine is now accessed via @property vibevoice_engine which gets it from unified interface
 
-        # Use unified model interface for ComfyUI VRAM management and caching
-        from utils.models.unified_model_interface import load_tts_model
-        
-        try:
-            # Load through unified interface which handles caching and VRAM management
-            engine = load_tts_model(
-                engine_name="vibevoice",
-                model_name=model_name,
-                device=device,
-                attention_mode=attention_mode,
-                quantize_llm_4bit=quantize_llm_4bit
-            )
-            
-            # Update our engine reference
-            self.vibevoice_engine = engine
-
-            # Store references for compatibility
-            self.current_model = engine.model
-            self.current_processor = engine.processor
-            self.current_model_name = model_name
-
-            # Store original device for auto detection logic
-            if hasattr(engine, '_original_device'):
-                self._original_device = engine._original_device
-            else:
-                self._original_device = device
-            
-            # print(f"✅ VibeVoice adapter: Model '{model_name}' loaded via unified interface")  # Verbose logging
-            
-        except Exception as e:
-            print(f"❌ VibeVoice adapter: Failed to load model via unified interface: {e}")
-            # Fallback to direct engine loading
-            self.vibevoice_engine.initialize_engine(
-                model_name=model_name,
-                device=device,
-                attention_mode=attention_mode,
-                quantize_llm_4bit=quantize_llm_4bit
-            )
-            
-            # Store references for compatibility
-            self.current_model = self.vibevoice_engine.model
-            self.current_processor = self.vibevoice_engine.processor
-            self.current_model_name = model_name
-    
     def _parse_language_tags(self, text: str) -> Tuple[str, Optional[str]]:
         """
         Parse language tags like [de:Alice] from text.
@@ -729,24 +706,26 @@ class VibeVoiceEngineAdapter:
         return text, None
     
     def generate_vibevoice_with_pause_tags(self, text: str, voice_ref: Optional[Dict], params: Dict,
-                                         enable_pause_tags: bool = True, character: str = "narrator") -> torch.Tensor:
+                                         enable_pause_tags: bool = True, character: str = "narrator"):
         """
-        Generate VibeVoice audio with pause tag support (like F5 does).
-        
+        Generate VibeVoice audio with pause tag support.
+
         Args:
             text: Input text potentially with pause tags
             voice_ref: Voice reference dict
             params: Generation parameters
             enable_pause_tags: Whether to process pause tags
             character: Character name for logging
-            
+
         Returns:
-            Generated audio tensor with pauses
+            If pause tags present: List of segment dicts with audio, text, edit_tags
+            If no pause tags: Single audio tensor (backwards compatible)
         """
         from utils.text.pause_processor import PauseTagProcessor
-        
+        from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+
         if not enable_pause_tags or not PauseTagProcessor.has_pause_tags(text):
-            # No pause tags, use normal generation
+            # No pause tags, use normal generation (return tensor for backwards compatibility)
             result = self.generate_segment(text, voice_ref, params, character)
             waveform = result['waveform']
             # Ensure proper tensor format
@@ -755,29 +734,56 @@ class VibeVoiceEngineAdapter:
             if waveform.dim() == 1:
                 waveform = waveform.unsqueeze(0)  # Add channel dim
             return waveform
-        
+
         print(f"🎵 VibeVoice: Processing pause tags in text")
-        
-        # Process pause tags
+
+        # Process pause tags - returns list of ('text', content) or ('pause', duration)
         pause_segments, _ = PauseTagProcessor.parse_pause_tags(text)
-        
-        # TTS generation function for pause processor
-        def tts_generate_func(text_content: str) -> torch.Tensor:
-            result = self.generate_segment(text_content, voice_ref, params, character)
-            waveform = result['waveform']
-            # Ensure proper tensor format
-            if waveform.dim() == 3:
-                waveform = waveform.squeeze(0)  # Remove batch dim
-            if waveform.dim() == 1:
-                waveform = waveform.unsqueeze(0)  # Add channel dim
-            return waveform
-        
-        # Generate audio with pauses
-        combined_audio = PauseTagProcessor.generate_audio_with_pauses(
-            pause_segments, tts_generate_func, 24000  # VibeVoice sample rate
-        )
-        
-        return combined_audio
+
+        # Generate segment dicts for each pause-separated piece
+        segment_dicts = []
+
+        for seg_type, seg_content in pause_segments:
+            if seg_type == 'text':
+                # Extract edit tags from this text segment
+                clean_text, edit_tags = get_edit_tags_for_segment(seg_content)
+
+                # Generate TTS for this text piece
+                result = self.generate_segment(clean_text, voice_ref, params, character)
+                waveform = result['waveform']
+
+                # Ensure proper tensor format
+                if waveform.dim() == 3:
+                    waveform = waveform.squeeze(0)  # Remove batch dim
+                if waveform.dim() == 1:
+                    waveform = waveform.unsqueeze(0)  # Add channel dim
+
+                segment_dicts.append({
+                    'waveform': waveform,
+                    'sample_rate': 24000,
+                    'character': character,
+                    'text': clean_text,
+                    'original_text': seg_content,
+                    'edit_tags': edit_tags
+                })
+
+            else:  # seg_type == 'pause'
+                # Create silence segment
+                duration_seconds = seg_content
+                silence = PauseTagProcessor.create_silence_segment(
+                    duration_seconds, 24000, device=torch.device('cpu')
+                )
+
+                segment_dicts.append({
+                    'waveform': silence,
+                    'sample_rate': 24000,
+                    'character': character,
+                    'text': '',
+                    'original_text': f'[pause:{duration_seconds}]',
+                    'edit_tags': []
+                })
+
+        return segment_dicts
     
     def _detect_manual_speaker_format(self, character: str) -> Optional[int]:
         """

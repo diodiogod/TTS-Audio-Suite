@@ -65,6 +65,13 @@ class GenericHandler(BaseEngineHandler):
             
         # Force garbage collection after unloading
         if freed_memory > 0:
+            # CRITICAL: Synchronize CUDA to ensure memory is actually freed before returning
+            if torch.cuda.is_available():
+                try:
+                    torch.cuda.synchronize()
+                except Exception as e:
+                    print(f"⚠️ CUDA synchronize warning (safe to ignore): {e}")
+
             try:
                 import gc
                 gc.collect()

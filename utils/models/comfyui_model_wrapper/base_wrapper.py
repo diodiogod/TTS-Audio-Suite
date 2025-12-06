@@ -176,12 +176,13 @@ class ComfyUIModelWrapper:
 
         return handler.model_unload(self, memory_to_free, unpatch_weights)
     
-    def model_load(self, device: Optional[str] = None) -> None:
+    def model_load(self, device: Optional[str] = None, _from_ensure_device: bool = False) -> None:
         """
         Load the model back to GPU.
 
         Args:
             device: Device to load to (defaults to original load_device)
+            _from_ensure_device: Internal flag to prevent recursion when called from ensure_device()
         """
         if self._is_loaded_on_gpu:
             return
@@ -191,6 +192,20 @@ class ComfyUIModelWrapper:
 
         if model is None:
             return
+
+        # CRITICAL: Before trying to load, clear other TTS models using unified model manager
+        # This prevents OOM errors when ComfyUI calls partially_load() → model_load()
+        # But skip if we're already being called FROM ensure_device() to prevent infinite recursion
+        if str(target_device).startswith('cuda') and not _from_ensure_device:
+            try:
+                from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                # ensure_device() will clear other models and move this one - if it succeeds, we're done
+                if tts_model_manager.ensure_device(self.model_info.engine, str(target_device)):
+                    return  # Successfully moved by ensure_device(), don't do it again
+            except RecursionError:
+                print(f"⚠️ Recursion detected in model_load, proceeding with direct load")
+            except Exception as e:
+                print(f"⚠️ Could not use ensure_device() for clearing, proceeding with direct load: {e}")
 
         try:
             # Move model back to GPU (comprehensive approach)

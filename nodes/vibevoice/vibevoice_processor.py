@@ -21,6 +21,8 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import character_parser
 from utils.text.segment_parameters import apply_segment_parameters
 from utils.text.pause_processor import PauseTagProcessor
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from engines.adapters.vibevoice_adapter import VibeVoiceEngineAdapter
 
 
@@ -40,23 +42,14 @@ class VibeVoiceProcessor:
         """
         self.node = node_instance
         self.config = engine_config
-        self.adapter = VibeVoiceEngineAdapter(node_instance)
+        self.adapter = VibeVoiceEngineAdapter(node_instance, engine_config)
         self.chunker = ImprovedChatterBoxChunker()
-        
-        # Load model with enhanced parameters
-        model_name = engine_config.get('model', 'vibevoice-1.5B')
-        device = engine_config.get('device', 'auto')
-        attention_mode = engine_config.get('attention_mode', 'auto')
-        quantize_llm_4bit = engine_config.get('quantize_llm_4bit', False)
-        
-        # Load model with new parameters (Credits: based on wildminder/ComfyUI-VibeVoice enhancements)
-        self.adapter.load_base_model(model_name, device, attention_mode, quantize_llm_4bit)
     
     def update_config(self, new_config: Dict[str, Any]):
         """Update processor configuration with new parameters."""
         self.config.update(new_config)
     
-    def process_text(self, 
+    def process_text(self,
                     text: str,
                     voice_mapping: Dict[str, Any],
                     seed: int,
@@ -64,18 +57,17 @@ class VibeVoiceProcessor:
                     max_chars_per_chunk: int = 400) -> List[Dict]:
         """
         Process text and generate audio.
-        
+
         Args:
             text: Input text with potential character tags
             voice_mapping: Mapping of character names to voice references
             seed: Random seed for generation
             enable_chunking: Whether to chunk long text
             max_chars_per_chunk: Maximum characters per chunk
-            
+
         Returns:
             List of audio segments
         """
-        
         # Add seed to params
         params = self.config.copy()
         params['seed'] = seed
@@ -191,6 +183,13 @@ class VibeVoiceProcessor:
             self._process_character_block(character, combined_text, voice_mapping, group_params,
                                         enable_chunking, max_chars, audio_segments)
 
+        # Apply edit post-processing after all segments generated
+        audio_segments = apply_edit_post_processing(
+            audio_segments,
+            self.config,
+            pre_loaded_engine=self.adapter.vibevoice_engine
+        )
+
         return audio_segments
     
     def _group_consecutive_character_objects(self, segment_objects) -> List[Tuple[str, list]]:
@@ -304,18 +303,30 @@ class VibeVoiceProcessor:
                 # Check for interruption during chunk processing
                 if model_management.interrupt_processing:
                     raise InterruptedError(f"VibeVoice chunk {chunk_idx + 1}/{len(chunks)} interrupted by user")
+
                 voice_ref = voice_mapping.get(character)
-                audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+
+                # Generate - adapter returns list of segment dicts if pause tags present, else tensor
+                result = self.adapter.generate_vibevoice_with_pause_tags(
                     chunk, voice_ref, params, True, character
                 )
-                # Convert tensor back to dict format
-                audio_dict = {
-                    'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
-                    'sample_rate': 24000,
-                    'character': character,
-                    'text': chunk
-                }
-                audio_segments.append(audio_dict)
+
+                # Handle both return types
+                if isinstance(result, list):
+                    # Adapter returned segment dicts (pause tags were present)
+                    audio_segments.extend(result)
+                else:
+                    # Backwards compatible: adapter returned tensor (no pause tags)
+                    clean_chunk, edit_tags = get_edit_tags_for_segment(chunk)
+                    audio_dict = {
+                        'waveform': result.unsqueeze(0) if result.dim() == 2 else result,
+                        'sample_rate': 24000,
+                        'character': character,
+                        'text': clean_chunk,
+                        'original_text': chunk,
+                        'edit_tags': edit_tags
+                    }
+                    audio_segments.append(audio_dict)
         else:
             # Generate without chunking - the entire combined block at once
             voice_ref = voice_mapping.get(character)
@@ -329,17 +340,28 @@ class VibeVoiceProcessor:
             print("="*60)
             print(combined_text)
             print("="*60)
-            audio_tensor = self.adapter.generate_vibevoice_with_pause_tags(
+
+            # Generate - adapter returns list of segment dicts if pause tags present, else tensor
+            result = self.adapter.generate_vibevoice_with_pause_tags(
                 combined_text, voice_ref, params, True, character
             )
-            # Convert tensor back to dict format
-            audio_dict = {
-                'waveform': audio_tensor.unsqueeze(0) if audio_tensor.dim() == 2 else audio_tensor,
-                'sample_rate': 24000,
-                'character': character,
-                'text': combined_text
-            }
-            audio_segments.append(audio_dict)
+
+            # Handle both return types
+            if isinstance(result, list):
+                # Adapter returned segment dicts (pause tags were present)
+                audio_segments.extend(result)
+            else:
+                # Backwards compatible: adapter returned tensor (no pause tags)
+                clean_text, edit_tags = get_edit_tags_for_segment(combined_text)
+                audio_dict = {
+                    'waveform': result.unsqueeze(0) if result.dim() == 2 else result,
+                    'sample_rate': 24000,
+                    'character': character,
+                    'text': clean_text,
+                    'original_text': combined_text,
+                    'edit_tags': edit_tags
+                }
+                audio_segments.append(audio_dict)
     
     def _process_native_multispeaker(self,
                                     segments: List[Tuple[str, str]],
@@ -369,10 +391,40 @@ class VibeVoiceProcessor:
 
         if not should_chunk:
             # No chunking - generate everything at once
+            # Extract edit tags from segments before TTS
+            from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+
+            clean_segments = []
+            all_edit_tags = []
+            original_text_parts = []
+
+            for character, text in segments:
+                clean_text, edit_tags = get_edit_tags_for_segment(text)
+                clean_segments.append((character, clean_text))
+                all_edit_tags.extend(edit_tags)
+                original_text_parts.append(text)
+
+            # Generate with clean text
             audio = self.adapter._generate_native_multispeaker(
-                segments, voice_mapping, params, None
+                clean_segments, voice_mapping, params, None
             )
-            return [audio]
+
+            # Add edit tags to audio dict for post-processing
+            audio['edit_tags'] = all_edit_tags
+            audio['original_text'] = '\n'.join(original_text_parts)
+            audio['text'] = '\n'.join([clean_text for _, clean_text in clean_segments])
+
+            # Apply edit post-processing if tags present
+            audio_list = [audio]
+            if all_edit_tags:
+                from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+                audio_list = apply_edit_post_processing(
+                    audio_list,
+                    self.config,
+                    pre_loaded_engine=self.adapter.vibevoice_engine
+                )
+
+            return audio_list
 
         # Chunking enabled - rebuild text and split using existing chunker
         print(f"📝 Native Multi-Speaker: Chunking {len(segments)} segments (max {chunk_chars} chars per chunk)")

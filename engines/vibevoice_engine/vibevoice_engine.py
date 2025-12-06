@@ -73,19 +73,12 @@ class VibeVoiceEngine:
     Main VibeVoice engine wrapper for ComfyUI
     Handles model loading, text generation, and multi-speaker support
     """
-    
-    # Class-level cache for shared model instance (prevents reloading on each run)
-    _shared_model = None
-    _shared_processor = None
-    _shared_config = None
-    _shared_model_name = None
-    
+
     def __init__(self):
         """Initialize VibeVoice engine"""
-        # Use class-level shared model if available
-        self.model = self.__class__._shared_model
-        self.processor = self.__class__._shared_processor
-        self.current_model_name = self.__class__._shared_model_name
+        self.model = None
+        self.processor = None
+        self.current_model_name = None
         self.model_path = None
         self.device = None
         self.attention_mode = None  # Track current attention mode for re-patching
@@ -117,10 +110,6 @@ class VibeVoiceEngine:
         if hasattr(self.processor, 'to'):
             self.processor = self.processor.to(device)
 
-        # Update class-level shared model if it's the same instance
-        if self.__class__._shared_model is self.model:
-            self.__class__._shared_model = self.model
-
         return self
 
     def _ensure_package(self) -> bool:
@@ -150,31 +139,9 @@ class VibeVoiceEngine:
             attention_mode: Attention implementation ("auto", "eager", "sdpa", "flash_attention_2")
             quantize_llm_4bit: Enable 4-bit LLM quantization for VRAM savings
         """
-        # Check if already loaded with same config using class-level cache
+        # Model will be loaded fresh - unified manager handles caching
         current_config = (model_name, device, attention_mode, quantize_llm_4bit)
-        if (self.__class__._shared_model is not None and
-            self.__class__._shared_config == current_config):
-            print(f"💾 VibeVoice model '{model_name}' already loaded with same config (reusing cached)")
-            # Reuse the cached model
-            self.model = self.__class__._shared_model
-            self.processor = self.__class__._shared_processor
 
-            # Re-apply SageAttention if model was moved between devices
-            if (attention_mode == "sage" and
-                SAGE_ATTENTION_AVAILABLE and set_sage_attention and
-                hasattr(self.model, 'device') and self.model.device.type == "cuda"):
-                print(f"🔄 Re-applying SageAttention after device movement...")
-                try:
-                    set_sage_attention(self.model)
-                    print(f"✅ SageAttention re-patched successfully")
-                except Exception as e:
-                    print(f"⚠️ Failed to re-patch SageAttention: {e}")
-            self.current_model_name = self.__class__._shared_model_name
-            from utils.device import resolve_torch_device
-            self.device = resolve_torch_device(device)
-            self._original_device = device  # Store original device setting for auto detection
-            return
-        
         # Ensure package is installed
         if not self._ensure_package():
             raise RuntimeError("VibeVoice package not available. Please install it manually.")
@@ -411,13 +378,7 @@ class VibeVoiceEngine:
             self.current_model_name = model_name
             self._current_config = current_config
             self._quantize_llm_4bit = quantize_llm_4bit
-            
-            # Store in class-level cache for reuse
-            self.__class__._shared_model = self.model
-            self.__class__._shared_processor = self.processor
-            self.__class__._shared_config = current_config
-            self.__class__._shared_model_name = model_name
-            
+
             print(f"✅ VibeVoice model '{model_name}' loaded successfully")
             print(f"   Device: {device}, Attention: {final_attention_mode}")
             if quantize_llm_4bit and quant_config:
@@ -851,8 +812,16 @@ class VibeVoiceEngine:
 
         # Reload model if device mismatch (wrapper handles this automatically after Tier 2)
         if current_device and current_device != str(target_device):
-            # Just move to target device - if wrapped, wrapper's model_load was already called by node
-            self.to(target_device)
+            # Use unified model manager for device movement (handles clearing automatically)
+            try:
+                from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                if not tts_model_manager.ensure_device("vibevoice", str(target_device)):
+                    # Fallback to direct movement if not in manager cache
+                    self.to(target_device)
+            except Exception as e:
+                # Fallback to direct movement if manager not available
+                print(f"⚠️ Unified manager not available, using direct device movement: {e}")
+                self.to(target_device)
 
         # Handle caching if enabled (following ChatterBox pattern)
         if enable_cache:
@@ -950,7 +919,6 @@ class VibeVoiceEngine:
             # Set diffusion inference steps (based on wildminder implementation)
             # Credits: drbaph's implementation for inference steps control
             self.model.set_ddpm_inference_steps(num_steps=inference_steps)
-            print(f"🔄 VibeVoice: Using {inference_steps} diffusion inference steps")
             
             # Ensure model has proper generation config with bos_token_id (silent configuration)
             if hasattr(self.model, 'generation_config'):
