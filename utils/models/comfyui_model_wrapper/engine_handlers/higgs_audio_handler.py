@@ -32,7 +32,15 @@ class HiggsAudioHandler(GenericHandler):
         
         if is_higgs_audio:
             # Check if this is a Higgs Audio model with CUDA Graphs enabled
-            cuda_graphs_enabled = getattr(wrapper.model, '_cuda_graphs_enabled', True)
+            model = wrapper._model_ref() if wrapper._model_ref else wrapper.model
+            cuda_graphs_enabled = True  # Default to enabled (safe)
+            if hasattr(model, '_wrapped_engine') and hasattr(model._wrapped_engine, 'engine'):
+                cuda_graphs_enabled = getattr(model._wrapped_engine.engine, '_cuda_graphs_enabled', True)
+            elif hasattr(model, 'engine'):
+                cuda_graphs_enabled = getattr(model.engine, '_cuda_graphs_enabled', True)
+            elif hasattr(model, '_cuda_graphs_enabled'):
+                cuda_graphs_enabled = getattr(model, '_cuda_graphs_enabled', True)
+
             if cuda_graphs_enabled:
                 print(f"⛔ CUDA Graph Mode: Unloading disabled to prevent crashes")
                 print(f"   Model uses CUDA Graph optimization - cannot be safely unloaded")
@@ -45,21 +53,42 @@ class HiggsAudioHandler(GenericHandler):
     
     def partially_unload(self, wrapper: 'ComfyUIModelWrapper', device: str, memory_to_free: int) -> int:
         """
-        Higgs Audio partial unload with CUDA graph clearing.
-        
-        Attempts to safely clear CUDA graphs before CPU migration.
+        Higgs Audio partial unload with CUDA graph checking.
+
+        Refuses to unload if CUDA graphs are enabled to prevent crashes.
         """
         model = wrapper._model_ref() if wrapper._model_ref else None
         if model is None:
             return 0
-        
+
+        # Check if CUDA graphs are enabled
+        # For stateless wrapper: model._wrapped_engine.engine._cuda_graphs_enabled
+        # For direct engine: model.engine._cuda_graphs_enabled or model._cuda_graphs_enabled
+        cuda_graphs_enabled = True  # Default to enabled (safe - refuse to unload)
+        if hasattr(model, '_wrapped_engine') and hasattr(model._wrapped_engine, 'engine'):
+            # Stateless wrapper path
+            cuda_graphs_enabled = getattr(model._wrapped_engine.engine, '_cuda_graphs_enabled', True)
+        elif hasattr(model, 'engine'):
+            # Direct engine access
+            cuda_graphs_enabled = getattr(model.engine, '_cuda_graphs_enabled', True)
+        elif hasattr(model, '_cuda_graphs_enabled'):
+            # Direct attribute
+            cuda_graphs_enabled = getattr(model, '_cuda_graphs_enabled', True)
+
+        if cuda_graphs_enabled:
+            print(f"⛔ CUDA Graph Mode: Cannot move Higgs Audio to CPU (CUDA graphs enabled)")
+            print(f"   Higgs Audio will stay in VRAM until ComfyUI restart")
+            print(f"   To enable memory unloading, disable CUDA Graphs in engine settings")
+            return 0  # Refuse to unload, return 0 bytes freed
+
+        # CUDA graphs disabled - safe to clear and move to CPU
         try:
-            # CRITICAL: Clear CUDA graphs before moving to CPU (prevents corruption)
+            # Clear any residual CUDA state before moving
             self._clear_cuda_graphs(model, wrapper.model_info.engine)
         except Exception as e:
-            print(f"⚠️ Failed to clear CUDA graphs: {e}")
-        
-        # Use standard CPU migration after graph clearing
+            print(f"⚠️ Failed to clear CUDA state: {e}")
+
+        # Use standard CPU migration after clearing
         return super().partially_unload(wrapper, device, memory_to_free)
     
     def _clear_cuda_graphs(self, model, engine: str):

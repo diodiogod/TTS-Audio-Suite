@@ -16,6 +16,9 @@ project_root = os.path.dirname(nodes_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+
 
 class HiggsAudioTTSProcessor:
     """
@@ -164,7 +167,7 @@ class HiggsAudioTTSProcessor:
                             print(f"⚠️ {character}: No voice available, using basic TTS")
                 
                 def tts_generate_func(text_content: str) -> torch.Tensor:
-                    """TTS generation function for pause tag processor"""
+                    """TTS generation function for pause tag processor - always returns tensor"""
                     if '[' in text_content and ']' in text_content:
                         # Handle character switching within this segment
                         # Use parse_text_segments to get full segment info including parameters
@@ -195,7 +198,7 @@ class HiggsAudioTTSProcessor:
                                 print(f"📊 Higgs Audio segment: Character '{character}' with parameters {segment_params}")
 
                             segment_result = self.engine_wrapper.generate_tts_audio(
-                                text=segment_text,
+                                text=segment_text,  # Keep edit tags - will be extracted at top level
                                 char_audio=char_audio_dict,
                                 char_text=char_ref_text,
                                 character=character,
@@ -233,7 +236,7 @@ class HiggsAudioTTSProcessor:
                             print(f"📊 Higgs Audio segment: Character 'narrator' with parameters {segment_params}")
 
                         return self.engine_wrapper.generate_tts_audio(
-                            text=text_content,
+                            text=text_content,  # Keep edit tags - will be extracted at top level
                             char_audio=narrator_audio,
                             char_text=ref_texts.get("narrator", reference_text or ""),
                             character="narrator",
@@ -244,12 +247,15 @@ class HiggsAudioTTSProcessor:
                             **current_params  # Pass through all generation parameters including segment-specific ones
                         )
                 
+                # Extract edit tags from entire text FIRST (before pause processing)
+                text_clean, text_edit_tags = get_edit_tags_for_segment(text)
+
                 # Process with pause tag handling using existing utility
                 pause_processor = PauseTagProcessor()
-                
-                # Parse text into segments (text and pause segments)
-                segments, clean_text = pause_processor.parse_pause_tags(text)
-                
+
+                # Parse text into segments (text and pause segments) - use CLEAN text
+                segments, clean_text = pause_processor.parse_pause_tags(text_clean)
+
                 # Generate audio with pauses
                 if segments:
                     result = pause_processor.generate_audio_with_pauses(
@@ -259,7 +265,35 @@ class HiggsAudioTTSProcessor:
                     )
                 else:
                     # No pause tags, just generate directly
-                    result = tts_generate_func(text)
+                    result = tts_generate_func(text_clean)
+
+                # Apply edit post-processing if text had edit tags
+                if text_edit_tags:
+                    waveform = result
+                    if waveform.dim() == 3:
+                        waveform = waveform.squeeze(0)
+                    elif waveform.dim() == 1:
+                        waveform = waveform.unsqueeze(0)
+
+                    segments_to_process = [{
+                        'waveform': waveform,
+                        'sample_rate': 24000,
+                        'character': 'narrator',
+                        'text': text_clean,
+                        'original_text': text,
+                        'edit_tags': text_edit_tags
+                    }]
+
+                    print(f"🎨 Applying edit post-processing to 1 segment...")
+                    # Create adapter to access engine
+                    from engines.adapters.higgs_audio_adapter import HiggsAudioEngineAdapter
+                    temp_adapter = HiggsAudioEngineAdapter(self.engine_wrapper)
+                    processed = apply_edit_post_processing(
+                        segments_to_process,
+                        self.engine_wrapper.config,
+                        pre_loaded_engine=temp_adapter.higgs_engine
+                    )
+                    result = processed[0]['waveform']
             
             else:
                 # Native multi-speaker modes - process entire conversation as single unit

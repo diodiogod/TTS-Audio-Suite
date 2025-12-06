@@ -261,18 +261,21 @@ class ComfyUITTSModelManager:
         
         # Create model info - for stateless wrappers, use a generic engine name to prevent CUDA graph handling
         actual_engine = engine
+        original_engine = None
         if hasattr(model, '_wrapped_engine') and engine == "higgs_audio":
             # This is a stateless wrapper - use generic name to prevent ComfyUI from doing special CUDA handling
+            original_engine = engine  # Store original engine name
             actual_engine = "stateless_tts"
             print(f"🔒 Treating {engine} stateless wrapper as generic TTS model to avoid CUDA graph interference")
-        
+
         model_info = ModelInfo(
             model=model,
             model_type=model_type,
             engine=actual_engine,  # Use generic name for stateless wrappers
             device=device,
             memory_size=memory_size,
-            load_device=device
+            load_device=device,
+            original_engine=original_engine  # Store original engine before masking
         )
         
         # Wrap for ComfyUI, passing cache_key so wrapper knows which specific model it is

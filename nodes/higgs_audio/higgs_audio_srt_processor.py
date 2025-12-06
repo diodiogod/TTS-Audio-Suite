@@ -16,6 +16,9 @@ project_root = os.path.dirname(nodes_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+
 
 class HiggsAudioSRTProcessor:
     """
@@ -183,6 +186,9 @@ class HiggsAudioSRTProcessor:
                         else:
                             print(f"⚠️ {character}: No voice available, using basic TTS")
             
+            # Initialize collection for batch edit processing
+            all_segments_for_editing = []
+
             for i, segment in enumerate(srt_segments):
                 # Check for interruption before processing each segment
                 if model_management.interrupt_processing:
@@ -194,19 +200,22 @@ class HiggsAudioSRTProcessor:
                 expected_duration = segment_end - segment_start
 
                 if multi_speaker_mode == "Custom Character Switching":
+                    # Extract edit tags from segment text FIRST
+                    segment_text_clean, segment_edit_tags = get_edit_tags_for_segment(segment_text)
+
                     # Use character switching with pause tag support
                     def srt_tts_generate_func(text_content: str) -> torch.Tensor:
-                        """TTS generation function for SRT segment with character switching"""
+                        """TTS generation function for SRT segment - always returns tensor"""
                         if '[' in text_content and ']' in text_content:
                             # Handle character switching within this SRT segment
                             # Use character parser with language information
                             from utils.text.character_parser import character_parser
                             char_segments_with_lang = character_parser.split_by_character_with_language(text_content)
                             segment_audio_parts = []
-                            
+
                             # Get full segment info with explicit language flag
                             char_segments_full = character_parser.parse_text_segments(text_content)
-                            
+
                             for segment in char_segments_full:
                                 character = segment.character
                                 # Check for interruption during character segment processing
@@ -221,7 +230,7 @@ class HiggsAudioSRTProcessor:
                                 char_ref_text = ref_texts.get(character, reference_text or "")
 
                                 # Add language hint for Higgs Audio 2 ONLY if language was explicit in tag
-                                higgs_text = segment_text
+                                higgs_text = segment_text  # Keep edit tags - extracted at top level
                                 if explicit_language and language:
                                     display_name = character_parser.get_language_display_name(language)
                                     higgs_text = f"[{display_name}] {segment_text}"
@@ -242,7 +251,7 @@ class HiggsAudioSRTProcessor:
 
                                 segment_result = self.engine_wrapper.generate_srt_audio(
                                     srt_content="",  # Individual segment processing
-                                    text=higgs_text,  # Use text with language hints
+                                    text=higgs_text,
                                     char_audio=char_audio_dict,
                                     char_text=char_ref_text,
                                     character=character,
@@ -250,7 +259,7 @@ class HiggsAudioSRTProcessor:
                                     enable_audio_cache=enable_audio_cache,
                                     **current_params  # Pass through all generation parameters including segment-specific ones
                                 )
-                                
+
                                 # Convert to tensor format
                                 if isinstance(segment_result, dict) and "waveform" in segment_result:
                                     segment_result = segment_result["waveform"]
@@ -258,9 +267,9 @@ class HiggsAudioSRTProcessor:
                                     segment_result = segment_result.squeeze(0)
                                 elif segment_result.dim() == 1:
                                     segment_result = segment_result.unsqueeze(0)
-                                
+
                                 segment_audio_parts.append(segment_result)
-                            
+
                             # Combine character segments
                             if segment_audio_parts:
                                 return torch.cat(segment_audio_parts, dim=-1)
@@ -269,10 +278,10 @@ class HiggsAudioSRTProcessor:
                         else:
                             # Simple text segment - use narrator voice
                             narrator_audio = voice_refs.get("narrator")
-                            
+
                             segment_result = self.engine_wrapper.generate_srt_audio(
                                 srt_content="",  # Individual segment processing
-                                text=text_content,
+                                text=text_content,  # Keep edit tags - extracted at top level
                                 char_audio=narrator_audio,
                                 char_text=ref_texts.get("narrator", reference_text or ""),
                                 character="narrator",
@@ -280,7 +289,7 @@ class HiggsAudioSRTProcessor:
                                 enable_audio_cache=enable_audio_cache,
                                 **generation_params  # Pass through all generation parameters
                             )
-                            
+
                             # Convert to tensor format
                             if isinstance(segment_result, dict) and "waveform" in segment_result:
                                 segment_result = segment_result["waveform"]
@@ -288,21 +297,49 @@ class HiggsAudioSRTProcessor:
                                 segment_result = segment_result.squeeze(0)
                             elif segment_result.dim() == 1:
                                 segment_result = segment_result.unsqueeze(0)
-                            
+
                             return segment_result
                     
-                    # Process with pause tag handling
+                    # Process with pause tag handling - use CLEAN text
                     pause_processor = PauseTagProcessor()
-                    segments, clean_text = pause_processor.parse_pause_tags(segment_text)
-                    
+                    segments, clean_text = pause_processor.parse_pause_tags(segment_text_clean)
+
                     if segments:
-                        segment_audio_tensor = pause_processor.generate_audio_with_pauses(
+                        result = pause_processor.generate_audio_with_pauses(
                             segments=segments,
                             tts_generate_func=srt_tts_generate_func,
                             sample_rate=self.sample_rate
                         )
                     else:
-                        segment_audio_tensor = srt_tts_generate_func(segment_text)
+                        result = srt_tts_generate_func(segment_text_clean)
+
+                    # Check if segment had edit tags
+                    if segment_edit_tags:
+                        # Normalize result dimensions
+                        waveform = result
+                        if waveform.dim() == 3:
+                            waveform = waveform.squeeze(0)
+                        elif waveform.dim() == 1:
+                            waveform = waveform.unsqueeze(0)
+
+                        # Tag with subtitle index for later batch processing
+                        segment_dict = {
+                            'waveform': waveform,
+                            'sample_rate': 24000,
+                            'character': 'narrator',
+                            'text': segment_text_clean,
+                            'original_text': segment_text,
+                            'edit_tags': segment_edit_tags,
+                            'subtitle_index': i
+                        }
+                        all_segments_for_editing.append(segment_dict)
+                        # Use placeholder - will be replaced after batch processing
+                        audio_segments.append(None)
+                        timing_segments.append(None)
+                        continue  # Skip normal processing
+                    else:
+                        # Normal tensor result, no edit tags
+                        segment_audio_tensor = result
                 
                 else:
                     # Native multi-speaker modes - process entire segment as single unit
@@ -360,6 +397,48 @@ class HiggsAudioSRTProcessor:
                     "actual_duration": segment_duration,
                     "text": segment_text
                 })
+
+            # BATCH PROCESS all edits at once
+            if all_segments_for_editing:
+                print(f"\n🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+                # Create adapter to access engine
+                from engines.adapters.higgs_audio_adapter import HiggsAudioEngineAdapter
+                temp_adapter = HiggsAudioEngineAdapter(self.engine_wrapper)
+                processed_segments = apply_edit_post_processing(
+                    all_segments_for_editing,
+                    self.engine_wrapper.config,
+                    pre_loaded_engine=temp_adapter.higgs_engine
+                )
+
+                # Store processed segments back (each subtitle has 1 segment)
+                for seg in processed_segments:
+                    sub_idx = seg.get('subtitle_index')
+                    if sub_idx is not None:
+                        waveform = seg['waveform']
+                        if waveform.dim() == 3:
+                            waveform = waveform.squeeze(0)
+                        elif waveform.dim() == 1:
+                            waveform = waveform.unsqueeze(0)
+
+                        segment_audio_dict = {
+                            "waveform": waveform.cpu(),
+                            "sample_rate": self.sample_rate
+                        }
+
+                        # Replace placeholder
+                        audio_segments[sub_idx] = segment_audio_dict
+                        segment_duration = waveform.size(-1) / self.sample_rate
+
+                        # Update timing info
+                        srt_seg = srt_segments[sub_idx]
+                        timing_segments[sub_idx] = {
+                            "index": sub_idx,
+                            "expected_start": srt_seg.start_time,
+                            "expected_end": srt_seg.end_time,
+                            "expected_duration": srt_seg.end_time - srt_seg.start_time,
+                            "actual_duration": segment_duration,
+                            "text": srt_seg.text
+                        }
 
             # Check for interruption before timing assembly
             if model_management.interrupt_processing:

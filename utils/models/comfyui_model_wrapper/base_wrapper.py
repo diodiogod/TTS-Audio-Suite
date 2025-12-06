@@ -25,10 +25,11 @@ class ModelInfo:
     """Information about a model for memory management"""
     model: Any
     model_type: str  # "tts", "vc", "audio_separation", "hubert", etc.
-    engine: str      # "chatterbox", "f5tts", "higgs_audio", "rvc", etc.
+    engine: str      # "chatterbox", "f5tts", "higgs_audio", "rvc", etc. (may be masked for stateless wrappers)
     device: str
     memory_size: int  # in bytes
     load_device: str
+    original_engine: Optional[str] = None  # Original engine name before masking (e.g., "higgs_audio" when engine="stateless_tts")
 
 
 class SimpleModelWrapper:
@@ -317,9 +318,13 @@ class ComfyUIModelWrapper:
         
         # CRITICAL: Mark model as invalid to prevent reuse of corrupted state
         # Only needed for engines with CUDA graphs (Higgs Audio) that cannot be safely reused after CPU offloading
-        if self.model_info.engine == "higgs_audio":
+        # Check both actual engine name and original engine name (for stateless wrappers)
+        original_engine = getattr(self.model_info, 'original_engine', self.model_info.engine)
+        is_higgs = self.model_info.engine == "higgs_audio" or original_engine == "higgs_audio"
+
+        if is_higgs:
             self._is_valid_for_reuse = False
-            print(f"🚫 Marked {self.model_info.engine} model as invalid for reuse (CUDA graphs corrupted by CPU migration)")
+            print(f"🚫 Marked {original_engine} model as invalid for reuse (CUDA graphs corrupted by CPU migration)")
 
             # CRITICAL: Clear node-level engine caches to prevent reuse of corrupted engines
             # This is essential because TTS nodes have their own caching separate from ComfyUI wrapper cache

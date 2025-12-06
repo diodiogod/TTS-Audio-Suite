@@ -81,7 +81,7 @@ In functions like `_process_custom_character_switching_subtitle_with_params()`:
 ## Engines Implemented
 - ✅ VibeVoice SRT
 - ✅ Step Audio EditX SRT
+- ✅ Higgs Audio SRT
 
 ## TODO
-- Higgs Audio (needs edit tag support first)
 - ChatterBox 23-Lang (needs edit tag support first)
