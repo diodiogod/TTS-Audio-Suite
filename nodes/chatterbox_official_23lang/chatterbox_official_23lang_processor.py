@@ -1443,6 +1443,10 @@ Back to the main narrator voice for the conclusion.""",
             for seg in processed_segments:
                 seg_idx = seg['segment_index']
                 processed_audio = seg['waveform']
+                # Ensure processed audio matches original tensor shape
+                # Original segments are full tensors, not squeezed
+                if processed_audio.dim() == 1:
+                    processed_audio = processed_audio.unsqueeze(0)
                 # Replace in audio_segments_with_order
                 for i, (idx, audio) in enumerate(audio_segments_with_order):
                     if idx == seg_idx:
@@ -1594,6 +1598,10 @@ Back to the main narrator voice for the conclusion.""",
             for seg in processed_segments:
                 seg_idx = seg['segment_index']
                 processed_audio = seg['waveform']
+                # Ensure processed audio matches original tensor shape
+                # Original segments are full tensors, not squeezed
+                if processed_audio.dim() == 1:
+                    processed_audio = processed_audio.unsqueeze(0)
                 # Replace in audio_segments_with_order
                 for i, (idx, audio) in enumerate(audio_segments_with_order):
                     if idx == seg_idx:
