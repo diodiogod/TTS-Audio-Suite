@@ -42,7 +42,7 @@ class CharacterParser:
     
     # Regex pattern for character tags: [CharacterName] or [language:CharacterName] 
     # Excludes: pause tags, standalone Italian tags [it]/[italian] (but allows [it:]/[italian:])
-    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
+    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
     
     # Regex to parse language:character format (supports flexible language names)
     LANGUAGE_CHARACTER_PATTERN = re.compile(r'^([a-zA-Z0-9\-_À-ÿ\s]+):(.*)$')

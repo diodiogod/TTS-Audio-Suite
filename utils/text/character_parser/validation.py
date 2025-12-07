@@ -32,7 +32,7 @@ class ValidationMixin:
         character_tag_pattern = getattr(self, 'CHARACTER_TAG_PATTERN', None)
         if not character_tag_pattern:
             # Fallback pattern if not available
-            character_tag_pattern = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
+            character_tag_pattern = re.compile(r'\[(?!(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
         
         # Find all character tags
         tags = character_tag_pattern.findall(text)
@@ -160,7 +160,7 @@ class ValidationMixin:
         # Use the character tag pattern
         character_tag_pattern = getattr(self, 'CHARACTER_TAG_PATTERN', None)
         if not character_tag_pattern:
-            character_tag_pattern = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
+            character_tag_pattern = re.compile(r'\[(?!(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
         
         # Language-character pattern
         language_character_pattern = re.compile(r'^([a-zA-Z0-9\-_À-ÿ\s]+):(.*)$')

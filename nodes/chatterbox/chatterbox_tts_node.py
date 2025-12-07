@@ -158,7 +158,7 @@ Back to the main narrator voice for the conclusion.""",
         
         # BUGFIX: Don't pad text that contains only pause tags - they should be processed by PauseTagProcessor
         import re
-        pause_pattern = r'\[(pause|wait|stop):(\d+(?:\.\d+)?)(s|ms)?\]'
+        pause_pattern = r'\[(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):(\d+(?:\.\d+)?)(s|ms)?\]'
         if re.search(pause_pattern, stripped_text):
             # Check if text contains ONLY pause tags and whitespace
             text_without_pauses = re.sub(pause_pattern, '', stripped_text).strip()

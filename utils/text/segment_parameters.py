@@ -303,7 +303,7 @@ class SegmentParameterCollector:
 
         # Match all character tags like [content]
         # Using same pattern as character_parser but we'll extract parameters
-        tag_pattern = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
+        tag_pattern = re.compile(r'\[(?!(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
 
         parameters = {}
         character_name = ""

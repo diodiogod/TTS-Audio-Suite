@@ -23,7 +23,7 @@ class PauseTagProcessor:
     """Handles pause tag parsing and audio generation with pauses"""
     
     # Regex pattern for flexible pause tag matching (supports pause, wait, stop aliases)
-    PAUSE_PATTERN = r'\[(pause|wait|stop):(\d+(?:\.\d+)?)(s|ms)?\]'
+    PAUSE_PATTERN = r'\[(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):(\d+(?:\.\d+)?)(s|ms)?\]'
     
     @staticmethod
     def parse_pause_tags(text: str) -> Tuple[List[Tuple[str, Union[str, float]]], str]:
