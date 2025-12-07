@@ -8,6 +8,7 @@ Uses existing timing utilities for proper SRT functionality.
 
 import torch
 import os
+import re
 from typing import Dict, Any, Optional, List, Tuple
 import comfy.model_management as model_management
 
@@ -420,7 +421,7 @@ class ChatterboxOfficial23LangSRTProcessor:
                             # Narrator should use user's default language, not character alias language
                             actual_lang = current_language if char == "narrator" else seg_lang
 
-                            # Generate audio for this character with their voice (using clean text)
+                            # Generate audio for this character with their voice (using clean text with pause tags)
                             segment_wav, _ = self.tts_node.generate_speech(
                                 text=text_clean,
                                 language=actual_lang,
@@ -459,13 +460,19 @@ class ChatterboxOfficial23LangSRTProcessor:
                                 else:
                                     segment_wav_normalized = segment_wav
 
+                                # Remove pause tags from text for edit post-processor
+                                # Pauses are already applied in the audio, don't send them to Step Audio EditX
+                                from utils.text.pause_processor import PauseTagProcessor
+                                text_without_pause = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text_clean)
+                                text_without_pause = re.sub(r'\s+', ' ', text_without_pause).strip()
+
                                 # Store for batch processing
                                 all_segments_for_editing.append({
                                     'waveform': segment_wav_normalized,
                                     'sample_rate': self.sample_rate,
                                     'character': char,
-                                    'text': text_clean,
-                                    'original_text': text,
+                                    'text': text_without_pause,
+                                    'original_text': text_without_pause,
                                     'edit_tags': edit_tags,
                                     'subtitle_index': i,
                                     'segment_index': seg_idx
@@ -564,12 +571,17 @@ class ChatterboxOfficial23LangSRTProcessor:
                             if segment_audio_normalized.dim() == 2:
                                 segment_audio_normalized = segment_audio_normalized.squeeze(0)
 
+                            # Remove pause tags from text for edit post-processor
+                            from utils.text.pause_processor import PauseTagProcessor
+                            text_without_pause = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text_clean)
+                            text_without_pause = re.sub(r'\s+', ' ', text_without_pause).strip()
+
                             all_segments_for_editing.append({
                                 'waveform': segment_audio_normalized,
                                 'sample_rate': self.sample_rate,
                                 'character': 'narrator',
-                                'text': text_clean,
-                                'original_text': subtitle.text,
+                                'text': text_without_pause,
+                                'original_text': text_without_pause,
                                 'edit_tags': edit_tags,
                                 'subtitle_index': i,
                                 'segment_index': 0  # Multilingual path has only one segment
@@ -645,13 +657,18 @@ class ChatterboxOfficial23LangSRTProcessor:
                             else:
                                 segment_audio_normalized = segment_audio
 
+                            # Remove pause tags from text for edit post-processor
+                            from utils.text.pause_processor import PauseTagProcessor
+                            text_without_pause = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text_clean)
+                            text_without_pause = re.sub(r'\s+', ' ', text_without_pause).strip()
+
                             # Store for batch processing
                             all_segments_for_editing.append({
                                 'waveform': segment_audio_normalized,
                                 'sample_rate': self.sample_rate,
                                 'character': single_char,
-                                'text': text_clean,
-                                'original_text': single_text,
+                                'text': text_without_pause,
+                                'original_text': text_without_pause,
                                 'edit_tags': edit_tags,
                                 'subtitle_index': i,
                                 'segment_index': 0  # Simple path has only one segment
