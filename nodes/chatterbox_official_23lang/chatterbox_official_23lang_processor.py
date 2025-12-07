@@ -1430,7 +1430,7 @@ Back to the main narrator voice for the conclusion.""",
                 # Find this segment's audio in results
                 for idx, audio in audio_segments_with_order:
                     if idx == seg_idx:
-                        seg['waveform'] = audio.squeeze().cpu() if audio.dim() > 1 else audio.cpu()
+                        seg['waveform'] = audio.cpu()  # Keep original shape
                         seg['sample_rate'] = sample_rate
                         break
 
@@ -1443,13 +1443,22 @@ Back to the main narrator voice for the conclusion.""",
             for seg in processed_segments:
                 seg_idx = seg['segment_index']
                 processed_audio = seg['waveform']
-                # Ensure processed audio matches original tensor shape
-                # Original segments are full tensors, not squeezed
-                if processed_audio.dim() == 1:
-                    processed_audio = processed_audio.unsqueeze(0)
-                # Replace in audio_segments_with_order
-                for i, (idx, audio) in enumerate(audio_segments_with_order):
+
+                # Find original audio to match device and shape
+                for i, (idx, original_audio) in enumerate(audio_segments_with_order):
                     if idx == seg_idx:
+                        # Match device
+                        processed_audio = processed_audio.to(original_audio.device)
+
+                        # Match shape - original_audio might be [batch, channels, samples] or [channels, samples]
+                        # processed_audio from edit engine is [channels, samples]
+                        if original_audio.dim() == 3 and processed_audio.dim() == 2:
+                            # Add batch dimension
+                            processed_audio = processed_audio.unsqueeze(0)
+                        elif original_audio.dim() == 2 and processed_audio.dim() == 3:
+                            # Remove batch dimension
+                            processed_audio = processed_audio.squeeze(0)
+
                         audio_segments_with_order[i] = (idx, processed_audio)
                         break
         
@@ -1571,13 +1580,14 @@ Back to the main narrator voice for the conclusion.""",
             # Collect segments with edit tags
             if edit_tags:
                 sample_rate = self.tts_model.sr if self.tts_model else 24000
+                # Store audio in same format as it's stored in audio_segments_with_order
                 all_segments_for_editing.append({
                     'segment_index': idx,
                     'character': char,
                     'text': segment_text,
                     'original_text': original_text,
                     'edit_tags': edit_tags,
-                    'waveform': segment_audio.squeeze().cpu() if segment_audio.dim() > 1 else segment_audio.cpu(),
+                    'waveform': segment_audio.cpu(),  # Keep original shape
                     'sample_rate': sample_rate
                 })
 
@@ -1598,13 +1608,22 @@ Back to the main narrator voice for the conclusion.""",
             for seg in processed_segments:
                 seg_idx = seg['segment_index']
                 processed_audio = seg['waveform']
-                # Ensure processed audio matches original tensor shape
-                # Original segments are full tensors, not squeezed
-                if processed_audio.dim() == 1:
-                    processed_audio = processed_audio.unsqueeze(0)
-                # Replace in audio_segments_with_order
-                for i, (idx, audio) in enumerate(audio_segments_with_order):
+
+                # Find original audio to match device and shape
+                for i, (idx, original_audio) in enumerate(audio_segments_with_order):
                     if idx == seg_idx:
+                        # Match device
+                        processed_audio = processed_audio.to(original_audio.device)
+
+                        # Match shape - original_audio might be [batch, channels, samples] or [channels, samples]
+                        # processed_audio from edit engine is [channels, samples]
+                        if original_audio.dim() == 3 and processed_audio.dim() == 2:
+                            # Add batch dimension
+                            processed_audio = processed_audio.unsqueeze(0)
+                        elif original_audio.dim() == 2 and processed_audio.dim() == 3:
+                            # Remove batch dimension
+                            processed_audio = processed_audio.squeeze(0)
+
                         audio_segments_with_order[i] = (idx, processed_audio)
                         break
 
