@@ -48,6 +48,9 @@ import comfy.model_management as model_management
 # Import the ChatterBox Official 23-Lang TTS engine
 from engines.chatterbox_official_23lang.tts import ChatterboxOfficial23LangTTS
 
+# Import helper function for edit tag extraction
+from nodes.chatterbox_official_23lang.chatterbox_official_23lang_srt_processor import extract_edit_tags_for_chatterbox
+
 
 
 class ChatterboxOfficial23LangTTSNode(BaseTTSNode):
@@ -535,20 +538,23 @@ Back to the main narrator voice for the conclusion.""",
         """
         def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
             """Generate audio for a text segment with crash protection"""
-            # Convert v2 special tags (AFTER character parsing, BEFORE TTS engine)
+            # Extract edit tags for ChatterBox v2 (AFTER character parsing, BEFORE TTS engine)
             if hasattr(self.tts_model, 'model_version') and self.tts_model.model_version == "v2":
+                segment_text, _, _ = extract_edit_tags_for_chatterbox(segment_text)
+            else:
+                # For v1, just use convert_v2_special_tags directly
                 from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
                 segment_text = convert_v2_special_tags(segment_text)
 
             # Apply padding for crash protection
             # processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])  # DISABLED FOR TESTING
             processed_text = segment_text  # Direct text without crash protection
-            
+
             # Determine crash protection based on template
             enable_protection = bool(inputs["crash_protection_template"].strip())
-            
+
             return self._safe_generate_tts_audio(
-                processed_text, audio_prompt, inputs["exaggeration"], 
+                processed_text, audio_prompt, inputs["exaggeration"],
                 inputs["temperature"], inputs["cfg_weight"], enable_protection
             )
         
