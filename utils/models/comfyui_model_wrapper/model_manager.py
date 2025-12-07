@@ -409,7 +409,6 @@ class ComfyUITTSModelManager:
         # Before moving to GPU, ALWAYS move other TTS models to CPU to free VRAM
         # (Don't delete them - keep in cache for fast reload)
         if target_device.startswith('cuda'):
-            print(f"🔍 ensure_device: Checking if need to clear VRAM for {engine_name}" + (f" (key: {model_cache_key[:40]}...)" if model_cache_key else ""))
             cached_models = list(self._model_cache.keys())
             models_to_offload = []
 

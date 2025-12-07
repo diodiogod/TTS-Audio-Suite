@@ -172,6 +172,15 @@ class SegmentProcessor:
             # Parse language, character, emotion, and parameters from the tag
             raw_tag_content = match.group(1)
 
+            # Check if this is a ChatterBox v2 special token (not a character)
+            if raw_tag_content.lower() in character_parser.CHATTERBOX_V2_TOKENS:
+                # Skip this tag - it's a TTS control token like [laughter], not a character
+                # But warn in case user has a character with this name
+                if raw_tag_content.lower() in [c.lower() for c in character_parser.available_characters]:
+                    print(f"⚠️ Character Parser: [{raw_tag_content}] matches both a character AND a ChatterBox v2 token - treating as TTS token")
+                current_pos = match.end()
+                continue
+
             # Use flexible tag parser with parameter support to handle all syntax
             tag_info = language_resolver.parse_tag_with_parameters(raw_tag_content)
 

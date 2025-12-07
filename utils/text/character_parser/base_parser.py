@@ -31,7 +31,18 @@ class CharacterParser(ValidationMixin):
     
     # Regex pattern for character tags: [CharacterName] or [language:CharacterName]
     # Excludes: pause tags, standalone Italian tags [it]/[italian] (but allows [it:]/[italian:])
+    # Note: ChatterBox v2 special tokens are filtered in segment_processor.py with a warning
     CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
+
+    # ChatterBox v2 special tokens - these are TTS control tags, not character names
+    # If matched, we skip them but warn the user in case they named a character this way
+    CHATTERBOX_V2_TOKENS = {
+        'giggle', 'laughter', 'guffaw', 'sigh', 'cry', 'gasp', 'groan',
+        'inhale', 'exhale', 'whisper', 'mumble', 'uh', 'um',
+        'singing', 'music', 'humming', 'whistle',
+        'cough', 'sneeze', 'sniff', 'snore', 'clear_throat', 'chew', 'sip', 'kiss',
+        'bark', 'howl', 'meow', 'shhh', 'gibberish'
+    }
     
     def __init__(self, default_character: str = "narrator", default_language: Optional[str] = None):
         """

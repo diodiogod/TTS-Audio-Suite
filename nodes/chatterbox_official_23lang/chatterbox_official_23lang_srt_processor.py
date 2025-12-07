@@ -60,20 +60,48 @@ def extract_edit_tags_for_chatterbox(text: str):
             if tag_name in conflict_tags and tag_name in CHATTERBOX_V2_SPECIAL_TOKENS:
                 has_native_conflict = True
 
-    # Print warning if conflicts detected
-    if has_native_conflict and has_editx_conflict:
-        print(f"\n🚨🚨🚨 TAG CONFLICT WARNING 🚨🚨🚨")
-        print(f"  ChatterBox has BOTH native tags (<laughter>) and Step EditX tags (<Laughter:2>)")
-        print(f"  Native <laughter> → ChatterBox built-in (may not work well)")
-        print(f"  EditX <Laughter:2> → Post-processing with Step Audio EditX")
-        print(f"  ⚠️  For best results: use <Laughter:N> format for ALL laughter/sigh effects")
-        print(f"🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨\n")
-    elif has_native_conflict:
-        print(f"ℹ️  Using ChatterBox native tags (<laughter>, <sigh>) - this will NOT use Step Audio EditX post-processing")
-        print(f"   For better quality: use Step EditX format with iterations (<Laughter:1>, <Sigh:1>)")
+    # Warn whenever conflicting tags (laughter/sigh) are present in ChatterBox v2
+    if has_native_conflict or has_editx_conflict:
+        print(f"\n⚠️  TAG CONFLICT: laughter/sigh have dual meanings in ChatterBox v2")
+
+        if has_native_conflict and has_editx_conflict:
+            print(f"🚨🚨🚨 Using BOTH formats in same text:")
+            print(f"  • <laughter> → ChatterBox native (may not work well)")
+            print(f"  • <Laughter:2> → Step EditX post-processing")
+            print(f"  ⚠️  Recommendation: use <Laughter:N> format for ALL laughter/sigh")
+        elif has_native_conflict:
+            print(f"  • Using native format: <laughter>, <sigh>")
+            print(f"  • This will NOT use Step EditX post-processing")
+            print(f"  • For better quality: use <Laughter:1>, <Sigh:1> instead")
+        else:  # has_editx_conflict
+            print(f"  • Using EditX format: <Laughter:N>, <Sigh:N>")
+            print(f"  • This will use Step EditX post-processing")
+        print()
+
+    # For ChatterBox: ONLY extract tags with explicit iterations (e.g., <Laughter:2>)
+    # Tags without iterations (e.g., <laughter>) are ChatterBox native tags
+    # Temporarily replace native tags (no colon) with placeholders so they're not extracted
+    import re
+
+    native_tag_placeholders = {}
+    text_for_edit = text
+    placeholder_counter = 0
+
+    for tag_content in all_tags:
+        if ':' not in tag_content:
+            # This is a native tag (no iteration) - replace with placeholder
+            tag_full = f'<{tag_content}>'
+            placeholder = f'__NATIVE_TAG_{placeholder_counter}__'
+            native_tag_placeholders[placeholder] = tag_full
+            text_for_edit = text_for_edit.replace(tag_full, placeholder, 1)
+            placeholder_counter += 1
 
     # Extract only tags with iterations (Step EditX post-processing)
-    clean_text, edit_tags = parse_edit_tags_with_iterations(text)
+    clean_text, edit_tags = parse_edit_tags_with_iterations(text_for_edit)
+
+    # Restore native tag placeholders
+    for placeholder, original_tag in native_tag_placeholders.items():
+        clean_text = clean_text.replace(placeholder, original_tag)
 
     # Convert remaining native v2 tags for ChatterBox engine
     # This handles tags like <giggle>, <sigh> that don't have iteration numbers
