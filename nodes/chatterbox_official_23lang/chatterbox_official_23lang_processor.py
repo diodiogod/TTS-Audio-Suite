@@ -48,8 +48,12 @@ import comfy.model_management as model_management
 # Import the ChatterBox Official 23-Lang TTS engine
 from engines.chatterbox_official_23lang.tts import ChatterboxOfficial23LangTTS
 
-# Import helper function for edit tag extraction
-from nodes.chatterbox_official_23lang.chatterbox_official_23lang_srt_processor import extract_edit_tags_for_chatterbox
+# Import helper function for edit tag extraction - use direct path
+srt_processor_path = os.path.join(current_dir, "chatterbox_official_23lang_srt_processor.py")
+srt_spec = importlib.util.spec_from_file_location("srt_processor_module", srt_processor_path)
+srt_module = importlib.util.module_from_spec(srt_spec)
+srt_spec.loader.exec_module(srt_module)
+extract_edit_tags_for_chatterbox = srt_module.extract_edit_tags_for_chatterbox
 
 
 
@@ -1181,8 +1185,12 @@ Back to the main narrator voice for the conclusion.""",
                     # Process single chunk with caching support
                     # BUGFIX: Clean character tags from text even in single character mode
                     clean_text = character_parser.remove_character_tags(inputs["text"])
+
+                    # Extract edit tags for ChatterBox v2
+                    text_for_generation, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(clean_text)
+
                     wav = self._generate_tts_with_pause_tags(
-                        clean_text, main_audio_prompt, inputs["exaggeration"],
+                        text_for_generation, main_audio_prompt, inputs["exaggeration"],
                         inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
                         inputs["min_p"], inputs["top_p"], inputs["language"],
                         True, character=inputs["character"], seed=inputs["seed"],
@@ -1191,23 +1199,44 @@ Back to the main narrator voice for the conclusion.""",
                         stable_audio_component=stable_audio_component,
                         model_version=inputs.get("model_version", "v1")
                     )
+
+                    # Apply edit post-processing if tags present
+                    if edit_tags:
+                        sample_rate = self.tts_model.sr if self.tts_model else 24000
+                        segment_for_editing = {
+                            'waveform': wav.squeeze().cpu() if wav.dim() > 1 else wav.cpu(),
+                            'sample_rate': sample_rate,
+                            'character': inputs["character"],
+                            'text': text_for_generation,
+                            'original_text': clean_text,
+                            'edit_tags': edit_tags
+                        }
+                        from utils.audio.edit_post_processor import process_segments
+                        print(f"🎨 Applying edit post-processing...")
+                        processed_segments = process_segments([segment_for_editing])
+                        wav = processed_segments[0]['waveform']
+
                     model_source = f"chatterbox_{language.lower()}"
                     info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
                 else:
                     # Split into chunks using improved chunker (UNCHANGED)
                     # BUGFIX: Clean character tags from text before chunking in single character mode
                     clean_text = character_parser.remove_character_tags(inputs["text"])
-                    chunks = self.chunker.split_into_chunks(clean_text, inputs["max_chars_per_chunk"])
-                    
+
+                    # Extract edit tags first
+                    text_for_chunking, edit_tags_from_text, has_conflicts = extract_edit_tags_for_chatterbox(clean_text)
+                    chunks = self.chunker.split_into_chunks(text_for_chunking, inputs["max_chars_per_chunk"])
+
                     # Process each chunk (UNCHANGED)
                     audio_segments = []
+                    chunks_for_editing = []
                     for i, chunk in enumerate(chunks):
                         # Check for interruption
                         self.check_interruption(f"TTS generation chunk {i+1}/{len(chunks)}")
-                        
+
                         # Show progress for multi-chunk generation
                         print(f"🎤 Generating ChatterBox chunk {i+1}/{len(chunks)}...")
-                        
+
                         # Generate chunk with caching support
                         chunk_audio = self._generate_tts_with_pause_tags(
                             chunk, main_audio_prompt, inputs["exaggeration"],
@@ -1220,17 +1249,46 @@ Back to the main narrator voice for the conclusion.""",
                             model_version=inputs.get("model_version", "v1")
                         )
                         audio_segments.append(chunk_audio)
+
+                        # Track for batch edit processing if original text had edit tags
+                        if edit_tags_from_text:
+                            sample_rate = self.tts_model.sr if self.tts_model else 24000
+                            chunks_for_editing.append({
+                                'chunk_index': i,
+                                'waveform': chunk_audio.squeeze().cpu() if chunk_audio.dim() > 1 else chunk_audio.cpu(),
+                                'sample_rate': sample_rate,
+                                'character': inputs["character"],
+                                'text': chunk,
+                                'original_text': clean_text,
+                                'edit_tags': edit_tags_from_text  # All chunks share same tags
+                            })
                     
                     # Create processed text for timing display (character tags removed, Italian prefixes applied)
                     processed_text_segments = [segment_text for _, segment_text, _, _ in character_segments_with_lang]
                     processed_text = ' '.join(processed_text_segments)
-                    
+
                     # Combine audio segments with timing info
                     wav, chunk_info = self.combine_audio_chunks(
-                        audio_segments, inputs["chunk_combination_method"], 
+                        audio_segments, inputs["chunk_combination_method"],
                         inputs["silence_between_chunks_ms"], len(processed_text),
                         original_text=processed_text, text_chunks=None, return_info=True
                     )
+
+                    # Apply batch edit processing if needed (process combined audio as single segment)
+                    if chunks_for_editing:
+                        sample_rate = self.tts_model.sr if self.tts_model else 24000
+                        combined_segment = {
+                            'waveform': wav.squeeze().cpu() if wav.dim() > 1 else wav.cpu(),
+                            'sample_rate': sample_rate,
+                            'character': inputs["character"],
+                            'text': text_for_chunking,
+                            'original_text': clean_text,
+                            'edit_tags': edit_tags_from_text
+                        }
+                        from utils.audio.edit_post_processor import process_segments
+                        print(f"🎨 Applying edit post-processing to combined audio...")
+                        processed_segments = process_segments([combined_segment])
+                        wav = processed_segments[0]['waveform']
                     
                     # Generate info (UNCHANGED)
                     total_duration = wav.size(-1) / self.tts_model.sr
@@ -1377,13 +1435,9 @@ Back to the main narrator voice for the conclusion.""",
                         break
 
             # Batch process edit tags
-            from utils.audio.edit_post_processor import apply_edit_post_processing
+            from utils.audio.edit_post_processor import process_segments
             print(f"🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s)...")
-            processed_segments = apply_edit_post_processing(
-                all_segments_for_editing,
-                {}, # config not needed for Step Audio EditX
-                pre_loaded_engine=None
-            )
+            processed_segments = process_segments(all_segments_for_editing)
 
             # Replace original audio with processed audio
             for seg in processed_segments:
@@ -1532,13 +1586,9 @@ Back to the main narrator voice for the conclusion.""",
 
         # Batch process edit tags if any
         if all_segments_for_editing:
-            from utils.audio.edit_post_processor import apply_edit_post_processing
+            from utils.audio.edit_post_processor import process_segments
             print(f"🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s)...")
-            processed_segments = apply_edit_post_processing(
-                all_segments_for_editing,
-                {}, # config not needed for Step Audio EditX
-                pre_loaded_engine=None
-            )
+            processed_segments = process_segments(all_segments_for_editing)
 
             # Replace original audio with processed audio
             for seg in processed_segments:
