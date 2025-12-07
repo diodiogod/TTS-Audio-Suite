@@ -30,9 +30,9 @@ class CharacterParser(ValidationMixin):
     """
     
     # Regex pattern for character tags: [CharacterName] or [language:CharacterName]
-    # Excludes: pause tags, standalone Italian tags [it]/[italian] (but allows [it:]/[italian:])
+    # Excludes: pause tags (case-insensitive), standalone Italian tags [it]/[italian] (but allows [it:]/[italian:])
     # Note: ChatterBox v2 special tokens are filtered in segment_processor.py with a warning
-    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
+    CHARACTER_TAG_PATTERN = re.compile(r'\[(?!(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):)(?!(?:it|IT|italian|Italian)\])([^\]]+)\]')
 
     # ChatterBox v2 special tokens - these are TTS control tags, not character names
     # If matched, we skip them but warn the user in case they named a character this way
