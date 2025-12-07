@@ -999,6 +999,7 @@ Back to the main narrator voice for the conclusion.""",
                 pause_info = {}  # Track pause information for reconstruction
                 segment_mapping = {}  # Map streaming indices to original indices
                 streaming_idx = 0
+                all_segments_for_editing = []  # Collect segments with edit tags for batch processing
 
                 for original_idx, seg_obj in enumerate(character_segment_objects):
                     char = seg_obj.character
@@ -1015,8 +1016,11 @@ Back to the main narrator voice for the conclusion.""",
                         sub_idx = 0
                         for segment_type, content in pause_segments:
                             if segment_type == 'text' and content.strip():
+                                # Extract edit tags from this text segment
+                                text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(content)
+
                                 # Text segment - add to streaming queue with parameters
-                                expanded_segments_with_lang.append((streaming_idx, char, content, lang, segment_params))
+                                expanded_segments_with_lang.append((streaming_idx, char, text_clean, lang, segment_params, edit_tags, content))
                                 segment_mapping[streaming_idx] = f"{original_idx}_{sub_idx}"
                                 streaming_idx += 1
                                 sub_idx += 1
@@ -1026,17 +1030,18 @@ Back to the main narrator voice for the conclusion.""",
                                 pause_info[pause_key] = content  # pause duration
                                 sub_idx += 1
                     else:
-                        # No pause tags - add as single segment with parameters
-                        expanded_segments_with_lang.append((streaming_idx, char, segment_text, lang, segment_params))
+                        # No pause tags - extract edit tags and add as single segment
+                        text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(segment_text)
+                        expanded_segments_with_lang.append((streaming_idx, char, text_clean, lang, segment_params, edit_tags, segment_text))
                         segment_mapping[streaming_idx] = original_idx
                         streaming_idx += 1
                 
                 # Group expanded segments by language with original order tracking
                 language_groups = {}
-                for idx, char, segment_text, lang, segment_params in expanded_segments_with_lang:
+                for idx, char, segment_text, lang, segment_params, edit_tags, original_text in expanded_segments_with_lang:
                     if lang not in language_groups:
                         language_groups[lang] = []
-                    language_groups[lang].append((idx, char, segment_text, lang, segment_params))  # Include parameters
+                    language_groups[lang].append((idx, char, segment_text, lang, segment_params, edit_tags, original_text))
                 
                 # Generate audio for each language group, tracking original positions
                 audio_segments_with_order = []  # Will store (original_index, audio_tensor)
@@ -1056,7 +1061,7 @@ Back to the main narrator voice for the conclusion.""",
                     )
                 else:
                     audio_segments_with_order = self._process_languages_traditional(
-                        language_groups, voice_refs, inputs, character_segments_with_lang
+                        language_groups, voice_refs, inputs, expanded_segments_with_lang
                     )
                 
                 # Continue to sorting and combining...
@@ -1301,8 +1306,22 @@ Back to the main narrator voice for the conclusion.""",
         from engines.adapters.chatterbox_streaming_adapter import ChatterBoxStreamingAdapter
         
         # Convert expanded_segments_with_lang to indexed format for streaming
-        # expanded_segments_with_lang is (idx, char, text, lang, params)
-        indexed_segments = [(idx, char, text, lang, segment_params) for idx, char, text, lang, segment_params in expanded_segments_with_lang]
+        # expanded_segments_with_lang is (idx, char, text, lang, params, edit_tags, original_text)
+        indexed_segments = [(idx, char, text, lang, segment_params) for idx, char, text, lang, segment_params, edit_tags, original_text in expanded_segments_with_lang]
+
+        # Collect segments with edit tags for batch processing after generation
+        all_segments_for_editing = []
+        for idx, char, text, lang, segment_params, edit_tags, original_text in expanded_segments_with_lang:
+            if edit_tags:
+                all_segments_for_editing.append({
+                    'segment_index': idx,
+                    'character': char,
+                    'text': text,
+                    'original_text': original_text,
+                    'edit_tags': edit_tags,
+                    'waveform': None,  # Will be filled after generation
+                    'sample_rate': None
+                })
         
         # Convert to universal streaming segments
         segments = StreamingCoordinator.convert_node_data_to_segments(
@@ -1338,12 +1357,43 @@ Back to the main narrator voice for the conclusion.""",
         audio_segments_with_order = []
         for original_idx in sorted(results.keys()):
             audio_segments_with_order.append((original_idx, results[original_idx]))
-        
+
         # Print performance summary
         if success:
             summary = metrics.get_summary()
             print(f"✅ Streaming complete: {summary['completed_segments']}/{summary['total_segments']} segments, "
                   f"{summary['throughput']:.2f} segments/sec")
+
+        # Fill in waveforms for segments with edit tags
+        if all_segments_for_editing:
+            sample_rate = self.tts_model.sr if self.tts_model else 24000
+            for seg in all_segments_for_editing:
+                seg_idx = seg['segment_index']
+                # Find this segment's audio in results
+                for idx, audio in audio_segments_with_order:
+                    if idx == seg_idx:
+                        seg['waveform'] = audio.squeeze().cpu() if audio.dim() > 1 else audio.cpu()
+                        seg['sample_rate'] = sample_rate
+                        break
+
+            # Batch process edit tags
+            from utils.audio.edit_post_processor import apply_edit_post_processing
+            print(f"🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s)...")
+            processed_segments = apply_edit_post_processing(
+                all_segments_for_editing,
+                {}, # config not needed for Step Audio EditX
+                pre_loaded_engine=None
+            )
+
+            # Replace original audio with processed audio
+            for seg in processed_segments:
+                seg_idx = seg['segment_index']
+                processed_audio = seg['waveform']
+                # Replace in audio_segments_with_order
+                for i, (idx, audio) in enumerate(audio_segments_with_order):
+                    if idx == seg_idx:
+                        audio_segments_with_order[i] = (idx, processed_audio)
+                        break
         
         # Reconstruct pauses if we have pause information
         if pause_info and success and segment_mapping:
@@ -1417,20 +1467,21 @@ Back to the main narrator voice for the conclusion.""",
         
         return reconstructed_segments
 
-    def _process_languages_traditional(self, language_groups, voice_refs, inputs, character_segments_with_lang):
+    def _process_languages_traditional(self, language_groups, voice_refs, inputs, expanded_segments_with_lang):
         """Process languages using traditional character-by-character method."""
         print(f"🎯 TRADITIONAL MODE: Processing {len(language_groups)} language groups sequentially")
-        
+
         audio_segments_with_order = []
-        
+        all_segments_for_editing = []
+
         # For ChatterBox Official 23-Lang, we only need to load the model once
         # It's a multilingual model that handles all languages with the same model
         if not hasattr(self, 'tts_model') or self.tts_model is None:
             # Use unified model interface for ComfyUI VRAM management
             self.tts_model = self.load_tts_model(inputs["device"], inputs["language"], inputs.get("model_version", "v2"))
             self.device = inputs["device"]  # Update device tracking
-        
-        for original_idx, (char, segment_text, lang, segment_params) in enumerate(character_segments_with_lang):
+
+        for idx, char, segment_text, lang, segment_params, edit_tags, original_text in expanded_segments_with_lang:
             # For Official 23-Lang, we don't need to reload model for different languages
             # Just use the same model with different language_id parameter
 
@@ -1440,7 +1491,7 @@ Back to the main narrator voice for the conclusion.""",
                 segment_config = apply_segment_parameters(current_params, segment_params, "chatterbox_official_23lang")
                 current_params.update(segment_config)
                 if segment_params:
-                    print(f"  📊 Segment {original_idx + 1}: Character '{char}' with params {segment_params}")
+                    print(f"  📊 Segment {idx + 1}: Character '{char}' with params {segment_params}")
 
             # Process each segment individually
             char_audio_prompt = voice_refs.get(char, voice_refs.get("narrator", "none"))
@@ -1459,13 +1510,46 @@ Back to the main narrator voice for the conclusion.""",
                 model_version=current_params.get("model_version", "v1")
             )
 
-            audio_segments_with_order.append((original_idx, segment_audio))
+            # Collect segments with edit tags
+            if edit_tags:
+                sample_rate = self.tts_model.sr if self.tts_model else 24000
+                all_segments_for_editing.append({
+                    'segment_index': idx,
+                    'character': char,
+                    'text': segment_text,
+                    'original_text': original_text,
+                    'edit_tags': edit_tags,
+                    'waveform': segment_audio.squeeze().cpu() if segment_audio.dim() > 1 else segment_audio.cpu(),
+                    'sample_rate': sample_rate
+                })
+
+            audio_segments_with_order.append((idx, segment_audio))
             # Use the original better format with proper emoji based on character type
             if char == "narrator":
-                print(f"🎤 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (lang: {lang})")
+                print(f"🎤 Generating ChatterBox segment {idx+1}/{len(expanded_segments_with_lang)} for '{char}' (lang: {lang})")
             else:
-                print(f"🎭 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (lang: {lang})")
-            
+                print(f"🎭 Generating ChatterBox segment {idx+1}/{len(expanded_segments_with_lang)} for '{char}' (lang: {lang})")
+
+        # Batch process edit tags if any
+        if all_segments_for_editing:
+            from utils.audio.edit_post_processor import apply_edit_post_processing
+            print(f"🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s)...")
+            processed_segments = apply_edit_post_processing(
+                all_segments_for_editing,
+                {}, # config not needed for Step Audio EditX
+                pre_loaded_engine=None
+            )
+
+            # Replace original audio with processed audio
+            for seg in processed_segments:
+                seg_idx = seg['segment_index']
+                processed_audio = seg['waveform']
+                # Replace in audio_segments_with_order
+                for i, (idx, audio) in enumerate(audio_segments_with_order):
+                    if idx == seg_idx:
+                        audio_segments_with_order[i] = (idx, processed_audio)
+                        break
+
         return audio_segments_with_order
 
     def _process_single_segment_for_streaming(self, original_idx, character, segment_text, language, voice_path, inputs):
