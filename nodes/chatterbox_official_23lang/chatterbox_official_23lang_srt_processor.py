@@ -415,73 +415,135 @@ class ChatterboxOfficial23LangSRTProcessor:
                             if not text.strip():
                                 continue
 
-                            # Extract edit tags from this character segment's text
+                            # Extract edit tags FIRST
                             text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(text)
 
                             # Narrator should use user's default language, not character alias language
                             actual_lang = current_language if char == "narrator" else seg_lang
 
-                            # Generate audio for this character with their voice (using clean text with pause tags)
-                            segment_wav, _ = self.tts_node.generate_speech(
-                                text=text_clean,
-                                language=actual_lang,
-                                device=current_device,
-                                model_version=current_model_version,
-                                exaggeration=seg_exag,
-                                temperature=seg_temp,
-                                cfg_weight=seg_cfg,
-                                repetition_penalty=current_repetition_penalty,
-                                min_p=current_min_p,
-                                top_p=current_top_p,
-                                seed=seg_seed_val,
-                                reference_audio=None,
-                                audio_prompt_path=char_voice if isinstance(char_voice, str) else "",
-                                enable_audio_cache=True,
-                                character=char,  # Pass character name so their voice is used
-                                batch_size=self.config.get("batch_size", 0)
-                            )
+                            # Check for pause tags - if present AND edit tags present, split by pause FIRST
+                            from utils.text.pause_processor import PauseTagProcessor
+                            has_pause_tags = PauseTagProcessor.has_pause_tags(text_clean)
 
-                            # Extract waveform from ComfyUI format
-                            if isinstance(segment_wav, dict) and "waveform" in segment_wav:
-                                segment_wav = segment_wav["waveform"]
+                            if has_pause_tags and edit_tags:
+                                # Split by pause tags to preserve pauses during edit processing
+                                pause_segments, _ = PauseTagProcessor.parse_pause_tags(text_clean)
 
-                            # Ensure proper tensor format
-                            if segment_wav.dim() == 3:
-                                segment_wav = segment_wav.squeeze(0).squeeze(0)
-                            elif segment_wav.dim() == 2:
-                                segment_wav = segment_wav.squeeze(0)
+                                for pause_seg_type, pause_content in pause_segments:
+                                    if pause_seg_type == 'text':
+                                        # Generate audio for this text segment (no pause tags)
+                                        segment_wav, _ = self.tts_node.generate_speech(
+                                            text=pause_content,
+                                            language=actual_lang,
+                                            device=current_device,
+                                            model_version=current_model_version,
+                                            exaggeration=seg_exag,
+                                            temperature=seg_temp,
+                                            cfg_weight=seg_cfg,
+                                            repetition_penalty=current_repetition_penalty,
+                                            min_p=current_min_p,
+                                            top_p=current_top_p,
+                                            seed=seg_seed_val,
+                                            reference_audio=None,
+                                            audio_prompt_path=char_voice if isinstance(char_voice, str) else "",
+                                            enable_audio_cache=True,
+                                            character=char,
+                                            batch_size=self.config.get("batch_size", 0)
+                                        )
 
-                            # Check if this segment has edit tags
-                            if edit_tags:
-                                subtitle_has_edit_tags = True
-                                # Normalize for edit processor
-                                if segment_wav.dim() == 1:
-                                    segment_wav_normalized = segment_wav.unsqueeze(0)
-                                else:
-                                    segment_wav_normalized = segment_wav
+                                        # Extract waveform
+                                        if isinstance(segment_wav, dict) and "waveform" in segment_wav:
+                                            segment_wav = segment_wav["waveform"]
 
-                                # Remove pause tags from text for edit post-processor
-                                # Pauses are already applied in the audio, don't send them to Step Audio EditX
-                                from utils.text.pause_processor import PauseTagProcessor
-                                text_without_pause = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text_clean)
-                                text_without_pause = re.sub(r'\s+', ' ', text_without_pause).strip()
+                                        # Ensure proper tensor format
+                                        if segment_wav.dim() == 3:
+                                            segment_wav = segment_wav.squeeze(0).squeeze(0)
+                                        elif segment_wav.dim() == 2:
+                                            segment_wav = segment_wav.squeeze(0)
 
-                                # Store for batch processing
-                                all_segments_for_editing.append({
-                                    'waveform': segment_wav_normalized,
-                                    'sample_rate': self.sample_rate,
-                                    'character': char,
-                                    'text': text_without_pause,
-                                    'original_text': text_without_pause,
-                                    'edit_tags': edit_tags,
-                                    'subtitle_index': i,
-                                    'segment_index': seg_idx
-                                })
-                                # Store None placeholder to track position
-                                segment_audio_parts.append(None)
+                                        # Normalize for edit processor
+                                        if segment_wav.dim() == 1:
+                                            segment_wav_normalized = segment_wav.unsqueeze(0)
+                                        else:
+                                            segment_wav_normalized = segment_wav
+
+                                        # Store for batch editing
+                                        subtitle_has_edit_tags = True
+                                        all_segments_for_editing.append({
+                                            'waveform': segment_wav_normalized,
+                                            'sample_rate': self.sample_rate,
+                                            'character': char,
+                                            'text': pause_content,
+                                            'original_text': pause_content,
+                                            'edit_tags': edit_tags,
+                                            'subtitle_index': i,
+                                            'segment_index': seg_idx
+                                        })
+                                        segment_audio_parts.append(None)  # Placeholder
+
+                                    elif pause_seg_type == 'pause':
+                                        # Create silence segment
+                                        silence = PauseTagProcessor.create_silence_segment(
+                                            pause_content, self.sample_rate
+                                        )
+                                        segment_audio_parts.append(silence)
+
                             else:
-                                # No edit tags - use directly
-                                segment_audio_parts.append(segment_wav)
+                                # No pause tags OR no edit tags - process normally
+                                segment_wav, _ = self.tts_node.generate_speech(
+                                    text=text_clean,
+                                    language=actual_lang,
+                                    device=current_device,
+                                    model_version=current_model_version,
+                                    exaggeration=seg_exag,
+                                    temperature=seg_temp,
+                                    cfg_weight=seg_cfg,
+                                    repetition_penalty=current_repetition_penalty,
+                                    min_p=current_min_p,
+                                    top_p=current_top_p,
+                                    seed=seg_seed_val,
+                                    reference_audio=None,
+                                    audio_prompt_path=char_voice if isinstance(char_voice, str) else "",
+                                    enable_audio_cache=True,
+                                    character=char,
+                                    batch_size=self.config.get("batch_size", 0)
+                                )
+
+                                # Extract waveform from ComfyUI format
+                                if isinstance(segment_wav, dict) and "waveform" in segment_wav:
+                                    segment_wav = segment_wav["waveform"]
+
+                                # Ensure proper tensor format
+                                if segment_wav.dim() == 3:
+                                    segment_wav = segment_wav.squeeze(0).squeeze(0)
+                                elif segment_wav.dim() == 2:
+                                    segment_wav = segment_wav.squeeze(0)
+
+                                # Check if this segment has edit tags
+                                if edit_tags:
+                                    subtitle_has_edit_tags = True
+                                    # Normalize for edit processor
+                                    if segment_wav.dim() == 1:
+                                        segment_wav_normalized = segment_wav.unsqueeze(0)
+                                    else:
+                                        segment_wav_normalized = segment_wav
+
+                                    # Store for batch processing (no pause tags in text)
+                                    all_segments_for_editing.append({
+                                        'waveform': segment_wav_normalized,
+                                        'sample_rate': self.sample_rate,
+                                        'character': char,
+                                        'text': text_clean,
+                                        'original_text': text_clean,
+                                        'edit_tags': edit_tags,
+                                        'subtitle_index': i,
+                                        'segment_index': seg_idx
+                                    })
+                                    # Store None placeholder to track position
+                                    segment_audio_parts.append(None)
+                                else:
+                                    # No edit tags - use directly
+                                    segment_audio_parts.append(segment_wav)
 
                         # Handle concatenation based on whether subtitle has edit tags
                         if subtitle_has_edit_tags:
@@ -534,59 +596,131 @@ class ChatterboxOfficial23LangSRTProcessor:
                         # Extract edit tags from multilingual text
                         text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(subtitle.text)
 
-                        # Generate with user's default language for multilingual narrator segments
-                        segment_audio, _ = self.tts_node.generate_speech(
-                            text=text_clean,
-                            language=current_language,  # Narrator uses user's default language
-                            device=current_device,
-                            model_version=current_model_version,
-                            exaggeration=seg_exag,
-                            temperature=seg_temp,
-                            cfg_weight=seg_cfg,
-                            repetition_penalty=current_repetition_penalty,
-                            min_p=current_min_p,
-                            top_p=current_top_p,
-                            seed=seg_seed_val,
-                            reference_audio=None,
-                            audio_prompt_path=voice_refs.get('narrator', ""),
-                            enable_audio_cache=True,
-                            character="narrator",
-                            batch_size=self.config.get("batch_size", 0)
-                        )
+                        # Check for pause tags - if present AND edit tags present, split by pause FIRST
+                        from utils.text.pause_processor import PauseTagProcessor
+                        has_pause_tags = PauseTagProcessor.has_pause_tags(text_clean)
 
-                        # Extract waveform from ComfyUI format
-                        if isinstance(segment_audio, dict) and "waveform" in segment_audio:
-                            segment_audio = segment_audio["waveform"]
+                        if has_pause_tags and edit_tags:
+                            # Split by pause tags to preserve pauses during edit processing
+                            pause_segments, _ = PauseTagProcessor.parse_pause_tags(text_clean)
+                            segment_audio_parts = []
 
-                        # Ensure proper tensor format
-                        if segment_audio.dim() == 3:
-                            segment_audio = segment_audio.squeeze(0).squeeze(0)
-                        elif segment_audio.dim() == 2:
-                            segment_audio = segment_audio.squeeze(0)
+                            for pause_seg_type, pause_content in pause_segments:
+                                if pause_seg_type == 'text':
+                                    # Generate audio for this text segment (no pause tags)
+                                    text_segment_audio, _ = self.tts_node.generate_speech(
+                                        text=pause_content,
+                                        language=current_language,
+                                        device=current_device,
+                                        model_version=current_model_version,
+                                        exaggeration=seg_exag,
+                                        temperature=seg_temp,
+                                        cfg_weight=seg_cfg,
+                                        repetition_penalty=current_repetition_penalty,
+                                        min_p=current_min_p,
+                                        top_p=current_top_p,
+                                        seed=seg_seed_val,
+                                        reference_audio=None,
+                                        audio_prompt_path=voice_refs.get('narrator', ""),
+                                        enable_audio_cache=True,
+                                        character="narrator",
+                                        batch_size=self.config.get("batch_size", 0)
+                                    )
 
-                        # Handle edit tags for multilingual path
-                        if edit_tags:
-                            # Normalize audio before storing for editing
-                            segment_audio_normalized = segment_audio.squeeze().cpu()
-                            if segment_audio_normalized.dim() == 2:
-                                segment_audio_normalized = segment_audio_normalized.squeeze(0)
+                                    # Extract waveform
+                                    if isinstance(text_segment_audio, dict) and "waveform" in text_segment_audio:
+                                        text_segment_audio = text_segment_audio["waveform"]
 
-                            # Remove pause tags from text for edit post-processor
-                            from utils.text.pause_processor import PauseTagProcessor
-                            text_without_pause = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text_clean)
-                            text_without_pause = re.sub(r'\s+', ' ', text_without_pause).strip()
+                                    # Ensure proper tensor format
+                                    if text_segment_audio.dim() == 3:
+                                        text_segment_audio = text_segment_audio.squeeze(0).squeeze(0)
+                                    elif text_segment_audio.dim() == 2:
+                                        text_segment_audio = text_segment_audio.squeeze(0)
 
-                            all_segments_for_editing.append({
-                                'waveform': segment_audio_normalized,
-                                'sample_rate': self.sample_rate,
-                                'character': 'narrator',
-                                'text': text_without_pause,
-                                'original_text': text_without_pause,
-                                'edit_tags': edit_tags,
-                                'subtitle_index': i,
-                                'segment_index': 0  # Multilingual path has only one segment
-                            })
-                            segment_audio = None  # Placeholder - will be replaced after batch processing
+                                    # Normalize for edit processor
+                                    segment_audio_normalized = text_segment_audio.squeeze().cpu()
+                                    if segment_audio_normalized.dim() == 2:
+                                        segment_audio_normalized = segment_audio_normalized.squeeze(0)
+
+                                    # Store for batch editing
+                                    all_segments_for_editing.append({
+                                        'waveform': segment_audio_normalized,
+                                        'sample_rate': self.sample_rate,
+                                        'character': 'narrator',
+                                        'text': pause_content,
+                                        'original_text': pause_content,
+                                        'edit_tags': edit_tags,
+                                        'subtitle_index': i,
+                                        'segment_index': 0
+                                    })
+                                    segment_audio_parts.append(None)  # Placeholder
+
+                                elif pause_seg_type == 'pause':
+                                    # Create silence segment
+                                    silence = PauseTagProcessor.create_silence_segment(
+                                        pause_content, self.sample_rate
+                                    )
+                                    segment_audio_parts.append(silence)
+
+                            # Store reconstruction info
+                            subtitle_character_segments[i] = {
+                                'parts': segment_audio_parts,
+                                'expected_duration': expected_duration,
+                                'start': segment_start,
+                                'end': segment_end,
+                                'sequence': subtitle.sequence
+                            }
+                            segment_audio = None  # Placeholder - will be reconstructed after batch processing
+
+                        else:
+                            # No pause tags OR no edit tags - process normally
+                            segment_audio, _ = self.tts_node.generate_speech(
+                                text=text_clean,
+                                language=current_language,  # Narrator uses user's default language
+                                device=current_device,
+                                model_version=current_model_version,
+                                exaggeration=seg_exag,
+                                temperature=seg_temp,
+                                cfg_weight=seg_cfg,
+                                repetition_penalty=current_repetition_penalty,
+                                min_p=current_min_p,
+                                top_p=current_top_p,
+                                seed=seg_seed_val,
+                                reference_audio=None,
+                                audio_prompt_path=voice_refs.get('narrator', ""),
+                                enable_audio_cache=True,
+                                character="narrator",
+                                batch_size=self.config.get("batch_size", 0)
+                            )
+
+                            # Extract waveform from ComfyUI format
+                            if isinstance(segment_audio, dict) and "waveform" in segment_audio:
+                                segment_audio = segment_audio["waveform"]
+
+                            # Ensure proper tensor format
+                            if segment_audio.dim() == 3:
+                                segment_audio = segment_audio.squeeze(0).squeeze(0)
+                            elif segment_audio.dim() == 2:
+                                segment_audio = segment_audio.squeeze(0)
+
+                            # Handle edit tags for multilingual path
+                            if edit_tags:
+                                # Normalize audio before storing for editing
+                                segment_audio_normalized = segment_audio.squeeze().cpu()
+                                if segment_audio_normalized.dim() == 2:
+                                    segment_audio_normalized = segment_audio_normalized.squeeze(0)
+
+                                all_segments_for_editing.append({
+                                    'waveform': segment_audio_normalized,
+                                    'sample_rate': self.sample_rate,
+                                    'character': 'narrator',
+                                    'text': text_clean,
+                                    'original_text': text_clean,
+                                    'edit_tags': edit_tags,
+                                    'subtitle_index': i,
+                                    'segment_index': 0  # Multilingual path has only one segment
+                                })
+                                segment_audio = None  # Placeholder - will be replaced after batch processing
 
                     else:  # subtitle_type == 'simple'
                         # Single character mode - model already loaded for this language group (lines 1229-1260)
@@ -619,62 +753,135 @@ class ChatterboxOfficial23LangSRTProcessor:
                         # Narrator should use user's default language, not alias language
                         actual_lang = current_language if single_char == "narrator" else single_lang
 
-                        # Direct generation for simple subtitles (using clean text)
-                        segment_audio, _ = self.tts_node.generate_speech(
-                            text=text_clean,
-                            language=actual_lang,
-                            device=current_device,
-                            model_version=current_model_version,
-                            exaggeration=seg_exag,
-                            temperature=seg_temp,
-                            cfg_weight=seg_cfg,
-                            repetition_penalty=current_repetition_penalty,
-                            min_p=current_min_p,
-                            top_p=current_top_p,
-                            seed=seg_seed_val,
-                            reference_audio=None,
-                            audio_prompt_path=char_voice_path,
-                            enable_audio_cache=True,
-                            character=single_char,
-                            batch_size=self.config.get("batch_size", 0)
-                        )
+                        # Check for pause tags - if present AND edit tags present, split by pause FIRST
+                        from utils.text.pause_processor import PauseTagProcessor
+                        has_pause_tags = PauseTagProcessor.has_pause_tags(text_clean)
 
-                        # Extract waveform from ComfyUI format
-                        if isinstance(segment_audio, dict) and "waveform" in segment_audio:
-                            segment_audio = segment_audio["waveform"]
+                        if has_pause_tags and edit_tags:
+                            # Split by pause tags to preserve pauses during edit processing
+                            pause_segments, _ = PauseTagProcessor.parse_pause_tags(text_clean)
+                            segment_audio_parts = []
 
-                        # Ensure proper tensor format
-                        if segment_audio.dim() == 3:
-                            segment_audio = segment_audio.squeeze(0).squeeze(0)
-                        elif segment_audio.dim() == 2:
-                            segment_audio = segment_audio.squeeze(0)
+                            for pause_seg_type, pause_content in pause_segments:
+                                if pause_seg_type == 'text':
+                                    # Generate audio for this text segment (no pause tags)
+                                    text_segment_audio, _ = self.tts_node.generate_speech(
+                                        text=pause_content,
+                                        language=actual_lang,
+                                        device=current_device,
+                                        model_version=current_model_version,
+                                        exaggeration=seg_exag,
+                                        temperature=seg_temp,
+                                        cfg_weight=seg_cfg,
+                                        repetition_penalty=current_repetition_penalty,
+                                        min_p=current_min_p,
+                                        top_p=current_top_p,
+                                        seed=seg_seed_val,
+                                        reference_audio=None,
+                                        audio_prompt_path=char_voice_path,
+                                        enable_audio_cache=True,
+                                        character=single_char,
+                                        batch_size=self.config.get("batch_size", 0)
+                                    )
 
-                        # Handle edit tags for simple path
-                        if edit_tags:
-                            # Normalize for edit processor
-                            if segment_audio.dim() == 1:
-                                segment_audio_normalized = segment_audio.unsqueeze(0)
-                            else:
-                                segment_audio_normalized = segment_audio
+                                    # Extract waveform
+                                    if isinstance(text_segment_audio, dict) and "waveform" in text_segment_audio:
+                                        text_segment_audio = text_segment_audio["waveform"]
 
-                            # Remove pause tags from text for edit post-processor
-                            from utils.text.pause_processor import PauseTagProcessor
-                            text_without_pause = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text_clean)
-                            text_without_pause = re.sub(r'\s+', ' ', text_without_pause).strip()
+                                    # Ensure proper tensor format
+                                    if text_segment_audio.dim() == 3:
+                                        text_segment_audio = text_segment_audio.squeeze(0).squeeze(0)
+                                    elif text_segment_audio.dim() == 2:
+                                        text_segment_audio = text_segment_audio.squeeze(0)
 
-                            # Store for batch processing
-                            all_segments_for_editing.append({
-                                'waveform': segment_audio_normalized,
-                                'sample_rate': self.sample_rate,
-                                'character': single_char,
-                                'text': text_without_pause,
-                                'original_text': text_without_pause,
-                                'edit_tags': edit_tags,
-                                'subtitle_index': i,
-                                'segment_index': 0  # Simple path has only one segment
-                            })
-                            # Use placeholder
-                            segment_audio = None
+                                    # Normalize for edit processor
+                                    if text_segment_audio.dim() == 1:
+                                        segment_audio_normalized = text_segment_audio.unsqueeze(0)
+                                    else:
+                                        segment_audio_normalized = text_segment_audio
+
+                                    # Store for batch editing
+                                    all_segments_for_editing.append({
+                                        'waveform': segment_audio_normalized,
+                                        'sample_rate': self.sample_rate,
+                                        'character': single_char,
+                                        'text': pause_content,
+                                        'original_text': pause_content,
+                                        'edit_tags': edit_tags,
+                                        'subtitle_index': i,
+                                        'segment_index': 0
+                                    })
+                                    segment_audio_parts.append(None)  # Placeholder
+
+                                elif pause_seg_type == 'pause':
+                                    # Create silence segment
+                                    silence = PauseTagProcessor.create_silence_segment(
+                                        pause_content, self.sample_rate
+                                    )
+                                    segment_audio_parts.append(silence)
+
+                            # Store reconstruction info
+                            subtitle_character_segments[i] = {
+                                'parts': segment_audio_parts,
+                                'expected_duration': expected_duration,
+                                'start': segment_start,
+                                'end': segment_end,
+                                'sequence': subtitle.sequence
+                            }
+                            segment_audio = None  # Placeholder - will be reconstructed after batch processing
+
+                        else:
+                            # No pause tags OR no edit tags - process normally
+                            segment_audio, _ = self.tts_node.generate_speech(
+                                text=text_clean,
+                                language=actual_lang,
+                                device=current_device,
+                                model_version=current_model_version,
+                                exaggeration=seg_exag,
+                                temperature=seg_temp,
+                                cfg_weight=seg_cfg,
+                                repetition_penalty=current_repetition_penalty,
+                                min_p=current_min_p,
+                                top_p=current_top_p,
+                                seed=seg_seed_val,
+                                reference_audio=None,
+                                audio_prompt_path=char_voice_path,
+                                enable_audio_cache=True,
+                                character=single_char,
+                                batch_size=self.config.get("batch_size", 0)
+                            )
+
+                            # Extract waveform from ComfyUI format
+                            if isinstance(segment_audio, dict) and "waveform" in segment_audio:
+                                segment_audio = segment_audio["waveform"]
+
+                            # Ensure proper tensor format
+                            if segment_audio.dim() == 3:
+                                segment_audio = segment_audio.squeeze(0).squeeze(0)
+                            elif segment_audio.dim() == 2:
+                                segment_audio = segment_audio.squeeze(0)
+
+                            # Handle edit tags for simple path
+                            if edit_tags:
+                                # Normalize for edit processor
+                                if segment_audio.dim() == 1:
+                                    segment_audio_normalized = segment_audio.unsqueeze(0)
+                                else:
+                                    segment_audio_normalized = segment_audio
+
+                                # Store for batch processing (no pause tags in text)
+                                all_segments_for_editing.append({
+                                    'waveform': segment_audio_normalized,
+                                    'sample_rate': self.sample_rate,
+                                    'character': single_char,
+                                    'text': text_clean,
+                                    'original_text': text_clean,
+                                    'edit_tags': edit_tags,
+                                    'subtitle_index': i,
+                                    'segment_index': 0  # Simple path has only one segment
+                                })
+                                # Use placeholder
+                                segment_audio = None
 
                     # Skip duration calculation and storage for placeholders (handled in batch processing)
                     if segment_audio is not None:
@@ -744,7 +951,12 @@ class ChatterboxOfficial23LangSRTProcessor:
                                         waveform = waveform.squeeze(0)
                                     reconstructed_parts.append(waveform)
                             else:
-                                # Already has audio (no edit tags)
+                                # Already has audio (silence or non-edited segments)
+                                # Normalize to 1D to match edited segments
+                                if part.dim() == 3:
+                                    part = part.squeeze(0).squeeze(0)
+                                elif part.dim() == 2:
+                                    part = part.squeeze(0)
                                 reconstructed_parts.append(part)
 
                         # Concatenate all character segments
