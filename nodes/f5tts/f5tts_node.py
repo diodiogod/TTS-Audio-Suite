@@ -783,6 +783,13 @@ Back to the main narrator voice for the conclusion.""",
                 
             else:
                 # SINGLE CHARACTER MODE (original behavior)
+                # Check for edit tags in single character text
+                text_for_generation = character_parser.remove_character_tags(inputs["text"])
+                _, single_edit_tags = self._extract_edit_tags_for_f5tts(text_for_generation)
+
+                if single_edit_tags:
+                    print(f"🎨 F5-TTS: Edit tags detected in single character mode - will apply post-processing")
+
                 text_length = len(inputs["text"])
                 
                 # Check if single character content is cached before loading model
@@ -872,10 +879,9 @@ Back to the main narrator voice for the conclusion.""",
                                 self._cache_segment_audio(cache_key, audio_result, audio_duration)
                         cache_fn = narrator_cache_fn
                     
-                    # BUGFIX: Clean character tags from text even in single character mode
-                    clean_text = character_parser.remove_character_tags(inputs["text"])
-                    wav = self.generate_f5tts_with_pause_tags(
-                        text=clean_text,
+                    # Use text without character tags for generation
+                    result = self.generate_f5tts_with_pause_tags(
+                        text=text_for_generation,
                         ref_audio_path=main_audio_prompt,
                         ref_text=main_ref_text,
                         enable_pause_tags=True,
@@ -883,6 +889,7 @@ Back to the main narrator voice for the conclusion.""",
                         seed=inputs["seed"],
                         enable_cache=inputs.get("enable_audio_cache", True),
                         cache_fn=cache_fn,
+                        extract_edit_tags=bool(single_edit_tags),  # Extract if tags present
                         temperature=inputs["temperature"],
                         speed=inputs["speed"],
                         target_rms=inputs["target_rms"],
@@ -890,13 +897,54 @@ Back to the main narrator voice for the conclusion.""",
                         nfe_step=safe_nfe_step,
                         cfg_strength=inputs["cfg_strength"]
                     )
+
+                    # Handle segment dict response vs plain tensor
+                    if isinstance(result, list):
+                        # Got segment dicts - apply batch editing
+                        print(f"🎨 Applying edit post-processing to single character audio...")
+
+                        editor_config = {
+                            'device': inputs["device"],
+                            'model_path': None,
+                            'enable_audio_cache': inputs.get("enable_audio_cache", True)
+                        }
+
+                        # Normalize and add sample_rate
+                        for seg in result:
+                            seg_audio = seg['waveform']
+                            if seg_audio.dim() == 3:
+                                seg['waveform'] = seg_audio.squeeze(0).squeeze(0)
+                            elif seg_audio.dim() == 2:
+                                seg['waveform'] = seg_audio.squeeze(0)
+                            seg['sample_rate'] = self.f5tts_sample_rate
+
+                        processed_segments = apply_edit_post_processing(
+                            result,
+                            editor_config,
+                            pre_loaded_engine=None
+                        )
+
+                        # Combine all segments
+                        audio_parts = []
+                        for seg in processed_segments:
+                            edited_audio = seg['waveform']
+                            if edited_audio.dim() == 3:
+                                edited_audio = edited_audio.squeeze(0).squeeze(0)
+                            elif edited_audio.dim() == 2:
+                                edited_audio = edited_audio.squeeze(0)
+                            audio_parts.append(edited_audio)
+
+                        wav = torch.cat(audio_parts, dim=-1).unsqueeze(0) if audio_parts else torch.zeros(1, 1000)
+                    else:
+                        # Plain tensor - no edit tags
+                        wav = result
+
                     model_info = self.get_f5tts_model_info()
                     info = f"Generated {wav.size(-1) / self.f5tts_sample_rate:.1f}s audio from {text_length} characters (single chunk, F5-TTS {model_info.get('model_name', 'unknown')})"
                 else:
                     # Split into chunks using improved chunker
-                    # BUGFIX: Clean character tags from text before chunking in single character mode
-                    clean_text = character_parser.remove_character_tags(inputs["text"])
-                    chunks = self.chunker.split_into_chunks(clean_text, inputs["max_chars_per_chunk"])
+                    # Use text without character tags for chunking
+                    chunks = self.chunker.split_into_chunks(text_for_generation, inputs["max_chars_per_chunk"])
                     
                     # Create cache function for narrator chunks if caching is enabled
                     cache_fn = None
@@ -931,7 +979,7 @@ Back to the main narrator voice for the conclusion.""",
                         # Show progress for multi-chunk generation
                         print(f"🎤 Generating F5-TTS chunk {i+1}/{len(chunks)}...")
                         
-                        chunk_audio = self.generate_f5tts_with_pause_tags(
+                        chunk_result = self.generate_f5tts_with_pause_tags(
                             text=chunk,
                             ref_audio_path=main_audio_prompt,
                             ref_text=main_ref_text,
@@ -940,6 +988,7 @@ Back to the main narrator voice for the conclusion.""",
                             seed=inputs["seed"],
                             enable_cache=inputs.get("enable_audio_cache", True),
                             cache_fn=cache_fn,
+                            extract_edit_tags=bool(single_edit_tags),  # Extract if tags present
                             temperature=inputs["temperature"],
                             speed=inputs["speed"],
                             target_rms=inputs["target_rms"],
@@ -948,14 +997,56 @@ Back to the main narrator voice for the conclusion.""",
                             cfg_strength=inputs["cfg_strength"],
                             auto_phonemization=self._current_auto_phonemization
                         )
-                        audio_segments.append(chunk_audio)
-                    
-                    # Combine audio segments with timing info
-                    wav, chunk_info = self.combine_f5tts_audio_chunks(
-                        audio_segments, inputs["chunk_combination_method"], 
-                        inputs["silence_between_chunks_ms"], text_length,
-                        original_text=inputs["text"], text_chunks=None, return_info=True
-                    )
+                        audio_segments.append(chunk_result)
+
+                    # Check if we got segment dicts (edit tags) or plain tensors
+                    if audio_segments and isinstance(audio_segments[0], list):
+                        # Got segment dicts - flatten and apply batch editing
+                        print(f"🎨 Applying edit post-processing to chunked single character audio...")
+
+                        all_segments = []
+                        for chunk_segments in audio_segments:
+                            all_segments.extend(chunk_segments)
+
+                        editor_config = {
+                            'device': inputs["device"],
+                            'model_path': None,
+                            'enable_audio_cache': inputs.get("enable_audio_cache", True)
+                        }
+
+                        # Normalize and add sample_rate
+                        for seg in all_segments:
+                            seg_audio = seg['waveform']
+                            if seg_audio.dim() == 3:
+                                seg['waveform'] = seg_audio.squeeze(0).squeeze(0)
+                            elif seg_audio.dim() == 2:
+                                seg['waveform'] = seg_audio.squeeze(0)
+                            seg['sample_rate'] = self.f5tts_sample_rate
+
+                        processed_segments = apply_edit_post_processing(
+                            all_segments,
+                            editor_config,
+                            pre_loaded_engine=None
+                        )
+
+                        # Combine all segments
+                        audio_parts = []
+                        for seg in processed_segments:
+                            edited_audio = seg['waveform']
+                            if edited_audio.dim() == 3:
+                                edited_audio = edited_audio.squeeze(0).squeeze(0)
+                            elif edited_audio.dim() == 2:
+                                edited_audio = edited_audio.squeeze(0)
+                            audio_parts.append(edited_audio)
+
+                        wav = torch.cat(audio_parts, dim=-1).unsqueeze(0) if audio_parts else torch.zeros(1, 1000)
+                    else:
+                        # Plain tensors - combine as usual
+                        wav, chunk_info = self.combine_f5tts_audio_chunks(
+                            audio_segments, inputs["chunk_combination_method"],
+                            inputs["silence_between_chunks_ms"], text_length,
+                            original_text=inputs["text"], text_chunks=None, return_info=True
+                        )
                     
                     # Generate info
                     total_duration = wav.size(-1) / self.f5tts_sample_rate
