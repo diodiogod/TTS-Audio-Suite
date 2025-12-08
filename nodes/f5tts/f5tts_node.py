@@ -35,6 +35,8 @@ from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
 from utils.text.character_parser import parse_character_text, character_parser
+from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 import comfy.model_management as model_management
 
 # Global audio cache for F5-TTS segments
@@ -155,7 +157,17 @@ Back to the main narrator voice for the conclusion.""",
     def __init__(self):
         super().__init__()
 
-    
+    def _extract_edit_tags_for_f5tts(self, text: str):
+        """
+        Extract edit tags for F5-TTS (no native tag conflicts).
+
+        Returns:
+            Tuple of (clean_text, edit_tags)
+        """
+        # F5-TTS has no native tags, so directly extract Step EditX tags
+        clean_text, edit_tags = parse_edit_tags_with_iterations(text)
+        return clean_text, edit_tags
+
     @staticmethod
     def _get_companion_txt_file(audio_file_path):
         """Get the path to companion .txt file for an audio file (legacy method)"""
@@ -369,18 +381,29 @@ Back to the main narrator voice for the conclusion.""",
             # NOTE: We parse characters and languages from original text, then handle pause tags within each segment
             # Use parse_text_segments to get parameters, then convert to (char, text, lang, params) format
             character_segment_objects = character_parser.parse_text_segments(inputs["text"])
+
+            # Check each segment for edit tags
+            segments_have_edit_tags = []  # Track which segments have edit tags
+            for seg in character_segment_objects:
+                _, edit_tags = self._extract_edit_tags_for_f5tts(seg.text)
+                segments_have_edit_tags.append(len(edit_tags) > 0)
+
             character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in character_segment_objects]
-            
-            # Check if we have character switching or language switching
+
+            # Check if we have character switching, language switching, or edit tags
             characters = list(set(char for char, _, _, _ in character_segments_with_lang))
             languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
             has_multiple_characters = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
             has_multiple_languages = len(languages) > 1
+            has_edit_tags = any(segments_have_edit_tags)
             # Check if ANY segment has parameters (for parameter-only tags like [seed:42])
             has_segment_parameters = any(params for _, _, _, params in character_segments_with_lang)
 
             # Create backward-compatible character segments for existing logic
             character_segments = [(char, segment_text) for char, segment_text, _, _ in character_segments_with_lang]
+
+            if has_edit_tags:
+                print(f"🎨 F5-TTS: Edit tags detected - will apply batch post-processing")
 
             # Validate and clamp nfe_step to prevent ODE solver issues
             safe_nfe_step = max(1, min(inputs["nfe_step"], 71))
@@ -463,9 +486,10 @@ Back to the main narrator voice for the conclusion.""",
                     if lang not in language_groups:
                         language_groups[lang] = []
                     language_groups[lang].append((idx, char, segment_text, lang, segment_params))  # Include original index and parameters
-                
+
                 # Generate audio for each language group, tracking original positions
-                audio_segments_with_order = []  # Will store (original_index, audio_tensor)
+                audio_segments_with_order = []  # Will store (original_index, audio_tensor or list)
+                all_segments_for_editing = []  # Collect segments with edit tags for batch processing
                 total_segments = len(character_segments_with_lang)
                 
                 # Track if base model has been loaded
@@ -614,6 +638,9 @@ Back to the main narrator voice for the conclusion.""",
                                 char_audio_component = stable_audio_component if character == "narrator" else f"char_file_{character}"
                                 cache_fn = create_cache_fn(character, char_audio_component, char_text)
 
+                            # Check if this segment has edit tags
+                            segment_has_edit_tags = segments_have_edit_tags[original_idx]
+
                             chunk_audio = self.generate_f5tts_with_pause_tags(
                                 text=chunk_text,
                                 ref_audio_path=char_audio,
@@ -623,6 +650,7 @@ Back to the main narrator voice for the conclusion.""",
                                 seed=current_config["seed"],
                                 enable_cache=current_config.get("enable_audio_cache", True),
                                 cache_fn=cache_fn,
+                                extract_edit_tags=segment_has_edit_tags,  # Extract if segment has edit tags
                                 temperature=current_config["temperature"],
                                 speed=current_config["speed"],
                                 target_rms=current_config["target_rms"],
@@ -635,16 +663,103 @@ Back to the main narrator voice for the conclusion.""",
                         
                         # Combine chunks for this segment and store with original order
                         if segment_audio_chunks:
-                            if len(segment_audio_chunks) == 1:
-                                segment_audio = segment_audio_chunks[0]
+                            # Check if chunks contain segment dicts (edit tags) or plain tensors
+                            if isinstance(segment_audio_chunks[0], list):
+                                # Segment dicts - flatten all chunks' segments
+                                all_chunk_segments = []
+                                for chunk_segments in segment_audio_chunks:
+                                    all_chunk_segments.extend(chunk_segments)
+
+                                # Collect segments with edit tags for batch processing
+                                for seg_dict in all_chunk_segments:
+                                    if seg_dict['edit_tags'] and len(seg_dict['edit_tags']) > 0:
+                                        # Add segment_index for later reconstruction
+                                        seg_dict['segment_index'] = original_idx
+                                        all_segments_for_editing.append(seg_dict)
+
+                                # Store segment list for this index (will reconstruct after editing)
+                                audio_segments_with_order.append((original_idx, all_chunk_segments))
                             else:
-                                segment_audio = torch.cat(segment_audio_chunks, dim=-1)
-                            audio_segments_with_order.append((original_idx, segment_audio))
+                                # Plain tensors - combine as before
+                                if len(segment_audio_chunks) == 1:
+                                    segment_audio = segment_audio_chunks[0]
+                                else:
+                                    segment_audio = torch.cat(segment_audio_chunks, dim=-1)
+                                audio_segments_with_order.append((original_idx, segment_audio))
                 
                 # Sort audio segments back to original order
                 audio_segments_with_order.sort(key=lambda x: x[0])  # Sort by original index
+
+                # BATCH PROCESS edit tags if present
+                if all_segments_for_editing:
+                    print(f"🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) with edit tags...")
+
+                    editor_config = {
+                        'device': inputs["device"],
+                        'model_path': None,
+                        'enable_audio_cache': inputs.get("enable_audio_cache", True)
+                    }
+
+                    # Normalize audio to 1D for editing
+                    for seg in all_segments_for_editing:
+                        seg_audio = seg['waveform']
+                        if seg_audio.dim() == 3:
+                            seg['waveform'] = seg_audio.squeeze(0).squeeze(0)
+                        elif seg_audio.dim() == 2:
+                            seg['waveform'] = seg_audio.squeeze(0)
+                        seg['sample_rate'] = self.f5tts_sample_rate
+
+                    processed_segments = apply_edit_post_processing(
+                        all_segments_for_editing,
+                        editor_config,
+                        pre_loaded_engine=None
+                    )
+
+                    # Group edited segments by segment_index for reconstruction
+                    edited_by_segment = {}
+                    for seg in processed_segments:
+                        seg_idx = seg['segment_index']
+                        if seg_idx not in edited_by_segment:
+                            edited_by_segment[seg_idx] = []
+                        edited_by_segment[seg_idx].append(seg)
+
+                    # Reconstruct segments with edited audio
+                    for idx, audio_data in audio_segments_with_order:
+                        if isinstance(audio_data, list) and idx in edited_by_segment:
+                            # This segment had edit tags - reconstruct with edited audio
+                            edited_segs = {id(seg): seg for seg in edited_by_segment[idx]}
+                            reconstructed_parts = []
+
+                            for seg_dict in audio_data:
+                                if id(seg_dict) in edited_segs:
+                                    # Use edited audio
+                                    edited_audio = edited_segs[id(seg_dict)]['waveform']
+                                    # Normalize dimensions
+                                    if edited_audio.dim() == 3:
+                                        edited_audio = edited_audio.squeeze(0).squeeze(0)
+                                    elif edited_audio.dim() == 2:
+                                        edited_audio = edited_audio.squeeze(0)
+                                    reconstructed_parts.append(edited_audio)
+                                else:
+                                    # Keep original audio (silence or non-edited segment)
+                                    orig_audio = seg_dict['waveform']
+                                    if orig_audio.dim() == 3:
+                                        orig_audio = orig_audio.squeeze(0).squeeze(0)
+                                    elif orig_audio.dim() == 2:
+                                        orig_audio = orig_audio.squeeze(0)
+                                    reconstructed_parts.append(orig_audio)
+
+                            # Combine and replace
+                            if reconstructed_parts:
+                                combined_audio = torch.cat(reconstructed_parts, dim=-1)
+                                # Update in place
+                                for i, (stored_idx, _) in enumerate(audio_segments_with_order):
+                                    if stored_idx == idx:
+                                        audio_segments_with_order[i] = (idx, combined_audio)
+                                        break
+
                 audio_segments = [audio for _, audio in audio_segments_with_order]  # Extract audio tensors
-                
+
                 # Combine all character segments with timing info
                 wav, chunk_info = self.combine_f5tts_audio_chunks(
                     audio_segments, inputs["chunk_combination_method"], 
