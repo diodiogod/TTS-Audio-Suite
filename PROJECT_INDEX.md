@@ -7,16 +7,17 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine via clean delegation
 - **ComfyUI Model Management Integration**: All TTS models now integrate with ComfyUI's native model management system, enabling "Clear VRAM" functionality and automatic memory management
-- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, RVC, Audio Separation) with fallback support
-- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio, VibeVoice) handling engine-specific orchestration
-- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, and RVC voice conversion
+- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, Step Audio EditX, RVC, Audio Separation) with fallback support
+- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, Step Audio EditX) handling engine-specific orchestration
+- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, Step Audio EditX, and RVC voice conversion
+- **Inline Edit Tag System**: Universal post-processing system applying Step Audio EditX effects (emotion, style, speed, paralinguistic) to any TTS engine's output via inline tags like `<Laughter>` or `<happy>`
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure, with full extra_model_paths.yaml support for shared model directories
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
 - **Universal Streaming Infrastructure**: Unified streaming system with configurable workers (batch_size parameter) - sequential mode (batch_size=0) recommended for optimal performance
 - **Multilingual Support**: German and Norwegian models for ChatterBox, plus ChatterBox Official 23-Lang supporting 23 languages including Arabic, Chinese, Danish, Dutch, English, Finnish, French, German, Greek, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Norwegian, Polish, Portuguese, Russian, Spanish, Swedish, Swahili, and Turkish
 - **Smart Language Grouping**: SRT processing by language groups to minimize model switching
 - **Character Voice Management**: Centralized character voice system with flexible input types
-- **Comprehensive Audio Processing**: Interactive waveform analyzer, vocal separation, and audio mixing
+- **Comprehensive Audio Processing**: Interactive waveform analyzer, vocal separation, audio mixing, and specialized audio editing
 - **Professional Voice Conversion**: RVC implementation with UVR5 vocal separation and advanced pitch control
 
 ## Documentation Files
@@ -32,6 +33,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **docs/CHARACTER_SWITCHING_GUIDE.md** - Guide for multi-character TTS using [CharacterName] tags, voice organization, and character voice management system
 
 **docs/CHATTERBOX_V2_SPECIAL_TOKENS.md** - Complete guide for ChatterBox Official 23-Lang v2 special emotion and sound tokens (<giggle>, <whisper>, <sigh>, etc.) with 30+ expressive tokens for enhanced TTS generation
+
+**docs/INLINE_EDIT_TAGS_USER_GUIDE.md** - Comprehensive guide for inline edit tag system enabling Step Audio EditX post-processing on any TTS engine output. Covers paralinguistic tags (<Laughter>, <Breathing>), emotion tags (<happy>, <sad>), style tags (<whisper>, <serious>), and speed control tags, with iteration control, language support notes, and best practices
 
 **docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md** - Complete user guide for Audio Wave Analyzer with interactive waveform visualization and timing extraction
 
@@ -96,6 +99,18 @@ This extension features a **unified modular architecture** supporting multiple T
 - **vibevoice_engine.py** - Main VibeVoice wrapper with 90-minute generation and multi-speaker support
 - **vibevoice_downloader.py** - Model auto-download system for Microsoft VibeVoice models (1.5B and 7B)
 
+**engines/step_audio_editx/** - Step Audio EditX engine implementation with audio editing capabilities
+- **step_audio_editx.py** - Main Step Audio EditX wrapper with zero-shot voice cloning and emotion/style/speed editing support
+- **step_audio_editx_downloader.py** - Model auto-download system for Step Audio EditX models
+- **step_audio_editx_impl/** - Complete Step Audio EditX implementation with FunASR integration
+  - **config/** - Edit configuration and prompt definitions for emotion, style, speed, and paralinguistic editing
+  - **funasr_detach/** - Complete FunASR framework implementation for speech processing (models, frontends, tokenizers, metrics)
+  - **stepvocoder/** - CosyVoice2 BigVGAN vocoder implementation for high-quality audio synthesis
+  - **tts.py**, **tts_infer.py** - TTS generation engines with multi-modal processing
+  - **tokenizer.py** - Speech tokenization system
+  - **model_loader.py** - Model loading and management utilities
+  - **quantization/** - AWQ quantization support for VRAM reduction
+
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
 - **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
@@ -123,6 +138,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/adapters/vibevoice_adapter.py** - VibeVoice engine adapter with multi-speaker format conversion and parameter mapping
 
+**engines/adapters/step_audio_editx_adapter.py** - Step Audio EditX engine adapter with voice cloning and audio editing parameter mapping
+
 **engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
 
 **engines/adapters/f5tts_streaming_adapter.py** - F5-TTS streaming adapter enabling parallel processing with language model switching
@@ -144,6 +161,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/engines/index_tts_engine_node.py** - IndexTTS-2 engine configuration node with character voice selection and generation parameters
 
 **nodes/engines/index_tts_emotion_options_node.py** - 🌈 IndexTTS-2 Emotion Vectors node with interactive radar chart for 8-emotion control
+
+**nodes/engines/step_audio_editx_engine_node.py** - ⚙️ Step Audio EditX Engine configuration node with zero-shot voice cloning, quantization options (int4/int8), and generation parameters for both clone and edit modes
 
 ### Unified Interface Nodes
 
@@ -184,8 +203,16 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/higgs_audio/** - Higgs Audio 2 internal processors
 - **higgs_audio_srt_processor.py** - Higgs Audio SRT orchestrator with multi-speaker support, character switching, and timing modes (internal processor used by Unified SRT node)
 
-**nodes/vibevoice/** - VibeVoice internal processors  
+**nodes/vibevoice/** - VibeVoice internal processors
 - **vibevoice_processor.py** - VibeVoice TTS orchestrator with multi-speaker support and long-form generation handling (internal processor used by Unified TTS node)
+
+**nodes/step_audio_editx/** - Step Audio EditX internal processors
+- **step_audio_editx_processor.py** - Step Audio EditX TTS orchestrator with zero-shot voice cloning and emotion/style/speed editing (internal processor used by Unified TTS node)
+- **step_audio_editx_srt_processor.py** - Step Audio EditX SRT processor with character switching and inline edit tag support for subtitle-based TTS workflows
+
+### Step Audio EditX Specialized Nodes
+
+**nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py** - 🎨 Step Audio EditX - Audio Editor node for post-processing audio with 14 emotions (happy, sad, angry, etc.), 32 styles (whisper, serious, child, etc.), speed control (faster/slower), 10 paralinguistic effects (<Laughter>, <Breathing>, <Sigh>), denoising, and VAD. Supports iterative editing (1-5 passes) and iteration caching for experimentation
 
 ### Audio Processing System
 
@@ -273,6 +300,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/text/phonemizer_utils.py** - F5-TTS multilingual phonemization system with IPA conversion, cross-platform backend support (espeak-phonemizer-windows/phonemizer), smart language detection, and model-specific exceptions for optimal quality
 
+**utils/text/step_audio_editx_special_tags.py** - Step Audio EditX inline edit tag system with tag conversion, stripping, detection, and UI option generation for paralinguistic effects, emotions, styles, and speed control. Enables universal post-processing of TTS output across all engines
+
 ### Voice Management
 
 **utils/voice/discovery.py** - Enhanced voice file discovery with multi-path fallback system (models/voices/, models/TTS/voices/, extra_model_paths.yaml directories, voices_examples/), character mapping, and alias loading with priority support
@@ -357,6 +386,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **web/chatterbox_srt_showcontrol.js** - SRT subtitle display and timing controls
 
+**web/step_audio_editx_showcontrol.js** - Step Audio EditX SRT subtitle display and timing controls
+
 **web/audio_analyzer.css** - Styling for audio analyzer interface components
 
 ## Development Tools
@@ -401,11 +432,12 @@ This extension features a **unified modular architecture** supporting multiple T
 The TTS Audio Suite follows a **unified modular architecture** where:
 
 1. **Engine Nodes** (`nodes/engines/`) provide user configuration interfaces
-2. **Unified Nodes** (`nodes/unified/`) serve as clean delegation layers routing to appropriate engine processors  
-3. **Engine Processors** (`nodes/chatterbox/`, `nodes/f5tts/`, `nodes/higgs_audio/`) handle engine-specific orchestration and workflow logic
+2. **Unified Nodes** (`nodes/unified/`) serve as clean delegation layers routing to appropriate engine processors
+3. **Engine Processors** (`nodes/chatterbox/`, `nodes/f5tts/`, `nodes/higgs_audio/`, `nodes/step_audio_editx/`) handle engine-specific orchestration and workflow logic
 4. **Engine Implementations** (`engines/`) handle the actual TTS/VC processing and model inference
 5. **Adapters** (`engines/adapters/`) bridge low-level engines to higher-level processors
-6. **Utilities** (`utils/`) provide shared functionality across all components
-7. **Web Interface** (`web/`) enables interactive features like audio analysis
+6. **Inline Edit System** (`utils/text/step_audio_editx_special_tags.py`) provides universal post-processing with Step Audio EditX across all engines
+7. **Utilities** (`utils/`) provide shared functionality across all components
+8. **Web Interface** (`web/`) enables interactive features like audio analysis
 
-This layered design ensures consistent user experience while allowing engine-specific optimizations. The unified nodes act as thin delegation layers, eliminating code duplication and maintaining architectural consistency across all TTS engines.
+This layered design ensures consistent user experience while allowing engine-specific optimizations. The unified nodes act as thin delegation layers, eliminating code duplication and maintaining architectural consistency across all TTS engines. The inline edit tag system adds a universal post-processing layer, enabling Step Audio EditX capabilities (emotion, style, speed, paralinguistic effects) to be applied to any TTS engine's output.
