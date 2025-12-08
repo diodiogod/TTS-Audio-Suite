@@ -149,13 +149,14 @@ class BaseF5TTSNode(BaseChatterBoxNode):
         )
 
     def generate_f5tts_with_pause_tags(self, text: str, ref_audio_path: str, ref_text: str,
-                                     enable_pause_tags: bool = True, character: str = "narrator", 
-                                     seed: int = 0, enable_cache: bool = False, cache_fn=None, auto_phonemization: bool = True, **generation_kwargs) -> torch.Tensor:
+                                     enable_pause_tags: bool = True, character: str = "narrator",
+                                     seed: int = 0, enable_cache: bool = False, cache_fn=None, auto_phonemization: bool = True,
+                                     extract_edit_tags: bool = False, **generation_kwargs):
         """
         Generate F5-TTS audio with pause tag support.
-        
+
         Args:
-            text: Input text potentially with pause tags
+            text: Input text potentially with pause tags and/or edit tags
             ref_audio_path: Reference audio file path
             ref_text: Reference text
             enable_pause_tags: Whether to process pause tags
@@ -163,52 +164,135 @@ class BaseF5TTSNode(BaseChatterBoxNode):
             seed: Seed for reproducibility and cache key
             enable_cache: Whether to use caching
             cache_fn: Function to handle caching (cache_fn(text_content) -> cached_audio or None)
+            extract_edit_tags: If True, extract edit tags and return segment dict format
             **generation_kwargs: Additional F5-TTS generation parameters
-            
+
         Returns:
-            Generated audio tensor with pauses
+            If extract_edit_tags=False: Generated audio tensor with pauses
+            If extract_edit_tags=True and edit tags present: List of dicts with waveform, text, edit_tags
+            If extract_edit_tags=True and no edit tags: Generated audio tensor (backward compatible)
         """
+        # Extract edit tags if requested (before pause processing)
+        if extract_edit_tags:
+            from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
+
         # Preprocess text for pause tags
         processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
             text, enable_pause_tags
         )
-        
+
         if pause_segments is None:
-            # No pause tags, use regular generation with optional caching
-            if enable_cache and cache_fn:
-                cached_audio = cache_fn(processed_text)
-                if cached_audio is not None:
-                    return cached_audio
-            
-            audio = self.generate_f5tts_audio(
-                processed_text, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
-            )
-            
-            if enable_cache and cache_fn:
-                cache_fn(processed_text, audio)  # Cache the result
-            
-            return audio
+            # No pause tags - check for edit tags
+            if extract_edit_tags:
+                clean_text, edit_tags = parse_edit_tags_with_iterations(processed_text)
+
+                # Generate audio with clean text (no edit tags)
+                if enable_cache and cache_fn:
+                    cached_audio = cache_fn(clean_text)
+                    if cached_audio is not None:
+                        audio = cached_audio
+                    else:
+                        audio = self.generate_f5tts_audio(
+                            clean_text, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+                        )
+                        cache_fn(clean_text, audio)
+                else:
+                    audio = self.generate_f5tts_audio(
+                        clean_text, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+                    )
+
+                # Return segment dict format if edit tags present
+                if edit_tags and len(edit_tags) > 0:
+                    return [{
+                        'waveform': audio,
+                        'text': clean_text,
+                        'edit_tags': edit_tags
+                    }]
+                else:
+                    # No edit tags - return plain tensor
+                    return audio
+            else:
+                # No edit tag extraction - original behavior
+                if enable_cache and cache_fn:
+                    cached_audio = cache_fn(processed_text)
+                    if cached_audio is not None:
+                        return cached_audio
+
+                audio = self.generate_f5tts_audio(
+                    processed_text, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+                )
+
+                if enable_cache and cache_fn:
+                    cache_fn(processed_text, audio)  # Cache the result
+
+                return audio
         
-        # Generate audio with pause tags, with optional caching per text segment
-        def f5tts_generate_func(text_content: str) -> torch.Tensor:
-            """F5-TTS generation function for pause tag processor with optional caching"""
-            if enable_cache and cache_fn:
-                cached_audio = cache_fn(text_content)
-                if cached_audio is not None:
-                    return cached_audio
-            
-            audio = self.generate_f5tts_audio(
-                text_content, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+        # Has pause tags - check if we need to extract edit tags
+        if extract_edit_tags:
+            # Extract edit tags from each pause-split text segment
+            segment_list = []
+
+            for segment_type, content in pause_segments:
+                if segment_type == 'text':
+                    # Extract edit tags from this text segment
+                    clean_content, edit_tags = parse_edit_tags_with_iterations(content)
+
+                    # Generate audio for clean text
+                    if enable_cache and cache_fn:
+                        cached_audio = cache_fn(clean_content)
+                        if cached_audio is not None:
+                            audio = cached_audio
+                        else:
+                            audio = self.generate_f5tts_audio(
+                                clean_content, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+                            )
+                            cache_fn(clean_content, audio)
+                    else:
+                        audio = self.generate_f5tts_audio(
+                            clean_content, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+                        )
+
+                    # Add segment with edit tags
+                    segment_list.append({
+                        'waveform': audio,
+                        'text': clean_content,
+                        'edit_tags': edit_tags
+                    })
+
+                elif segment_type == 'pause':
+                    # Create silence segment
+                    pause_duration = content
+                    silence = PauseTagProcessor.create_silence_segment(pause_duration, F5TTS_SAMPLE_RATE)
+                    segment_list.append({
+                        'waveform': silence,
+                        'text': '',
+                        'edit_tags': []  # No edit tags for silence
+                    })
+
+            # Return list of segment dicts
+            return segment_list
+
+        else:
+            # Original behavior - combine pause segments into single audio
+            def f5tts_generate_func(text_content: str) -> torch.Tensor:
+                """F5-TTS generation function for pause tag processor with optional caching"""
+                if enable_cache and cache_fn:
+                    cached_audio = cache_fn(text_content)
+                    if cached_audio is not None:
+                        return cached_audio
+
+                audio = self.generate_f5tts_audio(
+                    text_content, ref_audio_path, ref_text, auto_phonemization=auto_phonemization, **generation_kwargs
+                )
+
+                if enable_cache and cache_fn:
+                    cache_fn(text_content, audio)  # Cache the result
+
+                return audio
+
+            return PauseTagProcessor.generate_audio_with_pauses(
+                pause_segments, f5tts_generate_func, F5TTS_SAMPLE_RATE
             )
-            
-            if enable_cache and cache_fn:
-                cache_fn(text_content, audio)  # Cache the result
-            
-            return audio
-        
-        return PauseTagProcessor.generate_audio_with_pauses(
-            pause_segments, f5tts_generate_func, F5TTS_SAMPLE_RATE
-        )
     
     def handle_f5tts_reference(self, reference_audio: Optional[Dict[str, Any]], 
                               audio_prompt_path: str, ref_text: str) -> Tuple[Optional[str], str]:
