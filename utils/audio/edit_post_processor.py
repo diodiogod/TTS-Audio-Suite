@@ -151,6 +151,63 @@ def _apply_edit_via_node(
     return edited_audio
 
 
+# Global cache for Voice Changer node (lazy-loaded)
+_cached_vc_node = None
+
+def _restore_voice_via_vc(edited_audio_dict, original_voice_dict, iterations=1, language="English"):
+    """
+    Apply ChatterBox Official 23-Lang Voice Changer to restore original voice.
+    Reuses existing UnifiedVoiceChangerNode logic with its cache system.
+
+    Args:
+        edited_audio_dict: Audio after edits {waveform, sample_rate}
+        original_voice_dict: Original voice reference {waveform, sample_rate}
+        iterations: Number of VC refinement passes (1-5)
+        language: Language for VC model (e.g., "English", "Polish", etc.)
+
+    Returns:
+        dict: Restored audio {waveform, sample_rate}
+    """
+    global _cached_vc_node
+
+    # Lazy-load VC node instance (cache globally like Audio Editor)
+    if _cached_vc_node is None:
+        import os
+        import sys
+        import importlib.util
+
+        # Get project root and construct path to VC node
+        current_dir = os.path.dirname(__file__)  # utils/audio
+        utils_dir = os.path.dirname(current_dir)  # utils
+        project_root = os.path.dirname(utils_dir)  # project root
+
+        vc_node_path = os.path.join(
+            project_root, 'nodes', 'unified', 'voice_changer_node.py'
+        )
+
+        # Load module using importlib
+        spec = importlib.util.spec_from_file_location("voice_changer_node", vc_node_path)
+        vc_module = importlib.util.module_from_spec(spec)
+        sys.modules["voice_changer_node"] = vc_module
+        spec.loader.exec_module(vc_module)
+
+        # Instantiate the VC node
+        _cached_vc_node = vc_module.UnifiedVoiceChangerNode()
+
+    # Call existing VC node logic with refinement passes
+    result = _cached_vc_node.convert_voice(
+        source_audio=edited_audio_dict,
+        target_audio=original_voice_dict,
+        engine="chatterbox_official_23lang",  # Use ChatterBox 23-Lang VC
+        refinement_passes=iterations,
+        device="auto",
+        language=language
+    )
+
+    # Return first element (audio dict) from tuple result
+    return result[0] if isinstance(result, tuple) else result
+
+
 def process_segments(
     segments: List[Dict],
     engine_config: Optional[Dict] = None,
@@ -221,6 +278,13 @@ def process_segments(
         if not _validate_audio_duration(waveform, sample_rate):
             continue
 
+        # Store original PRE-EDIT audio as voice reference for restore tag
+        import torch
+        original_audio_dict = {
+            'waveform': waveform.clone() if hasattr(waveform, 'clone') else waveform,
+            'sample_rate': sample_rate
+        }
+
         # Show segment being edited with clean formatting
         original_text = segment.get('original_text', transcript)
         print(f"\n📝 Segment {idx + 1} - Applying edit tags:")
@@ -231,9 +295,10 @@ def process_segments(
         # Sort tags for optimal processing order
         sorted_tags = sort_edit_tags_for_processing(edit_tags)
 
-        # Group paralinguistic tags together (they must be applied as one edit)
+        # Group tags by type: non-paralinguistic → paralinguistic → restore
+        restore_tags = [t for t in sorted_tags if t.edit_type == 'restore']
         paralinguistic_tags = [t for t in sorted_tags if t.edit_type == 'paralinguistic']
-        non_paralinguistic_tags = [t for t in sorted_tags if t.edit_type != 'paralinguistic']
+        non_paralinguistic_tags = [t for t in sorted_tags if t.edit_type not in ['paralinguistic', 'restore']]
 
         # Create ComfyUI audio dict for the editor node
         current_audio_dict = {
@@ -309,6 +374,25 @@ def process_segments(
                 traceback.print_exc()
                 # Continue with unmodified audio for this tag
                 continue
+
+        # Apply restore tags LAST (after all edits)
+        for tag in restore_tags:
+            try:
+                print(f"  🎨🔄 Restoring voice ({tag.iterations} VC pass{'es' if tag.iterations > 1 else ''})")
+                language = engine_config.get('language', 'English') if engine_config else 'English'
+
+                # Use PRE-EDIT audio as reference (stored at loop start)
+                current_audio_dict = _restore_voice_via_vc(
+                    edited_audio_dict=current_audio_dict,
+                    original_voice_dict=original_audio_dict,  # Pre-edit audio
+                    iterations=tag.iterations,
+                    language=language
+                )
+            except Exception as e:
+                print(f"     ❌ Voice restoration failed: {e}")
+                import traceback
+                traceback.print_exc()
+                # Continue with current audio (skip restoration)
 
         # Update segment with edited audio
         segment['waveform'] = current_audio_dict['waveform']

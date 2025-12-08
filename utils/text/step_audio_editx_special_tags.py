@@ -211,7 +211,8 @@ EDIT_TYPE_VALUES = {
     'speed': VALID_SPEEDS,
     'paralinguistic': set(PARALINGUISTIC_CANONICAL_FORMAT.values()),
     'denoise': {'denoise'},
-    'vad': {'vad'}
+    'vad': {'vad'},
+    'restore': {'restore'}  # Voice restoration via ChatterBox VC
 }
 
 
@@ -248,6 +249,21 @@ def _parse_single_tag_part(part: str, current_position: int) -> Optional[EditTag
             value=canonical,
             iterations=iterations,
             position=current_position
+        )
+
+    # Case 1.5: Restore tag - <restore> or <restore:2>
+    if first_lower == 'restore':
+        iterations = 1
+        if len(components) >= 2:
+            try:
+                iterations = max(1, min(5, int(components[1])))
+            except ValueError:
+                pass
+        return EditTag(
+            edit_type="restore",
+            value="restore",
+            iterations=iterations,
+            position=None  # Restore doesn't need position
         )
 
     # Case 2: Typed tag - <emotion:happy:2>, <style:whisper>, <speed:faster:1>
@@ -446,7 +462,8 @@ def sort_edit_tags_for_processing(tags: List[EditTag]) -> List[EditTag]:
         'speed': 3,
         'denoise': 4,
         'vad': 5,
-        'paralinguistic': 10  # Last, position-sensitive
+        'paralinguistic': 10,  # Position-sensitive sound insertion
+        'restore': 20  # LAST - voice restoration after all edits
     }
 
     return sorted(tags, key=lambda t: type_priority.get(t.edit_type, 99))
