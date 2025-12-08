@@ -194,14 +194,23 @@ def _restore_voice_via_vc(edited_audio_dict, original_voice_dict, iterations=1, 
         # Instantiate the VC node
         _cached_vc_node = vc_module.UnifiedVoiceChangerNode()
 
+    # Create engine config for ChatterBox 23-Lang VC
+    engine_config = {
+        'engine_type': 'chatterbox_official_23lang',
+        'config': {
+            'device': 'auto',
+            'language': language
+        }
+    }
+
     # Call existing VC node logic with refinement passes
     result = _cached_vc_node.convert_voice(
+        TTS_engine=engine_config,
         source_audio=edited_audio_dict,
-        target_audio=original_voice_dict,
-        engine="chatterbox_official_23lang",  # Use ChatterBox 23-Lang VC
+        narrator_target=original_voice_dict,
         refinement_passes=iterations,
-        device="auto",
-        language=language
+        max_chunk_duration=30,
+        chunk_method="smart"
     )
 
     # Return first element (audio dict) from tuple result
@@ -260,7 +269,10 @@ def process_segments(
         print("⚠️ EditPostProcessor: Audio Editor node not available - skipping edits")
         return segments
 
-    # Process each segment with edits
+    # Track segments that need voice restoration (collect for batch processing)
+    segments_needing_restore = []
+
+    # Process each segment with edits (NON-RESTORE edits only)
     for idx, segment, edit_tags in segments_to_edit:
         if model_management.interrupt_processing:
             print("⚠️ EditPostProcessor: Processing interrupted")
@@ -286,10 +298,9 @@ def process_segments(
         }
 
         # Show segment being edited with clean formatting
-        original_text = segment.get('original_text', transcript)
         print(f"\n📝 Segment {idx + 1} - Applying edit tags:")
         print("="*60)
-        print(original_text)
+        print(transcript)
         print("="*60)
 
         # Sort tags for optimal processing order
@@ -342,15 +353,25 @@ def process_segments(
 
                     # Build audio_text with active tags (use angle brackets for Audio Editor)
                     audio_text = transcript
+
+                    # Track position offset as we insert tags (each insertion shifts positions)
+                    position_offset = 0
+
                     for tag in active_tags:
                         position = tag.position if tag.position is not None else len(audio_text)
                         position = min(position, len(audio_text))
 
+                        # Apply cumulative offset from previous insertions
+                        adjusted_position = position + position_offset
+
                         # Check if we need space after tag
-                        needs_space_after = (position < len(audio_text) and audio_text[position].isalnum())
+                        needs_space_after = (adjusted_position < len(audio_text) and audio_text[adjusted_position].isalnum())
                         tag_text = f"<{tag.value}> " if needs_space_after else f"<{tag.value}>"
 
-                        audio_text = audio_text[:position] + tag_text + audio_text[position:]
+                        audio_text = audio_text[:adjusted_position] + tag_text + audio_text[adjusted_position:]
+
+                        # Update offset for next tag insertion
+                        position_offset += len(tag_text)
 
                     active_summary = ", ".join([t.value for t in reversed(active_tags)])
                     print(f"     → Iteration {iteration}/{max_iterations}: [{active_summary}]")
@@ -375,27 +396,56 @@ def process_segments(
                 # Continue with unmodified audio for this tag
                 continue
 
-        # Apply restore tags LAST (after all edits)
-        for tag in restore_tags:
-            try:
-                print(f"  🎨🔄 Restoring voice ({tag.iterations} VC pass{'es' if tag.iterations > 1 else ''})")
-                language = engine_config.get('language', 'English') if engine_config else 'English'
+        # If segment has restore tags, collect it for batch restoration later
+        if restore_tags:
+            segments_needing_restore.append({
+                'idx': idx,
+                'segment': segment,
+                'restore_tags': restore_tags,
+                'edited_audio': current_audio_dict,
+                'original_audio': original_audio_dict
+            })
 
-                # Use PRE-EDIT audio as reference (stored at loop start)
-                current_audio_dict = _restore_voice_via_vc(
-                    edited_audio_dict=current_audio_dict,
-                    original_voice_dict=original_audio_dict,  # Pre-edit audio
-                    iterations=tag.iterations,
-                    language=language
-                )
-            except Exception as e:
-                print(f"     ❌ Voice restoration failed: {e}")
-                import traceback
-                traceback.print_exc()
-                # Continue with current audio (skip restoration)
-
-        # Update segment with edited audio
+        # Update segment with edited audio (pre-restore)
         segment['waveform'] = current_audio_dict['waveform']
+
+    # BATCH RESTORE: Process all voice restorations at once (loads VC model only once)
+    if segments_needing_restore:
+        print(f"\n🎨🔄 Batch voice restoration for {len(segments_needing_restore)} segment(s)...")
+
+        for restore_info in segments_needing_restore:
+            if model_management.interrupt_processing:
+                print("⚠️ Voice restoration interrupted")
+                break
+
+            idx = restore_info['idx']
+            segment = restore_info['segment']
+            restore_tags = restore_info['restore_tags']
+            edited_audio = restore_info['edited_audio']
+            original_audio = restore_info['original_audio']
+
+            for tag in restore_tags:
+                try:
+                    print(f"  🔄 Segment {idx + 1}: Restoring voice ({tag.iterations} VC pass{'es' if tag.iterations > 1 else ''})")
+                    language = engine_config.get('language', 'English') if engine_config else 'English'
+
+                    # Use PRE-EDIT audio as reference
+                    restored_audio = _restore_voice_via_vc(
+                        edited_audio_dict=edited_audio,
+                        original_voice_dict=original_audio,
+                        iterations=tag.iterations,
+                        language=language
+                    )
+                    edited_audio = restored_audio  # Chain for multiple restore tags
+
+                except Exception as e:
+                    print(f"     ❌ Voice restoration failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    # Continue with current audio (skip restoration)
+
+            # Update segment with restored audio
+            segment['waveform'] = edited_audio['waveform']
 
     print(f"\n✅ EditPostProcessor: Completed edit post-processing")
     return segments

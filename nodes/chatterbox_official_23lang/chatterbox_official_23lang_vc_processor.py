@@ -127,6 +127,8 @@ class ChatterboxOfficial23LangVCProcessor(BaseVCNode):
         # Normalize to 2D for torchaudio.save (channels, samples)
         while source_waveform.dim() > 2:
             source_waveform = source_waveform.squeeze(0)  # Remove batch/extra dimensions
+        if source_waveform.dim() == 1:
+            source_waveform = source_waveform.unsqueeze(0)  # Add channel dimension
 
         torchaudio.save(source_temp.name, source_waveform.cpu(), source_audio["sample_rate"])
         self._temp_files.append(source_temp.name)
@@ -139,6 +141,8 @@ class ChatterboxOfficial23LangVCProcessor(BaseVCNode):
         # Normalize to 2D for torchaudio.save (channels, samples)
         while target_waveform.dim() > 2:
             target_waveform = target_waveform.squeeze(0)  # Remove batch/extra dimensions
+        if target_waveform.dim() == 1:
+            target_waveform = target_waveform.unsqueeze(0)  # Add channel dimension
 
         torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
         self._temp_files.append(target_temp.name)
@@ -222,6 +226,8 @@ class ChatterboxOfficial23LangVCProcessor(BaseVCNode):
             # Normalize to 2D for torchaudio.save (channels, samples)
             while target_waveform.dim() > 2:
                 target_waveform = target_waveform.squeeze(0)  # Remove batch/extra dimensions
+            if target_waveform.dim() == 1:
+                target_waveform = target_waveform.unsqueeze(0)  # Add channel dimension
 
             torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
             self._temp_files.append(target_temp.name)

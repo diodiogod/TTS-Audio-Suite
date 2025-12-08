@@ -373,11 +373,13 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
         # Parse tag content (may have pipes for multiple effects)
         parts = tag_content.split('|')
         tag_found = False
+        tags_from_this_match = []
 
         for part in parts:
             edit_tag = _parse_single_tag_part(part, clean_position)
             if edit_tag:
                 edit_tags.append(edit_tag)
+                tags_from_this_match.append(edit_tag)
                 tag_found = True
 
         # If any valid tag was found, update offset (tag is removed)
@@ -388,8 +390,8 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
             # (when tag is followed by word character without space)
             text_after = text[tag_end:] if tag_end < len(text) else ""
             if text_after and text_after[0].isalnum():
-                # Check if any of the tags we just parsed was paralinguistic
-                for tag in edit_tags:
+                # Check if any of the tags we JUST PARSED FROM THIS MATCH was paralinguistic
+                for tag in tags_from_this_match:
                     if tag.edit_type == 'paralinguistic':
                         clean_parts.append(' ')
                         offset -= 1  # Compensate for added space
@@ -406,6 +408,15 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
     # Join and clean up whitespace
     clean_text = ''.join(clean_parts)
     clean_text = re.sub(r'  +', ' ', clean_text)
+
+    # Adjust positions if we strip leading whitespace
+    leading_spaces = len(clean_text) - len(clean_text.lstrip())
+    if leading_spaces > 0:
+        # Adjust all positions by subtracting leading spaces removed
+        for tag in edit_tags:
+            if tag.position is not None:
+                tag.position = max(0, tag.position - leading_spaces)
+
     clean_text = clean_text.strip()
 
     return clean_text, edit_tags

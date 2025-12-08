@@ -528,15 +528,140 @@ Back to the main narrator voice for the conclusion.""",
             else:
                 raise
 
-    def _generate_with_pause_tags(self, pause_segments: List, inputs: Dict, main_audio_prompt) -> torch.Tensor:
+    def _generate_with_pause_tags_as_segments(self, pause_segments: List, inputs: Dict, main_audio_prompt) -> List[Dict]:
         """
-        Generate audio with pause tag support, handling character switching within segments.
-        
+        Generate audio segments with pause tag support, handling character switching within segments.
+        Returns segments separately for edit post-processing instead of combining them.
+
         Args:
             pause_segments: List of ('text', content) or ('pause', duration) segments
             inputs: Input parameters dictionary
             main_audio_prompt: Default audio prompt
-            
+
+        Returns:
+            List[Dict]: List of segment dicts with keys:
+                - waveform: torch.Tensor audio
+                - sample_rate: int
+                - text: str (cleaned text without pause tags)
+                - edit_tags: List[EditTag] (for text segments with edit tags)
+                - segment_type: 'text' or 'pause'
+        """
+        from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
+
+        def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
+            """Generate audio for a text segment"""
+            # Extract edit tags for ChatterBox v2 (AFTER character parsing, BEFORE TTS engine)
+            if hasattr(self.tts_model, 'model_version') and self.tts_model.model_version == "v2":
+                segment_text, _, _ = extract_edit_tags_for_chatterbox(segment_text)
+            else:
+                # For v1, just use convert_v2_special_tags directly
+                from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
+                segment_text = convert_v2_special_tags(segment_text)
+
+            # Apply padding for crash protection
+            # processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])  # DISABLED FOR TESTING
+            processed_text = segment_text  # Direct text without crash protection
+
+            # Generate audio directly
+            language_code = self._language_name_to_code(inputs["language"])
+            return self.generate_tts_audio(
+                processed_text, audio_prompt, inputs["exaggeration"],
+                inputs["temperature"], inputs["cfg_weight"],
+                inputs["repetition_penalty"], inputs["min_p"], inputs["top_p"],
+                language_code
+            )
+
+        # Check if we need character switching within pause segments
+        has_character_switching = any(
+            segment_type == 'text' and '[' in content and ']' in content
+            for segment_type, content in pause_segments
+        )
+
+        if has_character_switching:
+            # Set up character voice mapping
+            from utils.voice.discovery import get_character_mapping
+
+            # Process each segment and extract characters
+            all_characters = set()
+            for segment_type, content in pause_segments:
+                if segment_type == 'text':
+                    char_segments = parse_character_text(content)
+                    chars = set(char for char, _ in char_segments)
+                    all_characters.update(chars)
+
+            character_mapping = get_character_mapping(list(all_characters), engine_type="chatterbox")
+
+            # Build voice references
+            voice_refs = {}
+            for char_name in all_characters:
+                audio_path, _ = character_mapping.get(char_name, (None, None))
+                voice_refs[char_name] = audio_path if audio_path else main_audio_prompt
+
+        # Process segments one by one, keeping them separate
+        result_segments = []
+        sample_rate = self.tts_model.sr if hasattr(self.tts_model, 'sr') else 24000
+
+        for segment_type, content in pause_segments:
+            if segment_type == 'pause':
+                # Create silence segment
+                duration_sec = content
+                silence_samples = int(duration_sec * sample_rate)
+                silence_waveform = torch.zeros(1, silence_samples)
+
+                result_segments.append({
+                    'waveform': silence_waveform,
+                    'sample_rate': sample_rate,
+                    'text': '',
+                    'edit_tags': [],
+                    'segment_type': 'pause'
+                })
+            else:
+                # Text segment - generate audio and extract edit tags
+                text_content = content
+
+                # Extract edit tags BEFORE TTS generation
+                clean_text, edit_tags = parse_edit_tags_with_iterations(text_content)
+
+                # Generate audio using CLEAN text (tags already extracted above)
+                if has_character_switching and ('[' in clean_text and ']' in clean_text):
+                    # Handle character switching within this segment
+                    char_segments = parse_character_text(clean_text)
+                    segment_audio_parts = []
+
+                    for char_name, segment_text in char_segments:
+                        audio_prompt = voice_refs.get(char_name, main_audio_prompt)
+                        audio_part = generate_segment_audio(segment_text, audio_prompt)
+                        segment_audio_parts.append(audio_part)
+
+                    # Combine character segments
+                    if segment_audio_parts:
+                        audio_waveform = torch.cat(segment_audio_parts, dim=-1)
+                    else:
+                        audio_waveform = torch.zeros(1, 0)
+                else:
+                    # Simple text segment without character switching
+                    audio_waveform = generate_segment_audio(clean_text, main_audio_prompt)
+
+                result_segments.append({
+                    'waveform': audio_waveform,
+                    'sample_rate': sample_rate,
+                    'text': clean_text,
+                    'original_text': text_content,  # Keep original with tags for display
+                    'edit_tags': edit_tags,
+                    'segment_type': 'text'
+                })
+
+        return result_segments
+
+    def _generate_with_pause_tags(self, pause_segments: List, inputs: Dict, main_audio_prompt) -> torch.Tensor:
+        """
+        Generate audio with pause tag support, handling character switching within segments.
+
+        Args:
+            pause_segments: List of ('text', content) or ('pause', duration) segments
+            inputs: Input parameters dictionary
+            main_audio_prompt: Default audio prompt
+
         Returns:
             Combined audio tensor with pauses
         """
@@ -712,14 +837,16 @@ Back to the main narrator voice for the conclusion.""",
             text, enable_pause_tags
         )
 
-        # Convert v2 special tags AFTER pause processing, BEFORE TTS generation
+        # Extract Step Audio EditX tags AND convert v2 special tags
+        # AFTER pause processing, BEFORE TTS generation
         if model_version == "v2":
-            from utils.text.chatterbox_v2_special_tags import convert_v2_special_tags
-            processed_text = convert_v2_special_tags(processed_text)
-            # Also convert in pause segments if they exist
+            # Extract edit tags (restore, style:whisper, etc.) for post-processing
+            processed_text, edit_tags_extracted, _ = extract_edit_tags_for_chatterbox(processed_text)
+
+            # Also extract from pause segments if they exist
             if pause_segments is not None:
                 pause_segments = [
-                    (seg_type, convert_v2_special_tags(content) if seg_type == 'text' else content)
+                    (seg_type, extract_edit_tags_for_chatterbox(content)[0] if seg_type == 'text' else content)
                     for seg_type, content in pause_segments
                 ]
 
@@ -1186,38 +1313,83 @@ Back to the main narrator voice for the conclusion.""",
                     # BUGFIX: Clean character tags from text even in single character mode
                     clean_text = character_parser.remove_character_tags(inputs["text"])
 
-                    # Extract edit tags for ChatterBox v2
-                    text_for_generation, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(clean_text)
-
-                    wav = self._generate_tts_with_pause_tags(
-                        text_for_generation, main_audio_prompt, inputs["exaggeration"],
-                        inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
-                        inputs["min_p"], inputs["top_p"], inputs["language"],
-                        True, character=inputs["character"], seed=inputs["seed"],
-                        enable_cache=inputs.get("enable_audio_cache", True),
-                        crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
-                        stable_audio_component=stable_audio_component,
-                        model_version=inputs.get("model_version", "v1")
+                    # Preprocess text for pause tags first
+                    processed_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
+                        clean_text, True
                     )
 
-                    # Apply edit post-processing if tags present
-                    if edit_tags:
-                        sample_rate = self.tts_model.sr if self.tts_model else 24000
-                        segment_for_editing = {
-                            'waveform': wav.squeeze().cpu() if wav.dim() > 1 else wav.cpu(),
-                            'sample_rate': sample_rate,
-                            'character': inputs["character"],
-                            'text': text_for_generation,
-                            'original_text': clean_text,
-                            'edit_tags': edit_tags
-                        }
-                        from utils.audio.edit_post_processor import process_segments
-                        print(f"🎨 Applying edit post-processing...")
-                        processed_segments = process_segments([segment_for_editing])
-                        wav = processed_segments[0]['waveform']
+                    sample_rate = self.tts_model.sr if self.tts_model else 24000
+
+                    if pause_segments is None:
+                        # No pause tags - use original path
+                        text_for_generation, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(clean_text)
+
+                        wav = self._generate_tts_with_pause_tags(
+                            text_for_generation, main_audio_prompt, inputs["exaggeration"],
+                            inputs["temperature"], inputs["cfg_weight"], inputs["repetition_penalty"],
+                            inputs["min_p"], inputs["top_p"], inputs["language"],
+                            True, character=inputs["character"], seed=inputs["seed"],
+                            enable_cache=inputs.get("enable_audio_cache", True),
+                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
+                            stable_audio_component=stable_audio_component,
+                            model_version=inputs.get("model_version", "v1")
+                        )
+
+                        # Apply edit post-processing if tags present
+                        if edit_tags:
+                            # Strip pause tags from text for clean display in edit processing
+                            _, text_without_pause = PauseTagProcessor.parse_pause_tags(text_for_generation)
+
+                            segment_for_editing = {
+                                'waveform': wav.squeeze().cpu() if wav.dim() > 1 else wav.cpu(),
+                                'sample_rate': sample_rate,
+                                'character': inputs["character"],
+                                'text': text_without_pause,  # Clean text without pause tags
+                                'original_text': clean_text,
+                                'edit_tags': edit_tags
+                            }
+                            from utils.audio.edit_post_processor import process_segments
+                            print(f"🎨 Applying edit post-processing...")
+                            processed_segments = process_segments([segment_for_editing])
+                            wav = processed_segments[0]['waveform']
+                    else:
+                        # Has pause tags - use new segmented method
+                        print(f"🏷️ Processing pause tags: {len(pause_segments)} segments")
+
+                        # STEP 1: Generate ALL segments first (TTS generation phase)
+                        segments = self._generate_with_pause_tags_as_segments(
+                            pause_segments, inputs, main_audio_prompt
+                        )
+
+                        # STEP 2: Batch process edit tags AFTER all TTS generation completes
+                        segments_with_edits = [s for s in segments if s.get('edit_tags')]
+                        if segments_with_edits:
+                            from utils.audio.edit_post_processor import process_segments
+                            print(f"🎨 Applying edit post-processing to {len(segments_with_edits)} segment(s)...")
+
+                            # Get language for VC
+                            engine_config = {
+                                'language': inputs["language"]
+                            }
+
+                            # Process segments (modifies in-place)
+                            process_segments(segments, engine_config=engine_config)
+
+                        # STEP 3: Combine segments (text + pause) after edits are applied
+                        audio_parts = []
+                        for seg in segments:
+                            wf = seg['waveform']
+                            # Ensure consistent tensor shape
+                            if wf.dim() == 1:
+                                wf = wf.unsqueeze(0)
+                            elif wf.dim() == 3:
+                                wf = wf.squeeze(0)
+                            audio_parts.append(wf)
+
+                        wav = torch.cat(audio_parts, dim=-1) if audio_parts else torch.zeros(1, 0)
 
                     model_source = f"chatterbox_{language.lower()}"
-                    info = f"Generated {wav.size(-1) / self.tts_model.sr:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
+                    info = f"Generated {wav.size(-1) / sample_rate:.1f}s audio from {text_length} characters (single chunk, {model_source} models)"
                 else:
                     # Split into chunks using improved chunker (UNCHANGED)
                     # BUGFIX: Clean character tags from text before chunking in single character mode
