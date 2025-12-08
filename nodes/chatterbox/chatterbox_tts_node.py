@@ -793,8 +793,9 @@ Back to the main narrator voice for the conclusion.""",
                         language_groups, voice_refs, inputs, expanded_segments_with_lang, pause_info, segment_mapping
                     )
                 else:
+                    # Traditional mode should also use expanded segments (after pause splitting)
                     audio_segments_with_order = self._process_languages_traditional(
-                        language_groups, voice_refs, inputs, character_segments_with_lang
+                        language_groups, voice_refs, inputs, expanded_segments_with_lang
                     )
                 
                 # Continue to sorting and combining...
@@ -1319,14 +1320,22 @@ Back to the main narrator voice for the conclusion.""",
         
         return reconstructed_segments
 
-    def _process_languages_traditional(self, language_groups, voice_refs, inputs, character_segments_with_lang):
+    def _process_languages_traditional(self, language_groups, voice_refs, inputs, segments_with_lang):
         """Process languages using traditional character-by-character method."""
         print(f"🎯 TRADITIONAL MODE: Processing {len(language_groups)} language groups sequentially")
-        
+
         audio_segments_with_order = []
         current_loaded_language = None
-        
-        for original_idx, (char, segment_text, lang, segment_params) in enumerate(character_segments_with_lang):
+
+        # Segments can be either (char, text, lang, params) or (idx, char, text, lang, params)
+        for item in segments_with_lang:
+            if len(item) == 5:
+                # Expanded segments format: (idx, char, text, lang, params)
+                original_idx, char, segment_text, lang, segment_params = item
+            else:
+                # Original format: (char, text, lang, params) - enumerate provides idx
+                char, segment_text, lang, segment_params = item
+                original_idx = segments_with_lang.index(item)
             # Load TTS model for this language if not already loaded
             from utils.models.language_mapper import get_model_for_language
             required_model = get_model_for_language("chatterbox", lang, "English")
@@ -1370,9 +1379,9 @@ Back to the main narrator voice for the conclusion.""",
             audio_segments_with_order.append((original_idx, segment_audio))
             # Use the original better format with proper emoji based on character type
             if char == "narrator":
-                print(f"🎤 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (lang: {lang})")
+                print(f"🎤 Generating ChatterBox segment {original_idx+1}/{len(segments_with_lang)} for '{char}' (lang: {lang})")
             else:
-                print(f"🎭 Generating ChatterBox segment {original_idx+1}/{len(character_segments_with_lang)} for '{char}' (lang: {lang})")
+                print(f"🎭 Generating ChatterBox segment {original_idx+1}/{len(segments_with_lang)} for '{char}' (lang: {lang})")
             
         return audio_segments_with_order
 
