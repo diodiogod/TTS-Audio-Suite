@@ -39,11 +39,26 @@ from utils.voice.discovery import get_available_voices, load_voice_reference, ge
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
+from utils.text.chatterbox_v2_special_tags import CHATTERBOX_V2_SPECIAL_TOKENS, convert_v2_special_tags
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 # Lazy imports for modular components (loaded when needed to avoid torch import issues during node registration)
 import comfy.model_management as model_management
 
 # Global audio cache - SAME AS ORIGINAL
 GLOBAL_AUDIO_CACHE = {}
+
+
+def extract_edit_tags_for_classic_chatterbox(text: str):
+    """
+    Extract edit tags for classic ChatterBox (no native tag conflicts).
+
+    Returns:
+        Tuple of (clean_text, edit_tags)
+    """
+    # Classic ChatterBox has no native tags, so directly extract Step EditX tags
+    clean_text, edit_tags = parse_edit_tags_with_iterations(text)
+    return clean_text, edit_tags
 
 
 class ChatterboxSRTTTSNode(BaseTTSNode):
@@ -1087,6 +1102,9 @@ The audio will match these exact timings.""",
         natural_durations = [0.0] * len(subtitles)
         any_segment_cached = False
 
+        # Initialize collection for batch edit processing
+        all_segments_for_editing = []
+
         # Build voice references for characters (same as streaming path)
         voice_refs = {'narrator': audio_prompt or None}
         try:
@@ -1125,62 +1143,216 @@ The audio will match these exact timings.""",
                     # Process each segment individually with its own parameters
                     print(f"🔀 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Per-segment parameter switching")
 
-                    segment_audio_parts = []
-                    for seg_idx, (char, text, lang, seg_params) in enumerate(character_segments_with_lang):
-                        # Get character-specific voice reference
-                        char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
+                    # Extract edit tags from the full subtitle text
+                    text_clean, edit_tags = extract_edit_tags_for_classic_chatterbox(subtitle.text)
 
-                        # Apply segment parameters
-                        current_temp = temperature
-                        current_exag = exaggeration
-                        current_cfg = cfg_weight
-                        current_seed = seed
+                    # Check for pause tags
+                    has_pause_tags = PauseTagProcessor.has_pause_tags(text_clean)
 
-                        if seg_params:
-                            segment_config = apply_segment_parameters(
-                                {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
-                                seg_params,
-                                "chatterbox"
+                    # Initialize variables
+                    wav = None
+                    natural_duration = 0.0
+
+                    if has_pause_tags and edit_tags:
+                        # Split by pause tags FIRST, then process character segments within each pause segment
+                        print(f"🎨 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Has BOTH pause and edit tags - splitting by pause first")
+                        pause_segments, _ = PauseTagProcessor.parse_pause_tags(text_clean)
+
+                        segment_audio_parts = []
+                        for pause_seg_type, pause_content in pause_segments:
+                            if pause_seg_type == 'text':
+                                # Process character segments within this text
+                                # Parse character segments from this pause segment
+                                from utils.text.character_parser import character_parser
+                                seg_objects = character_parser.parse_text_segments(pause_content)
+                                char_segs = [(seg.original_character or seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in seg_objects]
+
+                                # Generate audio for each character segment
+                                for seg_idx, (char, char_text, char_lang, seg_params) in enumerate(char_segs):
+                                    char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
+
+                                    # Apply segment parameters
+                                    current_temp = temperature
+                                    current_exag = exaggeration
+                                    current_cfg = cfg_weight
+                                    current_seed = seed
+
+                                    if seg_params:
+                                        segment_config = apply_segment_parameters(
+                                            {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
+                                            seg_params,
+                                            "chatterbox"
+                                        )
+                                        current_temp = segment_config.get('temperature', temperature)
+                                        current_exag = segment_config.get('exaggeration', exaggeration)
+                                        current_cfg = segment_config.get('cfg_weight', cfg_weight)
+                                        current_seed = segment_config.get('seed', seed)
+
+                                    # Pad short text with crash protection
+                                    processed_text = self._pad_short_text_for_chatterbox(char_text, crash_protection_template)
+
+                                    # Generate audio (no pause tags!)
+                                    segment_wav = self._generate_tts_with_pause_tags(
+                                        processed_text, char_voice, current_exag, current_temp, current_cfg, char_lang,
+                                        False, character=char, seed=current_seed, enable_cache=enable_audio_cache,
+                                        crash_protection_template=crash_protection_template,
+                                        stable_audio_component=stable_audio_prompt_component
+                                    )
+
+                                    # Normalize to 1D
+                                    if segment_wav.dim() == 3:
+                                        segment_wav_normalized = segment_wav.squeeze(0).squeeze(0)
+                                    elif segment_wav.dim() == 2:
+                                        segment_wav_normalized = segment_wav.squeeze(0)
+                                    else:
+                                        segment_wav_normalized = segment_wav
+
+                                    # Store for batch editing
+                                    all_segments_for_editing.append({
+                                        'waveform': segment_wav_normalized,
+                                        'text': char_text,
+                                        'edit_tags': edit_tags,
+                                        'original_text': char_text,
+                                        'subtitle_index': i,
+                                        'sample_rate': self.tts_model.sr
+                                    })
+                                    segment_audio_parts.append(None)  # Placeholder
+
+                            elif pause_seg_type == 'pause':
+                                # Create silence segment
+                                silence = PauseTagProcessor.create_silence_segment(pause_content, self.tts_model.sr)
+                                segment_audio_parts.append(silence)
+
+                        # Store placeholder - will be reconstructed after batch editing
+                        audio_segments[i] = segment_audio_parts
+                        natural_duration = 0.0
+
+                    elif edit_tags:
+                        # Has edit tags but NO pause tags
+                        print(f"🎨 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Has edit tags (no pause tags)")
+
+                        segment_audio_parts = []
+                        for seg_idx, (char, text, lang, seg_params) in enumerate(character_segments_with_lang):
+                            char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
+
+                            # Apply segment parameters
+                            current_temp = temperature
+                            current_exag = exaggeration
+                            current_cfg = cfg_weight
+                            current_seed = seed
+
+                            if seg_params:
+                                segment_config = apply_segment_parameters(
+                                    {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
+                                    seg_params,
+                                    "chatterbox"
+                                )
+                                current_temp = segment_config.get('temperature', temperature)
+                                current_exag = segment_config.get('exaggeration', exaggeration)
+                                current_cfg = segment_config.get('cfg_weight', cfg_weight)
+                                current_seed = segment_config.get('seed', seed)
+
+                            # Pad short text with crash protection
+                            processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+
+                            # Generate audio
+                            segment_wav = self._generate_tts_with_pause_tags(
+                                processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
+                                False, character=char, seed=current_seed, enable_cache=enable_audio_cache,
+                                crash_protection_template=crash_protection_template,
+                                stable_audio_component=stable_audio_prompt_component
                             )
-                            current_temp = segment_config.get('temperature', temperature)
-                            current_exag = segment_config.get('exaggeration', exaggeration)
-                            current_cfg = segment_config.get('cfg_weight', cfg_weight)
-                            current_seed = segment_config.get('seed', seed)
-                            print(f"  📊 Segment {seg_idx+1}: Applying parameters {seg_params}")
 
-                        # Pad short text with crash protection
-                        processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+                            # Normalize to 1D
+                            if segment_wav.dim() == 3:
+                                segment_wav_normalized = segment_wav.squeeze(0).squeeze(0)
+                            elif segment_wav.dim() == 2:
+                                segment_wav_normalized = segment_wav.squeeze(0)
+                            else:
+                                segment_wav_normalized = segment_wav
 
-                        # Generate audio for this segment with its parameters and character voice
-                        segment_wav = self._generate_tts_with_pause_tags(
-                            processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
-                            True, character=char, seed=current_seed, enable_cache=enable_audio_cache,
-                            crash_protection_template=crash_protection_template,
-                            stable_audio_component=stable_audio_prompt_component
-                        )
-                        segment_audio_parts.append(segment_wav)
+                            # Store for batch editing
+                            all_segments_for_editing.append({
+                                'waveform': segment_wav_normalized,
+                                'text': text,
+                                'edit_tags': edit_tags,
+                                'original_text': text,
+                                'subtitle_index': i,
+                                'sample_rate': self.tts_model.sr
+                            })
+                            segment_audio_parts.append(None)  # Placeholder
 
-                    # Concatenate all segment audio
-                    if segment_audio_parts:
-                        import torch
-                        wav = torch.cat(segment_audio_parts, dim=-1)
+                        # Store placeholder list
+                        audio_segments[i] = segment_audio_parts
+                        natural_duration = 0.0
+
                     else:
-                        wav = torch.zeros(1, 1000)
+                        # No edit tags - use existing logic with pause processing
+                        segment_audio_parts = []
+                        for seg_idx, (char, text, lang, seg_params) in enumerate(character_segments_with_lang):
+                            char_voice = voice_refs.get(char, voice_refs.get("narrator", None))
 
-                    natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+                            # Apply segment parameters
+                            current_temp = temperature
+                            current_exag = exaggeration
+                            current_cfg = cfg_weight
+                            current_seed = seed
+
+                            if seg_params:
+                                segment_config = apply_segment_parameters(
+                                    {'temperature': temperature, 'exaggeration': exaggeration, 'cfg_weight': cfg_weight, 'seed': seed},
+                                    seg_params,
+                                    "chatterbox"
+                                )
+                                current_temp = segment_config.get('temperature', temperature)
+                                current_exag = segment_config.get('exaggeration', exaggeration)
+                                current_cfg = segment_config.get('cfg_weight', cfg_weight)
+                                current_seed = segment_config.get('seed', seed)
+                                print(f"  📊 Segment {seg_idx+1}: Applying parameters {seg_params}")
+
+                            # Pad short text with crash protection
+                            processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+
+                            # Generate audio for this segment with its parameters and character voice
+                            segment_wav = self._generate_tts_with_pause_tags(
+                                processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
+                                True, character=char, seed=current_seed, enable_cache=enable_audio_cache,
+                                crash_protection_template=crash_protection_template,
+                                stable_audio_component=stable_audio_component
+                            )
+                            segment_audio_parts.append(segment_wav)
+
+                        # Concatenate all segment audio
+                        if segment_audio_parts:
+                            wav = torch.cat(segment_audio_parts, dim=-1)
+                        else:
+                            wav = torch.zeros(1, 1000)
+
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
 
                 elif subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
                     # Use modular multilingual engine for character/language switching
                     characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                     languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
-                    
+
                     if len(languages) > 1:
                         print(f"🌍 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
                     if len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator"):
                         print(f"🎭 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
-                    
+
+                    # Initialize variables
+                    wav = None
+                    natural_duration = 0.0
+                    has_pause_tags = False
+
+                    # Check if subtitle has edit tags
+                    _, edit_tags = extract_edit_tags_for_classic_chatterbox(subtitle.text)
+
+                    if edit_tags:
+                        print(f"🎨 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Has edit tags - multilingual engine will extract per-segment")
+
                     print(f"🔧 Note: Multilingual engine may load additional models for character/language switching within this segment")
-                    
+
                     # Lazy load modular components
                     if self.multilingual_engine is None:
                         from utils.voice.multilingual_engine import MultilingualEngine
@@ -1212,9 +1384,9 @@ The audio will match these exact timings.""",
                                 print(f"  📊 SRT: Applying segment parameters: {seg_params}")
                                 break  # Use first segment's parameters for the entire subtitle
 
-                    # Use modular multilingual engine
+                    # Use modular multilingual engine with ORIGINAL text (will extract edit tags internally)
                     result = self.multilingual_engine.process_multilingual_text(
-                        text=subtitle.text,
+                        text=subtitle.text,  # Pass original text with edit tags
                         engine_adapter=self.chatterbox_adapter,
                         model=language,
                         device=device,
@@ -1226,20 +1398,69 @@ The audio will match these exact timings.""",
                         cfg_weight=current_cfg,
                         seed=current_seed,
                         enable_audio_cache=enable_audio_cache,
-                        crash_protection_template=crash_protection_template
+                        crash_protection_template=crash_protection_template,
+                        extract_edit_tags=True  # Enable edit tag extraction per segment
                     )
-                    
-                    # CRITICAL FIX: Restore the language model for this language group 
+
+                    # CRITICAL FIX: Restore the language model for this language group
                     # The multilingual engine may have switched to other models during processing
                     if self.current_language != required_language:
                         print(f"🔄 Restoring {required_language} model after multilingual processing")
                         self.load_tts_model(device, required_language)
                         self.current_language = required_language
                         self.current_model_name = required_language
-                    
-                    wav = result.audio
-                    natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
-                    
+
+                    # Extract segments that have edit tags for batch processing
+                    if edit_tags:
+                        # Check which segments actually have edit tags
+                        segment_audio_parts = []
+                        has_any_edits = False
+
+                        for seg_idx, seg in enumerate(result.segments):
+                            if seg.edit_tags and len(seg.edit_tags) > 0:
+                                # This segment has edit tags - send for editing
+                                has_any_edits = True
+
+                                # Normalize to 1D
+                                seg_audio = seg.audio
+                                if seg_audio.dim() == 3:
+                                    seg_audio_normalized = seg_audio.squeeze(0).squeeze(0)
+                                elif seg_audio.dim() == 2:
+                                    seg_audio_normalized = seg_audio.squeeze(0)
+                                else:
+                                    seg_audio_normalized = seg_audio
+
+                                # Store for batch editing with segment position tracking
+                                all_segments_for_editing.append({
+                                    'waveform': seg_audio_normalized,
+                                    'text': seg.text,
+                                    'edit_tags': seg.edit_tags,
+                                    'original_text': seg.text,
+                                    'subtitle_index': i,
+                                    'segment_position': seg_idx,  # Track position in segment_audio_parts
+                                    'sample_rate': self.tts_model.sr
+                                })
+                                segment_audio_parts.append(None)  # Placeholder for edited audio
+                            else:
+                                # No edit tags - keep audio as-is
+                                segment_audio_parts.append(seg.audio)
+
+                        if has_any_edits:
+                            # Store list of mixed segments (audio + None placeholders)
+                            audio_segments[i] = segment_audio_parts
+                            natural_duration = 0.0
+                        else:
+                            # No segments had edit tags (shouldn't happen but fallback)
+                            wav = result.audio
+                            natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+
+                        has_pause_tags = False
+                    else:
+                        # No edit tags - use combined audio
+                        wav = result.audio
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+                        has_pause_tags = False
+
                 else:  # subtitle_type == 'simple'
                     # Single character mode - model already loaded for this language group
                     single_char, single_text, single_lang, single_params = character_segments_with_lang[0]
@@ -1262,39 +1483,239 @@ The audio will match these exact timings.""",
                         current_seed = segment_config.get('seed', seed)
                         print(f"  📊 SRT: Applying segment parameters: {single_params}")
 
-                    # BUGFIX: Pad short text with custom template to prevent ChatterBox sequential generation crashes
-                    processed_subtitle_text = self._pad_short_text_for_chatterbox(single_text, crash_protection_template)
+                    # Extract edit tags for Step Audio EditX post-processing
+                    text_clean, edit_tags = extract_edit_tags_for_classic_chatterbox(single_text)
 
-                    # DEBUG: Show actual text being sent to ChatterBox when padding might occur
-                    if len(single_text.strip()) < 21:
-                        print(f"🔍 DEBUG: Original text: '{single_text}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
+                    # Check for pause tags - if present AND edit tags present, split by pause FIRST
+                    has_pause_tags = PauseTagProcessor.has_pause_tags(text_clean)
 
-                    # Show what model is actually being used for generation
-                    model_path = getattr(self.tts_model, 'model_dir', 'unknown') if hasattr(self, 'tts_model') else 'no_model'
-                    print(f"🔧 TRADITIONAL SRT: Generating subtitle {i+1} using '{self.current_language}' model")
-                    print(f"📁 MODEL PATH: {model_path}")
+                    # Initialize variables for scope
+                    wav = None
+                    natural_duration = 0.0
 
-                    # DEBUG: Show actual model state like multilingual engine does
-                    actual_current_model = getattr(self, 'current_model_name', 'unknown')
-                    print(f"🔧 ACTUAL MODEL: Traditional SRT subtitle {i+1} using '{actual_current_model}' model")
+                    if has_pause_tags and edit_tags:
+                        # Split by pause tags to preserve pauses during edit processing
+                        print(f"🎨 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Has BOTH pause and edit tags - splitting by pause first")
+                        pause_segments, _ = PauseTagProcessor.parse_pause_tags(text_clean)
 
-                    # Generate new audio with pause tag support (includes internal caching)
-                    wav = self._generate_tts_with_pause_tags(
-                        processed_subtitle_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
-                        True, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
-                        crash_protection_template=crash_protection_template,
-                        stable_audio_component=stable_audio_prompt_component
-                    )
-                    natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
-                
-                # Store results in correct position
-                audio_segments[i] = wav
-                natural_durations[i] = natural_duration
-                
+                        segment_audio_parts = []
+                        for pause_seg_type, pause_content in pause_segments:
+                            if pause_seg_type == 'text':
+                                # Pad short text with crash protection
+                                processed_text = self._pad_short_text_for_chatterbox(pause_content, crash_protection_template)
+
+                                # Generate audio for this text segment (no pause tags!)
+                                segment_wav = self._generate_tts_with_pause_tags(
+                                    processed_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
+                                    False, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
+                                    crash_protection_template=crash_protection_template,
+                                    stable_audio_component=stable_audio_prompt_component
+                                )
+
+                                # Normalize to 1D for consistency
+                                if segment_wav.dim() == 3:
+                                    segment_wav_normalized = segment_wav.squeeze(0).squeeze(0)
+                                elif segment_wav.dim() == 2:
+                                    segment_wav_normalized = segment_wav.squeeze(0)
+                                else:
+                                    segment_wav_normalized = segment_wav
+
+                                # Store for batch editing with subtitle index
+                                all_segments_for_editing.append({
+                                    'waveform': segment_wav_normalized,
+                                    'text': pause_content,  # Clean text without pause tags
+                                    'edit_tags': edit_tags,
+                                    'original_text': pause_content,
+                                    'subtitle_index': i,
+                                    'sample_rate': self.tts_model.sr
+                                })
+                                segment_audio_parts.append(None)  # Placeholder for later reconstruction
+
+                            elif pause_seg_type == 'pause':
+                                # Create silence segment
+                                silence = PauseTagProcessor.create_silence_segment(pause_content, self.tts_model.sr)
+                                segment_audio_parts.append(silence)
+
+                        # Store placeholder - will be reconstructed after batch editing
+                        audio_segments[i] = segment_audio_parts
+                        natural_duration = 0.0  # Will be calculated after editing
+
+                    elif edit_tags:
+                        # Has edit tags but NO pause tags - generate normally and store for batch editing
+                        print(f"🎨 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Has edit tags (no pause tags)")
+
+                        # Pad short text with crash protection
+                        processed_text = self._pad_short_text_for_chatterbox(text_clean, crash_protection_template)
+
+                        # Generate audio
+                        wav = self._generate_tts_with_pause_tags(
+                            processed_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
+                            False, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
+                            crash_protection_template=crash_protection_template,
+                            stable_audio_component=stable_audio_prompt_component
+                        )
+
+                        # Normalize to 1D
+                        if wav.dim() == 3:
+                            wav_normalized = wav.squeeze(0).squeeze(0)
+                        elif wav.dim() == 2:
+                            wav_normalized = wav.squeeze(0)
+                        else:
+                            wav_normalized = wav
+
+                        # Store for batch editing
+                        all_segments_for_editing.append({
+                            'waveform': wav_normalized,
+                            'text': text_clean,
+                            'edit_tags': edit_tags,
+                            'original_text': text_clean,
+                            'subtitle_index': i,
+                            'sample_rate': self.tts_model.sr
+                        })
+                        audio_segments[i] = None  # Placeholder
+                        natural_duration = 0.0  # Will be calculated after editing
+
+                    else:
+                        # No edit tags - use existing pause processing
+                        processed_subtitle_text = self._pad_short_text_for_chatterbox(text_clean, crash_protection_template)
+
+                        if len(text_clean.strip()) < 21:
+                            print(f"🔍 DEBUG: Original text: '{text_clean}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
+
+                        # Generate new audio with pause tag support (includes internal caching)
+                        wav = self._generate_tts_with_pause_tags(
+                            processed_subtitle_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
+                            True, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
+                            crash_protection_template=crash_protection_template,
+                            stable_audio_component=stable_audio_prompt_component
+                        )
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
+
+                # Store results in correct position (only if not already stored as placeholder)
+                # Skip storing if we already stored segment_audio_parts list for batch editing
+                if wav is not None and not isinstance(audio_segments[i], list):
+                    audio_segments[i] = wav
+                    natural_durations[i] = natural_duration
+
                 # Track if any segments were cached (approximate - would need deeper integration)
                 if enable_audio_cache:
                     any_segment_cached = True
-        
+
+        # BATCH PROCESS all edits at once (after ALL subtitles generated)
+        if all_segments_for_editing:
+            print(f"🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+
+            # Process all segments in one batch (edit processor will load engine)
+            editor_config = {
+                'device': device,
+                'model_path': None,  # Use default
+                'enable_audio_cache': enable_audio_cache
+            }
+
+            processed_segments = apply_edit_post_processing(
+                all_segments_for_editing,
+                editor_config,
+                pre_loaded_engine=None  # Will load on demand
+            )
+
+            # Group processed segments back by subtitle_index
+            segments_by_subtitle = {}
+            for seg in processed_segments:
+                sub_idx = seg['subtitle_index']
+                if sub_idx not in segments_by_subtitle:
+                    segments_by_subtitle[sub_idx] = []
+                segments_by_subtitle[sub_idx].append(seg)
+
+            # Reconstruct audio for edited subtitles
+            for sub_idx, edited_segs in segments_by_subtitle.items():
+                # Check if this subtitle had pause+edit (stored as list) or just edit (stored as None)
+                if isinstance(audio_segments[sub_idx], list):
+                    # Had pause+edit OR multilingual with mixed segments
+                    # Reconstruct with non-edited segments (audio) and edited segments (None -> edited)
+                    segment_audio_parts = audio_segments[sub_idx]
+
+                    # Create position map for edited segments
+                    edited_by_position = {}
+                    for seg in edited_segs:
+                        if 'segment_position' in seg:
+                            edited_by_position[seg['segment_position']] = seg['waveform']
+
+                    reconstructed_parts = []
+                    for part_idx, part in enumerate(segment_audio_parts):
+                        if part is None:
+                            # This was a segment with edit tags - use edited audio
+                            if part_idx in edited_by_position:
+                                edited_audio = edited_by_position[part_idx]
+                                # Normalize to 1D
+                                if edited_audio.dim() == 3:
+                                    edited_audio = edited_audio.squeeze(0).squeeze(0)
+                                elif edited_audio.dim() == 2:
+                                    edited_audio = edited_audio.squeeze(0)
+                                reconstructed_parts.append(edited_audio)
+                            else:
+                                print(f"⚠️  Warning: Missing edited audio for position {part_idx}")
+                        else:
+                            # Non-edited segment (or silence) - keep as-is
+                            # Normalize to 1D to match edited segments
+                            if part.dim() == 3:
+                                part = part.squeeze(0).squeeze(0)
+                            elif part.dim() == 2:
+                                part = part.squeeze(0)
+                            reconstructed_parts.append(part)
+
+                    # Concatenate all parts
+                    if reconstructed_parts:
+                        reconstructed_audio = torch.cat(reconstructed_parts, dim=-1)
+                        # Add batch dimension back
+                        if reconstructed_audio.dim() == 1:
+                            reconstructed_audio = reconstructed_audio.unsqueeze(0)
+                    else:
+                        reconstructed_audio = torch.zeros(1, 1000)
+
+                    audio_segments[sub_idx] = reconstructed_audio
+                    natural_durations[sub_idx] = self.AudioTimingUtils.get_audio_duration(reconstructed_audio, self.tts_model.sr)
+
+                elif audio_segments[sub_idx] is None:
+                    # Had edit only (no pause) - could be multilingual OR simple with edit
+                    # For multilingual: single edited segment
+                    # For parameter_switching without pause: concatenate all edited segments
+                    if len(edited_segs) == 1:
+                        # Single segment (multilingual or simple)
+                        edited_audio = edited_segs[0]['waveform']
+                        # Ensure correct dimensions (should be 1D or 2D)
+                        if edited_audio.dim() == 3:
+                            edited_audio = edited_audio.squeeze(0).squeeze(0)
+                        elif edited_audio.dim() == 2:
+                            edited_audio = edited_audio.squeeze(0)
+                        # Add batch dimension if needed
+                        if edited_audio.dim() == 1:
+                            edited_audio = edited_audio.unsqueeze(0)
+                        audio_segments[sub_idx] = edited_audio
+                        natural_durations[sub_idx] = self.AudioTimingUtils.get_audio_duration(edited_audio, self.tts_model.sr)
+                    else:
+                        # Multiple segments (parameter_switching without pause) - concatenate
+                        concat_parts = []
+                        for seg in edited_segs:
+                            edited_audio = seg['waveform']
+                            # Normalize to 1D
+                            if edited_audio.dim() == 3:
+                                edited_audio = edited_audio.squeeze(0).squeeze(0)
+                            elif edited_audio.dim() == 2:
+                                edited_audio = edited_audio.squeeze(0)
+                            concat_parts.append(edited_audio)
+
+                        # Concatenate all edited segments
+                        if concat_parts:
+                            reconstructed_audio = torch.cat(concat_parts, dim=-1)
+                            # Add batch dimension
+                            if reconstructed_audio.dim() == 1:
+                                reconstructed_audio = reconstructed_audio.unsqueeze(0)
+                        else:
+                            reconstructed_audio = torch.zeros(1, 1000)
+
+                        audio_segments[sub_idx] = reconstructed_audio
+                        natural_durations[sub_idx] = self.AudioTimingUtils.get_audio_duration(reconstructed_audio, self.tts_model.sr)
+
         return audio_segments, natural_durations, any_segment_cached
     
     

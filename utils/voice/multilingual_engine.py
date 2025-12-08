@@ -21,6 +21,7 @@ class AudioSegmentResult:
     text: str
     language: str
     original_index: int
+    edit_tags: list = None  # Edit tags for this specific segment
 
 
 @dataclass
@@ -70,9 +71,54 @@ class MultilingualEngine:
         """
         # 1. Parse character segments with languages from original text
         character_segments_with_lang = character_parser.split_by_character_with_language(text)
-        
+
         # Get detailed segments to access original character information
         detailed_segments = character_parser.parse_text_segments(text)
+
+        # Extract edit tags per segment and handle pause-splitting if needed
+        segment_edit_tags = []
+        if self.engine_type == "chatterbox":
+            # Check if we need edit tag extraction (only for classic ChatterBox, not official 23-lang)
+            extract_edit_for_chatterbox = params.get('extract_edit_tags', False)
+            if extract_edit_for_chatterbox:
+                from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
+                from dataclasses import replace
+
+                # First pass: extract edit tags and check for pause tags
+                new_detailed_segments = []
+                for seg_idx, seg in enumerate(detailed_segments):
+                    # Extract edit tags from this segment's original text
+                    seg_clean_text, seg_edits = parse_edit_tags_with_iterations(seg.text)
+
+                    # Check if this segment has BOTH pause tags and edit tags
+                    if seg_edits and PauseTagProcessor.has_pause_tags(seg_clean_text):
+                        # Split by pause tags FIRST to preserve pauses during edit processing
+                        pause_segments, _ = PauseTagProcessor.parse_pause_tags(seg_clean_text)
+
+                        # Create new segments for each pause-split part
+                        for pause_seg_type, pause_content in pause_segments:
+                            if pause_seg_type == 'text':
+                                # Text segment - create new detailed segment
+                                new_seg = replace(seg, text=pause_content)
+                                new_detailed_segments.append(new_seg)
+                                segment_edit_tags.append(seg_edits)  # This text segment can be edited
+                            elif pause_seg_type == 'pause':
+                                # Pause segment - create silence marker
+                                pause_marker_seg = replace(seg, text=f"__PAUSE_{pause_content}__")
+                                new_detailed_segments.append(pause_marker_seg)
+                                segment_edit_tags.append([])  # Silence has no edit tags
+                    else:
+                        # No pause or no edit tags - keep segment as-is
+                        seg.text = seg_clean_text
+                        new_detailed_segments.append(seg)
+                        segment_edit_tags.append(seg_edits)
+
+                # Replace detailed_segments with pause-split version
+                detailed_segments = new_detailed_segments
+            else:
+                segment_edit_tags = [[] for _ in detailed_segments]
+        else:
+            segment_edit_tags = [[] for _ in detailed_segments]
         
         # 2. Analyze segments
         characters = list(set(char for char, _, _ in character_segments_with_lang))
@@ -150,6 +196,27 @@ class MultilingualEngine:
             for segment_data in lang_segments:
                 original_idx, character, segment_text, segment_lang, original_character = segment_data
                 segment_display_idx = original_idx + 1  # For display (1-based)
+
+                # Check if this is a pause marker segment
+                if segment_text.startswith("__PAUSE_") and segment_text.endswith("__"):
+                    # Extract pause duration and create silence
+                    pause_duration = float(segment_text[8:-2])  # Extract from __PAUSE_X__
+                    silence = PauseTagProcessor.create_silence_segment(pause_duration, self.sample_rate)
+
+                    # Get edit tags for this segment (should be empty for pause)
+                    seg_edit_tags = segment_edit_tags[original_idx] if original_idx < len(segment_edit_tags) else []
+
+                    # Store silence segment
+                    all_audio_segments.append(AudioSegmentResult(
+                        audio=silence,
+                        duration=pause_duration,
+                        character=character,
+                        text="",  # Empty text for silence
+                        language=segment_lang,
+                        original_index=original_idx,
+                        edit_tags=seg_edit_tags
+                    ))
+                    continue  # Skip TTS generation for pause segments
                 
                 # Get character voice or fallback to main
                 if self.engine_type == "f5tts":
@@ -220,7 +287,7 @@ class MultilingualEngine:
                 
                 # CRITICAL FIX: Handle pause tags within character segments
                 # This ensures pause changes don't invalidate cache for text content
-                from utils.text.pause_processor import PauseTagProcessor
+                # (PauseTagProcessor already imported at top of file)
                 if PauseTagProcessor.has_pause_tags(segment_text):
                     # Process pause tags for this character segment
                     if self.engine_type == "f5tts":
@@ -260,7 +327,10 @@ class MultilingualEngine:
                 
                 # Calculate duration
                 duration = self._get_audio_duration(segment_audio)
-                
+
+                # Get edit tags for this segment
+                seg_edit_tags = segment_edit_tags[original_idx] if original_idx < len(segment_edit_tags) else []
+
                 # Store result with original index for proper ordering
                 all_audio_segments.append(AudioSegmentResult(
                     audio=segment_audio,
@@ -268,7 +338,8 @@ class MultilingualEngine:
                     character=character,
                     text=segment_text,
                     language=segment_lang,
-                    original_index=original_idx
+                    original_index=original_idx,
+                    edit_tags=seg_edit_tags
                 ))
         
         # 7. Reorder segments back to original order and combine
