@@ -171,52 +171,8 @@ class StepAudioTTS:
                 device_map=device_map
             )
 
-            # CRITICAL: Set attention mechanism to eager (Step1ForCausalLM only supports this)
-            if hasattr(self.llm, 'config'):
-                self.llm.config._attn_implementation = "eager"
-                logger.info("🔧 Applied eager attention mechanism")
-
-            # CRITICAL FIX for transformers 4.54+: Override broken generation_config
-            if hasattr(self.llm, 'generation_config') and self.llm.generation_config is not None:
-                self.llm.generation_config.max_length = 8192
-                if hasattr(self.llm.generation_config, 'vocab_size'):
-                    delattr(self.llm.generation_config, 'vocab_size')
-
-            # CRITICAL FIX for transformers 4.54+: Monkey-patch the model's forward to fix hidden states
-            # transformers 4.54+ has a bug where Step1Model produces wrong hidden states
-            import transformers
-            transformers_version = tuple(map(int, transformers.__version__.split('.')[:2]))
-            if transformers_version >= (4, 54):
-                logger.info("🔧 Applying transformers 4.54+ forward pass fix...")
-
-                # Store original forward method
-                _original_forward = self.llm.__class__.forward
-
-                def _patched_forward(self_model, *args, **kwargs):
-                    # Call original forward
-                    outputs = _original_forward(self_model, *args, **kwargs)
-
-                    # The bug is in how hidden states are computed
-                    # Force recompute logits using correct embedding weights
-                    if hasattr(outputs, 'logits') and outputs.logits is not None:
-                        # Get hidden states
-                        if hasattr(outputs, 'hidden_states') and outputs.hidden_states is not None:
-                            hidden_states = outputs.hidden_states[-1]  # Last layer
-                        else:
-                            # Hidden states from decoder
-                            hidden_states = outputs[0] if isinstance(outputs, tuple) else outputs.logits
-
-                        # Recompute logits with correct weights
-                        # Use the embedding weights directly (they're correct)
-                        embed_weights = self_model.get_input_embeddings().weight
-                        # logits = hidden_states @ embed_weights.T
-                        # Keep original logits for now, just log the issue
-
-                    return outputs
-
-                # Apply patch
-                self.llm.__class__.forward = _patched_forward
-                logger.info("   ✅ Patched model forward pass")
+            # Model config is properly set via config.json (tie_word_embeddings=false)
+            # No runtime patches needed - transformers versions 4.51.3+ handle this correctly
         except Exception as e:
             logger.error(f"❌ Failed to load model: {e}")
             raise
