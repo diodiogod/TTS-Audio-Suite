@@ -548,8 +548,17 @@ Back to the main narrator voice for the conclusion.""",
         """
         from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
 
+        # Calculate stable audio component once for cache (if caching enabled)
+        enable_cache = inputs.get("enable_audio_cache", True)
+        if enable_cache:
+            stable_audio_component = self._generate_stable_audio_component(
+                inputs.get("reference_audio"), inputs.get("audio_prompt_path", "")
+            )
+        else:
+            stable_audio_component = ""
+
         def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
-            """Generate audio for a text segment"""
+            """Generate audio for a text segment with caching"""
             # Extract edit tags for ChatterBox v2 (AFTER character parsing, BEFORE TTS engine)
             if hasattr(self.tts_model, 'model_version') and self.tts_model.model_version == "v2":
                 segment_text, _, _ = extract_edit_tags_for_chatterbox(segment_text)
@@ -562,14 +571,54 @@ Back to the main narrator voice for the conclusion.""",
             # processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])  # DISABLED FOR TESTING
             processed_text = segment_text  # Direct text without crash protection
 
-            # Generate audio directly
-            language_code = self._language_name_to_code(inputs["language"])
-            return self.generate_tts_audio(
-                processed_text, audio_prompt, inputs["exaggeration"],
-                inputs["temperature"], inputs["cfg_weight"],
-                inputs["repetition_penalty"], inputs["min_p"], inputs["top_p"],
-                language_code
-            )
+            # Check cache if enabled
+            if enable_cache:
+                from utils.audio.cache import create_cache_function
+
+                cache_fn = create_cache_function(
+                    "chatterbox_official_23lang",
+                    character=inputs.get("character", "narrator"),
+                    exaggeration=inputs["exaggeration"],
+                    temperature=inputs["temperature"],
+                    cfg_weight=inputs["cfg_weight"],
+                    seed=inputs.get("seed", 0),
+                    audio_component=stable_audio_component,
+                    model_source=f"chatterbox_{inputs['language'].lower()}",
+                    model_version=inputs.get("model_version", "v2"),
+                    device=self.device,
+                    language=inputs["language"],
+                    repetition_penalty=inputs["repetition_penalty"],
+                    min_p=inputs["min_p"],
+                    top_p=inputs["top_p"]
+                )
+
+                # Try cache first (cache key is based on CLEAN text without edit tags)
+                cached_audio = cache_fn(processed_text)
+                if cached_audio is not None:
+                    return cached_audio
+
+                # Generate and cache
+                language_code = self._language_name_to_code(inputs["language"])
+                audio = self.generate_tts_audio(
+                    processed_text, audio_prompt, inputs["exaggeration"],
+                    inputs["temperature"], inputs["cfg_weight"],
+                    inputs["repetition_penalty"], inputs["min_p"], inputs["top_p"],
+                    language_code
+                )
+
+                # Cache result (clone to avoid autograd issues)
+                audio_clone = audio.detach().clone() if audio.requires_grad else audio
+                cache_fn(processed_text, audio_result=audio_clone)
+                return audio_clone
+            else:
+                # No caching - generate directly
+                language_code = self._language_name_to_code(inputs["language"])
+                return self.generate_tts_audio(
+                    processed_text, audio_prompt, inputs["exaggeration"],
+                    inputs["temperature"], inputs["cfg_weight"],
+                    inputs["repetition_penalty"], inputs["min_p"], inputs["top_p"],
+                    language_code
+                )
 
         # Check if we need character switching within pause segments
         has_character_switching = any(
