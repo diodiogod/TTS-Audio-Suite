@@ -405,9 +405,48 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
     # Add remaining text
     clean_parts.append(text[last_end:])
 
-    # Join and clean up whitespace
-    clean_text = ''.join(clean_parts)
-    clean_text = re.sub(r'  +', ' ', clean_text)
+    # Join clean parts
+    clean_text_before_collapse = ''.join(clean_parts)
+
+    # Collapse multiple spaces to single space and track position shifts
+    # We need to adjust tag positions after collapsing spaces
+    clean_text = clean_text_before_collapse
+    position_adjustments = {}  # Maps original position to adjustment amount
+
+    # Find all multi-space sequences and calculate adjustments
+    adjustment = 0
+    i = 0
+    while i < len(clean_text):
+        if clean_text[i:i+2] == '  ':  # Found double space
+            # Count consecutive spaces
+            space_count = 0
+            while i + space_count < len(clean_text) and clean_text[i + space_count] == ' ':
+                space_count += 1
+
+            # Collapse to single space means we remove (space_count - 1) characters
+            spaces_removed = space_count - 1
+
+            # All positions after this point shift left by spaces_removed
+            adjustment += spaces_removed
+
+            # Track cumulative adjustment for positions after this multi-space
+            for tag in edit_tags:
+                if tag.position is not None and tag.position > i:
+                    if tag.position not in position_adjustments:
+                        position_adjustments[tag.position] = 0
+                    position_adjustments[tag.position] += spaces_removed
+
+            i += space_count
+        else:
+            i += 1
+
+    # Apply space collapse
+    clean_text = re.sub(r'  +', ' ', clean_text_before_collapse)
+
+    # Apply position adjustments from space collapsing
+    for tag in edit_tags:
+        if tag.position is not None and tag.position in position_adjustments:
+            tag.position = max(0, tag.position - position_adjustments[tag.position])
 
     # Adjust positions if we strip leading whitespace
     leading_spaces = len(clean_text) - len(clean_text.lstrip())

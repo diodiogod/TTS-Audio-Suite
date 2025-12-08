@@ -145,7 +145,8 @@ def _apply_edit_via_node(
         style=style,
         speed=speed,
         n_edit_iterations=iterations,
-        tts_engine=None  # Not needed, uses default
+        tts_engine=None,  # Not needed, uses default
+        suppress_progress=True  # We show our own iteration progress
     )
 
     return edited_audio
@@ -364,9 +365,16 @@ def process_segments(
                         # Apply cumulative offset from previous insertions
                         adjusted_position = position + position_offset
 
-                        # Check if we need space after tag
+                        # Check if we need space before tag (if previous char is alphanumeric)
+                        needs_space_before = (adjusted_position > 0 and audio_text[adjusted_position - 1].isalnum())
+
+                        # Check if we need space after tag (if next char is alphanumeric)
                         needs_space_after = (adjusted_position < len(audio_text) and audio_text[adjusted_position].isalnum())
-                        tag_text = f"<{tag.value}> " if needs_space_after else f"<{tag.value}>"
+
+                        # Build tag text with appropriate spacing
+                        space_before = " " if needs_space_before else ""
+                        space_after = " " if needs_space_after else ""
+                        tag_text = f"{space_before}<{tag.value}>{space_after}"
 
                         audio_text = audio_text[:adjusted_position] + tag_text + audio_text[adjusted_position:]
 
@@ -385,7 +393,8 @@ def process_segments(
                         style="none",
                         speed="none",
                         n_edit_iterations=1,  # Always 1 iteration, we loop ourselves
-                        tts_engine=None
+                        tts_engine=None,
+                        suppress_progress=True  # We show our own iteration progress
                     )
                     current_audio_dict = edited_audio_dict
 

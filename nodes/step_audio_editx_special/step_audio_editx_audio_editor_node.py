@@ -268,7 +268,8 @@ class StepAudioEditXAudioEditorNode:
         style="none",
         speed="none",
         n_edit_iterations=1,
-        tts_engine=None
+        tts_engine=None,
+        suppress_progress=False
     ):
         """
         Edit audio with specified modification.
@@ -282,6 +283,7 @@ class StepAudioEditXAudioEditorNode:
             speed: Speed adjustment
             n_edit_iterations: Number of editing iterations (1-5)
             tts_engine: Optional TTS_ENGINE configuration from Step Audio EditX Engine node
+            suppress_progress: If True, suppress progress messages (useful when called from edit_post_processor)
 
         Returns:
             Tuple of (edited_audio_dict, edit_info_string)
@@ -409,7 +411,8 @@ class StepAudioEditXAudioEditorNode:
             # Perform remaining iterations
             for iteration in range(start_iteration, n_edit_iterations):
                 iteration_num = iteration + 1
-                print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations}...")
+                if not suppress_progress:
+                    print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations}...")
 
                 # Create progress bar for this iteration
                 progress_bar = None
