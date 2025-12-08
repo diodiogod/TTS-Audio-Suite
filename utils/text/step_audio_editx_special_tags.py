@@ -251,19 +251,32 @@ def _parse_single_tag_part(part: str, current_position: int) -> Optional[EditTag
             position=current_position
         )
 
-    # Case 1.5: Restore tag - <restore> or <restore:2>
+    # Case 1.5: Restore tag - <restore>, <restore:2>, or <restore:4@2>
     if first_lower == 'restore':
         iterations = 1
+        reference_iteration = None  # None means use original pre-edit audio
+
         if len(components) >= 2:
-            try:
-                iterations = max(1, min(5, int(components[1])))
-            except ValueError:
-                pass
+            # Check if format is "restore:N@M" (N VC passes, reference iteration M)
+            if '@' in components[1]:
+                parts = components[1].split('@')
+                try:
+                    iterations = max(1, min(5, int(parts[0])))
+                    reference_iteration = max(1, int(parts[1]))  # Which iteration to use as reference
+                except (ValueError, IndexError):
+                    pass
+            else:
+                # Simple format "restore:N"
+                try:
+                    iterations = max(1, min(5, int(components[1])))
+                except ValueError:
+                    pass
+
         return EditTag(
             edit_type="restore",
-            value="restore",
+            value=f"restore@{reference_iteration}" if reference_iteration else "restore",
             iterations=iterations,
-            position=None  # Restore doesn't need position
+            position=reference_iteration  # Reuse position field to store reference iteration
         )
 
     # Case 2: Typed tag - <emotion:happy:2>, <style:whisper>, <speed:faster:1>

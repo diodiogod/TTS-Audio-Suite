@@ -318,6 +318,10 @@ def process_segments(
             'sample_rate': sample_rate
         }
 
+        # Track intermediate audio after each edit for restore reference
+        iteration_audio_snapshots = {}  # iteration_number -> audio_dict
+        current_iteration = 0
+
         # Apply non-paralinguistic edits first (emotion, style, speed)
         for tag in non_paralinguistic_tags:
             try:
@@ -330,6 +334,14 @@ def process_segments(
                 )
                 # Use edited audio as input for next edit
                 current_audio_dict = edited_audio_dict
+
+                # Store snapshot for each iteration
+                for i in range(tag.iterations):
+                    current_iteration += 1
+                    iteration_audio_snapshots[current_iteration] = {
+                        'waveform': current_audio_dict['waveform'].clone() if hasattr(current_audio_dict['waveform'], 'clone') else current_audio_dict['waveform'],
+                        'sample_rate': current_audio_dict['sample_rate']
+                    }
             except Exception as e:
                 print(f"     ❌ Failed: {e}")
 
@@ -398,6 +410,13 @@ def process_segments(
                     )
                     current_audio_dict = edited_audio_dict
 
+                    # Store snapshot after this iteration
+                    current_iteration += 1
+                    iteration_audio_snapshots[current_iteration] = {
+                        'waveform': current_audio_dict['waveform'].clone() if hasattr(current_audio_dict['waveform'], 'clone') else current_audio_dict['waveform'],
+                        'sample_rate': current_audio_dict['sample_rate']
+                    }
+
             except Exception as e:
                 print(f"     ❌ Failed: {e}")
                 import traceback
@@ -412,7 +431,8 @@ def process_segments(
                 'segment': segment,
                 'restore_tags': restore_tags,
                 'edited_audio': current_audio_dict,
-                'original_audio': original_audio_dict
+                'original_audio': original_audio_dict,
+                'iteration_snapshots': iteration_audio_snapshots  # Pass iteration snapshots
             })
 
         # Update segment with edited audio (pre-restore)
@@ -432,16 +452,44 @@ def process_segments(
             restore_tags = restore_info['restore_tags']
             edited_audio = restore_info['edited_audio']
             original_audio = restore_info['original_audio']
+            iteration_snapshots = restore_info['iteration_snapshots']
 
             for tag in restore_tags:
                 try:
-                    print(f"  🔄 Segment {idx + 1}: Restoring voice ({tag.iterations} VC pass{'es' if tag.iterations > 1 else ''})")
+                    # Determine which audio to use as reference
+                    reference_iteration = tag.position  # We stored reference iteration in position field
+
+                    if reference_iteration is not None:
+                        # Use specific iteration snapshot as reference
+                        if reference_iteration in iteration_snapshots:
+                            reference_audio = iteration_snapshots[reference_iteration]
+                            print(f"  🔄 Segment {idx + 1}: Restoring voice using iteration {reference_iteration} as reference ({tag.iterations} VC pass{'es' if tag.iterations > 1 else ''})")
+                        else:
+                            print(f"  ⚠️ Segment {idx + 1}: Iteration {reference_iteration} not found, using original audio")
+                            reference_audio = original_audio
+                    else:
+                        # Use PRE-EDIT audio as reference (default behavior)
+                        reference_audio = original_audio
+                        print(f"  🔄 Segment {idx + 1}: Restoring voice ({tag.iterations} VC pass{'es' if tag.iterations > 1 else ''})")
+
                     language = engine_config.get('language', 'English') if engine_config else 'English'
 
-                    # Use PRE-EDIT audio as reference
+                    # Ensure reference audio waveform is 2D for VC compatibility
+                    ref_wf = reference_audio['waveform']
+                    if ref_wf.dim() == 1:
+                        ref_wf = ref_wf.unsqueeze(0)
+                    elif ref_wf.dim() == 3:
+                        ref_wf = ref_wf.squeeze(0)
+
+                    reference_audio_fixed = {
+                        'waveform': ref_wf,
+                        'sample_rate': reference_audio['sample_rate']
+                    }
+
+                    # Restore voice using selected reference
                     restored_audio = _restore_voice_via_vc(
                         edited_audio_dict=edited_audio,
-                        original_voice_dict=original_audio,
+                        original_voice_dict=reference_audio_fixed,
                         iterations=tag.iterations,
                         language=language
                     )

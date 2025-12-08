@@ -109,6 +109,59 @@ Adjust speaking speed for the entire audio segment:
 
 **Position doesn't matter:** Tag can be anywhere in the text.
 
+### 5. Voice Restoration Tags (Whole Segment)
+
+Restore voice resemblance after edit effects using ChatterBox Official 23-Lang Voice Changer:
+
+`<restore>`, `<restore:N>`, or `<restore:N@M>`
+
+**Syntax:**
+- `<restore>` - 1 VC pass using original pre-edit audio as reference
+- `<restore:2>` - 2 VC passes using original pre-edit audio as reference (for stronger restoration)
+- `<restore:1@2>` - 1 VC pass using audio from iteration 2 as reference
+
+**⚠️ Why You Need This:**
+
+Edit effects (especially after multiple iterations) can **degrade voice quality and alter voice resemblance**:
+- Paralinguistic effects (`<Laughter:3>`) add sounds but can muddy the voice
+- Style effects (`<style:whisper:4>`) change timbre and can distort characteristics
+- Multiple iterations compound these effects
+
+The `<restore>` tag uses voice conversion to restore your original voice character while keeping the edit effects.
+
+**Examples:**
+
+**Basic restoration (use original voice):**
+```
+[Alice] I'm laughing so hard <Laughter:3> <restore>
+```
+- Applies 3 iterations of laughter (may degrade voice)
+- Restores original voice with 1 VC pass
+
+**Stronger restoration:**
+```
+[Alice] I'm laughing so hard <Laughter:3> <restore:2>
+```
+- Applies 3 iterations of laughter (may degrade voice)
+- Restores original voice with 2 VC passes (stronger effect)
+
+**Preserve partial effects (use intermediate iteration):**
+```
+[Bob] Listen carefully <style:whisper:2> <Laughter:3> <restore:1@2>
+```
+- Applies whisper 2 times (iterations 1-2)
+- Applies laughter 3 times (iterations 3-5)
+- Restores using iteration 2 audio (whispered version) with 1 VC pass
+- **Result:** Keeps whisper effect but removes laughter voice degradation
+
+**When to use iteration reference:**
+- `<restore>` or `<restore:N>` - Restore completely to original clean voice
+- `<restore:N@M>` - Keep some effects (like whisper) while removing others (like laughter degradation)
+
+**Processing order:** Restore tags ALWAYS run last, after all other edits complete.
+
+**Position doesn't matter:** Tag can be anywhere in the text.
+
 ---
 
 ## Syntax Guide
@@ -152,17 +205,19 @@ Adjust speaking speed for the entire audio segment:
 When multiple tags are present:
 
 1. **First:** Non-paralinguistic tags in order: emotion → style → speed
-2. **Last:** Paralinguistic tags (preserves position for sound insertion)
+2. **Second:** Paralinguistic tags (preserves position for sound insertion)
+3. **Last:** Voice restoration (if present)
 
 **Example:**
 ```
-[Alice] Hello <Laughter:2> world <style:whisper:1>
+[Alice] Hello <Laughter:2> world <style:whisper:1> <restore>
 ```
 
 Execution:
 1. Generate TTS: "Hello world"
 2. Apply whisper style (1 iteration)
 3. Insert Laughter at position (2 iterations)
+4. Restore voice to original character (1 VC pass)
 
 ---
 
@@ -369,7 +424,7 @@ More iterations = stronger effect BUT **can alter voice quality and resemblance*
 
 **Recommendation:** Start with 1 iteration, only increase to 2 if needed. Avoid 3+ unless you're willing to accept voice changes.
 
-**🔬 Planned Feature:** A voice restoration pass using ChatterBox Voice Changer will be added to restore original voice resemblance after editing (not yet implemented).
+**✅ Voice Restoration Available:** Use the `<restore>` tag to restore original voice resemblance after editing. See the Voice Restoration Tags section above for details.
 
 ### 2. Combine Tags Efficiently
 
@@ -566,6 +621,9 @@ Choose appropriate effects for the situation:
 ### All Speeds
 `<speed:faster>`, `<speed:slower>`, `<speed:more_faster>`, `<speed:more_slower>`
 
+### Voice Restoration
+`<restore>`, `<restore:N>`, `<restore:N@M>` (where N = VC passes 1-5, M = reference iteration number)
+
 ---
 
 ## FAQ
@@ -594,7 +652,7 @@ A: Yes, they can. TTS generates with your voice reference normally, but each edi
 - **2 iterations:** Slight alteration, generally acceptable
 - **3+ iterations:** Noticeable voice change, may lose original voice characteristics
 
-Use the minimum iterations needed for your desired effect. A voice restoration feature using ChatterBox Voice Changer is planned but not yet implemented.
+Use the minimum iterations needed for your desired effect. To restore voice resemblance after editing, use the `<restore>` tag which applies ChatterBox Voice Changer to recover the original voice character.
 
 **Q: Can I disable edit tags temporarily?**
 A: Just remove them from your text. No special setting needed.
