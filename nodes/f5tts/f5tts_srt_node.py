@@ -36,6 +36,8 @@ from utils.system.import_manager import import_manager
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
 from utils.text.character_parser import parse_character_text, character_parser
+from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 # Lazy imports for modular components (loaded when needed to avoid torch import issues during node registration)
 import comfy.model_management as model_management
 
@@ -55,7 +57,18 @@ class F5TTSSRTNode(BaseF5TTSNode):
         self.srt_modules = {}
         self._load_srt_modules()
         self.multilingual_engine = None  # Lazy loaded
-    
+
+    def _extract_edit_tags_for_f5tts(self, text: str):
+        """
+        Extract edit tags for F5-TTS SRT (no native tag conflicts).
+
+        Returns:
+            Tuple of (clean_text, edit_tags)
+        """
+        # F5-TTS has no native tags, so directly extract Step EditX tags
+        clean_text, edit_tags = parse_edit_tags_with_iterations(text)
+        return clean_text, edit_tags
+
     def _load_srt_modules(self):
         """Load SRT modules using the import manager."""
         success, modules, source = import_manager.import_srt_modules()
@@ -365,6 +378,9 @@ Hello! This is F5-TTS SRT with character switching.
             all_character_segments = []
             
             # First pass: extract ALL character segments from all subtitles and group by language
+            # Track which segments have edit tags for batch processing
+            segment_edit_tags_map = {}  # Maps (subtitle_idx, seg_idx) -> edit_tags
+
             for i, subtitle in enumerate(subtitles):
                 if not subtitle.text.strip():
                     # Empty subtitle - will be handled separately
@@ -377,6 +393,14 @@ Hello! This is F5-TTS SRT with character switching.
 
                 # Process each individual character segment separately
                 for seg_idx, (character, text, language, segment_params) in enumerate(character_segments_with_lang):
+                    # Check if this segment has edit tags (don't extract yet - let base node handle it with pause tags)
+                    _, edit_tags = self._extract_edit_tags_for_f5tts(text)
+
+                    # Store flag for whether this segment has edit tags
+                    if edit_tags and len(edit_tags) > 0:
+                        segment_edit_tags_map[(i, seg_idx)] = True
+
+                    # Use original text (with edit tags) - base node will extract during generation
                     segment_info = (i, seg_idx, subtitle, 'character_segment', character, text, language, segment_params)
                     all_character_segments.append(segment_info)
 
@@ -385,13 +409,19 @@ Hello! This is F5-TTS SRT with character switching.
                         segment_language_groups[language] = []
                     segment_language_groups[language].append(segment_info)
             
+            # Check if any segments have edit tags
+            has_edit_tags = len(segment_edit_tags_map) > 0
+            if has_edit_tags:
+                print(f"🎨 F5-TTS SRT: Edit tags detected in {len(segment_edit_tags_map)} segment(s) - will apply batch post-processing")
+
             # Generate audio segments using smart segment-level language grouping
             print(f"🚀 SRT: Processing languages: {sorted(segment_language_groups.keys())}")
-            audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order  
+            audio_segments = [None] * len(subtitles)  # Pre-allocate in correct order
             natural_durations = [0.0] * len(subtitles)
-            
+
             # Track generated segment audio by (subtitle_idx, segment_idx)
             generated_segment_audio = {}
+            all_segments_for_editing = []  # Collect segments with edit tags for batch processing
             any_segment_cached = False
             
             # Process each language group (now containing individual character segments)
@@ -576,8 +606,13 @@ Hello! This is F5-TTS SRT with character switching.
                             any_segment_cached = True
                             continue
 
+                    # Check if this segment has edit tags
+                    segment_key = (subtitle_idx, seg_idx)
+                    has_edit_tags = segment_edit_tags_map.get(segment_key, False)
+
                     # Generate audio for this character segment
-                    wav = self.generate_f5tts_with_pause_tags(
+                    # Note: text still has edit tags - base node will extract them
+                    result = self.generate_f5tts_with_pause_tags(
                         text=text,
                         ref_audio_path=char_audio,
                         ref_text=char_text,
@@ -592,12 +627,42 @@ Hello! This is F5-TTS SRT with character switching.
                         seed=current_config['seed'],
                         enable_cache=enable_audio_cache,
                         cache_fn=None,  # Use standard caching
-                        auto_phonemization=auto_phonemization
+                        auto_phonemization=auto_phonemization,
+                        extract_edit_tags=has_edit_tags
                     )
 
-                    # Calculate duration and store
-                    natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
-                    generated_segment_audio[(subtitle_idx, seg_idx)] = (wav, natural_duration)
+                    # Handle result based on whether edit tags were extracted
+                    if isinstance(result, list):
+                        # Got segment dicts - collect those with edit tags for batch processing
+                        has_any_edit_tags = False
+                        for seg_dict in result:
+                            seg_dict['subtitle_idx'] = subtitle_idx
+                            seg_dict['seg_idx'] = seg_idx
+                            seg_dict['character'] = character
+
+                            # Only collect segments with actual edit tags
+                            if seg_dict.get('edit_tags') and len(seg_dict['edit_tags']) > 0:
+                                all_segments_for_editing.append(seg_dict)
+                                has_any_edit_tags = True
+
+                        # If has edit tags, store list for batch processing
+                        # Otherwise, concatenate immediately (pause-only segments)
+                        if has_any_edit_tags:
+                            generated_segment_audio[segment_key] = result
+                        else:
+                            # No edit tags - just pause segments, concatenate now
+                            segment_waveforms = [s['waveform'] for s in result]
+                            if len(segment_waveforms) == 1:
+                                combined_wav = segment_waveforms[0]
+                            else:
+                                combined_wav = torch.cat(segment_waveforms, dim=-1)
+                            natural_duration = self.AudioTimingUtils.get_audio_duration(combined_wav, self.f5tts_sample_rate)
+                            generated_segment_audio[segment_key] = (combined_wav, natural_duration)
+                    else:
+                        # Regular tensor - no edit tags, store directly
+                        wav = result
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.f5tts_sample_rate)
+                        generated_segment_audio[segment_key] = (wav, natural_duration)
 
                     # Cache the generated segment for future use (using consistent required model name)
                     if enable_audio_cache:
@@ -608,7 +673,96 @@ Hello! This is F5-TTS SRT with character switching.
                             safe_nfe_step, current_config['cfg_strength'], current_config['seed']
                         )
                         self._cache_segment_audio(cache_key, wav, natural_duration)
-            
+
+            # ===== BATCH EDIT POST-PROCESSING =====
+            # Apply Step Audio EditX processing to all segments with edit tags at once
+            if all_segments_for_editing:
+                print(f"🎨 Applying Step Audio EditX processing to {len(all_segments_for_editing)} segments...")
+
+                # Prepare segments for batch processing
+                segments_for_processor = []
+                for seg_dict in all_segments_for_editing:
+                    # Debug: Check edit tags content
+                    edit_tags = seg_dict.get('edit_tags', [])
+                    print(f"  🔍 Segment text='{seg_dict['text'][:50]}...', edit_tags={edit_tags}, has {len(edit_tags) if edit_tags else 0} tags")
+
+                    segments_for_processor.append({
+                        'waveform': seg_dict['waveform'],
+                        'sample_rate': self.f5tts_sample_rate,
+                        'text': seg_dict['text'],
+                        'edit_tags': seg_dict['edit_tags']
+                    })
+
+                # Process all segments at once
+                editor_config = {
+                    'device': self.device,
+                    'model_path': None,  # Use default
+                    'enable_audio_cache': enable_audio_cache
+                }
+
+                processed_segments = apply_edit_post_processing(
+                    segments_for_processor,
+                    editor_config,
+                    pre_loaded_engine=None  # Will load on demand
+                )
+
+                # Map edited audio back to original positions
+                for i, edited_segment in enumerate(processed_segments):
+                    original_seg_dict = all_segments_for_editing[i]
+                    subtitle_idx = original_seg_dict['subtitle_idx']
+                    seg_idx = original_seg_dict['seg_idx']
+                    segment_key = (subtitle_idx, seg_idx)
+
+                    # Update the segment dict with edited audio
+                    original_seg_dict['waveform'] = edited_segment['waveform']
+
+                # Reconstruct generated_segment_audio with edited segments
+                # Group edited segments by their segment_key to handle pause-split fragments
+                edited_by_key = {}
+                for seg_dict in all_segments_for_editing:
+                    subtitle_idx = seg_dict['subtitle_idx']
+                    seg_idx = seg_dict['seg_idx']
+                    segment_key = (subtitle_idx, seg_idx)
+
+                    if segment_key not in edited_by_key:
+                        edited_by_key[segment_key] = []
+                    edited_by_key[segment_key].append(seg_dict)
+
+                # Process each unique segment_key once
+                for segment_key, edited_fragments in edited_by_key.items():
+                    # Get the segment list from generated_segment_audio
+                    segment_list = generated_segment_audio[segment_key]
+
+                    # Verify segment_list is actually a list of dicts
+                    if not isinstance(segment_list, list):
+                        print(f"⚠️  Warning: segment_list for {segment_key} is not a list, it's {type(segment_list)}")
+                        continue
+
+                    # Waveforms were already updated in the previous loop (lines 688-696)
+                    # since all_segments_for_editing contains references to the dicts in segment_list
+
+                    # Normalize and concatenate all segment waveforms into single tensor
+                    segment_waveforms = []
+                    for s in segment_list:
+                        wav = s['waveform']
+                        # Normalize to 1D (edit processor returns 3D ComfyUI format)
+                        if wav.dim() == 3:
+                            wav = wav.squeeze(0).squeeze(0)
+                        elif wav.dim() == 2:
+                            wav = wav.squeeze(0)
+                        segment_waveforms.append(wav)
+
+                    if len(segment_waveforms) == 1:
+                        combined_wav = segment_waveforms[0]
+                    else:
+                        combined_wav = torch.cat(segment_waveforms, dim=-1)
+
+                    # Calculate natural duration and store as (wav, duration) tuple
+                    natural_duration = self.AudioTimingUtils.get_audio_duration(combined_wav, self.f5tts_sample_rate)
+                    generated_segment_audio[segment_key] = (combined_wav, natural_duration)
+
+                print(f"✅ Edit post-processing complete for {len(all_segments_for_editing)} segments")
+
             # Reassemble character segments back into complete subtitles
             print(f"🔗 Assembling {len(generated_segment_audio)} character segments back into {len(subtitles)} subtitles...")
             for subtitle_idx in range(len(subtitles)):
