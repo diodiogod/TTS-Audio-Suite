@@ -85,9 +85,7 @@ class StepAudioEditXHandler(BaseEngineHandler):
                 wrapper.current_device = device
                 wrapper._is_loaded_on_gpu = False
 
-                # Mark as invalid for reuse - quantized models can't be moved back to GPU
-                wrapper._is_valid_for_reuse = False
-                print(f"🚫 Marked quantized model as invalid for reuse (must reload from scratch)")
+                print(f"🗑️ Deleted quantized model from VRAM")
 
                 # Measure actual VRAM freed after cleanup
                 if torch.cuda.is_available():
