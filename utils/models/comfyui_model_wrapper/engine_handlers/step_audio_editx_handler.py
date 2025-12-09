@@ -58,13 +58,29 @@ class StepAudioEditXHandler(BaseEngineHandler):
 
             if is_quantized:
                 # Bitsandbytes quantized models can't use .to()
-                # Delete the model and let garbage collection handle it
+                # For int8/int4, we need to delete ALL references and force aggressive cleanup
                 print(f"🔄 Unloading quantized {model_info} (bitsandbytes int8/int4)...")
+
+                # Delete inner TTS engine first if it exists
+                if hasattr(model, '_tts_engine') and model._tts_engine is not None:
+                    del model._tts_engine
+                    model._tts_engine = None
+
+                # Delete tokenizer if it exists
+                if hasattr(model, '_tokenizer') and model._tokenizer is not None:
+                    del model._tokenizer
+                    model._tokenizer = None
+
+                # Delete the wrapper
                 freed_memory = wrapper._memory_size
                 del model
                 wrapper._model_ref = None
                 wrapper.current_device = device
                 wrapper._is_loaded_on_gpu = False
+
+                # Mark as invalid for reuse - quantized models can't be moved back to GPU
+                wrapper._is_valid_for_reuse = False
+                print(f"🚫 Marked quantized model as invalid for reuse (must reload from scratch)")
             else:
                 # Regular model - use standard .to() method
                 if hasattr(model, 'to'):
@@ -84,7 +100,7 @@ class StepAudioEditXHandler(BaseEngineHandler):
             print(f"⚠️ Error unloading {wrapper.model_info.engine} model: {e}")
             return 0
 
-        # Force garbage collection and CUDA cache cleanup
+        # Force aggressive garbage collection and CUDA cache cleanup
         if freed_memory > 0:
             if torch.cuda.is_available():
                 try:
@@ -92,13 +108,19 @@ class StepAudioEditXHandler(BaseEngineHandler):
                 except Exception as e:
                     print(f"⚠️ CUDA synchronize warning (safe to ignore): {e}")
 
+            # Multiple GC passes for bitsandbytes cleanup
             try:
+                import gc
+                gc.collect()
+                gc.collect()
                 gc.collect()
             except Exception as gc_error:
                 print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")
 
             if torch.cuda.is_available():
                 try:
+                    torch.cuda.empty_cache()
+                    torch.cuda.reset_peak_memory_stats()
                     torch.cuda.empty_cache()
                 except Exception as e:
                     print(f"⚠️ CUDA cache clear warning (safe to ignore): {e}")
