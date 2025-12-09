@@ -25,6 +25,32 @@ import comfy.model_management as model_management
 # Cache for Audio Editor node instance
 _audio_editor_node = None
 
+# Global settings for inline edit tags (set from ComfyUI settings menu)
+_inline_tag_settings = {
+    "precision": "auto",
+    "device": "auto"
+}
+
+
+def set_inline_tag_settings(precision: str = "auto", device: str = "auto"):
+    """
+    Set global settings for inline edit tag processing.
+    Called from the API endpoint when user changes settings in ComfyUI menu.
+
+    Args:
+        precision: Model precision (auto, fp32, fp16, bf16, int8, int4)
+        device: Device (auto, cuda, cpu, xpu)
+    """
+    global _inline_tag_settings
+    _inline_tag_settings["precision"] = precision
+    _inline_tag_settings["device"] = device
+    print(f"🎨 Step Audio EditX inline tags: precision={precision}, device={device}")
+
+
+def get_inline_tag_settings() -> Dict[str, str]:
+    """Get current inline tag settings"""
+    return _inline_tag_settings.copy()
+
 
 def _get_audio_editor_node():
     """
@@ -123,6 +149,15 @@ def _apply_edit_via_node(
     value = edit_tag.value
     iterations = edit_tag.iterations
 
+    # Get inline tag settings from global config
+    settings = get_inline_tag_settings()
+    precision = settings.get("precision", "auto")
+    device = settings.get("device", "auto")
+
+    # Debug: print settings being used
+    if precision != "auto" or device != "auto":
+        print(f"  🎨 Using inline tag settings: precision={precision}, device={device}")
+
     # Prepare audio_text for the editor node
     # For paralinguistic, insert tag at position
     if edit_type == "paralinguistic":
@@ -137,6 +172,7 @@ def _apply_edit_via_node(
     speed = value if edit_type == "speed" else "none"
 
     # Call the Audio Editor node (has progress bar built-in)
+    # Pass inline tag settings for model loading
     edited_audio, _ = editor_node.edit_audio(
         input_audio=audio_dict,
         audio_text=audio_text,
@@ -146,7 +182,9 @@ def _apply_edit_via_node(
         speed=speed,
         n_edit_iterations=iterations,
         tts_engine=None,  # Not needed, uses default
-        suppress_progress=True  # We show our own iteration progress
+        suppress_progress=True,  # We show our own iteration progress
+        inline_tag_precision=precision,
+        inline_tag_device=device
     )
 
     return edited_audio

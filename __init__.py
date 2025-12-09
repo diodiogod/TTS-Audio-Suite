@@ -211,7 +211,7 @@ __description__ = "Universal multi-engine TTS extension for ComfyUI with unified
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 
-# Define web directory for JavaScript files
+# Define web directory for JavaScript files (settings UI)
 WEB_DIRECTORY = "./web"
 
 # Register API endpoint for widget data
@@ -249,6 +249,23 @@ def setup_api_routes():
                 print(f"⚠️ Error retrieving available languages: {e}")
                 # Fallback list
                 return web.json_response({"languages": ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"], "error": str(e)})
+
+        @PromptServer.instance.routes.post("/api/tts-audio-suite/settings")
+        async def set_inline_tag_settings_endpoint(request):
+            """API endpoint to receive settings from frontend for inline edit tags"""
+            try:
+                data = await request.json()
+                precision = data.get("precision", "auto")
+                device = data.get("device", "auto")
+
+                # Store in global settings that edit_post_processor can access
+                from utils.audio.edit_post_processor import set_inline_tag_settings
+                set_inline_tag_settings(precision=precision, device=device)
+
+                return web.json_response({"status": "success", "precision": precision, "device": device})
+            except Exception as e:
+                print(f"⚠️ Error setting inline tag settings: {e}")
+                return web.json_response({"status": "error", "error": str(e)})
     except Exception as e:
         print(f"⚠️ Could not setup API routes: {e}")
 

@@ -131,8 +131,15 @@ class StepAudioEditXAudioEditorNode:
     def __init__(self):
         self._engine = None
 
-    def _get_or_create_engine(self, tts_engine_data=None):
-        """Get existing engine from config or create default one."""
+    def _get_or_create_engine(self, tts_engine_data=None, inline_tag_precision=None, inline_tag_device=None):
+        """
+        Get existing engine from config or create default one.
+
+        Args:
+            tts_engine_data: Engine data from connected Step Audio EditX Engine node
+            inline_tag_precision: Precision override for inline edit tags (auto, fp32, fp16, bf16, int8, int4)
+            inline_tag_device: Device override for inline edit tags (auto, cuda, cpu, xpu)
+        """
         if tts_engine_data is not None:
             # Engine provided via TTS_ENGINE from Step Audio EditX Engine node
             engine_type = tts_engine_data.get("engine_type", "")
@@ -176,7 +183,32 @@ class StepAudioEditXAudioEditorNode:
             from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
             from utils.device import resolve_torch_device
 
-            print("🔄 Loading Step Audio EditX engine via unified interface...")
+            # Use inline tag settings if provided, otherwise use defaults
+            device_setting = inline_tag_device if inline_tag_device else "auto"
+            precision_setting = inline_tag_precision if inline_tag_precision else "auto"
+
+            # Convert precision setting to torch_dtype and quantization
+            torch_dtype_val = "bfloat16"  # default
+            quantization_val = None
+
+            if precision_setting in ["fp32", "fp16", "bf16"]:
+                # Map short names to full names
+                dtype_map = {"fp32": "float32", "fp16": "float16", "bf16": "bfloat16"}
+                torch_dtype_val = dtype_map.get(precision_setting, "bfloat16")
+                quantization_val = None
+            elif precision_setting in ["int8", "int4"]:
+                # Quantization - torch_dtype doesn't matter (will be quantized)
+                torch_dtype_val = "bfloat16"
+                quantization_val = precision_setting
+            elif precision_setting == "auto":
+                # Auto defaults to bf16
+                torch_dtype_val = "bfloat16"
+                quantization_val = None
+
+            if precision_setting != "auto" or device_setting != "auto":
+                print(f"🔄 Loading Step Audio EditX engine (precision={precision_setting}, device={device_setting})...")
+            else:
+                print("🔄 Loading Step Audio EditX engine via unified interface...")
 
             # Resolve model path to actual filesystem path
             import folder_paths
@@ -188,11 +220,26 @@ class StepAudioEditXAudioEditorNode:
                 model_type="tts",  # Use "tts" to match adapter's cache key
                 model_name="Step-Audio-EditX",
                 model_path=model_path,
-                device=resolve_torch_device("auto"),
-                additional_params={"torch_dtype": "bfloat16", "quantization": None}
+                device=resolve_torch_device(device_setting),
+                additional_params={"torch_dtype": torch_dtype_val, "quantization": quantization_val}
             )
 
-            self._engine = unified_model_interface.load_model(config)
+            raw_engine = unified_model_interface.load_model(config)
+
+            # Wrap raw StepAudioTTS in StepAudioEditXEngine for edit_single() method
+            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
+
+            # Create wrapper with the raw engine injected
+            wrapper = StepAudioEditXEngine.__new__(StepAudioEditXEngine)
+            wrapper._tts_engine = raw_engine
+            wrapper._tokenizer = None  # Not needed, engine already has tokenizer
+            wrapper._model_config = config
+            wrapper.device = config.device
+            wrapper.torch_dtype = torch_dtype_val
+            wrapper.quantization = quantization_val
+            wrapper.model_dir = model_path
+
+            self._engine = wrapper
 
         return self._engine
 
@@ -269,7 +316,9 @@ class StepAudioEditXAudioEditorNode:
         speed="none",
         n_edit_iterations=1,
         tts_engine=None,
-        suppress_progress=False
+        suppress_progress=False,
+        inline_tag_precision=None,
+        inline_tag_device=None
     ):
         """
         Edit audio with specified modification.
@@ -311,8 +360,8 @@ class StepAudioEditXAudioEditorNode:
         # Compact header for edit post-processor (detailed info shown by post-processor)
         # print(f"🎨 Step Audio EditX: Editing {duration:.2f}s audio with '{edit_type}' mode")
 
-        # Get engine
-        step_audio_engine = self._get_or_create_engine(tts_engine)
+        # Get engine (pass inline tag settings if provided)
+        step_audio_engine = self._get_or_create_engine(tts_engine, inline_tag_precision, inline_tag_device)
 
         # Process text based on edit_type
         # Normalize newlines to spaces - the model instruction format doesn't handle newlines well
@@ -434,7 +483,8 @@ class StepAudioEditXAudioEditorNode:
                     # CRITICAL: Resample to engine's sample rate (24000 Hz) if needed
                     # Input audio might be 44100 Hz, 48000 Hz, etc.
                     # Saving with wrong sample rate causes pitch shift
-                    target_sample_rate = step_audio_engine.get_sample_rate()  # 24000 Hz
+                    # Step Audio EditX always uses 24000 Hz
+                    target_sample_rate = 24000
                     if current_sample_rate != target_sample_rate:
                         print(f"   Resampling audio from {current_sample_rate}Hz to {target_sample_rate}Hz")
                         # Use torchaudio for resampling

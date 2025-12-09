@@ -139,19 +139,38 @@ class StepAudioEditXHandler(BaseEngineHandler):
                 else:
                     freed_memory = wrapper._memory_size
             else:
-                # Regular model - use standard .to() method
-                if hasattr(model, 'to'):
-                    try:
-                        model.to(device)
-                        freed_memory = wrapper._memory_size
-                        wrapper.current_device = device
-                        wrapper._is_loaded_on_gpu = False
-                        print(f"🔄 Moved {model_info} to {device}, freed {freed_memory // 1024 // 1024}MB")
-                    except Exception as e:
-                        print(f"⚠️ Failed to move {model_info} to {device}: {e}")
-                        freed_memory = wrapper._memory_size
-                        wrapper.current_device = device
-                        wrapper._is_loaded_on_gpu = False
+                # Regular (non-quantized) model - move components to CPU
+                print(f"🔄 Moving non-quantized {model_info} to {device}...")
+                try:
+                    # Handle raw StepAudioTTS (has llm, cosy_model)
+                    if hasattr(model, 'llm') and model.llm is not None:
+                        model.llm = model.llm.to(device)
+                        print(f"  ✓ Moved LLM to {device}")
+                    if hasattr(model, 'cosy_model') and model.cosy_model is not None:
+                        # CosyVoice wrapper - move the inner cosy_impl module
+                        if hasattr(model.cosy_model, 'cosy_impl') and model.cosy_model.cosy_impl is not None:
+                            model.cosy_model.cosy_impl = model.cosy_model.cosy_impl.to(device)
+                            model.cosy_model.device = torch.device(device)  # Update device tracker
+                            print(f"  ✓ Moved CosyVoice to {device}")
+                        else:
+                            print(f"  ⚠️ CosyVoice has no cosy_impl to move")
+
+                    # Handle wrapped StepAudioEditXEngine (has _tts_engine)
+                    if hasattr(model, '_tts_engine') and model._tts_engine is not None:
+                        if hasattr(model._tts_engine, 'llm') and model._tts_engine.llm is not None:
+                            model._tts_engine.llm = model._tts_engine.llm.to(device)
+                        if hasattr(model._tts_engine, 'cosy_model') and model._tts_engine.cosy_model is not None:
+                            model._tts_engine.cosy_model = model._tts_engine.cosy_model.to(device)
+
+                    freed_memory = wrapper._memory_size
+                    wrapper.current_device = device
+                    wrapper._is_loaded_on_gpu = False
+                    print(f"✅ Moved {model_info} to {device}, freed {freed_memory // 1024 // 1024}MB")
+                except Exception as e:
+                    print(f"⚠️ Failed to move {model_info} to {device}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    freed_memory = 0
 
         except Exception as e:
             print(f"⚠️ Error unloading {wrapper.model_info.engine} model: {e}")
