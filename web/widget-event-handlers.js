@@ -12,7 +12,13 @@ export function attachAllEventHandlers(
     undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
-    showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale
+    showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale,
+    // Inline edit controls
+    paraSelect, paraIterSlider, addParaBtn,
+    emotionSelect, emotionIterSlider, addEmotionBtn,
+    styleSelect, styleIterSlider, addStyleBtn,
+    speedSelect, speedIterSlider, addSpeedBtn,
+    restorePassSlider, restoreRefInput, addRestoreBtn
 ) {
     // Block ComfyUI shortcuts when editor is focused, but allow Enter and Alt combinations
     editor.addEventListener("keydown", (e) => {
@@ -554,5 +560,207 @@ export function attachAllEventHandlers(
         if (e.button === 1) {
             window.app.canvas.processMouseUp(e);
         }
+    });
+
+    // ==================== INLINE EDIT TAG INSERTION ====================
+
+    // Helper to modify inline edit tag content (similar to TagUtilities.modifyTagContent but for <...>)
+    const modifyInlineEditTag = (text, caretPos, newTagPart) => {
+        // Check if caret is right after an inline edit tag >
+        let isRightAfterTag = caretPos > 0 && text[caretPos - 1] === ">";
+        let spaceAfterTag = false;
+        if (!isRightAfterTag && caretPos > 1 && text[caretPos - 1] === " " && text[caretPos - 2] === ">") {
+            isRightAfterTag = true;
+            spaceAfterTag = true;
+        }
+
+        // Check if caret is INSIDE an inline edit tag (between < and >)
+        let isInsideTag = false;
+        let tagStart = -1;
+        let tagEnd = -1;
+
+        if (!isRightAfterTag) {
+            // Look backwards for < without hitting >
+            let bracketDepth = 0;
+            for (let i = caretPos - 1; i >= 0; i--) {
+                if (text[i] === ">") {
+                    bracketDepth++;
+                } else if (text[i] === "<") {
+                    if (bracketDepth === 0) {
+                        tagStart = i;
+                        // Find matching >
+                        for (let j = i + 1; j < text.length; j++) {
+                            if (text[j] === ">") {
+                                tagEnd = j;
+                                if (tagEnd >= caretPos) {
+                                    isInsideTag = true;
+                                }
+                                break;
+                            }
+                        }
+                        break;
+                    } else {
+                        bracketDepth--;
+                    }
+                }
+            }
+        } else {
+            // Right after tag - find the tag we're right after
+            let searchPos = spaceAfterTag ? caretPos - 2 : caretPos - 1;
+            let bracketDepth = 0;
+            for (let i = searchPos - 1; i >= 0; i--) {
+                if (text[i] === ">") {
+                    bracketDepth++;
+                } else if (text[i] === "<") {
+                    if (bracketDepth === 0) {
+                        tagStart = i;
+                        tagEnd = searchPos;
+                        isInsideTag = false; // We're after it, not inside
+                        break;
+                    } else {
+                        bracketDepth--;
+                    }
+                }
+            }
+        }
+
+        if (tagStart !== -1 && tagEnd !== -1) {
+            // Found a tag - modify it
+            const tagContent = text.substring(tagStart + 1, tagEnd);
+            const parts = tagContent.split("|");
+
+            // Check if this tag type already exists
+            const tagType = newTagPart.split(":")[0];
+            const existingIndex = parts.findIndex(part => part.startsWith(tagType + ":") || part === tagType);
+
+            let newContent;
+            if (existingIndex !== -1) {
+                // Replace existing tag of same type
+                parts[existingIndex] = newTagPart;
+                newContent = parts.join("|");
+            } else {
+                // Add new tag with pipe separator
+                newContent = tagContent + "|" + newTagPart;
+            }
+
+            const newTag = `<${newContent}>`;
+            const newText = text.substring(0, tagStart) + newTag + text.substring(tagEnd + 1);
+            const newCaretPos = tagStart + newTag.length;
+
+            return { newText, newCaretPos, modified: true };
+        }
+
+        // No tag found - insert new tag
+        return { modified: false };
+    };
+
+    // Helper function to insert inline edit tag (with pipe-separator support)
+    const insertInlineTag = (tagPart) => {
+        const caretPos = getCaretPos();
+        const plainText = getPlainText();
+
+        // Try to modify existing inline edit tag
+        const result = modifyInlineEditTag(plainText, caretPos, tagPart);
+
+        if (result.modified) {
+            // Modified existing tag
+            setEditorText(result.newText);
+            state.text = result.newText;
+            state.addToHistory(result.newText, result.newCaretPos);
+            state.saveToLocalStorage(storageKey);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+
+            setTimeout(() => setCaretPos(result.newCaretPos), 0);
+            showNotification(`✓ Updated inline tag`, 1500);
+        } else {
+            // Create new tag
+            const newTag = `<${tagPart}>`;
+            const before = plainText.substring(0, caretPos);
+            const after = plainText.substring(caretPos);
+            const newText = before + newTag + after;
+
+            setEditorText(newText);
+            state.text = newText;
+            state.addToHistory(newText, caretPos + newTag.length);
+            state.saveToLocalStorage(storageKey);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+
+            setTimeout(() => setCaretPos(caretPos + newTag.length), 0);
+            showNotification(`✓ Inserted: ${newTag}`, 1500);
+        }
+    };
+
+    // Paralinguistic tag insertion
+    addParaBtn.addEventListener("click", () => {
+        const type = paraSelect.value;
+        if (!type) {
+            showNotification("⚠️ Select a paralinguistic type first", 2000);
+            return;
+        }
+
+        const iterations = paraIterSlider.value;
+        const tagPart = iterations === "1" ? type : `${type}:${iterations}`;
+        insertInlineTag(tagPart);
+    });
+
+    // Emotion tag insertion
+    addEmotionBtn.addEventListener("click", () => {
+        const emotion = emotionSelect.value;
+        if (!emotion) {
+            showNotification("⚠️ Select an emotion first", 2000);
+            return;
+        }
+
+        const iterations = emotionIterSlider.value;
+        const tagPart = iterations === "1" ? `emotion:${emotion}` : `emotion:${emotion}:${iterations}`;
+        insertInlineTag(tagPart);
+    });
+
+    // Style tag insertion
+    addStyleBtn.addEventListener("click", () => {
+        const style = styleSelect.value;
+        if (!style) {
+            showNotification("⚠️ Select a style first", 2000);
+            return;
+        }
+
+        const iterations = styleIterSlider.value;
+        const tagPart = iterations === "1" ? `style:${style}` : `style:${style}:${iterations}`;
+        insertInlineTag(tagPart);
+    });
+
+    // Speed tag insertion
+    addSpeedBtn.addEventListener("click", () => {
+        const speed = speedSelect.value;
+        if (!speed) {
+            showNotification("⚠️ Select a speed first", 2000);
+            return;
+        }
+
+        const iterations = speedIterSlider.value;
+        const tagPart = iterations === "1" ? `speed:${speed}` : `speed:${speed}:${iterations}`;
+        insertInlineTag(tagPart);
+    });
+
+    // Restore tag insertion
+    addRestoreBtn.addEventListener("click", () => {
+        const passes = restorePassSlider.value;
+        const refIter = restoreRefInput.value.trim();
+
+        let tagPart;
+        if (refIter) {
+            // Format: restore:N@M where N=passes, M=reference iteration
+            tagPart = `restore:${passes}@${refIter}`;
+        } else if (passes === "1") {
+            // Simple restore
+            tagPart = "restore";
+        } else {
+            // Multiple passes
+            tagPart = `restore:${passes}`;
+        }
+
+        insertInlineTag(tagPart);
     });
 }

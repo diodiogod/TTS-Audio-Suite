@@ -77,7 +77,11 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             input.max = config.max;
             input.step = config.step;
             input.placeholder = config.default.toString();
-            input.value = config.default;
+
+            // Restore saved value or use default
+            const savedValue = state[`last${type.charAt(0).toUpperCase() + type.slice(1)}`];
+            input.value = savedValue !== undefined ? savedValue : config.default;
+
             input.style.width = "100%";
             input.style.padding = "3px";
             input.style.fontSize = "10px";
@@ -92,18 +96,22 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             wrapper.getValue = () => input.value;
             return wrapper;
         } else if (config.type === "slider") {
+            // Restore saved value or use default
+            const savedValue = state[`last${type.charAt(0).toUpperCase() + type.slice(1)}`];
+            const initialValue = savedValue !== undefined ? savedValue : config.default;
+
             const label = document.createElement("div");
             label.style.fontSize = "9px";
             label.style.marginBottom = "2px";
             label.style.color = "#999";
-            label.textContent = `${config.label}: ${config.default}`;
+            label.textContent = `${config.label}: ${initialValue}`;
 
             const slider = document.createElement("input");
             slider.type = "range";
             slider.min = config.min;
             slider.max = config.max;
             slider.step = config.step;
-            slider.value = config.default;
+            slider.value = initialValue;
             slider.style.width = "100%";
             slider.addEventListener("input", () => {
                 label.textContent = `${config.label}: ${slider.value}`;

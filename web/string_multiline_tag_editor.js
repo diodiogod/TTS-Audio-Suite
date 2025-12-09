@@ -12,6 +12,8 @@ import { buildHistorySection, buildCharacterSection, buildLanguageSection, build
 import { buildParameterSection } from "./widget-parameter-section.js";
 import { buildPresetSection } from "./widget-preset-system.js";
 import { attachAllEventHandlers } from "./widget-event-handlers.js";
+import { buildTabSystem } from "./widget-tabs.js";
+import { buildInlineEditSection } from "./widget-inline-edit-section.js";
 
 
 // Counter to ensure unique storage keys even when node.id is -1
@@ -262,10 +264,16 @@ function addStringMultilineTagEditorWidget(node) {
             '\x00SRT_START\x00$&\x00SRT_END\x00'
         );
 
-        // Highlight tags - bright cyan
+        // Highlight character tags (square brackets) - bright cyan
         html = html.replace(
             /(\[[^\]]+\])/g,
             '\x00TAG_START\x00$1\x00TAG_END\x00'
+        );
+
+        // Highlight inline edit tags (angle brackets) - magenta
+        html = html.replace(
+            /(<[^>]+>)/g,
+            '\x00EDIT_START\x00$1\x00EDIT_END\x00'
         );
 
         // Highlight commas - green
@@ -291,6 +299,7 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff5555; font-weight: bold;">$1</span>')
             .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #ffaa00; font-weight: bold;">$1</span>')
             .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #00ffff; font-weight: bold;">$1</span>')
+            .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #ff66ff; font-weight: bold;">$1</span>')
             .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #66ff66; font-weight: bold;">$1</span>')
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #ffcc33; font-weight: bold;">$1</span>')
             .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>')
@@ -588,20 +597,39 @@ function addStringMultilineTagEditorWidget(node) {
     const presetData = buildPresetSection(state, storageKey);
     const { presetSection, presetButtons, presetTitles, updatePresetGlows } = presetData;
 
-
     // Validation controls
     // Build validation section
     const validData = buildValidationSection();
     const { validSection, formatBtn, validateBtn } = validData;
 
+    // Build inline edit section
+    const inlineEditData = buildInlineEditSection(state, storageKey);
+    const {
+        inlineEditSection,
+        paraSelect, paraIterSlider, addParaBtn,
+        emotionSelect, emotionIterSlider, addEmotionBtn,
+        styleSelect, styleIterSlider, addStyleBtn,
+        speedSelect, speedIterSlider, addSpeedBtn,
+        restorePassSlider, restoreRefInput, addRestoreBtn
+    } = inlineEditData;
+
+    // Build tab system
+    const tabData = buildTabSystem(state, storageKey);
+    const { tabContainer, charParamContent, inlineEditContent, switchTab } = tabData;
+
+    // Assemble Character/Parameters tab
+    charParamContent.appendChild(charSection);
+    charParamContent.appendChild(langSection);
+    charParamContent.appendChild(paramSection);
+    charParamContent.appendChild(presetSection);
+    charParamContent.appendChild(validSection);
+
+    // Assemble Inline Edit tab
+    inlineEditContent.appendChild(inlineEditSection);
 
     // Assemble sidebar
     sidebar.appendChild(historySection);
-    sidebar.appendChild(charSection);
-    sidebar.appendChild(langSection);
-    sidebar.appendChild(paramSection);
-    sidebar.appendChild(presetSection);
-    sidebar.appendChild(validSection);
+    sidebar.appendChild(tabContainer);
 
     // ==================== ATTACH EVENT HANDLERS ====================
     // Consolidates all addEventListener calls into a single module function
@@ -610,7 +638,13 @@ function addStringMultilineTagEditorWidget(node) {
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
-        showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale
+        showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale,
+        // Inline edit controls
+        paraSelect, paraIterSlider, addParaBtn,
+        emotionSelect, emotionIterSlider, addEmotionBtn,
+        styleSelect, styleIterSlider, addStyleBtn,
+        speedSelect, speedIterSlider, addSpeedBtn,
+        restorePassSlider, restoreRefInput, addRestoreBtn
     );
 
     // Store state when node is removed
