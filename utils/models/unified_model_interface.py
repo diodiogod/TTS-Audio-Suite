@@ -794,6 +794,11 @@ def register_step_audio_editx_factory():
         torch_dtype_str = config.additional_params.get("torch_dtype", "bfloat16") if config.additional_params else "bfloat16"
         quantization = config.additional_params.get("quantization", None) if config.additional_params else None
 
+        # Resolve model path using downloader (handles "local:" prefix and auto-download)
+        from engines.step_audio_editx.step_audio_editx_downloader import StepAudioEditXDownloader
+        downloader = StepAudioEditXDownloader()
+        model_path = downloader.resolve_model_path(model_path)
+
         if not model_path or not os.path.exists(model_path):
             raise RuntimeError(f"Step Audio EditX model not found at {model_path}. Auto-download should have been triggered earlier.")
 

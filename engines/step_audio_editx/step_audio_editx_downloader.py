@@ -281,6 +281,41 @@ class StepAudioEditXDownloader:
                 f"Missing {len(missing_files)} files: {missing_files[:5]}..."
             )
 
+    def resolve_model_path(self, model_identifier: str) -> str:
+        """
+        Resolve model path handling "local:" prefix and auto-download.
+
+        Follows Higgs/VibeVoice pattern for consistency across engines.
+
+        Args:
+            model_identifier: Model identifier ("local:ModelName" or "ModelName")
+
+        Returns:
+            Resolved filesystem path to model directory
+
+        Raises:
+            FileNotFoundError: If local model not found
+            RuntimeError: If auto-download fails
+        """
+        # Handle local: prefix - search in all configured TTS paths
+        if model_identifier.startswith("local:"):
+            local_name = model_identifier[6:]  # Remove "local:" prefix
+
+            # Search in all configured TTS paths
+            from utils.models.extra_paths import get_all_tts_model_paths
+            for base_tts_path in get_all_tts_model_paths('TTS'):
+                for folder_name in ["step_audio_editx", "Step-Audio-EditX", "step_audio"]:
+                    local_path = os.path.join(base_tts_path, folder_name, local_name)
+                    if os.path.exists(local_path):
+                        print(f"📁 Using local Step Audio EditX model: {local_path}")
+                        return local_path
+
+            # If not found, raise error
+            raise FileNotFoundError(f"Local Step Audio EditX model not found: {local_name}")
+
+        # Handle predefined models or auto-download
+        return self.get_model_path(model_identifier)
+
     def get_model_path(self, model_name: str = "Step-Audio-EditX") -> str:
         """
         Get the path to a model (auto-downloads if missing).
