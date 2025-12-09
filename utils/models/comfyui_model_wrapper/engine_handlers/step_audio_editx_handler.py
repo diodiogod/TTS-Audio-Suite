@@ -30,6 +30,14 @@ class StepAudioEditXHandler(BaseEngineHandler):
 
         freed_memory = 0
 
+        # Measure actual VRAM before unloading
+        vram_before = 0
+        if torch.cuda.is_available():
+            try:
+                vram_before = torch.cuda.memory_allocated()
+            except Exception:
+                pass
+
         try:
             model_info = f"{wrapper.model_info.model_type} model ({wrapper.model_info.engine})"
 
@@ -72,7 +80,6 @@ class StepAudioEditXHandler(BaseEngineHandler):
                     model._tokenizer = None
 
                 # Delete the wrapper
-                freed_memory = wrapper._memory_size
                 del model
                 wrapper._model_ref = None
                 wrapper.current_device = device
@@ -81,6 +88,24 @@ class StepAudioEditXHandler(BaseEngineHandler):
                 # Mark as invalid for reuse - quantized models can't be moved back to GPU
                 wrapper._is_valid_for_reuse = False
                 print(f"🚫 Marked quantized model as invalid for reuse (must reload from scratch)")
+
+                # Measure actual VRAM freed after cleanup
+                if torch.cuda.is_available():
+                    try:
+                        # Force cleanup first
+                        gc.collect()
+                        gc.collect()
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+
+                        vram_after = torch.cuda.memory_allocated()
+                        freed_memory = vram_before - vram_after
+                        print(f"📊 VRAM: {vram_before // 1024 // 1024}MB → {vram_after // 1024 // 1024}MB (freed {freed_memory // 1024 // 1024}MB)")
+                    except Exception as e:
+                        freed_memory = wrapper._memory_size  # Fallback to estimate
+                else:
+                    freed_memory = wrapper._memory_size
             else:
                 # Regular model - use standard .to() method
                 if hasattr(model, 'to'):
