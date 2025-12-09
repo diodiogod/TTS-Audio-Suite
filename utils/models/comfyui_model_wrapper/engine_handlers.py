@@ -103,6 +103,8 @@ class StepAudioEditXHandler(BaseEngineHandler):
                 'Int8' in str(type(m).__name__) for m in model.modules() if hasattr(model, 'modules')
             )
 
+            print(f"DEBUG: Quantization check for {model_info} - is_quantized={is_quantized}, has_quantization_method={hasattr(model, 'quantization_method')}")
+
             if is_quantized:
                 print(f"🔄 Unloading quantized {model_info} (bitsandbytes int8)...")
                 # Delete model reference and let garbage collection handle it
