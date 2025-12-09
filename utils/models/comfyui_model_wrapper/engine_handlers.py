@@ -73,6 +73,62 @@ class BaseEngineHandler:
         return freed > 0
 
 
+class StepAudioEditXHandler(BaseEngineHandler):
+    """Specialized handler for Step Audio EditX with bitsandbytes int8 support"""
+
+    def partially_unload(self, wrapper, device: str, memory_to_free: int) -> int:
+        """
+        Unload Step Audio EditX model, handling bitsandbytes int8 models specially.
+
+        Bitsandbytes int8 models can't use .to() for device movement.
+        We need to delete the model and let garbage collection handle it.
+        """
+        if not wrapper._is_loaded_on_gpu:
+            print(f"⚠️ Skipping unload: model already marked as not on GPU")
+            return 0
+
+        # Get the actual model
+        model = wrapper._model_ref() if wrapper._model_ref else None
+        if model is None:
+            print(f"⚠️ Model reference is None, cannot unload")
+            return 0
+
+        try:
+            # For bitsandbytes int8 models, .to() doesn't work
+            # Instead, delete the model and force garbage collection
+            model_info = f"{wrapper.model_info.model_type} model ({wrapper.model_info.engine})"
+
+            # Check if this is a bitsandbytes quantized model
+            is_quantized = hasattr(model, 'quantization_method') or any(
+                'Int8' in str(type(m).__name__) for m in model.modules() if hasattr(model, 'modules')
+            )
+
+            if is_quantized:
+                print(f"🔄 Unloading quantized {model_info} (bitsandbytes int8)...")
+                # Delete model reference and let garbage collection handle it
+                del model
+                wrapper._model_ref = None
+            else:
+                # Regular model - use standard .to() method
+                if hasattr(model, 'to'):
+                    model.to(device)
+                    print(f"🔄 Moved {model_info} to {device}")
+
+            # Update wrapper state
+            wrapper.current_device = device
+            wrapper._is_loaded_on_gpu = False
+
+            # Force CUDA cache cleanup
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+
+            return wrapper._memory_size
+        except Exception as e:
+            print(f"⚠️ Error unloading {wrapper.model_info.engine} model: {e}")
+            return 0
+
+
 class HiggsAudioHandler(BaseEngineHandler):
     """Specialized handler for Higgs Audio engine with CUDA graphs"""
 
@@ -97,6 +153,7 @@ _ENGINE_HANDLERS = {
     'chatterbox_official_23lang': BaseEngineHandler(),
     'f5tts': BaseEngineHandler(),
     'higgs_audio': HiggsAudioHandler(),
+    'step_audio_editx': StepAudioEditXHandler(),
     'vibevoice': BaseEngineHandler(),
     'rvc': BaseEngineHandler(),
 }
