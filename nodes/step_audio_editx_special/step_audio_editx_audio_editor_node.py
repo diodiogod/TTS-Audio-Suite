@@ -130,6 +130,7 @@ class StepAudioEditXAudioEditorNode:
 
     def __init__(self):
         self._engine = None
+        self._cached_settings = None  # Track settings used to create cached engine
 
     def _get_or_create_engine(self, tts_engine_data=None, inline_tag_precision=None, inline_tag_device=None):
         """
@@ -179,6 +180,32 @@ class StepAudioEditXAudioEditorNode:
             return engine
 
         # Create default engine if not provided - use unified interface
+        # Also reload if engine was deleted (e.g., by memory management for quantized models)
+        # OR if inline settings have changed
+
+        # Check if settings changed
+        current_settings = (inline_tag_precision, inline_tag_device)
+        settings_changed = (self._cached_settings is not None and
+                           self._cached_settings != current_settings)
+
+        if settings_changed:
+            print(f"⚙️ Inline tag settings changed: {self._cached_settings} → {current_settings}, reloading engine...")
+            self._engine = None
+            self._cached_settings = None
+
+        # Check if engine was deleted (MUST be after settings change check, before early return)
+        engine_was_deleted = (self._engine is not None and
+                             hasattr(self._engine, '_tts_engine') and
+                             self._engine._tts_engine is None)
+
+        if engine_was_deleted:
+            print("⚠️ Step Audio EditX engine was deleted, reloading...")
+            self._engine = None
+        elif self._engine is not None:
+            # Using cached engine with existing settings
+            print(f"♻️ Using cached Step Audio EditX engine (precision={inline_tag_precision}, device={inline_tag_device})")
+            return self._engine
+
         if self._engine is None:
             from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
             from utils.device import resolve_torch_device
@@ -205,10 +232,8 @@ class StepAudioEditXAudioEditorNode:
                 torch_dtype_val = "bfloat16"
                 quantization_val = None
 
-            if precision_setting != "auto" or device_setting != "auto":
-                print(f"🔄 Loading Step Audio EditX engine (precision={precision_setting}, device={device_setting})...")
-            else:
-                print("🔄 Loading Step Audio EditX engine via unified interface...")
+            # Always print precision/device to verify settings are being used
+            print(f"🔄 Loading Step Audio EditX engine (precision={precision_setting}, device={device_setting}, quantization={quantization_val})...")
 
             # Resolve model path to actual filesystem path
             import folder_paths
@@ -240,6 +265,8 @@ class StepAudioEditXAudioEditorNode:
             wrapper.model_dir = model_path
 
             self._engine = wrapper
+            # Cache the settings used to create this engine
+            self._cached_settings = current_settings
 
         return self._engine
 

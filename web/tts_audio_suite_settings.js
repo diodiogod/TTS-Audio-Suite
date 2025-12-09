@@ -16,7 +16,8 @@ app.registerExtension({
             tooltip:
                 "Torch dtype for Step Audio EditX model when using inline edit tags (<Laughter>, <style:whisper>, etc.).\n" +
                 "Use int8 or int4 for low VRAM systems.\n" +
-                "Note: This ONLY affects inline edit tags. When using the Step Audio EditX node directly, use the node's precision parameter instead."
+                "Note: This ONLY affects inline edit tags. When using the Step Audio EditX node directly, use the node's precision parameter instead.\n\n" +
+                "⚠️ IMPORTANT: Refresh browser (F5) after changing settings for them to take effect."
         },
         {
             id: "TTSAudioSuite.InlineEditTags.Device",
@@ -28,7 +29,8 @@ app.registerExtension({
             tooltip:
                 "Device for Step Audio EditX model when using inline edit tags (<Laughter>, <style:whisper>, etc.).\n" +
                 "Auto selects best available device (cuda > xpu > cpu).\n" +
-                "Note: This ONLY affects inline edit tags. When using the Step Audio EditX node directly, use the node's device parameter instead."
+                "Note: This ONLY affects inline edit tags. When using the Step Audio EditX node directly, use the node's device parameter instead.\n\n" +
+                "⚠️ IMPORTANT: Refresh browser (F5) after changing settings for them to take effect."
         }
     ],
     async setup() {
@@ -37,6 +39,8 @@ app.registerExtension({
             try {
                 const precision = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Precision", "auto");
                 const device = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Device", "auto");
+
+                console.log(`TTS Audio Suite: Sending settings to backend - precision=${precision}, device=${device}`);
 
                 const response = await fetch("/api/tts-audio-suite/settings", {
                     method: "POST",
@@ -50,7 +54,10 @@ app.registerExtension({
                 });
 
                 if (!response.ok) {
-                    console.error("TTS Audio Suite: Failed to send settings to backend");
+                    console.error(`TTS Audio Suite: Failed to send settings to backend (status ${response.status})`);
+                } else {
+                    const result = await response.json();
+                    console.log("TTS Audio Suite: Backend confirmed settings:", result);
                 }
             } catch (error) {
                 console.error("TTS Audio Suite: Error sending settings to backend:", error);

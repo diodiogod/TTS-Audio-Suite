@@ -253,10 +253,13 @@ def setup_api_routes():
         @PromptServer.instance.routes.post("/api/tts-audio-suite/settings")
         async def set_inline_tag_settings_endpoint(request):
             """API endpoint to receive settings from frontend for inline edit tags"""
+            print("🔧 Settings endpoint called")  # Immediate print to verify endpoint is reached
             try:
                 data = await request.json()
                 precision = data.get("precision", "auto")
                 device = data.get("device", "auto")
+
+                print(f"🔧 Received settings: precision={precision}, device={device}")
 
                 # Store in global settings that edit_post_processor can access
                 from utils.audio.edit_post_processor import set_inline_tag_settings

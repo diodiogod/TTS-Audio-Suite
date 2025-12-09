@@ -154,9 +154,8 @@ def _apply_edit_via_node(
     precision = settings.get("precision", "auto")
     device = settings.get("device", "auto")
 
-    # Debug: print settings being used
-    if precision != "auto" or device != "auto":
-        print(f"  🎨 Using inline tag settings: precision={precision}, device={device}")
+    # Debug: ALWAYS print settings to verify they're being read
+    print(f"  🎨 DEBUG: Inline tag settings: precision={precision}, device={device}")
 
     # Prepare audio_text for the editor node
     # For paralinguistic, insert tag at position
@@ -278,6 +277,12 @@ def process_segments(
         parse_edit_tags_with_iterations,
         sort_edit_tags_for_processing
     )
+
+    # Get inline tag settings once at the start
+    settings = get_inline_tag_settings()
+    inline_precision = settings.get("precision", "auto")
+    inline_device = settings.get("device", "auto")
+    print(f"🔧 EditPostProcessor: Using inline tag settings - precision={inline_precision}, device={inline_device}")
 
     # Find segments that need editing
     segments_to_edit = []
@@ -444,7 +449,9 @@ def process_segments(
                         speed="none",
                         n_edit_iterations=1,  # Always 1 iteration, we loop ourselves
                         tts_engine=None,
-                        suppress_progress=True  # We show our own iteration progress
+                        suppress_progress=True,  # We show our own iteration progress
+                        inline_tag_precision=inline_precision,
+                        inline_tag_device=inline_device
                     )
                     current_audio_dict = edited_audio_dict
 
