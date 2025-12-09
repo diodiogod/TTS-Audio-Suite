@@ -251,18 +251,47 @@ def _parse_single_tag_part(part: str, current_position: int) -> Optional[EditTag
             position=current_position
         )
 
-    # Case 1.5: Restore tag - <restore>, <restore:2>, or <restore:4@2>
+    # Case 1.5: Restore tag - <restore>, <restore:2>, <restore:4@2>, <restore@1>, <restore:@1>, <restore:@0>
+    # Check if first component has @ (e.g., "restore@1")
+    if '@' in components[0]:
+        base_parts = components[0].split('@')
+        if base_parts[0].lower() == 'restore':
+            iterations = 1
+            reference_iteration = None
+            try:
+                iter_num = int(base_parts[1])
+                # 0 means original pre-edit audio (None), >=1 means use that iteration
+                reference_iteration = iter_num if iter_num > 0 else None
+            except (ValueError, IndexError):
+                pass
+
+            return EditTag(
+                edit_type="restore",
+                value=f"restore@{reference_iteration}" if reference_iteration else "restore",
+                iterations=iterations,
+                position=reference_iteration
+            )
+
     if first_lower == 'restore':
         iterations = 1
         reference_iteration = None  # None means use original pre-edit audio
 
         if len(components) >= 2:
             # Check if format is "restore:N@M" (N VC passes, reference iteration M)
+            # or "restore:@M" (@M shortcut, defaults to 1 VC pass)
             if '@' in components[1]:
                 parts = components[1].split('@')
                 try:
-                    iterations = max(1, min(5, int(parts[0])))
-                    reference_iteration = max(1, int(parts[1]))  # Which iteration to use as reference
+                    # Parse VC passes (before @)
+                    if parts[0]:  # "restore:4@2" format
+                        iterations = max(1, min(5, int(parts[0])))
+                    else:  # "restore:@2" format (empty before @, default to 1)
+                        iterations = 1
+
+                    # Parse reference iteration (after @)
+                    # 0 means original pre-edit audio (None), >=1 means use that iteration
+                    iter_num = int(parts[1])
+                    reference_iteration = iter_num if iter_num > 0 else None
                 except (ValueError, IndexError):
                     pass
             else:
@@ -345,9 +374,9 @@ def parse_edit_tags_with_iterations(text: str) -> Tuple[str, List[EditTag]]:
     """
     edit_tags: List[EditTag] = []
 
-    # Pattern: <content> where content can include pipes, colons, alphanumeric, underscore, hyphen, space
+    # Pattern: <content> where content can include pipes, colons, alphanumeric, underscore, hyphen, space, @
     # More permissive to capture all potential tags
-    pattern = r'<([a-zA-Z][a-zA-Z0-9_\-\s:|\d]*)>'
+    pattern = r'<([a-zA-Z][a-zA-Z0-9_\-\s:|\d@]*)>'
 
     # Track position offset as we remove tags
     offset = 0

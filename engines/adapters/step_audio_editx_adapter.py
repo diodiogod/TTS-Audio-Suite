@@ -105,6 +105,7 @@ class StepAudioEditXEngineAdapter:
         """
         from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
         from utils.device import resolve_torch_device
+        from utils.models.extra_paths import get_all_tts_model_paths
         import folder_paths
         import os
 
@@ -112,6 +113,30 @@ class StepAudioEditXEngineAdapter:
         if not model_path or model_path == 'Step-Audio-EditX':
             # Default path in ComfyUI models directory
             model_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx", "Step-Audio-EditX")
+        elif model_path.startswith("local:"):
+            # Handle local:ModelName format - resolve to actual filesystem path
+            model_name = model_path[6:]  # Strip "local:" prefix
+            resolved_path = None
+
+            # Search in all configured TTS paths (respects extra_model_paths.yaml)
+            for base_path in get_all_tts_model_paths('TTS'):
+                # Try direct path (models/TTS/Step-Audio-EditX)
+                candidate = os.path.join(base_path, model_name)
+                if os.path.isdir(candidate):
+                    resolved_path = candidate
+                    break
+
+                # Try in step_audio_editx subfolder (models/TTS/step_audio_editx/ModelName)
+                candidate = os.path.join(base_path, "step_audio_editx", model_name)
+                if os.path.isdir(candidate):
+                    resolved_path = candidate
+                    break
+
+            if resolved_path:
+                model_path = resolved_path
+            else:
+                # If not found, use model_name as-is for error reporting
+                model_path = model_name
 
         config = ModelLoadConfig(
             engine_name="step_audio_editx",

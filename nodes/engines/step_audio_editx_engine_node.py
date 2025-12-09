@@ -88,6 +88,17 @@ class StepAudioEditXEngineNode(BaseTTSNode):
     CATEGORY = "TTS Audio Suite/⚙️ Engines"
 
     @classmethod
+    def _is_valid_step_audio_model(cls, model_dir: str) -> bool:
+        """
+        Check if directory is a valid Step Audio EditX model.
+        Valid models must contain the CosyVoice vocoder (required component).
+        This filters out internal components like FunASR-Paraformer.
+        """
+        # A valid Step Audio EditX model has CosyVoice vocoder
+        cosyvoice_path = os.path.join(model_dir, "CosyVoice-300M-25Hz")
+        return os.path.isdir(cosyvoice_path)
+
+    @classmethod
     def _get_model_paths(cls) -> List[str]:
         """Get available Step Audio EditX model paths."""
         paths = ["Step-Audio-EditX"]  # Auto-download option
@@ -99,7 +110,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             for base_path in all_tts_paths:
                 # Check direct path (models/TTS/Step-Audio-EditX)
                 direct_path = os.path.join(base_path, "Step-Audio-EditX")
-                if os.path.exists(direct_path):
+                if cls._is_valid_step_audio_model(direct_path):
                     local_model = "local:Step-Audio-EditX"
                     if local_model not in paths:
                         paths.insert(0, local_model)  # Insert at beginning
@@ -109,7 +120,8 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 if os.path.exists(organized_base):
                     for item in os.listdir(organized_base):
                         model_dir = os.path.join(organized_base, item)
-                        if os.path.isdir(model_dir):
+                        # Only include valid Step Audio EditX models (skip FunASR, etc.)
+                        if os.path.isdir(model_dir) and cls._is_valid_step_audio_model(model_dir):
                             local_model = f"local:{item}"
                             if local_model not in paths:
                                 paths.insert(-1, local_model)  # Insert before auto-download
@@ -120,7 +132,8 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             if os.path.exists(base_dir):
                 for item in os.listdir(base_dir):
                     model_dir = os.path.join(base_dir, item)
-                    if os.path.isdir(model_dir):
+                    # Only include valid Step Audio EditX models (skip FunASR, etc.)
+                    if os.path.isdir(model_dir) and cls._is_valid_step_audio_model(model_dir):
                         local_model = f"local:{item}"
                         if local_model not in paths:
                             paths.insert(-1, local_model)
