@@ -42,23 +42,47 @@ class StepAudioEditXHandler(BaseEngineHandler):
             model_info = f"{wrapper.model_info.model_type} model ({wrapper.model_info.engine})"
 
             # Check if this is a bitsandbytes quantized model
-            # Step Audio EditX wraps the actual TTS engine, so check both wrapper and inner model
+            # After unified_model_interface returns raw StepAudioTTS, check its LLM
             is_quantized = False
 
-            # Check wrapper level
+            # Check wrapper level (for legacy wrapped models)
             if hasattr(model, 'quantization_method') or hasattr(model, 'quantization'):
                 is_quantized = True
+                print(f"DEBUG: Found quantization attribute on model")
 
-            # Check inner TTS engine if it exists
+            # Check if model IS the TTS engine (raw StepAudioTTS from factory)
+            if hasattr(model, 'llm') and hasattr(model.llm, 'modules'):
+                try:
+                    # Check for bitsandbytes quantized layers
+                    quantized_modules = [m for m in model.llm.modules() if 'Int8' in str(type(m).__name__) or 'Int4' in str(type(m).__name__)]
+                    if quantized_modules:
+                        is_quantized = True
+                        print(f"DEBUG: Found {len(quantized_modules)} quantized modules in model.llm")
+
+                    # Also check for Linear8bitLt or Linear4bit classes from bitsandbytes
+                    try:
+                        import bitsandbytes as bnb
+                        has_8bit = any(isinstance(m, bnb.nn.Linear8bitLt) for m in model.llm.modules())
+                        has_4bit = any(hasattr(bnb.nn, 'Linear4bit') and isinstance(m, bnb.nn.Linear4bit) for m in model.llm.modules())
+                        if has_8bit or has_4bit:
+                            is_quantized = True
+                            print(f"DEBUG: Found bitsandbytes quantization - 8bit={has_8bit}, 4bit={has_4bit}")
+                    except ImportError:
+                        pass
+                except Exception as e:
+                    print(f"DEBUG: Error checking llm modules: {e}")
+
+            # Check inner TTS engine if it exists (for wrapped models)
             if hasattr(model, '_tts_engine') and model._tts_engine is not None:
                 tts_engine = model._tts_engine
-                if hasattr(tts_engine, 'modules'):
-                    # Check if any module is quantized
+                if hasattr(tts_engine, 'llm') and hasattr(tts_engine.llm, 'modules'):
                     try:
                         is_quantized = is_quantized or any(
                             'Int8' in str(type(m).__name__) or 'Int4' in str(type(m).__name__)
-                            for m in tts_engine.modules()
+                            for m in tts_engine.llm.modules()
                         )
+                        if is_quantized:
+                            print(f"DEBUG: Found quantized modules in _tts_engine.llm")
                     except Exception:
                         pass
 
@@ -69,17 +93,27 @@ class StepAudioEditXHandler(BaseEngineHandler):
                 # For int8/int4, we need to delete ALL references and force aggressive cleanup
                 print(f"🔄 Unloading quantized {model_info} (bitsandbytes int8/int4)...")
 
-                # Delete inner TTS engine first if it exists
+                # Handle raw StepAudioTTS (has llm, cosy_model, audio_tokenizer)
+                if hasattr(model, 'llm'):
+                    if hasattr(model, 'llm') and model.llm is not None:
+                        del model.llm
+                        model.llm = None
+                    if hasattr(model, 'cosy_model') and model.cosy_model is not None:
+                        del model.cosy_model
+                        model.cosy_model = None
+                    if hasattr(model, 'audio_tokenizer') and model.audio_tokenizer is not None:
+                        del model.audio_tokenizer
+                        model.audio_tokenizer = None
+
+                # Handle wrapped StepAudioEditXEngine (has _tts_engine, _tokenizer)
                 if hasattr(model, '_tts_engine') and model._tts_engine is not None:
                     del model._tts_engine
                     model._tts_engine = None
-
-                # Delete tokenizer if it exists
                 if hasattr(model, '_tokenizer') and model._tokenizer is not None:
                     del model._tokenizer
                     model._tokenizer = None
 
-                # Delete the wrapper
+                # Delete the main reference
                 del model
                 wrapper._model_ref = None
                 wrapper.current_device = device

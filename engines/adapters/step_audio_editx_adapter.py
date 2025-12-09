@@ -426,7 +426,14 @@ class StepAudioEditXEngineAdapter:
         return prompt_audio_path, prompt_text
 
     def cleanup(self):
-        """Clean up resources"""
-        if self.engine:
-            self.engine.unload()
-            self.engine = None
+        """
+        Clean up resources.
+
+        Note: For quantized models (int8/int4), we DON'T unload here because:
+        - Bitsandbytes models can't be moved to CPU and reloaded
+        - Auto-cleanup between generations would require full model reload
+        - Users should explicitly unload via the unload button when done
+        """
+        # Don't auto-unload - let the model stay in VRAM for reuse
+        # Only explicit unload (via button) should trigger model deletion
+        pass

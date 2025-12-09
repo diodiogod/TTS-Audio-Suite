@@ -180,6 +180,11 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "chatterbox_official_23lang":
                 stable_params['model_version'] = config.get('model_version', 'v1')
 
+            # For Step Audio EditX, include quantization in cache key since int8/int4 require different models
+            if engine_type == "step_audio_editx":
+                stable_params['quantization'] = config.get('quantization', 'none')
+                stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
+
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Cache key now properly includes model name for correct differentiation

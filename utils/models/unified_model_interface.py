@@ -123,21 +123,27 @@ class UnifiedModelInterface:
         # Get existing model if cached
         wrapper = tts_model_manager.get_model(cache_key)
         if wrapper is not None:
-            # Ensure model is on correct device
-            from utils.device import resolve_torch_device
-            target_device = resolve_torch_device(config.device)
+            # Check if wrapper's model was deleted (e.g., by ComfyUI auto-unload for bitsandbytes models)
+            if hasattr(wrapper, 'is_dead') and wrapper.is_dead():
+                print(f"⚠️ Cached model wrapper is dead (model was deleted), forcing reload...")
+                tts_model_manager.remove_model(cache_key)
+                wrapper = None  # Fall through to reload
+            else:
+                # Ensure model is on correct device
+                from utils.device import resolve_torch_device
+                target_device = resolve_torch_device(config.device)
 
-            # Resolve wrapper's current device for consistent comparison
-            # wrapper.current_device might be string or torch.device object
-            wrapper_device_resolved = resolve_torch_device(
-                wrapper.current_device if isinstance(wrapper.current_device, str)
-                else str(wrapper.current_device)
-            )
+                # Resolve wrapper's current device for consistent comparison
+                # wrapper.current_device might be string or torch.device object
+                wrapper_device_resolved = resolve_torch_device(
+                    wrapper.current_device if isinstance(wrapper.current_device, str)
+                    else str(wrapper.current_device)
+                )
 
-            # Reload if device mismatch (handles both explicit devices and "auto" resolution)
-            if wrapper_device_resolved != target_device:
-                wrapper.model_load(target_device)
-            return wrapper
+                # Reload if device mismatch (handles both explicit devices and "auto" resolution)
+                if wrapper_device_resolved != target_device:
+                    wrapper.model_load(target_device)
+                return wrapper
 
         # Find appropriate factory
         factory_key = f"{config.engine_name}_{config.model_type}"
@@ -879,18 +885,10 @@ def register_step_audio_editx_factory():
                 device_map=device
             )
 
-            # Wrap in StepAudioEditXEngine for compatibility with adapter and Audio Editor node
-            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
-            wrapper = StepAudioEditXEngine.__new__(StepAudioEditXEngine)
-            wrapper._tts_engine = tts_engine
-            wrapper._tokenizer = tokenizer
-            wrapper.device = device
-            wrapper.torch_dtype = torch_dtype
-            wrapper.quantization = quantization_config
-            wrapper.model_dir = model_path
-
+            # Return the raw TTS engine (not wrapped) since the adapter expects it
+            # The StepAudioEditXEngine wrapper will be created by the adapter via __init__
             print(f"✅ Step Audio EditX model loaded via unified interface on {device}")
-            return wrapper
+            return tts_engine
 
         except ImportError as e:
             raise ImportError(f"Step Audio EditX dependencies not available. Error: {e}")

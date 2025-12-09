@@ -321,17 +321,24 @@ class StepAudioEditXDownloader:
         Get the path to a model (auto-downloads if missing).
 
         Args:
-            model_name: Model name
+            model_name: Model name or already-resolved path
 
         Returns:
             Path to model directory
         """
+        # If already a full path, return it as-is (handles cached resolved paths)
+        if os.path.isabs(model_name) and os.path.exists(model_name):
+            return model_name
+
         model_dir = os.path.join(self.base_path, model_name)
 
         # Auto-download if missing
-        if not self._is_model_complete(model_dir, self.MODELS[model_name]["files"]):
-            print(f"📥 Model not found, downloading {model_name}...")
-            return self.download_model(model_name)
+        if model_name in self.MODELS:
+            if not self._is_model_complete(model_dir, self.MODELS[model_name]["files"]):
+                print(f"📥 Model not found, downloading {model_name}...")
+                return self.download_model(model_name)
+        elif not os.path.exists(model_dir):
+            raise FileNotFoundError(f"Model not found: {model_name}")
 
         return model_dir
 
