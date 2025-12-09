@@ -34,12 +34,27 @@ class StepAudioEditXHandler(BaseEngineHandler):
             model_info = f"{wrapper.model_info.model_type} model ({wrapper.model_info.engine})"
 
             # Check if this is a bitsandbytes quantized model
-            is_quantized = hasattr(model, 'quantization_method') or any(
-                'Int8' in str(type(m).__name__) or 'Int4' in str(type(m).__name__)
-                for m in model.modules() if hasattr(model, 'modules')
-            )
+            # Step Audio EditX wraps the actual TTS engine, so check both wrapper and inner model
+            is_quantized = False
 
-            print(f"DEBUG: Quantization check for {model_info} - is_quantized={is_quantized}, has_quantization_method={hasattr(model, 'quantization_method')}")
+            # Check wrapper level
+            if hasattr(model, 'quantization_method') or hasattr(model, 'quantization'):
+                is_quantized = True
+
+            # Check inner TTS engine if it exists
+            if hasattr(model, '_tts_engine') and model._tts_engine is not None:
+                tts_engine = model._tts_engine
+                if hasattr(tts_engine, 'modules'):
+                    # Check if any module is quantized
+                    try:
+                        is_quantized = is_quantized or any(
+                            'Int8' in str(type(m).__name__) or 'Int4' in str(type(m).__name__)
+                            for m in tts_engine.modules()
+                        )
+                    except Exception:
+                        pass
+
+            print(f"DEBUG: Quantization check for {model_info} - is_quantized={is_quantized}")
 
             if is_quantized:
                 # Bitsandbytes quantized models can't use .to()
