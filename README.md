@@ -17,7 +17,7 @@
   <img src="images/AllNodesShowcase.jpg" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
-A comprehensive ComfyUI extension providing unified Text-to-Speech and Voice Conversion capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
+A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conversion, and Audio Editing capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, Step Audio EditX, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
 
 ## 🚀 Project Evolution Timeline
 
@@ -83,6 +83,7 @@ Switching [seed:24]
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
+  - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
   - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
@@ -147,6 +148,7 @@ Switching [seed:24]
 ## Features
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, and **IndexTTS-2** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
@@ -611,6 +613,55 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 - Content creation requiring sophisticated emotional nuance
 
 **📖 [Complete IndexTTS-2 Emotion Control Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
+
+</details>
+
+<details>
+<summary><h3>🎨 Step Audio EditX - LLM Audio Editing</h3></summary>
+
+**NEW in v4.15**: Revolutionary LLM-based audio post-processing with emotion, style, and paralinguistic control!
+
+* **🎨 Step Audio EditX - Audio Editor Node**: Post-process ANY TTS audio with advanced editing capabilities
+* **🗣️ Paralinguistic Effects**: Insert natural sounds - Laughter, Breathing, Sigh, Uhm, Surprise (oh/ah/wa), Confirmation, Question, Dissatisfaction
+* **😊 14 Emotion Controls**: happy, sad, angry, excited, calm, fearful, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration
+* **🎭 32 Speaking Styles**: whisper, serious, child, older, girl, pure, sister, sweet, exaggerated, ethereal, generous, recite, act_coy, warm, shy, comfort, authority, chat, radio, soulful, gentle, story, vivid, program, news, advertising, roar, murmur, shout, deeply, loudly, arrogant, friendly
+* **⚡ Speed Control**: faster, slower, more_faster, more_slower with multi-iteration support
+* **🔊 Voice Restoration**: ChatterBox VC integration to restore original voice resemblance after editing
+* **🏷️ Inline Edit Tags**: Apply effects directly in text using `<Laughter:2>`, `<emotion:happy>`, `<style:whisper>` tags
+* **🎛️ Multiline Tag Editor Integration**: Tabbed interface with dropdowns for all edit types, iteration sliders, and pipe-separator support
+
+**Key Features:**
+
+- **LLM-Based Processing**: 3B parameter Step-1 model for high-quality audio editing
+- **Multi-Language Support**: Mandarin Chinese (primary), English, Sichuanese, Cantonese, Japanese, Korean
+- **Iteration Control**: 1-5 iterations per effect for strength adjustment (WARNING: 3+ iterations risk voice degradation)
+- **Batch Processing**: Automatically processes all tagged segments efficiently
+- **Position-Aware**: Paralinguistic tags insert sounds at exact cursor positions
+- **Pipe-Separator Tags**: Combine multiple effects `<Laughter:2|emotion:happy|style:whisper>`
+- **Universal Compatibility**: Works with ALL TTS engines - F5-TTS, ChatterBox, Higgs Audio 2, VibeVoice, IndexTTS-2
+
+**Example Usage:**
+
+```text
+[Alice] Hello there <Laughter:2> my friend! <emotion:happy>
+[Bob] Listen carefully <style:whisper|speed:slower>, this is important.
+[Alice] I'm laughing so hard <Laughter:3> <restore>
+```
+
+**Perfect for:**
+
+- Adding natural expressiveness to robotic TTS output
+- Creating dynamic conversations with varied emotional tones
+- Professional voice-over work requiring subtle emotional nuances
+- Storytelling with immersive paralinguistic effects
+
+**⚠️ Important Notes:**
+
+- **Language Limitation**: Only supports Mandarin, English, Sichuanese, Cantonese, Japanese, Korean - using other languages will lose accents and distort audio
+- **Voice Quality**: 3+ iterations can degrade voice resemblance - use `<restore>` tag to recover original voice character
+- **Duration Limits**: Segments must be 0.5s - 30s (split longer segments)
+
+**📖 [Complete Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 
 </details>
 
@@ -1435,7 +1486,49 @@ ComfyUI/models/TTS/IndexTTS/
 
 **Usage**: Simply use the ⚙️ IndexTTS-2 Engine node → Connect emotion control → All required models download automatically!
 
-### 11. Restart ComfyUI
+### 11. Step Audio EditX Models (NEW in v4.15+)
+
+**For Step Audio EditX audio post-processing capabilities**, models are automatically downloaded to the organized structure:
+
+```
+ComfyUI/models/TTS/step_audio_editx/
+├── config.json                          ← Model configuration
+├── configuration_step1.py               ← Step-1 configuration
+├── modeling_step1.py                    ← Step-1 modeling code
+├── model-00001.safetensors              ← Main 3B LLM weights (~6.3GB)
+├── model.safetensors.index.json        ← Model index
+├── tokenizer.model                      ← SentencePiece tokenizer
+├── tokenizer_config.json                ← Tokenizer configuration
+├── linguistic_tokenizer.npy             ← Linguistic tokenizer (from Step-Audio-Tokenizer)
+├── speech_tokenizer_v1.onnx             ← Speech tokenizer (from Step-Audio-Tokenizer)
+└── CosyVoice-300M-25Hz/                 ← CosyVoice vocoder (24kHz output)
+    ├── FLOW_VERSION
+    ├── campplus.onnx                    ← Speaker verification
+    ├── cosyvoice.yaml
+    ├── flow.pt                          ← Flow matching model
+    ├── hift.pt                          ← HiFi-GAN vocoder
+    └── speech_tokenizer_v1.onnx         ← VQ-VAE tokenizer
+```
+
+**Available Step Audio EditX Models (Auto-Download):**
+
+| Model               | Description                               | Source                                                                      | Size   | Auto-Download |
+| ------------------- | ----------------------------------------- | --------------------------------------------------------------------------- | ------ | ------------- |
+| Step-Audio-EditX    | 3B LLM-based audio editor with CosyVoice  | [stepfun-ai/Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX) | ~7GB   | ✅             |
+| Step-Audio-Tokenizer | Dual-codebook speech tokenizer (VQ02+VQ06) | [stepfun-ai/Step-Audio-Tokenizer](https://huggingface.co/stepfun-ai/Step-Audio-Tokenizer) | Included | ✅             |
+
+**Key Features:**
+
+- **LLM-Based Editing**: 3B parameter Step-1 model for intelligent audio manipulation
+- **Paralinguistic Control**: Insert Laughter, Breathing, Sigh, and other natural sounds
+- **14 Emotions + 32 Styles**: Comprehensive emotion and speaking style control
+- **Multi-Language**: Mandarin Chinese, English, Sichuanese, Cantonese, Japanese, Korean
+- **Voice Restoration**: ChatterBox VC integration to recover original voice after editing
+- **Inline Tag Support**: Apply effects using `<Laughter:2>`, `<emotion:happy>`, `<style:whisper>` syntax
+
+**Usage**: Simply use the 🎨 Step Audio EditX - Audio Editor node → All required models download automatically! Or use inline edit tags with any TTS node for automatic post-processing.
+
+### 12. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
