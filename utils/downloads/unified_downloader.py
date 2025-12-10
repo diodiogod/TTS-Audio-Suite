@@ -51,20 +51,17 @@ class UnifiedDownloader:
 
         # Check if already exists
         if os.path.exists(target_path):
-            print(f"📁 File already exists: {filename}")
             return True
 
         try:
             os.makedirs(target_dir, exist_ok=True)
 
-            print(f"📥 Downloading {filename} from HuggingFace ({repo_id})...")
-
-            # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
             # Set PYTHONIOENCODING to prevent Windows Unicode errors
             env = os.environ.copy()
             env['PYTHONIOENCODING'] = 'utf-8'
 
-            # Try new command first (show live progress by not capturing output)
+            # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
+            # Suppress output since we'll use HTTP fallback anyway
             result = subprocess.run(
                 [
                     "hf", "download",
@@ -73,40 +70,34 @@ class UnifiedDownloader:
                     "--local-dir", target_dir
                 ],
                 check=False,
-                env=env
+                env=env,
+                capture_output=True
             )
 
-            # If new command not found, try legacy command
-            if result.returncode != 0:
-                # Check if command exists by trying with capture first
-                test_result = subprocess.run(
-                    ["hf", "--version"],
-                    capture_output=True,
-                    check=False
-                )
+            # If new command succeeded, return
+            if result.returncode == 0 and os.path.exists(target_path):
+                return True
 
-                if test_result.returncode != 0:
-                    # 'hf' command not available, use legacy
-                    result = subprocess.run(
-                        [
-                            "huggingface-cli", "download",
-                            repo_id,
-                            filename,
-                            "--local-dir", target_dir
-                        ],
-                        check=False,
-                        env=env
-                    )
+            # Try legacy command if new one failed
+            result = subprocess.run(
+                [
+                    "huggingface-cli", "download",
+                    repo_id,
+                    filename,
+                    "--local-dir", target_dir
+                ],
+                check=False,
+                env=env,
+                capture_output=True
+            )
 
             if result.returncode == 0 and os.path.exists(target_path):
-                print(f"✅ Downloaded: {filename}")
                 return True
-            else:
-                print(f"❌ HF CLI download failed (exit code: {result.returncode})")
-                return False
 
-        except Exception as e:
-            print(f"❌ Error downloading {filename}: {e}")
+            return False
+
+        except Exception:
+            # Silently fail - will use HTTP fallback
             return False
 
     def download_file(self, url: str, target_path: str, description: str = None) -> bool:
@@ -203,17 +194,20 @@ class UnifiedDownloader:
             # Skip if already exists in TTS folder
             if os.path.exists(target_path):
                 continue
-            
+
             # Note: Don't copy from cache - just download to TTS folder if missing
-            
-            # Download from HuggingFace if not in cache
-            url = f"https://huggingface.co/{repo_id}/resolve/main/{remote_path}"
-            if not self.download_file(url, target_path, f"{model_name}/{local_filename}"):
-                failed_files.append(local_filename)
-                # Only fail completely if critical files are missing
-                if local_filename in critical_files:
-                    success = False
-                    break
+
+            # Try HF CLI first (more reliable), fall back to direct HTTP
+            # HF CLI handles network issues better than requests library
+            if not self.download_from_hf_cli(repo_id, remote_path, model_dir):
+                # HF CLI failed, try direct HTTP download as fallback
+                url = f"https://huggingface.co/{repo_id}/resolve/main/{remote_path}"
+                if not self.download_file(url, target_path, f"{model_name}/{local_filename}"):
+                    failed_files.append(local_filename)
+                    # Only fail completely if critical files are missing
+                    if local_filename in critical_files:
+                        success = False
+                        break
         
         if failed_files:
             print(f"⚠️ Some files failed to download: {failed_files}")
