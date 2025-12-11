@@ -123,11 +123,11 @@ class StepAudioEditXAudioEditorNode:
                     "max": 0xffffffff,
                     "tooltip": "Random seed for reproducibility. 0 = random, >0 = fixed seed."
                 }),
-                "increment_seed": ("BOOLEAN", {
+                "seed_per_iteration": ("BOOLEAN", {
                     "default": False,
-                    "label_on": "increment",
+                    "label_on": "vary (+1 each)",
                     "label_off": "fixed",
-                    "tooltip": "If enabled, seed increments by 1 for each iteration (for testing). If disabled, all iterations use the same seed (official behavior)."
+                    "tooltip": "Control seed within internal iterations (independent of 'control after generate'):\n- OFF: Same seed for all iterations → chained strengthening\n- ON: Seed increments by 1 each iteration → test variation effects"
                 }),
                 "tts_engine": ("TTS_ENGINE", {
                     "tooltip": "Step Audio EditX engine configuration. If not provided, will create default engine."
@@ -341,9 +341,9 @@ class StepAudioEditXAudioEditorNode:
             # paralinguistic, denoise, vad don't use edit_info from dropdowns
             return None
 
-    def _generate_cache_key(self, audio_tensor, audio_text, edit_type, edit_info, target_text, seed=0):
+    def _generate_cache_key(self, audio_tensor, audio_text, edit_type, edit_info, target_text, seed=0, seed_per_iteration=False):
         """Generate a unique cache key for iteration caching."""
-        # Use audio content hash + edit parameters + seed
+        # Use audio content hash + edit parameters + seed + seed_per_iteration mode
         audio_bytes = audio_tensor.cpu().numpy().tobytes()
         audio_hash = hashlib.md5(audio_bytes).hexdigest()[:16]
 
@@ -353,7 +353,8 @@ class StepAudioEditXAudioEditorNode:
             edit_type,
             str(edit_info),
             str(target_text),
-            str(seed)  # Include seed so different seeds get different cache entries
+            str(seed),  # Include seed so different seeds get different cache entries
+            str(seed_per_iteration)  # Include seed_per_iteration so toggle changes invalidate cache
         ]
         key_string = "|".join(key_parts)
         return hashlib.md5(key_string.encode()).hexdigest()
@@ -384,7 +385,7 @@ class StepAudioEditXAudioEditorNode:
         speed="none",
         n_edit_iterations=1,
         seed=0,
-        increment_seed=False,
+        seed_per_iteration=False,
         tts_engine=None,
         suppress_progress=False,
         inline_tag_precision=None,
@@ -402,7 +403,7 @@ class StepAudioEditXAudioEditorNode:
             speed: Speed adjustment
             n_edit_iterations: Number of editing iterations (1-5)
             seed: Random seed for reproducibility (0 = random, >0 = fixed)
-            increment_seed: If True, seed increments by 1 for each iteration. If False, same seed for all (default, official behavior)
+            seed_per_iteration: If True, seed+1 for each iteration. If False, same seed for all (default, official behavior)
             tts_engine: Optional TTS_ENGINE configuration from Step Audio EditX Engine node
             suppress_progress: If True, suppress progress messages (useful when called from edit_post_processor)
 
@@ -472,9 +473,9 @@ class StepAudioEditXAudioEditorNode:
             if edit_type in ["emotion", "style", "speed"] and edit_info is None:
                 raise ValueError(f"Please select a {edit_type} option (not 'none')")
 
-        # Generate cache key for iteration caching (include seed so different seeds don't reuse cache)
+        # Generate cache key for iteration caching (include seed and seed_per_iteration so cache is invalidated for different settings)
         cache_key = self._generate_cache_key(
-            audio_tensor, clean_audio_text, edit_type, edit_info, target_text_with_tags, seed
+            audio_tensor, clean_audio_text, edit_type, edit_info, target_text_with_tags, seed, seed_per_iteration
         )
 
         # Check for cached iterations
@@ -536,7 +537,7 @@ class StepAudioEditXAudioEditorNode:
                 # Set seed for this iteration (if seed > 0)
                 if seed > 0:
                     current_seed = seed
-                    if increment_seed:
+                    if seed_per_iteration:
                         current_seed = seed + iteration
 
                     torch.manual_seed(current_seed)
@@ -544,8 +545,8 @@ class StepAudioEditXAudioEditorNode:
                         torch.cuda.manual_seed_all(current_seed)
 
                     if not suppress_progress:
-                        if increment_seed:
-                            print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations} (seed={current_seed}, +increment)...")
+                        if seed_per_iteration:
+                            print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations} (seed={current_seed})...")
                         else:
                             print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations} (seed={seed})...")
                 elif not suppress_progress:
