@@ -117,6 +117,16 @@ class StepAudioEditXAudioEditorNode:
                     "max": 5,
                     "tooltip": "Number of editing iterations. Higher values = stronger effect but may reduce quality. 1-2 recommended for subtle changes, 3-5 for dramatic changes.\n\nIterations are cached - try 3, then 2, then 1 without re-running!"
                 }),
+                "seed": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 0xffffffff,
+                    "tooltip": "Random seed for reproducibility. 0 = random. Higher values = fixed seed."
+                }),
+                "seed_mode": (["fixed", "increment"], {
+                    "default": "fixed",
+                    "tooltip": "How to handle seed across iterations:\n- fixed: Use same seed for all iterations\n- increment: Seed increments by 1 for each iteration (for testing variation)"
+                }),
                 "tts_engine": ("TTS_ENGINE", {
                     "tooltip": "Step Audio EditX engine configuration. If not provided, will create default engine."
                 }),
@@ -202,8 +212,36 @@ class StepAudioEditXAudioEditorNode:
             print("⚠️ Step Audio EditX engine was deleted, reloading...")
             self._engine = None
         elif self._engine is not None:
-            # Using cached engine with existing settings
-            print(f"♻️ Using cached Step Audio EditX engine (precision={inline_tag_precision}, device={inline_tag_device})")
+            # Using cached engine - ensure it's on the correct device
+            from utils.device import resolve_torch_device
+            device_setting = inline_tag_device if inline_tag_device else "auto"
+            target_device = resolve_torch_device(device_setting)
+
+            # Check if model components need to be moved to GPU
+            needs_device_move = False
+            if hasattr(self._engine, 'llm') and self._engine.llm is not None:
+                try:
+                    current_device = next(self._engine.llm.parameters()).device
+                    if str(current_device) != str(target_device):
+                        needs_device_move = True
+                except (StopIteration, AttributeError):
+                    pass
+
+            if needs_device_move:
+                print(f"🔄 Moving cached Step Audio EditX engine from {current_device} to {target_device}...")
+                import torch
+                # Move LLM
+                if hasattr(self._engine, 'llm') and self._engine.llm is not None:
+                    self._engine.llm = self._engine.llm.to(target_device)
+                # Move CosyVoice
+                if hasattr(self._engine, 'cosy_model') and self._engine.cosy_model is not None:
+                    if hasattr(self._engine.cosy_model, 'cosy_impl') and self._engine.cosy_model.cosy_impl is not None:
+                        self._engine.cosy_model.cosy_impl = self._engine.cosy_model.cosy_impl.to(target_device)
+                        self._engine.cosy_model.device = torch.device(target_device)
+                print(f"✅ Engine moved to {target_device}")
+            else:
+                print(f"♻️ Using cached Step Audio EditX engine (precision={inline_tag_precision}, device={inline_tag_device})")
+
             return self._engine
 
         if self._engine is None:
@@ -342,6 +380,8 @@ class StepAudioEditXAudioEditorNode:
         style="none",
         speed="none",
         n_edit_iterations=1,
+        seed=0,
+        seed_mode="fixed",
         tts_engine=None,
         suppress_progress=False,
         inline_tag_precision=None,
@@ -358,6 +398,8 @@ class StepAudioEditXAudioEditorNode:
             style: Style to apply
             speed: Speed adjustment
             n_edit_iterations: Number of editing iterations (1-5)
+            seed: Random seed for reproducibility (0 = random)
+            seed_mode: "fixed" = same seed for all iterations, "increment" = seed+1 for each iteration
             tts_engine: Optional TTS_ENGINE configuration from Step Audio EditX Engine node
             suppress_progress: If True, suppress progress messages (useful when called from edit_post_processor)
 
@@ -487,7 +529,21 @@ class StepAudioEditXAudioEditorNode:
             # Perform remaining iterations
             for iteration in range(start_iteration, n_edit_iterations):
                 iteration_num = iteration + 1
-                if not suppress_progress:
+
+                # Set seed for this iteration (if seed > 0)
+                if seed > 0:
+                    current_seed = seed
+                    if seed_mode == "increment":
+                        current_seed = seed + iteration
+
+                    torch.manual_seed(current_seed)
+                    if torch.cuda.is_available():
+                        torch.cuda.manual_seed_all(current_seed)
+
+                    if not suppress_progress:
+                        seed_info = f"(seed={current_seed})" if seed_mode == "increment" else f"(seed={seed})"
+                        print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations} {seed_info}...")
+                elif not suppress_progress:
                     print(f"🔄 Edit iteration {iteration_num}/{n_edit_iterations}...")
 
                 # Create progress bar for this iteration
