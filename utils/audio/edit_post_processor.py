@@ -460,7 +460,7 @@ def process_segments(
                         style="none",
                         speed="none",
                         n_edit_iterations=1,  # Always 1 iteration, we loop ourselves
-                        tts_engine=None,
+                        tts_engine=tts_engine_data,  # Reuse pre-loaded engine to avoid duplicate loading
                         suppress_progress=True,  # We show our own iteration progress
                         inline_tag_precision=inline_precision,
                         inline_tag_device=inline_device

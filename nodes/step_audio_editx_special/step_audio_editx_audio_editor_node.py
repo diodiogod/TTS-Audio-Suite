@@ -142,9 +142,26 @@ class StepAudioEditXAudioEditorNode:
             inline_tag_device: Device override for inline edit tags (auto, cuda, cpu, xpu)
             pre_loaded_engine: Pre-loaded engine from TTS processor (for EditPostProcessor reuse)
         """
-        # If pre-loaded engine provided directly, use it (EditPostProcessor path)
+        # If pre-loaded engine provided directly, wrap it (EditPostProcessor path)
         if pre_loaded_engine is not None:
-            return pre_loaded_engine
+            print(f"✅ Using pre-loaded Step Audio EditX engine (reusing from TTS generation)")
+            # Raw StepAudioTTS needs to be wrapped in StepAudioEditXEngine for edit_single() method
+            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
+
+            # Create wrapper with the raw engine injected
+            wrapper = StepAudioEditXEngine.__new__(StepAudioEditXEngine)
+            wrapper._tts_engine = pre_loaded_engine
+            wrapper._tokenizer = None  # Not needed, engine already has tokenizer
+            wrapper._model_config = None  # Don't have config for pre-loaded engine
+            wrapper.device = pre_loaded_engine.device if hasattr(pre_loaded_engine, 'device') else 'cuda'
+            wrapper.torch_dtype = None  # Unknown for pre-loaded
+            wrapper.quantization = None  # Unknown for pre-loaded
+            wrapper.model_dir = None  # Unknown for pre-loaded
+
+            return wrapper
+        else:
+            if tts_engine_data is not None and "pre_loaded_engine" in tts_engine_data:
+                print(f"⚠️ DEBUG: tts_engine_data has pre_loaded_engine={tts_engine_data.get('pre_loaded_engine')}, but pre_loaded_engine param is None")
 
         if tts_engine_data is not None:
             # Engine provided via TTS_ENGINE from Step Audio EditX Engine node
