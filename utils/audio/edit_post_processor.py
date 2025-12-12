@@ -131,7 +131,8 @@ def _apply_edit_via_node(
     editor_node,
     audio_dict: dict,
     transcript: str,
-    edit_tag  # EditTag dataclass
+    edit_tag,  # EditTag dataclass
+    tts_engine_data=None  # Optional engine data to reuse pre-loaded engine
 ) -> torch.Tensor:
     """
     Apply a single edit using the Audio Editor node.
@@ -141,6 +142,7 @@ def _apply_edit_via_node(
         audio_dict: ComfyUI audio dict with 'waveform' and 'sample_rate'
         transcript: Transcript of the audio (required for editing)
         edit_tag: EditTag object with edit_type, value, iterations
+        tts_engine_data: Optional engine data to reuse pre-loaded engine (avoids duplicate loading)
 
     Returns:
         Edited audio dict (ComfyUI format)
@@ -171,7 +173,7 @@ def _apply_edit_via_node(
     speed = value if edit_type == "speed" else "none"
 
     # Call the Audio Editor node (has progress bar built-in)
-    # Pass inline tag settings for model loading
+    # Pass inline tag settings and engine data for model loading
     edited_audio, _ = editor_node.edit_audio(
         input_audio=audio_dict,
         audio_text=audio_text,
@@ -180,7 +182,7 @@ def _apply_edit_via_node(
         style=style,
         speed=speed,
         n_edit_iterations=iterations,
-        tts_engine=None,  # Not needed, uses default
+        tts_engine=tts_engine_data,  # Reuse pre-loaded engine to avoid duplicate loading
         suppress_progress=True,  # We show our own iteration progress
         inline_tag_precision=precision,
         inline_tag_device=device
@@ -258,7 +260,7 @@ def _restore_voice_via_vc(edited_audio_dict, original_voice_dict, iterations=1, 
 def process_segments(
     segments: List[Dict],
     engine_config: Optional[Dict] = None,
-    pre_loaded_engine = None  # Ignored - we use Audio Editor node now
+    pre_loaded_engine = None  # Pre-loaded Step Audio EditX engine to reuse (avoids loading duplicate)
 ) -> List[Dict]:
     """
     Process all segments, applying Step Audio EditX edits where edit_tags exist.
@@ -267,8 +269,8 @@ def process_segments(
 
     Args:
         segments: List of segment dicts with 'waveform', 'sample_rate', 'text', 'edit_tags' keys
-        engine_config: Optional engine configuration (unused)
-        pre_loaded_engine: Ignored (we use Audio Editor node instead)
+        engine_config: Optional engine configuration
+        pre_loaded_engine: Pre-loaded Step Audio EditX engine from TTS processor (for reuse)
 
     Returns:
         List of processed segments (modified in place for efficiency)
@@ -312,6 +314,15 @@ def process_segments(
     if editor_node is None:
         print("⚠️ EditPostProcessor: Audio Editor node not available - skipping edits")
         return segments
+
+    # Prepare engine data for Audio Editor (reuses pre-loaded engine if available)
+    tts_engine_data = None
+    if pre_loaded_engine is not None:
+        tts_engine_data = {
+            "engine_type": "step_audio_editx",
+            "config": engine_config if engine_config else {},
+            "pre_loaded_engine": pre_loaded_engine  # Pass engine directly to avoid re-loading
+        }
 
     # Track segments that need voice restoration (collect for batch processing)
     segments_needing_restore = []
@@ -373,7 +384,8 @@ def process_segments(
                     editor_node=editor_node,
                     audio_dict=current_audio_dict,
                     transcript=transcript,
-                    edit_tag=tag
+                    edit_tag=tag,
+                    tts_engine_data=tts_engine_data
                 )
                 # Use edited audio as input for next edit
                 current_audio_dict = edited_audio_dict

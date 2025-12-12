@@ -132,7 +132,7 @@ class StepAudioEditXAudioEditorNode:
         self._engine = None
         self._cached_settings = None  # Track settings used to create cached engine
 
-    def _get_or_create_engine(self, tts_engine_data=None, inline_tag_precision=None, inline_tag_device=None):
+    def _get_or_create_engine(self, tts_engine_data=None, inline_tag_precision=None, inline_tag_device=None, pre_loaded_engine=None):
         """
         Get existing engine from config or create default one.
 
@@ -140,7 +140,12 @@ class StepAudioEditXAudioEditorNode:
             tts_engine_data: Engine data from connected Step Audio EditX Engine node
             inline_tag_precision: Precision override for inline edit tags (auto, fp32, fp16, bf16, int8, int4)
             inline_tag_device: Device override for inline edit tags (auto, cuda, cpu, xpu)
+            pre_loaded_engine: Pre-loaded engine from TTS processor (for EditPostProcessor reuse)
         """
+        # If pre-loaded engine provided directly, use it (EditPostProcessor path)
+        if pre_loaded_engine is not None:
+            return pre_loaded_engine
+
         if tts_engine_data is not None:
             # Engine provided via TTS_ENGINE from Step Audio EditX Engine node
             engine_type = tts_engine_data.get("engine_type", "")
@@ -165,8 +170,10 @@ class StepAudioEditXAudioEditorNode:
                 model_type="tts",  # Use "tts" to match adapter's cache key
                 model_name=config.get("model_path", "Step-Audio-EditX"),
                 device=resolve_torch_device(config.get("device", "auto")),
-                torch_dtype=config.get("torch_dtype", "bfloat16"),
-                quantization=config.get("quantization")
+                additional_params={
+                    "torch_dtype": config.get("torch_dtype", "bfloat16"),
+                    "quantization": config.get("quantization")
+                }
             )
 
             # Load via unified interface (will reuse if already loaded)
@@ -416,7 +423,9 @@ class StepAudioEditXAudioEditorNode:
         # print(f"🎨 Step Audio EditX: Editing {duration:.2f}s audio with '{edit_type}' mode")
 
         # Get engine (pass inline tag settings if provided)
-        step_audio_engine = self._get_or_create_engine(tts_engine, inline_tag_precision, inline_tag_device)
+        # Extract pre_loaded_engine if tts_engine is a dict with 'pre_loaded_engine'
+        pre_loaded = tts_engine.get('pre_loaded_engine') if isinstance(tts_engine, dict) else None
+        step_audio_engine = self._get_or_create_engine(tts_engine, inline_tag_precision, inline_tag_device, pre_loaded)
 
         # Process text based on edit_type
         # Normalize newlines to spaces - the model instruction format doesn't handle newlines well
