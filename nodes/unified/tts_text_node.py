@@ -873,7 +873,7 @@ Back to the main narrator voice for the conclusion.""",
                 # Combine audio segments with timing info
                 combined_audio, chunk_info = tts_processor.combine_audio_segments(
                     audio_segments,
-                    method="auto",
+                    method=chunk_combination_method,
                     silence_ms=silence_between_chunks_ms,
                     text_length=text_length,
                     return_info=True
