@@ -74,6 +74,9 @@ export function attachAllEventHandlers(
     });
 
     editor.addEventListener("paste", (e) => {
+        // Stop propagation to prevent ComfyUI from pasting nodes
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         setTimeout(() => {
             flushHistory();
             historyStatus.textContent = state.getHistoryStatus();
