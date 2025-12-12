@@ -135,9 +135,8 @@ class StepAudioEditXProcessor:
                                     enable_chunking: bool,
                                     max_chars: int) -> List[Dict]:
         """
-        Process using character switching mode with Step Audio EditX clone generation.
-        Groups consecutive same-character segments for better long-form generation.
-        Supports per-segment parameters.
+        Process character segments individually with Step Audio EditX clone generation.
+        Each segment is processed separately to respect character switching and parameter changes.
 
         Args:
             segment_objects: List of CharacterSegment objects (with parameters)
@@ -151,49 +150,43 @@ class StepAudioEditXProcessor:
         """
         audio_segments = []
 
-        # Group consecutive same-character segments for optimization
-        grouped_segments = self._group_consecutive_character_objects(segment_objects)
-        print(f"🔄 Step Audio EditX: Grouped {len(segment_objects)} segments into {len(grouped_segments)} character blocks")
+        print(f"🔄 Step Audio EditX: Processing {len(segment_objects)} character segments")
 
-        # Calculate total chunks across all blocks for time estimation
-        # We need to estimate chunks based on text length and max_chars
+        # Calculate total chunks across all segments for time estimation
         chunk_texts = []
-        for _, segment_list in grouped_segments:
-            block_text = ' '.join(seg.text.strip() for seg in segment_list)
-            if enable_chunking and len(block_text) > max_chars:
+        for seg in segment_objects:
+            seg_text = seg.text.strip()
+            if enable_chunking and len(seg_text) > max_chars:
                 # Estimate chunk count and sizes
-                chunks = self.chunker.split_into_chunks(block_text, max_chars)
+                chunks = self.chunker.split_into_chunks(seg_text, max_chars)
                 for chunk in chunks:
                     chunk_texts.append(len(chunk))
             else:
-                chunk_texts.append(len(block_text))
+                chunk_texts.append(len(seg_text))
+
         # Only start job if not already tracking (SRT processor manages job at higher level)
         self._srt_mode = self.adapter.job_tracker is not None
         if not self._srt_mode:
             self.adapter.start_job(total_blocks=len(chunk_texts), block_texts=chunk_texts)
-        self._chunk_idx = 0  # Track chunk index across all blocks
+        self._chunk_idx = 0  # Track chunk index across all segments
 
-        for group_idx, (character, segment_list) in enumerate(grouped_segments):
-            # Check for interruption before processing each character block
+        for seg_idx, segment in enumerate(segment_objects):
+            # Check for interruption before processing each segment
             if model_management.interrupt_processing:
-                raise InterruptedError(f"Step Audio EditX character block {group_idx + 1}/{len(grouped_segments)} ({character}) interrupted by user")
-            print(f"\n🎤 Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
+                raise InterruptedError(f"Step Audio EditX segment {seg_idx + 1}/{len(segment_objects)} ({segment.character}) interrupted by user")
 
-            # Combine text blocks for this character
-            combined_text = ' '.join(seg.text.strip() for seg in segment_list)
+            print(f"\n🎤 Segment {seg_idx + 1}/{len(segment_objects)}: Character '{segment.character}'")
 
-            # All segments in a group have the same parameters (grouping broke on parameter changes)
-            # So just take parameters from first segment
-            group_params = params.copy()
-            if segment_list and segment_list[0].parameters:
-                segment_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'step_audio_editx')
-                group_params.update(segment_params)
-                if segment_list[0].parameters:
-                    print(f"  📊 Applying parameters: {segment_list[0].parameters}")
+            # Apply per-segment parameters
+            segment_params = params.copy()
+            if segment.parameters:
+                seg_param_updates = apply_segment_parameters(segment_params, segment.parameters, 'step_audio_editx')
+                segment_params.update(seg_param_updates)
+                print(f"  📊 Applying parameters: {segment.parameters}")
 
-            # Process the combined character block with group parameters
-            self._process_character_block(character, combined_text, voice_mapping, group_params,
-                                        enable_chunking, max_chars, audio_segments)
+            # Process the segment text
+            self._process_character_block(segment.character, segment.text.strip(), voice_mapping,
+                                        segment_params, enable_chunking, max_chars, audio_segments)
 
             print()  # New line after progress bar
 
@@ -215,48 +208,6 @@ class StepAudioEditXProcessor:
 
         return audio_segments
 
-    def _group_consecutive_character_objects(self, segment_objects) -> List[Tuple[str, list]]:
-        """
-        Group consecutive same-character segment objects for optimization.
-        IMPORTANT: Groups are broken when parameters change (each parameter set gets own generation).
-
-        Args:
-            segment_objects: List of CharacterSegment objects
-
-        Returns:
-            List of (character, segment_object_list) tuples with grouped segments
-        """
-        if not segment_objects:
-            return []
-
-        grouped = []
-        current_character = None
-        current_parameters = None
-        current_segments = []
-
-        for segment in segment_objects:
-            # Check if character OR parameters changed
-            character_changed = segment.character != current_character
-            parameters_changed = segment.parameters != current_parameters
-
-            if character_changed or parameters_changed:
-                # Character or parameters changed - finalize previous group
-                if current_character is not None:
-                    grouped.append((current_character, current_segments))
-
-                # Start new group
-                current_character = segment.character
-                current_parameters = segment.parameters.copy() if segment.parameters else {}
-                current_segments = [segment]
-            else:
-                # Same character AND same parameters, add to current group
-                current_segments.append(segment)
-
-        # Don't forget the last group
-        if current_character is not None:
-            grouped.append((current_character, current_segments))
-
-        return grouped
 
     def _process_character_block(self, character: str, combined_text: str,
                                voice_mapping: Dict[str, Any], params: Dict,
