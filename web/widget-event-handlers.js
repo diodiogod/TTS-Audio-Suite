@@ -20,10 +20,10 @@ export function attachAllEventHandlers(
     speedSelect, speedIterSlider, addSpeedBtn,
     restorePassSlider, restoreRefInput, addRestoreBtn
 ) {
-    // Block ComfyUI shortcuts when editor is focused, but allow Enter and Alt combinations
+    // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
     editor.addEventListener("keydown", (e) => {
-        // Don't block Enter or Alt key combinations - we have handlers for those
-        if (e.key !== "Enter" && !e.altKey) {
+        // Don't block Enter, Alt, or Ctrl key combinations (allow copy/paste/cut)
+        if (e.key !== "Enter" && !e.altKey && !e.ctrlKey && !e.metaKey) {
             e.stopPropagation();
             e.stopImmediatePropagation();
         }
@@ -73,6 +73,21 @@ export function attachAllEventHandlers(
         }, 500);
     });
 
+    editor.addEventListener("copy", (e) => {
+        // Allow copy to work, but prevent ComfyUI from receiving the event
+        // Critical for ComfyUI v0.3.75+ which intercepts clipboard events
+        e.stopPropagation();
+    });
+
+    editor.addEventListener("cut", (e) => {
+        // Allow cut to work, but prevent ComfyUI from receiving the event
+        e.stopPropagation();
+        setTimeout(() => {
+            flushHistory();
+            historyStatus.textContent = state.getHistoryStatus();
+        }, 0);
+    });
+
     editor.addEventListener("paste", (e) => {
         // Stop propagation AFTER paste completes to prevent ComfyUI from pasting nodes
         // Don't use preventDefault() or stopImmediatePropagation() - let paste work normally
@@ -82,13 +97,6 @@ export function attachAllEventHandlers(
             historyStatus.textContent = state.getHistoryStatus();
         }, 0);
     }); // Bubble phase - paste completes first, then we stop it from bubbling to ComfyUI
-
-    editor.addEventListener("cut", (e) => {
-        setTimeout(() => {
-            flushHistory();
-            historyStatus.textContent = state.getHistoryStatus();
-        }, 0);
-    });
 
     // Undo/Redo buttons
     undoBtn.addEventListener("click", () => {
