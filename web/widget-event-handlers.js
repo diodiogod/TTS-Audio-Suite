@@ -74,14 +74,14 @@ export function attachAllEventHandlers(
     });
 
     editor.addEventListener("paste", (e) => {
-        // Stop propagation to prevent ComfyUI from pasting nodes
+        // Stop propagation AFTER paste completes to prevent ComfyUI from pasting nodes
+        // Don't use preventDefault() or stopImmediatePropagation() - let paste work normally
         e.stopPropagation();
-        e.stopImmediatePropagation();
         setTimeout(() => {
             flushHistory();
             historyStatus.textContent = state.getHistoryStatus();
         }, 0);
-    });
+    }); // Bubble phase - paste completes first, then we stop it from bubbling to ComfyUI
 
     editor.addEventListener("cut", (e) => {
         setTimeout(() => {
