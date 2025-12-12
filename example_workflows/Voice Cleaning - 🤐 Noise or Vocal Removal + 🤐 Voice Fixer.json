@@ -1,8 +1,8 @@
 {
   "id": "076be553-821b-4849-8d05-12c66730733b",
   "revision": 0,
-  "last_node_id": 247,
-  "last_link_id": 445,
+  "last_node_id": 263,
+  "last_link_id": 458,
   "nodes": [
     {
       "id": 221,
@@ -16,7 +16,7 @@
         102
       ],
       "flags": {},
-      "order": 17,
+      "order": 23,
       "mode": 0,
       "inputs": [
         {
@@ -43,48 +43,18 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "VoiceFixerNode"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "VoiceFixerNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "0 - Original (Default)",
         true
-      ]
-    },
-    {
-      "id": 222,
-      "type": "LoadAudio",
-      "pos": [
-        -160,
-        2270
-      ],
-      "size": [
-        270,
-        136
-      ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            403,
-            411,
-            444
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadAudio"
-      },
-      "widgets_values": [
-        "test_utterance_original_original.wav",
-        null,
-        null
       ]
     },
     {
@@ -99,7 +69,7 @@
         160
       ],
       "flags": {},
-      "order": 22,
+      "order": 30,
       "mode": 0,
       "inputs": [
         {
@@ -110,34 +80,14 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 224,
-      "type": "PreviewAudio",
-      "pos": [
-        3160,
-        2820
-      ],
-      "size": [
-        480,
-        90
-      ],
-      "flags": {},
-      "order": 20,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 402
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
         }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAudio"
       },
       "widgets_values": []
     },
@@ -153,7 +103,7 @@
         950
       ],
       "flags": {},
-      "order": 9,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -194,7 +144,14 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "ChatterBoxAudioAnalyzer",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "",
@@ -219,7 +176,7 @@
         90
       ],
       "flags": {},
-      "order": 12,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
@@ -230,7 +187,14 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAudio"
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": []
     },
@@ -246,7 +210,7 @@
         88
       ],
       "flags": {},
-      "order": 24,
+      "order": 34,
       "mode": 0,
       "inputs": [
         {
@@ -257,7 +221,14 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": []
     },
@@ -273,7 +244,7 @@
         950
       ],
       "flags": {},
-      "order": 21,
+      "order": 29,
       "mode": 0,
       "inputs": [
         {
@@ -314,7 +285,14 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "ChatterBoxAudioAnalyzer",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "",
@@ -339,7 +317,7 @@
         150
       ],
       "flags": {},
-      "order": 10,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -364,7 +342,14 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "VocalRemovalNode"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "VocalRemovalNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "MELBAND/denoise_mel_band_roformer_aggressive_sdr_27.97.ckpt",
@@ -372,33 +357,6 @@
         10,
         "flac"
       ]
-    },
-    {
-      "id": 232,
-      "type": "PreviewAudio",
-      "pos": [
-        2840,
-        2460
-      ],
-      "size": [
-        480,
-        90
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 417
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAudio"
-      },
-      "widgets_values": []
     },
     {
       "id": 233,
@@ -412,7 +370,7 @@
         150
       ],
       "flags": {},
-      "order": 13,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
@@ -437,7 +395,14 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "VocalRemovalNode"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "VocalRemovalNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "MDX23C/model_vocals_mdx23c_sdr_10.17.ckpt",
@@ -445,60 +410,6 @@
         10,
         "flac"
       ]
-    },
-    {
-      "id": 234,
-      "type": "PreviewAudio",
-      "pos": [
-        2360,
-        2290
-      ],
-      "size": [
-        480,
-        90
-      ],
-      "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 416
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAudio"
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 235,
-      "type": "PreviewAudio",
-      "pos": [
-        2220,
-        4000
-      ],
-      "size": [
-        480,
-        90
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 419
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAudio"
-      },
-      "widgets_values": []
     },
     {
       "id": 236,
@@ -512,7 +423,7 @@
         102
       ],
       "flags": {},
-      "order": 15,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
@@ -537,7 +448,14 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "VoiceFixerNode"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "VoiceFixerNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "0 - Original (Default)",
@@ -556,7 +474,7 @@
         950
       ],
       "flags": {},
-      "order": 19,
+      "order": 25,
       "mode": 0,
       "inputs": [
         {
@@ -597,7 +515,14 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "ChatterBoxAudioAnalyzer",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": [
         "",
@@ -622,7 +547,7 @@
         110
       ],
       "flags": {},
-      "order": 23,
+      "order": 31,
       "mode": 0,
       "inputs": [
         {
@@ -633,33 +558,16 @@
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       },
       "widgets_values": []
-    },
-    {
-      "id": 239,
-      "type": "MarkdownNote",
-      "pos": [
-        -580,
-        2140
-      ],
-      "size": [
-        310,
-        110
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "1",
-      "properties": {},
-      "widgets_values": [
-        "# Load a terrible audio Here\n\n[Here is a link from Voice Fixer Github](https://github.com/haoheliu/voicefixer/blob/main/test/utterance/original/original.wav)"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
     },
     {
       "id": 240,
@@ -673,12 +581,18 @@
         110
       ],
       "flags": {},
-      "order": 1,
+      "order": 0,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "2",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "# Click Analyze to visualize the WaveForm"
       ],
@@ -697,7 +611,7 @@
         26
       ],
       "flags": {},
-      "order": 11,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
@@ -711,13 +625,19 @@
           "name": "",
           "type": "AUDIO",
           "links": [
-            445
+            445,
+            450
           ]
         }
       ],
       "properties": {
         "showOutputText": false,
-        "horizontal": false
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
       }
     },
     {
@@ -732,12 +652,18 @@
         110
       ],
       "flags": {},
-      "order": 3,
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "3",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "# Click Analyze to visualize the WaveForm"
       ],
@@ -756,12 +682,18 @@
         110
       ],
       "flags": {},
-      "order": 4,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "4",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "# Click Analyze to visualize the WaveForm"
       ],
@@ -780,12 +712,18 @@
         260
       ],
       "flags": {},
-      "order": 5,
+      "order": 3,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "notes",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "## Lets try MelBand reformer agressive + removing vocals + a final Voice fixer\n\nYou can test we have multiple model options on the '🤐 Noise or Vocal Removal':\n- Remove noise\n- Remove reverb/echo\n- Remove instruments/vocal\n\nYou can chain some of them for better cleaning sometimes.\n\nCheck the tooltips for tips, and [check more info in the full guide here](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/VOCAL_REMOVAL_GUIDE.md)"
       ],
@@ -804,12 +742,18 @@
         110
       ],
       "flags": {},
-      "order": 6,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "notes",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "## 🤐 Voice Fixer has 3 resotration_modes\n\nCheck tooltip. Their effectiveness depend on how bad your audio is."
       ],
@@ -828,12 +772,18 @@
         88
       ],
       "flags": {},
-      "order": 8,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "notes",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "# Voice Cleaning Example Workflow"
       ],
@@ -852,14 +802,769 @@
         110
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "notes",
-      "properties": {},
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
       "widgets_values": [
         "## 🤐 Voice Fixer has 3 resotration_modes\n\nCheck tooltip. Their effectiveness depend on how bad your audio is."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 250,
+      "type": "ChatterBoxAudioAnalyzer",
+      "pos": [
+        3680,
+        5080
+      ],
+      "size": [
+        850,
+        950
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 458
+        },
+        {
+          "name": "options",
+          "shape": 7,
+          "type": "ADV_AUDIO_OPTIONS",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_audio",
+          "type": "AUDIO",
+          "links": [
+            449
+          ]
+        },
+        {
+          "name": "timing_data",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "analysis_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "segmented_audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "ChatterBoxAudioAnalyzer"
+      },
+      "widgets_values": [
+        "",
+        "manual",
+        "milliseconds",
+        2000,
+        "",
+        "",
+        "f5tts",
+        ""
+      ]
+    },
+    {
+      "id": 251,
+      "type": "PreviewAny",
+      "pos": [
+        4590,
+        5080
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 449
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 222,
+      "type": "LoadAudio",
+      "pos": [
+        -160,
+        2270
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            403,
+            411,
+            444
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "LoadAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "test_utterance_original_original.wav",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 253,
+      "type": "MarkdownNote",
+      "pos": [
+        1750,
+        5390
+      ],
+      "size": [
+        410,
+        130
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "## 🎨 Step Audio EditX - Audio Editor\n\n- Step Audio EditX can also denoise and \"fix\" bad audios. But keep in mind it is more like a regenerations than an actual cleaning of the original audio.\n- You will also need the actual transcript of the audio content\n- it is limited to 30s"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 248,
+      "type": "PreviewAudio",
+      "pos": [
+        2210,
+        5210
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 451
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 261,
+      "type": "MarkdownNote",
+      "pos": [
+        2280,
+        5070
+      ],
+      "size": [
+        310,
+        88
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# 3 iterations"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 257,
+      "type": "StepAudioEditXAudioEditorNode",
+      "pos": [
+        2210,
+        5410
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_audio",
+          "type": "AUDIO",
+          "link": 454
+        },
+        {
+          "name": "tts_engine",
+          "shape": 7,
+          "type": "TTS_ENGINE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            455,
+            456
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "StepAudioEditXAudioEditorNode"
+      },
+      "widgets_values": [
+        "Something beyond his reach, his friend said he is looking through it. ",
+        "denoise",
+        "none",
+        "none",
+        "none",
+        1
+      ]
+    },
+    {
+      "id": 262,
+      "type": "MarkdownNote",
+      "pos": [
+        2710,
+        5380
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# +1"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 259,
+      "type": "StepAudioEditXAudioEditorNode",
+      "pos": [
+        2700,
+        5790
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_audio",
+          "type": "AUDIO",
+          "link": 456
+        },
+        {
+          "name": "tts_engine",
+          "shape": 7,
+          "type": "TTS_ENGINE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            457,
+            458
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "StepAudioEditXAudioEditorNode"
+      },
+      "widgets_values": [
+        "Something beyond his reach, his friend said he is looking through it. ",
+        "denoise",
+        "none",
+        "none",
+        "none",
+        1
+      ]
+    },
+    {
+      "id": 263,
+      "type": "MarkdownNote",
+      "pos": [
+        3280,
+        5780
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "notes",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# +1"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 235,
+      "type": "PreviewAudio",
+      "pos": [
+        2220,
+        4000
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 419
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 224,
+      "type": "PreviewAudio",
+      "pos": [
+        3160,
+        2820
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 402
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 232,
+      "type": "PreviewAudio",
+      "pos": [
+        2840,
+        2460
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 417
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 234,
+      "type": "PreviewAudio",
+      "pos": [
+        2360,
+        2290
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 416
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 258,
+      "type": "PreviewAudio",
+      "pos": [
+        2680,
+        5540
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 455
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 260,
+      "type": "PreviewAudio",
+      "pos": [
+        3130,
+        5920
+      ],
+      "size": [
+        480,
+        90
+      ],
+      "flags": {},
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 457
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 254,
+      "type": "StepAudioEditXAudioEditorNode",
+      "pos": [
+        1740,
+        5080
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_audio",
+          "type": "AUDIO",
+          "link": 450
+        },
+        {
+          "name": "tts_engine",
+          "shape": 7,
+          "type": "TTS_ENGINE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            451,
+            454
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "80e321e86ff0f003577b0a889e2e317c9eb78bcb",
+        "Node name for S&R": "StepAudioEditXAudioEditorNode"
+      },
+      "widgets_values": [
+        "Something beyond his reach, his friend said he is looking through it. ",
+        "denoise",
+        "none",
+        "none",
+        "none",
+        3
+      ]
+    },
+    {
+      "id": 239,
+      "type": "MarkdownNote",
+      "pos": [
+        -540,
+        2180
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "1",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# Load a terrible audio Here\n\n[Here is a link from Voice Fixer Github](https://github.com/haoheliu/voicefixer/blob/main/test/utterance/original/original.wav)"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 252,
+      "type": "MarkdownNote",
+      "pos": [
+        3330,
+        5330
+      ],
+      "size": [
+        310,
+        110
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "5",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# Click Analyze to visualize the WaveForm"
       ],
       "color": "#432",
       "bgcolor": "#653"
@@ -993,6 +1698,70 @@
       236,
       0,
       "AUDIO"
+    ],
+    [
+      449,
+      250,
+      0,
+      251,
+      0,
+      "*"
+    ],
+    [
+      450,
+      241,
+      0,
+      254,
+      0,
+      "AUDIO"
+    ],
+    [
+      451,
+      254,
+      0,
+      248,
+      0,
+      "AUDIO"
+    ],
+    [
+      454,
+      254,
+      0,
+      257,
+      0,
+      "AUDIO"
+    ],
+    [
+      455,
+      257,
+      0,
+      258,
+      0,
+      "AUDIO"
+    ],
+    [
+      456,
+      257,
+      0,
+      259,
+      0,
+      "AUDIO"
+    ],
+    [
+      457,
+      259,
+      0,
+      260,
+      0,
+      "AUDIO"
+    ],
+    [
+      458,
+      259,
+      0,
+      250,
+      0,
+      "AUDIO"
     ]
   ],
   "groups": [
@@ -1034,18 +1803,31 @@
       "color": "#3f789e",
       "font_size": 24,
       "flags": {}
+    },
+    {
+      "id": 15,
+      "title": "🎨 Step Audio EditX - Audio Editor: denoise in multiple iterations",
+      "bounding": [
+        1680,
+        4990,
+        3240,
+        1060
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
     }
   ],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.3282441015834411,
+      "scale": 0.11000000000000017,
       "offset": [
-        1187.0871997845475,
-        -1339.6289480427706
+        3790.59535112708,
+        341.5626506296329
       ]
     },
-    "frontendVersion": "1.26.13",
+    "frontendVersion": "1.30.6",
     "ue_links": [],
     "links_added_by_ue": [],
     "VHS_latentpreview": true,
