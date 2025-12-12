@@ -422,31 +422,26 @@ def process_segments(
                     # Build audio_text with active tags (use angle brackets for Audio Editor)
                     audio_text = transcript
 
-                    # Track position offset as we insert tags (each insertion shifts positions)
-                    position_offset = 0
+                    # Since tags are sorted descending (high to low position), we insert from right to left
+                    # This means each insertion doesn't affect positions of tags that come before it
+                    # So we don't need position offset tracking
 
                     for tag in active_tags:
                         position = tag.position if tag.position is not None else len(audio_text)
                         position = min(position, len(audio_text))
 
-                        # Apply cumulative offset from previous insertions
-                        adjusted_position = position + position_offset
+                        # Check if we need space before tag (if previous char exists and isn't already a space)
+                        needs_space_before = (position > 0 and audio_text[position - 1] != ' ')
 
-                        # Check if we need space before tag (if previous char is alphanumeric)
-                        needs_space_before = (adjusted_position > 0 and audio_text[adjusted_position - 1].isalnum())
-
-                        # Check if we need space after tag (if next char is alphanumeric)
-                        needs_space_after = (adjusted_position < len(audio_text) and audio_text[adjusted_position].isalnum())
+                        # Check if we need space after tag (if next char exists and isn't already a space)
+                        needs_space_after = (position < len(audio_text) and audio_text[position] != ' ')
 
                         # Build tag text with appropriate spacing
                         space_before = " " if needs_space_before else ""
                         space_after = " " if needs_space_after else ""
                         tag_text = f"{space_before}<{tag.value}>{space_after}"
 
-                        audio_text = audio_text[:adjusted_position] + tag_text + audio_text[adjusted_position:]
-
-                        # Update offset for next tag insertion
-                        position_offset += len(tag_text)
+                        audio_text = audio_text[:position] + tag_text + audio_text[position:]
 
                     active_summary = ", ".join([t.value for t in reversed(active_tags)])
                     print(f"     → Iteration {iteration}/{max_iterations}: [{active_summary}]")
