@@ -167,7 +167,6 @@ Switching [seed:24]   Inline Edit tags
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
-<details>
 <summary><h2>🆕 What's New in my Project? (click to expand)</h2></summary>
 
 <details>
@@ -750,8 +749,6 @@ Perfect for:
 - Varying emotional intensity within a single narration
 - Fine-tuning generation quality per-segment without regenerating everything
 - Dynamic control in SRT workflows with per-line customization
-
-</details>
 
 </details>
 
