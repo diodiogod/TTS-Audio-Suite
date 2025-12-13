@@ -185,6 +185,10 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['quantization'] = config.get('quantization', 'none')
                 stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
 
+            # For IndexTTS-2, include low_vram in cache key since it requires model reload
+            if engine_type == "index_tts":
+                stable_params['low_vram'] = config.get('low_vram', False)
+
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Cache key now properly includes model name for correct differentiation
