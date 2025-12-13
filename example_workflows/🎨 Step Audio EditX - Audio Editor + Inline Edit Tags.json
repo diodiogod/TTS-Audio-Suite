@@ -1,0 +1,4021 @@
+{
+  "id": "189e0dcf-5a5c-4925-aa54-bf95a2763955",
+  "revision": 0,
+  "last_node_id": 124,
+  "last_link_id": 175,
+  "nodes": [
+    {
+      "id": 42,
+      "type": "Label (rgthree)",
+      "pos": [
+        1250,
+        2830
+      ],
+      "size": [
+        100,
+        100
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "→",
+      "properties": {
+        "fontSize": 100,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": -125,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 40,
+      "type": "MarkdownNote",
+      "pos": [
+        1300,
+        2970
+      ],
+      "size": [
+        500,
+        140
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# \\<restore:1@2\\>\n\n### Make 1 VC (Voice Changer) pass using the second Iteration from all edits happening in this segment (which means uses the audio from after whisper is applied for the second time as `narrator_target`"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 27,
+      "type": "Reroute",
+      "pos": [
+        310,
+        1620
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 58,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 69
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            72
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 30,
+      "type": "Reroute",
+      "pos": [
+        -680,
+        960
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 138
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 51,
+      "type": "Reroute",
+      "pos": [
+        50,
+        460
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 83
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            68
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 56,
+      "type": "AudioConcat",
+      "pos": [
+        2270,
+        790
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "order": 72,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio1",
+          "type": "AUDIO",
+          "link": 81
+        },
+        {
+          "name": "audio2",
+          "type": "AUDIO",
+          "link": 80
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            77
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "AudioConcat",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "after"
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 52,
+      "type": "Reroute",
+      "pos": [
+        2100,
+        460
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 56,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 68
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            81,
+            174
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 28,
+      "type": "Reroute",
+      "pos": [
+        1700,
+        1730
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 59,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 164
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            36
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 73,
+      "type": "Reroute",
+      "pos": [
+        -770,
+        -120
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 131
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            130
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 68,
+      "type": "Reroute",
+      "pos": [
+        -1010,
+        600
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 110
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            131,
+            132,
+            133
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 70,
+      "type": "Reroute",
+      "pos": [
+        -820,
+        460
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 119
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            120,
+            126,
+            128,
+            138
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 15,
+      "type": "Reroute",
+      "pos": [
+        -60,
+        2100
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 135
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            18,
+            140
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 14,
+      "type": "Reroute",
+      "pos": [
+        -50,
+        2080
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 55,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 129
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            16,
+            139
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 72,
+      "type": "Reroute",
+      "pos": [
+        -680,
+        2080
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            129
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 74,
+      "type": "Reroute",
+      "pos": [
+        -910,
+        1090
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 133
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            135,
+            147
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 93,
+      "type": "ChatterBoxOfficial23LangEngineNode",
+      "pos": [
+        1500,
+        750
+      ],
+      "size": [
+        342.2203125,
+        250
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            150,
+            151
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "ChatterBoxOfficial23LangEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "v2",
+        "English",
+        "auto",
+        1,
+        0.8,
+        0.5,
+        2,
+        0.05,
+        1
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 86,
+      "type": "Label (rgthree)",
+      "pos": [
+        -2100,
+        690
+      ],
+      "size": [
+        389.1015625,
+        35
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Load your Narrator Voice",
+      "properties": {
+        "fontSize": 35,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": 0,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 101,
+      "type": "Reroute",
+      "pos": [
+        -1130,
+        690
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 156
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 100,
+      "type": "LoadAudio",
+      "pos": [
+        -1530,
+        890
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            156
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "LoadAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "David_Attenborough CC3.wav",
+        null,
+        null
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 103,
+      "type": "MarkdownNote",
+      "pos": [
+        -2150,
+        810
+      ],
+      "size": [
+        480,
+        110
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# For Narrator\n\n- F5 OR Step Audio EditX Engine TTS won't work without the transcription of the audio. So you NEED to use `🎭 Character Voices`\n- The other Engines will work with just the core Load Audio"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 69,
+      "type": "Reroute",
+      "pos": [
+        -860,
+        -150
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 117
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            158
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 95,
+      "type": "F5TTSEngineNode",
+      "pos": [
+        -1680,
+        130
+      ],
+      "size": [
+        272.73828125,
+        226
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            154
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "F5TTSEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "F5TTS_v1_Base",
+        "auto",
+        0.8,
+        1,
+        0.1,
+        0.15,
+        32,
+        2
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 104,
+      "type": "IndexTTSEngineNode",
+      "pos": [
+        -1680,
+        180
+      ],
+      "size": [
+        331.431640625,
+        538
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "emotion_control",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            160
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "IndexTTSEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "local:IndexTTS-2",
+        "auto",
+        1,
+        false,
+        120,
+        200,
+        0.8,
+        0.8,
+        30,
+        true,
+        0,
+        3,
+        10,
+        1500,
+        true,
+        false,
+        "auto",
+        false,
+        false,
+        false,
+        0
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 106,
+      "type": "VibeVoiceEngineNode",
+      "pos": [
+        -1680,
+        80
+      ],
+      "size": [
+        275.392578125,
+        362
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker2_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker3_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker4_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            159
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "VibeVoiceEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "vibevoice-1.5B",
+        "auto",
+        false,
+        "auto",
+        "Native Multi-Speaker",
+        3,
+        3,
+        false,
+        0.95,
+        0.95,
+        0,
+        0
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 105,
+      "type": "ChatterBoxEngineNode",
+      "pos": [
+        -1690,
+        -30
+      ],
+      "size": [
+        305.416015625,
+        178
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            162
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "ChatterBoxEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "English",
+        "auto",
+        0.5,
+        0.8,
+        0.5,
+        "hmm ,, {seg} hmm ,,"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 67,
+      "type": "Reroute",
+      "pos": [
+        -990,
+        290
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 39,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 153
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            117,
+            119
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 97,
+      "type": "Reroute",
+      "pos": [
+        -1200,
+        290
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 167
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            153
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 5,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1650,
+        600
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            110
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "CharacterVoicesNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 85,
+      "type": "Label (rgthree)",
+      "pos": [
+        -2120,
+        350
+      ],
+      "size": [
+        452.060546875,
+        70
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "You can use any TTS Engine\\n for initial generation here",
+      "properties": {
+        "fontSize": 35,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "center",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": 0,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 79,
+      "type": "MarkdownNote",
+      "pos": [
+        640,
+        2150
+      ],
+      "size": [
+        260,
+        130
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# All of the above group can be substituted by using inline editing\n\n\\<style:whisper:2|Laughter:5\\> \\<restore\\>"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 54,
+      "type": "Reroute",
+      "pos": [
+        400,
+        1730
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 175
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            164
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 76,
+      "type": "Reroute",
+      "pos": [
+        180,
+        2690
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 140
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            142
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 75,
+      "type": "Reroute",
+      "pos": [
+        200,
+        2670
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 61,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 139
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            141
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 58,
+      "type": "Label (rgthree)",
+      "pos": [
+        -120,
+        610
+      ],
+      "size": [
+        764.53125,
+        35
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "First part of this example will not have any editing",
+      "properties": {
+        "fontSize": 35,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": 0,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 1,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        -670,
+        460
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 120
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": 132
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            5,
+            83
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:1]",
+        "none",
+        1,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 7,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        -670,
+        -150
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 158
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": 130
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:1]\nThey debated the ethics of breadcrumbs and the metaphysics of flight haha.",
+        "none",
+        1,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 22,
+      "type": "UnifiedVoiceChangerNode",
+      "pos": [
+        1910,
+        1040
+      ],
+      "size": [
+        275.404296875,
+        146
+      ],
+      "flags": {},
+      "order": 68,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 151
+        },
+        {
+          "name": "source_audio",
+          "type": "*",
+          "link": 25
+        },
+        {
+          "name": "narrator_target",
+          "type": "*",
+          "link": 36
+        }
+      ],
+      "outputs": [
+        {
+          "name": "converted_audio",
+          "type": "AUDIO",
+          "links": [
+            31,
+            80
+          ]
+        },
+        {
+          "name": "conversion_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedVoiceChangerNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        2,
+        30,
+        "smart"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 12,
+      "type": "PreviewAudio",
+      "pos": [
+        630,
+        2400
+      ],
+      "size": [
+        280,
+        100
+      ],
+      "flags": {},
+      "order": 65,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 13
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 11,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        170,
+        2080
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 60,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 16
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": 18
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            13
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:1]\nThey debated the ethics of breadcrumbs and the metaphysics of flight <style:whisper:2|Laughter:5> haha.<restore>",
+        "none",
+        1,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 96,
+      "type": "StepAudioEditXEngineNode",
+      "pos": [
+        -1610,
+        290
+      ],
+      "size": [
+        280,
+        202
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 14,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            167
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "StepAudioEditXEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "Step-Audio-EditX",
+        "auto",
+        "bfloat16",
+        "none",
+        0.7,
+        true,
+        8192
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 112,
+      "type": "MarkdownNote",
+      "pos": [
+        930,
+        -260
+      ],
+      "size": [
+        500,
+        570
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# [Inline Edit Tags - User Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/INLINE_EDIT_TAGS_USER_GUIDE.md)\n\n## 💡 Inline vs Manual Node Workflow\n\n**ComfyUI is modular** - you can manually chain **TTS → 🎨 Step Audio EditX - Audio Editor** nodes for full control.\n\n**Why use inline tags instead?**\n- Apply edits to **specific segments** of text without multiple TTS→Edit→TTS chains\n- Convenient for **SRT files** with selective editing per subtitle\n- Automatic batch processing for efficiency\n\n**For maximum control and quality**, build manual workflows. **For convenience and selective segment editing**, use inline tags.\n\n---\n\n## Overview\n\nInline edit tags allow you to apply **Step Audio EditX** post-processing effects to TTS-generated audio from ANY engine (F5-TTS, ChatterBox, Higgs Audio, VibeVoice, etc.). These tags are automatically stripped before TTS generation and applied as a second processing pass.\n\n**Example:**\n```\n[Alice] This is hilarious <Laughter:3>, I can't believe it!\n```\n\n**What happens:**\n1. TTS generates: \"This is hilarious, I can't believe it!\" (tag removed)\n2. Step Audio EditX edits the audio with 3 iterations of Laughter effect\n3. Final audio has natural laughter inserted\n\n---\n\n## Supported Edit Types\n\n### 1. Paralinguistic Tags (Sound Insertion)\n\nInsert non-verbal sounds at specific positions in the audio:\n\n| Tag | Effect | Example |\n|-----|--------|---------|\n| `<Laughter>` or `<Laughter:2>` | Insert laughter | `Hello <Laughter> world` |\n| `<Breathing>` | Insert breathing | `I'm tired <Breathing> let's rest` |\n| `<Sigh>` | Insert sigh | `Okay <Sigh> fine` |\n| `<Uhm>` | Insert \"uhm\" hesitation | `Well <Uhm> maybe` |\n| `<Surprise-oh>` | Surprised \"oh!\" | `<Surprise-oh> I didn't know!` |\n| `<Surprise-ah>` | Surprised \"ah!\" | `<Surprise-ah> That's amazing!` |\n| `<Surprise-wa>` | Surprised \"wa!\" | `<Surprise-wa> Incredible!` |\n| `<Confirmation-en>` | Confirmation sound | `<Confirmation-en> Yes` |\n| `<Question-ei>` | Question sound | `<Question-ei> Really?` |\n| `<Dissatisfaction-hnn>` | Dissatisfied \"hnn\" | `<Dissatisfaction-hnn> Not good` |\n\n**Position matters:** The sound is inserted where you place the tag.\n\n**💡 Pro Tip - Stronger Effects:** For more reliable and pronounced effects, include relevant text alongside the tag:\n```\n# Weaker effect\nI'm happy <Laughter>\n\n# Stronger, more guaranteed effect\nI'm laughing haha <Laughter:2>\n```\n\nThe TTS-generated \"haha\" combined with the post-processing laughter creates a more natural and pronounced effect.\n\n### 2. Emotion Tags (Whole Segment)\n\nApply emotional tone to the entire audio segment:\n\n`<emotion:VALUE>` or `<emotion:VALUE:ITERATIONS>`\n\n**Available emotions:** happy, sad, angry, excited, calm, fearful, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration\n\n**Examples:**\n```\n[Alice] I'm so happy to see you! <emotion:happy>\n[Bob] This is terrible news. <emotion:sad:2>\n```\n\n**Position doesn't matter:** Tag can be anywhere in the text.\n\n### 3. Style Tags (Whole Segment)\n\nApply speaking style to the entire audio segment:\n\n`<style:VALUE>` or `<style:VALUE:ITERATIONS>`\n\n**Available styles:** whisper, serious, child, older, girl, pure, sister, sweet, exaggerated, ethereal, generous, recite, act_coy, warm, shy, comfort, authority, chat, radio, soulful, gentle, story, vivid, program, news, advertising, roar, murmur, shout, deeply, loudly, arrogant, friendly\n\n**Examples:**\n```\n[Alice] Come closer, I have a secret <style:whisper>\n[Bob] Listen carefully to this. <style:serious:2>\n```\n\n**Position doesn't matter:** Tag can be anywhere in the text.\n\n### 4. Speed Tags (Whole Segment)\n\nAdjust speaking speed for the entire audio segment:\n\n`<speed:VALUE>` or `<speed:VALUE:ITERATIONS>`\n\n**Available speeds:** faster, slower, more_faster, more_slower\n\n**Examples:**\n```\n[Alice] Quick! We need to hurry! <speed:faster>\n[Bob] Let me think about this... <speed:slower:2>\n```\n\n**Position doesn't matter:** Tag can be anywhere in the text.\n\n### 5. Voice Restoration Tags (Whole Segment)\n\nRestore voice resemblance after edit effects using ChatterBox Official 23-Lang Voice Changer:\n\n`<restore>`, `<restore:N>`, or `<restore:N@M>`\n\n**Syntax:**\n- `<restore>` - 1 VC pass using original pre-edit audio as reference\n- `<restore:2>` - 2 VC passes using original pre-edit audio as reference (for stronger restoration)\n- `<restore:1@2>` - 1 VC pass using audio from iteration 2 as reference\n\n**⚠️ Why You Need This:**\n\nEdit effects (especially after multiple iterations) can **degrade voice quality and alter voice resemblance**:\n- Paralinguistic effects (`<Laughter:3>`) add sounds but can muddy the voice\n- Style effects (`<style:whisper:4>`) change timbre and can distort characteristics\n- Multiple iterations compound these effects\n\nThe `<restore>` tag uses voice conversion to restore your original voice character while keeping the edit effects.\n\n**Examples:**\n\n**Basic restoration (use original voice):**\n```\n[Alice] I'm laughing so hard <Laughter:3> <restore>\n```\n- Applies 3 iterations of laughter (may degrade voice)\n- Restores original voice with 1 VC pass\n\n**Stronger restoration:**\n```\n[Alice] I'm laughing so hard <Laughter:3> <restore:2>\n```\n- Applies 3 iterations of laughter (may degrade voice)\n- Restores original voice with 2 VC passes (stronger effect)\n\n**Preserve partial effects (use intermediate iteration):**\n```\n[Bob] Listen carefully <style:whisper:2> <Laughter:3> <restore:1@2>\n```\n- Applies whisper 2 times (iterations 1-2)\n- Applies laughter 3 times (iterations 3-5)\n- Restores using iteration 2 audio (whispered version) with 1 VC pass\n- **Result:** Keeps whisper effect but removes laughter voice degradation\n\n**When to use iteration reference:**\n- `<restore>` or `<restore:N>` - Restore completely to original clean voice\n- `<restore:N@M>` - Keep some effects (like whisper) while removing others (like laughter degradation)\n\n**Processing order:** Restore tags ALWAYS run last, after all other edits complete.\n\n**Position doesn't matter:** Tag can be anywhere in the text.\n\n---\n\n## Syntax Guide\n\n### Basic Syntax\n\n**Default (1 iteration):**\n```\n<Laughter>\n<emotion:happy>\n<style:whisper>\n<speed:faster>\n```\n\n**Custom iterations:**\n```\n<Laughter:3>           # 3 iterations of laughter\n<emotion:happy:2>      # 2 iterations of happy emotion\n<style:whisper:4>      # 4 iterations of whisper style\n```\n\n### Multiple Tags\n\n**Option 1 - Pipe-separated (single tag):**\n```\n[Alice] Hello world! <Laughter:2|style:whisper|emotion:happy>\n```\n\n**Option 2 - Separate tags:**\n```\n[Alice] Hello world! <Laughter:2><style:whisper><emotion:happy>\n```\n\n**Option 3 - Mixed (both work):**\n```\n[Alice] Hello <Laughter:2|emotion:happy> world! <style:whisper>\n```\n\n### Processing Order\n\nWhen multiple tags are present:\n\n1. **First:** Non-paralinguistic tags in order: emotion → style → speed\n2. **Second:** Paralinguistic tags (preserves position for sound insertion)\n3. **Last:** Voice restoration (if present)\n\n**Example:**\n```\n[Alice] Hello <Laughter:2> world <style:whisper:1> <restore>\n```\n\nExecution:\n1. Generate TTS: \"Hello world\"\n2. Apply whisper style (1 iteration)\n3. Insert Laughter at position (2 iterations)\n4. Restore voice to original character (1 VC pass)\n\n---\n\n## Usage Examples\n\n### Simple Effects\n\n**Laughter:**\n```\n[Alice] That's the funniest thing I've heard <Laughter>!\n```\n\n**Multiple iterations:**\n```\n[Bob] I can't stop laughing <Laughter:3>, this is amazing!\n```\n\n### Combined Effects\n\n**Emotion + Paralinguistic:**\n```\n[Alice] I'm so excited <Laughter:2|emotion:happy> to see you!\n```\n\n**Style + Speed:**\n```\n[Bob] Listen carefully <style:whisper|speed:slower>, this is important.\n```\n\n### Full Example with Character Switching\n\n```\n[Narrator] The story begins on a dark night.\n\n[Alice|seed:42] Oh no <Surprise-oh>, what was that sound? <emotion:fearful>\n\n[Bob] Don't worry <style:comfort>, I'll check it out. <Breathing>\n\n[Alice] Please be careful! <style:whisper|emotion:worried>\n```\n\n### SRT Mode\n\n```\n1\n00:00:00,000 --> 00:00:03,000\n[Alice] Hello there <Laughter> my friend!\n\n2\n00:00:03,500 --> 00:00:06,000\n[Bob|seed:123] Hi! <style:excited|emotion:happy>\n\n3\n00:00:06,500 --> 00:00:09,000\n[Alice] Let me tell you a secret <style:whisper:2>\n```\n\n---\n\n## ChatterBox 23-Lang v2 Users: Native vs Post-Processing Tags\n\n### Understanding the Difference\n\n**ChatterBox Official 23-Lang v2** has **native special tokens** built into the model (e.g., `<laughter>`, `<giggle>`, `<whisper>`). Our **Step Audio EditX post-processing system** uses similar-looking tags but works differently.\n\n### Syntax Distinction\n\n| Syntax | System | When to Use |\n|--------|--------|-------------|\n| `<laughter>` | **ChatterBox v2 Native** | Model generates laughter during TTS (experimental, may not work well) |\n| `<laughter:1>` | **Step Audio EditX Post-Processing** | Applied AFTER TTS generation (more reliable) |\n\n**The colon (`:`) makes the difference!**\n\n### Examples\n\n```\n# Native ChatterBox v2 tag (model-generated during TTS)\n[Alice] I'm laughing <laughter> so hard!\n\n# Step Audio EditX tag (post-processing after TTS)\n[Alice] I'm laughing <Laughter:2> so hard!\n```\n\n### Which Should You Use?\n\n**For ChatterBox 23-Lang users:**\n\n✅ **Use Step Audio EditX tags** (`<Laughter:2>`, etc.) - More reliable, works consistently\n\n⚠️ **ChatterBox v2 native tags** (`<laughter>`, `<giggle>`) - Experimental, limited functionality:\n- Tokens exist in vocabulary but may produce minimal/no effect\n- No official documentation from ResembleAI\n- Results are inconsistent\n- See [ResembleAI/chatterbox #186](https://github.com/resemble-ai/chatterbox/issues/186)\n\n**Console Warning:**\n\nIf you use ChatterBox v2 native tags without the colon, you may see:\n```\n⚠️ Using ChatterBox v2 native tag '<laughter>' - experimental feature with limited effect.\n   For more reliable results, use Step Audio EditX: '<Laughter:2>'\n```\n\n### Compatibility Note\n\nStep Audio EditX tags work with **ALL engines** (F5-TTS, ChatterBox, Higgs Audio, VibeVoice), not just ChatterBox. Native ChatterBox tags only work with ChatterBox 23-Lang v2.\n\n---\n\n## Important Limitations\n\n### ⚠️ Language Support Warning\n\n**Step Audio EditX supports ONLY:**\n- **Mandarin Chinese** (primary)\n- **English**\n- **Sichuanese** (Chinese dialect)\n- **Cantonese** (Chinese dialect)\n- **Japanese**\n- **Korean**\n\n**If using other languages** (French, German, Spanish, etc.):\n\n❌ **PROBLEM:** Step Audio EditX will process non-supported languages as English or Chinese, which will:\n- **Lose the original accent** - French audio may lose French pronunciation\n- **Distort the audio** - The model tries to \"fix\" unknown languages\n- **Generate poor quality** - Editing may sound unnatural or broken\n\n✅ **SOLUTION:**\n1. **Don't use edit tags** with unsupported languages\n2. **Use only supported languages** when edit tags are needed\n3. **Test carefully** if mixing languages - some distortion may be acceptable\n\n**Example - BAD:**\n```\n[Alice:fr] Bonjour mon ami <Laughter>     # French + edit tag = accent loss/distortion\n```\n\n**Example - GOOD:**\n```\n[Alice:fr] Bonjour mon ami                 # French without edit tag = preserves accent\n[Alice:en] Hello my friend <Laughter>      # English + edit tag = works perfectly\n```\n\n### Duration Limits\n\n**Minimum:** 0.5 seconds - Segments shorter than this will skip editing\n**Maximum:** 30 seconds - Segments longer than this will skip editing\n\n**Warning messages:**\n```\n⚠️ Segment too short (0.3s < 0.5s). Edit tags will be skipped.\n⚠️ Segment too long (35.2s > 30s). Edit tags will be skipped. Split your text into shorter segments.\n```\n\n**Solution for long segments:**\n```\n# BAD - Too long\n[Alice] [Very long paragraph that exceeds 30 seconds...] <Laughter>\n\n# GOOD - Split into multiple segments\n[Alice] First part of the paragraph. <Laughter>\n[Alice] Second part continues here.\n[Alice] Final part with the conclusion. <emotion:happy>\n```\n\n### Batch Processing (Automatic)\n\nEdit tags are **automatically batched** for efficiency:\n\n✅ **What happens:**\n1. ALL TTS audio is generated first (for all segments/subtitles)\n2. Step Audio EditX loads ONCE\n3. ALL segments with edit tags are processed together\n4. Engine unloads\n\n✅ **Benefits:**\n- Faster generation (engine loads once, not per segment)\n- Less VRAM thrashing\n- Better performance\n\n**You don't need to do anything** - batching happens automatically in both regular and SRT modes.\n\n---\n\n## Performance Tips\n\n### 1. Use Iterations Wisely\n\nMore iterations = stronger effect BUT **can alter voice quality and resemblance**:\n\n```\n<Laughter:1>     # Subtle effect, minimal voice change (recommended)\n<Laughter:2>     # Moderate effect, slight voice alteration (acceptable)\n<Laughter:3>     # Strong effect, noticeable voice change (risky)\n<Laughter:4>     # Very strong effect, significant voice distortion (not recommended)\n```\n\n⚠️ **Voice Resemblance Warning:**\n- **1-2 iterations:** Generally safe, minimal voice alteration\n- **3+ iterations:** High risk of voice distortion and quality degradation\n- Each iteration processes the audio again, which can degrade the original voice characteristics\n\n**Recommendation:** Start with 1 iteration, only increase to 2 if needed. Avoid 3+ unless you're willing to accept voice changes.\n\n**✅ Voice Restoration Available:** Use the `<restore>` tag to restore original voice resemblance after editing. See the Voice Restoration Tags section above for details.\n\n### 2. Combine Tags Efficiently\n\n**Less efficient (multiple passes):**\n```\n[Alice] Text here <emotion:happy>\n[Alice] More text <emotion:happy>\n[Alice] Even more <emotion:happy>\n```\n\n**More efficient (apply once):**\n```\n[Alice|emotion:happy] Text here. More text. Even more.\n```\n\nThough with inline tags, segment-level parameters are cleaner for consistent effects across multiple sentences.\n\n### 3. Position Paralinguistic Tags Carefully\n\n**Position matters for sound insertion:**\n```\nHello <Laughter> world    # Laughter after \"Hello\"\nHello world <Laughter>    # Laughter at end\n<Laughter> Hello world    # Laughter at start\n```\n\nChoose the position that sounds most natural for your use case.\n\n---\n\n## Troubleshooting\n\n### Problem: Edit tags not applied\n\n**Possible causes:**\n1. **Segment too short/long** - Check duration (0.5s - 30s range)\n2. **Syntax error** - Verify tag format: `<type:value:iterations>`\n3. **Model not downloaded** - First use triggers download (be patient)\n\n**Check console output:**\n```\n🎨 Applying Step Audio EditX processing to 3 segments...\n📝 Segment 1 - Applying edit tags:\n  🎨 Applying paralinguistic: Laughter:2\n✅ Edit post-processing complete for 3 segments\n```\n\n### Problem: Audio quality degraded\n\n**Possible causes:**\n1. **Too many iterations** - Reduce iterations (try 1-2 instead of 3-4)\n2. **Incompatible tags** - Some emotion+style combinations may clash\n3. **Unsupported language** - Check language support (see warning above)\n\n**Solution:**\n- Use fewer iterations\n- Test individual tags separately\n- Use only supported languages with edit tags\n\n### Problem: \"Segment too long\" warning\n\n**Solution:** Split text into shorter segments:\n\n```\n# Instead of:\n[Alice] [300-word monologue that lasts 45 seconds] <Laughter>\n\n# Do this:\n[Alice] First paragraph of about 2-3 sentences.\n[Alice] Second paragraph continues. <Laughter>\n[Alice] Third paragraph concludes the thought. <emotion:happy>\n```\n\n---\n\n## Advanced Usage\n\n### Combining with Segment Parameters\n\nEdit tags work with ALL segment parameters:\n\n```\n[Alice|seed:42|temperature:0.8|speed:1.2] Hello <Laughter:2> friend! <emotion:happy>\n```\n\nProcessing:\n1. TTS uses seed:42, temp:0.8, speed:1.2\n2. Edit tags applied after generation\n\n### Using with Language Switching\n\n**Supported languages ONLY:**\n```\n[Alice:en] Hello my friend <Laughter>              # English - works ✓\n[Bob:zh] 你好朋友 <Laughter>                         # Chinese - works ✓\n[Alice:ja] こんにちは友達 <Laughter>                  # Japanese - works ✓\n[Bob:ko] 안녕 친구 <Laughter>                        # Korean - works ✓\n```\n\n**Unsupported languages - AVOID:**\n```\n[Alice:fr] Bonjour mon ami <Laughter>              # French - will distort! ✗\n[Bob:de] Hallo mein Freund <Laughter>              # German - will distort! ✗\n[Alice:es] Hola mi amigo <Laughter>                # Spanish - will distort! ✗\n```\n\n### Creating Natural Conversations\n\n```\n[Narrator] The interview begins.\n\n[Host] Welcome to the show! <emotion:excited>\n\n[Guest] Thank you for having me. <style:warm>\n\n[Host] So tell us <style:chat>, what's your secret? <Laughter>\n\n[Guest] Well <Uhm> it's quite simple actually. <style:story>\n\n[Host] That's amazing <Surprise-oh>! <emotion:surprised>\n```\n\n---\n\n## Best Practices\n\n### 1. Start Simple\n\nBegin with single tags before combining:\n\n```\n# Step 1: Test basic tag\n[Alice] Hello <Laughter>\n\n# Step 2: Add iterations\n[Alice] Hello <Laughter:2>\n\n# Step 3: Combine effects\n[Alice] Hello <Laughter:2|emotion:happy>\n```\n\n### 2. Match Tags to Context\n\nChoose appropriate effects for the situation:\n\n```\n# Scary scene\n[Alice] What was that? <Surprise-oh|emotion:fearful>\n\n# Happy scene\n[Bob] We did it! <Laughter:2|emotion:excited>\n\n# Sad scene\n[Alice] I can't believe it's over. <Sigh|emotion:sad>\n\n# Secret conversation\n[Bob] Come closer. <style:whisper|emotion:calm>\n```\n\n### 3. Test and Iterate\n\n1. Generate with basic tag\n2. Listen to result\n3. Adjust iterations if needed\n4. Try different tag combinations\n5. Find what works best for your use case\n\n### 4. Use Language Hints Correctly\n\n**Always match edit language to TTS language:**\n\n```\n# GOOD - Language consistency\n[Alice:en] English text here <Laughter>           # Both English\n[Bob:zh] 中文文本 <Laughter>                        # Both Chinese\n\n# BAD - Language mismatch\n[Alice:fr] French text <Laughter>                 # French TTS + English edit model = distortion\n```\n\n---\n\n## Reference\n\n### All Paralinguistic Tags\n`<Breathing>`, `<Laughter>`, `<Sigh>`, `<Uhm>`, `<Surprise-oh>`, `<Surprise-ah>`, `<Surprise-wa>`, `<Confirmation-en>`, `<Question-ei>`, `<Dissatisfaction-hnn>`\n\n### All Emotions\n`<emotion:happy>`, `<emotion:sad>`, `<emotion:angry>`, `<emotion:excited>`, `<emotion:calm>`, `<emotion:fearful>`, `<emotion:surprised>`, `<emotion:disgusted>`, `<emotion:confusion>`, `<emotion:empathy>`, `<emotion:embarrass>`, `<emotion:depressed>`, `<emotion:coldness>`, `<emotion:admiration>`\n\n### All Styles\n`<style:whisper>`, `<style:serious>`, `<style:child>`, `<style:older>`, `<style:girl>`, `<style:pure>`, `<style:sister>`, `<style:sweet>`, `<style:exaggerated>`, `<style:ethereal>`, `<style:generous>`, `<style:recite>`, `<style:act_coy>`, `<style:warm>`, `<style:shy>`, `<style:comfort>`, `<style:authority>`, `<style:chat>`, `<style:radio>`, `<style:soulful>`, `<style:gentle>`, `<style:story>`, `<style:vivid>`, `<style:program>`, `<style:news>`, `<style:advertising>`, `<style:roar>`, `<style:murmur>`, `<style:shout>`, `<style:deeply>`, `<style:loudly>`, `<style:arrogant>`, `<style:friendly>`\n\n### All Speeds\n`<speed:faster>`, `<speed:slower>`, `<speed:more_faster>`, `<speed:more_slower>`\n\n### Voice Restoration\n`<restore>`, `<restore:N>`, `<restore:N@M>` (where N = VC passes 1-5, M = reference iteration number)\n\n---\n\n## FAQ\n\n**Q: Can I use edit tags with any TTS engine?**\nA: Yes! Edit tags work with F5-TTS, ChatterBox, Higgs Audio, VibeVoice, and any future engines.\n\n**Q: Do edit tags slow down generation?**\nA: Slightly. The TTS generates normally, then Step Audio EditX loads once and processes all tagged segments in batch. Total time depends on number of segments and iterations.\n\n**Q: Can I use edit tags in SRT mode?**\nA: Yes! Batch processing is automatically applied - all subtitles are generated first, then all edits are applied at once.\n\n**Q: What if I make a typo in a tag?**\nA: Unknown tags are ignored and stripped from the text. Check console for warnings.\n\n**Q: Can I nest tags?**\nA: No. Use pipe syntax or separate tags: `<tag1|tag2>` or `<tag1><tag2>`\n\n**Q: Do edit tags work with ChatterBox special tokens?**\nA: Yes, but ChatterBox v2 uses different syntax (`<giggle>`, `<whisper>` built into model). Our edit tags are post-processing, not model-native.\n\n**Q: Will edit tags affect my voice cloning?**\nA: Yes, they can. TTS generates with your voice reference normally, but each edit iteration can alter voice quality and resemblance:\n- **1 iteration:** Minimal impact, usually safe\n- **2 iterations:** Slight alteration, generally acceptable\n- **3+ iterations:** Noticeable voice change, may lose original voice characteristics\n\nUse the minimum iterations needed for your desired effect. To restore voice resemblance after editing, use the `<restore>` tag which applies ChatterBox Voice Changer to recover the original voice character.\n\n**Q: Can I disable edit tags temporarily?**\nA: Just remove them from your text. No special setting needed.\n\n---\n\n## Support\n\nFor issues, feature requests, or questions:\n- GitHub Issues: https://github.com/diodiogod/TTS-Audio-Suite/issues\n- Check console output for detailed processing information\n- Test with simple examples first before complex combinations\n\n---\n\n**Last Updated:** 2025-12-08\n**Compatible with:** TTS Audio Suite v4.4.0+"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 114,
+      "type": "MarkdownNote",
+      "pos": [
+        1550,
+        -80
+      ],
+      "size": [
+        420,
+        190
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# VRAM management\n- Just remember that using Inline post-processing editing will load your main TTS first and then Step Audio EditX model, which is a medium-demanding model. 8-16GB.\n\n- I did my best to clear VRAM in between model loading, but this is still a two-pass operation (it will be slow) that will require VRAM management and depends a lot on your hardware.\n\n- You can change the model settings for inline editing operations on:\n  - ComfyUI Settings>TTS Audio Suite. \n  - Use Int4 if you lack VRAM."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 121,
+      "type": "MarkdownNote",
+      "pos": [
+        -1410,
+        2720
+      ],
+      "size": [
+        330,
+        160
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# 🏷️ Multiline TTS Tag Editor\n- I've updated the node to support inline Edit tags. You will find a whole new tab here to help you edit and visualize your text for TTS.\n- This node is highly customizable. you can drag the panel separator, you can Ctrl+scroll to change font sizes, change font style and save presets of any text."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 41,
+      "type": "Label (rgthree)",
+      "pos": [
+        1860,
+        3040
+      ],
+      "size": [
+        358.955078125,
+        35
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 18,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Roughly the same as =",
+      "properties": {
+        "fontSize": 35,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": 0,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 122,
+      "type": "Label (rgthree)",
+      "pos": [
+        1870,
+        3090
+      ],
+      "size": [
+        336.76171875,
+        12
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 19,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Should actually be the same... I'll have to investigate why it isn't",
+      "properties": {
+        "fontSize": 12,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": 0,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 78,
+      "type": "Label (rgthree)",
+      "pos": [
+        740,
+        1920
+      ],
+      "size": [
+        170.01953125,
+        200
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 20,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "☛",
+      "properties": {
+        "fontSize": 200,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": -90,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 109,
+      "type": "Reroute",
+      "pos": [
+        -1280,
+        190
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 160
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 110,
+      "type": "Reroute",
+      "pos": [
+        -1260,
+        240
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 161
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 98,
+      "type": "Reroute",
+      "pos": [
+        -1320,
+        140
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 154
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 108,
+      "type": "Reroute",
+      "pos": [
+        -1340,
+        100
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 159
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 99,
+      "type": "Reroute",
+      "pos": [
+        -1370,
+        50
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 166
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 107,
+      "type": "HiggsAudioEngineNode",
+      "pos": [
+        -1680,
+        230
+      ],
+      "size": [
+        400,
+        352
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_second_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tts_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            161
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "HiggsAudioEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "higgs-audio-v2-3B",
+        "auto",
+        "Custom Character Switching",
+        "Generate audio following instruction.",
+        0.8,
+        0.6,
+        80,
+        2048,
+        false,
+        7,
+        2,
+        true
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 111,
+      "type": "Reroute",
+      "pos": [
+        -1360,
+        10
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 162
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 4,
+      "type": "ChatterBoxOfficial23LangEngineNode",
+      "pos": [
+        -1750,
+        20
+      ],
+      "size": [
+        342.2203125,
+        250
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 22,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            166
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "ChatterBoxOfficial23LangEngineNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "v2",
+        "English",
+        "auto",
+        1,
+        0.8,
+        0.5,
+        2,
+        0.05,
+        1
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 33,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        820,
+        2670
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 66,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 141
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": 142
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 169
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            44
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:1]\nThey debated the ethics of breadcrumbs and the metaphysics of flight <style:whisper:2|Laughter:5> haha.<restore:1@2>",
+        "none",
+        1,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 37,
+      "type": "UnifiedVoiceChangerNode",
+      "pos": [
+        1940,
+        2740
+      ],
+      "size": [
+        275.404296875,
+        146
+      ],
+      "flags": {},
+      "order": 69,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 150
+        },
+        {
+          "name": "source_audio",
+          "type": "*",
+          "link": 51
+        },
+        {
+          "name": "narrator_target",
+          "type": "*",
+          "link": 58
+        }
+      ],
+      "outputs": [
+        {
+          "name": "converted_audio",
+          "type": "AUDIO",
+          "links": [
+            172
+          ]
+        },
+        {
+          "name": "conversion_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedVoiceChangerNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        1,
+        30,
+        "smart"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 123,
+      "type": "AudioConcat",
+      "pos": [
+        2260,
+        2720
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "order": 73,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio1",
+          "type": "AUDIO",
+          "link": 174
+        },
+        {
+          "name": "audio2",
+          "type": "AUDIO",
+          "link": 172
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            173
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "AudioConcat",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "after"
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 39,
+      "type": "PreviewAudio",
+      "pos": [
+        2260,
+        3020
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 75,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 173
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 34,
+      "type": "PreviewAudio",
+      "pos": [
+        1430,
+        2810
+      ],
+      "size": [
+        290,
+        100
+      ],
+      "flags": {},
+      "order": 70,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 44
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 20,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        -660,
+        1060
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 126
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": 147
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            21,
+            29,
+            175
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "They debated the ethics of breadcrumbs and the metaphysics of flight haha.",
+        "none",
+        1,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 118,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -900,
+        2710
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            169
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "StringMultilineTagEditor",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:1]\nThey debated the ethics of breadcrumbs and the metaphysics of flight <style:whisper:2|Laughter:5> haha.<restore:1@2>"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 84,
+      "type": "Label (rgthree)",
+      "pos": [
+        -280,
+        -500
+      ],
+      "size": [
+        2816.30859375,
+        120
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 24,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "🎨 Step Audio EditX - Audio Editor + Inline Edit Tags",
+      "properties": {
+        "fontSize": 120,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "borderRadius": 0,
+        "angle": 0,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 53,
+      "type": "MarkdownNote",
+      "pos": [
+        -60,
+        1360
+      ],
+      "size": [
+        480,
+        110
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "## in this case I'm using two chained Edit nodes instead of iterations so I can as an exemple grab (and preview) the generated first step and use it later on the `'🔄 Voice Changer'` node to 'restore' resemblance"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 124,
+      "type": "MarkdownNote",
+      "pos": [
+        440,
+        1340
+      ],
+      "size": [
+        340,
+        190
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "## My personal notes after some limited testings \n- The amount of styles and emotions are over the top, IMO most do nothing beyond increasing prosody.\n- It might always help to apply any type of emotion or style on top of Step Audio EditX basic TTS generation as the basic clone is very neutral.\n- Speed works, but you might want to experiment with 3 iterations.\n- Audio Editor is like upscaling an image with AI does: It can work but will regenerate and change your original audio."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 25,
+      "type": "StepAudioEditXAudioEditorNode",
+      "pos": [
+        -80,
+        1060
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_audio",
+          "type": "AUDIO",
+          "link": 29
+        },
+        {
+          "name": "tts_engine",
+          "shape": 7,
+          "type": "TTS_ENGINE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            45,
+            69
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "StepAudioEditXAudioEditorNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "They debated the ethics of breadcrumbs and the metaphysics of flight haha.",
+        "style",
+        "none",
+        "whisper",
+        "none",
+        1
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 35,
+      "type": "StepAudioEditXAudioEditorNode",
+      "pos": [
+        390,
+        1060
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 57,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_audio",
+          "type": "AUDIO",
+          "link": 45
+        },
+        {
+          "name": "tts_engine",
+          "shape": 7,
+          "type": "TTS_ENGINE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            46,
+            47,
+            58
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "StepAudioEditXAudioEditorNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "They debated the ethics of breadcrumbs and the metaphysics of flight haha.",
+        "style",
+        "none",
+        "whisper",
+        "none",
+        1
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 8,
+      "type": "PreviewAudio",
+      "pos": [
+        -30,
+        -150
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 49,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 6,
+      "type": "PreviewAudio",
+      "pos": [
+        -150,
+        780
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 5
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 24,
+      "type": "PreviewAudio",
+      "pos": [
+        420,
+        1620
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 64,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 72
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 57,
+      "type": "PreviewAudio",
+      "pos": [
+        2630,
+        1040
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 74,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 77
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 26,
+      "type": "PreviewAudio",
+      "pos": [
+        2250,
+        1290
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 71,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 31
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 19,
+      "type": "PreviewAudio",
+      "pos": [
+        -170,
+        1620
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 52,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 21
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 36,
+      "type": "PreviewAudio",
+      "pos": [
+        900,
+        1610
+      ],
+      "size": [
+        270,
+        90
+      ],
+      "flags": {},
+      "order": 62,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 46
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 23,
+      "type": "StepAudioEditXAudioEditorNode",
+      "pos": [
+        1000,
+        1060
+      ],
+      "size": [
+        430,
+        228
+      ],
+      "flags": {},
+      "order": 63,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_audio",
+          "type": "AUDIO",
+          "link": 47
+        },
+        {
+          "name": "tts_engine",
+          "shape": 7,
+          "type": "TTS_ENGINE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "edited_audio",
+          "type": "AUDIO",
+          "links": [
+            24,
+            25,
+            51
+          ]
+        },
+        {
+          "name": "edit_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "f434a8c5f8fa33b88be854cae0c1dc147a8aca14",
+        "Node name for S&R": "StepAudioEditXAudioEditorNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "They debated the ethics of breadcrumbs and the metaphysics of flight <Laughter> haha.",
+        "paralinguistic",
+        "none",
+        "none",
+        "none",
+        5
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 21,
+      "type": "PreviewAudio",
+      "pos": [
+        1510,
+        1610
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 67,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 24
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 55,
+      "type": "MarkdownNote",
+      "pos": [
+        1180,
+        1360
+      ],
+      "size": [
+        240,
+        150
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "## Here I'm using 5 <Laughing> iterations\n- this is a bad exemple because it is killing the whispering effect from the previous Editor...\n- 5 it is a lot and will loose resemblance. So that is when VC restore (next step) comes in handy."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      5,
+      1,
+      0,
+      6,
+      0,
+      "AUDIO"
+    ],
+    [
+      8,
+      7,
+      0,
+      8,
+      0,
+      "AUDIO"
+    ],
+    [
+      13,
+      11,
+      0,
+      12,
+      0,
+      "AUDIO"
+    ],
+    [
+      16,
+      14,
+      0,
+      11,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      18,
+      15,
+      0,
+      11,
+      1,
+      "*"
+    ],
+    [
+      21,
+      20,
+      0,
+      19,
+      0,
+      "AUDIO"
+    ],
+    [
+      24,
+      23,
+      0,
+      21,
+      0,
+      "AUDIO"
+    ],
+    [
+      25,
+      23,
+      0,
+      22,
+      1,
+      "*"
+    ],
+    [
+      29,
+      20,
+      0,
+      25,
+      0,
+      "AUDIO"
+    ],
+    [
+      31,
+      22,
+      0,
+      26,
+      0,
+      "AUDIO"
+    ],
+    [
+      36,
+      28,
+      0,
+      22,
+      2,
+      "*"
+    ],
+    [
+      44,
+      33,
+      0,
+      34,
+      0,
+      "AUDIO"
+    ],
+    [
+      45,
+      25,
+      0,
+      35,
+      0,
+      "AUDIO"
+    ],
+    [
+      46,
+      35,
+      0,
+      36,
+      0,
+      "AUDIO"
+    ],
+    [
+      47,
+      35,
+      0,
+      23,
+      0,
+      "AUDIO"
+    ],
+    [
+      51,
+      23,
+      0,
+      37,
+      1,
+      "*"
+    ],
+    [
+      58,
+      35,
+      0,
+      37,
+      2,
+      "*"
+    ],
+    [
+      68,
+      51,
+      0,
+      52,
+      0,
+      "*"
+    ],
+    [
+      69,
+      25,
+      0,
+      27,
+      0,
+      "*"
+    ],
+    [
+      72,
+      27,
+      0,
+      24,
+      0,
+      "AUDIO"
+    ],
+    [
+      77,
+      56,
+      0,
+      57,
+      0,
+      "AUDIO"
+    ],
+    [
+      80,
+      22,
+      0,
+      56,
+      1,
+      "AUDIO"
+    ],
+    [
+      81,
+      52,
+      0,
+      56,
+      0,
+      "AUDIO"
+    ],
+    [
+      83,
+      1,
+      0,
+      51,
+      0,
+      "*"
+    ],
+    [
+      110,
+      5,
+      0,
+      68,
+      0,
+      "*"
+    ],
+    [
+      117,
+      67,
+      0,
+      69,
+      0,
+      "*"
+    ],
+    [
+      119,
+      67,
+      0,
+      70,
+      0,
+      "*"
+    ],
+    [
+      120,
+      70,
+      0,
+      1,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      126,
+      70,
+      0,
+      20,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      128,
+      70,
+      0,
+      72,
+      0,
+      "*"
+    ],
+    [
+      129,
+      72,
+      0,
+      14,
+      0,
+      "*"
+    ],
+    [
+      130,
+      73,
+      0,
+      7,
+      1,
+      "*"
+    ],
+    [
+      131,
+      68,
+      0,
+      73,
+      0,
+      "*"
+    ],
+    [
+      132,
+      68,
+      0,
+      1,
+      1,
+      "*"
+    ],
+    [
+      133,
+      68,
+      0,
+      74,
+      0,
+      "*"
+    ],
+    [
+      135,
+      74,
+      0,
+      15,
+      0,
+      "*"
+    ],
+    [
+      138,
+      70,
+      0,
+      30,
+      0,
+      "*"
+    ],
+    [
+      139,
+      14,
+      0,
+      75,
+      0,
+      "*"
+    ],
+    [
+      140,
+      15,
+      0,
+      76,
+      0,
+      "*"
+    ],
+    [
+      141,
+      75,
+      0,
+      33,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      142,
+      76,
+      0,
+      33,
+      1,
+      "*"
+    ],
+    [
+      147,
+      74,
+      0,
+      20,
+      1,
+      "*"
+    ],
+    [
+      150,
+      93,
+      0,
+      37,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      151,
+      93,
+      0,
+      22,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      153,
+      97,
+      0,
+      67,
+      0,
+      "*"
+    ],
+    [
+      154,
+      95,
+      0,
+      98,
+      0,
+      "*"
+    ],
+    [
+      156,
+      100,
+      0,
+      101,
+      0,
+      "*"
+    ],
+    [
+      158,
+      69,
+      0,
+      7,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      159,
+      106,
+      0,
+      108,
+      0,
+      "*"
+    ],
+    [
+      160,
+      104,
+      0,
+      109,
+      0,
+      "*"
+    ],
+    [
+      161,
+      107,
+      0,
+      110,
+      0,
+      "*"
+    ],
+    [
+      162,
+      105,
+      0,
+      111,
+      0,
+      "*"
+    ],
+    [
+      164,
+      54,
+      0,
+      28,
+      0,
+      "*"
+    ],
+    [
+      166,
+      4,
+      0,
+      99,
+      0,
+      "*"
+    ],
+    [
+      167,
+      96,
+      0,
+      97,
+      0,
+      "*"
+    ],
+    [
+      169,
+      118,
+      0,
+      33,
+      2,
+      "STRING"
+    ],
+    [
+      172,
+      37,
+      0,
+      123,
+      1,
+      "AUDIO"
+    ],
+    [
+      173,
+      123,
+      0,
+      39,
+      0,
+      "AUDIO"
+    ],
+    [
+      174,
+      52,
+      0,
+      123,
+      0,
+      "AUDIO"
+    ],
+    [
+      175,
+      20,
+      0,
+      54,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Inline Edit - <restore:n@n> format",
+      "bounding": [
+        810,
+        2600,
+        1010,
+        540
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "Normal TTS - no edit - First part will not have any Edit, second part is here without edit for Reference",
+      "bounding": [
+        -680,
+        -220,
+        1470,
+        510
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "Manual TTS>Edit chaining",
+      "bounding": [
+        -690,
+        390,
+        3620,
+        1379.6
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "You can chain 2 Editing OR use n_edit_iterations for the same operation",
+      "bounding": [
+        -90,
+        990,
+        890,
+        560
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "Inline Edit - Auto 🎨 Step Audio EditX - Audio Editor",
+      "bounding": [
+        160,
+        2010,
+        760,
+        503.6
+      ],
+      "color": "#a1309b",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "ds": {
+      "scale": 0.313842837672109,
+      "offset": [
+        1870.6668374124638,
+        -132.47365453693104
+      ]
+    },
+    "reroutes": [
+      {
+        "id": 2,
+        "parentId": 7,
+        "pos": [
+          -730,
+          2090
+        ],
+        "linkIds": [
+          128
+        ]
+      },
+      {
+        "id": 3,
+        "parentId": 8,
+        "pos": [
+          -800,
+          2110
+        ],
+        "linkIds": [
+          135
+        ]
+      },
+      {
+        "id": 7,
+        "parentId": 10,
+        "pos": [
+          -730,
+          1070
+        ],
+        "linkIds": [
+          126,
+          128
+        ]
+      },
+      {
+        "id": 8,
+        "pos": [
+          -800,
+          1100
+        ],
+        "linkIds": [
+          135,
+          147
+        ]
+      },
+      {
+        "id": 10,
+        "pos": [
+          -720,
+          750
+        ],
+        "linkIds": [
+          126,
+          128,
+          138
+        ]
+      },
+      {
+        "id": 11,
+        "pos": [
+          1870,
+          970
+        ],
+        "linkIds": [
+          150,
+          151
+        ]
+      },
+      {
+        "id": 12,
+        "parentId": 11,
+        "pos": [
+          1860,
+          2560
+        ],
+        "linkIds": [
+          150
+        ]
+      },
+      {
+        "id": 13,
+        "pos": [
+          2218.6226520951004,
+          644.6550704147785
+        ],
+        "linkIds": [
+          81,
+          174
+        ]
+      },
+      {
+        "id": 14,
+        "parentId": 13,
+        "pos": [
+          2200,
+          2590
+        ],
+        "linkIds": [
+          174
+        ]
+      }
+    ],
+    "linkExtensions": [
+      {
+        "id": 81,
+        "parentId": 13
+      },
+      {
+        "id": 126,
+        "parentId": 7
+      },
+      {
+        "id": 128,
+        "parentId": 2
+      },
+      {
+        "id": 135,
+        "parentId": 3
+      },
+      {
+        "id": 138,
+        "parentId": 10
+      },
+      {
+        "id": 147,
+        "parentId": 8
+      },
+      {
+        "id": 150,
+        "parentId": 12
+      },
+      {
+        "id": 151,
+        "parentId": 11
+      },
+      {
+        "id": 174,
+        "parentId": 14
+      }
+    ],
+    "frontendVersion": "1.30.6",
+    "VHS_latentpreview": true,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}
