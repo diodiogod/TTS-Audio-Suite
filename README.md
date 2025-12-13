@@ -55,12 +55,14 @@ IndexTTS-2            Chatterbox                VibeVoice
 Emotion               Multilingual              New TTS Engine
 Control               Official (23-lang)        90min Generation
 │
-▼
-v4.12 ──────────►
-Oct 25
-│
-Per-Seg Parameter
-Switching [seed:24]
+│             🎨 Inline Editor Tags Era                                
+▼                            |
+v4.12 ──────────────► v4.15 ────────────► 
+Oct 25                Dez 25
+│                     │
+Per-Seg Parameter     Step Audio EditX
+Switching [seed:24]   Inline Edit tags
+                      <laughter:2>
 ```
 
 <details>
