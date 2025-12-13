@@ -9,47 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add Step Audio EditX - AI-powered TTS and audio editing engine
-- Step Audio EditX is a new TTS engine with zero-shot voice cloning:
-- Clone any voice from just 3-10 seconds of audio
-- Natural-sounding speech with emotional control
-- Works with character switching and per-segment parameters
-- Step Audio EditX Audio Editor - Transform any TTS output:
-- Add emotions: 14 types (happy, sad, angry, surprised, fearful, etc.)
-- Adjust speed: Make speech faster or slower
-- Add human sounds: 10 effects (laughter, breathing, sigh, gasp, crying, etc.)
-- Works with audio from ANY TTS engine (ChatterBox, F5-TTS, Higgs Audio, VibeVoice)
-- Universal Inline Edit Tags - Easy audio editing in your text:
-- Add effects while typing: "Hello <Laughter> this is amazing!"
-- Works across all TTS engines using Step Audio EditX processing
-- Simple tag format: <emotion>, <style>, <speed>, paralinguistic effects
-- Control intensity with iterations: <Laughter:2> for stronger effect
-- Multiline TTS Tag Editor improvements:
-- New tabbed interface for inline edit tags
-- Easy buttons to insert emotions, styles, and effects
-- Improved formatting and syntax highlighting
-- New example workflows:
-- Step Audio EditX Integration - Basic TTS usage
-- Step Audio EditX Audio Editor + Inline Edit Tags - Advanced editing
-- Updated Voice Cleaning workflow with Step Audio EditX denoise
+- **Step Audio EditX TTS Engine** - AI-powered text-to-speech with zero-shot voice cloning
+  - Clone any voice from just 3-10 seconds of audio
+  - Natural-sounding speech with emotional control
+  - Memory-efficient int4/int8 quantization options (uses less VRAM)
+  - Character switching and per-segment parameter support
+- **Step Audio EditX Audio Editor** - Transform any TTS engine's output with AI
+  - 14 emotions: happy, sad, angry, surprised, fearful, disgusted, contempt, neutral, etc.
+  - 32 speaking styles: whisper, serious, child, elderly, neutral, and more
+  - Speed control: make speech faster or slower
+  - 10 paralinguistic effects: laughter, breathing, sigh, gasp, crying, sniff, cough, yawn, scream, moan
+  - Audio cleanup: denoise and voice activity detection
+  - Works with audio from ANY TTS engine (ChatterBox, F5-TTS, Higgs Audio, VibeVoice)
+- **Universal Inline Edit Tags** - Add audio effects directly in your text
+  - Easy syntax: "Hello <Laughter> this is amazing!"
+  - Works across all TTS engines using Step Audio EditX post-processing
+  - Tag types: `<emotion>`, `<style>`, `<speed>`, and paralinguistic effects
+  - Control intensity: `<Laughter:2>` for stronger effect, `<Laughter:3>` for maximum
+  - Voice restoration: `<restore>` tag to return to original voice after edits
+- **Multiline TTS Tag Editor** enhancements
+  - New tabbed interface for inline edit tag controls
+  - Quick-insert buttons for emotions, styles, and effects
+  - Better copy/paste compatibility with ComfyUI v0.3.75+
+  - Improved syntax highlighting and text formatting
+- **New Example Workflows**
+  - "Step Audio EditX Integration" - Basic TTS usage examples
+  - "Step Audio EditX - Audio Editor + Inline Edit Tags" - Advanced editing demonstrations
+  - Updated "Voice Cleaning" workflow with Step Audio EditX denoise option
 
 ### Changed
 
-- Memory-efficient with int4/int8 quantization options (uses less VRAM)
-- Change speaking style: 32 styles (whisper, serious, child, elderly, etc.)
 - Better memory management and model caching across all engines
 
 ### Fixed
 
-- Better copy/paste compatibility with ComfyUI
-- Bug fixes:
-- Fix text being incorrectly combined when using newlines (now respects line breaks for natural pacing)
-- Fix Step Audio EditX chunk combination method setting being ignored
-- Fix Multiline TTS Tag Editor paste behavior in ComfyUI
-
-### Removed
-
-- Clean audio: Denoise and remove silence
+- Step Audio EditX text being incorrectly combined when using newlines (now respects line breaks for natural pacing)
+- Step Audio EditX chunk combination method setting being ignored
+- Multiline TTS Tag Editor paste behavior in ComfyUI v0.3.75+
 ## [4.14.36] - 2025-12-02
 
 ### Added
