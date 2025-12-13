@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.1] - 2025-12-12
+
+### Added
+
+- Add IndexTTS-2 Low VRAM mode for 8GB VRAM GPUs
+- Add Low VRAM option to IndexTTS-2 Engine node
+- Keep models on CPU and move to GPU only when needed during generation
+- Prevents out-of-memory errors on 8GB VRAM cards
+- Successfully tested with <8GB VRAM usage throughout generation
+- Allows longer reference audio (tested up to ~2 minutes)
+- Trade-off: Slightly slower generation due to model swapping
+- Credit: Feature contributed by @CrispyToken in PR #186
 ## [4.15.0] - 2025-12-12
 
 ### Added
