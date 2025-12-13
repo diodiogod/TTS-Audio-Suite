@@ -30,7 +30,7 @@ class IndexTTSEngine:
     def __init__(self, model_dir: str = "IndexTTS-2", device: str = "auto",
                  use_fp16: bool = True, use_cuda_kernel: Optional[bool] = None,
                  use_deepspeed: bool = False, use_torch_compile: bool = False,
-                 use_accel: bool = False):
+                 use_accel: bool = False, low_vram: bool = False):
         """
         Initialize IndexTTS-2 engine.
 
@@ -42,6 +42,7 @@ class IndexTTSEngine:
             use_deepspeed: Use DeepSpeed for optimization
             use_torch_compile: Enable torch.compile optimization for S2Mel stage
             use_accel: Enable GPT2 acceleration with FlashAttention
+            low_vram: Enable Low VRAM mode (sequential offloading)
         """
         # Resolve model directory using extra_model_paths
         self.model_dir = self._find_model_directory(model_dir)
@@ -52,6 +53,7 @@ class IndexTTSEngine:
         self.use_deepspeed = use_deepspeed
         self.use_torch_compile = use_torch_compile
         self.use_accel = use_accel
+        self.low_vram = low_vram
 
         self._tts_engine = None
         self._model_config = None
@@ -143,7 +145,8 @@ class IndexTTSEngine:
                 "use_cuda_kernel": self.use_cuda_kernel,
                 "use_deepspeed": self.use_deepspeed,
                 "use_torch_compile": self.use_torch_compile,
-                "use_accel": self.use_accel
+                "use_accel": self.use_accel,
+                "low_vram": self.low_vram
             }
         )
         

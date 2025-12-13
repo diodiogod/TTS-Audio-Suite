@@ -88,7 +88,8 @@ class IndexTTSProcessor:
             use_cuda_kernel=engine_config.get('use_cuda_kernel'),
             use_deepspeed=engine_config.get('use_deepspeed', False),
             use_torch_compile=engine_config.get('use_torch_compile', False),
-            use_accel=engine_config.get('use_accel', False)
+            use_accel=engine_config.get('use_accel', False),
+            low_vram=engine_config.get('low_vram', False)
         )
 
     def _setup_character_parser(self):

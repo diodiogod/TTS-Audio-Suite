@@ -38,7 +38,7 @@ import torch.nn.functional as F
 class IndexTTS2:
     def __init__(
             self, cfg_path="checkpoints/config.yaml", model_dir="checkpoints", use_fp16=False, device=None,
-            use_cuda_kernel=None,use_deepspeed=False, use_torch_compile=False
+            use_cuda_kernel=None,use_deepspeed=False, use_torch_compile=False, low_vram=False
     ):
         """
         Args:
@@ -110,7 +110,17 @@ class IndexTTS2:
         self.model_dir = model_dir
         self.dtype = torch.float16 if self.use_fp16 else None
         self.stop_mel_token = self.cfg.gpt.stop_mel_token
+        # Disable torch.compile when low_vram is enabled - they are incompatible
+        # (torch.compile caches tensor devices, which breaks when models move between CPU/GPU)
+        if low_vram and use_torch_compile:
+            print("⚠️ Low VRAM mode: Disabling torch.compile (incompatible with device switching)")
+            use_torch_compile = False
         self.use_torch_compile = use_torch_compile
+        self.low_vram = low_vram
+        
+        # Determine device for initial model loading
+        # If low_vram is True, load to CPU initially
+        self.load_device = "cpu" if self.low_vram else self.device
 
         # Initialize QwenEmotion for text-based emotion control if available
         self.qwen_emo = None
@@ -151,8 +161,8 @@ class IndexTTS2:
         self.gpt = UnifiedVoice(**self.cfg.gpt)
         self.gpt_path = os.path.join(self.model_dir, self.cfg.gpt_checkpoint)
         load_checkpoint(self.gpt, self.gpt_path)
-        print("🔄 IndexTTS-2: Moving GPT to GPU...")
-        self.gpt = self.gpt.to(self.device)
+        print(f"🔄 IndexTTS-2: Moving GPT to {self.load_device}...")
+        self.gpt = self.gpt.to(self.load_device)
         if self.use_fp16:
             self.gpt.eval().half()
         else:
@@ -231,10 +241,10 @@ class IndexTTS2:
                     raise RuntimeError(f"W2V-BERT model required for IndexTTS-2: {e}")
         self.semantic_model, self.semantic_mean, self.semantic_std = build_semantic_model(
             os.path.join(self.model_dir, self.cfg.w2v_stat))
-        self.semantic_model = self.semantic_model.to(self.device)
+        self.semantic_model = self.semantic_model.to(self.load_device)
         self.semantic_model.eval()
-        self.semantic_mean = self.semantic_mean.to(self.device)
-        self.semantic_std = self.semantic_std.to(self.device)
+        self.semantic_mean = self.semantic_mean.to(self.load_device)
+        self.semantic_std = self.semantic_std.to(self.load_device)
 
         semantic_codec = build_semantic_codec(self.cfg.semantic_codec)
         # Use unified downloader instead of direct HuggingFace download
@@ -242,7 +252,7 @@ class IndexTTS2:
         maskgct_path = index_tts_downloader.download_model("MaskGCT")
         semantic_code_ckpt = os.path.join(maskgct_path, "semantic_codec", "model.safetensors")
         safetensors.torch.load_model(semantic_codec, semantic_code_ckpt)
-        self.semantic_codec = semantic_codec.to(self.device)
+        self.semantic_codec = semantic_codec.to(self.load_device)
         self.semantic_codec.eval()
         print('>> semantic_codec weights restored from: {}'.format(semantic_code_ckpt))
 
@@ -256,7 +266,7 @@ class IndexTTS2:
             ignore_modules=[],
             is_distributed=False,
         )
-        self.s2mel = s2mel.to(self.device)
+        self.s2mel = s2mel.to(self.load_device)
         self.s2mel.models['cfm'].estimator.setup_caches(max_batch_size=1, max_seq_length=8192)
 
         # Enable torch.compile optimization if requested
@@ -287,7 +297,7 @@ class IndexTTS2:
 
         campplus_model = CAMPPlus(feat_dim=80, embedding_size=192)
         campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu"))
-        self.campplus_model = campplus_model.to(self.device)
+        self.campplus_model = campplus_model.to(self.load_device)
         self.campplus_model.eval()
         print(">> campplus_model weights restored from:", campplus_ckpt_path)
 
@@ -300,7 +310,7 @@ class IndexTTS2:
         bigvgan_path = index_tts_downloader.download_model("bigvgan_v2_22khz_80band_256x")
 
         self.bigvgan = bigvgan.BigVGAN.from_pretrained(bigvgan_path, use_cuda_kernel=self.use_cuda_kernel)
-        self.bigvgan = self.bigvgan.to(self.device)
+        self.bigvgan = self.bigvgan.to(self.load_device)
         self.bigvgan.remove_weight_norm()
         self.bigvgan.eval()
         print(">> bigvgan weights restored from:", bigvgan_name)
@@ -313,11 +323,11 @@ class IndexTTS2:
         print(">> bpe model loaded from:", self.bpe_path)
 
         emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
-        self.emo_matrix = emo_matrix.to(self.device)
+        self.emo_matrix = emo_matrix.to(self.load_device)
         self.emo_num = list(self.cfg.emo_num)
 
         spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
-        self.spk_matrix = spk_matrix.to(self.device)
+        self.spk_matrix = spk_matrix.to(self.load_device)
 
         self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
         self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
@@ -346,6 +356,15 @@ class IndexTTS2:
         # 进度引用显示（可选）
         self.gr_progress = None
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
+
+    def _move_matrices(self, device):
+        """Move emotion and speaker matrices to target device."""
+        if hasattr(self, 'emo_matrix') and isinstance(self.emo_matrix, (tuple, list)):
+            self.emo_matrix = tuple(t.to(device) for t in self.emo_matrix)
+        
+        if hasattr(self, 'spk_matrix') and isinstance(self.spk_matrix, (tuple, list)):
+            self.spk_matrix = tuple(t.to(device) for t in self.spk_matrix)
+
 
     @torch.no_grad()
     def get_emb(self, input_features, attention_mask):
@@ -581,6 +600,17 @@ class IndexTTS2:
                     torch.cuda.empty_cache()
                 elif self.device == "xpu":
                     torch.xpu.empty_cache()
+            
+            # Low VRAM: Load analysis models
+            if self.low_vram:
+                print("🔄 Low VRAM: Loading analysis models...")
+                self.semantic_model = self.semantic_model.to(self.device)
+                self.semantic_mean = self.semantic_mean.to(self.device)
+                self.semantic_std = self.semantic_std.to(self.device)
+                self.semantic_codec = self.semantic_codec.to(self.device)
+                self.campplus_model = self.campplus_model.to(self.device)
+                self.s2mel = self.s2mel.to(self.device)
+
             audio, sr = self._load_and_cut_audio(spk_audio_prompt, 15, verbose)
             audio_22k = torchaudio.transforms.Resample(sr, 22050)(audio)
             audio_16k = torchaudio.transforms.Resample(sr, 16000)(audio)
@@ -631,6 +661,21 @@ class IndexTTS2:
             self.cache_s2mel_prompt = prompt_condition
             self.cache_spk_audio_prompt = spk_audio_prompt
             self.cache_mel = ref_mel
+
+            # Low VRAM: Unload analysis models
+            if self.low_vram:
+                print("🔄 Low VRAM: Unloading analysis models...")
+                self.semantic_model = self.semantic_model.to("cpu")
+                self.semantic_mean = self.semantic_mean.to("cpu")
+                self.semantic_std = self.semantic_std.to("cpu")
+                self.campplus_model = self.campplus_model.to("cpu")
+                # s2mel and semantic_codec are needed later, but we unload to save max VRAM
+                self.s2mel = self.s2mel.to("cpu")
+                self.semantic_codec = self.semantic_codec.to("cpu")
+                if self.device.startswith("cuda"):
+                    torch.cuda.empty_cache()
+                elif self.device == "xpu":
+                    torch.xpu.empty_cache()
         else:
             style = self.cache_s2mel_style
             prompt_condition = self.cache_s2mel_prompt
@@ -638,6 +683,9 @@ class IndexTTS2:
             ref_mel = self.cache_mel
 
         if emo_vector is not None:
+            if self.low_vram:
+                self._move_matrices(self.device)
+
             weight_vector = torch.tensor(emo_vector).to(self.device)
             if use_random:
                 random_index = [random.randint(0, x - 1) for x in self.emo_num]
@@ -650,6 +698,9 @@ class IndexTTS2:
             emovec_mat = torch.sum(emovec_mat, 0)
             emovec_mat = emovec_mat.unsqueeze(0)
 
+            if self.low_vram:
+                self._move_matrices("cpu")
+
         if self.cache_emo_cond is None or self.cache_emo_audio_prompt != emo_audio_prompt:
             if self.cache_emo_cond is not None:
                 self.cache_emo_cond = None
@@ -658,6 +709,15 @@ class IndexTTS2:
                     torch.cuda.empty_cache()
                 elif self.device == "xpu":
                     torch.xpu.empty_cache()
+            
+            # Low VRAM: Reload analysis models for emotion processing
+            if self.low_vram:
+                print("🔄 Low VRAM: Loading semantic model for emotion...")
+                self.semantic_model = self.semantic_model.to(self.device)
+                self.semantic_mean = self.semantic_mean.to(self.device)
+                self.semantic_std = self.semantic_std.to(self.device)
+                self.semantic_codec = self.semantic_codec.to(self.device)
+            
             emo_audio, _ = self._load_and_cut_audio(emo_audio_prompt, 15, verbose, sr=16000)
 
             emo_inputs = self.extract_features(emo_audio, sampling_rate=16000, return_tensors="pt")
@@ -666,6 +726,18 @@ class IndexTTS2:
             emo_input_features = emo_input_features.to(self.device)
             emo_attention_mask = emo_attention_mask.to(self.device)
             emo_cond_emb = self.get_emb(emo_input_features, emo_attention_mask)
+
+            # Low VRAM: Unload analysis models after emotion processing
+            if self.low_vram:
+                print("🔄 Low VRAM: Unloading semantic model after emotion...")
+                self.semantic_model = self.semantic_model.to("cpu")
+                self.semantic_mean = self.semantic_mean.to("cpu")
+                self.semantic_std = self.semantic_std.to("cpu")
+                self.semantic_codec = self.semantic_codec.to("cpu")
+                if self.device.startswith("cuda"):
+                    torch.cuda.empty_cache()
+                elif self.device == "xpu":
+                    torch.xpu.empty_cache()
 
             self.cache_emo_cond = emo_cond_emb
             self.cache_emo_audio_prompt = emo_audio_prompt
@@ -721,6 +793,10 @@ class IndexTTS2:
 
             m_start_time = time.perf_counter()
             with torch.no_grad():
+                if self.low_vram:
+                    # print("🔄 Low VRAM: Loading GPT...")
+                    self.gpt = self.gpt.to(self.device)
+
                 with torch.amp.autocast(text_tokens.device.type, enabled=self.dtype is not None, dtype=self.dtype):
                     emovec = self.gpt.merge_emovec(
                         spk_cond_emb,
@@ -754,6 +830,7 @@ class IndexTTS2:
                     )
 
                 gpt_gen_time += time.perf_counter() - m_start_time
+                
                 if not has_warned and (codes[:, -1] != self.stop_mel_token).any():
                     warnings.warn(
                         f"WARN: generation stopped due to exceeding `max_mel_tokens` ({max_mel_tokens}). "
@@ -803,8 +880,29 @@ class IndexTTS2:
                     )
                     gpt_forward_time += time.perf_counter() - m_start_time
 
+                # Low VRAM: Unload GPT after all GPT operations complete
+                if self.low_vram:
+                    # print("🔄 Low VRAM: Unloading GPT...")
+                    self.gpt = self.gpt.to("cpu")
+                    if self.device.startswith("cuda"):
+                        torch.cuda.empty_cache()
+                    elif self.device == "xpu":
+                        torch.xpu.empty_cache()
+
                 dtype = None
                 with torch.amp.autocast(text_tokens.device.type, enabled=dtype is not None, dtype=dtype):
+                    if self.low_vram:
+                        # print("🔄 Low VRAM: Loading decoding models...")
+                        self.s2mel = self.s2mel.to(self.device)
+                        # Move freqs_cis tensor (plain attribute, not registered buffer, so .to() doesn't move it)
+                        # Path: s2mel.models['cfm'].estimator.transformer.freqs_cis
+                        cfm = self.s2mel.models['cfm'] if 'cfm' in self.s2mel.models else None
+                        if cfm and hasattr(cfm, 'estimator') and hasattr(cfm.estimator, 'transformer'):
+                            if hasattr(cfm.estimator.transformer, 'freqs_cis') and cfm.estimator.transformer.freqs_cis is not None:
+                                cfm.estimator.transformer.freqs_cis = cfm.estimator.transformer.freqs_cis.to(self.device)
+                        self.semantic_codec = self.semantic_codec.to(self.device)
+                        self.bigvgan = self.bigvgan.to(self.device)
+
                     m_start_time = time.perf_counter()
                     diffusion_steps = 25
                     inference_cfg_rate = 0.7
@@ -839,6 +937,16 @@ class IndexTTS2:
                     print(f"wav shape: {wav.shape}", "min:", wav.min(), "max:", wav.max())
                 # wavs.append(wav[:, :-512])
                 wavs.append(wav.cpu())  # to cpu before saving
+
+                if self.low_vram:
+                    # print("🔄 Low VRAM: Unloading decoding models...")
+                    self.s2mel = self.s2mel.to("cpu")
+                    self.semantic_codec = self.semantic_codec.to("cpu")
+                    self.bigvgan = self.bigvgan.to("cpu")
+                    if self.device.startswith("cuda"):
+                        torch.cuda.empty_cache()
+                    elif self.device == "xpu":
+                        torch.xpu.empty_cache()
         end_time = time.perf_counter()
 
         self._set_gr_progress(0.9, "saving audio...")
