@@ -53,10 +53,15 @@ except Exception as e:
 
 # Smart Numba Compatibility System - tests and applies fixes only when needed
 try:
-    from utils.compatibility import setup_numba_compatibility
+    # Load numba_compat directly by file path to avoid package import issues
+    numba_compat_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "numba_compat.py")
+    spec = importlib.util.spec_from_file_location("numba_compat_module", numba_compat_path)
+    numba_compat_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(numba_compat_module)
+
     # Apply smart compatibility setup (fast startup test)
-    compatibility_results = setup_numba_compatibility(quick_startup=True, verbose=True)
-except ImportError:
+    compatibility_results = numba_compat_module.setup_numba_compatibility(quick_startup=True, verbose=False)
+except Exception:
     # Fallback to simple approach if compatibility module not found
     import sys
     import os
@@ -121,8 +126,13 @@ def print_critical_versions():
 def check_ffmpeg_availability():
     """Check ffmpeg availability and log status"""
     try:
-        from utils.ffmpeg_utils import FFmpegUtils
-        if FFmpegUtils.is_available():
+        # Load ffmpeg_utils directly by file path to avoid package import issues
+        ffmpeg_utils_path = os.path.join(os.path.dirname(__file__), "utils", "ffmpeg_utils.py")
+        spec = importlib.util.spec_from_file_location("ffmpeg_utils_module", ffmpeg_utils_path)
+        ffmpeg_utils_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ffmpeg_utils_module)
+
+        if ffmpeg_utils_module.FFmpegUtils.is_available():
             # Only show when unavailable (problem)
             pass
         else:
@@ -226,10 +236,15 @@ def setup_api_routes():
         async def get_available_characters_endpoint(request):
             """API endpoint to get available TTS character voices including aliases"""
             try:
-                from utils.voice.discovery import get_available_characters, voice_discovery
-                characters = list(get_available_characters())
+                # Load voice discovery directly by file path to avoid package import issues
+                voice_discovery_path = os.path.join(os.path.dirname(__file__), "utils", "voice", "discovery.py")
+                spec = importlib.util.spec_from_file_location("voice_discovery_module", voice_discovery_path)
+                voice_discovery_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(voice_discovery_module)
+
+                characters = list(voice_discovery_module.get_available_characters())
                 # Also get character aliases
-                aliases = list(voice_discovery._character_aliases.keys()) if hasattr(voice_discovery, '_character_aliases') else []
+                aliases = list(voice_discovery_module.voice_discovery._character_aliases.keys()) if hasattr(voice_discovery_module.voice_discovery, '_character_aliases') else []
                 # Combine and deduplicate
                 all_chars = sorted(set(characters + aliases))
                 return web.json_response({"characters": all_chars})
@@ -241,9 +256,14 @@ def setup_api_routes():
         async def get_available_languages_endpoint(request):
             """API endpoint to get available language codes from the canonical language mapper"""
             try:
-                from utils.models.language_mapper import LANGUAGE_ALIASES
+                # Load language_mapper directly by file path to avoid package import issues
+                language_mapper_path = os.path.join(os.path.dirname(__file__), "utils", "models", "language_mapper.py")
+                spec = importlib.util.spec_from_file_location("language_mapper_module", language_mapper_path)
+                language_mapper_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(language_mapper_module)
+
                 # Get all unique canonical language codes (the values in LANGUAGE_ALIASES)
-                languages = sorted(set(LANGUAGE_ALIASES.values()))
+                languages = sorted(set(language_mapper_module.LANGUAGE_ALIASES.values()))
                 return web.json_response({"languages": languages})
             except Exception as e:
                 print(f"⚠️ Error retrieving available languages: {e}")
@@ -261,9 +281,14 @@ def setup_api_routes():
 
                 print(f"🔧 Received settings: precision={precision}, device={device}")
 
+                # Load edit_post_processor directly by file path to avoid package import issues
+                edit_post_processor_path = os.path.join(os.path.dirname(__file__), "utils", "audio", "edit_post_processor.py")
+                spec = importlib.util.spec_from_file_location("edit_post_processor_module", edit_post_processor_path)
+                edit_post_processor_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(edit_post_processor_module)
+
                 # Store in global settings that edit_post_processor can access
-                from utils.audio.edit_post_processor import set_inline_tag_settings
-                set_inline_tag_settings(precision=precision, device=device)
+                edit_post_processor_module.set_inline_tag_settings(precision=precision, device=device)
 
                 return web.json_response({"status": "success", "precision": precision, "device": device})
             except Exception as e:

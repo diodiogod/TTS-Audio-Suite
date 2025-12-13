@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.2] - 2025-12-12
+
+### Added
+
+- Extension now immune to Python import path conflicts
+
+### Fixed
+
+- Fix extension failing to load when other custom nodes have utils.py files
+- Fix 'utils' is not a package error affecting all engines
+- Improve compatibility with other ComfyUI extensions
 ## [4.15.1] - 2025-12-12
 
 ### Added
