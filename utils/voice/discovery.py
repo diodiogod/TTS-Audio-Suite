@@ -176,9 +176,12 @@ class VoiceDiscovery:
 
         return dirs
     
-    def get_available_voices(self) -> List[str]:
+    def get_available_voices(self, force_refresh: bool = False) -> List[str]:
         """
         Get list of available voice files with companion text files.
+
+        Args:
+            force_refresh: If True, invalidate cache and rescan directories (for ComfyUI refresh)
 
         Returns:
             List of voice file paths relative to their base directories.
@@ -187,8 +190,41 @@ class VoiceDiscovery:
         # Lazy initialization on first access
         self._ensure_initialized()
 
+        # Force refresh if requested (for ComfyUI R key refresh)
+        if force_refresh:
+            # Store old character data for comparison
+            old_chars = set(self._character_cache.keys()) if self._character_cache else set()
+            old_aliases = set(self._character_aliases.keys()) if self._character_aliases else set()
+
+            self._cache_valid = False
+            # Also refresh character cache so new characters work immediately
+            self._character_cache_valid = False
+            self._aliases_valid = False
+
         if not self._cache_valid:
             self._refresh_cache()
+
+        # Also ensure character cache is refreshed if needed
+        if not self._character_cache_valid:
+            self._refresh_character_cache()
+        if not self._aliases_valid:
+            self._refresh_character_aliases()
+
+        # Print update message if force_refresh detected character changes
+        if force_refresh:
+            new_chars = set(self._character_cache.keys())
+            new_aliases = set(self._character_aliases.keys())
+
+            if old_chars != new_chars or old_aliases != new_aliases:
+                char_diff = len(new_chars) - len(old_chars)
+                alias_diff = len(new_aliases) - len(old_aliases)
+                msg_parts = []
+                if char_diff != 0:
+                    msg_parts.append(f"{char_diff:+d} characters")
+                if alias_diff != 0:
+                    msg_parts.append(f"{alias_diff:+d} aliases")
+                if msg_parts:
+                    print(f"🎭 Character voices updated: {', '.join(msg_parts)}")
 
         return ["none"] + sorted(self._cache.keys())
     
@@ -417,9 +453,12 @@ class VoiceDiscovery:
         self._character_aliases.clear()
         self._character_language_defaults.clear()
     
-    def get_available_characters(self) -> Set[str]:
+    def get_available_characters(self, force_refresh: bool = False) -> Set[str]:
         """
         Get set of available character names from voice folders.
+
+        Args:
+            force_refresh: If True, invalidate cache and rescan directories (for ComfyUI refresh)
 
         Returns:
             Set of character names found in voice directories
@@ -427,8 +466,35 @@ class VoiceDiscovery:
         # Lazy initialization on first access
         self._ensure_initialized()
 
+        # Force refresh if requested (for ComfyUI R key refresh)
+        if force_refresh:
+            old_chars = set(self._character_cache.keys()) if self._character_cache else set()
+            old_aliases = set(self._character_aliases.keys()) if self._character_aliases else set()
+
+            self._character_cache_valid = False
+            self._aliases_valid = False
+
         if not self._character_cache_valid:
             self._refresh_character_cache()
+
+        if not self._aliases_valid:
+            self._refresh_character_aliases()
+
+        # Print update message if force_refresh detected changes
+        if force_refresh:
+            new_chars = set(self._character_cache.keys())
+            new_aliases = set(self._character_aliases.keys())
+
+            if old_chars != new_chars or old_aliases != new_aliases:
+                char_diff = len(new_chars) - len(old_chars)
+                alias_diff = len(new_aliases) - len(old_aliases)
+                msg_parts = []
+                if char_diff != 0:
+                    msg_parts.append(f"{char_diff:+d} characters")
+                if alias_diff != 0:
+                    msg_parts.append(f"{alias_diff:+d} aliases")
+                if msg_parts:
+                    print(f"🎭 Character voices updated: {', '.join(msg_parts)}")
 
         return set(self._character_cache.keys())
     
@@ -867,9 +933,13 @@ class VoiceDiscovery:
 voice_discovery = VoiceDiscovery()
 
 
-def get_available_voices() -> List[str]:
-    """Convenience function to get available voices."""
-    return voice_discovery.get_available_voices()
+def get_available_voices(force_refresh: bool = False) -> List[str]:
+    """Convenience function to get available voices.
+
+    Args:
+        force_refresh: If True, rescan directories for new voices (for ComfyUI refresh)
+    """
+    return voice_discovery.get_available_voices(force_refresh=force_refresh)
 
 
 def load_voice_reference(voice_key: str) -> Tuple[Optional[str], Optional[str]]:
@@ -884,9 +954,13 @@ def invalidate_voice_cache():
 
 # Character voice convenience functions
 
-def get_available_characters() -> Set[str]:
-    """Convenience function to get available characters."""
-    return voice_discovery.get_available_characters()
+def get_available_characters(force_refresh: bool = False) -> Set[str]:
+    """Convenience function to get available characters.
+
+    Args:
+        force_refresh: If True, rescan directories for new characters (for ComfyUI refresh)
+    """
+    return voice_discovery.get_available_characters(force_refresh=force_refresh)
 
 
 def load_character_voice(character_name: str, engine_type: str = "f5tts") -> Tuple[Optional[str], Optional[str]]:

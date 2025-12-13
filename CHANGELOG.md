@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.3] - 2025-12-12
+
+### Added
+
+- Add Character Voices node refresh support
+- Character Voices dropdown now refreshes with R key (no restart needed)
+- Character switching tags refresh automatically when pressing R
+- New voice files appear immediately after refresh
+- Console shows character count updates when changes detected
 ## [4.15.2] - 2025-12-12
 
 ### Added

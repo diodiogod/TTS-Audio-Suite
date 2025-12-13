@@ -42,8 +42,9 @@ class CharacterVoicesNode(BaseTTSNode):
     @classmethod
     def INPUT_TYPES(cls):
         # Get available reference audio files from voice folders
-        reference_files = get_available_voices()
-        
+        # Force refresh to support ComfyUI's R key refresh without restart
+        reference_files = get_available_voices(force_refresh=True)
+
         return {
             "required": {
                 "voice_name": (reference_files, {
