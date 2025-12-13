@@ -736,6 +736,8 @@ class IndexTTS2:
                 self.semantic_codec = self.semantic_codec.to("cpu")
                 if self.device.startswith("cuda"):
                     torch.cuda.empty_cache()
+                elif self.device == "xpu":
+                    torch.xpu.empty_cache()
 
             self.cache_emo_cond = emo_cond_emb
             self.cache_emo_audio_prompt = emo_audio_prompt
@@ -884,6 +886,8 @@ class IndexTTS2:
                     self.gpt = self.gpt.to("cpu")
                     if self.device.startswith("cuda"):
                         torch.cuda.empty_cache()
+                    elif self.device == "xpu":
+                        torch.xpu.empty_cache()
 
                 dtype = None
                 with torch.amp.autocast(text_tokens.device.type, enabled=dtype is not None, dtype=dtype):

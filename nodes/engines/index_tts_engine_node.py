@@ -134,7 +134,11 @@ class IndexTTSEngineNode(BaseTTSNode):
             "optional": {
                 # Unified Emotion Control - Using multitype input for better connection suggestions
                 "emotion_control": (any_typ, {
-                    "tooltip": "• 🌈 Emotion Vectors - Manual emotion control sliders\n• 🎭 Character Voices (opt_narrator) - Audio-based emotion reference\n• 🌈 Text Emotion - AI-analyzed emotion from text\n• Direct AUDIO - Any audio input for emotion reference\nCharacter emotion tags [Alice:emotion_ref] will override this for specific characters."
+                    "tooltip": """• 🌈 Emotion Vectors - Manual emotion control sliders
+• 🎭 Character Voices (opt_narrator) - Audio-based emotion reference
+• 🌈 Text Emotion - AI-analyzed emotion from text
+• Direct AUDIO - Any audio input for emotion reference
+Character emotion tags [Alice:emotion_ref] will override this for specific characters."""
                 }),
 
                 # CUDA Kernel Option
