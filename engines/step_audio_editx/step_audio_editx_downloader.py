@@ -297,6 +297,10 @@ class StepAudioEditXDownloader:
             FileNotFoundError: If local model not found
             RuntimeError: If auto-download fails
         """
+        # Handle None or empty model identifier - use default
+        if not model_identifier:
+            model_identifier = "Step-Audio-EditX"
+
         # Handle local: prefix - search in all configured TTS paths
         if model_identifier.startswith("local:"):
             local_name = model_identifier[6:]  # Remove "local:" prefix

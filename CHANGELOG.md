@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.5] - 2025-12-16
+
+### Added
+
+- Prevent AttributeError when Step Audio EditX model selection is None or invalid. Now gracefully defaults to auto-download instead of crashing.
+
+### Fixed
+
+- Fix Step Audio EditX model loading crash on Windows
 ## [4.15.4] - 2025-12-16
 
 ### Added
