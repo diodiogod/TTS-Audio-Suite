@@ -870,6 +870,40 @@ def register_step_audio_editx_factory():
                 print(f"📥 FunASR model not found or incomplete, downloading (one-time setup)...")
                 downloader.download_model("FunASR-Paraformer")
 
+            # CRITICAL: Verify CosyVoice model exists (required for audio synthesis)
+            # CosyVoice is a subfolder of the main model and must be complete
+            cosy_voice_path = os.path.join(model_path, "CosyVoice-300M-25Hz")
+            cosy_voice_files = [
+                "cosyvoice.yaml", "flow.pt", "hift.pt",
+                "campplus.onnx", "speech_tokenizer_v1.onnx", "FLOW_VERSION"
+            ]
+
+            if not os.path.exists(cosy_voice_path):
+                raise RuntimeError(
+                    f"❌ CosyVoice model not found at: {cosy_voice_path}\n"
+                    f"This subfolder should have been downloaded with Step-Audio-EditX.\n"
+                    f"To fix: Delete the entire Step-Audio-EditX folder and re-run to trigger full download.\n"
+                    f"Model path: {model_path}"
+                )
+
+            # Check CosyVoice completeness
+            missing_files = []
+            for file in cosy_voice_files:
+                file_path = os.path.join(cosy_voice_path, file)
+                if not os.path.exists(file_path):
+                    missing_files.append(file)
+
+            if missing_files:
+                raise RuntimeError(
+                    f"❌ CosyVoice model incomplete. Missing files: {', '.join(missing_files)}\n"
+                    f"Location: {cosy_voice_path}\n"
+                    f"To fix: Delete the CosyVoice-300M-25Hz folder and re-run to trigger re-download."
+                )
+
+            # Note: cosyvoice.yaml uses HyperPyYAML custom tags (!new:, !ref, etc.)
+            # so we cannot validate it with standard yaml.safe_load().
+            # The actual validation happens when CosyVoice loads it with load_hyperpyyaml().
+
             # Initialize tokenizer (silent - errors will be raised if fails)
             tokenizer = StepAudioTokenizer(
                 encoder_path=model_path,

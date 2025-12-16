@@ -356,7 +356,9 @@ class CosyVoice:
         # initiate streaming wrapper
         self.model_dir = model_dir
         with open("{}/cosyvoice.yaml".format(model_dir), "r") as f:
-            configs = load_hyperpyyaml(f)
+            # Pass empty overrides dict for compatibility with different hyperpyyaml versions
+            # Some versions require this parameter to properly initialize OmegaConf handling
+            configs = load_hyperpyyaml(f, overrides={})
             flow, hift = configs['flow'], configs['hift']
             mel_conf = configs['mel_conf']
         flow.load_state_dict(torch.load(f"{model_dir}/flow.pt", map_location='cpu'))
