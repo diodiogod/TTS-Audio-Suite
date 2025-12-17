@@ -21,4 +21,17 @@ except ImportError as e:
         def __init__(self, *args, **kwargs):
             raise ImportError(f"F5-TTS adapter not available: {e}")
 
-__all__ = ['ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE']
+try:
+    from .cosyvoice_adapter import CosyVoiceAdapter
+    COSYVOICE_ADAPTER_AVAILABLE = True
+except ImportError as e:
+    COSYVOICE_ADAPTER_AVAILABLE = False
+    # Create dummy class for compatibility
+    class CosyVoiceAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"CosyVoice adapter not available: {e}")
+
+__all__ = [
+    'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter',
+    'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE'
+]

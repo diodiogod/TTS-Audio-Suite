@@ -933,6 +933,71 @@ def register_step_audio_editx_factory():
     unified_model_interface.register_model_factory("step_audio_editx", "tts", step_audio_editx_factory)
 
 
+def register_cosyvoice_factory():
+    """Register CosyVoice3 model factory"""
+    def cosyvoice_factory(config: ModelLoadConfig):
+        """Factory for CosyVoice3 models with ComfyUI integration"""
+        import os
+        
+        # Extract parameters
+        model_path = config.model_path
+        device = config.device or "auto"
+        use_fp16 = config.additional_params.get("use_fp16", True) if config.additional_params else True
+        load_trt = config.additional_params.get("load_trt", False) if config.additional_params else False
+        load_vllm = config.additional_params.get("load_vllm", False) if config.additional_params else False
+        
+        try:
+            # Import CosyVoice components
+            # Note: Requires CosyVoice library to be installed or bundled
+            try:
+                from cosyvoice.cli.cosyvoice import CosyVoice3
+            except ImportError:
+                raise ImportError(
+                    "CosyVoice library not found. Please install it:\n"
+                    "1. Clone: git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git\n"
+                    "2. Install: cd CosyVoice && pip install -r requirements.txt\n"
+                    "3. Restart ComfyUI"
+                )
+            
+            # Verify model path
+            if not model_path:
+                raise RuntimeError("CosyVoice3 model path not provided")
+            
+            if not os.path.exists(model_path):
+                # Try auto-download
+                from engines.cosyvoice.cosyvoice_downloader import cosyvoice_downloader
+                model_path = cosyvoice_downloader.download_model()
+            
+            # Check for config file
+            config_path = os.path.join(model_path, "cosyvoice3.yaml")
+            if not os.path.exists(config_path):
+                raise RuntimeError(
+                    f"CosyVoice3 config not found at {config_path}. "
+                    f"Please ensure the model is correctly downloaded."
+                )
+            
+            # Initialize CosyVoice3 engine
+            print(f"🔄 Loading CosyVoice3 model from {model_path}...")
+            
+            engine = CosyVoice3(
+                model_dir=model_path,
+                load_trt=load_trt,
+                load_vllm=load_vllm,
+                fp16=use_fp16
+            )
+            
+            print(f"✅ CosyVoice3 model loaded via unified interface on {device}")
+            return engine
+            
+        except ImportError as e:
+            raise ImportError(f"CosyVoice3 dependencies not available. Error: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load CosyVoice3 model: {e}")
+    
+    unified_model_interface.register_model_factory("cosyvoice", "tts", cosyvoice_factory)
+
+
+
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
@@ -943,6 +1008,7 @@ def initialize_all_factories():
     register_rvc_factory()
     register_vibevoice_factory()
     register_index_tts_factory()
+    register_cosyvoice_factory()
 
 
 # Auto-initialize on import

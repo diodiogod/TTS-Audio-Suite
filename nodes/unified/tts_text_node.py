@@ -189,6 +189,11 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "index_tts":
                 stable_params['low_vram'] = config.get('low_vram', False)
 
+            # For CosyVoice, include mode and speed in cache key
+            if engine_type == "cosyvoice":
+                stable_params['mode'] = config.get('mode', 'zero_shot')
+                stable_params['use_fp16'] = config.get('use_fp16', True)
+
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Cache key now properly includes model name for correct differentiation
@@ -457,6 +462,85 @@ Back to the main narrator voice for the conclusion.""",
                     'timestamp': time.time()
                 }
 
+                return engine_instance
+
+            elif engine_type == "cosyvoice":
+                # Create CosyVoice wrapper instance using the adapter pattern
+                from engines.adapters.cosyvoice_adapter import CosyVoiceAdapter
+                
+                class CosyVoiceWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.adapter = None
+                    
+                    def _ensure_adapter(self):
+                        if self.adapter is None:
+                            self.adapter = CosyVoiceAdapter()
+                            # Initialize with config
+                            model_path = self.config.get('model_path')
+                            if model_path and model_path.startswith('local:'):
+                                model_path = model_path  # Keep local: prefix
+                            elif model_path == 'Fun-CosyVoice3-0.5B':
+                                model_path = None  # Auto-download
+                            
+                            self.adapter.initialize_engine(
+                                model_path=model_path,
+                                device=self.config.get('device', 'auto'),
+                                use_fp16=self.config.get('use_fp16', True),
+                                load_trt=self.config.get('load_trt', False),
+                                load_vllm=self.config.get('load_vllm', False)
+                            )
+                        return self.adapter
+                    
+                    def generate_tts_audio(self, text, char_audio, char_text, character="narrator", **params):
+                        adapter = self._ensure_adapter()
+                        
+                        # Get mode and instruct_text from config
+                        mode = self.config.get('mode', 'zero_shot')
+                        instruct_text = self.config.get('instruct_text', '')
+                        speed = self.config.get('speed', 1.0)
+                        
+                        # Get speaker audio path
+                        speaker_audio = None
+                        if char_audio:
+                            if isinstance(char_audio, dict) and 'waveform' in char_audio:
+                                # Save to temp file for CosyVoice
+                                waveform = char_audio['waveform']
+                                sample_rate = char_audio.get('sample_rate', 22050)
+                                speaker_audio = AudioProcessingUtils.save_audio_to_temp_file(waveform, sample_rate)
+                            elif isinstance(char_audio, str):
+                                speaker_audio = char_audio
+                        
+                        # Generate using adapter
+                        audio = adapter.generate(
+                            text=text,
+                            speaker_audio=speaker_audio,
+                            reference_text=char_text or self.config.get('reference_text', ''),
+                            mode=mode,
+                            instruct_text=instruct_text,
+                            speed=speed,
+                            seed=params.get('seed', 0)
+                        )
+                        
+                        # Format as ComfyUI audio
+                        audio_output = {
+                            "waveform": audio.unsqueeze(0) if audio.dim() == 2 else audio,
+                            "sample_rate": 22050
+                        }
+                        
+                        duration = audio.shape[-1] / 22050.0
+                        generation_info = f"✅ CosyVoice3 generation complete ({mode} mode, {duration:.1f}s)"
+                        
+                        return (audio_output, generation_info)
+                
+                engine_instance = CosyVoiceWrapper(config)
+                
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
 
             else:
@@ -956,6 +1040,16 @@ Back to the main narrator voice for the conclusion.""",
                 # Format as ComfyUI audio format (processor returns tensor, we need dict)
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
                 result = (formatted_audio, generation_info)
+                
+            elif engine_type == "cosyvoice":
+                # CosyVoice3 uses wrapper pattern - call directly through wrapper
+                result = engine_instance.generate_tts_audio(
+                    text=text,
+                    char_audio=audio_tensor,
+                    char_text=reference_text,
+                    character=char_display,
+                    seed=seed
+                )
                 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")

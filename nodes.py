@@ -121,6 +121,14 @@ except Exception as e:
     print(f"❌ IndexTTS-2 Engine failed: {e}")
     INDEX_TTS_ENGINE_AVAILABLE = False
 
+try:
+    cosyvoice_engine_module = load_node_module("cosyvoice_engine_node", "engines/cosyvoice_engine_node.py")
+    CosyVoiceEngineNode = cosyvoice_engine_module.CosyVoiceEngineNode
+    COSYVOICE_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ CosyVoice3 Engine failed: {e}")
+    COSYVOICE_ENGINE_AVAILABLE = False
+
 # IndexTTS-2 Emotion Options Node
 try:
     index_tts_emotion_options_module = load_node_module("index_tts_emotion_options_node", "engines/index_tts_emotion_options_node.py")
@@ -415,6 +423,10 @@ if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
 if INDEX_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEngineNode"] = IndexTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEngineNode"] = "⚙️ IndexTTS-2 Engine"
+
+if COSYVOICE_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["CosyVoiceEngineNode"] = CosyVoiceEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["CosyVoiceEngineNode"] = "⚙️ CosyVoice3 Engine"
 
 if INDEX_TTS_EMOTION_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEmotionOptionsNode"] = IndexTTSEmotionOptionsNode
