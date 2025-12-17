@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.7] - 2025-12-17
+
+### Added
+
+- Add GPU acceleration support for Step Audio EditX ONNX operations
+- New features:
+- Automatic ONNX GPU acceleration for CosyVoice vocoder and FunASR processing
+- Verified working on Windows with Python 3.10+
+- Improvements:
+- Clarified Step Audio EditX model directory structure in documentation
+
+### Fixed
+
+- Smart CUDA detection with automatic CPU fallback for compatibility
+- Better error handling for missing GPU libraries
 ## [4.15.6] - 2025-12-17
 
 ### Fixed
