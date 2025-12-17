@@ -195,6 +195,39 @@ def check_old_extension_conflict():
 # Perform conflict check
 OLD_EXTENSION_CONFLICT = check_old_extension_conflict()
 
+# CRITICAL FIX FOR ISSUE #191: Clear poisoned utils from sys.modules
+# Some custom nodes (e.g., LG_HotReload) have a utils.py file that gets loaded
+# into sys.modules['utils'], shadowing our utils/ directory package.
+# This causes "No module named 'utils.models'; 'utils' is not a package" errors
+# when our code tries to import from utils submodules.
+# We must clear it BEFORE loading nodes.py which imports from utils.
+if 'utils' in sys.modules:
+    utils_module = sys.modules['utils']
+    # Check if it's a poisoned utils (single .py file, not a package directory)
+    # Real packages have __path__ attribute, single files don't
+    if not hasattr(utils_module, '__path__'):
+        # It's a single .py file masquerading as utils - this will break our imports
+        utils_file = getattr(utils_module, '__file__', 'unknown')
+        print(f"\n{'='*80}")
+        print(f"⚠️  UTILS NAMESPACE CONFLICT DETECTED")
+        print(f"{'='*80}")
+        print(f"Another custom node has a 'utils.py' file in sys.modules['utils']:")
+        print(f"   Source: {utils_file}")
+        print(f"")
+        print(f"This conflicts with TTS Audio Suite's 'utils/' package directory.")
+        print(f"Removing the conflicting module to allow TTS Audio Suite to load.")
+        print(f"")
+        print(f"If this causes issues with another custom node, that node should:")
+        print(f"• Use relative imports (from .utils import X)")
+        print(f"• Or use a unique name instead of 'utils'")
+        print(f"{'='*80}\n")
+
+        # Delete the poisoned utils module and any attempted submodules
+        del sys.modules['utils']
+        to_delete = [key for key in sys.modules.keys() if key.startswith('utils.')]
+        for key in to_delete:
+            del sys.modules[key]
+
 # Get the path to the nodes.py file
 nodes_py_path = os.path.join(os.path.dirname(__file__), "nodes.py")
 
