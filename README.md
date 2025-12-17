@@ -1491,22 +1491,25 @@ ComfyUI/models/TTS/IndexTTS/
 
 ```
 ComfyUI/models/TTS/step_audio_editx/
-├── config.json                          ← Model configuration
-├── configuration_step1.py               ← Step-1 configuration
-├── modeling_step1.py                    ← Step-1 modeling code
-├── model-00001.safetensors              ← Main 3B LLM weights (~6.3GB)
-├── model.safetensors.index.json        ← Model index
-├── tokenizer.model                      ← SentencePiece tokenizer
-├── tokenizer_config.json                ← Tokenizer configuration
-├── linguistic_tokenizer.npy             ← Linguistic tokenizer (from Step-Audio-Tokenizer)
-├── speech_tokenizer_v1.onnx             ← Speech tokenizer (from Step-Audio-Tokenizer)
-└── CosyVoice-300M-25Hz/                 ← CosyVoice vocoder (24kHz output)
-    ├── FLOW_VERSION
-    ├── campplus.onnx                    ← Speaker verification
-    ├── cosyvoice.yaml
-    ├── flow.pt                          ← Flow matching model
-    ├── hift.pt                          ← HiFi-GAN vocoder
-    └── speech_tokenizer_v1.onnx         ← VQ-VAE tokenizer
+├── Step-Audio-EditX/                    ← Main LLM model directory (~7GB auto-download)
+│   ├── config.json                      ← Model configuration
+│   ├── configuration_step1.py           ← Step-1 configuration
+│   ├── modeling_step1.py                ← Step-1 modeling code
+│   ├── model-00001.safetensors          ← Main 3B LLM weights (~6.3GB)
+│   ├── model.safetensors.index.json     ← Model index
+│   ├── tokenizer.model                  ← SentencePiece tokenizer
+│   ├── tokenizer_config.json            ← Tokenizer configuration
+│   ├── linguistic_tokenizer.npy         ← Linguistic tokenizer (from Step-Audio-Tokenizer)
+│   ├── speech_tokenizer_v1.onnx         ← Speech tokenizer (from Step-Audio-Tokenizer)
+│   └── CosyVoice-300M-25Hz/             ← CosyVoice vocoder (24kHz output)
+│       ├── FLOW_VERSION
+│       ├── campplus.onnx                ← Speaker verification
+│       ├── cosyvoice.yaml
+│       ├── flow.pt                      ← Flow matching model
+│       ├── hift.pt                      ← HiFi-GAN vocoder
+│       └── speech_tokenizer_v1.onnx     ← VQ-VAE tokenizer
+└── FunASR-Paraformer/                   ← Speech recognition model (auto-downloaded)
+    └── [FunASR model files]
 ```
 
 **Available Step Audio EditX Models (Auto-Download):**
