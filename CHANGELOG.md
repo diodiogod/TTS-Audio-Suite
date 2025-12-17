@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.6] - 2025-12-17
+
+### Fixed
+
+- Fix Step Audio EditX silence/humming output issue
+- Resolves transformers 4.54+ compatibility by ensuring lm_head and embed_tokens weights are not incorrectly tied during model loading. Users will now get proper audio generation from Step Audio EditX without needing to re-download models or update config.json manually.
 ## [4.15.5] - 2025-12-16
 
 ### Added
