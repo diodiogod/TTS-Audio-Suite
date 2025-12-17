@@ -88,10 +88,10 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # - gradio (--no-deps): Forces pydantic, pillow, pydantic-core downgrades
 
 # --- PYTHON 3.13 NOTES ---
-# ✅ All TTS engines work (ChatterBox, F5-TTS, Higgs Audio)
-# ✅ RVC voice conversion works
-# ✅ OpenSeeFace mouth movement (experimental alternative)
-# ❌ MediaPipe incompatible (binary compatibility issue)
+# [OK] All TTS engines work (ChatterBox, F5-TTS, Higgs Audio)
+# [OK] RVC voice conversion works
+# [OK] OpenSeeFace mouth movement (experimental alternative)
+# [NO] MediaPipe incompatible (binary compatibility issue)
 
 # --- BUNDLED ENGINES ---
 # All engines are bundled to avoid external dependency conflicts:
@@ -99,3 +99,4 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # - F5-TTS: engines/f5_tts/ (numpy 2.x compatible fork)
 # - Higgs Audio: engines/higgs_audio/ (transformers 4.46+ compatible)
 # - IndexTTS-2: engines/index_tts/ (emotion disentanglement TTS)
+
