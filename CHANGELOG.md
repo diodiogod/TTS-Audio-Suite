@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.8] - 2025-12-17
+
+### Added
+
+- Detect conflicting utils.py files from other custom nodes
+- Add warning message showing which node is causing conflict
+
+### Fixed
+
+- Address issue #191: utils namespace conflict from other custom nodes
+- This is a tentative fix for users experiencing 'utils' is not a package errors.
+- Should resolve all engine loading failures
+- Note: This fix has been tested with simulated conflicts but not yet confirmed on affected user systems.
+
+### Removed
+
+- Automatically remove conflicts before TTS Suite loads
+## [4.15.7] - 2025-12-17
+
+### Added
+
+- Add GPU acceleration support for Step Audio EditX ONNX operations
+- New features:
+- Automatic ONNX GPU acceleration for CosyVoice vocoder and FunASR processing
+- Verified working on Windows with Python 3.10+
+- Improvements:
+- Clarified Step Audio EditX model directory structure in documentation
+
+### Fixed
+
+- Smart CUDA detection with automatic CPU fallback for compatibility
+- Better error handling for missing GPU libraries
+## [4.15.6] - 2025-12-17
+
+### Fixed
+
+- Fix Step Audio EditX silence/humming output issue
+- Resolves transformers 4.54+ compatibility by ensuring lm_head and embed_tokens weights are not incorrectly tied during model loading. Users will now get proper audio generation from Step Audio EditX without needing to re-download models or update config.json manually.
 ## [4.15.5] - 2025-12-16
 
 ### Added

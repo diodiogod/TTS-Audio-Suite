@@ -285,6 +285,13 @@ class UnifiedModelLoader:
             else:
                 raise ValueError(f"Unsupported model source: {source}")
 
+            # CRITICAL: Fix transformers 4.54+ compatibility issue
+            # The Step-Audio-EditX model has separate weights for lm_head and embed_tokens
+            # but transformers 4.54+ ties them by default. We must set tie_word_embeddings=False
+            if hasattr(model, 'config') and not getattr(model.config, 'tie_word_embeddings', False):
+                self.logger.debug("Applying transformers 4.54+ compatibility fix: setting tie_word_embeddings=False")
+                model.config.tie_word_embeddings = False
+
             # CRITICAL: Put model in evaluation mode (disables dropout, batch norm training mode)
             # Without this, the model generates garbage due to training-time randomness
             model.eval()

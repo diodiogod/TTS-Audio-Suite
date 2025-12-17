@@ -810,6 +810,50 @@ class TTSAudioInstaller:
         # This is the trade-off: some packages will be downgraded, but only to versions
         # that are compatible with the software that needs them
 
+    def install_onnxruntime_with_gpu_support(self):
+        """Install ONNX Runtime with GPU acceleration if CUDA is available"""
+        self.log("Installing ONNX Runtime (OpenSeeFace, Step Audio EditX)", "INFO")
+
+        cuda_version = self.detect_cuda_version()
+
+        # Try GPU version first if CUDA is available
+        if cuda_version != "cpu":
+            self.log("CUDA detected - attempting onnxruntime-gpu for GPU acceleration", "INFO")
+            try:
+                # Try GPU version without --no-deps (modern versions don't force numpy downgrade)
+                gpu_success = self.run_pip_command(
+                    ["install", "onnxruntime-gpu>=1.23.0"],
+                    "Installing onnxruntime-gpu (GPU acceleration for ONNX models)",
+                    ignore_errors=True
+                )
+
+                if gpu_success:
+                    # Verify GPU provider is available
+                    try:
+                        result = subprocess.run([
+                            sys.executable, "-c",
+                            "import onnxruntime; providers = onnxruntime.get_available_providers(); print('CUDAExecutionProvider' in providers)"
+                        ], capture_output=True, text=True, timeout=10)
+
+                        if "True" in result.stdout:
+                            self.log("onnxruntime-gpu with CUDA support installed successfully", "SUCCESS")
+                            return
+                        else:
+                            self.log("onnxruntime-gpu installed but CUDA provider not available - trying CPU version", "WARNING")
+                    except Exception as e:
+                        self.log(f"Could not verify CUDA provider: {e}", "WARNING")
+
+            except subprocess.CalledProcessError:
+                self.log("onnxruntime-gpu installation failed - falling back to CPU version", "WARNING")
+
+        # Fallback to CPU version
+        self.log("Installing onnxruntime (CPU) for OpenSeeFace and Step Audio EditX", "INFO")
+        self.run_pip_command(
+            ["install", "onnxruntime>=1.17.0"],
+            "Installing onnxruntime (CPU version)",
+            ignore_errors=True
+        )
+
     def install_problematic_packages(self):
         """Install packages that cause conflicts using --no-deps"""
         self.log("Installing problematic packages with --no-deps to prevent conflicts", "WARNING")
@@ -820,7 +864,7 @@ class TTSAudioInstaller:
             "descript-audiotools",  # Forces protobuf downgrade from 6.x to 3.19.x
             "cached-path",          # Forces package downgrades
             "torchcrepe",          # Conflicts via librosa dependency
-            "onnxruntime",         # For OpenSeeFace, but forces numpy 2.3.x
+            # NOTE: onnxruntime moved to install_onnxruntime_with_gpu_support() for smart GPU detection
             "opencv-python",       # Forces numpy downgrade from 2.x to 1.26.x - dependencies pre-installed
             "gradio",              # Forces pydantic, pillow, pydantic-core downgrades - dependencies pre-installed
         ]
@@ -1214,6 +1258,7 @@ def main():
         installer.install_rvc_dependencies()
         installer.install_gradio_and_opencv_dependencies()  # Pre-install deps before --no-deps
         installer.install_problematic_packages()
+        installer.install_onnxruntime_with_gpu_support()  # Install ONNX with GPU acceleration if available
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
         installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
