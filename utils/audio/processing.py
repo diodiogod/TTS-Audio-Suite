@@ -154,24 +154,30 @@ class AudioProcessingUtils:
             return audio
         
         pad_duration = target_duration - current_duration
-        silence = AudioProcessingUtils.create_silence(
-            pad_duration, sample_rate,
-            channels=audio.shape[0] if audio.dim() == 2 else 1,
-            device=audio.device,
-            dtype=audio.dtype
-        )
+        num_samples = int(pad_duration * sample_rate)
+        
+        # Create silence with matching dimensions to input audio
+        if audio.dim() == 1:
+            silence = torch.zeros(num_samples, device=audio.device, dtype=audio.dtype)
+        elif audio.dim() == 2:
+            # 2D audio: [channels, samples] - create matching 2D silence
+            silence = torch.zeros(audio.shape[0], num_samples, device=audio.device, dtype=audio.dtype)
+        else:
+            # 3D audio: [batch, channels, samples]
+            silence = torch.zeros(audio.shape[0], audio.shape[1], num_samples, device=audio.device, dtype=audio.dtype)
         
         if pad_type == "start":
             return torch.cat([silence, audio], dim=-1)
         elif pad_type == "end":
             return torch.cat([audio, silence], dim=-1)
         elif pad_type == "both":
-            half_silence = AudioProcessingUtils.create_silence(
-                pad_duration / 2, sample_rate,
-                channels=audio.shape[0] if audio.dim() == 2 else 1,
-                device=audio.device,
-                dtype=audio.dtype
-            )
+            half_samples = num_samples // 2
+            if audio.dim() == 1:
+                half_silence = torch.zeros(half_samples, device=audio.device, dtype=audio.dtype)
+            elif audio.dim() == 2:
+                half_silence = torch.zeros(audio.shape[0], half_samples, device=audio.device, dtype=audio.dtype)
+            else:
+                half_silence = torch.zeros(audio.shape[0], audio.shape[1], half_samples, device=audio.device, dtype=audio.dtype)
             return torch.cat([half_silence, audio, half_silence], dim=-1)
         else:
             raise ValueError(f"Unknown pad_type: {pad_type}")

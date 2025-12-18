@@ -62,7 +62,8 @@ class TestSilenceCreation:
             sample_rate=22050
         )
         
-        assert silence.shape == (1, 22050)
+        # Mono silence is 1D tensor
+        assert silence.shape == (22050,)
         assert torch.all(silence == 0)
         assert silence.dtype == torch.float32
     
@@ -92,12 +93,13 @@ class TestAudioNormalization:
     """Tests for audio tensor normalization"""
     
     def test_normalize_1d_tensor(self):
-        """Test normalizing 1D tensor to 2D"""
+        """Test that 1D tensor stays 1D (mono audio)"""
         audio = torch.randn(22050)
         normalized = AudioProcessingUtils.normalize_audio_tensor(audio)
         
-        assert normalized.dim() == 2
-        assert normalized.shape[0] == 1  # Single channel
+        # API keeps 1D audio as 1D
+        assert normalized.dim() == 1
+        assert normalized.shape == (22050,)
     
     def test_normalize_2d_tensor_unchanged(self):
         """Test that 2D tensor with correct shape is unchanged"""
@@ -211,7 +213,8 @@ class TestPadding:
     
     def test_pad_to_duration_end(self):
         """Test padding at end"""
-        audio = torch.randn(1, 11025)  # 0.5s at 22050
+        # Use 2D audio since padding uses 2D silence
+        audio = torch.randn(1, 11025)  # 0.5s at 22050, 2D format
         
         padded = AudioProcessingUtils.pad_audio_to_duration(
             audio,
@@ -226,6 +229,7 @@ class TestPadding:
     
     def test_pad_to_duration_start(self):
         """Test padding at start"""
+        # Use 2D audio since padding uses 2D silence  
         audio = torch.randn(1, 11025)
         
         padded = AudioProcessingUtils.pad_audio_to_duration(
