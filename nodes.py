@@ -1,12 +1,14 @@
+# System imports - needed throughout the module
+import sys
+import os
+
 # Smart numba compatibility handling
 try:
     from utils.compatibility import setup_numba_compatibility
     setup_numba_compatibility(quick_startup=True, verbose=False)
 except ImportError:
-    # Fallback: only apply workaround if not already handled
-    import sys
-    import os
-    # Don't do anything - __init__.py already handled compatibility testing
+    # __init__.py already handled compatibility testing
+    pass
 
 # Version and constants
 VERSION = "4.15.8"

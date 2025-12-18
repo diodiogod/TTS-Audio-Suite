@@ -1,0 +1,13 @@
+{
+    "1": {
+        "class_type": "CosyVoice Engine",
+        "inputs": {
+            "model_path": "Fun-CosyVoice3-0.5B",
+            "device": "auto",
+            "mode": "zero_shot",
+            "speed": 1.0,
+            "use_fp16": true,
+            "reference_text": "This is a sample reference text for voice cloning."
+        }
+    }
+}

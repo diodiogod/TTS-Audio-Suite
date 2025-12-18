@@ -1,0 +1,11 @@
+{
+    "1": {
+        "class_type": "ChatterBox Engine",
+        "inputs": {
+            "language": "English",
+            "device": "auto",
+            "exaggeration": 0.5,
+            "cfg_weight": 0.5
+        }
+    }
+}
