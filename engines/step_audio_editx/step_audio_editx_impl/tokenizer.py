@@ -84,6 +84,7 @@ class StepAudioTokenizer:
             onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         )
         session_option.intra_op_num_threads = 1
+        session_option.log_severity_level = 3  # Suppress performance warnings (3=Error, 4=Fatal)
         self.ort_session = onnxruntime.InferenceSession(
             cosy_tokenizer_path, sess_options=session_option, providers=providers
         )
