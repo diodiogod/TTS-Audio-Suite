@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.9] - 2025-12-18
+
+### Added
+
+- Silent/gibberish audio generation
+- Generation ignoring max_new_tokens parameter
+- Model behaving unpredictably across different transformers versions
+- Implementation:
+- Detects weight tying via data pointer comparison
+- Detailed logging for future removal if stepfun-ai fixes their model
+
+### Fixed
+
+- Fix Step Audio EditX silence and max_new_tokens generation bug
+- Properly resolves transformers 4.54+ weight tying issue that caused:
+- Restores correct lm_head weights from model checkpoint
+- Comprehensive error handling with fallback behavior
 ## [4.15.8] - 2025-12-17
 
 ### Added
