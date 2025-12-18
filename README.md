@@ -86,6 +86,7 @@ Switching [seed:24]   Inline Edit tags
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
+  - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
   - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
@@ -149,7 +150,7 @@ Switching [seed:24]   Inline Edit tags
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, and **IndexTTS-2** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, and **CosyVoice3** with voice cloning, reference audio synthesis, and production-grade quality
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -663,6 +664,52 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 - **Duration Limits**: Segments must be 0.5s - 30s (split longer segments)
 
 **📖 [Complete Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
+
+</details>
+
+<details>
+<summary><h3>🗣️ CosyVoice3 Multilingual Voice Cloning</h3></summary>
+
+**NEW in v4.16**: Alibaba's state-of-the-art multilingual voice cloning with zero-shot, instruct, and cross-lingual modes!
+
+* **Zero-Shot Voice Cloning**: Clone any voice from reference audio + transcript with exceptional fidelity
+* **Instruct Mode**: Control emotions, dialects (Cantonese, Sichuanese, etc.), and speaking styles via natural language instructions
+* **Cross-Lingual Mode**: Fine-grained control with embedded tags like `[breath]` and `[laughter]`
+* **15+ Languages**: English, Chinese, Japanese, Korean, French, German, Spanish, Italian, Portuguese, Russian, and more
+
+**Key Capabilities:**
+
+- **Three Generation Modes**: Zero-shot, Instruct, and Cross-Lingual for different use cases
+- **Chinese Dialects**: Native support for Cantonese, Sichuanese, and other Chinese dialects
+- **Character Switching**: Full `[CharacterName]` support with per-character voice references
+- **Pause Tags**: Complete `[pause:Ns]` support for natural speech timing
+- **SRT Processing**: Advanced subtitle timing with all timing modes
+- **Speed Control**: 0.5x to 2.0x speech speed adjustment
+- **FP16 Support**: Efficient half-precision inference for faster generation
+
+**Example Usage:**
+
+```
+[Alice] Hello everyone! This is zero-shot voice cloning.
+[Bob] 你好！我说普通话。[pause:1s] 还可以说方言。
+```
+
+**Instruct Mode Examples:**
+
+```
+# Speak with Cantonese dialect
+Instruct: 请用广东话表达。
+
+# Speak with excitement
+Instruct: 用兴奋的语气说话。
+```
+
+**Perfect for:**
+
+- Multilingual content with Chinese dialect support
+- Voice cloning with fine emotional control via instructions
+- Multi-character conversations across languages
+- Professional localization with native accent preservation
 
 </details>
 

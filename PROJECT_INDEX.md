@@ -111,6 +111,13 @@ This extension features a **unified modular architecture** supporting multiple T
   - **model_loader.py** - Model loading and management utilities
   - **quantization/** - AWQ quantization support for VRAM reduction
 
+**engines/cosyvoice/** - CosyVoice3 TTS engine with multilingual voice cloning
+- **cosyvoice.py** - Core CosyVoice3 engine wrapper with zero-shot, instruct, and cross-lingual modes
+- **cosyvoice_downloader.py** - Auto-download system for Fun-CosyVoice3-0.5B model
+- **impl/** - Bundled CosyVoice library from FunAudioLLM/CosyVoice repository
+
+**engines/processors/cosyvoice_processor.py** - CosyVoice3 TTS processor with pause tags, character switching, and chunking support
+
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
 - **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
@@ -140,6 +147,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/adapters/step_audio_editx_adapter.py** - Step Audio EditX engine adapter with voice cloning and audio editing parameter mapping
 
+**engines/adapters/cosyvoice_adapter.py** - CosyVoice3 engine adapter with zero-shot, instruct, and cross-lingual mode support and character switching
+
 **engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
 
 **engines/adapters/f5tts_streaming_adapter.py** - F5-TTS streaming adapter enabling parallel processing with language model switching
@@ -163,6 +172,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/engines/index_tts_emotion_options_node.py** - 🌈 IndexTTS-2 Emotion Vectors node with interactive radar chart for 8-emotion control
 
 **nodes/engines/step_audio_editx_engine_node.py** - ⚙️ Step Audio EditX Engine configuration node with zero-shot voice cloning, quantization options (int4/int8), and generation parameters for both clone and edit modes
+
+**nodes/engines/cosyvoice_engine_node.py** - ⚙️ CosyVoice3 Engine configuration node with mode selection (zero_shot, instruct, cross_lingual), speed control, and FP16 support
 
 ### Unified Interface Nodes
 
@@ -209,6 +220,9 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/step_audio_editx/** - Step Audio EditX internal processors
 - **step_audio_editx_processor.py** - Step Audio EditX TTS orchestrator with zero-shot voice cloning and emotion/style/speed editing (internal processor used by Unified TTS node)
 - **step_audio_editx_srt_processor.py** - Step Audio EditX SRT processor with character switching and inline edit tag support for subtitle-based TTS workflows
+
+**nodes/cosyvoice/** - CosyVoice3 internal processors
+- **cosyvoice_srt_processor.py** - CosyVoice3 SRT processor with character switching, timing modes, and interrupt handling
 
 ### Step Audio EditX Specialized Nodes
 
