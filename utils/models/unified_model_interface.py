@@ -938,6 +938,7 @@ def register_cosyvoice_factory():
     def cosyvoice_factory(config: ModelLoadConfig):
         """Factory for CosyVoice3 models with ComfyUI integration"""
         import os
+        import sys
         
         # Extract parameters
         model_path = config.model_path
@@ -947,17 +948,42 @@ def register_cosyvoice_factory():
         load_vllm = config.additional_params.get("load_vllm", False) if config.additional_params else False
         
         try:
-            # Import CosyVoice components
-            # Note: Requires CosyVoice library to be installed or bundled
-            try:
-                from cosyvoice.cli.cosyvoice import CosyVoice3
-            except ImportError:
-                raise ImportError(
-                    "CosyVoice library not found. Please install it:\n"
-                    "1. Clone: git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git\n"
-                    "2. Install: cd CosyVoice && pip install -r requirements.txt\n"
-                    "3. Restart ComfyUI"
-                )
+            # Import CosyVoice from bundled location
+            # First, add the bundled CosyVoice path to sys.path
+            current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # TTS-Audio-Suite root
+            bundled_cosyvoice_path = os.path.join(current_dir, "engines", "cosyvoice", "impl")
+            
+            if os.path.exists(bundled_cosyvoice_path):
+                # Add bundled path to sys.path if not already there
+                if bundled_cosyvoice_path not in sys.path:
+                    sys.path.insert(0, bundled_cosyvoice_path)
+                    print(f"📦 Using bundled CosyVoice library from {bundled_cosyvoice_path}")
+                
+                # Also add third_party/Matcha-TTS to path (required by CosyVoice)
+                matcha_path = os.path.join(bundled_cosyvoice_path, "third_party", "Matcha-TTS")
+                if os.path.exists(matcha_path) and matcha_path not in sys.path:
+                    sys.path.insert(0, matcha_path)
+                
+                try:
+                    from cosyvoice.cli.cosyvoice import CosyVoice3
+                except ImportError as bundle_error:
+                    raise ImportError(
+                        f"Failed to import bundled CosyVoice: {bundle_error}\n"
+                        "The bundled library may have missing dependencies.\n"
+                        "Try: pip install hyperpyyaml conformer onnxruntime"
+                    )
+            else:
+                # Fallback to system installation
+                try:
+                    from cosyvoice.cli.cosyvoice import CosyVoice3
+                except ImportError:
+                    raise ImportError(
+                        "CosyVoice library not found. The bundled library is missing.\n"
+                        "Please reinstall TTS Audio Suite or manually install CosyVoice:\n"
+                        "1. Clone: git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git\n"
+                        "2. Install: cd CosyVoice && pip install -r requirements.txt\n"
+                        "3. Restart ComfyUI"
+                    )
             
             # Verify model path
             if not model_path:
@@ -968,25 +994,44 @@ def register_cosyvoice_factory():
                 from engines.cosyvoice.cosyvoice_downloader import cosyvoice_downloader
                 model_path = cosyvoice_downloader.download_model()
             
-            # Check for config file
-            config_path = os.path.join(model_path, "cosyvoice3.yaml")
-            if not os.path.exists(config_path):
+            # Check for config file (support cosyvoice.yaml, cosyvoice2.yaml, or cosyvoice3.yaml)
+            config_found = False
+            for config_name in ["cosyvoice3.yaml", "cosyvoice2.yaml", "cosyvoice.yaml"]:
+                config_path = os.path.join(model_path, config_name)
+                if os.path.exists(config_path):
+                    config_found = True
+                    break
+            
+            if not config_found:
                 raise RuntimeError(
-                    f"CosyVoice3 config not found at {config_path}. "
+                    f"CosyVoice config not found in {model_path}. "
                     f"Please ensure the model is correctly downloaded."
                 )
             
-            # Initialize CosyVoice3 engine
-            print(f"🔄 Loading CosyVoice3 model from {model_path}...")
+            # Use AutoModel which automatically detects the correct model class
+            # This matches the official usage pattern
+            from cosyvoice.cli.cosyvoice import AutoModel
             
-            engine = CosyVoice3(
+            print(f"🔄 Loading CosyVoice model from {model_path}...")
+            
+            # Handle vLLM gracefully - if not installed, just skip it
+            actual_load_vllm = False
+            if load_vllm:
+                try:
+                    import vllm
+                    actual_load_vllm = True
+                except ImportError:
+                    print("⚠️ vLLM not installed, skipping vLLM optimization")
+                    actual_load_vllm = False
+            
+            engine = AutoModel(
                 model_dir=model_path,
                 load_trt=load_trt,
-                load_vllm=load_vllm,
+                load_vllm=actual_load_vllm,
                 fp16=use_fp16
             )
             
-            print(f"✅ CosyVoice3 model loaded via unified interface on {device}")
+            print(f"✅ CosyVoice model loaded via unified interface on {device}")
             return engine
             
         except ImportError as e:

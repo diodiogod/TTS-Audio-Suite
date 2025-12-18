@@ -263,6 +263,36 @@ class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class CosyVoiceCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for CosyVoice3 engine."""
+    
+    def generate_cache_key(self, **params) -> str:
+        """Generate CosyVoice3 cache key from parameters."""
+        # Round floating point values to avoid precision issues
+        speed = params.get('speed', 1.0)
+        
+        if isinstance(speed, (int, float)):
+            speed = round(float(speed), 3)
+        
+        cache_data = {
+            'text': params.get('text', ''),
+            'speaker_audio': params.get('speaker_audio', ''),
+            'reference_text': params.get('reference_text', ''),
+            'mode': params.get('mode', 'zero_shot'),
+            'instruct_text': params.get('instruct_text', ''),
+            'speed': speed,
+            'seed': params.get('seed', 0),
+            'model_path': params.get('model_path', 'Fun-CosyVoice3-0.5B'),
+            'device': params.get('device', 'auto'),
+            'use_fp16': params.get('use_fp16', True),
+            'character': params.get('character', 'narrator'),
+            'engine': 'cosyvoice'
+        }
+        
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -274,7 +304,8 @@ class AudioCache:
             'higgs_audio': HiggsAudioCacheKeyGenerator(),
             'vibevoice': VibeVoiceCacheKeyGenerator(),
             'step_audio_editx': StepAudioEditXCacheKeyGenerator(),
-            'index_tts': IndexTTSCacheKeyGenerator()
+            'index_tts': IndexTTSCacheKeyGenerator(),
+            'cosyvoice': CosyVoiceCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):
@@ -347,6 +378,8 @@ class AudioCache:
         # Use engine-specific sample rates
         if engine_type in ('f5tts', 'step_audio_editx'):
             sample_rate = 24000
+        elif engine_type in ('index_tts', 'cosyvoice'):
+            sample_rate = 22050
         else:
             sample_rate = 44100
         return num_samples / sample_rate

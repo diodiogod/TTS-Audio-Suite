@@ -209,8 +209,8 @@ class CosyVoiceAdapter:
         for char, lang in char_lang_defaults.items():
             temp_parser.set_character_language_default(char, lang)
 
-        # Parse segments
-        segments = temp_parser.split_by_character(text)
+        # Parse segments with language information
+        segments = temp_parser.split_by_character(text, include_language=True)
 
         processed_segments = []
         for character, segment_text, language in segments:

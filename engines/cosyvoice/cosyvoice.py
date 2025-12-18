@@ -227,12 +227,22 @@ class CosyVoiceEngine:
         self._ensure_model_loaded()
         self._ensure_device_loaded()
         
+        # CosyVoice3 REQUIRES the prompt_text to be in format:
+        # 'You are a helpful assistant.<|endofprompt|>' + actual_transcript
+        # This is critical for correct audio generation!
+        formatted_prompt_text = prompt_text
+        if not prompt_text.startswith('You are a helpful assistant.'):
+            formatted_prompt_text = f'You are a helpful assistant.<|endofprompt|>{prompt_text}'
+        elif '<|endofprompt|>' not in prompt_text:
+            # Has prefix but missing delimiter
+            formatted_prompt_text = prompt_text.replace('You are a helpful assistant.', 'You are a helpful assistant.<|endofprompt|>')
+        
         # Collect all audio chunks
         audio_chunks = []
         
         for i, output in enumerate(self._cosyvoice.inference_zero_shot(
             tts_text=text,
-            prompt_text=prompt_text,
+            prompt_text=formatted_prompt_text,
             prompt_wav=prompt_wav,
             stream=stream,
             speed=speed,
@@ -284,18 +294,24 @@ class CosyVoiceEngine:
         self._ensure_model_loaded()
         self._ensure_device_loaded()
         
-        # Ensure instruct text has proper format
-        if not instruct_text.endswith("<|endofprompt|>"):
-            instruct_text = f"You are a helpful assistant. {instruct_text}<|endofprompt|>"
-        elif not instruct_text.startswith("You are a helpful assistant"):
-            instruct_text = f"You are a helpful assistant. {instruct_text}"
+        # CosyVoice3 instruct format MUST be: 'You are a helpful assistant. {instruction}<|endofprompt|>'
+        # Example: 'You are a helpful assistant. 请用广东话表达。<|endofprompt|>'
+        formatted_instruct = instruct_text
+        if not instruct_text.endswith('<|endofprompt|>'):
+            if instruct_text.startswith('You are a helpful assistant'):
+                formatted_instruct = f'{instruct_text}<|endofprompt|>'
+            else:
+                formatted_instruct = f'You are a helpful assistant. {instruct_text}<|endofprompt|>'
+        elif not instruct_text.startswith('You are a helpful assistant'):
+            # Has <|endofprompt|> but missing prefix
+            formatted_instruct = f'You are a helpful assistant. {instruct_text}'
         
         # Collect all audio chunks
         audio_chunks = []
         
         for i, output in enumerate(self._cosyvoice.inference_instruct2(
             tts_text=text,
-            instruct_text=instruct_text,
+            instruct_text=formatted_instruct,
             prompt_wav=prompt_wav,
             stream=stream,
             speed=speed,
@@ -346,11 +362,19 @@ class CosyVoiceEngine:
         self._ensure_model_loaded()
         self._ensure_device_loaded()
         
+        # CosyVoice3 cross_lingual also requires the system prompt prefix in the text
+        # Example: 'You are a helpful assistant.<|endofprompt|>[breath]...'
+        formatted_text = text
+        if not text.startswith('You are a helpful assistant.'):
+            formatted_text = f'You are a helpful assistant.<|endofprompt|>{text}'
+        elif '<|endofprompt|>' not in text:
+            formatted_text = text.replace('You are a helpful assistant.', 'You are a helpful assistant.<|endofprompt|>')
+        
         # Collect all audio chunks
         audio_chunks = []
         
         for i, output in enumerate(self._cosyvoice.inference_cross_lingual(
-            tts_text=text,
+            tts_text=formatted_text,
             prompt_wav=prompt_wav,
             stream=stream,
             speed=speed,

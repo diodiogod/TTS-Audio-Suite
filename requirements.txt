@@ -93,10 +93,30 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # [OK] OpenSeeFace mouth movement (experimental alternative)
 # [NO] MediaPipe incompatible (binary compatibility issue)
 
+# CosyVoice3 engine dependencies (bundled in engines/cosyvoice/impl/)
+# Core dependencies from CosyVoice requirements.txt
+lightning>=2.2.0         # PyTorch Lightning for Matcha-TTS flow matching
+gdown>=5.1.0             # Google Drive downloader (Matcha-TTS utility)
+diffusers>=0.29.0        # Diffusion models for flow matching
+grpcio>=1.57.0           # gRPC for CosyVoice server
+grpcio-tools>=1.57.0     # gRPC tools
+hydra-core>=1.3.2        # Configuration management
+inflect>=7.3.0           # Text normalization for CosyVoice
+matplotlib>=3.7.5        # Plotting utilities
+networkx>=3.1            # Graph utilities
+onnx>=1.16.0             # ONNX model format
+onnxruntime>=1.18.0      # ONNX runtime (Windows/Mac)
+pyarrow>=18.1.0          # Arrow data format
+rich>=13.7.1             # Rich console output
+uvicorn>=0.30.0          # ASGI server
+wetext>=0.0.4            # Chinese text normalization fallback
+wget>=3.2                # File downloading
+
 # --- BUNDLED ENGINES ---
 # All engines are bundled to avoid external dependency conflicts:
 # - ChatterBox: engines/chatterbox/ (modified for ComfyUI)
 # - F5-TTS: engines/f5_tts/ (numpy 2.x compatible fork)
 # - Higgs Audio: engines/higgs_audio/ (transformers 4.46+ compatible)
 # - IndexTTS-2: engines/index_tts/ (emotion disentanglement TTS)
+# - CosyVoice3: engines/cosyvoice/impl/ (multilingual zero-shot voice cloning)
 
