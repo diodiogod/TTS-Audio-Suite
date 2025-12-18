@@ -1,0 +1,12 @@
+{
+    "1": {
+        "class_type": "F5TTSEngineNode",
+        "inputs": {
+            "model_type": "F5-TTS",
+            "device": "auto",
+            "sample_rate": 24000,
+            "speed": 1.0,
+            "use_fp16": true
+        }
+    }
+}

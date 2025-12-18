@@ -1,0 +1,45 @@
+{
+    "1": {
+        "class_type": "ChatterBoxEngineNode",
+        "inputs": {
+            "language": "English",
+            "device": "auto",
+            "exaggeration": 0.5,
+            "temperature": 0.8,
+            "cfg_weight": 0.5,
+            "top_p": 0.95,
+            "top_k": 50,
+            "min_p": 0.05,
+            "seed": 42,
+            "use_random_seed": false,
+            "num_beams": 1,
+            "repetition_penalty": 1.2,
+            "max_mel_tokens": 600,
+            "use_fp16": true,
+            "use_deepspeed": false,
+            "crash_protection_template": "hmm ,, {seg} hmm ,,"
+        }
+    },
+    "2": {
+        "class_type": "UnifiedTTSTextNode",
+        "inputs": {
+            "TTS_engine": [
+                "1",
+                0
+            ],
+            "text": "Hello, this is a test of the TTS Audio Suite. The quick brown fox jumps over the lazy dog.",
+            "narrator_voice": "voices_examples/David_Attenborough CC3.wav",
+            "seed": 42
+        }
+    },
+    "3": {
+        "class_type": "SaveAudio",
+        "inputs": {
+            "audio": [
+                "2",
+                0
+            ],
+            "filename_prefix": "tts_test_chatterbox"
+        }
+    }
+}

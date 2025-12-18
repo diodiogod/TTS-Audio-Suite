@@ -1,0 +1,13 @@
+{
+    "1": {
+        "class_type": "IndexTTSEngineNode",
+        "inputs": {
+            "model_path": "IndexTTS-V2",
+            "device": "auto",
+            "emotion_alpha": 0.7,
+            "use_random": true,
+            "max_text_tokens": 200,
+            "use_fp16": true
+        }
+    }
+}

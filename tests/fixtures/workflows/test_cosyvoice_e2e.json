@@ -1,0 +1,35 @@
+{
+    "1": {
+        "class_type": "CosyVoiceEngineNode",
+        "inputs": {
+            "model_path": "local:Fun-CosyVoice3-0.5B",
+            "device": "auto",
+            "mode": "zero_shot",
+            "speed": 1.0,
+            "use_fp16": true,
+            "reference_text": "This is a sample reference text for the voice."
+        }
+    },
+    "2": {
+        "class_type": "UnifiedTTSTextNode",
+        "inputs": {
+            "TTS_engine": [
+                "1",
+                0
+            ],
+            "text": "Hello, this is a test of the CosyVoice TTS engine. Testing one two three.",
+            "narrator_voice": "voices_examples/David_Attenborough CC3.wav",
+            "seed": 42
+        }
+    },
+    "3": {
+        "class_type": "SaveAudio",
+        "inputs": {
+            "audio": [
+                "2",
+                0
+            ],
+            "filename_prefix": "tts_test_cosyvoice"
+        }
+    }
+}

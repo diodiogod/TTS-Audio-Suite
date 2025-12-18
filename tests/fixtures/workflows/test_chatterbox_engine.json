@@ -1,11 +1,23 @@
 {
     "1": {
-        "class_type": "ChatterBox Engine",
+        "class_type": "ChatterBoxEngineNode",
         "inputs": {
             "language": "English",
             "device": "auto",
             "exaggeration": 0.5,
-            "cfg_weight": 0.5
+            "temperature": 0.8,
+            "cfg_weight": 0.5,
+            "top_p": 0.95,
+            "top_k": 50,
+            "min_p": 0.05,
+            "seed": 0,
+            "use_random_seed": true,
+            "num_beams": 1,
+            "repetition_penalty": 1.2,
+            "max_mel_tokens": 600,
+            "use_fp16": true,
+            "use_deepspeed": false,
+            "crash_protection_template": "{seg}"
         }
     }
 }
