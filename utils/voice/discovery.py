@@ -40,6 +40,7 @@ class VoiceDiscovery:
         self._character_aliases = {}
         self._character_language_defaults = {}
         self._aliases_valid = False
+        self._discovery_logged = False  # Track if we've logged discovery for this instance
 
         # Initialize cache manager for persistent caching
         self._cache_manager = VoiceDiscoveryCacheManager()
@@ -70,13 +71,15 @@ class VoiceDiscovery:
                     self._character_cache_valid = True
                     self._aliases_valid = True
 
-                    if len(self._character_cache) > 0:
+                    # Only log once (first time initialization)
+                    if len(self._character_cache) > 0 and not self._discovery_logged:
                         alias_count = len(self._character_aliases)
                         if alias_count > 0:
                             print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases (cached)")
                         else:
                             print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters (cached)")
                         print(f"[TTS Audio Suite] 🔄 Updating character discovery in background...")
+                        self._discovery_logged = True
 
                     # Start background refresh after ComfyUI loads
                     self._cache_manager.start_background_refresh(self._get_fresh_cache_data)
@@ -93,12 +96,14 @@ class VoiceDiscovery:
             cache_data = self._get_fresh_cache_data()
             self._cache_manager.save_cache(cache_data)
 
-            if len(self._character_cache) > 0:
+            # Only log once (first time initialization)
+            if len(self._character_cache) > 0 and not self._discovery_logged:
                 alias_count = len(self._character_aliases)
                 if alias_count > 0:
                     print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases")
                 else:
                     print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters")
+                self._discovery_logged = True
 
             # Start background refresh for updates
             self._cache_manager.start_background_refresh(self._get_fresh_cache_data)

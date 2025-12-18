@@ -68,14 +68,13 @@ class StringMultilineTagEditor:
     def _discover_characters(self):
         """Discover available character voices"""
         try:
-            from utils.voice.discovery import VoiceDiscovery
-            discovery = VoiceDiscovery()
+            from utils.voice.discovery import voice_discovery
 
-            # Get all available characters
-            characters = discovery.get_available_characters()
+            # Get all available characters using global singleton (discovery logging is centralized)
+            characters = voice_discovery.get_available_characters()
             if characters:
                 self._discovered_characters = list(characters) if isinstance(characters, set) else characters
-                print(f"🎭 TTS Tag Editor: Discovered {len(self._discovered_characters)} character voices")
+                # Don't log here - discovery.py already logs once per execution
         except Exception as e:
             print(f"⚠️ TTS Tag Editor: Could not discover characters: {e}")
 
