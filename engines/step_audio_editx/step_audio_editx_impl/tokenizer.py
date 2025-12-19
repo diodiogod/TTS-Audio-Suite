@@ -132,9 +132,28 @@ class StepAudioTokenizer:
         return speech_tokens, vq02_ori, vq06_ori
 
     def get_vq02_code(self, audio, session_id=None, is_final=True):
-        _tmp_wav = io.BytesIO()
-        torchaudio.save(_tmp_wav, audio, 16000, format="wav")
-        _tmp_wav.seek(0)
+        # 📦 BUNDLED CODE PATCH: Use temporary file instead of BytesIO for Windows compatibility
+        # Issue: torchcodec on Windows fails with BytesIO for WAV format
+        # Solution: Save to temp file, then read into BytesIO for FunASR
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+
+        try:
+            torchaudio.save(tmp_path, audio, 16000, format="wav")
+
+            # Read the WAV file into BytesIO for FunASR processing
+            with open(tmp_path, 'rb') as f:
+                _tmp_wav = io.BytesIO(f.read())
+            _tmp_wav.seek(0)
+        finally:
+            # Clean up temp file
+            import os
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except:
+                    pass  # Ignore cleanup errors
 
         with self.vq02_lock:
             cache = {}

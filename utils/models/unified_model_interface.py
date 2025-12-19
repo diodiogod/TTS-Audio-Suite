@@ -920,10 +920,77 @@ def register_step_audio_editx_factory():
                 device_map=device
             )
 
-            # Return the raw TTS engine (not wrapped) since the adapter expects it
-            # The StepAudioEditXEngine wrapper will be created by the adapter via __init__
+            # Return wrapped engine directly instead of using wrapper class
+            # The adapter and nodes expect a wrapper with clone() and edit_single() methods
+            # Create a simple wrapper that delegates to the raw TTS engine
+            class StepAudioEditXEngineWrapper:
+                """Simple wrapper providing clone() and edit_single() methods for the raw StepAudioTTS engine"""
+                def __init__(self, tts_engine, tokenizer, device, torch_dtype, quantization, model_path):
+                    self._tts_engine = tts_engine
+                    self._tokenizer = tokenizer
+                    self._model_config = None
+                    self.device = device
+                    self.torch_dtype = torch_dtype
+                    self.quantization = quantization
+                    self.model_dir = model_path
+
+                def clone(self, prompt_wav_path, prompt_text, target_text, temperature=0.7, do_sample=True, max_new_tokens=8192, progress_bar=None):
+                    """Delegate clone to raw TTS engine"""
+                    return self._tts_engine.clone(
+                        prompt_wav_path=prompt_wav_path,
+                        prompt_text=prompt_text,
+                        target_text=target_text,
+                        progress_bar=progress_bar,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        do_sample=do_sample
+                    )
+
+                def edit_single(self, input_audio_path, audio_text, edit_type, edit_info=None, text=None, progress_bar=None, max_new_tokens=8192, temperature=0.7, do_sample=True):
+                    """Delegate edit_single to raw TTS engine"""
+                    audio_tensor, sample_rate = self._tts_engine.edit(
+                        input_audio_path=input_audio_path,
+                        audio_text=audio_text,
+                        edit_type=edit_type,
+                        edit_info=edit_info,
+                        text=text,
+                        progress_bar=progress_bar,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        do_sample=do_sample
+                    )
+                    # Ensure output is [1, samples] format (2D)
+                    if audio_tensor.dim() == 1:
+                        audio_tensor = audio_tensor.unsqueeze(0)
+                    elif audio_tensor.dim() == 3:
+                        audio_tensor = audio_tensor.squeeze(0)
+                    return audio_tensor
+
+                def edit(self, input_audio_path, audio_text, edit_type, edit_info=None, text=None, progress_bar=None, max_new_tokens=8192, temperature=0.7, do_sample=True):
+                    """Alias for edit_single for compatibility"""
+                    return self.edit_single(input_audio_path, audio_text, edit_type, edit_info, text, progress_bar, max_new_tokens, temperature, do_sample)
+
+                def get_sample_rate(self):
+                    """Get sample rate from raw engine"""
+                    return 24000  # CosyVoice native sample rate
+
+                def to(self, device):
+                    """Move model to device"""
+                    self.device = device
+                    if hasattr(self._tts_engine, 'llm') and hasattr(self._tts_engine.llm, 'to'):
+                        try:
+                            self._tts_engine.llm.to(device)
+                        except:
+                            pass  # Quantized models can't be moved
+                    if hasattr(self._tts_engine, 'cosy_model') and hasattr(self._tts_engine.cosy_model, 'to'):
+                        try:
+                            self._tts_engine.cosy_model.to(device)
+                        except:
+                            pass
+
+            wrapper = StepAudioEditXEngineWrapper(tts_engine, tokenizer, device, torch_dtype, quantization, model_path)
             print(f"✅ Step Audio EditX model loaded via unified interface on {device}")
-            return tts_engine
+            return wrapper
 
         except ImportError as e:
             raise ImportError(f"Step Audio EditX dependencies not available. Error: {e}")

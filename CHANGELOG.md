@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.12] - 2025-12-19
+
+### Changed
+
+- Improve Audio Editor standalone mode reliability
+
+### Fixed
+
+- Fix Step Audio EditX Audio Editor node errors
+- Fix Audio Editor failing with 'object has no attribute edit_single' error
+- Fix Windows compatibility issue with audio tokenization (torchcodec BytesIO)
+- Fix model not found error when using extra_model_paths.yaml configuration
 ## [4.15.11] - 2025-12-18
 
 ### Added

@@ -142,23 +142,11 @@ class StepAudioEditXAudioEditorNode:
             inline_tag_device: Device override for inline edit tags (auto, cuda, cpu, xpu)
             pre_loaded_engine: Pre-loaded engine from TTS processor (for EditPostProcessor reuse)
         """
-        # If pre-loaded engine provided directly, wrap it (EditPostProcessor path)
+        # If pre-loaded engine provided directly, return it as-is (EditPostProcessor path)
         if pre_loaded_engine is not None:
             print(f"✅ Using pre-loaded Step Audio EditX engine (reusing from TTS generation)")
-            # Raw StepAudioTTS needs to be wrapped in StepAudioEditXEngine for edit_single() method
-            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
-
-            # Create wrapper with the raw engine injected
-            wrapper = StepAudioEditXEngine.__new__(StepAudioEditXEngine)
-            wrapper._tts_engine = pre_loaded_engine
-            wrapper._tokenizer = None  # Not needed, engine already has tokenizer
-            wrapper._model_config = None  # Don't have config for pre-loaded engine
-            wrapper.device = pre_loaded_engine.device if hasattr(pre_loaded_engine, 'device') else 'cuda'
-            wrapper.torch_dtype = None  # Unknown for pre-loaded
-            wrapper.quantization = None  # Unknown for pre-loaded
-            wrapper.model_dir = None  # Unknown for pre-loaded
-
-            return wrapper
+            # The pre_loaded_engine is already wrapped by the factory, no need to wrap again
+            return pre_loaded_engine
         else:
             if tts_engine_data is not None and "pre_loaded_engine" in tts_engine_data:
                 print(f"⚠️ DEBUG: tts_engine_data has pre_loaded_engine={tts_engine_data.get('pre_loaded_engine')}, but pre_loaded_engine param is None")
@@ -287,10 +275,17 @@ class StepAudioEditXAudioEditorNode:
             # Always print precision/device to verify settings are being used
             print(f"🔄 Loading Step Audio EditX engine (precision={precision_setting}, device={device_setting}, quantization={quantization_val})...")
 
-            # Resolve model path to actual filesystem path
+            # Resolve model path to actual filesystem path, respecting extra_model_paths.yaml
             import folder_paths
             import os
-            model_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx", "Step-Audio-EditX")
+            from utils.models.extra_paths import find_model_in_paths
+
+            # Try to find Step Audio EditX model in any configured TTS path
+            model_path = find_model_in_paths("Step-Audio-EditX", model_type='TTS', subdirs=['step_audio_editx'])
+
+            # Fallback to default ComfyUI path if not found in extra paths
+            if not model_path:
+                model_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx", "Step-Audio-EditX")
 
             config = ModelLoadConfig(
                 engine_name="step_audio_editx",
@@ -301,22 +296,10 @@ class StepAudioEditXAudioEditorNode:
                 additional_params={"torch_dtype": torch_dtype_val, "quantization": quantization_val}
             )
 
-            raw_engine = unified_model_interface.load_model(config)
+            # Load engine via unified interface (already wrapped with edit_single method)
+            engine = unified_model_interface.load_model(config)
 
-            # Wrap raw StepAudioTTS in StepAudioEditXEngine for edit_single() method
-            from engines.step_audio_editx.step_audio_editx import StepAudioEditXEngine
-
-            # Create wrapper with the raw engine injected
-            wrapper = StepAudioEditXEngine.__new__(StepAudioEditXEngine)
-            wrapper._tts_engine = raw_engine
-            wrapper._tokenizer = None  # Not needed, engine already has tokenizer
-            wrapper._model_config = config
-            wrapper.device = config.device
-            wrapper.torch_dtype = torch_dtype_val
-            wrapper.quantization = quantization_val
-            wrapper.model_dir = model_path
-
-            self._engine = wrapper
+            self._engine = engine
             # Cache the settings used to create this engine
             self._cached_settings = current_settings
 
