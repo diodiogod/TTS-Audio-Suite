@@ -179,7 +179,7 @@ class CosyVoiceAdapter:
         )
 
         # Cache the result
-        duration = audio.shape[-1] / 22050.0  # CosyVoice3 uses 22050 Hz
+        duration = audio.shape[-1] / 24000.0  # CosyVoice3 uses 24000 Hz
         self.audio_cache.cache_audio(cache_key, audio, duration)
 
         return audio
@@ -287,7 +287,7 @@ class CosyVoiceAdapter:
                 )
 
                 # Cache the segment
-                duration = segment_audio.shape[-1] / 22050.0
+                duration = segment_audio.shape[-1] / 24000.0  # CosyVoice3 uses 24000 Hz
                 self.audio_cache.cache_audio(segment_cache_key, segment_audio, duration)
 
             audio_segments.append(segment_audio)
@@ -297,7 +297,7 @@ class CosyVoiceAdapter:
             combined_audio = torch.cat(audio_segments, dim=-1)
             return combined_audio
         else:
-            return torch.zeros(1, 22050, dtype=torch.float32)
+            return torch.zeros(1, 24000, dtype=torch.float32)  # 1 second at CosyVoice3's 24000 Hz
     
     def _generate_cache_key(self, **params) -> str:
         """Generate cache key for CosyVoice3."""

@@ -206,7 +206,7 @@ class CosyVoiceEngine:
         prompt_text: str,
         speed: float = 1.0,
         stream: bool = False,
-        text_frontend: bool = True,
+        text_frontend: bool = False,  # False for English, True for Chinese
         progress_bar=None
     ) -> torch.Tensor:
         """
@@ -218,7 +218,7 @@ class CosyVoiceEngine:
             prompt_text: Transcript of reference audio (REQUIRED)
             speed: Speech speed multiplier (0.5-2.0)
             stream: Enable streaming output
-            text_frontend: Use text normalization frontend
+            text_frontend: Use text normalization frontend (False for English, True for Chinese)
             progress_bar: ComfyUI progress bar for tracking
             
         Returns:
@@ -240,6 +240,12 @@ class CosyVoiceEngine:
         # Collect all audio chunks
         audio_chunks = []
         
+        # DEBUG: Show what's being passed to inference
+        print(f"🔍 CosyVoice3 zero_shot DEBUG:")
+        print(f"   tts_text: {text[:50]}...")
+        print(f"   prompt_text: {formatted_prompt_text[:100]}...")
+        print(f"   prompt_wav: {prompt_wav}")
+        
         for i, output in enumerate(self._cosyvoice.inference_zero_shot(
             tts_text=text,
             prompt_text=formatted_prompt_text,
@@ -249,6 +255,15 @@ class CosyVoiceEngine:
             text_frontend=text_frontend
         )):
             audio_chunk = output['tts_speech']
+            
+            # DEBUG: Log raw tensor statistics
+            print(f"🔍 CosyVoice3 raw output chunk {i}:")
+            print(f"   shape: {audio_chunk.shape}")
+            print(f"   dtype: {audio_chunk.dtype}")
+            print(f"   device: {audio_chunk.device}")
+            print(f"   min: {audio_chunk.min().item():.6f}, max: {audio_chunk.max().item():.6f}")
+            print(f"   mean: {audio_chunk.mean().item():.6f}, std: {audio_chunk.std().item():.6f}")
+            
             audio_chunks.append(audio_chunk)
             
             if progress_bar is not None:
@@ -260,6 +275,16 @@ class CosyVoiceEngine:
         else:
             # Return silence if no chunks
             audio_tensor = torch.zeros(1, self.get_sample_rate(), dtype=torch.float32)
+        
+        # DEBUG: Save raw audio DIRECTLY to bypass all wrapper layers
+        import scipy.io.wavfile as wavfile
+        import numpy as np
+        debug_path = r"C:\_stability_matrix\Data\Packages\Comfy-new\output\DEBUG_raw_cosyvoice_output.wav"
+        audio_np = audio_tensor.squeeze().cpu().numpy()
+        # Normalize to int16 range for WAV
+        audio_int16 = np.clip(audio_np * 32767, -32768, 32767).astype(np.int16)
+        wavfile.write(debug_path, 24000, audio_int16)
+        print(f"🔍 DEBUG: Saved raw CosyVoice output to {debug_path}")
         
         # Normalize dimensions to [1, samples]
         audio_tensor = self._normalize_audio_dims(audio_tensor)
@@ -406,7 +431,7 @@ class CosyVoiceEngine:
         instruct_text: Optional[str] = None,
         speed: float = 1.0,
         stream: bool = False,
-        text_frontend: bool = True,
+        text_frontend: bool = False,  # False for English, True for Chinese
         progress_bar=None,
         **kwargs
     ) -> torch.Tensor:

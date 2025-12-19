@@ -495,6 +495,7 @@ Back to the main narrator voice for the conclusion.""",
                         # Update processor's reference text if char_text provided
                         if char_text:
                             processor.engine_config['reference_text'] = char_text
+                            processor.reference_text = char_text  # Also update instance attr
                         
                         # Generate using processor (includes pause tag support)
                         audio, generation_info = processor.process_text(
@@ -509,12 +510,13 @@ Back to the main narrator voice for the conclusion.""",
                         )
                         
                         # Format as ComfyUI audio
+                        # CosyVoice3 outputs 24000 Hz audio (NOT 22050!)
                         audio_output = {
                             "waveform": audio.unsqueeze(0) if audio.dim() == 2 else audio,
-                            "sample_rate": 22050
+                            "sample_rate": 24000  # CosyVoice3 native sample rate
                         }
                         
-                        duration = audio.shape[-1] / 22050.0
+                        duration = audio.shape[-1] / 24000.0  # Use correct sample rate
                         mode = self.config.get('mode', 'zero_shot')
                         info_str = f"✅ CosyVoice3 generation complete ({mode} mode, {duration:.1f}s)"
                         if generation_info and generation_info.get('pause_tags_processed'):
@@ -583,6 +585,23 @@ Back to the main narrator voice for the conclusion.""",
                 # print(f"🐛 TTS_TEXT: Trying narrator_voice dropdown: {narrator_voice}")
                 audio_path, reference_text = load_voice_reference(narrator_voice)
                 # print(f"🐛 TTS_TEXT: Dropdown - audio_path={audio_path}, exists={os.path.exists(audio_path) if audio_path else False}")
+
+                # FALLBACK: If cache-based lookup fails, try constructing path directly
+                if not audio_path:
+                    # narrator_voice is like "voices_examples/Sophie_Anderson CC3.wav"
+                    # Try constructing full path from project root
+                    fallback_path = os.path.join(project_root, narrator_voice)
+                    if os.path.exists(fallback_path):
+                        audio_path = fallback_path
+                        # Also try to load reference text manually
+                        ref_txt_path = os.path.splitext(fallback_path)[0] + ".reference.txt"
+                        if os.path.exists(ref_txt_path):
+                            try:
+                                with open(ref_txt_path, 'r', encoding='utf-8') as f:
+                                    reference_text = f.read().strip()
+                            except:
+                                reference_text = ""
+                        print(f"🔧 TTS Text: Using fallback path resolution for {narrator_voice}")
 
                 if audio_path and os.path.exists(audio_path):
                     # Load audio tensor with fallback support

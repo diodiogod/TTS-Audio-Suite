@@ -83,7 +83,7 @@ class CosyVoiceProcessor:
         # Get character aliases
         character_aliases = voice_discovery.get_character_aliases()
         for alias, target in character_aliases.items():
-            self.character_parser.set_character_fallback(alias, target)
+            self.character_parser.add_character_fallback(alias, target)
         
         # Get character language defaults
         char_lang_defaults = voice_discovery.get_character_language_defaults()

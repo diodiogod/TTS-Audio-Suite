@@ -1,0 +1,8 @@
+name,success,duration_sec,mode,speed,text,error,quality_rating
+zero_shot_default,True,16.440958499908447,zero_shot,1.0,english_short,,
+zero_shot_slow,True,2.0079586505889893,zero_shot,0.7,english_short,,
+zero_shot_fast,True,2.0193305015563965,zero_shot,1.3,english_short,,
+zero_shot_medium_text,True,26.116010665893555,zero_shot,1.0,english_medium,,
+cross_lingual_english,True,18.178767681121826,cross_lingual,1.0,english_short,,
+instruct_gentle,True,12.264314889907837,instruct,1.0,english_short,,
+instruct_fast,True,2.0220260620117188,instruct,1.0,english_short,,
