@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.13] - 2025-12-20
+
+### Added
+
+- Add automatic fallback to bundled vocab if download fails
+- Help users diagnose download issues more easily
+
+### Fixed
+
+- Improve F5-TTS model download error detection
+- Fix confusing errors when F5-TTS model downloads are incomplete
+- Provide clearer error messages indicating which files are missing
 ## [4.15.12] - 2025-12-19
 
 ### Changed
