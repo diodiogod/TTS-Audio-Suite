@@ -138,3 +138,27 @@ The test suite mocks ComfyUI modules (`folder_paths`, `comfy`, etc.) in `tests/c
 | Integration tests hang | Check ComfyUI is running at `http://127.0.0.1:8188` |
 | E2E tests fail with model errors | Models auto-download on first run, may take time |
 | `ImportError` in unit tests | Don't import from package root, use direct module paths |
+
+---
+
+## Architectural Roadblocks & Solutions
+
+This section documents critical issues encountered when setting up pytest for ComfyUI custom nodes:
+
+### 1. Pytest Package Discovery vs. ComfyUI
+ComfyUI packages use relative imports in `__init__.py` (e.g., `from .nodes import ...`). When pytest runs from the project root, it tries to import the package, which fails with `ImportError: attempted relative import with no known parent package`.
+
+**Solution:** The `run_tests.py` script changes directory to `tests/` before running pytest (`os.chdir(os.path.join(script_dir, 'tests'))`). This prevents pytest from treating the root as a package.
+
+### 2. Parent pytest.ini Interference
+ComfyUI's root `pytest.ini` has `pythonpath = .` which adds the package root to `sys.path`, triggering package discovery issues.
+
+**Solution:** Use a local `tests/pytest.ini` with `pythonpath = ` (empty) to override parent settings.
+
+### 3. Module Dependency Isolation
+Node modules typically depend on ComfyUI (`folder_paths`, `comfy`, etc.). Only modules in `utils/` subdirectories that are free of ComfyUI dependencies can be safely unit tested standalone.
+
+### 4. Key Takeaways
+- **Use `run_tests.py`**: Always run tests via the wrapper script, not directly with pytest.
+- **Don't modify `__init__.py`**: Adding `COMFYUI_TESTING` checks to skip imports breaks node registration in the actual server.
+- **Isolate testable code**: Keep utility functions in `utils/` subdirectories separate from node definitions.
