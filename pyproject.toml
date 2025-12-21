@@ -2,7 +2,7 @@
 name = "tts_audio_suite"
 description = "TTS Audio Suite - Universal multi-engine TTS extension for ComfyUI with unified architecture supporting IndexTTS-2, ChatterBox, Chatterbox Multilingual TTS (Official 23-Lang), F5-TTS, Higgs Audio 2, VibeVoice, and RVC engines. It has character voice management, SRT subtitle TTS support, and audio processing capabilities."
 version = "4.15.13"
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 dependencies = [
     "s3tokenizer>=0.1.7",
     "resemble-perth",
@@ -24,12 +24,18 @@ dependencies = [
     "webrtcvad",
     "numba"
 ]
+
+# Preserve comments for reference:
 # Additional dependencies for SRT support and audio processing:
 # conformer, torch, torchaudio, numpy, einops, phonemizer, g2p-en, unidecode
 # Audio processing and timing dependencies:
 # soundfile, resampy, webrtcvad
 # Optional but recommended for better performance:
 # numba
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["engines", "nodes", "web", "data", "images"] 
 
 [project.urls]
 Repository = "https://github.com/diodiogod/TTS-Audio-Suite"
