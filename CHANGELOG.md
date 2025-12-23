@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.13] - 2025-12-20
+
+### Added
+
+- Add automatic fallback to bundled vocab if download fails
+- Help users diagnose download issues more easily
+
+### Fixed
+
+- Improve F5-TTS model download error detection
+- Fix confusing errors when F5-TTS model downloads are incomplete
+- Provide clearer error messages indicating which files are missing
+## [4.15.12] - 2025-12-19
+
+### Changed
+
+- Improve Audio Editor standalone mode reliability
+
+### Fixed
+
+- Fix Step Audio EditX Audio Editor node errors
+- Fix Audio Editor failing with 'object has no attribute edit_single' error
+- Fix Windows compatibility issue with audio tokenization (torchcodec BytesIO)
+- Fix model not found error when using extra_model_paths.yaml configuration
+## [4.15.11] - 2025-12-18
+
+### Added
+
+- Removes GPU memory copy and node assignment warnings
+- These warnings are expected and don't affect functionality
+
+### Changed
+
+- Suppress harmless ONNX Runtime performance warnings in Step Audio EditX
+- Cleaner console output during Step Audio EditX generation
+## [4.15.10] - 2025-12-18
+
+### Added
+
+- Character voices discovery now logs only once per workflow
+- Eliminates duplicate 'Found X characters' messages in console
+
+### Changed
+
+- Character changes on refresh still show update notifications
+
+### Fixed
+
+- Fix character discovery log spam when using multiple character nodes
+## [4.15.9] - 2025-12-18
+
+### Added
+
+- Silent/gibberish audio generation
+- Generation ignoring max_new_tokens parameter
+- Model behaving unpredictably across different transformers versions
+- Implementation:
+- Detects weight tying via data pointer comparison
+- Detailed logging for future removal if stepfun-ai fixes their model
+
+### Fixed
+
+- Fix Step Audio EditX silence and max_new_tokens generation bug
+- Properly resolves transformers 4.54+ weight tying issue that caused:
+- Restores correct lm_head weights from model checkpoint
+- Comprehensive error handling with fallback behavior
 ## [4.15.8] - 2025-12-17
 
 ### Added

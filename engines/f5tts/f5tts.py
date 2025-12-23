@@ -481,9 +481,12 @@ class ChatterBoxF5TTS:
                                     files=files_to_download,
                                     engine_type="F5-TTS"
                                 )
-                                
+
                                 if downloaded_dir:
                                     model_file = os.path.join(downloaded_dir, os.path.basename(model_filename))
+                                    # Verify model file actually exists (catch incomplete downloads)
+                                    if not os.path.exists(model_file):
+                                        raise Exception(f"Model download incomplete: {model_filename} not found at {model_file}")
                                 else:
                                     raise Exception("Unified download failed")
                             except Exception as e:
@@ -545,9 +548,12 @@ class ChatterBoxF5TTS:
                                             files=files_to_download,
                                             engine_type="F5-TTS"
                                         )
-                                        
+
                                         if downloaded_dir:
                                             vocab_file = os.path.join(downloaded_dir, "vocab.txt")
+                                            # Verify vocab file actually exists (catch incomplete downloads)
+                                            if not os.path.exists(vocab_file):
+                                                raise Exception(f"Vocab download incomplete: vocab.txt not found at {vocab_file}")
                                         else:
                                             raise Exception("Unified vocab download failed")
                                     except Exception as e:
@@ -671,10 +677,17 @@ class ChatterBoxF5TTS:
                                 files=files_to_download,
                                 engine_type="F5-TTS"
                             )
-                            
+
                             if downloaded_dir:
                                 model_file = os.path.join(downloaded_dir, model_filename)
                                 vocab_file = os.path.join(downloaded_dir, vocab_filename)
+
+                                # Verify downloaded files actually exist (catch incomplete downloads)
+                                if not os.path.exists(model_file):
+                                    raise Exception(f"Model download incomplete: {model_filename} not found at {model_file}")
+                                if not os.path.exists(vocab_file):
+                                    print(f"⚠️ Vocab file not downloaded, will use bundled fallback")
+                                    vocab_file = None  # Will trigger bundled vocab fallback below
                             else:
                                 raise Exception("Unified download failed")
                         except Exception as e:

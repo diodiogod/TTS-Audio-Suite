@@ -24,6 +24,7 @@ class CosyVoiceFrontEnd(object):
         option = onnxruntime.SessionOptions()
         option.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         option.intra_op_num_threads = 1
+        option.log_severity_level = 3  # Suppress performance warnings (3=Error, 4=Fatal)
         self.campplus_session = onnxruntime.InferenceSession(
             campplus_model, sess_options=option,
             providers=["CPUExecutionProvider"]

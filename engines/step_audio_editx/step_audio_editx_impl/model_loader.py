@@ -265,7 +265,6 @@ class UnifiedModelLoader:
                 }
 
                 # Add quantization configuration if specified
-                # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
@@ -285,16 +284,81 @@ class UnifiedModelLoader:
             else:
                 raise ValueError(f"Unsupported model source: {source}")
 
-            # CRITICAL: Fix transformers 4.54+ compatibility issue
-            # The Step-Audio-EditX model has separate weights for lm_head and embed_tokens
-            # but transformers 4.54+ ties them by default. We must set tie_word_embeddings=False
-            if hasattr(model, 'config') and not getattr(model.config, 'tie_word_embeddings', False):
-                self.logger.debug("Applying transformers 4.54+ compatibility fix: setting tie_word_embeddings=False")
-                model.config.tie_word_embeddings = False
-
             # CRITICAL: Put model in evaluation mode (disables dropout, batch norm training mode)
             # Without this, the model generates garbage due to training-time randomness
             model.eval()
+
+            # ========================================================================
+            # CRITICAL FIX for transformers 4.54+ weight tying bug
+            # ========================================================================
+            # ROOT CAUSE:
+            # - stepfun-ai/Step-Audio-EditX model on HuggingFace is MISSING the config key
+            #   "tie_word_embeddings" in config.json
+            # - transformers 4.54+ changed to default tie_word_embeddings=True when missing
+            # - This causes incorrect weight tying: lm_head → embed_tokens
+            # - Step-Audio-EditX checkpoint has SEPARATE weights (lm_head norm≈227, embed_tokens norm≈255)
+            # - Tying overwrites correct lm_head, causing model to output text tokens instead of audio tokens
+            # - Result: Silent/gibberish audio generation, generation ignores max_new_tokens (uses max_length instead)
+            #
+            # WHY THIS WORKAROUND EXISTS:
+            # - Can't modify stepfun-ai's model directly (it's on HuggingFace)
+            # - Config.json patching is unreliable (already-cached models won't see patch)
+            # - Must restore correct weights AFTER transformers ties them incorrectly
+            #
+            # WHEN THIS CAN BE REMOVED:
+            # 1. stepfun-ai adds "tie_word_embeddings": false to their model's config.json, OR
+            # 2. transformers library fixes bug to NOT tie weights when checkpoint has different values
+            #
+            # REFERENCES:
+            # - HuggingFace model: https://huggingface.co/stepfun-ai/Step-Audio-EditX
+            # - transformers PR: https://github.com/huggingface/transformers/pull/42612
+            # - Issue: https://github.com/diodiogod/TTS-Audio-Suite/issues/202
+            # ========================================================================
+
+            try:
+                import torch
+                from safetensors import safe_open
+                import glob
+
+                # Detect if weights were incorrectly tied during loading
+                if hasattr(model, 'lm_head') and hasattr(model, 'model') and hasattr(model.model, 'embed_tokens'):
+                    # Check if pointers are the same (indicating tied weights)
+                    if model.lm_head.weight.data_ptr() == model.model.embed_tokens.weight.data_ptr():
+                        self.logger.warning("⚠️  Detected incorrect weight tying in transformers 4.54+ - restoring original lm_head weights...")
+
+                        # Find and load correct lm_head weights from safetensors checkpoint
+                        safetensors_files = sorted(glob.glob(os.path.join(model_path, "model*.safetensors")))
+                        if safetensors_files:
+                            lm_head_weight = None
+                            for st_file in safetensors_files:
+                                try:
+                                    with safe_open(st_file, framework="pt", device="cpu") as f:
+                                        if "lm_head.weight" in f.keys():
+                                            lm_head_weight = f.get_tensor("lm_head.weight")
+                                            self.logger.debug(f"Found lm_head.weight in {os.path.basename(st_file)}")
+                                            break
+                                except Exception as e:
+                                    self.logger.debug(f"Could not read {st_file}: {e}")
+                                    continue
+
+                            if lm_head_weight is not None:
+                                # Untie weights by creating a new parameter with correct values
+                                original_norm = model.lm_head.weight.norm().item()
+                                model.lm_head.weight = torch.nn.Parameter(
+                                    lm_head_weight.to(model.lm_head.weight.dtype)
+                                                   .to(model.lm_head.weight.device)
+                                                   .clone()
+                                )
+                                restored_norm = model.lm_head.weight.norm().item()
+                                self.logger.warning(f"✅ Restored lm_head weights (norm: {original_norm:.2f} → {restored_norm:.2f})")
+                            else:
+                                self.logger.error("❌ Could not find lm_head.weight in safetensors - audio generation may be silent")
+                        else:
+                            self.logger.error("❌ No safetensors files found - cannot restore lm_head weights")
+                    else:
+                        self.logger.debug("✅ Weights are separate (not tied) - no fix needed")
+            except Exception as e:
+                self.logger.error(f"⚠️  Weight restoration failed: {e} - audio generation may have issues")
 
             self.logger.debug(f"Successfully loaded model from {source}")
             return model, tokenizer, model_path
