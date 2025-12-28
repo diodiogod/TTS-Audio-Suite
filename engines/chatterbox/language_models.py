@@ -44,7 +44,7 @@ CHATTERBOX_MODELS = {
     "Russian": {
         "repo": "niobures/Chatterbox-TTS",
         "format": "safetensors",
-        "subdirectory": "ru",
+        "subdirectory": "ru/chatterbox-ru-t3k",
         "description": "Russian model with training artifacts - Complete fine-tuned model"
     },
     "Armenian": {

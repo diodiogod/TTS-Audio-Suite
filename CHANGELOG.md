@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.16] - 2025-12-28
+
+### Added
+
+- Russian model now downloads correctly from HuggingFace
+
+### Fixed
+
+- Fix ChatterBox Russian model download failing with 404 error
+- Resolves issue #210 crash on Russian text generation
 ## [4.15.15] - 2025-12-28
 
 ### Added
