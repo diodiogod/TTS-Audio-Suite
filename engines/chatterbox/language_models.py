@@ -158,28 +158,39 @@ def get_model_files_for_language(language: str) -> Tuple[str, str]:
     return config.get("format", "pt"), config.get("repo")
 
 def find_local_model_path(language: str) -> Optional[str]:
-    """Find local model path for a given language"""
+    """
+    Find local model path for a given language.
+    Respects extra_model_paths.yaml configuration.
+    """
+    from utils.models.extra_paths import get_all_tts_model_paths
+
+    # Get model name (handle "local:" prefix)
     if language.startswith("local:"):
-        local_name = language[6:]
-        # Try TTS path first, then legacy
-        for base_dir in ["TTS", ""]:
-            if base_dir:
-                model_path = os.path.join(folder_paths.models_dir, base_dir, "chatterbox", local_name)
-            else:
-                model_path = os.path.join(folder_paths.models_dir, "chatterbox", local_name)
-            if os.path.exists(model_path):
-                return model_path
+        model_name = language[6:]
     else:
-        # Check if we have a local version of a predefined language
-        # Try TTS path first, then legacy
-        for base_dir in ["TTS", ""]:
-            if base_dir:
-                model_path = os.path.join(folder_paths.models_dir, base_dir, "chatterbox", language)
-            else:
-                model_path = os.path.join(folder_paths.models_dir, "chatterbox", language)
+        model_name = language
+
+    # Search in all configured TTS model paths (respects extra_model_paths.yaml)
+    try:
+        all_tts_paths = get_all_tts_model_paths('TTS')
+
+        for base_path in all_tts_paths:
+            # Check organized path (models/TTS/chatterbox/English)
+            model_path = os.path.join(base_path, "chatterbox", model_name)
             if os.path.exists(model_path):
                 return model_path
-    
+    except Exception:
+        pass
+
+    # Fallback to hardcoded ComfyUI models_dir (legacy)
+    for base_dir in ["TTS", ""]:
+        if base_dir:
+            model_path = os.path.join(folder_paths.models_dir, base_dir, "chatterbox", model_name)
+        else:
+            model_path = os.path.join(folder_paths.models_dir, "chatterbox", model_name)
+        if os.path.exists(model_path):
+            return model_path
+
     return None
 
 def detect_model_format(model_path: str) -> str:
