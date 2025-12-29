@@ -174,10 +174,9 @@ class VibeVoiceProcessor:
             # So just take parameters from first segment
             group_params = params.copy()
             if segment_list and segment_list[0].parameters:
-                segment_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
-                group_params.update(segment_params)
-                if segment_list[0].parameters:
-                    print(f"  📊 Applying parameters: {segment_list[0].parameters}")
+                # apply_segment_parameters returns a NEW dict with overrides applied
+                group_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
+                print(f"  📊 Applying parameters: {segment_list[0].parameters}")
 
             # Process the combined character block with group parameters
             self._process_character_block(character, combined_text, voice_mapping, group_params,

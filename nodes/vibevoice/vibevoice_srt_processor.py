@@ -302,8 +302,8 @@ class VibeVoiceSRTProcessor:
                     # Extract and merge all parameters from segment objects for native multispeaker
                     for seg in segment_objects:
                         if seg.parameters:
-                            segment_params = apply_segment_parameters(config_with_seed, seg.parameters, 'vibevoice')
-                            config_with_seed.update(segment_params)
+                            # apply_segment_parameters returns a NEW dict with overrides applied
+                            config_with_seed = apply_segment_parameters(config_with_seed, seg.parameters, 'vibevoice')
 
                     # Convert to tuples for backward compatibility with _generate_native_multispeaker
                     character_segments = [(seg.character, seg.text) for seg in segment_objects]
@@ -541,8 +541,8 @@ class VibeVoiceSRTProcessor:
             # So just take parameters from first segment
             group_params = params.copy()
             if segment_list and segment_list[0].parameters:
-                segment_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
-                group_params.update(segment_params)
+                # apply_segment_parameters returns a NEW dict with overrides applied
+                group_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
                 print(f"  📊 Applying parameters: {segment_list[0].parameters}")
 
             if len(segment_list) == 1:
