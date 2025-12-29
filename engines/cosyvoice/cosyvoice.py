@@ -159,14 +159,8 @@ class CosyVoiceEngine:
             }
         )
         
-        # Load via unified interface with progress indication
-        print("🔄 CosyVoice3: Initializing engine (first run may take 1-2 minutes)...")
-        print("   Loading: LLM → Flow → HiFT → Speech Tokenizer → CampPlus...")
+        # Load via unified interface
         self._cosyvoice = unified_model_interface.load_model(self._model_config)
-        
-        print(f"✅ CosyVoice3 engine loaded via unified interface on {self.device}")
-        print(f"   Sample rate: {self.get_sample_rate()} Hz")
-        print("⚡ Next generations will be much faster (models cached in VRAM)")
     
     def _ensure_device_loaded(self):
         """Check and reload model if it was offloaded to CPU."""
@@ -283,7 +277,7 @@ class CosyVoiceEngine:
         generation_time = time.time() - generation_start
         audio_duration = audio_tensor.shape[-1] / self.get_sample_rate()
         rtf = generation_time / audio_duration if audio_duration > 0 else 0
-        print(f"📊 Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
+        print(f"✅ Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
 
         # Normalize dimensions to [1, samples]
         audio_tensor = self._normalize_audio_dims(audio_tensor)
@@ -374,7 +368,7 @@ class CosyVoiceEngine:
         generation_time = time.time() - generation_start
         audio_duration = audio_tensor.shape[-1] / self.get_sample_rate()
         rtf = generation_time / audio_duration if audio_duration > 0 else 0
-        print(f"📊 Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
+        print(f"✅ Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
 
         # Normalize dimensions
         audio_tensor = self._normalize_audio_dims(audio_tensor)
@@ -460,7 +454,7 @@ class CosyVoiceEngine:
         generation_time = time.time() - generation_start
         audio_duration = audio_tensor.shape[-1] / self.get_sample_rate()
         rtf = generation_time / audio_duration if audio_duration > 0 else 0
-        print(f"📊 Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
+        print(f"✅ Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
 
         # Normalize dimensions
         audio_tensor = self._normalize_audio_dims(audio_tensor)

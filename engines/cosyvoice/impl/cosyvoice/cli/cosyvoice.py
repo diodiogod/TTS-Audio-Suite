@@ -114,8 +114,9 @@ class CosyVoice:
 
         # Use live progress with token-level updates
         for i in self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend):
-            if (not isinstance(i, Generator)) and len(i) < 0.5 * len(prompt_text):
-                logging.warning('\n⚠️  TTS text is shorter than reference transcript - this may affect quality\n   TTS text length: {} chars\n   Reference length: {} chars'.format(len(i), len(prompt_text)))
+            # Commented out per-segment warning - consolidated to processor level
+            # if (not isinstance(i, Generator)) and len(i) < 0.5 * len(prompt_text):
+            #     logging.warning('\n⚠️  TTS text is shorter than reference transcript - this may affect quality\n   TTS text length: {} chars\n   Reference length: {} chars'.format(len(i), len(prompt_text)))
             model_input = self.frontend.frontend_zero_shot(i, prompt_text, prompt_wav, self.sample_rate, zero_shot_spk_id)
             start_time[0] = time.time()
             last_print_time[0] = start_time[0]

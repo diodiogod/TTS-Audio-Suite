@@ -215,6 +215,21 @@ class CosyVoiceProcessor:
                 if audio:
                     print(f"   {char}: {audio[:50]}... | Ref: {text[:30] if text else 'None'}...")
 
+        # Check if any segments have shorter text than their reference (warn once)
+        short_text_warning_shown = False
+        for char, (audio, ref_text) in character_mapping.items():
+            if ref_text:
+                for seg in segment_objects:
+                    seg_char = seg.character.lower() if seg.character else "narrator"
+                    if seg_char == char and seg.text and len(seg.text.strip()) < 0.5 * len(ref_text):
+                        if not short_text_warning_shown:
+                            print(f"⚠️  One or more segments have shorter text than their reference transcripts.")
+                            print(f"   This works well but quality might be slightly reduced for very short segments.")
+                            short_text_warning_shown = True
+                        break
+                if short_text_warning_shown:
+                    break
+
         audio_segments = []
 
         for segment in segment_objects:

@@ -100,7 +100,7 @@ class CosyVoiceAdapter:
 
         # Auto-detect mode based on available parameters (if not explicitly provided)
         if mode is None:
-            print(f"🔍 Mode detection - instruct_text: '{instruct_text}', reference_text: '{reference_text[:50] if reference_text else None}...'")
+            # print(f"🔍 Mode detection - instruct_text: '{instruct_text}', reference_text: '{reference_text[:50] if reference_text else None}...'")
             if instruct_text and instruct_text.strip():
                 mode = "instruct"
                 print(f"✅ Selected mode: instruct")

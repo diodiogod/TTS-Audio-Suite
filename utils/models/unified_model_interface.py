@@ -1024,7 +1024,7 @@ def register_cosyvoice_factory():
                 # Add bundled path to sys.path if not already there
                 if bundled_cosyvoice_path not in sys.path:
                     sys.path.insert(0, bundled_cosyvoice_path)
-                    print(f"📦 Using bundled CosyVoice library from {bundled_cosyvoice_path}")
+                    # print(f"📦 Using bundled CosyVoice library from {bundled_cosyvoice_path}")  # Internal path, not useful for users
                 
                 # Also add third_party/Matcha-TTS to path (required by CosyVoice)
                 matcha_path = os.path.join(bundled_cosyvoice_path, "third_party", "Matcha-TTS")
