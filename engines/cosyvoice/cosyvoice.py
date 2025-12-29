@@ -567,13 +567,6 @@ class CosyVoiceEngine:
         self._ensure_model_loaded()
         self._ensure_device_loaded()
 
-        print(f"🔄 CosyVoice3 - Generating VC:")
-        print("=" * 60)
-        print(f"Source audio: {source_wav}")
-        print(f"Prompt audio: {prompt_wav}")
-        print(f"Speed: {speed}x")
-        print("=" * 60)
-
         # Call CosyVoice's inference_vc method
         # Returns generator, collect all output
         audio_chunks = []
@@ -591,7 +584,6 @@ class CosyVoiceEngine:
         else:
             audio = torch.zeros(1, 24000, dtype=torch.float32)
 
-        print(f"✅ CosyVoice3 VC: Generated {audio.shape[-1] / 24000:.2f}s audio")
         return audio
 
     def to(self, device):
