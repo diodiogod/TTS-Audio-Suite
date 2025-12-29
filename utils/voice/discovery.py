@@ -523,16 +523,13 @@ class VoiceDiscovery:
         if not character_info:
             return None
         
-        # For audio-only engines (ChatterBox, VibeVoice, Higgs), we don't require text files
+        # For audio-only engines (ChatterBox, VibeVoice, Higgs, CosyVoice), we don't require text files
+        # Return full character_info (includes text_content which may be empty string)
         if engine_type == "audio_only" or engine_type == "chatterbox":  # Keep backward compatibility
-            return {
-                'audio_path': character_info['audio_path'],
-                'character_name': character_name,
-                'source_folder': character_info['source_folder']
-            }
+            return character_info
         
-        # For audio+text engines (F5-TTS, Step Audio EditX), we need both audio and text
-        if engine_type == "audio_and_text" or engine_type == "f5tts" or engine_type == "step_audio_editx":  # Keep backward compatibility
+        # For audio+text engines (F5-TTS, Step Audio EditX, CosyVoice), we need both audio and text
+        if engine_type in ("audio_and_text", "f5tts", "step_audio_editx", "cosyvoice", "index_tts"):
             if character_info.get('text_content'):
                 return character_info
         

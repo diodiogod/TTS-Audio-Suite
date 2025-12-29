@@ -225,3 +225,6 @@ IgnoredForGitHubDocs/
 .roo/
 .vscode/
 ignore/
+
+# Test output files
+tests/output/

@@ -89,18 +89,25 @@ class CosyVoiceProcessor:
     def _setup_character_parser(self):
         """Set up character parser with available characters and aliases."""
         self.character_parser = CharacterParser()
-        
-        # Get available characters
+
+        # Get available characters and aliases
         available_chars = get_available_characters()
-        if available_chars:
-            self.character_parser.set_available_characters(list(available_chars))
-        
-        # Get character aliases
         character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set (like Step Audio EditX does)
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
         for alias, target in character_aliases.items():
-            self.character_parser.add_character_fallback(alias, target)
-        
-        # Get character language defaults
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        # Add "narrator"
+        all_available.add("narrator")
+
+        self.character_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
         char_lang_defaults = voice_discovery.get_character_language_defaults()
         for char, lang in char_lang_defaults.items():
             self.character_parser.set_character_language_default(char, lang)
@@ -150,39 +157,94 @@ class CosyVoiceProcessor:
             elif isinstance(speaker_audio, str):
                 speaker_audio_path = speaker_audio
 
-        # Parse character segments
-        segments = self.character_parser.split_by_character(text, include_language=True)
-        
-        if len(segments) > 1:
-            print(f"🎭 CosyVoice3: Processing {len(segments)} character segment(s)")
+        # Parse character segments with parse_text_segments (like Step Audio EditX)
+        # Rebuild available characters set each time (like Step Audio EditX does)
+        import re
+
+        # Get available characters and aliases
+        available_chars = get_available_characters()
+        character_aliases = voice_discovery.get_character_aliases()
+
+        # Build complete available set
+        all_available = set()
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+
+        # Also add characters from text (extract from tags)
+        character_tags = re.findall(r'\[([^\]]+)\]', text)
+        for tag in character_tags:
+            if not tag.startswith('pause:'):
+                character_name = tag.split('|')[0].strip().lower()
+                all_available.add(character_name)
+
+        # Add "narrator"
+        all_available.add("narrator")
+
+        self.character_parser.set_available_characters(list(all_available))
+
+        # Set language defaults
+        char_lang_defaults = voice_discovery.get_character_language_defaults()
+        for char, lang in char_lang_defaults.items():
+            self.character_parser.set_character_language_default(char, lang)
+
+        self.character_parser.reset_session_cache()
+
+        # Parse segments
+        segment_objects = self.character_parser.parse_text_segments(text)
+
+        if len(segment_objects) > 1:
+            print(f"🎭 CosyVoice3: Processing {len(segment_objects)} character segment(s)")
             generation_info['character_segments'] = [
-                {'character': seg[0], 'text_preview': seg[1][:50]} for seg in segments
+                {'character': seg.character, 'text_preview': seg.text[:50]} for seg in segment_objects
             ]
 
         # Get character mapping for voice switching
-        unique_characters = set(seg[0] for seg in segments if seg[0])
+        # Use audio_only mode - text is optional and comes from character files if available
+        # This works for all 3 CosyVoice modes (zero_shot, instruct2, cross_lingual)
+        # IMPORTANT: Use lowercase character names for mapping lookup (character parser returns lowercase)
+        unique_characters = set(seg.character.lower() if seg.character else "narrator" for seg in segment_objects)
+        unique_characters.add("narrator")
         character_mapping = {}
         if unique_characters:
-            character_mapping = get_character_mapping(list(unique_characters), engine_type="cosyvoice")
+            character_mapping = get_character_mapping(list(unique_characters), engine_type="audio_only")
+            print(f"🎭 Character mapping: {list(character_mapping.keys())}")
+            for char, (audio, text) in character_mapping.items():
+                if audio:
+                    print(f"   {char}: {audio[:50]}... | Ref: {text[:30] if text else 'None'}...")
 
         audio_segments = []
-        
-        for character, segment_text, language in segments:
+
+        for segment in segment_objects:
+            character = segment.character.lower() if segment.character else "narrator"
+            segment_text = segment.text
+            language = segment.language
             segment_text = segment_text.strip()
             if not segment_text:
                 continue
 
             # Determine speaker audio for this segment
+            # Priority: connected opt_narrator > character-specific voices > character mapping narrator fallback
             current_speaker_audio = speaker_audio_path
             current_reference_text = self.reference_text
 
-            if character and character in character_mapping:
-                char_audio, char_text = character_mapping[character]
-                if char_audio:
-                    current_speaker_audio = char_audio
-                    if char_text:
-                        current_reference_text = char_text
-                    print(f"📖 Using character voice '{character}'")
+            # For non-narrator characters: always use character mapping
+            # For narrator: use connected audio if available, otherwise use character mapping
+            if character in character_mapping:
+                # Skip character mapping ONLY if this is narrator AND we have connected speaker audio
+                if character == "narrator" and speaker_audio_path:
+                    # Use connected narrator voice (already set in current_speaker_audio)
+                    pass
+                else:
+                    # Use character-specific voice from mapping
+                    char_audio, char_text = character_mapping[character]
+                    if char_audio:
+                        current_speaker_audio = char_audio
+                        if char_text:
+                            current_reference_text = char_text
+                        print(f"🎭 Using character voice '{character}'")
 
             # Process pause tags if enabled
             if enable_pause_tags and PauseTagProcessor.has_pause_tags(segment_text):
