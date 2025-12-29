@@ -7,6 +7,7 @@ from .vibevoice_handler import VibeVoiceHandler
 from .higgs_audio_handler import HiggsAudioHandler
 from .generic_handler import GenericHandler
 from .step_audio_editx_handler import StepAudioEditXHandler
+from .cosyvoice_handler import CosyVoiceHandler
 
 
 def get_engine_handler(engine: str) -> BaseEngineHandler:
@@ -14,7 +15,7 @@ def get_engine_handler(engine: str) -> BaseEngineHandler:
     Get the appropriate engine handler for an engine.
 
     Args:
-        engine: Engine name ("chatterbox", "f5tts", "higgs_audio", "stateless_tts", "vibevoice", "step_audio_editx", etc.)
+        engine: Engine name ("chatterbox", "f5tts", "higgs_audio", "stateless_tts", "vibevoice", "step_audio_editx", "cosyvoice", etc.)
 
     Returns:
         Engine-specific handler instance
@@ -27,6 +28,9 @@ def get_engine_handler(engine: str) -> BaseEngineHandler:
     elif engine == "step_audio_editx":
         # Step Audio EditX handler for bitsandbytes int8/int4 support
         return StepAudioEditXHandler()
+    elif engine == "cosyvoice":
+        # CosyVoice handler for proper component-level device management
+        return CosyVoiceHandler()
     else:
         # Generic handler for chatterbox, f5tts, rvc, etc.
         return GenericHandler()
@@ -34,8 +38,10 @@ def get_engine_handler(engine: str) -> BaseEngineHandler:
 
 __all__ = [
     'BaseEngineHandler',
-    'VibeVoiceHandler', 
+    'VibeVoiceHandler',
     'HiggsAudioHandler',
     'GenericHandler',
+    'StepAudioEditXHandler',
+    'CosyVoiceHandler',
     'get_engine_handler'
 ]

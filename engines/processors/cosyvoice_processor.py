@@ -71,6 +71,21 @@ class CosyVoiceProcessor:
         # Setup character parser
         self._setup_character_parser()
 
+    def update_config(self, engine_config: Dict[str, Any]):
+        """
+        Update processor configuration with new parameters.
+        Called when cached processor is reused with different settings.
+        """
+        self.engine_config = engine_config
+
+        # Update extracted configuration
+        self.speed = engine_config.get('speed', 1.0)
+        self.instruct_text = engine_config.get('instruct_text', '')
+        self.reference_text = engine_config.get('reference_text', '')
+
+        # Note: model_path, device, fp16, trt, vllm are not updated
+        # as they would require reloading the model
+
     def _setup_character_parser(self):
         """Set up character parser with available characters and aliases."""
         self.character_parser = CharacterParser()
@@ -258,7 +273,8 @@ class CosyVoiceProcessor:
             reference_text=reference_text,
             instruct_text=self.instruct_text,
             speed=self.speed,
-            seed=seed
+            seed=seed,
+            use_fp16=self.use_fp16  # Include fp16 in cache key
         )
 
     def _combine_with_silence(

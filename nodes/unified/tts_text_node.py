@@ -472,7 +472,13 @@ Back to the main narrator voice for the conclusion.""",
                     def __init__(self, config):
                         self.config = config
                         self.processor = None
-                    
+
+                    def update_config(self, new_config):
+                        """Update wrapper and processor config."""
+                        self.config.update(new_config)
+                        if self.processor:
+                            self.processor.update_config(new_config)
+
                     def _ensure_processor(self):
                         if self.processor is None:
                             self.processor = CosyVoiceProcessor(self.config)
