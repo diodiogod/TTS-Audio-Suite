@@ -196,7 +196,7 @@ class VibeVoiceProcessor:
     def _group_consecutive_character_objects(self, segment_objects) -> List[Tuple[str, list]]:
         """
         Group consecutive same-character segment objects for VibeVoice optimization.
-        IMPORTANT: Groups are broken when parameters change (each parameter set gets own generation).
+        IMPORTANT: Groups are broken when parameters OR pause tags change.
 
         Args:
             segment_objects: List of CharacterSegment objects
@@ -207,18 +207,21 @@ class VibeVoiceProcessor:
         if not segment_objects:
             return []
 
+        from utils.text.pause_processor import PauseTagProcessor
+
         grouped = []
         current_character = None
         current_parameters = None
         current_segments = []
 
         for segment in segment_objects:
-            # Check if character OR parameters changed
+            # Check if character OR parameters changed OR pause tag present
             character_changed = segment.character != current_character
             parameters_changed = segment.parameters != current_parameters
+            has_pause_tag = PauseTagProcessor.has_pause_tags(segment.text)
 
-            if character_changed or parameters_changed:
-                # Character or parameters changed - finalize previous group
+            if character_changed or parameters_changed or has_pause_tag:
+                # Break group on character/parameter change OR pause tag
                 if current_character is not None:
                     grouped.append((current_character, current_segments))
 
@@ -227,7 +230,7 @@ class VibeVoiceProcessor:
                 current_parameters = segment.parameters.copy() if segment.parameters else {}
                 current_segments = [segment]
             else:
-                # Same character AND same parameters, add to current group
+                # Same character, same parameters, no pause tag - continue group
                 current_segments.append(segment)
 
         # Don't forget the last group
