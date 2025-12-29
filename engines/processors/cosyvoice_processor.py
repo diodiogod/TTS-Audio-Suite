@@ -251,11 +251,11 @@ class CosyVoiceProcessor:
         seed: int
     ) -> torch.Tensor:
         """Generate audio for a single text segment."""
+        # Don't pass mode - let adapter auto-detect based on instruct_text/reference_text
         return self.adapter.generate(
             text=text,
             speaker_audio=speaker_audio,
             reference_text=reference_text,
-            mode=self.mode,
             instruct_text=self.instruct_text,
             speed=self.speed,
             seed=seed

@@ -71,6 +71,7 @@ class CosyVoiceAdapter:
                 speaker_audio: Optional[str] = None,
                 reference_text: Optional[str] = None,
                 instruct_text: Optional[str] = None,
+                mode: Optional[str] = None,
                 speed: float = 1.0,
                 stream: bool = False,
                 **kwargs) -> torch.Tensor:
@@ -97,19 +98,22 @@ class CosyVoiceAdapter:
         if self.engine is None:
             self.initialize_engine()
 
-        # Auto-detect mode based on available parameters
-        print(f"🔍 Mode detection - instruct_text: '{instruct_text}', reference_text: '{reference_text[:50] if reference_text else None}...'")
-        if instruct_text and instruct_text.strip():
-            mode = "instruct"
-            print(f"✅ Selected mode: instruct")
-            if reference_text and reference_text.strip():
-                print("⚠️ CosyVoice3: Both instruction and transcript provided. Using instruction mode (transcript ignored for best dialect/emotion control).")
-        elif reference_text and reference_text.strip():
-            mode = "zero_shot"
-            print(f"✅ Selected mode: zero_shot")
+        # Auto-detect mode based on available parameters (if not explicitly provided)
+        if mode is None:
+            print(f"🔍 Mode detection - instruct_text: '{instruct_text}', reference_text: '{reference_text[:50] if reference_text else None}...'")
+            if instruct_text and instruct_text.strip():
+                mode = "instruct"
+                print(f"✅ Selected mode: instruct")
+                if reference_text and reference_text.strip():
+                    print("⚠️ CosyVoice3: Both instruction and transcript provided. Using instruction mode (transcript ignored for best dialect/emotion control).")
+            elif reference_text and reference_text.strip():
+                mode = "zero_shot"
+                print(f"✅ Selected mode: zero_shot")
+            else:
+                mode = "cross_lingual"
+                print(f"✅ Selected mode: cross_lingual")
         else:
-            mode = "cross_lingual"
-            print(f"✅ Selected mode: cross_lingual")
+            print(f"✅ Using explicitly provided mode: {mode}")
 
         # Check if text contains character tags
         has_character_tags = character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
@@ -157,12 +161,13 @@ class CosyVoiceAdapter:
                         final_reference_text = char_text
                     print(f"🎭 Using character voice: {character_name} -> {final_speaker_audio}")
 
-        # Generate cache key (mode is deterministic from reference_text + instruct_text)
+        # Generate cache key with mode explicitly included
         cache_key = self._generate_cache_key(
             text=processed_text,
             speaker_audio=self._get_stable_audio_identifier(final_speaker_audio),
             reference_text=final_reference_text,
             instruct_text=instruct_text,
+            mode=mode,
             speed=speed,
             **kwargs
         )
@@ -288,7 +293,9 @@ class CosyVoiceAdapter:
                 text=segment_text,
                 speaker_audio=self._get_stable_audio_identifier(speaker_audio),
                 reference_text=reference_text,
-                **kwargs
+                instruct_text=kwargs.get('instruct_text'),
+                mode=kwargs.get('mode'),
+                speed=kwargs.get('speed', 1.0)
             )
 
             # Check cache first
