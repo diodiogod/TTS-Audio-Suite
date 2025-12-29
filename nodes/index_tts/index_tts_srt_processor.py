@@ -324,7 +324,7 @@ class IndexTTSSRTProcessor:
             final_audio = assembler.assemble_smart_natural(
                 audio_segments, processed_segments, smart_adjustments, subtitles, torch.device('cpu')
             )
-            return final_audio, smart_adjustments  # Return the detailed smart adjustments
+            return final_audio, smart_adjustments, None  # Return the detailed smart adjustments
 
     def _generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str,
                                has_original_overlaps: bool = False, mode_switched: bool = False,

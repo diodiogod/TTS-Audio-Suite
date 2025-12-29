@@ -174,20 +174,20 @@ class VibeVoiceProcessor:
             # So just take parameters from first segment
             group_params = params.copy()
             if segment_list and segment_list[0].parameters:
-                segment_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
-                group_params.update(segment_params)
-                if segment_list[0].parameters:
-                    print(f"  📊 Applying parameters: {segment_list[0].parameters}")
+                # apply_segment_parameters returns a NEW dict with overrides applied
+                group_params = apply_segment_parameters(group_params, segment_list[0].parameters, 'vibevoice')
+                print(f"  📊 Applying parameters: {segment_list[0].parameters}")
 
             # Process the combined character block with group parameters
             self._process_character_block(character, combined_text, voice_mapping, group_params,
                                         enable_chunking, max_chars, audio_segments)
 
         # Apply edit post-processing after all segments generated
+        # Don't pass pre_loaded_engine - EditPostProcessor needs Step Audio EditX, not VibeVoice
         audio_segments = apply_edit_post_processing(
             audio_segments,
             self.config,
-            pre_loaded_engine=self.adapter.vibevoice_engine
+            pre_loaded_engine=None
         )
 
         return audio_segments
@@ -195,7 +195,7 @@ class VibeVoiceProcessor:
     def _group_consecutive_character_objects(self, segment_objects) -> List[Tuple[str, list]]:
         """
         Group consecutive same-character segment objects for VibeVoice optimization.
-        IMPORTANT: Groups are broken when parameters change (each parameter set gets own generation).
+        IMPORTANT: Groups are broken when parameters OR pause tags change.
 
         Args:
             segment_objects: List of CharacterSegment objects
@@ -206,18 +206,21 @@ class VibeVoiceProcessor:
         if not segment_objects:
             return []
 
+        from utils.text.pause_processor import PauseTagProcessor
+
         grouped = []
         current_character = None
         current_parameters = None
         current_segments = []
 
         for segment in segment_objects:
-            # Check if character OR parameters changed
+            # Check if character OR parameters changed OR pause tag present
             character_changed = segment.character != current_character
             parameters_changed = segment.parameters != current_parameters
+            has_pause_tag = PauseTagProcessor.has_pause_tags(segment.text)
 
-            if character_changed or parameters_changed:
-                # Character or parameters changed - finalize previous group
+            if character_changed or parameters_changed or has_pause_tag:
+                # Break group on character/parameter change OR pause tag
                 if current_character is not None:
                     grouped.append((current_character, current_segments))
 
@@ -226,7 +229,7 @@ class VibeVoiceProcessor:
                 current_parameters = segment.parameters.copy() if segment.parameters else {}
                 current_segments = [segment]
             else:
-                # Same character AND same parameters, add to current group
+                # Same character, same parameters, no pause tag - continue group
                 current_segments.append(segment)
 
         # Don't forget the last group
@@ -409,19 +412,33 @@ class VibeVoiceProcessor:
                 clean_segments, voice_mapping, params, None
             )
 
-            # Add edit tags to audio dict for post-processing
+            # Check if we have multiple speakers
+            unique_speakers = len(set([char for char, _ in segments]))
+            has_multiple_speakers = unique_speakers > 1
+
+            # Warn if edit tags are present with multiple speakers
+            if all_edit_tags and has_multiple_speakers:
+                print(f"\n⚠️  WARNING: Inline edit tags detected in Native Multi-Speaker mode with {unique_speakers} speakers")
+                print(f"⚠️  Step Audio EditX is single-speaker only and will convert all voices to one speaker")
+                print(f"⚠️  Skipping inline edit tags to preserve multi-speaker audio")
+                print(f"⚠️  To use inline edit tags, switch to 'Custom Character Switching' mode\n")
+                # Clear edit tags to skip processing
+                all_edit_tags = []
+
+            # Add edit tags to audio dict for post-processing (may be empty if cleared above)
             audio['edit_tags'] = all_edit_tags
             audio['original_text'] = '\n'.join(original_text_parts)
             audio['text'] = '\n'.join([clean_text for _, clean_text in clean_segments])
 
-            # Apply edit post-processing if tags present
+            # Apply edit post-processing if tags present (only for single speaker)
             audio_list = [audio]
             if all_edit_tags:
                 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+                # Don't pass pre_loaded_engine - EditPostProcessor needs Step Audio EditX, not VibeVoice
                 audio_list = apply_edit_post_processing(
                     audio_list,
                     self.config,
-                    pre_loaded_engine=self.adapter.vibevoice_engine
+                    pre_loaded_engine=None
                 )
 
             return audio_list

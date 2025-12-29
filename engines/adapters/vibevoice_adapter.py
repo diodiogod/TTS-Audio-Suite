@@ -526,9 +526,15 @@ class VibeVoiceEngineAdapter:
         
         # Build speaker mapping and format text
         character_map = {}
-        speaker_voices = []
+        # Pre-fill speaker_voices with all 4 speaker slots (some may be None)
+        speaker_voices = [
+            speaker_inputs.get(1),  # Speaker 1
+            speaker_inputs.get(2),  # Speaker 2
+            speaker_inputs.get(3),  # Speaker 3
+            speaker_inputs.get(4)   # Speaker 4
+        ]
         formatted_lines = []
-        
+
         print(f"🎭 Native multi-speaker: Processing {len(segments)} segments with characters: {[char for char, _ in segments]}")
         print(f"🎤 Speaker inputs connected: {[f'Speaker {k}' for k, v in speaker_inputs.items() if v is not None]}")
         
@@ -542,18 +548,13 @@ class VibeVoiceEngineAdapter:
                 if speaker_idx >= 4:
                     speaker_idx = 3
                     
-                # Get the appropriate voice based on speaker number
-                voice = speaker_inputs.get(manual_speaker)
+                # Voice already in pre-filled speaker_voices array
+                voice = speaker_voices[speaker_idx]
                 if manual_speaker == 1:
                     print(f"🎤 Manual format 'Speaker {manual_speaker}' -> using {'✅ main narrator (Tony)' if voice else '❌ no narrator, using default'}")
                 else:
                     print(f"🎤 Manual format 'Speaker {manual_speaker}' -> using {'✅ connected input' if voice else '❌ no input, using default'}")
-                
-                # Ensure we have enough speaker_voices slots
-                while len(speaker_voices) <= speaker_idx:
-                    speaker_voices.append(None)
-                speaker_voices[speaker_idx] = voice
-                
+
                 formatted_lines.append(f"Speaker {manual_speaker}: {text.strip()}")
                 
             else:

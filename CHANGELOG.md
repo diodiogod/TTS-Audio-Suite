@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.17] - 2025-12-28
+
+### Added
+
+- Parameters are now properly applied to generation
+- Add warning when using inline edit tags with multiple speakers in Native Multi-Speaker mode (edit tags only work with single narrator or Custom Character Switching mode)
+
+### Fixed
+
+- Fix VibeVoice inline parameters not applying correctly
+- Fix inline parameters like [seed:2|cfg:7] hitting cache incorrectly
+## [4.15.16] - 2025-12-28
+
+### Added
+
+- Russian model now downloads correctly from HuggingFace
+
+### Fixed
+
+- Fix ChatterBox Russian model download failing with 404 error
+- Resolves issue #210 crash on Russian text generation
+## [4.15.15] - 2025-12-28
+
+### Added
+
+- IndexTTS-2 SRT generation now works correctly with smart_natural
+
+### Fixed
+
+- Fix IndexTTS-2 SRT crash in smart_natural timing mode
+- timing mode - fixes crash that occurred during audio assembly
+## [4.15.14] - 2025-12-28
+
+### Added
+
+- that would cause installation errors
+
+### Fixed
+
+- Fix pyproject.toml configuration file syntax
+- ComfyUI Registry compatibility fix - removed invalid dependencies field
 ## [4.15.13] - 2025-12-20
 
 ### Added
