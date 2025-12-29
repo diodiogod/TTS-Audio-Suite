@@ -277,15 +277,6 @@ class CosyVoiceEngine:
             audio_tensor = torch.zeros(1, self.get_sample_rate(), dtype=torch.float32)
         
         # DEBUG: Save raw audio DIRECTLY to bypass all wrapper layers
-        import scipy.io.wavfile as wavfile
-        import numpy as np
-        debug_path = r"C:\_stability_matrix\Data\Packages\Comfy-new\output\DEBUG_raw_cosyvoice_output.wav"
-        audio_np = audio_tensor.squeeze().cpu().numpy()
-        # Normalize to int16 range for WAV
-        audio_int16 = np.clip(audio_np * 32767, -32768, 32767).astype(np.int16)
-        wavfile.write(debug_path, 24000, audio_int16)
-        print(f"🔍 DEBUG: Saved raw CosyVoice output to {debug_path}")
-        
         # Normalize dimensions to [1, samples]
         audio_tensor = self._normalize_audio_dims(audio_tensor)
         

@@ -1,6 +1,12 @@
 import logging
 
-from lightning.pytorch.utilities import rank_zero_only
+# Patched for inference: removed lightning dependency
+# from lightning.pytorch.utilities import rank_zero_only
+
+# Simple stub for rank_zero_only (multi-GPU decorator not needed for inference)
+def rank_zero_only(func):
+    """Stub decorator that just returns the function as-is."""
+    return func
 
 
 def get_pylogger(name: str = __name__) -> logging.Logger:
