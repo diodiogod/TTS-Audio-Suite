@@ -184,10 +184,11 @@ class VibeVoiceProcessor:
                                         enable_chunking, max_chars, audio_segments)
 
         # Apply edit post-processing after all segments generated
+        # Don't pass pre_loaded_engine - EditPostProcessor needs Step Audio EditX, not VibeVoice
         audio_segments = apply_edit_post_processing(
             audio_segments,
             self.config,
-            pre_loaded_engine=self.adapter.vibevoice_engine
+            pre_loaded_engine=None
         )
 
         return audio_segments
@@ -409,19 +410,33 @@ class VibeVoiceProcessor:
                 clean_segments, voice_mapping, params, None
             )
 
-            # Add edit tags to audio dict for post-processing
+            # Check if we have multiple speakers
+            unique_speakers = len(set([char for char, _ in segments]))
+            has_multiple_speakers = unique_speakers > 1
+
+            # Warn if edit tags are present with multiple speakers
+            if all_edit_tags and has_multiple_speakers:
+                print(f"\n⚠️  WARNING: Inline edit tags detected in Native Multi-Speaker mode with {unique_speakers} speakers")
+                print(f"⚠️  Step Audio EditX is single-speaker only and will convert all voices to one speaker")
+                print(f"⚠️  Skipping inline edit tags to preserve multi-speaker audio")
+                print(f"⚠️  To use inline edit tags, switch to 'Custom Character Switching' mode\n")
+                # Clear edit tags to skip processing
+                all_edit_tags = []
+
+            # Add edit tags to audio dict for post-processing (may be empty if cleared above)
             audio['edit_tags'] = all_edit_tags
             audio['original_text'] = '\n'.join(original_text_parts)
             audio['text'] = '\n'.join([clean_text for _, clean_text in clean_segments])
 
-            # Apply edit post-processing if tags present
+            # Apply edit post-processing if tags present (only for single speaker)
             audio_list = [audio]
             if all_edit_tags:
                 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+                # Don't pass pre_loaded_engine - EditPostProcessor needs Step Audio EditX, not VibeVoice
                 audio_list = apply_edit_post_processing(
                     audio_list,
                     self.config,
-                    pre_loaded_engine=self.adapter.vibevoice_engine
+                    pre_loaded_engine=None
                 )
 
             return audio_list

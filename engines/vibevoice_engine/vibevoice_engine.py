@@ -887,10 +887,9 @@ class VibeVoiceEngine:
             # print(f"🐛 VibeVoice ENGINE: Text length: {len(text)} chars")
             
             # Prepare inputs using processor
-            # print(f"🐛 VibeVoice ENGINE: Processing inputs - text='{text[:100]}...', voice_samples count={len(voice_samples)}")
             inputs = self.processor(
                 [text],  # Wrap text in list
-                voice_samples=[voice_samples],  # Provide voice samples
+                voice_samples=[voice_samples],  # Processor expects batch format: [[samples]]
                 return_tensors="pt",
                 return_attention_mask=True
             )

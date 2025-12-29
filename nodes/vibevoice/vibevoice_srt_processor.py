@@ -53,14 +53,14 @@ class VibeVoiceSRTProcessor:
         """
         self.node = node_instance
         self.config = engine_config
-        self.adapter = VibeVoiceEngineAdapter(node_instance)
+        self.adapter = VibeVoiceEngineAdapter(node_instance, engine_config)
         self.pause_processor = PauseTagProcessor()
-        
+
         # Load SRT modules
         self.srt_available = False
         self.srt_modules = {}
         self._load_srt_modules()
-        
+
         # Load model with enhanced parameters
         model_name = engine_config.get('model', 'vibevoice-1.5B')
         device = engine_config.get('device', 'auto')
@@ -266,6 +266,24 @@ class VibeVoiceSRTProcessor:
 
                 if len(unique_chars) <= 4 and not has_pause_tags and not has_param_changes:
                     print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
+
+                    # Check for inline edit tags in multi-speaker text
+                    from utils.text.step_audio_editx_special_tags import has_step_audio_editx_tags
+                    has_edit_tags = any(has_step_audio_editx_tags(seg.text) for seg in segment_objects)
+                    has_multiple_speakers = len(unique_chars) > 1
+
+                    # Warn and strip edit tags if multi-speaker with edit tags
+                    if has_edit_tags and has_multiple_speakers:
+                        print(f"\n⚠️  WARNING: Inline edit tags detected in Native Multi-Speaker subtitle with {len(unique_chars)} speakers")
+                        print(f"⚠️  Step Audio EditX is single-speaker only and will convert all voices to one speaker")
+                        print(f"⚠️  Skipping inline edit tags to preserve multi-speaker audio")
+                        print(f"⚠️  To use inline edit tags, switch to 'Custom Character Switching' mode\n")
+
+                        # Strip edit tags from all segments
+                        from utils.text.step_audio_editx_special_tags import strip_step_audio_editx_tags
+                        for seg in segment_objects:
+                            seg.text = strip_step_audio_editx_tags(seg.text)
+
                     # Generate single multi-speaker segment with parameters support
                     config_with_seed = self.config.copy()
                     config_with_seed['seed'] = seed
@@ -326,10 +344,11 @@ class VibeVoiceSRTProcessor:
         if all_segments_for_editing:
             print(f"\n🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
             from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            # Don't pass pre_loaded_engine - EditPostProcessor needs Step Audio EditX, not VibeVoice
             processed_segments = apply_edit_post_processing(
                 all_segments_for_editing,
                 self.config,
-                pre_loaded_engine=self.adapter.vibevoice_engine
+                pre_loaded_engine=None
             )
 
             # Group processed segments back by subtitle index
