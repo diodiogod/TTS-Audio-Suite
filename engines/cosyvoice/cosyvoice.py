@@ -49,7 +49,7 @@ class CosyVoiceEngine:
     MODES = ["zero_shot", "instruct", "cross_lingual"]
     
     def __init__(self, model_dir: str = "Fun-CosyVoice3-0.5B", device: str = "auto",
-                 use_fp16: bool = True, load_trt: bool = False, load_vllm: bool = False):
+                 use_fp16: bool = False, load_trt: bool = False, load_vllm: bool = False):
         """
         Initialize CosyVoice3 engine.
 
@@ -206,7 +206,6 @@ class CosyVoiceEngine:
         prompt_text: str,
         speed: float = 1.0,
         stream: bool = False,
-        text_frontend: bool = False,  # False for English, True for Chinese
         progress_bar=None
     ) -> torch.Tensor:
         """
@@ -218,7 +217,6 @@ class CosyVoiceEngine:
             prompt_text: Transcript of reference audio (REQUIRED)
             speed: Speech speed multiplier (0.5-2.0)
             stream: Enable streaming output
-            text_frontend: Use text normalization frontend (False for English, True for Chinese)
             progress_bar: ComfyUI progress bar for tracking
             
         Returns:
@@ -251,8 +249,7 @@ class CosyVoiceEngine:
             prompt_text=formatted_prompt_text,
             prompt_wav=prompt_wav,
             stream=stream,
-            speed=speed,
-            text_frontend=text_frontend
+            speed=speed
         )):
             audio_chunk = output['tts_speech']
             
@@ -289,7 +286,6 @@ class CosyVoiceEngine:
         instruct_text: str,
         speed: float = 1.0,
         stream: bool = False,
-        text_frontend: bool = True,
         progress_bar=None
     ) -> torch.Tensor:
         """
@@ -324,14 +320,19 @@ class CosyVoiceEngine:
         
         # Collect all audio chunks
         audio_chunks = []
-        
+
+        # DEBUG: Show what's being passed to inference
+        print(f"🔍 CosyVoice3 instruct DEBUG:")
+        print(f"   tts_text: {text[:50]}...")
+        print(f"   instruct_text: {formatted_instruct}")
+        print(f"   prompt_wav: {prompt_wav}")
+
         for i, output in enumerate(self._cosyvoice.inference_instruct2(
             tts_text=text,
             instruct_text=formatted_instruct,
             prompt_wav=prompt_wav,
             stream=stream,
-            speed=speed,
-            text_frontend=text_frontend
+            speed=speed
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
@@ -356,7 +357,6 @@ class CosyVoiceEngine:
         prompt_wav: str,
         speed: float = 1.0,
         stream: bool = False,
-        text_frontend: bool = True,
         progress_bar=None
     ) -> torch.Tensor:
         """
@@ -393,8 +393,7 @@ class CosyVoiceEngine:
             tts_text=formatted_text,
             prompt_wav=prompt_wav,
             stream=stream,
-            speed=speed,
-            text_frontend=text_frontend
+            speed=speed
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
@@ -422,7 +421,6 @@ class CosyVoiceEngine:
         instruct_text: Optional[str] = None,
         speed: float = 1.0,
         stream: bool = False,
-        text_frontend: bool = False,  # False for English, True for Chinese
         progress_bar=None,
         **kwargs
     ) -> torch.Tensor:
@@ -437,7 +435,6 @@ class CosyVoiceEngine:
             instruct_text: Instruction for instruct mode
             speed: Speech speed multiplier (0.5-2.0)
             stream: Enable streaming output
-            text_frontend: Use text normalization frontend
             progress_bar: ComfyUI progress bar for tracking
             **kwargs: Additional parameters (ignored for compatibility)
 
@@ -454,7 +451,6 @@ class CosyVoiceEngine:
                 prompt_text=prompt_text,
                 speed=speed,
                 stream=stream,
-                text_frontend=text_frontend,
                 progress_bar=progress_bar
             )
         elif mode == "instruct":
@@ -466,7 +462,6 @@ class CosyVoiceEngine:
                 instruct_text=instruct_text,
                 speed=speed,
                 stream=stream,
-                text_frontend=text_frontend,
                 progress_bar=progress_bar
             )
         elif mode == "cross_lingual":
@@ -475,7 +470,6 @@ class CosyVoiceEngine:
                 prompt_wav=prompt_wav,
                 speed=speed,
                 stream=stream,
-                text_frontend=text_frontend,
                 progress_bar=progress_bar
             )
         else:

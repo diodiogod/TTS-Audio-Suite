@@ -244,7 +244,27 @@ class Qwen2Encoder(torch.nn.Module):
         return outs.hidden_states[-1], masks.unsqueeze(1)
 
     def forward_one_step(self, xs, masks, cache=None):
-        input_masks = masks[:, -1, :]
+        # For cached inference, we need to compute the proper attention mask
+        # that covers the full sequence (cached positions + new positions)
+        if cache is not None:
+            # Get the cached sequence length
+            if hasattr(cache, 'get_seq_length'):
+                # DynamicCache (transformers >= 4.36)
+                cached_len = cache.get_seq_length()
+            elif hasattr(cache, '__len__') and len(cache) > 0:
+                # Tuple format (older transformers)
+                cached_len = cache[0][0].shape[2]
+            else:
+                cached_len = 0
+
+            # Total sequence length = cached + new tokens
+            total_len = cached_len + xs.shape[1]
+            # Create attention mask for full sequence (all ones = attend to all positions)
+            input_masks = torch.ones((xs.shape[0], total_len), dtype=torch.long, device=xs.device)
+        else:
+            # No cache - use the provided mask's last row
+            input_masks = masks[:, -1, :]
+
         outs = self.model(
             inputs_embeds=xs,
             attention_mask=input_masks,
@@ -698,7 +718,7 @@ class CosyVoice3LM(Qwen2LM):
         lm_output, lm_output_mask = self.llm(lm_input, lm_input_len.to(device))
         logits = self.llm_decoder(lm_output)
         loss = self.criterion_ce(logits, lm_target.to(device))
-        acc = th_accuracy(logits.view(-1, self.speech_token_size + 200), lm_target, ignore_label=IGNORE_ID)
+        acc = th_accuracy(logits.view(-1, self.speech_token_size + 3), lm_target, ignore_label=IGNORE_ID)
         return {'loss': loss, 'acc': acc}
 
     @torch.inference_mode()

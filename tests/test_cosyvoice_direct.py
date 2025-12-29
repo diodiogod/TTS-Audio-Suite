@@ -70,21 +70,59 @@ print(f"\nFormatted prompt_text: {prompt_text}")
 
 # Test text - keeping it simple
 test_text = "Hello, this is a test of the CosyVoice three text to speech system."
+test_text_with_tag = "<|en|>" + test_text
 
 print(f"TTS text: {test_text}")
+print(f"TTS text with tag: {test_text_with_tag}")
 
-# Call inference exactly like official example
-print("\nGenerating audio...")
-output_path = os.path.join(project_root, "tests", "output", "direct_cosyvoice_test.wav")
+# Test 1: zero_shot without <|en|> tag
+print("\n=== Test 1: zero_shot WITHOUT language tag ===")
+output_path_1 = os.path.join(project_root, "tests", "output", "zero_shot_NO_TAG.wav")
 
 for i, output in enumerate(cosyvoice.inference_zero_shot(
-    test_text,  # tts_text (positional, not keyword!)
-    prompt_text,  # prompt_text (positional, not keyword!)
-    voice_path,  # prompt_wav (positional, not keyword!)
+    test_text,
+    prompt_text,
+    voice_path,
+    stream=False,
+    text_frontend=False
+)):
+    print(f"  Chunk {i}: shape={output['tts_speech'].shape}")
+    torchaudio.save(output_path_1, output['tts_speech'], cosyvoice.sample_rate)
+
+print(f"Saved: {output_path_1}")
+
+# Test 2: zero_shot WITH <|en|> tag
+print("\n=== Test 2: zero_shot WITH <|en|> tag ===")
+output_path_2 = os.path.join(project_root, "tests", "output", "zero_shot_WITH_TAG.wav")
+
+for i, output in enumerate(cosyvoice.inference_zero_shot(
+    test_text_with_tag,
+    prompt_text,
+    voice_path,
+    stream=False,
+    text_frontend=False
+)):
+    print(f"  Chunk {i}: shape={output['tts_speech'].shape}")
+    torchaudio.save(output_path_2, output['tts_speech'], cosyvoice.sample_rate)
+
+print(f"Saved: {output_path_2}")
+
+# Test 3: cross_lingual WITH <|en|> tag (official way)
+print("\n=== Test 3: cross_lingual WITH <|en|> tag (OFFICIAL) ===")
+output_path_3 = os.path.join(project_root, "tests", "output", "cross_lingual_EN_TAG.wav")
+
+for i, output in enumerate(cosyvoice.inference_cross_lingual(
+    test_text_with_tag,
+    voice_path,
     stream=False
 )):
     print(f"  Chunk {i}: shape={output['tts_speech'].shape}")
-    torchaudio.save(output_path, output['tts_speech'], cosyvoice.sample_rate)
+    torchaudio.save(output_path_3, output['tts_speech'], cosyvoice.sample_rate)
 
-print(f"\n✅ Audio saved to: {output_path}")
-print(f"   Please listen to verify quality!")
+print(f"Saved: {output_path_3}")
+
+print(f"\nDONE - Compare the three audio files:")
+print(f"  1. zero_shot no tag:    {output_path_1}")
+print(f"  2. zero_shot with tag:  {output_path_2}")
+print(f"  3. cross_lingual (official): {output_path_3}")
+print(f"\nListen to all three and see which one works for English!")
