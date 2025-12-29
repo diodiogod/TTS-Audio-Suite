@@ -31,7 +31,7 @@ class CosyVoiceSRTProcessor:
     Uses the existing CosyVoiceProcessor for actual generation.
     """
 
-    SAMPLE_RATE = 22050  # CosyVoice3 native sample rate
+    SAMPLE_RATE = 24000  # CosyVoice3 native sample rate
 
     def __init__(self, node_instance, engine_config: Dict[str, Any]):
         """

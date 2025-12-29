@@ -84,6 +84,11 @@ class CosyVoiceEngineNode(BaseTTSNode):
                     "multiline": True,
                     "default": "",
                     "tooltip": """Optional instruction for dialect/emotion/speed control.
+
+⚠️ IMPORTANT: Instruction mode is mutually exclusive with transcript-based voice cloning.
+• When instruction is provided: Uses instruction mode (ignores transcripts)
+• When empty: Uses zero-shot cloning with transcripts (.txt files) for BEST QUALITY
+
 Examples:
 • 请用广东话表达。 (Use Cantonese dialect)
 • 请用四川话说。 (Use Sichuan dialect)
@@ -91,9 +96,7 @@ Examples:
 • 请用温柔的语气说。 (Use gentle tone)
 • 请用生气的语气说。 (Use angry tone)
 
-When provided: Uses instruct mode with auto-formatting
-When empty: Uses zero-shot voice cloning mode
-Reference audio transcript comes from Character Voices node"""
+For best voice cloning quality: Leave this empty and provide .txt transcripts via Character Voices"""
                 }),
 
                 # Advanced optimizations (usually not needed)

@@ -70,29 +70,42 @@ class CosyVoiceAdapter:
                 text: str,
                 speaker_audio: Optional[str] = None,
                 reference_text: Optional[str] = None,
-                mode: str = "zero_shot",
                 instruct_text: Optional[str] = None,
                 speed: float = 1.0,
                 stream: bool = False,
                 **kwargs) -> torch.Tensor:
         """
         Generate speech with CosyVoice3.
-        
+
+        Mode is auto-detected:
+        - If instruct_text provided → instruct mode
+        - If reference_text from Character Voices → zero_shot mode
+        - Otherwise → cross_lingual mode
+
         Args:
             text: Text to synthesize (supports [character] tags)
             speaker_audio: Speaker reference audio file path
-            reference_text: Transcript of reference audio (required for zero_shot)
-            mode: Generation mode ("zero_shot", "instruct", "cross_lingual")
-            instruct_text: Instruction for instruct mode
+            reference_text: Transcript of reference audio (from Character Voices .txt)
+            instruct_text: Optional instruction for dialect/emotion/speed control
             speed: Speech speed multiplier (0.5-2.0)
             stream: Enable streaming
             **kwargs: Additional parameters
-            
+
         Returns:
-            Generated audio tensor [1, samples] at 22050 Hz
+            Generated audio tensor [1, samples] at 24000 Hz
         """
         if self.engine is None:
             self.initialize_engine()
+
+        # Auto-detect mode based on available parameters
+        if instruct_text and instruct_text.strip():
+            mode = "instruct"
+            if reference_text and reference_text.strip():
+                print("⚠️ CosyVoice3: Both instruction and transcript provided. Using instruction mode (transcript ignored for best dialect/emotion control).")
+        elif reference_text and reference_text.strip():
+            mode = "zero_shot"
+        else:
+            mode = "cross_lingual"
 
         # Check if text contains character tags
         has_character_tags = character_parser.CHARACTER_TAG_PATTERN.search(text) is not None
@@ -104,10 +117,9 @@ class CosyVoiceAdapter:
             if len(processed_segments) > 1:
                 # Multi-segment character switching
                 return self._generate_multi_character_segments(
-                    processed_segments, 
-                    speaker_audio, 
+                    processed_segments,
+                    speaker_audio,
                     reference_text,
-                    mode=mode,
                     instruct_text=instruct_text,
                     speed=speed,
                     **kwargs
@@ -141,12 +153,11 @@ class CosyVoiceAdapter:
                         final_reference_text = char_text
                     print(f"🎭 Using character voice: {character_name} -> {final_speaker_audio}")
 
-        # Generate cache key
+        # Generate cache key (mode is deterministic from reference_text + instruct_text)
         cache_key = self._generate_cache_key(
             text=processed_text,
             speaker_audio=self._get_stable_audio_identifier(final_speaker_audio),
             reference_text=final_reference_text,
-            mode=mode,
             instruct_text=instruct_text,
             speed=speed,
             **kwargs
@@ -166,6 +177,10 @@ class CosyVoiceAdapter:
             import numpy as np
             random.seed(seed)
             np.random.seed(seed)
+
+        # Convert CosyVoice paralinguistic tags from <tag> to [tag]
+        from utils.text.cosyvoice_special_tags import convert_cosyvoice_special_tags
+        processed_text = convert_cosyvoice_special_tags(processed_text)
 
         # Generate audio
         audio = self.engine.generate(
@@ -278,9 +293,13 @@ class CosyVoiceAdapter:
                 print(f"💾 Using cached CosyVoice3 segment for '{character_name}'")
                 segment_audio = cached_segment_audio[0]
             else:
+                # Convert CosyVoice paralinguistic tags from <tag> to [tag]
+                from utils.text.cosyvoice_special_tags import convert_cosyvoice_special_tags
+                segment_text_converted = convert_cosyvoice_special_tags(segment_text)
+
                 # Generate audio for this segment
                 segment_audio = self.engine.generate(
-                    text=segment_text,
+                    text=segment_text_converted,
                     prompt_wav=speaker_audio,
                     prompt_text=reference_text,
                     **kwargs
@@ -317,7 +336,7 @@ class CosyVoiceAdapter:
     
     def get_sample_rate(self) -> int:
         """Get native sample rate."""
-        return 22050
+        return 24000
     
     def get_supported_languages(self) -> List[str]:
         """Get supported languages."""

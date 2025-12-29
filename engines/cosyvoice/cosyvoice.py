@@ -222,11 +222,11 @@ class CosyVoiceEngine:
             progress_bar: ComfyUI progress bar for tracking
             
         Returns:
-            Generated audio as torch.Tensor [1, samples] at 22050 Hz
+            Generated audio as torch.Tensor [1, samples] at 24000 Hz
         """
         self._ensure_model_loaded()
         self._ensure_device_loaded()
-        
+
         # CosyVoice3 REQUIRES the prompt_text to be in format:
         # 'You are a helpful assistant.<|endofprompt|>' + actual_transcript
         # This is critical for correct audio generation!
@@ -312,13 +312,13 @@ class CosyVoiceEngine:
             stream: Enable streaming output
             text_frontend: Use text normalization frontend
             progress_bar: ComfyUI progress bar for tracking
-            
+
         Returns:
-            Generated audio as torch.Tensor [1, samples] at 22050 Hz
+            Generated audio as torch.Tensor [1, samples] at 24000 Hz
         """
         self._ensure_model_loaded()
         self._ensure_device_loaded()
-        
+
         # CosyVoice3 instruct format MUST be: 'You are a helpful assistant. {instruction}<|endofprompt|>'
         # Example: 'You are a helpful assistant. 请用广东话表达。<|endofprompt|>'
         formatted_instruct = instruct_text
@@ -380,13 +380,13 @@ class CosyVoiceEngine:
             stream: Enable streaming output
             text_frontend: Use text normalization frontend
             progress_bar: ComfyUI progress bar for tracking
-            
+
         Returns:
-            Generated audio as torch.Tensor [1, samples] at 22050 Hz
+            Generated audio as torch.Tensor [1, samples] at 24000 Hz
         """
         self._ensure_model_loaded()
         self._ensure_device_loaded()
-        
+
         # CosyVoice3 cross_lingual also requires the system prompt prefix in the text
         # Example: 'You are a helpful assistant.<|endofprompt|>[breath]...'
         formatted_text = text
@@ -449,9 +449,9 @@ class CosyVoiceEngine:
             text_frontend: Use text normalization frontend
             progress_bar: ComfyUI progress bar for tracking
             **kwargs: Additional parameters (ignored for compatibility)
-            
+
         Returns:
-            Generated audio as torch.Tensor [1, samples] at 22050 Hz
+            Generated audio as torch.Tensor [1, samples] at 24000 Hz
         """
         if mode == "zero_shot":
             if not prompt_text:
@@ -500,10 +500,10 @@ class CosyVoiceEngine:
     
     def get_sample_rate(self) -> int:
         """Get the native sample rate of the engine."""
-        # CosyVoice3 uses 22050 Hz (from cosyvoice3.yaml)
+        # CosyVoice3 uses 24000 Hz (from cosyvoice3.yaml)
         if self._cosyvoice is not None and hasattr(self._cosyvoice, 'sample_rate'):
             return self._cosyvoice.sample_rate
-        return 22050
+        return 24000
     
     def get_supported_languages(self) -> List[str]:
         """Get list of supported languages."""

@@ -36,7 +36,7 @@ class CosyVoiceProcessor:
     Handles character processing, pause tags, and generation orchestration.
     """
 
-    SAMPLE_RATE = 22050  # CosyVoice3 native sample rate
+    SAMPLE_RATE = 24000  # CosyVoice3 native sample rate
 
     def __init__(self, engine_config: Dict[str, Any]):
         """
