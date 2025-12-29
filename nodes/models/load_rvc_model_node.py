@@ -178,22 +178,39 @@ class LoadRVCModelNode(BaseTTSNode):
                 "Monika.pth"
             ]
         
-        # Add local models (like F5-TTS pattern)
+        # Add local models (respects extra_model_paths.yaml)
+        try:
+            from utils.models.extra_paths import get_all_tts_model_paths
+
+            # Search in all configured TTS model paths
+            all_tts_paths = get_all_tts_model_paths('TTS')
+            for base_path in all_tts_paths:
+                rvc_dir = os.path.join(base_path, "RVC")
+                if os.path.exists(rvc_dir):
+                    for file in os.listdir(rvc_dir):
+                        if file.endswith('.pth'):
+                            local_model = f"local:{file}"
+                            if local_model not in models:
+                                models.append(local_model)
+        except Exception:
+            pass
+
+        # Fallback to hardcoded ComfyUI models_dir (legacy)
         try:
             if folder_paths:
                 models_dir = folder_paths.models_dir
-                # Try TTS path first, then legacy
                 rvc_search_paths = [
                     os.path.join(models_dir, "TTS", "RVC"),
                     os.path.join(models_dir, "RVC")  # Legacy
                 ]
-                
+
                 for rvc_models_dir in rvc_search_paths:
                     if os.path.exists(rvc_models_dir):
                         for file in os.listdir(rvc_models_dir):
-                            if file.endswith('.pth') and f"local:{file}" not in models:
-                                # Add local: prefix to distinguish from downloadable ones
-                                models.append(f"local:{file}")
+                            if file.endswith('.pth'):
+                                local_model = f"local:{file}"
+                                if local_model not in models:
+                                    models.append(local_model)
         except:
             pass
         
@@ -220,22 +237,46 @@ class LoadRVCModelNode(BaseTTSNode):
                 "Sayano_v2_40k.index"
             ])
         
-        # Add local index files (like F5-TTS pattern)
+        # Add local index files (respects extra_model_paths.yaml)
         try:
-            if folder_paths:
-                models_dir = folder_paths.models_dir
-                # Try TTS path first, then legacy
+            from utils.models.extra_paths import get_all_tts_model_paths
+
+            # Search in all configured TTS model paths
+            all_tts_paths = get_all_tts_model_paths('TTS')
+            for base_path in all_tts_paths:
+                # Check both RVC/.index and RVC/ for index files
                 index_search_paths = [
-                    os.path.join(models_dir, "TTS", "RVC", ".index"),
-                    os.path.join(models_dir, "RVC", ".index")  # Legacy
+                    os.path.join(base_path, "RVC", ".index"),
+                    os.path.join(base_path, "RVC")
                 ]
-                
                 for rvc_index_dir in index_search_paths:
                     if os.path.exists(rvc_index_dir):
                         for file in os.listdir(rvc_index_dir):
-                            if file.endswith('.index') and f"local:{file}" not in indexes:
-                                # Add local: prefix to distinguish from downloadable ones
-                                indexes.append(f"local:{file}")
+                            if file.endswith('.index'):
+                                local_index = f"local:{file}"
+                                if local_index not in indexes:
+                                    indexes.append(local_index)
+        except Exception:
+            pass
+
+        # Fallback to hardcoded ComfyUI models_dir (legacy)
+        try:
+            if folder_paths:
+                models_dir = folder_paths.models_dir
+                index_search_paths = [
+                    os.path.join(models_dir, "TTS", "RVC", ".index"),
+                    os.path.join(models_dir, "RVC", ".index"),  # Legacy
+                    os.path.join(models_dir, "TTS", "RVC"),
+                    os.path.join(models_dir, "RVC")
+                ]
+
+                for rvc_index_dir in index_search_paths:
+                    if os.path.exists(rvc_index_dir):
+                        for file in os.listdir(rvc_index_dir):
+                            if file.endswith('.index'):
+                                local_index = f"local:{file}"
+                                if local_index not in indexes:
+                                    indexes.append(local_index)
         except:
             pass
         
