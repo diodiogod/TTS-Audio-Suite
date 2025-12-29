@@ -239,13 +239,32 @@ class CosyVoiceEngine:
         # Collect all audio chunks
         audio_chunks = []
 
+        # Detect if text contains CosyVoice tags (in [tag] format after adapter conversion)
+        # If tags present, disable text_frontend to preserve them
+        cosyvoice_tags = ['[breath]', '[quick_breath]', '[laughter]', '[cough]', '[sigh]',
+                         '[gasp]', '[noise]', '[hissing]', '[vocalized-noise]',
+                         '[lipsmack]', '[mn]', '[clucking]', '[accent]',
+                         '<strong>', '</strong>', '<laughter>', '</laughter>',
+                         '<|en|>', '<|zh|>', '<|ja|>', '<|ko|>']
+        has_tags = any(tag in text for tag in cosyvoice_tags)
+        text_frontend = not has_tags
+
+        # Display the actual text being sent to the model
+        print("📝 CosyVoice3 - Generating zero_shot:")
+        print("=" * 60)
+        print(text)
+        print("=" * 60)
+        if has_tags:
+            print(f"⚙️  text_frontend=False (special tags detected)")
+
         generation_start = time.time()
         for i, output in enumerate(self._cosyvoice.inference_zero_shot(
             tts_text=text,
             prompt_text=formatted_prompt_text,
             prompt_wav=prompt_wav,
             stream=stream,
-            speed=speed
+            speed=speed,
+            text_frontend=text_frontend
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
@@ -313,13 +332,31 @@ class CosyVoiceEngine:
         # Collect all audio chunks
         audio_chunks = []
 
+        # Detect if text contains CosyVoice tags - disable text_frontend to preserve them
+        cosyvoice_tags = ['[breath]', '[quick_breath]', '[laughter]', '[cough]', '[sigh]',
+                         '[gasp]', '[noise]', '[hissing]', '[vocalized-noise]',
+                         '[lipsmack]', '[mn]', '[clucking]', '[accent]',
+                         '<strong>', '</strong>', '<laughter>', '</laughter>',
+                         '<|en|>', '<|zh|>', '<|ja|>', '<|ko|>']
+        has_tags = any(tag in text for tag in cosyvoice_tags)
+        text_frontend = not has_tags
+
+        # Display the actual text being sent to the model
+        print("📝 CosyVoice3 - Generating instruct2:")
+        print("=" * 60)
+        print(text)
+        print("=" * 60)
+        if has_tags:
+            print(f"⚙️  text_frontend=False (special tags detected)")
+
         generation_start = time.time()
         for i, output in enumerate(self._cosyvoice.inference_instruct2(
             tts_text=text,
             instruct_text=formatted_instruct,
             prompt_wav=prompt_wav,
             stream=stream,
-            speed=speed
+            speed=speed,
+            text_frontend=text_frontend
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
@@ -382,12 +419,30 @@ class CosyVoiceEngine:
         # Collect all audio chunks
         audio_chunks = []
 
+        # Detect if text contains CosyVoice tags - disable text_frontend to preserve them
+        cosyvoice_tags = ['[breath]', '[quick_breath]', '[laughter]', '[cough]', '[sigh]',
+                         '[gasp]', '[noise]', '[hissing]', '[vocalized-noise]',
+                         '[lipsmack]', '[mn]', '[clucking]', '[accent]',
+                         '<strong>', '</strong>', '<laughter>', '</laughter>',
+                         '<|en|>', '<|zh|>', '<|ja|>', '<|ko|>']
+        has_tags = any(tag in formatted_text for tag in cosyvoice_tags)
+        text_frontend = not has_tags
+
+        # Display the actual text being sent to the model
+        print("📝 CosyVoice3 - Generating cross_lingual:")
+        print("=" * 60)
+        print(formatted_text)
+        print("=" * 60)
+        if has_tags:
+            print(f"⚙️  text_frontend=False (special tags detected)")
+
         generation_start = time.time()
         for i, output in enumerate(self._cosyvoice.inference_cross_lingual(
             tts_text=formatted_text,
             prompt_wav=prompt_wav,
             stream=stream,
-            speed=speed
+            speed=speed,
+            text_frontend=text_frontend
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
