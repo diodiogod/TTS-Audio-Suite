@@ -10,6 +10,7 @@ Fun-CosyVoice3-0.5B integration providing:
 
 import os
 import sys
+import time
 import torch
 import torchaudio
 import tempfile
@@ -237,13 +238,8 @@ class CosyVoiceEngine:
         
         # Collect all audio chunks
         audio_chunks = []
-        
-        # DEBUG: Show what's being passed to inference
-        print(f"🔍 CosyVoice3 zero_shot DEBUG:")
-        print(f"   tts_text: {text[:50]}...")
-        print(f"   prompt_text: {formatted_prompt_text[:100]}...")
-        print(f"   prompt_wav: {prompt_wav}")
-        
+
+        generation_start = time.time()
         for i, output in enumerate(self._cosyvoice.inference_zero_shot(
             tts_text=text,
             prompt_text=formatted_prompt_text,
@@ -252,17 +248,8 @@ class CosyVoiceEngine:
             speed=speed
         )):
             audio_chunk = output['tts_speech']
-            
-            # DEBUG: Log raw tensor statistics
-            print(f"🔍 CosyVoice3 raw output chunk {i}:")
-            print(f"   shape: {audio_chunk.shape}")
-            print(f"   dtype: {audio_chunk.dtype}")
-            print(f"   device: {audio_chunk.device}")
-            print(f"   min: {audio_chunk.min().item():.6f}, max: {audio_chunk.max().item():.6f}")
-            print(f"   mean: {audio_chunk.mean().item():.6f}, std: {audio_chunk.std().item():.6f}")
-            
             audio_chunks.append(audio_chunk)
-            
+
             if progress_bar is not None:
                 progress_bar.update(1)
         
@@ -272,11 +259,16 @@ class CosyVoiceEngine:
         else:
             # Return silence if no chunks
             audio_tensor = torch.zeros(1, self.get_sample_rate(), dtype=torch.float32)
-        
-        # DEBUG: Save raw audio DIRECTLY to bypass all wrapper layers
+
+        # Report generation stats
+        generation_time = time.time() - generation_start
+        audio_duration = audio_tensor.shape[-1] / self.get_sample_rate()
+        rtf = generation_time / audio_duration if audio_duration > 0 else 0
+        print(f"📊 Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
+
         # Normalize dimensions to [1, samples]
         audio_tensor = self._normalize_audio_dims(audio_tensor)
-        
+
         return audio_tensor
     
     def generate_instruct(
@@ -321,12 +313,7 @@ class CosyVoiceEngine:
         # Collect all audio chunks
         audio_chunks = []
 
-        # DEBUG: Show what's being passed to inference
-        print(f"🔍 CosyVoice3 instruct DEBUG:")
-        print(f"   tts_text: {text[:50]}...")
-        print(f"   instruct_text: {formatted_instruct}")
-        print(f"   prompt_wav: {prompt_wav}")
-
+        generation_start = time.time()
         for i, output in enumerate(self._cosyvoice.inference_instruct2(
             tts_text=text,
             instruct_text=formatted_instruct,
@@ -336,16 +323,22 @@ class CosyVoiceEngine:
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
-            
+
             if progress_bar is not None:
                 progress_bar.update(1)
-        
+
         # Combine all chunks
         if audio_chunks:
             audio_tensor = torch.cat(audio_chunks, dim=-1)
         else:
             audio_tensor = torch.zeros(1, self.get_sample_rate(), dtype=torch.float32)
-        
+
+        # Report generation stats
+        generation_time = time.time() - generation_start
+        audio_duration = audio_tensor.shape[-1] / self.get_sample_rate()
+        rtf = generation_time / audio_duration if audio_duration > 0 else 0
+        print(f"📊 Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
+
         # Normalize dimensions
         audio_tensor = self._normalize_audio_dims(audio_tensor)
         
@@ -388,7 +381,8 @@ class CosyVoiceEngine:
         
         # Collect all audio chunks
         audio_chunks = []
-        
+
+        generation_start = time.time()
         for i, output in enumerate(self._cosyvoice.inference_cross_lingual(
             tts_text=formatted_text,
             prompt_wav=prompt_wav,
@@ -397,19 +391,25 @@ class CosyVoiceEngine:
         )):
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
-            
+
             if progress_bar is not None:
                 progress_bar.update(1)
-        
+
         # Combine all chunks
         if audio_chunks:
             audio_tensor = torch.cat(audio_chunks, dim=-1)
         else:
             audio_tensor = torch.zeros(1, self.get_sample_rate(), dtype=torch.float32)
-        
+
+        # Report generation stats
+        generation_time = time.time() - generation_start
+        audio_duration = audio_tensor.shape[-1] / self.get_sample_rate()
+        rtf = generation_time / audio_duration if audio_duration > 0 else 0
+        print(f"📊 Generated {audio_duration:.1f}s audio in {generation_time:.1f}s (RTF: {rtf:.2f}x)")
+
         # Normalize dimensions
         audio_tensor = self._normalize_audio_dims(audio_tensor)
-        
+
         return audio_tensor
     
     def generate(

@@ -5,8 +5,9 @@ This tests if the issue is in CosyVoice model itself or in our wrapper layers.
 import sys
 import os
 
-# Add paths
-project_root = r"C:\_stability_matrix\Data\Packages\Comfy-new\custom_nodes\TTS-Audio-Suite"
+# Add paths - Auto-detect based on script location
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
 bundled_cosyvoice_path = os.path.join(project_root, "engines", "cosyvoice", "impl")
 matcha_path = os.path.join(bundled_cosyvoice_path, "third_party", "Matcha-TTS")
 
@@ -25,8 +26,8 @@ import numpy as np
 # Import CosyVoice AutoModel (official way)
 from cosyvoice.cli.cosyvoice import AutoModel
 
-# Model and voice paths
-model_path = r"C:\_stability_matrix\Data\Packages\Comfy-new\models\TTS\CosyVoice\Fun-CosyVoice3-0.5B"
+# Model and voice paths - Accept from command line or use default
+model_path = sys.argv[1] if len(sys.argv) > 1 else r"D:\AiSymLink\TTS\CosyVoice\Fun-CosyVoice3-0.5B"
 voice_path = os.path.join(project_root, "voices_examples", "David_Attenborough CC3.wav")
 reference_text = "The first one who physical contact was with a female with her twins and she put a hand on the top of my head."
 

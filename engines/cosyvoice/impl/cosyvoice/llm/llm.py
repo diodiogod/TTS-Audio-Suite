@@ -466,6 +466,7 @@ class Qwen2LM(TransformerLM):
             max_token_text_ratio: float = 20,
             min_token_text_ratio: float = 2,
             uuid: str = '',
+            progress_callback=None,
     ) -> Generator[torch.Tensor, None, None]:
         device = text.device
         text = torch.concat([prompt_text, text], dim=1)
@@ -486,11 +487,11 @@ class Qwen2LM(TransformerLM):
         max_len = int((text_len - prompt_text_len) * max_token_text_ratio)
 
         # 5. step by step decode
-        for token in self.inference_wrapper(lm_input, sampling, min_len, max_len, uuid):
+        for token in self.inference_wrapper(lm_input, sampling, min_len, max_len, uuid, progress_callback):
             yield token
 
     @torch.inference_mode()
-    def inference_wrapper(self, lm_input, sampling, min_len, max_len, uuid):
+    def inference_wrapper(self, lm_input, sampling, min_len, max_len, uuid, progress_callback=None):
         if hasattr(self, 'vllm'):
             from vllm import SamplingParams, RequestOutput
             sampling_params = SamplingParams(top_k=sampling,
@@ -512,6 +513,9 @@ class Qwen2LM(TransformerLM):
                     top_ids = self.vllm_output_queue[uuid].get()
                     if top_ids in self.stop_token_ids:
                         break
+                    # Call progress callback
+                    if progress_callback is not None:
+                        progress_callback(len(out_tokens) + 1, max_len)
                     # in stream mode, yield token one by one
                     yield top_ids
                     out_tokens.append(top_ids)
@@ -531,6 +535,9 @@ class Qwen2LM(TransformerLM):
                 top_ids = self.sampling_ids(logp.squeeze(dim=0), out_tokens, sampling, ignore_eos=True if i < min_len else False)
                 if top_ids in self.stop_token_ids:
                     break
+                # Call progress callback
+                if progress_callback is not None:
+                    progress_callback(i + 1, max_len)
                 # in stream mode, yield token one by one
                 yield top_ids
                 out_tokens.append(top_ids)
@@ -735,6 +742,7 @@ class CosyVoice3LM(Qwen2LM):
             max_token_text_ratio: float = 20,
             min_token_text_ratio: float = 2,
             uuid: str = '',
+            progress_callback=None,
     ) -> Generator[torch.Tensor, None, None]:
         device = text.device
         text = torch.concat([prompt_text, text], dim=1)
@@ -755,5 +763,5 @@ class CosyVoice3LM(Qwen2LM):
         max_len = int((text_len - prompt_text_len) * max_token_text_ratio)
 
         # 5. step by step decode
-        for token in self.inference_wrapper(lm_input, sampling, min_len, max_len, uuid):
+        for token in self.inference_wrapper(lm_input, sampling, min_len, max_len, uuid, progress_callback):
             yield token

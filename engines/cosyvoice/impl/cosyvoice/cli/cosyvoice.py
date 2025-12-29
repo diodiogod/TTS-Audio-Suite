@@ -90,28 +90,71 @@ class CosyVoice:
 
     def inference_zero_shot(self, tts_text, prompt_text, prompt_wav, zero_shot_spk_id='', stream=False, speed=1.0, text_frontend=True):
         prompt_text = self.frontend.text_normalize(prompt_text, split=False, text_frontend=text_frontend)
-        for i in tqdm(self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend)):
+        # Create live progress callback
+        start_time = [time.time()]
+        last_print_time = [start_time[0]]
+
+        def progress_callback(current, total):
+            current_time = time.time()
+            elapsed = current_time - start_time[0]
+            it_per_sec = current / elapsed if elapsed > 0 else 0
+            filled = int(12 * current / total) if total > 0 else 0
+            bar = '█' * filled + '░' * (12 - filled)
+
+            # Calculate ETA
+            remaining = total - current
+            eta_seconds = remaining / it_per_sec if it_per_sec > 0 else 0
+            eta_str = f"{eta_seconds:.0f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
+
+            import sys
+            # Force stdout flush for Windows
+            sys.stdout.write(f"\r   Progress: [{bar}] {current}/{total} | {it_per_sec:.1f} it/s | {elapsed:.0f}s | ETA: {eta_str}      ")
+            sys.stdout.flush()
+            last_print_time[0] = current_time
+
+        # Use live progress with token-level updates
+        for i in self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend):
             if (not isinstance(i, Generator)) and len(i) < 0.5 * len(prompt_text):
                 logging.warning('\n⚠️  TTS text is shorter than reference transcript - this may affect quality\n   TTS text length: {} chars\n   Reference length: {} chars'.format(len(i), len(prompt_text)))
             model_input = self.frontend.frontend_zero_shot(i, prompt_text, prompt_wav, self.sample_rate, zero_shot_spk_id)
-            start_time = time.time()
-            logging.info('synthesis text {}'.format(i))
-            for model_output in self.model.tts(**model_input, stream=stream, speed=speed):
-                speech_len = model_output['tts_speech'].shape[1] / self.sample_rate
-                logging.info('yield speech len {}, rtf {}'.format(speech_len, (time.time() - start_time) / speech_len))
+            start_time[0] = time.time()
+            last_print_time[0] = start_time[0]
+            for model_output in self.model.tts(**model_input, stream=stream, speed=speed, progress_callback=progress_callback):
                 yield model_output
-                start_time = time.time()
+            # Clear progress line
+            print(f"\r{' ' * 80}\r", end='', flush=True)
 
     def inference_cross_lingual(self, tts_text, prompt_wav, zero_shot_spk_id='', stream=False, speed=1.0, text_frontend=True):
-        for i in tqdm(self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend)):
+        # Create live progress callback
+        start_time = [time.time()]
+        last_print_time = [start_time[0]]
+
+        def progress_callback(current, total):
+            current_time = time.time()
+            elapsed = current_time - start_time[0]
+            it_per_sec = current / elapsed if elapsed > 0 else 0
+            filled = int(12 * current / total) if total > 0 else 0
+            bar = '█' * filled + '░' * (12 - filled)
+
+            # Calculate ETA
+            remaining = total - current
+            eta_seconds = remaining / it_per_sec if it_per_sec > 0 else 0
+            eta_str = f"{eta_seconds:.0f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
+
+            import sys
+            sys.stdout.write(f"\r   Progress: [{bar}] {current}/{total} | {it_per_sec:.1f} it/s | {elapsed:.0f}s | ETA: {eta_str}      ")
+            sys.stdout.flush()
+            last_print_time[0] = current_time
+
+        # Use live progress with token-level updates
+        for i in self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend):
             model_input = self.frontend.frontend_cross_lingual(i, prompt_wav, self.sample_rate, zero_shot_spk_id)
-            start_time = time.time()
-            logging.info('synthesis text {}'.format(i))
-            for model_output in self.model.tts(**model_input, stream=stream, speed=speed):
-                speech_len = model_output['tts_speech'].shape[1] / self.sample_rate
-                logging.info('yield speech len {}, rtf {}'.format(speech_len, (time.time() - start_time) / speech_len))
+            start_time[0] = time.time()
+            last_print_time[0] = start_time[0]
+            for model_output in self.model.tts(**model_input, stream=stream, speed=speed, progress_callback=progress_callback):
                 yield model_output
-                start_time = time.time()
+            # Clear progress line
+            print(f"\r{' ' * 80}\r", end='', flush=True)
 
     def inference_instruct(self, tts_text, spk_id, instruct_text, stream=False, speed=1.0, text_frontend=True):
         assert self.__class__.__name__ == 'CosyVoice', 'inference_instruct is only implemented for CosyVoice!'
@@ -175,15 +218,36 @@ class CosyVoice2(CosyVoice):
         del configs
 
     def inference_instruct2(self, tts_text, instruct_text, prompt_wav, zero_shot_spk_id='', stream=False, speed=1.0, text_frontend=True):
-        for i in tqdm(self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend)):
+        # Create live progress callback
+        start_time = [time.time()]
+        last_print_time = [start_time[0]]
+
+        def progress_callback(current, total):
+            current_time = time.time()
+            elapsed = current_time - start_time[0]
+            it_per_sec = current / elapsed if elapsed > 0 else 0
+            filled = int(12 * current / total) if total > 0 else 0
+            bar = '█' * filled + '░' * (12 - filled)
+
+            # Calculate ETA
+            remaining = total - current
+            eta_seconds = remaining / it_per_sec if it_per_sec > 0 else 0
+            eta_str = f"{eta_seconds:.0f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
+
+            import sys
+            sys.stdout.write(f"\r   Progress: [{bar}] {current}/{total} | {it_per_sec:.1f} it/s | {elapsed:.0f}s | ETA: {eta_str}      ")
+            sys.stdout.flush()
+            last_print_time[0] = current_time
+
+        # Use live progress with token-level updates
+        for i in self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend):
             model_input = self.frontend.frontend_instruct2(i, instruct_text, prompt_wav, self.sample_rate, zero_shot_spk_id)
-            start_time = time.time()
-            logging.info('synthesis text {}'.format(i))
-            for model_output in self.model.tts(**model_input, stream=stream, speed=speed):
-                speech_len = model_output['tts_speech'].shape[1] / self.sample_rate
-                logging.info('yield speech len {}, rtf {}'.format(speech_len, (time.time() - start_time) / speech_len))
+            start_time[0] = time.time()
+            last_print_time[0] = start_time[0]
+            for model_output in self.model.tts(**model_input, stream=stream, speed=speed, progress_callback=progress_callback):
                 yield model_output
-                start_time = time.time()
+            # Clear progress line
+            print(f"\r{' ' * 80}\r", end='', flush=True)
 
 
 class CosyVoice3(CosyVoice2):
