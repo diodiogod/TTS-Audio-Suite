@@ -225,6 +225,31 @@ class CosyVoiceProcessor:
             if not segment_text:
                 continue
 
+            # Prepend CosyVoice language tag if language is specified
+            # Maps segment language to CosyVoice's native <|lang|> format
+            language_tag_prefix = ""
+            if language:
+                from utils.text.cosyvoice_special_tags import COSYVOICE_LANGUAGES
+                from utils.models.language_mapper import resolve_language_alias
+                import re
+
+                # Check if text already has a VALID CosyVoice language tag (user manually added it)
+                # Only skip prepending if it's a supported language: <|en|>, <|zh|>, <|ja|>, <|ko|>
+                manual_tag_match = re.match(r'^\s*<\|([a-z]{2})\|>', segment_text)
+                has_manual_lang_tag = manual_tag_match and manual_tag_match.group(1) in COSYVOICE_LANGUAGES
+
+                if not has_manual_lang_tag:
+                    # Resolve language alias to canonical code (e.g., "german" → "de")
+                    canonical_lang = resolve_language_alias(language)
+
+                    # Check if CosyVoice supports this language
+                    if canonical_lang in COSYVOICE_LANGUAGES:
+                        language_tag_prefix = COSYVOICE_LANGUAGES[canonical_lang] + " "
+
+                    # Prepend language tag to segment text
+                    if language_tag_prefix:
+                        segment_text = language_tag_prefix + segment_text
+
             # Determine speaker audio for this segment
             # Priority: connected opt_narrator > character-specific voices > character mapping narrator fallback
             current_speaker_audio = speaker_audio_path

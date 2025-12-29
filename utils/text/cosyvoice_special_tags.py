@@ -88,3 +88,13 @@ def has_cosyvoice_special_tags(text: str) -> bool:
 def get_supported_cosyvoice_tags() -> Set[str]:
     """Get set of supported CosyVoice special tags."""
     return COSYVOICE_PARALINGUISTIC_TAGS.copy()
+
+
+# CosyVoice supported languages (used by processor to prepend language tags)
+# Only 4 languages supported in cross_lingual mode
+COSYVOICE_LANGUAGES = {
+    'en': '<|en|>',
+    'zh': '<|zh|>',
+    'ja': '<|ja|>',
+    'ko': '<|ko|>'
+}
