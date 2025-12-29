@@ -15,7 +15,6 @@ from typing import Set
 
 # CosyVoice3 paralinguistic tags (single tags, not wrappers)
 # Users should write these in <angle> brackets, we convert to [square] brackets
-# Note: <strong>...</strong> and <laughter>...</laughter> wrappers are NOT converted
 COSYVOICE_PARALINGUISTIC_TAGS: Set[str] = {
     # Breathing sounds
     'breath', 'quick_breath',
@@ -57,11 +56,7 @@ def convert_cosyvoice_special_tags(text: str) -> str:
         >>> convert_cosyvoice_special_tags("This is <strong>important</strong>")
         "This is <strong>important</strong>"  # Already correct format
     """
-    # First, convert wrapper tags: <laughing>text</laughing> → <laughter>text</laughter>
-    text = re.sub(r'<laughing>', '<laughter>', text)
-    text = re.sub(r'</laughing>', '</laughter>', text)
-
-    # Then convert single tags to [tag] format
+    # First convert single tags to [tag] format
     def replace_tag(match):
         tag = match.group(1).lower()
         # Only convert known CosyVoice single tags
@@ -75,7 +70,12 @@ def convert_cosyvoice_special_tags(text: str) -> str:
     # Check that it's not followed immediately by text (which would make it a wrapper opening)
     # and not preceded by / (which would make it a closing tag)
     pattern = r'(?<!</)(?<!\w)<([a-zA-Z_-]+)>(?!\w)'
-    return re.sub(pattern, replace_tag, text)
+    text = re.sub(pattern, replace_tag, text)
+
+    # Then convert wrapper tags: <laughing>text</laughing> → <laughter>text</laughter>
+    text = re.sub(r'<laughing>(.*?)</laughing>', r'<laughter>\1</laughter>', text, flags=re.IGNORECASE | re.DOTALL)
+
+    return text
 
 
 def has_cosyvoice_special_tags(text: str) -> bool:
