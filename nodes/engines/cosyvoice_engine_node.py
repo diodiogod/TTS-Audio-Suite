@@ -65,19 +65,13 @@ class CosyVoiceEngineNode(BaseTTSNode):
                     "default": "auto",
                     "tooltip": "Device to run CosyVoice3 model on:\n• auto: Best available (CUDA > CPU)\n• cuda: NVIDIA GPU\n• cpu: CPU-only processing (slower)"
                 }),
-                
-                # Generation Mode
-                "mode": (["zero_shot", "instruct", "cross_lingual"], {
-                    "default": "zero_shot",
-                    "tooltip": "Generation mode:\n• zero_shot: Clone voice from reference (requires prompt_text)\n• instruct: Control emotions, dialects, speed via instructions\n• cross_lingual: Fine-grained control with [breath] tags"
-                }),
-                
+
                 # Speed Control
                 "speed": ("FLOAT", {
                     "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1,
                     "tooltip": "Speech speed multiplier (0.5=slow, 1.0=normal, 2.0=fast)"
                 }),
-                
+
                 # Model Options
                 "use_fp16": ("BOOLEAN", {
                     "default": True,
@@ -85,27 +79,23 @@ class CosyVoiceEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
-                # Instruct Mode Text
+                # Optional instruction text (like Higgs Audio's system_prompt)
                 "instruct_text": ("STRING", {
                     "multiline": True,
                     "default": "",
-                    "tooltip": """Instructions for instruct mode. Examples:
-• 请用广东话表达。 (Use Cantonese)
+                    "tooltip": """Optional instruction for dialect/emotion/speed control.
+Examples:
+• 请用广东话表达。 (Use Cantonese dialect)
 • 请用四川话说。 (Use Sichuan dialect)
 • 请用尽可能快地语速说一句话。 (Speak as fast as possible)
 • 请用温柔的语气说。 (Use gentle tone)
 • 请用生气的语气说。 (Use angry tone)
 
-Will be formatted as: You are a helpful assistant. [instruction]<|endofprompt|>"""
+When provided: Uses instruct mode with auto-formatting
+When empty: Uses zero-shot voice cloning mode
+Reference audio transcript comes from Character Voices node"""
                 }),
-                
-                # Reference Text (for zero_shot mode)
-                "reference_text": ("STRING", {
-                    "multiline": True,
-                    "default": "",
-                    "tooltip": "Transcript of the voice reference audio. REQUIRED for zero_shot mode.\nThis helps the model understand the voice characteristics better."
-                }),
-                
+
                 # Advanced optimizations (usually not needed)
                 "load_trt": ("BOOLEAN", {
                     "default": False,
@@ -166,71 +156,62 @@ Will be formatted as: You are a helpful assistant. [instruction]<|endofprompt|>"
         self,
         model_path: str,
         device: str,
-        mode: str,
         speed: float,
         use_fp16: bool,
         instruct_text: str = "",
-        reference_text: str = "",
         load_trt: bool = False,
         load_vllm: bool = False,
     ):
         """
         Create CosyVoice3 engine adapter with configuration.
-        
+
+        Mode is auto-detected in adapter:
+        - If instruct_text provided → instruct mode
+        - If reference_text from Character Voices → zero_shot mode
+        - Otherwise → cross_lingual mode
+
         Returns:
             Tuple containing CosyVoice3 engine configuration data
         """
         try:
-            # Validate mode and reference_text
-            if mode == "zero_shot" and not reference_text.strip():
-                print("⚠️ CosyVoice3: reference_text is REQUIRED for zero_shot mode")
-                print("   → Provide a transcript of your voice reference audio")
-                print("   → Or switch to 'instruct' mode which doesn't require transcript")
-            
             # Create configuration dictionary
             config = {
                 "model_path": model_path,
                 "device": device,
-                "mode": mode,
                 "speed": speed,
                 "use_fp16": use_fp16,
-                "instruct_text": instruct_text.strip() if instruct_text else None,
-                "reference_text": reference_text.strip() if reference_text else None,
+                "instruct_text": instruct_text.strip() if instruct_text else "",
                 "load_trt": load_trt,
                 "load_vllm": load_vllm,
                 "engine_type": "cosyvoice",
             }
-            
+
             print(f"⚙️ CosyVoice3: Configured on {device}")
             print(f"   Model: {model_path}")
-            print(f"   Mode: {mode}")
             print(f"   Speed: {speed}x")
-            if mode == "instruct" and instruct_text:
+            if instruct_text:
                 print(f"   Instruction: {instruct_text[:50]}...")
-            elif mode == "zero_shot" and reference_text:
-                print(f"   Reference text: {reference_text[:50]}...")
-            
+
             # Return engine data for consumption by unified TTS nodes
             engine_data = {
                 "engine_type": "cosyvoice",
                 "config": config,
                 "adapter_class": "CosyVoiceAdapter"
             }
-            
+
             return (engine_data,)
-            
+
         except Exception as e:
             print(f"❌ CosyVoice3 Engine error: {e}")
             import traceback
             traceback.print_exc()
-            
+
             # Return error config
             error_config = {
                 "engine_type": "cosyvoice",
                 "config": {
                     "model_path": model_path,
                     "device": "cpu",  # Fallback to CPU
-                    "mode": "zero_shot",
                     "speed": 1.0,
                     "error": str(e)
                 },
