@@ -283,19 +283,32 @@ class LoadRVCModelNode(BaseTTSNode):
         return sorted(indexes)
     
     def _get_model_path(self, model_name, auto_download=True):
-        """Get full path to RVC model file."""
+        """Get full path to RVC model file (respects extra_model_paths.yaml)."""
         try:
             # Handle local: prefix (like F5-TTS pattern)
             if model_name.startswith("local:"):
                 actual_model_name = model_name.replace("local:", "")
+
+                # Search in extra_model_paths.yaml first
+                try:
+                    from utils.models.extra_paths import get_all_tts_model_paths
+                    all_tts_paths = get_all_tts_model_paths('TTS')
+
+                    for base_path in all_tts_paths:
+                        model_path = os.path.join(base_path, "RVC", actual_model_name)
+                        if os.path.exists(model_path):
+                            return model_path
+                except Exception:
+                    pass
+
+                # Fallback to hardcoded ComfyUI paths
                 if folder_paths:
                     models_dir = folder_paths.models_dir
-                    # Try TTS path first, then legacy
                     search_paths = [
                         os.path.join(models_dir, "TTS", "RVC", actual_model_name),
                         os.path.join(models_dir, "RVC", actual_model_name)  # Legacy
                     ]
-                    
+
                     for model_path in search_paths:
                         if os.path.exists(model_path):
                             return model_path
@@ -325,19 +338,37 @@ class LoadRVCModelNode(BaseTTSNode):
             return None
     
     def _get_index_path(self, index_name, auto_download=True):
-        """Get full path to RVC index file."""
+        """Get full path to RVC index file (respects extra_model_paths.yaml)."""
         try:
             # Handle local: prefix (like F5-TTS pattern)
             if index_name.startswith("local:"):
                 actual_index_name = index_name.replace("local:", "")
+
+                # Search in extra_model_paths.yaml first
+                try:
+                    from utils.models.extra_paths import get_all_tts_model_paths
+                    all_tts_paths = get_all_tts_model_paths('TTS')
+
+                    for base_path in all_tts_paths:
+                        # Check both .index subdirectory and RVC root
+                        index_paths = [
+                            os.path.join(base_path, "RVC", ".index", actual_index_name),
+                            os.path.join(base_path, "RVC", actual_index_name)
+                        ]
+                        for index_path in index_paths:
+                            if os.path.exists(index_path):
+                                return index_path
+                except Exception:
+                    pass
+
+                # Fallback to hardcoded ComfyUI paths
                 if folder_paths:
                     models_dir = folder_paths.models_dir
-                    # Try TTS path first, then legacy
                     search_paths = [
                         os.path.join(models_dir, "TTS", "RVC", ".index", actual_index_name),
                         os.path.join(models_dir, "RVC", ".index", actual_index_name)  # Legacy
                     ]
-                    
+
                     for index_path in search_paths:
                         if os.path.exists(index_path):
                             return index_path

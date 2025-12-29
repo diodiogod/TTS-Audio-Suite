@@ -684,6 +684,14 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 current_pos = target_end
                 print(f"  ✂️ Fixed split at {target_end/sample_rate:.2f}s (no silence found)")
 
+        # Post-process: merge last chunk if too short (prevents RVC errors)
+        if len(chunks) > 1:
+            last_chunk_duration = chunks[-1].shape[-1] / sample_rate
+            if last_chunk_duration < 1.0:
+                print(f"⚠️ Last chunk too short ({last_chunk_duration:.2f}s), merging with previous chunk")
+                chunks[-2] = torch.cat([chunks[-2], chunks[-1]], dim=-1)
+                chunks.pop()
+
         print(f"📦 Created {len(chunks)} smart chunks")
         return chunks
 
@@ -703,10 +711,22 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         chunk_samples = int(max_duration * sample_rate)
         total_samples = audio.shape[-1]
 
+        # Minimum chunk size: 1 second (prevents RVC RMS calculation errors)
+        min_chunk_samples = sample_rate
+
         chunks = []
         for start_sample in range(0, total_samples, chunk_samples):
             end_sample = min(start_sample + chunk_samples, total_samples)
-            chunks.append(audio[:, :, start_sample:end_sample])
+            chunk = audio[:, :, start_sample:end_sample]
+
+            # Check if this is the last chunk and it's too small
+            chunk_duration = chunk.shape[-1] / sample_rate
+            if chunk_duration < 1.0 and len(chunks) > 0:
+                # Merge with previous chunk instead of creating tiny chunk
+                print(f"⚠️ Last chunk too short ({chunk_duration:.2f}s), merging with previous chunk")
+                chunks[-1] = torch.cat([chunks[-1], chunk], dim=-1)
+            else:
+                chunks.append(chunk)
 
         print(f"📦 Created {len(chunks)} fixed-duration chunks")
         return chunks

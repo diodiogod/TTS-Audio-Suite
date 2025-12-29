@@ -188,28 +188,47 @@ class RVCEngineAdapter:
             raise e
     
     def _find_hubert_model(self) -> Optional[str]:
-        """Find available Hubert model."""
+        """Find available Hubert model (respects extra_model_paths.yaml)."""
         try:
-            import folder_paths
-            models_dir = folder_paths.models_dir
-            
-            # Common Hubert model names and locations
+            # Common Hubert model names
             hubert_candidates = [
                 "content-vec-best.safetensors",
                 "hubert_base.pt",
                 "chinese-hubert-base.pt",
                 "chinese-wav2vec2-base.pt"
             ]
-            
+
+            # Search in extra_model_paths.yaml first
+            try:
+                from utils.models.extra_paths import get_all_tts_model_paths
+                all_tts_paths = get_all_tts_model_paths('TTS')
+
+                for base_path in all_tts_paths:
+                    for model_name in hubert_candidates:
+                        # Check TTS/hubert/ and TTS/ root
+                        search_paths = [
+                            os.path.join(base_path, "hubert", model_name),
+                            os.path.join(base_path, model_name)
+                        ]
+                        for model_path in search_paths:
+                            if os.path.exists(model_path):
+                                print(f"📄 Found Hubert model: {model_name}")
+                                return model_path
+            except Exception:
+                pass
+
+            # Fallback to hardcoded ComfyUI paths
+            import folder_paths
+            models_dir = folder_paths.models_dir
+
             for model_name in hubert_candidates:
-                # Try TTS path first, then legacy locations
                 search_paths = [
                     os.path.join(models_dir, "TTS", "hubert", model_name),
                     os.path.join(models_dir, "TTS", model_name),
                     os.path.join(models_dir, "hubert", model_name),  # Legacy
                     os.path.join(models_dir, model_name)  # Legacy - direct in models/
                 ]
-                
+
                 for model_path in search_paths:
                     if os.path.exists(model_path):
                         print(f"📄 Found Hubert model: {model_name}")
