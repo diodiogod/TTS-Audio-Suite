@@ -242,8 +242,9 @@ class CosyVoiceProcessor:
                     # Resolve language alias to canonical code (e.g., "german" → "de")
                     canonical_lang = resolve_language_alias(language)
 
-                    # Check if CosyVoice supports this language
-                    if canonical_lang in COSYVOICE_LANGUAGES:
+                    # Only prepend non-English language tags (en is CosyVoice default, no tag needed)
+                    # This prevents forcing English mode on all text and allows auto-detection
+                    if canonical_lang in COSYVOICE_LANGUAGES and canonical_lang != 'en':
                         language_tag_prefix = COSYVOICE_LANGUAGES[canonical_lang] + " "
 
                     # Prepend language tag to segment text
