@@ -38,7 +38,7 @@ PARAMETER_ALIASES = {
 PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'vibevoice', 'index_tts', 'step_audio_editx'
+        'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
@@ -51,7 +51,7 @@ PARAMETER_ENGINES = {
         'chatterbox', 'chatterbox_official_23lang'
     },
     'speed': {
-        'f5tts'
+        'f5tts', 'cosyvoice'
     },
     'top_p': {
         'higgs_audio', 'vibevoice', 'index_tts'

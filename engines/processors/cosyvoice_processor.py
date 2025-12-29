@@ -251,6 +251,19 @@ class CosyVoiceProcessor:
                     if language_tag_prefix:
                         segment_text = language_tag_prefix + segment_text
 
+            # Apply per-segment parameter overrides (e.g., [seed:42], [speed:1.5])
+            segment_seed = seed
+            segment_speed = self.speed
+            if segment.parameters:
+                print(f"  📊 Applying parameters: {segment.parameters}")
+                segment_params_applied = apply_segment_parameters(
+                    {'seed': seed, 'speed': self.speed},
+                    segment.parameters,
+                    'cosyvoice'
+                )
+                segment_seed = segment_params_applied.get('seed', seed)
+                segment_speed = segment_params_applied.get('speed', self.speed)
+
             # Determine speaker audio for this segment
             # Priority: connected opt_narrator > character-specific voices > character mapping narrator fallback
             current_speaker_audio = speaker_audio_path
@@ -282,7 +295,8 @@ class CosyVoiceProcessor:
                         text=text_content,
                         speaker_audio=current_speaker_audio,
                         reference_text=current_reference_text,
-                        seed=seed
+                        seed=segment_seed,
+                        speed=segment_speed
                     )
                 
                 pause_segments, clean_text = PauseTagProcessor.parse_pause_tags(segment_text)
@@ -306,7 +320,8 @@ class CosyVoiceProcessor:
                             text=chunk,
                             speaker_audio=current_speaker_audio,
                             reference_text=current_reference_text,
-                            seed=seed
+                            seed=segment_seed,
+                            speed=segment_speed
                         )
                         chunk_audios.append(chunk_audio)
                     
@@ -320,7 +335,8 @@ class CosyVoiceProcessor:
                         text=segment_text,
                         speaker_audio=current_speaker_audio,
                         reference_text=current_reference_text,
-                        seed=seed
+                        seed=segment_seed,
+                        speed=segment_speed
                     )
 
             audio_segments.append(segment_audio)
@@ -351,16 +367,20 @@ class CosyVoiceProcessor:
         text: str,
         speaker_audio: Optional[str],
         reference_text: Optional[str],
-        seed: int
+        seed: int,
+        speed: Optional[float] = None
     ) -> torch.Tensor:
         """Generate audio for a single text segment."""
+        # Use provided speed or fallback to instance speed
+        effective_speed = speed if speed is not None else self.speed
+
         # Don't pass mode - let adapter auto-detect based on instruct_text/reference_text
         return self.adapter.generate(
             text=text,
             speaker_audio=speaker_audio,
             reference_text=reference_text,
             instruct_text=self.instruct_text,
-            speed=self.speed,
+            speed=effective_speed,
             seed=seed,
             use_fp16=self.use_fp16  # Include fp16 in cache key
         )
