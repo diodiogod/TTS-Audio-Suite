@@ -915,11 +915,12 @@ Hello! This is unified SRT TTS with character switching.
 
             elif engine_type == "cosyvoice":
                 # Use the CosyVoice3 SRT processor from the wrapper instance
+                from utils.audio.processing import AudioProcessingUtils
                 voice_mapping = {}
                 if audio_tensor:
                     voice_mapping['narrator'] = {
                         'audio_path': AudioProcessingUtils.save_audio_to_temp_file(
-                            audio_tensor['waveform'], 
+                            audio_tensor['waveform'],
                             audio_tensor.get('sample_rate', 22050)
                         ) if isinstance(audio_tensor, dict) and 'waveform' in audio_tensor else audio_tensor,
                         'reference_text': reference_text if reference_text else ""

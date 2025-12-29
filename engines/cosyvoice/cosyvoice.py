@@ -425,7 +425,7 @@ class CosyVoiceEngine:
         # Display the actual text being sent to the model
         print("📝 CosyVoice3 - Generating cross_lingual:")
         print("=" * 60)
-        print(formatted_text)
+        print(text)
         print("=" * 60)
         if has_tags:
             print(f"⚙️  text_frontend=False (special tags detected)")

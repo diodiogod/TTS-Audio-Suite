@@ -121,7 +121,8 @@ class CosyVoiceProcessor:
         max_chars_per_chunk: int = 400,
         silence_between_chunks_ms: int = 100,
         enable_pause_tags: bool = True,
-        return_info: bool = False
+        return_info: bool = False,
+        character_mapping: Optional[Dict[str, Tuple[str, str]]] = None
     ) -> Tuple[torch.Tensor, Optional[Dict[str, Any]]]:
         """
         Process text and generate audio with CosyVoice3.
@@ -202,15 +203,24 @@ class CosyVoiceProcessor:
             ]
 
         # Get character mapping for voice switching
-        # Use audio_only mode - text is optional and comes from character files if available
-        # This works for all 3 CosyVoice modes (zero_shot, instruct2, cross_lingual)
-        # IMPORTANT: Use lowercase character names for mapping lookup (character parser returns lowercase)
-        unique_characters = set(seg.character.lower() if seg.character else "narrator" for seg in segment_objects)
-        unique_characters.add("narrator")
-        character_mapping = {}
-        if unique_characters:
-            character_mapping = get_character_mapping(list(unique_characters), engine_type="audio_only")
-            print(f"🎭 Character mapping: {list(character_mapping.keys())}")
+        # Use provided character_mapping if available (e.g., from SRT processor with connected narrator)
+        # Otherwise auto-discover from character folders
+        if character_mapping is None:
+            # Use audio_only mode - text is optional and comes from character files if available
+            # This works for all 3 CosyVoice modes (zero_shot, instruct2, cross_lingual)
+            # IMPORTANT: Use lowercase character names for mapping lookup (character parser returns lowercase)
+            unique_characters = set(seg.character.lower() if seg.character else "narrator" for seg in segment_objects)
+            unique_characters.add("narrator")
+            character_mapping = {}
+            if unique_characters:
+                character_mapping = get_character_mapping(list(unique_characters), engine_type="audio_only")
+                print(f"🎭 Character mapping: {list(character_mapping.keys())}")
+                for char, (audio, text) in character_mapping.items():
+                    if audio:
+                        print(f"   {char}: {audio[:50]}... | Ref: {text[:30] if text else 'None'}...")
+        else:
+            # Using provided character mapping (e.g., from SRT with connected narrator)
+            print(f"🎭 Using provided character mapping: {list(character_mapping.keys())}")
             for char, (audio, text) in character_mapping.items():
                 if audio:
                     print(f"   {char}: {audio[:50]}... | Ref: {text[:30] if text else 'None'}...")

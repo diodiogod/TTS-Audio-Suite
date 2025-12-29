@@ -63,6 +63,10 @@ class CosyVoiceSRTProcessor:
                 self.SRTParser = srt_modules.get('SRTParser')
                 self.SRTSubtitle = srt_modules.get('SRTSubtitle')
                 self.SRTParseError = srt_modules.get('SRTParseError')
+                self.AudioTimingUtils = srt_modules.get('AudioTimingUtils')
+                self.TimedAudioAssembler = srt_modules.get('TimedAudioAssembler')
+                self.calculate_timing_adjustments = srt_modules.get('calculate_timing_adjustments')
+                self.AudioTimingError = srt_modules.get('AudioTimingError')
                 self.srt_available = True
             else:
                 print(f"⚠️ SRT module not available: {msg}")
@@ -93,10 +97,10 @@ class CosyVoiceSRTProcessor:
     def update_config(self, new_config: Dict[str, Any]):
         """Update processor configuration with new parameters."""
         self.engine_config.update(new_config)
-        # Reinitialize processor with new config
+        # Update processor's dynamic config (speed, reference_text, instruct_text)
+        # Model reloading is handled by unified model loader based on cache key
         if self.processor:
-            self.processor.cleanup()
-        self.processor = CosyVoiceProcessor(self.engine_config)
+            self.processor.update_config(new_config)
 
     def process_srt_content(
         self,
@@ -105,20 +109,20 @@ class CosyVoiceSRTProcessor:
         seed: int,
         timing_mode: str,
         timing_params: Dict[str, Any]
-    ) -> Tuple[torch.Tensor, str, str]:
+    ) -> Tuple[Dict[str, Any], str, str, str]:
         """
         Process complete SRT content and generate timed audio with CosyVoice3.
         This is the main entry point that handles the full SRT workflow.
-        
+
         Args:
             srt_content: Complete SRT subtitle content
             voice_mapping: Voice mapping with character references
             seed: Random seed for reproducibility
-            timing_mode: Timing mode (strict, natural, stretch)
+            timing_mode: Timing mode (stretch_to_fit, pad_with_silence, concatenate, smart_natural)
             timing_params: Timing parameters
-            
+
         Returns:
-            Tuple of (final_audio, adjusted_srt, timing_report)
+            Tuple of (audio_output, generation_info, timing_report, adjusted_srt)
         """
         if not self.srt_available:
             raise ImportError("SRT modules not available - missing required SRT parser")
@@ -144,7 +148,7 @@ class CosyVoiceSRTProcessor:
         self._check_interrupt()
 
         # Assemble final audio based on timing mode
-        final_audio = self._assemble_final_audio(
+        final_audio, final_adjustments, stretch_method = self._assemble_final_audio(
             audio_segments,
             subtitles,
             timing_mode,
@@ -152,11 +156,19 @@ class CosyVoiceSRTProcessor:
             adjustments
         )
 
+        # Update adjustments if assembly returned new ones
+        if final_adjustments is not None:
+            adjustments = final_adjustments
+
         # Generate timing report
         timing_report = self._generate_timing_report(
             subtitles,
             adjustments,
-            timing_mode
+            timing_mode,
+            has_original_overlaps=False,
+            mode_switched=False,
+            original_mode=None,
+            stretch_method=stretch_method
         )
 
         # Generate adjusted SRT
@@ -166,7 +178,22 @@ class CosyVoiceSRTProcessor:
             timing_mode
         )
 
-        return final_audio, adjusted_srt, timing_report
+        # Generate info
+        total_duration = final_audio.shape[-1] / self.SAMPLE_RATE
+        mode_info = f"{timing_mode}"
+
+        info = (f"Generated {total_duration:.1f}s CosyVoice3 SRT-timed audio from {len(subtitles)} subtitles "
+               f"using {mode_info} mode")
+
+        # Format final audio for ComfyUI (ensure proper 3D format: [batch, channels, samples])
+        if final_audio.dim() == 1:
+            final_audio = final_audio.unsqueeze(0).unsqueeze(0)
+        elif final_audio.dim() == 2:
+            final_audio = final_audio.unsqueeze(0)
+
+        audio_output = {"waveform": final_audio, "sample_rate": self.SAMPLE_RATE}
+
+        return audio_output, info, timing_report, adjusted_srt
 
     def _check_interrupt(self):
         """Check if generation should be interrupted."""
@@ -197,80 +224,78 @@ class CosyVoiceSRTProcessor:
         unique_characters = set()
         for sub in subtitles:
             # Parse character from subtitle text
-            segments = self.character_parser.split_by_character(sub.content, include_language=False)
+            segments = self.character_parser.split_by_character(sub.text, include_language=False)
             for char, _ in segments:
                 if char:
                     unique_characters.add(char)
 
+        print(f"🔍 Unique characters found in SRT: {sorted(unique_characters)}")
+
         character_mapping = {}
         if unique_characters:
             character_mapping = get_character_mapping(list(unique_characters), engine_type="cosyvoice")
+            print(f"🎭 Character mapping keys: {list(character_mapping.keys())}")
 
         for i, sub in enumerate(subtitles):
             # Check for interrupt
             self._check_interrupt()
 
-            # Get subtitle text and character
-            text = sub.content.strip()
+            # Get subtitle text
+            text = sub.text.strip()
             if not text:
                 # Empty subtitle - create silence
-                expected_duration = (sub.end - sub.start).total_seconds()
+                expected_duration = sub.duration
                 silence = torch.zeros(1, int(expected_duration * self.SAMPLE_RATE))
                 audio_segments.append(silence)
                 adjustments.append({
                     'index': i,
-                    'original_start': sub.start,
-                    'original_end': sub.end,
+                    'original_start': sub.start_time,
+                    'original_end': sub.end_time,
                     'actual_duration': expected_duration,
                     'expected_duration': expected_duration,
                     'adjustment': 0.0
                 })
                 continue
 
-            # Parse character from text
-            segments = self.character_parser.split_by_character(text, include_language=False)
-            character = segments[0][0] if segments else None
-            clean_text = segments[0][1] if segments else text
+            print(f"📖 Subtitle {i+1}/{len(subtitles)}: Processing '{text[:50]}...'")
 
-            # Get speaker audio for this character
-            speaker_audio = None
-            reference_text = self.engine_config.get('reference_text', '')
-            
-            if character and character in character_mapping:
-                char_audio, char_text = character_mapping[character]
-                if char_audio:
-                    speaker_audio = char_audio
-                    if char_text:
-                        reference_text = char_text
-                    print(f"📖 Subtitle {i+1}: Using voice '{character}'")
-            elif voice_mapping:
-                # Use default voice mapping
-                default_voice = voice_mapping.get('narrator') or voice_mapping.get('default')
-                if default_voice:
-                    speaker_audio = default_voice.get('audio_path')
-                    reference_text = default_voice.get('reference_text', reference_text)
+            # Build character mapping for processor
+            # Priority: connected narrator > character folders
+            processor_character_mapping = {}
 
-            # Generate audio
+            # Start with character folder mappings
+            for char_name, (char_audio, char_text) in character_mapping.items():
+                processor_character_mapping[char_name] = (char_audio, char_text)
+
+            # Override narrator if connected narrator is available
+            if voice_mapping and voice_mapping.get('narrator'):
+                narrator_voice = voice_mapping['narrator']
+                narrator_audio = narrator_voice.get('audio_path')
+                narrator_text = narrator_voice.get('reference_text', '')
+                processor_character_mapping['narrator'] = (narrator_audio, narrator_text)
+
+            # Use processor to handle character switching and multi-line segments
             audio, _ = self.processor.process_text(
-                text=clean_text,
-                speaker_audio={'audio_path': speaker_audio} if speaker_audio else None,
-                seed=seed + i,  # Vary seed per subtitle
-                enable_chunking=False,  # SRT handles its own chunking
+                text=text,
+                speaker_audio=voice_mapping.get('narrator') if voice_mapping else None,
+                seed=seed + i,
+                enable_chunking=False,  # SRT handles timing
                 enable_pause_tags=True,
-                return_info=False
+                return_info=False,
+                character_mapping=processor_character_mapping
             )
 
             audio_segments.append(audio)
 
             # Calculate timing adjustment
-            expected_duration = (sub.end - sub.start).total_seconds()
+            expected_duration = sub.end_time - sub.start_time
             actual_duration = audio.shape[-1] / self.SAMPLE_RATE
             adjustment = actual_duration - expected_duration
 
             adjustments.append({
                 'index': i,
-                'original_start': sub.start,
-                'original_end': sub.end,
+                'original_start': sub.start_time,
+                'original_end': sub.end_time,
                 'actual_duration': actual_duration,
                 'expected_duration': expected_duration,
                 'adjustment': adjustment
@@ -287,48 +312,66 @@ class CosyVoiceSRTProcessor:
         timing_mode: str,
         timing_params: Dict[str, Any],
         adjustments: List[Dict]
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Optional[List[Dict]], Optional[str]]:
         """
-        Assemble final audio based on timing mode using existing utils.
-        
+        Assemble final audio based on timing mode using modern timing system.
+
         Args:
             audio_segments: List of audio segments
             subtitles: List of subtitle objects
-            timing_mode: Timing mode
+            timing_mode: Timing mode (stretch_to_fit, pad_with_silence, concatenate, smart_natural)
             timing_params: Timing parameters
             adjustments: List of timing adjustments
-            
+
         Returns:
-            Final assembled audio tensor
+            Tuple of (final_audio, updated_adjustments_or_None, stretch_method_or_None)
         """
-        from utils.audio.srt_timing import SRTTimingAssembler
+        if timing_mode == "stretch_to_fit":
+            assembler = self.TimedAudioAssembler(self.SAMPLE_RATE)
+            target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
+            fade_duration = timing_params.get('fade_for_StretchToFit', 0.01)
+            final_audio, stretch_method_used = assembler.assemble_timed_audio(
+                audio_segments, target_timings, fade_duration=fade_duration
+            )
+            return final_audio, None, stretch_method_used
 
-        assembler = SRTTimingAssembler(sample_rate=self.SAMPLE_RATE)
-        
-        # Prepare segment data for assembler
-        segment_data = []
-        for i, (audio, sub, adj) in enumerate(zip(audio_segments, subtitles, adjustments)):
-            segment_data.append({
-                'audio': audio,
-                'start': sub.start,
-                'end': sub.end,
-                'index': i,
-                'adjustment': adj
-            })
+        elif timing_mode == "pad_with_silence":
+            from utils.timing.assembly import AudioAssemblyEngine
+            assembler = AudioAssemblyEngine(self.SAMPLE_RATE)
+            final_audio = assembler.assemble_with_overlaps(audio_segments, subtitles, torch.device('cpu'))
+            return final_audio, None, None
 
-        # Assemble based on timing mode
-        if timing_mode == 'strict':
-            final_audio = assembler.assemble_strict(segment_data)
-        elif timing_mode == 'natural':
-            final_audio = assembler.assemble_natural(segment_data, timing_params)
-        elif timing_mode == 'stretch':
-            stretch_method = timing_params.get('stretch_method', 'resample')
-            final_audio = assembler.assemble_stretch(segment_data, stretch_method)
-        else:
-            # Default to natural
-            final_audio = assembler.assemble_natural(segment_data, timing_params)
+        elif timing_mode == "concatenate":
+            from utils.timing.engine import TimingEngine
+            from utils.timing.assembly import AudioAssemblyEngine
 
-        return final_audio
+            timing_engine = TimingEngine(self.SAMPLE_RATE)
+            assembler = AudioAssemblyEngine(self.SAMPLE_RATE)
+
+            new_adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
+            fade_duration = timing_params.get('fade_for_StretchToFit', 0.01)
+            final_audio = assembler.assemble_concatenation(audio_segments, fade_duration)
+            return final_audio, new_adjustments, None
+
+        else:  # smart_natural
+            from utils.timing.engine import TimingEngine
+            from utils.timing.assembly import AudioAssemblyEngine
+
+            timing_engine = TimingEngine(self.SAMPLE_RATE)
+            assembler = AudioAssemblyEngine(self.SAMPLE_RATE)
+
+            tolerance = timing_params.get('timing_tolerance', 2.0)
+            max_stretch_ratio = timing_params.get('max_stretch_ratio', 1.0)
+            min_stretch_ratio = timing_params.get('min_stretch_ratio', 0.5)
+
+            smart_adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+                audio_segments, subtitles, tolerance, max_stretch_ratio, min_stretch_ratio, torch.device('cpu')
+            )
+
+            final_audio = assembler.assemble_smart_natural(
+                audio_segments, processed_segments, smart_adjustments, subtitles, torch.device('cpu')
+            )
+            return final_audio, smart_adjustments, None
 
     def _generate_timing_report(
         self,
@@ -340,18 +383,12 @@ class CosyVoiceSRTProcessor:
         original_mode: str = None,
         stretch_method: str = None
     ) -> str:
-        """Generate detailed timing report using existing utils."""
-        from utils.audio.srt_timing import generate_timing_report
-        
-        return generate_timing_report(
-            subtitles=subtitles,
-            adjustments=adjustments,
-            timing_mode=timing_mode,
-            sample_rate=self.SAMPLE_RATE,
-            has_original_overlaps=has_original_overlaps,
-            mode_switched=mode_switched,
-            original_mode=original_mode,
-            stretch_method=stretch_method
+        """Generate detailed timing report using modern reporting system."""
+        from utils.timing.reporting import SRTReportGenerator
+        reporter = SRTReportGenerator()
+        return reporter.generate_timing_report(
+            subtitles, adjustments, timing_mode,
+            has_original_overlaps, mode_switched, original_mode, stretch_method
         )
 
     def _generate_adjusted_srt_string(
@@ -360,14 +397,10 @@ class CosyVoiceSRTProcessor:
         adjustments: List[Dict],
         timing_mode: str
     ) -> str:
-        """Generate adjusted SRT string from final timings using existing utils."""
-        from utils.audio.srt_timing import generate_adjusted_srt
-        
-        return generate_adjusted_srt(
-            subtitles=subtitles,
-            adjustments=adjustments,
-            timing_mode=timing_mode
-        )
+        """Generate adjusted SRT string from final timings using modern reporting system."""
+        from utils.timing.reporting import SRTReportGenerator
+        reporter = SRTReportGenerator()
+        return reporter.generate_adjusted_srt_string(subtitles, adjustments, timing_mode)
 
     def cleanup(self):
         """Clean up resources"""
