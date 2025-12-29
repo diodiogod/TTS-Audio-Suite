@@ -69,7 +69,7 @@ class CosyVoiceEngineNode(BaseTTSNode):
                 # Speed Control
                 "speed": ("FLOAT", {
                     "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1,
-                    "tooltip": "Speech speed multiplier (0.5=slow, 1.0=normal, 2.0=fast)"
+                    "tooltip": "Speech speed multiplier (0.5=slow, 1.0=normal, 2.0=fast).\n\nIMPORTANT: CosyVoice's official implementation uses mel-spectrogram interpolation for speed control - this is post-processing time-stretching applied AFTER generation, NOT natural prosody/rhythm changes during synthesis. This is a limitation of the official model architecture. Result will sound like artificially sped up or slowed down audio (like playing a recording faster/slower)."
                 }),
 
                 # Model Options
