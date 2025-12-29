@@ -57,11 +57,19 @@ class CosyVoiceSRTProcessor:
         """Load SRT modules using the import manager."""
         try:
             from utils.system.import_manager import import_manager
-            srt_module = import_manager.import_module('srt')
-            self.srt = srt_module
+            success, srt_modules, msg = import_manager.import_srt_modules()
+            if success:
+                # Extract SRT classes from modules dict
+                self.SRTParser = srt_modules.get('SRTParser')
+                self.SRTSubtitle = srt_modules.get('SRTSubtitle')
+                self.SRTParseError = srt_modules.get('SRTParseError')
+                self.srt_available = True
+            else:
+                print(f"⚠️ SRT module not available: {msg}")
+                self.srt_available = False
         except Exception as e:
             print(f"⚠️ SRT module not available: {e}")
-            self.srt = None
+            self.srt_available = False
 
     def _setup_character_parser(self):
         """Set up character parser with available characters and aliases."""
@@ -75,7 +83,7 @@ class CosyVoiceSRTProcessor:
         # Get character aliases
         character_aliases = voice_discovery.get_character_aliases()
         for alias, target in character_aliases.items():
-            self.character_parser.set_character_fallback(alias, target)
+            self.character_parser.add_character_fallback(alias, target)
         
         # Get character language defaults
         char_lang_defaults = voice_discovery.get_character_language_defaults()
@@ -112,14 +120,15 @@ class CosyVoiceSRTProcessor:
         Returns:
             Tuple of (final_audio, adjusted_srt, timing_report)
         """
-        if self.srt is None:
-            raise ImportError("SRT module not available. Please install with: pip install srt")
+        if not self.srt_available:
+            raise ImportError("SRT modules not available - missing required SRT parser")
 
         # Check for interrupt before starting
         self._check_interrupt()
 
         # Parse SRT content
-        subtitles = list(self.srt.parse(srt_content))
+        srt_parser = self.SRTParser()
+        subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
         total_subtitles = len(subtitles)
         
         print(f"🎬 CosyVoice3 SRT: Processing {total_subtitles} subtitle(s)")
