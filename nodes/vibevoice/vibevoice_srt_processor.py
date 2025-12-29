@@ -267,22 +267,33 @@ class VibeVoiceSRTProcessor:
                 if len(unique_chars) <= 4 and not has_pause_tags and not has_param_changes:
                     print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
 
-                    # Check for inline edit tags in multi-speaker text
-                    from utils.text.step_audio_editx_special_tags import has_step_audio_editx_tags
+                    # Check for inline edit tags
+                    from utils.text.step_audio_editx_special_tags import has_step_audio_editx_tags, strip_paralinguistic_tags, get_edit_tags_for_segment
                     has_edit_tags = any(has_step_audio_editx_tags(seg.text) for seg in segment_objects)
                     has_multiple_speakers = len(unique_chars) > 1
 
-                    # Warn and strip edit tags if multi-speaker with edit tags
-                    if has_edit_tags and has_multiple_speakers:
-                        print(f"\n⚠️  WARNING: Inline edit tags detected in Native Multi-Speaker subtitle with {len(unique_chars)} speakers")
-                        print(f"⚠️  Step Audio EditX is single-speaker only and will convert all voices to one speaker")
-                        print(f"⚠️  Skipping inline edit tags to preserve multi-speaker audio")
-                        print(f"⚠️  To use inline edit tags, switch to 'Custom Character Switching' mode\n")
+                    # Extract edit tags for single-speaker subtitles, warn and skip for multi-speaker
+                    all_edit_tags = []
+                    original_text_parts = []
 
-                        # Strip edit tags from all segments
-                        from utils.text.step_audio_editx_special_tags import strip_step_audio_editx_tags
-                        for seg in segment_objects:
-                            seg.text = strip_step_audio_editx_tags(seg.text)
+                    if has_edit_tags:
+                        if has_multiple_speakers:
+                            # Multi-speaker: warn and strip tags
+                            print(f"\n⚠️  WARNING: Inline edit tags detected in Native Multi-Speaker subtitle with {len(unique_chars)} speakers")
+                            print(f"⚠️  Step Audio EditX is single-speaker only and will convert all voices to one speaker")
+                            print(f"⚠️  Skipping inline edit tags to preserve multi-speaker audio")
+                            print(f"⚠️  To use inline edit tags, switch to 'Custom Character Switching' mode\n")
+
+                            for seg in segment_objects:
+                                original_text_parts.append(seg.text)
+                                seg.text = strip_paralinguistic_tags(seg.text)
+                        else:
+                            # Single speaker: extract tags for post-processing
+                            for seg in segment_objects:
+                                original_text_parts.append(seg.text)
+                                clean_text, edit_tags = get_edit_tags_for_segment(seg.text)
+                                seg.text = clean_text
+                                all_edit_tags.extend(edit_tags)
 
                     # Generate single multi-speaker segment with parameters support
                     config_with_seed = self.config.copy()
@@ -302,6 +313,25 @@ class VibeVoiceSRTProcessor:
                     wav = audio['waveform']
                     if wav.dim() == 3:
                         wav = wav.squeeze(0)
+
+                    # If single-speaker with edit tags, store for batch processing
+                    if all_edit_tags and not has_multiple_speakers:
+                        # Store as segment dict for edit post-processing
+                        all_segments_for_editing.append({
+                            'waveform': wav,
+                            'sample_rate': 24000,
+                            'text': ' '.join([seg.text for seg in segment_objects]),
+                            'original_text': ' '.join(original_text_parts),
+                            'edit_tags': all_edit_tags,
+                            'subtitle_index': i
+                        })
+                        audio_segments[i] = None  # Placeholder
+                        natural_durations[i] = 0.0
+                    else:
+                        # No edit tags or multi-speaker: store directly
+                        natural_duration = self.AudioTimingUtils.get_audio_duration(wav, 24000)
+                        audio_segments[i] = wav
+                        natural_durations[i] = natural_duration
                 else:
                     reasons = []
                     if len(unique_chars) > 4:
