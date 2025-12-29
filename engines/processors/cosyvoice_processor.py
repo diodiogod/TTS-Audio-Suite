@@ -191,8 +191,8 @@ class CosyVoiceProcessor:
             else:
                 # Chunking for long text
                 if enable_chunking and len(segment_text) > max_chars_per_chunk:
-                    chunks = ImprovedChatterBoxChunker.chunk_text(
-                        segment_text, 
+                    chunks = ImprovedChatterBoxChunker.split_into_chunks(
+                        segment_text,
                         max_chars=max_chars_per_chunk
                     )
                     generation_info['chunks_processed'] += len(chunks)

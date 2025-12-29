@@ -98,14 +98,18 @@ class CosyVoiceAdapter:
             self.initialize_engine()
 
         # Auto-detect mode based on available parameters
+        print(f"🔍 Mode detection - instruct_text: '{instruct_text}', reference_text: '{reference_text[:50] if reference_text else None}...'")
         if instruct_text and instruct_text.strip():
             mode = "instruct"
+            print(f"✅ Selected mode: instruct")
             if reference_text and reference_text.strip():
                 print("⚠️ CosyVoice3: Both instruction and transcript provided. Using instruction mode (transcript ignored for best dialect/emotion control).")
         elif reference_text and reference_text.strip():
             mode = "zero_shot"
+            print(f"✅ Selected mode: zero_shot")
         else:
             mode = "cross_lingual"
+            print(f"✅ Selected mode: cross_lingual")
 
         # Check if text contains character tags
         has_character_tags = character_parser.CHARACTER_TAG_PATTERN.search(text) is not None

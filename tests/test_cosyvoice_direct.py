@@ -1,9 +1,28 @@
 """
 Direct test of CosyVoice3 using official API pattern.
 Run this outside ComfyUI to verify the model works correctly.
+
+Usage:
+    python tests/test_cosyvoice_direct.py <model_path> [voice_path] [reference_text]
+
+Example:
+    python tests/test_cosyvoice_direct.py "D:\\AiSymLink\\TTS\\CosyVoice\\Fun-CosyVoice3-0.5B"
 """
 import sys
 import os
+
+# Parse arguments
+if len(sys.argv) < 2:
+    print("ERROR: Model path required")
+    print("Usage: python tests/test_cosyvoice_direct.py <model_path> [voice_path] [reference_text]")
+    print('Example: python tests/test_cosyvoice_direct.py "D:\\AiSymLink\\TTS\\CosyVoice\\Fun-CosyVoice3-0.5B"')
+    sys.exit(1)
+
+model_path = sys.argv[1]
+
+if not os.path.exists(model_path):
+    print(f"ERROR: Model path does not exist: {model_path}")
+    sys.exit(1)
 
 # Add paths (matching unified_model_interface.py)
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,9 +41,6 @@ import torchaudio
 # Import CosyVoice AutoModel (official way)
 from cosyvoice.cli.cosyvoice import AutoModel
 
-# Model path (inside ComfyUI's models folder)
-model_path = r"C:\_stability_matrix\Data\Packages\Comfy-new\models\TTS\CosyVoice\Fun-CosyVoice3-0.5B"
-
 print(f"Loading model from: {model_path}")
 
 # Load model exactly like official example
@@ -32,9 +48,16 @@ cosyvoice = AutoModel(model_dir=model_path, fp16=True)
 
 print(f"Model loaded! Sample rate: {cosyvoice.sample_rate}")
 
-# Voice sample and reference text (David Attenborough)
-voice_path = os.path.join(project_root, "voices_examples", "David_Attenborough CC3.wav")
-reference_text = "The first one who physical contact was with a female with her twins and she put a hand on the top of my head."
+# Voice sample and reference text
+if len(sys.argv) >= 3:
+    voice_path = sys.argv[2]
+else:
+    voice_path = os.path.join(project_root, "voices_examples", "David_Attenborough CC3.wav")
+
+if len(sys.argv) >= 4:
+    reference_text = sys.argv[3]
+else:
+    reference_text = "The first one who physical contact was with a female with her twins and she put a hand on the top of my head."
 
 print(f"\n=== Testing zero_shot mode ===")
 print(f"Voice sample: {voice_path}")
