@@ -244,16 +244,26 @@ class CosyVoiceSRTProcessor:
             text = sub.text.strip()
             if not text:
                 # Empty subtitle - create silence
-                expected_duration = sub.duration
-                silence = torch.zeros(1, int(expected_duration * self.SAMPLE_RATE))
+                target_duration = sub.duration
+                silence = torch.zeros(1, int(target_duration * self.SAMPLE_RATE))
                 audio_segments.append(silence)
                 adjustments.append({
                     'index': i,
-                    'original_start': sub.start_time,
-                    'original_end': sub.end_time,
-                    'actual_duration': expected_duration,
-                    'expected_duration': expected_duration,
-                    'adjustment': 0.0
+                    'segment_index': i,
+                    'sequence': sub.sequence,
+                    'natural_duration': target_duration,
+                    'target_start': sub.start_time,
+                    'target_end': sub.end_time,
+                    'target_duration': target_duration,
+                    'start_time': sub.start_time,
+                    'end_time': sub.end_time,
+                    'stretch_factor': 1.0,
+                    'needs_stretching': False,
+                    'stretch_type': 'none',
+                    'adjustment': 0.0,
+                    'adjusted_start': sub.start_time,
+                    'adjusted_end': sub.end_time,
+                    'adjusted_duration': target_duration
                 })
                 continue
 
@@ -287,21 +297,33 @@ class CosyVoiceSRTProcessor:
 
             audio_segments.append(audio)
 
-            # Calculate timing adjustment
-            expected_duration = sub.end_time - sub.start_time
-            actual_duration = audio.shape[-1] / self.SAMPLE_RATE
-            adjustment = actual_duration - expected_duration
+            # Calculate timing adjustment with all required fields
+            natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+            target_start = sub.start_time
+            target_end = sub.end_time
+            target_duration = target_end - target_start
+            stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
 
             adjustments.append({
                 'index': i,
-                'original_start': sub.start_time,
-                'original_end': sub.end_time,
-                'actual_duration': actual_duration,
-                'expected_duration': expected_duration,
-                'adjustment': adjustment
+                'segment_index': i,
+                'sequence': sub.sequence,
+                'natural_duration': natural_duration,
+                'target_start': target_start,
+                'target_end': target_end,
+                'target_duration': target_duration,
+                'start_time': target_start,
+                'end_time': target_end,
+                'stretch_factor': stretch_factor,
+                'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
+                'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none',
+                'adjustment': natural_duration - target_duration,
+                'adjusted_start': target_start,  # Will be updated by timing assembly
+                'adjusted_end': target_end,      # Will be updated by timing assembly
+                'adjusted_duration': natural_duration
             })
 
-            print(f"✅ Subtitle {i+1}/{len(subtitles)}: {actual_duration:.2f}s (expected {expected_duration:.2f}s)")
+            print(f"✅ Subtitle {i+1}/{len(subtitles)}: {natural_duration:.2f}s (expected {target_duration:.2f}s)")
 
         return audio_segments, adjustments
 
