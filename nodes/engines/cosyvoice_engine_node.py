@@ -119,39 +119,40 @@ For best voice cloning quality: Leave this empty and provide .txt transcripts vi
     @classmethod
     def _get_model_paths(cls) -> List[str]:
         """Get available CosyVoice3 model paths."""
-        paths = ["Fun-CosyVoice3-0.5B"]  # Auto-download option
+        paths = [
+            "Fun-CosyVoice3-0.5B-RL",  # RL-enhanced (default, better quality)
+            "Fun-CosyVoice3-0.5B"      # Standard
+        ]
 
         try:
             # Check all configured TTS model paths
             all_tts_paths = get_all_tts_model_paths('TTS')
 
             for base_path in all_tts_paths:
-                # Check direct path (models/TTS/Fun-CosyVoice3-0.5B)
+                # Check direct path (models/TTS/Fun-CosyVoice3-0.5B - shared folder)
                 cosy_direct = os.path.join(base_path, "Fun-CosyVoice3-0.5B")
                 if os.path.exists(os.path.join(cosy_direct, "cosyvoice3.yaml")):
-                    local_model = "local:Fun-CosyVoice3-0.5B"
-                    if local_model not in paths:
-                        paths.insert(0, local_model)
+                    # Both variants use the same folder - just mark as local
+                    if "local:Fun-CosyVoice3-0.5B-RL" not in paths:
+                        paths.insert(0, "local:Fun-CosyVoice3-0.5B-RL")
+                    if "local:Fun-CosyVoice3-0.5B" not in paths:
+                        paths.insert(0, "local:Fun-CosyVoice3-0.5B")
 
                 # Check organized path (models/TTS/CosyVoice/Fun-CosyVoice3-0.5B)
-                cosy_organized = os.path.join(base_path, "CosyVoice")
-                if os.path.exists(cosy_organized):
-                    for item in os.listdir(cosy_organized):
-                        model_dir = os.path.join(cosy_organized, item)
-                        if os.path.isdir(model_dir) and os.path.exists(os.path.join(model_dir, "cosyvoice3.yaml")):
-                            local_model = f"local:{item}"
-                            if local_model not in paths:
-                                paths.insert(-1, local_model)
+                cosy_organized = os.path.join(base_path, "CosyVoice", "Fun-CosyVoice3-0.5B")
+                if os.path.exists(os.path.join(cosy_organized, "cosyvoice3.yaml")):
+                    if "local:Fun-CosyVoice3-0.5B-RL" not in paths:
+                        paths.insert(0, "local:Fun-CosyVoice3-0.5B-RL")
+                    if "local:Fun-CosyVoice3-0.5B" not in paths:
+                        paths.insert(0, "local:Fun-CosyVoice3-0.5B")
         except Exception:
-            # Fallback to default
-            base_dir = os.path.join(folder_paths.models_dir, "TTS", "CosyVoice")
-            if os.path.exists(base_dir):
-                for item in os.listdir(base_dir):
-                    model_dir = os.path.join(base_dir, item)
-                    if os.path.isdir(model_dir) and os.path.exists(os.path.join(model_dir, "cosyvoice3.yaml")):
-                        local_model = f"local:{item}"
-                        if local_model not in paths:
-                            paths.insert(-1, local_model)
+            # Fallback to default (shared folder)
+            base_dir = os.path.join(folder_paths.models_dir, "TTS", "CosyVoice", "Fun-CosyVoice3-0.5B")
+            if os.path.exists(os.path.join(base_dir, "cosyvoice3.yaml")):
+                if "local:Fun-CosyVoice3-0.5B-RL" not in paths:
+                    paths.insert(0, "local:Fun-CosyVoice3-0.5B-RL")
+                if "local:Fun-CosyVoice3-0.5B" not in paths:
+                    paths.insert(0, "local:Fun-CosyVoice3-0.5B")
 
         return paths
     

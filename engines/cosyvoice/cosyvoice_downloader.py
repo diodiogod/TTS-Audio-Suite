@@ -49,14 +49,14 @@ class CosyVoiceDownloader:
         "Fun-CosyVoice3-0.5B-RL": {
             "repo_id": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
             "files": [
-                # Core model files
+                # Core model files (shared with standard variant)
                 "cosyvoice3.yaml",
                 "campplus.onnx",
                 "flow.pt",
                 "hift.pt",
-                "llm.rl.pt",  # RL-enhanced LLM model (2GB)
+                "llm.rl.pt",  # RL-enhanced LLM model (2GB, kept as-is)
                 "speech_tokenizer_v3.onnx",
-                # CosyVoice-BlankEN subfolder
+                # CosyVoice-BlankEN subfolder (shared)
                 "CosyVoice-BlankEN/config.json",
                 "CosyVoice-BlankEN/generation_config.json",
                 "CosyVoice-BlankEN/merges.txt",
@@ -64,9 +64,7 @@ class CosyVoiceDownloader:
                 "CosyVoice-BlankEN/tokenizer_config.json",
                 "CosyVoice-BlankEN/vocab.json",
             ],
-            "description": "Fun-CosyVoice3 0.5B RL-enhanced model (better quality) (~5.4GB total)",
-            # Special handling: rename llm.rl.pt to llm.pt for compatibility
-            "rename_files": {"llm.rl.pt": "llm.pt"}
+            "description": "Fun-CosyVoice3 0.5B RL-enhanced model (better quality) (~5.4GB total)"
         }
     }
     
@@ -124,8 +122,9 @@ class CosyVoiceDownloader:
             raise ValueError(f"Unknown model: {model_name}. Available: {list(self.MODELS.keys())}")
 
         model_info = self.MODELS[model_name]
-        
-        # Use consistent folder name for both variants
+
+        # Both variants use the same folder (like ChatterBox 23-Lang v1/v2)
+        # They share all files except the LLM file (llm.pt vs llm.rl.pt)
         folder_name = "Fun-CosyVoice3-0.5B"
         model_path = os.path.join(self.base_path, folder_name)
 
@@ -166,14 +165,9 @@ class CosyVoiceDownloader:
             # Use the path returned by the unified downloader
             model_path = result_path
             
-            # Handle file renames if needed (for RL model)
-            if "rename_files" in model_info:
-                for src_name, dst_name in model_info["rename_files"].items():
-                    src_path = os.path.join(model_path, src_name)
-                    dst_path = os.path.join(model_path, dst_name)
-                    if os.path.exists(src_path) and not os.path.exists(dst_path):
-                        print(f"🔄 Renaming {src_name} -> {dst_name}")
-                        os.rename(src_path, dst_path)
+            # Don't rename - keep both llm.pt and llm.rl.pt in the same folder
+            # The engine will choose which file to load based on model variant
+            # (Similar to ChatterBox 23-Lang keeping both t3_23lang.safetensors and t3_mtl23ls_v2.safetensors)
             
             # Verify essential files
             self._verify_model(model_path, model_name)
@@ -204,16 +198,22 @@ class CosyVoiceDownloader:
             "campplus.onnx",
             "flow.pt",
             "hift.pt",
-            "llm.pt",  # Either from base or renamed from llm.rl.pt
             "speech_tokenizer_v3.onnx",
             "CosyVoice-BlankEN/config.json",
             "CosyVoice-BlankEN/model.safetensors",
         ]
+
+        # Check for at least one LLM file (llm.pt or llm.rl.pt)
+        has_llm = (os.path.exists(os.path.join(model_path, "llm.pt")) or
+                   os.path.exists(os.path.join(model_path, "llm.rl.pt")))
         
         missing_files = []
         for file in essential_files:
             if not os.path.exists(os.path.join(model_path, file)):
                 missing_files.append(file)
+
+        if not has_llm:
+            missing_files.append("llm.pt or llm.rl.pt")
 
         if missing_files:
             raise RuntimeError(
@@ -223,16 +223,17 @@ class CosyVoiceDownloader:
         if verbose:
             print(f"✅ Model verification passed")
     
-    def is_model_available(self, model_name: str = "Fun-CosyVoice3-0.5B") -> bool:
+    def is_model_available(self, model_name: str = "Fun-CosyVoice3-0.5B-RL") -> bool:
         """
         Check if model is already downloaded.
-        
+
         Args:
             model_name: Model name to check
-            
+
         Returns:
             True if model is available locally
         """
+        # Both variants use the same folder
         folder_name = "Fun-CosyVoice3-0.5B"
         model_path = os.path.join(self.base_path, folder_name)
         
@@ -258,16 +259,17 @@ class CosyVoiceDownloader:
         """Get list of all available models."""
         return self.MODELS.copy()
     
-    def get_model_path(self, model_name: str = "Fun-CosyVoice3-0.5B") -> str:
+    def get_model_path(self, model_name: str = "Fun-CosyVoice3-0.5B-RL") -> str:
         """
         Get the local path for a model.
-        
+
         Args:
-            model_name: Model name
-            
+            model_name: Model name (variant doesn't matter, both use same folder)
+
         Returns:
             Local model path
         """
+        # Both variants use the same folder
         folder_name = "Fun-CosyVoice3-0.5B"
         return os.path.join(self.base_path, folder_name)
 
@@ -276,7 +278,7 @@ class CosyVoiceDownloader:
 cosyvoice_downloader = CosyVoiceDownloader()
 
 
-def download_cosyvoice_model(model_name: str = "Fun-CosyVoice3-0.5B", 
+def download_cosyvoice_model(model_name: str = "Fun-CosyVoice3-0.5B-RL",
                             force_download: bool = False,
                             **kwargs) -> str:
     """
@@ -297,6 +299,6 @@ def download_cosyvoice_model(model_name: str = "Fun-CosyVoice3-0.5B",
     )
 
 
-def is_cosyvoice_available(model_name: str = "Fun-CosyVoice3-0.5B") -> bool:
+def is_cosyvoice_available(model_name: str = "Fun-CosyVoice3-0.5B-RL") -> bool:
     """Check if CosyVoice3 model is available locally."""
     return cosyvoice_downloader.is_model_available(model_name)

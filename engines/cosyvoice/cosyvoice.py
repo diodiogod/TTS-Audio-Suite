@@ -49,26 +49,32 @@ class CosyVoiceEngine:
     # Generation modes
     MODES = ["zero_shot", "instruct", "cross_lingual"]
     
-    def __init__(self, model_dir: str = "Fun-CosyVoice3-0.5B", device: str = "auto",
+    def __init__(self, model_dir: str = "Fun-CosyVoice3-0.5B-RL", device: str = "auto",
                  use_fp16: bool = False, load_trt: bool = False, load_vllm: bool = False):
         """
         Initialize CosyVoice3 engine.
 
         Args:
-            model_dir: Model identifier ("Fun-CosyVoice3-0.5B" or "local:ModelName")
+            model_dir: Model identifier ("Fun-CosyVoice3-0.5B-RL", "Fun-CosyVoice3-0.5B", or "local:...")
             device: Device to use ("auto", "cuda", "cpu")
             use_fp16: Use FP16 for faster inference
             load_trt: Load TensorRT engine (optional optimization)
             load_vllm: Load vLLM engine (optional optimization)
         """
+        # Store original model_identifier to know which variant was requested
+        self.model_identifier = model_dir
+
         # Resolve model directory using extra_model_paths
         self.model_dir = self._find_model_directory(model_dir)
-        
+
+        # Ensure correct LLM file is active before loading
+        self._prepare_llm_file(model_dir)
+
         self.device = self._resolve_device(device)
         self.use_fp16 = use_fp16 and self.device != "cpu"
         self.load_trt = load_trt
         self.load_vllm = load_vllm
-        
+
         self._cosyvoice = None
         self._model_config = None
         self._quantized_move_warning_shown = False
@@ -139,7 +145,55 @@ class CosyVoiceEngine:
         from utils.device import resolve_torch_device
         resolved = resolve_torch_device(device)
         return resolved
-    
+
+    def _prepare_llm_file(self, model_identifier: str):
+        """
+        Ensure the correct LLM file is active for the requested model variant.
+        Both variants share the same folder but use different LLM files (llm.pt vs llm.rl.pt).
+        This method symlinks the correct file to llm.pt (similar to ChatterBox 23-Lang v1/v2).
+        """
+        # Extract model name (remove local: prefix)
+        model_name = model_identifier.replace("local:", "") if model_identifier.startswith("local:") else model_identifier
+
+        # Determine which LLM file to use
+        if "RL" in model_name:
+            source_file = "llm.rl.pt"
+        else:
+            source_file = "llm.pt"
+
+        source_path = os.path.join(self.model_dir, source_file)
+        target_path = os.path.join(self.model_dir, "llm.pt")
+
+        # If source file exists and target doesn't match
+        if os.path.exists(source_path):
+            # Check if llm.pt exists and points to the wrong file
+            if os.path.exists(target_path) and not os.path.islink(target_path):
+                # llm.pt exists as a real file - check if it's the right one
+                if source_file != "llm.pt":
+                    # We need RL but llm.pt is the standard file - create symlink
+                    print(f"🔄 Switching to {model_name} variant")
+                    os.remove(target_path)
+                    if os.name == 'nt':  # Windows
+                        import shutil
+                        shutil.copy2(source_path, target_path)
+                    else:  # Unix/Linux/Mac
+                        os.symlink(source_file, target_path)
+            elif os.path.islink(target_path):
+                # It's a symlink - check if it points to the right file
+                current_target = os.readlink(target_path)
+                if current_target != source_file:
+                    print(f"🔄 Switching to {model_name} variant")
+                    os.remove(target_path)
+                    os.symlink(source_file, target_path)
+            elif not os.path.exists(target_path) and source_file != "llm.pt":
+                # llm.pt doesn't exist, create symlink to RL variant
+                print(f"🔗 Linking to {model_name} variant")
+                if os.name == 'nt':  # Windows
+                    import shutil
+                    shutil.copy2(source_path, target_path)
+                else:
+                    os.symlink(source_file, target_path)
+
     def _ensure_model_loaded(self):
         """Load the CosyVoice3 model using unified model interface."""
         if self._cosyvoice is not None:

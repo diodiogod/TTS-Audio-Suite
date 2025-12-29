@@ -670,22 +670,26 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 <details>
 <summary><h3>🗣️ CosyVoice3 Multilingual Voice Cloning</h3></summary>
 
-**NEW in v4.16**: Alibaba's state-of-the-art multilingual voice cloning with zero-shot, instruct, and cross-lingual modes!
+**NEW in v4.16**: Alibaba's fast multilingual voice cloning with native paralinguistic tags, instruct mode, and zero-shot voice conversion!
 
-* **Zero-Shot Voice Cloning**: Clone any voice from reference audio + transcript with exceptional fidelity
-* **Instruct Mode**: Control emotions, dialects (Cantonese, Sichuanese, etc.), and speaking styles via natural language instructions
-* **Cross-Lingual Mode**: Fine-grained control with embedded tags like `[breath]` and `[laughter]`
-* **15+ Languages**: English, Chinese, Japanese, Korean, French, German, Spanish, Italian, Portuguese, Russian, and more
+* **⚡ Ultra-Fast Generation**: ~0.05 RTF (20x faster than real-time) - 10s audio in ~0.5s
+* **🎵 Native Paralinguistic Tags**: Built-in `<breath>`, `<laughter>`, `<cough>`, `<sigh>`, `<laughing>text</laughing>` - processed during generation → **[📖 Tags Guide](docs/COSYVOICE3_TAGS_GUIDE.md)**
+* **🎭 Instruct Mode**: Natural language control - "Speak with a joyful tone" or "Use Cantonese dialect with excitement"
+* **🔄 Zero-Shot Voice Conversion**: Built-in VC with iterative refinement (10 passes) and chunking via Voice Changer node
+* **🌍 4 Core Languages**: English, Chinese, Japanese, Korean with native language tag support
+* **🎤 Zero-Shot Voice Cloning**: Clone any voice from 3-30s reference audio
+* **~5.4GB Model**: Efficient 0.5B parameter model with production quality
 
-**Key Capabilities:**
+**Key Features:**
 
-- **Three Generation Modes**: Zero-shot, Instruct, and Cross-Lingual for different use cases
-- **Chinese Dialects**: Native support for Cantonese, Sichuanese, and other Chinese dialects
+- **Native Tag Support**: 13 paralinguistic effects - `<breath>`, `<laughter>`, `<cough>`, `<sigh>`, `<gasp>`, `<laughing>text</laughing>`, `<strong>text</strong>`
+- **Instruct Mode**: Control emotions, dialects, styles via text instructions - no tag syntax needed
+- **Fast Voice Conversion**: CosyVoice VC with 10-pass iterative refinement and smart/fixed chunking
 - **Character Switching**: Full `[CharacterName]` support with per-character voice references
+- **Language Switching**: `[en:]`, `[zh:]`, `[ja:]`, `[ko:]` bracket syntax or native `<|en|>` tags
 - **Pause Tags**: Complete `[pause:Ns]` support for natural speech timing
 - **SRT Processing**: Advanced subtitle timing with all timing modes
 - **Speed Control**: 0.5x to 2.0x speech speed adjustment
-- **FP16 Support**: Efficient half-precision inference for faster generation
 
 **Example Usage:**
 
@@ -1577,7 +1581,38 @@ ComfyUI/models/TTS/step_audio_editx/
 
 **Usage**: Simply use the 🎨 Step Audio EditX - Audio Editor node → All required models download automatically! Or use inline edit tags with any TTS node for automatic post-processing.
 
-### 12. Restart ComfyUI
+### 12. CosyVoice3 Models (NEW in v4.16+)
+
+**Repository:** [FunAudioLLM/Fun-CosyVoice3-0.5B-2512](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512) | **Size:** ~5.4GB | **Auto-Download:** ✅
+
+**Model Variants:**
+
+| Model | Description | Auto-Download | Default |
+|-------|-------------|---------------|---------|
+| **Fun-CosyVoice3-0.5B-RL** | RL-enhanced (better quality) | ✅ | ✅ |
+| **Fun-CosyVoice3-0.5B** | Standard model | ✅ | |
+
+**Installation Structure:**
+
+```
+ComfyUI/models/TTS/CosyVoice/
+└── Fun-CosyVoice3-0.5B/                # Shared folder for both variants
+    ├── cosyvoice3.yaml                 # Model config (shared)
+    ├── campplus.onnx                   # Speaker encoder (shared)
+    ├── flow.pt                         # Flow model (shared)
+    ├── hift.pt                         # HiFi-GAN vocoder (shared)
+    ├── llm.pt                          # Standard LLM (2GB)
+    ├── llm.rl.pt                       # RL-enhanced LLM (2GB)
+    ├── speech_tokenizer_v3.onnx        # Speech tokenizer (shared)
+    └── CosyVoice-BlankEN/              # Qwen text processor (shared)
+        └── [model files]
+```
+
+**Note**: Both variants share the same folder and common files (saves ~3.4GB). Only the LLM file differs - the engine automatically uses the correct one based on your selection.
+
+**Usage**: Select CosyVoice3 from Unified TTS Engine → Choose model variant → Auto-download on first use!
+
+### 13. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
