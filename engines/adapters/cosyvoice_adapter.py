@@ -356,9 +356,41 @@ class CosyVoiceAdapter:
     def get_supported_dialects(self) -> List[str]:
         """Get supported Chinese dialects."""
         return CosyVoiceEngine.SUPPORTED_DIALECTS.copy()
-    
+
+    def inference_vc(self,
+                    source_wav: str,
+                    prompt_wav: str,
+                    speed: float = 1.0,
+                    stream: bool = False) -> torch.Tensor:
+        """
+        Voice conversion using CosyVoice3.
+
+        Args:
+            source_wav: Source audio file path (CosyVoice handles resampling)
+            prompt_wav: Reference/target voice file path
+            speed: Speech speed multiplier
+            stream: Enable streaming
+
+        Returns:
+            Converted audio tensor at 24kHz
+        """
+        if self.engine is None:
+            self.initialize_engine()
+
+        # Call engine's VC method
+        return self.engine.inference_vc(
+            source_wav=source_wav,
+            prompt_wav=prompt_wav,
+            speed=speed,
+            stream=stream
+        )
+
     def unload(self):
         """Unload the engine to free memory."""
         if self.engine:
             self.engine.unload()
             self.engine = None
+
+    def cleanup(self):
+        """Alias for unload for compatibility with processor interface."""
+        self.unload()

@@ -547,6 +547,53 @@ class CosyVoiceEngine:
         """Get list of supported Chinese dialects."""
         return self.SUPPORTED_DIALECTS.copy()
     
+    def inference_vc(self,
+                    source_wav: str,
+                    prompt_wav: str,
+                    speed: float = 1.0,
+                    stream: bool = False) -> torch.Tensor:
+        """
+        Voice conversion using CosyVoice3's native VC capability.
+
+        Args:
+            source_wav: Source audio file path (CosyVoice handles resampling to 16kHz)
+            prompt_wav: Reference/target voice file path
+            speed: Speech speed multiplier
+            stream: Enable streaming (not implemented for VC)
+
+        Returns:
+            Converted audio tensor at 24kHz
+        """
+        self._ensure_model_loaded()
+        self._ensure_device_loaded()
+
+        print(f"🔄 CosyVoice3 - Generating VC:")
+        print("=" * 60)
+        print(f"Source audio: {source_wav}")
+        print(f"Prompt audio: {prompt_wav}")
+        print(f"Speed: {speed}x")
+        print("=" * 60)
+
+        # Call CosyVoice's inference_vc method
+        # Returns generator, collect all output
+        audio_chunks = []
+        for output in self._cosyvoice.inference_vc(
+            source_wav=source_wav,
+            prompt_wav=prompt_wav,
+            stream=stream,
+            speed=speed
+        ):
+            audio_chunks.append(output['tts_speech'])
+
+        # Concatenate all chunks
+        if audio_chunks:
+            audio = torch.cat(audio_chunks, dim=-1)
+        else:
+            audio = torch.zeros(1, 24000, dtype=torch.float32)
+
+        print(f"✅ CosyVoice3 VC: Generated {audio.shape[-1] / 24000:.2f}s audio")
+        return audio
+
     def to(self, device):
         """
         Move all model components to the specified device.
@@ -569,7 +616,7 @@ class CosyVoiceEngine:
                             self._quantized_move_warning_shown = True
                     else:
                         raise
-            
+
             # Update device attribute
             if hasattr(self._cosyvoice, 'device'):
                 self._cosyvoice.device = torch.device(device) if isinstance(device, str) else device
