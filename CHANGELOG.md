@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.0] - 2025-12-29
+
+### Added
+
+- Add CosyVoice3 TTS engine with multilingual support and voice conversion
+- New CosyVoice3 engine with 4 core languages (Chinese, English, Japanese, Korean) plus 5 additional languages
+- Voice cloning with zero-shot, instruction, and cross-lingual modes
+- Voice Changer (VC) with iterative refinement for quality improvement
+- Model variants: standard and RL-enhanced (improved quality, set as default)
+- Paralinguistic tag support for natural speech effects (laughter, breath, cough, etc.)
+- Character voice switching with [CharacterName] syntax
+- Language switching with [lang:code] syntax
+- SRT subtitle timing support for synchronized audio generation
+- Per-segment parameter control ([seed:42], [speed:1.5])
+- Live generation progress with token-by-token updates and ETA
+- Credit: Initial CosyVoice3 implementation by @tazztone (https://github.com/tazztone/TTS-Audio-Suite)
+
+### Fixed
+
+- Fix ChatterBox and RVC model discovery to work with custom model paths
+- Fix RVC audio chunking errors with short segments
 ## [4.15.17] - 2025-12-28
 
 ### Added

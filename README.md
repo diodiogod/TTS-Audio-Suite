@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.15.17
+# TTS Audio Suite v4.16.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -55,14 +55,14 @@ IndexTTS-2            Chatterbox                VibeVoice
 Emotion               Multilingual              New TTS Engine
 Control               Official (23-lang)        90min Generation
 │
-│             🎨 Inline Editor Tags Era                                
+│             🎨 Inline Editor Tags Era
 ▼                            |
-v4.12 ──────────────► v4.15 ────────────► 
-Oct 25                Dez 25
-│                     │
-Per-Seg Parameter     Step Audio EditX
-Switching [seed:24]   Inline Edit tags
-                      <laughter:2>
+v4.12 ──────────────► v4.15 ────────────► v4.16
+Oct 25                Dez 25              Dez 25
+│                     │                   │
+Per-Seg Parameter     Step Audio EditX    CosyVoice3
+Switching [seed:24]   Inline Edit tags    9-Lang TTS + VC
+                      <laughter:2>        RL Variant
 ```
 
 <details>
