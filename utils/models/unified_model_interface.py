@@ -236,7 +236,7 @@ class UnifiedModelInterface:
             components.append(f"params:{params_str}")
 
         cache_key = "_".join(components)
-        # print(f"🔑 Generated cache key: {cache_key}")  # Debug only when needed
+        # print(f"🔑 Generated cache key: {cache_key}")  # Debug: verify llm_filename in key
         return cache_key
 
 
@@ -1013,6 +1013,7 @@ def register_cosyvoice_factory():
         use_fp16 = config.additional_params.get("use_fp16", True) if config.additional_params else True
         load_trt = config.additional_params.get("load_trt", False) if config.additional_params else False
         load_vllm = config.additional_params.get("load_vllm", False) if config.additional_params else False
+        llm_filename = config.additional_params.get("llm_filename", "llm.pt") if config.additional_params else "llm.pt"
         
         try:
             # Import CosyVoice from bundled location
@@ -1095,7 +1096,8 @@ def register_cosyvoice_factory():
                 model_dir=model_path,
                 load_trt=load_trt,
                 load_vllm=actual_load_vllm,
-                fp16=use_fp16
+                fp16=use_fp16,
+                llm_filename=llm_filename  # Support model variants (llm.pt vs llm.rl.pt)
             )
             
             print(f"✅ CosyVoice model loaded via unified interface on {device}")

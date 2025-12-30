@@ -67,9 +67,6 @@ class CosyVoiceEngine:
         # Resolve model directory using extra_model_paths
         self.model_dir = self._find_model_directory(model_dir)
 
-        # Ensure correct LLM file is active before loading
-        self._prepare_llm_file(model_dir)
-
         self.device = self._resolve_device(device)
         self.use_fp16 = use_fp16 and self.device != "cpu"
         self.load_trt = load_trt
@@ -85,26 +82,31 @@ class CosyVoiceEngine:
             # Handle local: prefix
             if model_identifier.startswith("local:"):
                 model_name = model_identifier[6:]  # Remove "local:" prefix
-                
+
+                # Both variants use the shared folder name
+                folder_name = "Fun-CosyVoice3-0.5B"
+
                 # Search in all configured TTS paths
                 all_tts_paths = get_all_tts_model_paths('TTS')
                 for base_path in all_tts_paths:
                     # Check direct path (models/TTS/Fun-CosyVoice3-0.5B)
-                    direct_path = os.path.join(base_path, model_name)
+                    direct_path = os.path.join(base_path, folder_name)
                     if os.path.exists(os.path.join(direct_path, "cosyvoice3.yaml")):
                         return direct_path
-                    
+
                     # Check organized path (models/TTS/CosyVoice/Fun-CosyVoice3-0.5B)
-                    organized_path = os.path.join(base_path, "CosyVoice", model_name)
+                    organized_path = os.path.join(base_path, "CosyVoice", folder_name)
                     if os.path.exists(os.path.join(organized_path, "cosyvoice3.yaml")):
                         return organized_path
-                
+
                 raise FileNotFoundError(f"Local CosyVoice model '{model_name}' not found in any configured path")
             
             else:
-                # Auto-download case - return preferred download path with model name appended
+                # Auto-download case - return preferred download path with shared folder name
                 base_path = get_preferred_download_path(model_type='TTS', engine_name='CosyVoice')
-                model_path = os.path.join(base_path, model_identifier)
+                # Both variants use the shared folder name
+                folder_name = "Fun-CosyVoice3-0.5B"
+                model_path = os.path.join(base_path, folder_name)
                 
                 # Check if model exists and is complete, if not trigger auto-download
                 needs_download = False
@@ -112,11 +114,13 @@ class CosyVoiceEngine:
                     needs_download = True
                     print(f"📥 CosyVoice3 model directory not found, triggering auto-download...")
                 else:
-                    # Check model completeness
+                    # Check model completeness - need to check which variant was requested
                     try:
                         from engines.cosyvoice.cosyvoice_downloader import CosyVoiceDownloader
                         downloader = CosyVoiceDownloader()
-                        downloader._verify_model(model_path, model_identifier, verbose=False)
+                        # Determine variant name for verification (need -RL suffix for RL variant)
+                        variant_name = "Fun-CosyVoice3-0.5B-RL" if "RL" in model_identifier else "Fun-CosyVoice3-0.5B"
+                        downloader._verify_model(model_path, variant_name, verbose=False)
                     except Exception as verify_error:
                         needs_download = True
                         print(f"📥 CosyVoice3 model incomplete (missing files), triggering re-download...")
@@ -127,7 +131,9 @@ class CosyVoiceEngine:
                         if 'downloader' not in locals():
                             from engines.cosyvoice.cosyvoice_downloader import CosyVoiceDownloader
                             downloader = CosyVoiceDownloader()
-                        downloaded_path = downloader.download_model(model_identifier)
+                        # Determine variant name for download (need -RL suffix for RL variant)
+                        variant_name = "Fun-CosyVoice3-0.5B-RL" if "RL" in model_identifier else "Fun-CosyVoice3-0.5B"
+                        downloaded_path = downloader.download_model(variant_name)
                         print(f"✅ CosyVoice3 auto-download completed: {downloaded_path}")
                         return downloaded_path
                     except Exception as download_error:
@@ -146,59 +152,14 @@ class CosyVoiceEngine:
         resolved = resolve_torch_device(device)
         return resolved
 
-    def _prepare_llm_file(self, model_identifier: str):
-        """
-        Ensure the correct LLM file is active for the requested model variant.
-        Both variants share the same folder but use different LLM files (llm.pt vs llm.rl.pt).
-        This method symlinks the correct file to llm.pt (similar to ChatterBox 23-Lang v1/v2).
-        """
-        # Extract model name (remove local: prefix)
-        model_name = model_identifier.replace("local:", "") if model_identifier.startswith("local:") else model_identifier
-
-        # Determine which LLM file to use
-        if "RL" in model_name:
-            source_file = "llm.rl.pt"
-        else:
-            source_file = "llm.pt"
-
-        source_path = os.path.join(self.model_dir, source_file)
-        target_path = os.path.join(self.model_dir, "llm.pt")
-
-        # If source file exists and target doesn't match
-        if os.path.exists(source_path):
-            # Check if llm.pt exists and points to the wrong file
-            if os.path.exists(target_path) and not os.path.islink(target_path):
-                # llm.pt exists as a real file - check if it's the right one
-                if source_file != "llm.pt":
-                    # We need RL but llm.pt is the standard file - create symlink
-                    print(f"🔄 Switching to {model_name} variant")
-                    os.remove(target_path)
-                    if os.name == 'nt':  # Windows
-                        import shutil
-                        shutil.copy2(source_path, target_path)
-                    else:  # Unix/Linux/Mac
-                        os.symlink(source_file, target_path)
-            elif os.path.islink(target_path):
-                # It's a symlink - check if it points to the right file
-                current_target = os.readlink(target_path)
-                if current_target != source_file:
-                    print(f"🔄 Switching to {model_name} variant")
-                    os.remove(target_path)
-                    os.symlink(source_file, target_path)
-            elif not os.path.exists(target_path) and source_file != "llm.pt":
-                # llm.pt doesn't exist, create symlink to RL variant
-                print(f"🔗 Linking to {model_name} variant")
-                if os.name == 'nt':  # Windows
-                    import shutil
-                    shutil.copy2(source_path, target_path)
-                else:
-                    os.symlink(source_file, target_path)
-
     def _ensure_model_loaded(self):
         """Load the CosyVoice3 model using unified model interface."""
         if self._cosyvoice is not None:
             return
-        
+
+        # Determine which LLM file to use based on model variant
+        llm_filename = "llm.rl.pt" if "RL" in self.model_identifier else "llm.pt"
+
         # Create model configuration
         self._model_config = ModelLoadConfig(
             engine_name="cosyvoice",
@@ -209,10 +170,11 @@ class CosyVoiceEngine:
             additional_params={
                 "use_fp16": self.use_fp16,
                 "load_trt": self.load_trt,
-                "load_vllm": self.load_vllm
+                "load_vllm": self.load_vllm,
+                "llm_filename": llm_filename  # Pass variant-specific LLM filename
             }
         )
-        
+
         # Load via unified interface
         self._cosyvoice = unified_model_interface.load_model(self._model_config)
     

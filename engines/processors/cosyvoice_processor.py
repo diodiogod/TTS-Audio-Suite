@@ -407,7 +407,8 @@ class CosyVoiceProcessor:
             instruct_text=self.instruct_text,
             speed=effective_speed,
             seed=seed,
-            use_fp16=self.use_fp16  # Include fp16 in cache key
+            use_fp16=self.use_fp16,  # Include fp16 in cache key
+            model_path=self.model_path  # Include for model variant cache invalidation
         )
 
     def _combine_with_silence(

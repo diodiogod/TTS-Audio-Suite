@@ -32,6 +32,7 @@ class CosyVoiceAdapter:
         """Initialize the CosyVoice3 adapter."""
         self.engine = None
         self.audio_cache = get_audio_cache()
+        self.model_variant = None  # Track model variant for cache invalidation
     
     def initialize_engine(self,
                          model_path: Optional[str] = None,
@@ -57,6 +58,12 @@ class CosyVoiceAdapter:
             else:
                 model_path = cosyvoice_downloader.get_model_path()
 
+        # Store model variant for cache key (extract from model_path string)
+        if "RL" in str(model_path):
+            self.model_variant = "RL"
+        else:
+            self.model_variant = "standard"
+
         # Initialize engine
         self.engine = CosyVoiceEngine(
             model_dir=model_path,
@@ -74,9 +81,13 @@ class CosyVoiceAdapter:
                 mode: Optional[str] = None,
                 speed: float = 1.0,
                 stream: bool = False,
+                model_path: Optional[str] = None,
                 **kwargs) -> torch.Tensor:
         """
         Generate speech with CosyVoice3.
+
+        Args:
+            model_path: Model path/identifier (used to determine variant for caching)
 
         Mode is auto-detected:
         - If instruct_text provided → instruct mode
@@ -97,6 +108,11 @@ class CosyVoiceAdapter:
         """
         if self.engine is None:
             self.initialize_engine()
+
+        # ALWAYS update model_variant from model_path parameter for cache invalidation
+        # This ensures switching variants invalidates audio cache even if engine is reused
+        if model_path:
+            self.model_variant = "RL" if "RL" in str(model_path) else "standard"
 
         # Auto-detect mode based on available parameters (if not explicitly provided)
         if mode is None:
@@ -161,7 +177,7 @@ class CosyVoiceAdapter:
                         final_reference_text = char_text
                     print(f"🎭 Using character voice: {character_name} -> {final_speaker_audio}")
 
-        # Generate cache key with mode explicitly included
+        # Generate cache key with mode and model variant explicitly included
         cache_key = self._generate_cache_key(
             text=processed_text,
             speaker_audio=self._get_stable_audio_identifier(final_speaker_audio),
@@ -169,8 +185,11 @@ class CosyVoiceAdapter:
             instruct_text=instruct_text,
             mode=mode,
             speed=speed,
+            model_variant=self.model_variant,  # Include variant for cache invalidation
             **kwargs
         )
+
+        # print(f"🔑 Audio cache key: {cache_key[:100]}... (variant={self.model_variant})")
 
         # Check cache
         cached_audio = self.audio_cache.get_cached_audio(cache_key)
@@ -295,7 +314,8 @@ class CosyVoiceAdapter:
                 reference_text=reference_text,
                 instruct_text=kwargs.get('instruct_text'),
                 mode=kwargs.get('mode'),
-                speed=kwargs.get('speed', 1.0)
+                speed=kwargs.get('speed', 1.0),
+                model_variant=self.model_variant  # Include variant for cache invalidation
             )
 
             # Check cache first

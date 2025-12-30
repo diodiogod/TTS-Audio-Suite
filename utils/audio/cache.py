@@ -283,6 +283,7 @@ class CosyVoiceCacheKeyGenerator(CacheKeyGenerator):
             'speed': speed,
             'seed': params.get('seed', 0),
             'model_path': params.get('model_path', 'Fun-CosyVoice3-0.5B'),
+            'model_variant': params.get('model_variant', 'standard'),  # Invalidate cache on variant switch
             'device': params.get('device', 'auto'),
             'use_fp16': params.get('use_fp16', True),
             'character': params.get('character', 'narrator'),

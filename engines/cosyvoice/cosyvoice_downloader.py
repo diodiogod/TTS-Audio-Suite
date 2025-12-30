@@ -25,45 +25,31 @@ import folder_paths
 class CosyVoiceDownloader:
     """Downloader for CosyVoice3 models using unified download system."""
     
+    # Shared files across all variants (downloaded once)
+    SHARED_FILES = [
+        "cosyvoice3.yaml",
+        "campplus.onnx",
+        "flow.pt",
+        "hift.pt",
+        "speech_tokenizer_v3.onnx",
+        # CosyVoice-BlankEN subfolder (Qwen model for text processing)
+        "CosyVoice-BlankEN/config.json",
+        "CosyVoice-BlankEN/generation_config.json",
+        "CosyVoice-BlankEN/merges.txt",
+        "CosyVoice-BlankEN/model.safetensors",
+        "CosyVoice-BlankEN/tokenizer_config.json",
+        "CosyVoice-BlankEN/vocab.json",
+    ]
+
     MODELS = {
         "Fun-CosyVoice3-0.5B": {
             "repo_id": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
-            "files": [
-                # Core model files
-                "cosyvoice3.yaml",
-                "campplus.onnx",
-                "flow.pt",
-                "hift.pt",
-                "llm.pt",  # Base LLM model (2GB)
-                "speech_tokenizer_v3.onnx",
-                # CosyVoice-BlankEN subfolder (Qwen model for text processing)
-                "CosyVoice-BlankEN/config.json",
-                "CosyVoice-BlankEN/generation_config.json",
-                "CosyVoice-BlankEN/merges.txt",
-                "CosyVoice-BlankEN/model.safetensors",
-                "CosyVoice-BlankEN/tokenizer_config.json",
-                "CosyVoice-BlankEN/vocab.json",
-            ],
-            "description": "Fun-CosyVoice3 0.5B base model with 9-language support (~5.4GB total)"
+            "llm_file": "llm.pt",  # Standard LLM model (2GB)
+            "description": "Fun-CosyVoice3 0.5B base model (~5.4GB total)"
         },
         "Fun-CosyVoice3-0.5B-RL": {
             "repo_id": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
-            "files": [
-                # Core model files (shared with standard variant)
-                "cosyvoice3.yaml",
-                "campplus.onnx",
-                "flow.pt",
-                "hift.pt",
-                "llm.rl.pt",  # RL-enhanced LLM model (2GB, kept as-is)
-                "speech_tokenizer_v3.onnx",
-                # CosyVoice-BlankEN subfolder (shared)
-                "CosyVoice-BlankEN/config.json",
-                "CosyVoice-BlankEN/generation_config.json",
-                "CosyVoice-BlankEN/merges.txt",
-                "CosyVoice-BlankEN/model.safetensors",
-                "CosyVoice-BlankEN/tokenizer_config.json",
-                "CosyVoice-BlankEN/vocab.json",
-            ],
+            "llm_file": "llm.rl.pt",  # RL-enhanced LLM model (2GB, better quality)
             "description": "Fun-CosyVoice3 0.5B RL-enhanced model (better quality) (~5.4GB total)"
         }
     }
@@ -142,14 +128,23 @@ class CosyVoiceDownloader:
         print(f"📁 Target directory: {model_path}")
 
         try:
-            # Prepare file list for unified downloader
+            # Prepare file list: shared files + variant-specific LLM
             file_list = []
-            for file_pattern in model_info["files"]:
+
+            # Add shared files
+            for file_pattern in self.SHARED_FILES:
                 file_list.append({
                     'remote': file_pattern,
                     'local': file_pattern
                 })
-            
+
+            # Add variant-specific LLM file
+            llm_file = model_info["llm_file"]
+            file_list.append({
+                'remote': llm_file,
+                'local': llm_file  # Keep original name (llm.pt or llm.rl.pt)
+            })
+
             # Download model files using unified downloader
             result_path = self.downloader.download_huggingface_model(
                 repo_id=model_info["repo_id"],
@@ -158,25 +153,21 @@ class CosyVoiceDownloader:
                 engine_type="CosyVoice",
                 **kwargs
             )
-            
+
             if not result_path:
                 raise RuntimeError("HuggingFace download failed")
-            
+
             # Use the path returned by the unified downloader
             model_path = result_path
-            
-            # Don't rename - keep both llm.pt and llm.rl.pt in the same folder
-            # The engine will choose which file to load based on model variant
-            # (Similar to ChatterBox 23-Lang keeping both t3_23lang.safetensors and t3_mtl23ls_v2.safetensors)
-            
+
             # Verify essential files
             self._verify_model(model_path, model_name)
-            
+
             print(f"✅ {model_name} model downloaded successfully")
             print(f"📁 Model path: {model_path}")
-            
+
             return model_path
-            
+
         except Exception as e:
             raise RuntimeError(f"Failed to download CosyVoice3 model: {e}")
     
@@ -186,34 +177,24 @@ class CosyVoiceDownloader:
 
         Args:
             model_path: Path to model directory
-            model_name: Model name to get file list
+            model_name: Model name to get LLM file requirement
             verbose: Print verification messages (default True)
 
         Raises:
             RuntimeError: If verification fails
         """
-        # Essential files that must exist (common to all variants)
-        essential_files = [
-            "cosyvoice3.yaml",
-            "campplus.onnx",
-            "flow.pt",
-            "hift.pt",
-            "speech_tokenizer_v3.onnx",
-            "CosyVoice-BlankEN/config.json",
-            "CosyVoice-BlankEN/model.safetensors",
-        ]
-
-        # Check for at least one LLM file (llm.pt or llm.rl.pt)
-        has_llm = (os.path.exists(os.path.join(model_path, "llm.pt")) or
-                   os.path.exists(os.path.join(model_path, "llm.rl.pt")))
-        
+        # Essential shared files (common to all variants)
         missing_files = []
-        for file in essential_files:
+        for file in self.SHARED_FILES:
             if not os.path.exists(os.path.join(model_path, file)):
                 missing_files.append(file)
 
-        if not has_llm:
-            missing_files.append("llm.pt or llm.rl.pt")
+        # Check for variant-specific LLM file
+        if model_name in self.MODELS:
+            required_llm = self.MODELS[model_name]["llm_file"]
+            llm_path = os.path.join(model_path, required_llm)
+            if not os.path.exists(llm_path):
+                missing_files.append(required_llm)
 
         if missing_files:
             raise RuntimeError(

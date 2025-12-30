@@ -1608,7 +1608,10 @@ ComfyUI/models/TTS/CosyVoice/
         └── [model files]
 ```
 
-**Note**: Both variants share the same folder and common files (saves ~3.4GB). Only the LLM file differs - the engine automatically uses the correct one based on your selection.
+**Note**:
+- **Lazy download** - only downloads the LLM file for the variant you select (~5.4GB for first variant)
+- Switching variants later downloads the other LLM file (~2GB additional)
+- Shared files (flow.pt, hift.pt, etc.) are downloaded once and reused by both variants
 
 **Usage**: Select CosyVoice3 from Unified TTS Engine → Choose model variant → Auto-download on first use!
 
