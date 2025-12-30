@@ -58,8 +58,8 @@ class CosyVoiceEngineNode(BaseTTSNode):
             "required": {
                 # Model Configuration
                 "model_path": (model_paths, {
-                    "default": model_paths[0] if model_paths else "Fun-CosyVoice3-0.5B",
-                    "tooltip": "CosyVoice3 model selection:\n• local:ModelName: Use locally installed model\n• ModelName: Auto-download model if not found locally"
+                    "default": model_paths[0] if model_paths else "Fun-CosyVoice3-0.5B-RL",
+                    "tooltip": "CosyVoice3 model variant:\n• Fun-CosyVoice3-0.5B-RL: Reinforcement learning trained variant with improved quality (0.81 CER, 77.4 speaker similarity - recommended)\n• Fun-CosyVoice3-0.5B: Base model\n• local:ModelName: Use locally installed model"
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
