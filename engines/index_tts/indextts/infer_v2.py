@@ -27,8 +27,7 @@ from indextts.s2mel.modules.bigvgan import bigvgan
 from indextts.s2mel.modules.campplus.DTDNN import CAMPPlus
 from indextts.s2mel.modules.audio import mel_spectrogram
 
-from transformers import AutoTokenizer
-from modelscope import AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from huggingface_hub import hf_hub_download
 import safetensors
 from transformers import SeamlessM4TFeatureExtractor

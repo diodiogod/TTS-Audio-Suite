@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.1] - 2025-12-29
+
+### Fixed
+
+- Fix IndexTTS-2 QwenEmotion text emotion model failing to load
+- Fix error preventing QwenEmotion model from loading on some systems
+- Addresses compatibility issue with certain Python/modelscope versions
+- Note: Tentative fix - user testing required to confirm resolution
 ## [4.16.0] - 2025-12-29
 
 ### Added
