@@ -28,13 +28,12 @@ class TtsExtraPathsManager:
             global_folders = folder_paths.folder_names_and_paths
             
             # Look for existing TTS-related folders
-            for folder_type in ['TTS', 'tts', 'text_to_speech', 'voice_models']:
+            for folder_type in ['TTS', 'tts', 'text_to_speech', 'voice_models', 'voices']:
                 if folder_type in global_folders:
                     self.tts_folders[folder_type] = global_folders[folder_type][0]  # Get paths list
         
-        # If no TTS folders registered, create default TTS structure
-        if not self.tts_folders:
-            self._setup_default_tts_paths()
+        # configure default TTS structure (if not already configured)
+        self._setup_default_tts_paths()
     
     def _setup_default_tts_paths(self):
         """Set up default TTS paths using ComfyUI's models directory structure"""
@@ -57,8 +56,9 @@ class TtsExtraPathsManager:
         
         # Register with ComfyUI's system so other nodes can also use these paths
         for folder_type, config in tts_model_types.items():
-            folder_paths.add_model_folder_path(folder_type, config['paths'][0])
-            self.tts_folders[folder_type] = config['paths']
+            if folder_type not in self.tts_folders:
+                folder_paths.add_model_folder_path(folder_type, config['paths'][0])
+                self.tts_folders[folder_type] = config['paths']
     
     def get_tts_model_directory(self, model_type: str = 'TTS') -> str:
         """
