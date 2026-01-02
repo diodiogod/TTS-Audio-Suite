@@ -15,6 +15,18 @@ import os
 import time
 from typing import Generator
 from tqdm import tqdm
+
+# FIX: Bundled code fix - PyYAML 6.0+ compatibility with hyperpyyaml
+# Issue: 'Loader' object has no attribute 'max_depth' error (GitHub #220)
+# hyperpyyaml expects max_depth attribute that was removed in PyYAML 6.0+
+import yaml
+if not hasattr(yaml.Loader, 'max_depth'):
+    yaml.Loader.max_depth = 100  # Default safe depth limit
+if not hasattr(yaml.FullLoader, 'max_depth'):
+    yaml.FullLoader.max_depth = 100
+if not hasattr(yaml.SafeLoader, 'max_depth'):
+    yaml.SafeLoader.max_depth = 100
+
 from hyperpyyaml import load_hyperpyyaml
 from modelscope import snapshot_download
 import torch
