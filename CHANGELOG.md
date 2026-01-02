@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.2] - 2026-01-02
+
+### Changed
+
+- Improve detection accuracy by checking actual module location instead of path keywords
+
+### Fixed
+
+- Fix IndexTTS-2 false positive detection in conda environments
+- Fix bundled IndexTTS-2 incorrectly flagged as external installation
+- Resolve compatibility issue when ComfyUI installed in directories with 'conda' in path
 ## [4.16.1] - 2025-12-29
 
 ### Fixed

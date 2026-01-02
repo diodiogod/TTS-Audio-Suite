@@ -671,16 +671,21 @@ def register_index_tts_factory():
             # Check for conflicting external IndexTTS installation
             try:
                 import indextts
-                external_path = indextts.__file__
-                if ('site-packages' in external_path or
-                    'conda' in external_path or
-                    'pip' in external_path or
-                    'dist-packages' in external_path):
+                external_path = os.path.abspath(indextts.__file__)
 
+                # Check if the imported indextts is from our bundled version
+                # by verifying it's inside our engines/index_tts directory
+                expected_bundled_path = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "..", "..", "engines", "index_tts", "indextts")
+                )
+
+                # If indextts is NOT from our bundled path, it's an external installation
+                if not external_path.startswith(expected_bundled_path):
                     raise ImportError(f"""
 ❌ External IndexTTS installation detected!
 
    Found at: {external_path}
+   Expected bundled path: {expected_bundled_path}
 
    This conflicts with our bundled IndexTTS-2 engine and causes import errors.
 
