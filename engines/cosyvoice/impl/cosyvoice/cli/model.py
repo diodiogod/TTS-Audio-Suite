@@ -64,12 +64,25 @@ class CosyVoiceModel:
     def load(self, llm_model, flow_model, hift_model):
         self.llm.load_state_dict(torch.load(llm_model, map_location=self.device), strict=True)
         self.llm.to(self.device).eval()
+        # FIX: Bundled code fix - Ensure all nested modules are moved to device
+        # Issue: Some nested layers (embed_tokens, etc.) weren't being moved with .to(device)
+        # causing "Expected all tensors to be on the same device" errors (GitHub #216, #212)
+        for module in self.llm.modules():
+            module.to(self.device)
+
         self.flow.load_state_dict(torch.load(flow_model, map_location=self.device), strict=True)
         self.flow.to(self.device).eval()
+        # FIX: Bundled code fix - Ensure all nested modules are moved to device
+        for module in self.flow.modules():
+            module.to(self.device)
+
         # in case hift_model is a hifigan model
         hift_state_dict = {k.replace('generator.', ''): v for k, v in torch.load(hift_model, map_location=self.device).items()}
         self.hift.load_state_dict(hift_state_dict, strict=True)
         self.hift.to(self.device).eval()
+        # FIX: Bundled code fix - Ensure all nested modules are moved to device
+        for module in self.hift.modules():
+            module.to(self.device)
 
     def load_jit(self, llm_text_encoder_model, llm_llm_model, flow_encoder_model):
         llm_text_encoder = torch.jit.load(llm_text_encoder_model, map_location=self.device)
