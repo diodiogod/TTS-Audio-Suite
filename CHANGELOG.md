@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.7] - 2026-01-03
+
+### Added
+
+- Voices configured in extra_model_paths.yaml now properly discovered
+- Voice files from shared model directories now appear in dropdowns
+
+### Fixed
+
+- Fix voices folder not discovered from extra_model_paths.yaml
+- Fixes issue where only local ComfyUI voices folder was scanned
 ## [4.16.6] - 2026-01-03
 
 ### Added
