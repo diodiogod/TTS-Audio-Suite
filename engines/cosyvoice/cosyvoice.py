@@ -8,6 +8,17 @@ Fun-CosyVoice3-0.5B integration providing:
 - Cross-lingual voice cloning with fine-grained control
 """
 
+# FIX: PyYAML 6.0+ compatibility patch - MUST be before any yaml imports
+# Issue: 'Loader' object has no attribute 'max_depth' error (GitHub #220)
+# This patch ensures yaml loaders have max_depth attribute before hyperpyyaml uses them
+import yaml
+if not hasattr(yaml.Loader, 'max_depth'):
+    yaml.Loader.max_depth = 100
+if not hasattr(yaml.FullLoader, 'max_depth'):
+    yaml.FullLoader.max_depth = 100
+if not hasattr(yaml.SafeLoader, 'max_depth'):
+    yaml.SafeLoader.max_depth = 100
+
 import os
 import sys
 import time

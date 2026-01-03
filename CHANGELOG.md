@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.5] - 2026-01-03
+
+### Fixed
+
+- Fix CosyVoice3 PyYAML 6.0+ compatibility (enhanced fix)
+- Apply PyYAML compatibility patch across all CosyVoice entry points
+- Fix 'Loader' object has no attribute max_depth error more reliably
+- Ensure patch is applied before any yaml imports in the loading chain
 ## [4.16.4] - 2026-01-02
 
 ### Fixed

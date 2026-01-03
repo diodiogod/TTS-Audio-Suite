@@ -5,6 +5,16 @@ Provides standardized interface for CosyVoice3 integration with TTS Audio Suite.
 Handles parameter mapping, character switching, and mode selection.
 """
 
+# FIX: PyYAML 6.0+ compatibility patch - MUST be before any yaml imports
+# Issue: 'Loader' object has no attribute 'max_depth' error (GitHub #220)
+import yaml
+if not hasattr(yaml.Loader, 'max_depth'):
+    yaml.Loader.max_depth = 100
+if not hasattr(yaml.FullLoader, 'max_depth'):
+    yaml.FullLoader.max_depth = 100
+if not hasattr(yaml.SafeLoader, 'max_depth'):
+    yaml.SafeLoader.max_depth = 100
+
 import os
 import torch
 from typing import Dict, Any, Optional, List
