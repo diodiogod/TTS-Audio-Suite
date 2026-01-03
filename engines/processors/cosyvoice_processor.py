@@ -318,6 +318,10 @@ class CosyVoiceProcessor:
                         current_speaker_audio = char_audio
                         if char_text:
                             current_reference_text = char_text
+                        else:
+                            # Character has audio but NO text reference - clear reference_text
+                            # This forces cross_lingual mode instead of zero_shot with wrong voice
+                            current_reference_text = None
                         print(f"🎭 Using character voice '{character}'")
 
             # Process pause tags if enabled

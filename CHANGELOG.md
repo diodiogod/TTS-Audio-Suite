@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.6] - 2026-01-03
+
+### Added
+
+- Characters without .txt files now properly clone voice from audio only
+
+### Fixed
+
+- Fix CosyVoice3 character switching without text references
+- Fix characters with audio but no .txt file using wrong voice
+- Automatically use cross_lingual mode when text reference is missing
 ## [4.16.5] - 2026-01-03
 
 ### Fixed

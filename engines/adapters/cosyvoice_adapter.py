@@ -185,6 +185,10 @@ class CosyVoiceAdapter:
                     # Use character's reference text if available
                     if char_text:
                         final_reference_text = char_text
+                    else:
+                        # Character has audio but NO text reference - clear reference_text
+                        # This forces cross_lingual mode instead of zero_shot with wrong voice
+                        final_reference_text = None
                     print(f"🎭 Using character voice: {character_name} -> {final_speaker_audio}")
 
         # Generate cache key with mode and model variant explicitly included
