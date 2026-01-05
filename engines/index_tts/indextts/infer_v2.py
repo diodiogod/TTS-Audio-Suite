@@ -136,6 +136,11 @@ class IndexTTS2:
             if self.qwen_emo_path is None:
                 self.qwen_emo_path = os.path.join(self.model_dir, "qwen0.6bemo4-merge")
 
+            # Debug: Show exactly where we're looking for QwenEmotion
+            print(f"🔍 DEBUG: Looking for QwenEmotion model at: {self.qwen_emo_path}")
+            print(f"🔍 DEBUG: Path exists: {os.path.exists(self.qwen_emo_path)}")
+            print(f"🔍 DEBUG: Is directory: {os.path.isdir(self.qwen_emo_path) if os.path.exists(self.qwen_emo_path) else 'N/A'}")
+
             if self.qwen_emo_path and os.path.exists(self.qwen_emo_path) and os.path.isdir(self.qwen_emo_path):
                 # Check if required QwenEmotion files exist
                 normalized_path = os.path.normpath(self.qwen_emo_path)
