@@ -112,11 +112,11 @@ For best voice cloning quality: Leave this empty and provide .txt transcripts vi
                 # Advanced optimizations (usually not needed)
                 "load_trt": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Load TensorRT engine for faster inference (requires TensorRT setup)"
+                    "tooltip": "TensorRT for flow decoder (FP32 only, <1% speedup). Included for compatibility with official repo but provides negligible benefit. Use load_vllm for real LLM acceleration."
                 }),
                 "load_vllm": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Load vLLM engine for faster inference (requires vLLM setup)"
+                    "tooltip": "vLLM for LLM acceleration (~3x faster token generation, ~2.5x total speedup). Linux only - does not work on Windows. Requires vLLM installation and model conversion."
                 }),
             }
         }

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.9] - 2026-01-07
+
+### Added
+
+- Add clear tooltips explaining TensorRT (<1% speedup) vs vLLM (~2.5x speedup)
+
+### Changed
+
+- Improve debug logging for optimization loading
+
+### Fixed
+
+- Fix CosyVoice TensorRT and vLLM loading issues
+- Fix TensorRT engine configuration (was missing required inputs)
+- Fix optimization settings not being preserved during lazy loading
 ## [4.16.8] - 2026-01-05
 
 ### Added

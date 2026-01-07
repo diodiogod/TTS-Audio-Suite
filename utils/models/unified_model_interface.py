@@ -1097,6 +1097,9 @@ def register_cosyvoice_factory():
                     print("⚠️ vLLM not installed, skipping vLLM optimization")
                     actual_load_vllm = False
             
+            if load_trt or actual_load_vllm:
+                print(f"🚀 Loading CosyVoice with optimizations: TensorRT={load_trt}, vLLM={actual_load_vllm}, FP16={use_fp16}")
+
             engine = AutoModel(
                 model_dir=model_path,
                 load_trt=load_trt,
@@ -1104,7 +1107,7 @@ def register_cosyvoice_factory():
                 fp16=use_fp16,
                 llm_filename=llm_filename  # Support model variants (llm.pt vs llm.rl.pt)
             )
-            
+
             print(f"✅ CosyVoice model loaded via unified interface on {device}")
             return engine
             

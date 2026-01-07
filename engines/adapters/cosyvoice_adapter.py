@@ -43,6 +43,14 @@ class CosyVoiceAdapter:
         self.engine = None
         self.audio_cache = get_audio_cache()
         self.model_variant = None  # Track model variant for cache invalidation
+        # Store initialization parameters for lazy loading
+        self._init_params = {
+            "model_path": None,
+            "device": "auto",
+            "use_fp16": True,
+            "load_trt": False,
+            "load_vllm": False
+        }
     
     def initialize_engine(self,
                          model_path: Optional[str] = None,
@@ -60,6 +68,15 @@ class CosyVoiceAdapter:
             load_trt: Load TensorRT engine
             load_vllm: Load vLLM engine
         """
+        # Store initialization parameters for lazy loading
+        self._init_params.update({
+            "model_path": model_path,
+            "device": device,
+            "use_fp16": use_fp16,
+            "load_trt": load_trt,
+            "load_vllm": load_vllm
+        })
+
         # Auto-download model if not provided
         if model_path is None or model_path == "Fun-CosyVoice3-0.5B":
             if not cosyvoice_downloader.is_model_available():
@@ -117,7 +134,7 @@ class CosyVoiceAdapter:
             Generated audio tensor [1, samples] at 24000 Hz
         """
         if self.engine is None:
-            self.initialize_engine()
+            self.initialize_engine(**self._init_params)
 
         # ALWAYS update model_variant from model_path parameter for cache invalidation
         # This ensures switching variants invalidates audio cache even if engine is reused
@@ -409,7 +426,7 @@ class CosyVoiceAdapter:
             Converted audio tensor at 24kHz
         """
         if self.engine is None:
-            self.initialize_engine()
+            self.initialize_engine(**self._init_params)
 
         # Call engine's VC method
         return self.engine.inference_vc(

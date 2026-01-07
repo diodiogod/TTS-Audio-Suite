@@ -131,12 +131,15 @@ class ConditionalCFM(BASECFM):
             # NOTE need to synchronize when switching stream
             torch.cuda.current_stream().synchronize()
             with stream:
-                estimator.set_input_shape('x', (2, 80, x.size(2)))
-                estimator.set_input_shape('mask', (2, 1, x.size(2)))
-                estimator.set_input_shape('mu', (2, 80, x.size(2)))
-                estimator.set_input_shape('t', (2,))
-                estimator.set_input_shape('spks', (2, 80))
-                estimator.set_input_shape('cond', (2, 80, x.size(2)))
+                # Use actual batch size from input tensor instead of hardcoded 2
+                batch_size = x.size(0)
+                seq_len = x.size(2)
+                estimator.set_input_shape('x', (batch_size, 80, seq_len))
+                estimator.set_input_shape('mask', (batch_size, 1, seq_len))
+                estimator.set_input_shape('mu', (batch_size, 80, seq_len))
+                estimator.set_input_shape('t', (batch_size,))
+                estimator.set_input_shape('spks', (batch_size, 80))
+                estimator.set_input_shape('cond', (batch_size, 80, seq_len))
                 data_ptrs = [x.contiguous().data_ptr(),
                              mask.contiguous().data_ptr(),
                              mu.contiguous().data_ptr(),
