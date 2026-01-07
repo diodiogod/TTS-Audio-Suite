@@ -223,6 +223,7 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/cosyvoice/** - CosyVoice3 internal processors
 - **cosyvoice_srt_processor.py** - CosyVoice3 SRT processor with character switching, timing modes, and interrupt handling
+- **cosyvoice_vc_processor.py** - CosyVoice3 voice conversion processor with zero-shot, instruct, and cross-lingual voice cloning modes
 
 ### Step Audio EditX Specialized Nodes
 
@@ -315,6 +316,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **utils/text/phonemizer_utils.py** - F5-TTS multilingual phonemization system with IPA conversion, cross-platform backend support (espeak-phonemizer-windows/phonemizer), smart language detection, and model-specific exceptions for optimal quality
 
 **utils/text/step_audio_editx_special_tags.py** - Step Audio EditX inline edit tag system with tag conversion, stripping, detection, and UI option generation for paralinguistic effects, emotions, styles, and speed control. Enables universal post-processing of TTS output across all engines
+
+**utils/text/cosyvoice_special_tags.py** - CosyVoice3 special tag system for parsing and handling CosyVoice-specific inline tags and control tokens for emotion, style, and paralinguistic effects
 
 ### Voice Management
 
