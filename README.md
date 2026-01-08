@@ -61,8 +61,8 @@ v4.12 ──────────────► v4.15 ───────�
 Oct 25                Dez 25              Dez 25
 │                     │                   │
 Per-Seg Parameter     Step Audio EditX    CosyVoice3
-Switching [seed:24]   Inline Edit tags    9-Lang TTS + VC
-                      <laughter:2>        RL Variant
+Switching [seed:24]   Inline Edit tags    TTS + VC
+                      <laughter:2>        
 ```
 
 <details>
