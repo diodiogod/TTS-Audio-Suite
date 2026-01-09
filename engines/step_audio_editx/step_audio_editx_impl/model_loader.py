@@ -79,6 +79,45 @@ class UnifiedModelLoader:
         self.logger.info(f"Downloaded and cached {model_path} from {source}: {local_path}")
         return local_path
 
+    def detect_attn_implementation(self) -> str:
+        """
+        Automatically detect the best available attention implementation.
+        Priority: Flash Attention 2 > xformers > SDPA > eager
+
+        Returns:
+            The best available attention implementation
+        """
+        try:
+            # Check for Flash Attention 2
+            import torch
+            from transformers.utils.import_utils import is_flash_attn_2_available
+            if is_flash_attn_2_available() and torch.cuda.is_available():
+                print("✅ Using Flash Attention 2 for hardware acceleration")
+                return "flash_attention_2"
+        except Exception:
+            pass
+
+        try:
+            # Check for xformers
+            import xformers
+            print("✅ Using xformers for hardware acceleration")
+            return "xformers"
+        except Exception:
+            pass
+
+        try:
+            # Check for SDPA (PyTorch 2.0+)
+            import torch
+            if hasattr(torch.nn.functional, "scaled_dot_product_attention"):
+                print("✅ Using SDPA (scaled_dot_product_attention) for hardware acceleration")
+                return "sdpa"
+        except Exception:
+            pass
+
+        # Fallback to eager mode
+        print("⚠️  No hardware-accelerated attention mechanism found, falling back to eager mode")
+        return "eager"
+
     def detect_model_source(self, model_path: str) -> str:
         """
         Automatically detect model source
@@ -196,21 +235,49 @@ class UnifiedModelLoader:
                     "device_map": kwargs.get("device_map", "auto"),
                     "trust_remote_code": True,
                     "local_files_only": True,
+                    "attn_implementation": self.detect_attn_implementation(),
                 }
-
-                # CRITICAL: transformers 4.54+ has a bug with attn_implementation="eager"
-                # Only set it for older versions
-                import transformers as trans
-                trans_version = tuple(map(int, trans.__version__.split('.')[:2]))
-                if trans_version < (4, 54):
-                    load_kwargs["attn_implementation"] = "eager"
+                
+                # Check if this is Step Audio EditX model (model_type="step1")
+                try:
+                    import json
+                    import os
+                    config_path = os.path.join(model_path, "config.json")
+                    if os.path.exists(config_path):
+                        with open(config_path, "r") as f:
+                            config = json.load(f)
+                        if config.get("model_type") == "step1":
+                            # Step Audio EditX only supports eager attention
+                            load_kwargs["attn_implementation"] = "eager"
+                            self.logger.info("Step Audio EditX model detected, using eager attention implementation")
+                except Exception as e:
+                    self.logger.error(f"Error checking model type for attention implementation: {e}")
 
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
+                # Step Audio EditX (Step1ForCausalLM) doesn't support dtype parameter
                 if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                    # Check if this is Step Audio EditX model
+                    try:
+                        import json
+                        import os
+                        config_path = os.path.join(model_path, "config.json")
+                        if os.path.exists(config_path):
+                            with open(config_path, "r") as f:
+                                config = json.load(f)
+                            if config.get("model_type") == "step1":
+                                # Skip setting dtype for Step Audio EditX
+                                self.logger.debug("Skipping dtype setting for Step Audio EditX model")
+                            else:
+                                load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                        else:
+                            load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                    except Exception as e:
+                        self.logger.error(f"Error checking model type: {e}")
+                        # Fallback to setting dtype
+                        load_kwargs["dtype"] = kwargs.get("torch_dtype")
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -233,15 +300,49 @@ class UnifiedModelLoader:
                     "device_map": kwargs.get("device_map", "auto"),
                     "trust_remote_code": True,
                     "local_files_only": True,
-                    "attn_implementation": "eager"  # Step1ForCausalLM only supports eager mode
+                    "attn_implementation": self.detect_attn_implementation(),
                 }
+                
+                # Check if this is Step Audio EditX model (model_type="step1")
+                try:
+                    import json
+                    import os
+                    config_path = os.path.join(model_path, "config.json")
+                    if os.path.exists(config_path):
+                        with open(config_path, "r") as f:
+                            config = json.load(f)
+                        if config.get("model_type") == "step1":
+                            # Step Audio EditX only supports eager attention
+                            load_kwargs["attn_implementation"] = "eager"
+                            self.logger.info("Step Audio EditX model detected, using eager attention implementation")
+                except Exception as e:
+                    self.logger.error(f"Error checking model type for attention implementation: {e}")
 
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
+                # Step Audio EditX (Step1ForCausalLM) doesn't support dtype parameter
                 if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                    # Check if this is Step Audio EditX model
+                    try:
+                        import json
+                        import os
+                        config_path = os.path.join(model_path, "config.json")
+                        if os.path.exists(config_path):
+                            with open(config_path, "r") as f:
+                                config = json.load(f)
+                            if config.get("model_type") == "step1":
+                                # Skip setting dtype for Step Audio EditX
+                                self.logger.debug("Skipping dtype setting for Step Audio EditX model")
+                            else:
+                                load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                        else:
+                            load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                    except Exception as e:
+                        self.logger.error(f"Error checking model type: {e}")
+                        # Fallback to setting dtype
+                        load_kwargs["dtype"] = kwargs.get("torch_dtype")
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -259,17 +360,51 @@ class UnifiedModelLoader:
                 # Load from HuggingFace
                 load_kwargs = {
                     "device_map": kwargs.get("device_map", "auto"),
-                    "attn_implementation": "sdpa",  # CRITICAL: Use SDPA for proper generation
+                    "attn_implementation": self.detect_attn_implementation(),
                     "trust_remote_code": True,
                     "local_files_only": True
                 }
+                
+                # Check if this is Step Audio EditX model (model_type="step1")
+                try:
+                    import json
+                    import os
+                    config_path = os.path.join(model_path, "config.json")
+                    if os.path.exists(config_path):
+                        with open(config_path, "r") as f:
+                            config = json.load(f)
+                        if config.get("model_type") == "step1":
+                            # Step Audio EditX only supports eager attention
+                            load_kwargs["attn_implementation"] = "eager"
+                            self.logger.info("Step Audio EditX model detected, using eager attention implementation")
+                except Exception as e:
+                    self.logger.error(f"Error checking model type for attention implementation: {e}")
 
                 # Add quantization configuration if specified
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
+                # Step Audio EditX (Step1ForCausalLM) doesn't support dtype parameter
                 if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                    # Check if this is Step Audio EditX model
+                    try:
+                        import json
+                        import os
+                        config_path = os.path.join(model_path, "config.json")
+                        if os.path.exists(config_path):
+                            with open(config_path, "r") as f:
+                                config = json.load(f)
+                            if config.get("model_type") == "step1":
+                                # Skip setting dtype for Step Audio EditX
+                                self.logger.debug("Skipping dtype setting for Step Audio EditX model")
+                            else:
+                                load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                        else:
+                            load_kwargs["dtype"] = kwargs.get("torch_dtype")
+                    except Exception as e:
+                        self.logger.error(f"Error checking model type: {e}")
+                        # Fallback to setting dtype
+                        load_kwargs["dtype"] = kwargs.get("torch_dtype")
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,

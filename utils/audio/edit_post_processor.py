@@ -376,29 +376,90 @@ def process_segments(
         iteration_audio_snapshots = {}  # iteration_number -> audio_dict
         current_iteration = 0
 
-        # Apply non-paralinguistic edits first (emotion, style, speed)
-        for tag in non_paralinguistic_tags:
+        # Apply non-paralinguistic edits - GROUPED by type to reduce model calls
+        if non_paralinguistic_tags:
             try:
-                print(f"  🎨 Applying {tag.edit_type}:{tag.value} ({tag.iterations} iteration{'s' if tag.iterations > 1 else ''})")
-                edited_audio_dict = _apply_edit_via_node(
-                    editor_node=editor_node,
-                    audio_dict=current_audio_dict,
-                    transcript=transcript,
-                    edit_tag=tag,
-                    tts_engine_data=tts_engine_data
-                )
-                # Use edited audio as input for next edit
-                current_audio_dict = edited_audio_dict
+                # Group tags by type, keeping only the most recent/strongest value for each type
+                # This way we apply emotion, style, and speed in a single call
+                tag_group = {}
+                for tag in non_paralinguistic_tags:
+                    tag_group[tag.edit_type] = tag
 
-                # Store snapshot for each iteration
-                for i in range(tag.iterations):
+                # Determine max iterations across all non-paralinguistic tags
+                max_iterations = max(tag.iterations for tag in tag_group.values())
+
+                # Build tag summary
+                tag_summary = ", ".join([f"{t.edit_type}:{t.value}" for t in tag_group.values()])
+                print(f"  🎨 Applying grouped edits: {tag_summary} ({max_iterations} iteration{'s' if max_iterations > 1 else ''})")
+
+                # Apply all non-paralinguistic edits in a single call per iteration
+                for iteration in range(1, max_iterations + 1):
+                    # For this iteration, use tags that still need processing
+                    active_tags = [t for t in tag_group.values() if iteration <= t.iterations]
+                    if not active_tags:
+                        break
+
+                    # Build parameters for the single call
+                    emotion = next((t.value for t in active_tags if t.edit_type == 'emotion'), 'none')
+                    style = next((t.value for t in active_tags if t.edit_type == 'style'), 'none')
+                    speed = next((t.value for t in active_tags if t.edit_type == 'speed'), 'none')
+                    denoise = next((t.value for t in active_tags if t.edit_type == 'denoise'), None)
+                    vad = next((t.value for t in active_tags if t.edit_type == 'vad'), None)
+
+                    # Determine edit type for the call (highest priority active tag)
+                    active_edit_type = active_tags[0].edit_type  # They're already sorted by priority
+
+                    # Build audio_text for the editor node
+                    audio_text = transcript
+
+                    # Call the Audio Editor node once with all tag parameters
+                    edited_audio_dict, _ = editor_node.edit_audio(
+                        input_audio=current_audio_dict,
+                        audio_text=audio_text,
+                        edit_type=active_edit_type,
+                        emotion=emotion,
+                        style=style,
+                        speed=speed,
+                        n_edit_iterations=1,  # We handle iterations ourselves
+                        tts_engine=tts_engine_data,  # Reuse pre-loaded engine
+                        suppress_progress=True,  # We show our own progress
+                        inline_tag_precision=inline_precision,
+                        inline_tag_device=inline_device
+                    )
+                    current_audio_dict = edited_audio_dict
+
+                    # Store snapshot after each iteration
                     current_iteration += 1
                     iteration_audio_snapshots[current_iteration] = {
                         'waveform': current_audio_dict['waveform'].clone() if hasattr(current_audio_dict['waveform'], 'clone') else current_audio_dict['waveform'],
                         'sample_rate': current_audio_dict['sample_rate']
                     }
+
             except Exception as e:
-                print(f"     ❌ Failed: {e}")
+                print(f"     ❌ Grouped edits failed: {e}")
+                import traceback
+                traceback.print_exc()
+                # Fall back to individual tag processing if grouping fails
+                for tag in non_paralinguistic_tags:
+                    try:
+                        print(f"  🎨 Applying {tag.edit_type}:{tag.value} ({tag.iterations} iteration{'s' if tag.iterations > 1 else ''})")
+                        edited_audio_dict = _apply_edit_via_node(
+                            editor_node=editor_node,
+                            audio_dict=current_audio_dict,
+                            transcript=transcript,
+                            edit_tag=tag,
+                            tts_engine_data=tts_engine_data
+                        )
+                        current_audio_dict = edited_audio_dict
+
+                        for i in range(tag.iterations):
+                            current_iteration += 1
+                            iteration_audio_snapshots[current_iteration] = {
+                                'waveform': current_audio_dict['waveform'].clone() if hasattr(current_audio_dict['waveform'], 'clone') else current_audio_dict['waveform'],
+                                'sample_rate': current_audio_dict['sample_rate']
+                            }
+                    except Exception as e:
+                        print(f"     ❌ Failed: {e}")
 
         # Apply all paralinguistic tags with proper iteration handling
         if paralinguistic_tags:

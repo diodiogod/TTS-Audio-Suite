@@ -77,7 +77,19 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 }),
                 "max_new_tokens": ("INT", {
                     "default": 8192, "min": 256, "max": 16384, "step": 256,
-                    "tooltip": "Maximum audio tokens to generate:\n• 2048: ~10s audio\n• 4096: ~20s audio\n• 8192: ~40s audio (default)\nHigher = more VRAM + longer generation time."
+                    "tooltip": '''Maximum audio tokens to generate:
+• 2048: ~10s audio
+• 4096: ~20s audio
+• 8192: ~40s audio (default)
+Higher = more VRAM + longer generation time.
+Ignored when dynamic_token is enabled.'''
+                }),
+                "dynamic_token": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": '''Enable dynamic token calculation.
+• True: Automatically estimates required tokens based on text length
+• False: Uses the specified max_new_tokens value
+Enabled by default for faster generation.'''
                 }),
             }
         }
@@ -149,6 +161,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
         temperature: float,
         do_sample: bool,
         max_new_tokens: int,
+        dynamic_token: bool,
     ):
         """
         Create Step Audio EditX engine adapter with configuration.
@@ -166,6 +179,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 "temperature": temperature,
                 "do_sample": do_sample,
                 "max_new_tokens": max_new_tokens,
+                "dynamic_token": dynamic_token,
                 "engine_type": "step_audio_editx",
             }
 
@@ -175,6 +189,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             if quantization != "none":
                 print(f"   Quantization: {quantization}")
             print(f"   Generation: temp={temperature}, do_sample={do_sample}, max_tokens={max_new_tokens}")
+            print(f"   Dynamic Token: {dynamic_token}")
 
             # Return engine data for consumption by unified TTS nodes
             engine_data = {
@@ -208,11 +223,4 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             return (error_config,)
 
 
-# Register the node
-NODE_CLASS_MAPPINGS = {
-    "Step Audio EditX Engine": StepAudioEditXEngineNode
-}
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "Step Audio EditX Engine": "⚙️ Step Audio EditX Engine"
-}

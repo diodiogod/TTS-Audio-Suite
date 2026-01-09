@@ -120,6 +120,10 @@ class StepAudioEditXAudioEditorNode:
                 "tts_engine": ("TTS_ENGINE", {
                     "tooltip": "Step Audio EditX engine configuration. If not provided, will create default engine."
                 }),
+                "dynamic_token": (["enable", "disable"], {
+                    "default": "enable",
+                    "tooltip": "Enable dynamic token calculation. When enabled, automatically estimates required tokens based on text length, ignoring custom token count."
+                }),
             }
         }
 
@@ -380,7 +384,8 @@ class StepAudioEditXAudioEditorNode:
         tts_engine=None,
         suppress_progress=False,
         inline_tag_precision=None,
-        inline_tag_device=None
+        inline_tag_device=None,
+        dynamic_token="enable"
     ):
         """
         Edit audio with specified modification.
@@ -571,7 +576,8 @@ class StepAudioEditXAudioEditorNode:
                     progress_bar=progress_bar,
                     max_new_tokens=max_new_tokens,
                     temperature=temperature,
-                    do_sample=do_sample
+                    do_sample=do_sample,
+                    dynamic_token=(dynamic_token == "enable")
                 )
 
                 # Update sample rate - engine always returns 24000 Hz audio

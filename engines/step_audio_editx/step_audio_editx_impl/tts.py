@@ -297,7 +297,8 @@ class StepAudioTTS:
         progress_bar=None,
         max_new_tokens: int = 8192,
         temperature: float = 0.7,
-        do_sample: bool = True
+        do_sample: bool = True,
+        edit_tags: Optional[list] = None
     ) -> Tuple[torch.Tensor, int]:
         """
         Edit audio based on specified edit type
@@ -312,6 +313,7 @@ class StepAudioTTS:
             max_new_tokens: Maximum tokens to generate
             temperature: Sampling temperature
             do_sample: Whether to use sampling
+            edit_tags: Optional list of EditTag objects for batch processing multiple edits
 
         Returns:
             Tuple[torch.Tensor, int]: Edited audio tensor and sample rate
@@ -325,7 +327,7 @@ class StepAudioTTS:
                 vq02_codes_ori, vq06_codes_ori
             )
             # Build instruction prefix based on edit type
-            instruct_prefix = self._build_audio_edit_instruction(audio_text, edit_type, edit_info, text)
+            instruct_prefix = self._build_audio_edit_instruction(audio_text, edit_type, edit_info, text, edit_tags)
 
             # Encode the complete prompt to token sequence
             prompt_tokens = self._encode_audio_edit_prompt(
@@ -376,7 +378,8 @@ class StepAudioTTS:
         audio_text: str,
         edit_type: str,
         edit_info: Optional[str] = None,
-        text: Optional[str] = None
+        text: Optional[str] = None,
+        edit_tags: Optional[list] = None
         ) -> str:
         """
         Build audio editing instruction based on request
@@ -392,27 +395,95 @@ class StepAudioTTS:
         """
 
         audio_text = audio_text.strip() if audio_text else ""
-        if edit_type in {"emotion", "speed"}:
-            if edit_info == "remove":
-                instruct_prefix = f"Remove any emotion in the following audio and the reference text is: {audio_text}\n"
+        
+        # Handle multiple edit tags if provided
+        if edit_tags:
+            # Define priority order for tags
+            type_priority = {
+                'emotion': 1,
+                'style': 2,
+                'speed': 3,
+                'denoise': 4,
+                'vad': 5
+            }
+            
+            # Sort tags by priority (lower = processed first)
+            sorted_tags = sorted(edit_tags, key=lambda t: type_priority.get(t.edit_type, 99))
+            
+            # Build merged instruction
+            instructions = []
+            has_emotion = False
+            has_style = False
+            has_speed = False
+            has_denoise = False
+            has_vad = False
+            
+            for tag in sorted_tags:
+                tag_edit_type = tag.edit_type
+                tag_edit_info = tag.edit_info
+                
+                if tag_edit_type == "emotion" and not has_emotion:
+                    if tag_edit_info == "remove":
+                        instructions.append(f"remove any emotion")
+                    else:
+                        instructions.append(f"be more {tag_edit_info}")
+                    has_emotion = True
+                elif tag_edit_type == "style" and not has_style:
+                    if tag_edit_info == "remove":
+                        instructions.append(f"remove any speaking styles")
+                    else:
+                        instructions.append(f"have a {tag_edit_info} speaking style")
+                    has_style = True
+                elif tag_edit_type == "speed" and not has_speed:
+                    instructions.append(f"speak {tag_edit_info}")
+                    has_speed = True
+                elif tag_edit_type == "denoise" and not has_denoise:
+                    instructions.append(f"remove any noise")
+                    has_denoise = True
+                elif tag_edit_type == "vad" and not has_vad:
+                    instructions.append(f"remove any silent portions")
+                    has_vad = True
+            
+            # Build final instruction
+            if instructions:
+                # Join instructions with appropriate conjunctions
+                if len(instructions) == 1:
+                    instruction_text = instructions[0]
+                elif len(instructions) == 2:
+                    instruction_text = f"{instructions[0]} and {instructions[1]}"
+                else:
+                    instruction_text = ", ".join(instructions[:-1]) + f", and {instructions[-1]}"
+                
+                instruct_prefix = f"Edit the following audio to {instruction_text}. The text corresponding to the audio is: {audio_text}\n"
             else:
-                instruct_prefix=f"Make the following audio more {edit_info}. The text corresponding to the audio is: {audio_text}\n"
-        elif edit_type == "style":
-            if edit_info == "remove":
-                instruct_prefix = f"Remove any speaking styles in the following audio and the reference text is: {audio_text}\n"
-            else:
-                instruct_prefix = f"Make the following audio more {edit_info} style. The text corresponding to the audio is: {audio_text}\n"
-        elif edit_type == "denoise":
-            instruct_prefix = f"Remove any noise from the given audio while preserving the voice content clearly. Ensure that the speech quality remains intact with minimal distortion, and eliminate all noise from the audio.\n"
-        elif edit_type == "vad":
-            instruct_prefix = f"Remove any silent portions from the given audio while preserving the voice content clearly. Ensure that the speech quality remains intact with minimal distortion, and eliminate all silence from the audio.\n"
-        elif edit_type == "paralinguistic":
-            instruct_prefix = f"Add some non-verbal sounds to make the audio more natural, the new text is : {text}\n  The text corresponding to the audio is: {audio_text}\n"
+                # Fallback to single edit if no valid tags
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail="No valid edit tags provided",
+                )
+        # Fallback to single edit type if no edit_tags provided
         else:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Unsupported edit_type: {edit_type}",
-            )
+            if edit_type in {"emotion", "speed"}:
+                if edit_info == "remove":
+                    instruct_prefix = f"Remove any emotion in the following audio and the reference text is: {audio_text}\n"
+                else:
+                    instruct_prefix=f"Make the following audio more {edit_info}. The text corresponding to the audio is: {audio_text}\n"
+            elif edit_type == "style":
+                if edit_info == "remove":
+                    instruct_prefix = f"Remove any speaking styles in the following audio and the reference text is: {audio_text}\n"
+                else:
+                    instruct_prefix = f"Make the following audio more {edit_info} style. The text corresponding to the audio is: {audio_text}\n"
+            elif edit_type == "denoise":
+                instruct_prefix = f"Remove any noise from the given audio while preserving the voice content clearly. Ensure that the speech quality remains intact with minimal distortion, and eliminate all noise from the audio.\n"
+            elif edit_type == "vad":
+                instruct_prefix = f"Remove any silent portions from the given audio while preserving the voice content clearly. Ensure that the speech quality remains intact with minimal distortion, and eliminate all silence from the audio.\n"
+            elif edit_type == "paralinguistic":
+                instruct_prefix = f"Add some non-verbal sounds to make the audio more natural, the new text is : {text}\n  The text corresponding to the audio is: {audio_text}\n"
+            else:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=f"Unsupported edit_type: {edit_type}",
+                )
 
         return instruct_prefix
 

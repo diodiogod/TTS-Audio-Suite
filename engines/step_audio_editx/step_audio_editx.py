@@ -5,7 +5,7 @@ import torchaudio
 import tempfile
 import folder_paths
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 import warnings
 
 from utils.models.unified_model_interface import unified_model_interface
@@ -179,6 +179,7 @@ class StepAudioEditXEngine:
         temperature: float = 0.7,
         do_sample: bool = True,
         max_new_tokens: int = 8192,
+        dynamic_token: bool = True,
         progress_bar=None
     ) -> torch.Tensor:
         """
@@ -234,13 +235,31 @@ class StepAudioEditXEngine:
                 except StopIteration:
                     pass
 
+        # Calculate dynamic max_new_tokens if enabled
+        if dynamic_token:
+            # Estimate tokens based on target text length
+            # Rough estimate: English ~1 token per 4 chars, Chinese ~1 token per 1.5 chars
+            text_length = len(target_text)
+            # Conservative estimate: 1 token per 2 chars, with 20% buffer
+            estimated_tokens = int(text_length / 2 * 1.2)
+            # Ensure minimum tokens for proper generation
+            estimated_tokens = max(estimated_tokens, 128)
+            # Limit to reasonable maximum (avoid excessive computation)
+            estimated_tokens = min(estimated_tokens, 2048)
+            
+            # Use estimated tokens instead of default
+            final_max_tokens = estimated_tokens
+            print(f"🔧 Dynamic token calculation enabled: Estimated {estimated_tokens} tokens for text (length: {text_length} chars)")
+        else:
+            final_max_tokens = max_new_tokens
+
         # Call original implementation with progress bar
         audio_tensor, sample_rate = self._tts_engine.clone(
             prompt_wav_path=prompt_wav_path,
             prompt_text=prompt_text,
             target_text=target_text,
             progress_bar=progress_bar,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=final_max_tokens,
             temperature=temperature,
             do_sample=do_sample
         )
@@ -263,7 +282,9 @@ class StepAudioEditXEngine:
         progress_bar=None,
         max_new_tokens: int = 8192,
         temperature: float = 0.7,
-        do_sample: bool = True
+        do_sample: bool = True,
+        dynamic_token: bool = True,
+        edit_tags: Optional[list] = None
     ) -> torch.Tensor:
         """
         Perform a single edit pass on audio.
@@ -307,6 +328,25 @@ class StepAudioEditXEngine:
                 except StopIteration:
                     pass
 
+        # Calculate dynamic max_new_tokens if enabled
+        if dynamic_token:
+            # For edit operations, use the audio text length as reference
+            # If text is provided (paralinguistic), use that instead
+            reference_text = text if text is not None else audio_text
+            text_length = len(reference_text)
+            # Conservative estimate: 1 token per 2 chars, with 20% buffer
+            estimated_tokens = int(text_length / 2 * 1.2)
+            # Ensure minimum tokens for proper generation
+            estimated_tokens = max(estimated_tokens, 128)
+            # Limit to reasonable maximum (avoid excessive computation)
+            estimated_tokens = min(estimated_tokens, 2048)
+            
+            # Use estimated tokens instead of default
+            final_max_tokens = estimated_tokens
+            print(f"🔧 Dynamic token calculation enabled: Estimated {estimated_tokens} tokens for text (length: {text_length} chars)")
+        else:
+            final_max_tokens = max_new_tokens
+
         # Perform single edit with progress tracking
         audio_tensor, sample_rate = self._tts_engine.edit(
             input_audio_path=input_audio_path,
@@ -315,7 +355,7 @@ class StepAudioEditXEngine:
             edit_info=edit_info,
             text=text,
             progress_bar=progress_bar,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=final_max_tokens,
             temperature=temperature,
             do_sample=do_sample
         )
@@ -335,7 +375,8 @@ class StepAudioEditXEngine:
         edit_type: str,
         edit_info: Optional[str] = None,
         text: Optional[str] = None,
-        n_edit_iterations: int = 1
+        n_edit_iterations: int = 1,
+        dynamic_token: bool = True
     ) -> torch.Tensor:
         """
         Edit audio with specified modification (convenience wrapper for multiple iterations).
@@ -361,7 +402,8 @@ class StepAudioEditXEngine:
                 audio_text=audio_text,
                 edit_type=edit_type,
                 edit_info=edit_info,
-                text=text
+                text=text,
+                dynamic_token=dynamic_token
             )
 
             # For next iteration, save current result to temp file
@@ -372,6 +414,111 @@ class StepAudioEditXEngine:
                     current_audio_path = tmp_file.name
 
         return audio_tensor
+
+    def batch_edit(
+        self,
+        batch_inputs: List[Dict[str, Any]],
+        n_edit_iterations: int = 1,
+        dynamic_token: bool = True
+    ) -> List[torch.Tensor]:
+        """
+        Batch edit multiple audio segments in a single call.
+        This optimizes performance by reusing the loaded model and avoiding redundant initialization.
+
+        Args:
+            batch_inputs: List of dictionaries with edit parameters:
+                - input_audio_path: Path to input audio file
+                - audio_text: Transcript of input audio
+                - edit_type: Type of edit (emotion, style, speed, paralinguistic, denoising)
+                - edit_info: Specific edit value (e.g., 'happy', 'whisper', 'faster')
+                - text: Text for paralinguistic mode (optional)
+                - edit_tags: List of EditTag objects for multiple edits (optional)
+            n_edit_iterations: Number of iterative edits (1-5, default: 1)
+            dynamic_token: Whether to use dynamic token calculation
+
+        Returns:
+            List of edited audio tensors with shape [1, samples] for each input
+        """
+        # Ensure model is loaded once for all batch processing
+        self._ensure_model_loaded()
+        
+        # Check if model needs to be moved to correct device
+        from utils.device import resolve_torch_device
+        target_device = resolve_torch_device("auto")
+
+        if self._tts_engine is not None and hasattr(self._tts_engine, 'llm'):
+            if hasattr(self._tts_engine.llm, 'parameters'):
+                try:
+                    first_param = next(self._tts_engine.llm.parameters())
+                    current_device = str(first_param.device)
+                    if current_device != target_device:
+                        # Use unified model manager for device movement
+                        try:
+                            from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
+                            if not tts_model_manager.ensure_device("step_audio_editx", target_device):
+                                self.to(target_device)
+                        except Exception:
+                            self.to(target_device)
+                except StopIteration:
+                    pass
+        
+        results = []
+        temp_files_to_clean = []
+        
+        try:
+            print(f"🔄 Processing {len(batch_inputs)} audio segments in batch...")
+            
+            for idx, input_params in enumerate(batch_inputs):
+                input_audio_path = input_params.get("input_audio_path")
+                audio_text = input_params.get("audio_text", "")
+                edit_type = input_params.get("edit_type", "")
+                edit_info = input_params.get("edit_info", None)
+                text = input_params.get("text", None)
+                edit_tags = input_params.get("edit_tags", None)
+                
+                if not input_audio_path or not edit_type:
+                    print(f"⚠️ Skipping segment {idx + 1}: missing required parameters")
+                    continue
+                
+                print(f"🔧 Segment {idx + 1}: {edit_type} = {edit_info}")
+                
+                current_audio_path = input_audio_path
+                
+                # Process iterations for this segment
+                for i in range(n_edit_iterations):
+                    # Call edit_single with the current parameters
+                    audio_tensor = self.edit_single(
+                        input_audio_path=current_audio_path,
+                        audio_text=audio_text,
+                        edit_type=edit_type,
+                        edit_info=edit_info,
+                        text=text,
+                        dynamic_token=dynamic_token,
+                        edit_tags=edit_tags
+                    )
+                    
+                    # For next iteration, save current result to temp file
+                    if i < n_edit_iterations - 1:
+                        comfyui_temp_dir = folder_paths.get_temp_directory()
+                        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False, dir=comfyui_temp_dir) as tmp_file:
+                            torchaudio.save(tmp_file.name, audio_tensor, self.get_sample_rate())
+                            current_audio_path = tmp_file.name
+                            temp_files_to_clean.append(tmp_file.name)
+                
+                results.append(audio_tensor)
+                print(f"✅ Segment {idx + 1} processed successfully")
+            
+            print(f"🎉 Batch processing completed: {len(results)}/{len(batch_inputs)} segments processed")
+            return results
+            
+        finally:
+            # Clean up all temporary files
+            for temp_file in temp_files_to_clean:
+                if os.path.exists(temp_file):
+                    try:
+                        os.unlink(temp_file)
+                    except Exception:
+                        pass
 
     def get_sample_rate(self) -> int:
         """Get the native sample rate of the engine."""
