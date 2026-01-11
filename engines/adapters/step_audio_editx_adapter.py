@@ -92,7 +92,7 @@ class StepAudioEditXEngineAdapter:
     def load_base_model(self,
                        model_path: str,
                        device: str = "auto",
-                       torch_dtype: str = "bfloat16",
+                       torch_dtype: str = "auto",
                        quantization: Optional[str] = None):
         """
         Load Step Audio EditX engine via unified interface (with caching).
@@ -197,7 +197,7 @@ class StepAudioEditXEngineAdapter:
             seed=params.get('seed', 0),
             model_path=params.get('model_path', 'Step-Audio-EditX'),
             device=params.get('device', 'auto'),
-            torch_dtype=params.get('torch_dtype', 'bfloat16'),
+            torch_dtype=params.get('torch_dtype', 'auto'),
             quantization=params.get('quantization', None),
             character=character_name or 'narrator'
         )

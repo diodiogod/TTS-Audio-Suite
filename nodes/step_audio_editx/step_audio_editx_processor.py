@@ -51,7 +51,7 @@ class StepAudioEditXProcessor:
         # Load model with configuration
         model_path = engine_config.get('model_path', 'Step-Audio-EditX')
         device = engine_config.get('device', 'auto')
-        torch_dtype = engine_config.get('torch_dtype', 'bfloat16')
+        torch_dtype = engine_config.get('torch_dtype', 'auto')
         quantization = engine_config.get('quantization', None)
 
         # Load model via adapter

@@ -50,7 +50,7 @@ class StepAudioEditXEngine:
     ]
 
     def __init__(self, model_dir: str = "Step-Audio-EditX", device: str = "auto",
-                 torch_dtype: str = "bfloat16", quantization: Optional[str] = None):
+                 torch_dtype: str = "auto", quantization: Optional[str] = None):
         """
         Initialize Step Audio EditX engine.
 
@@ -139,14 +139,25 @@ class StepAudioEditXEngine:
         return resolved
 
     def _resolve_dtype(self, dtype_str: str) -> torch.dtype:
-        """Resolve dtype string to torch.dtype."""
+        """Resolve dtype string to torch.dtype with GPU capability detection."""
         dtype_map = {
             "bfloat16": torch.bfloat16,
             "float16": torch.float16,
             "float32": torch.float32,
-            "auto": torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
         }
-        return dtype_map.get(dtype_str, torch.bfloat16)
+
+        if dtype_str in dtype_map:
+            return dtype_map[dtype_str]
+
+        # "auto" mode: detect GPU compute capability
+        if torch.cuda.is_available():
+            major, minor = torch.cuda.get_device_capability()
+            # bf16 requires SM 8.0+ (Ampere: RTX 30xx, A100, etc.)
+            supports_bf16 = (major >= 8)
+            return torch.bfloat16 if supports_bf16 else torch.float16
+
+        # CPU fallback to float16
+        return torch.float16
 
     def _ensure_model_loaded(self):
         """Load the Step Audio EditX model using unified model interface."""

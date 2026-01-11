@@ -255,21 +255,21 @@ class StepAudioEditXAudioEditorNode:
             precision_setting = inline_tag_precision if inline_tag_precision else "auto"
 
             # Convert precision setting to torch_dtype and quantization
-            torch_dtype_val = "bfloat16"  # default
+            torch_dtype_val = "auto"  # default
             quantization_val = None
 
             if precision_setting in ["fp32", "fp16", "bf16"]:
                 # Map short names to full names
                 dtype_map = {"fp32": "float32", "fp16": "float16", "bf16": "bfloat16"}
-                torch_dtype_val = dtype_map.get(precision_setting, "bfloat16")
+                torch_dtype_val = dtype_map.get(precision_setting, "auto")
                 quantization_val = None
             elif precision_setting in ["int8", "int4"]:
                 # Quantization - torch_dtype doesn't matter (will be quantized)
-                torch_dtype_val = "bfloat16"
+                torch_dtype_val = "auto"
                 quantization_val = precision_setting
             elif precision_setting == "auto":
-                # Auto defaults to bf16
-                torch_dtype_val = "bfloat16"
+                # Auto mode - let engine decide based on GPU capability
+                torch_dtype_val = "auto"
                 quantization_val = None
 
             # Always print precision/device to verify settings are being used
