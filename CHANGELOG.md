@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.11] - 2026-01-16
+
+### Fixed
+
+- Fix F5-TTS vocab.txt loading errors
+- Fix file not found error when loading E2-TTS models from HuggingFace
+- Fix fallback model loading path resolution
+- Resolve doubled 'infer/infer/' path issue (issue #222)
 ## [4.16.10] - 2026-01-10
 
 ### Added

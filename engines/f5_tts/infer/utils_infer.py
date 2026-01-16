@@ -251,7 +251,7 @@ def load_model(
     device=device,
 ):
     if vocab_file == "":
-        vocab_file = str(files(__package__ or "f5_tts").joinpath("infer/examples/vocab.txt"))
+        vocab_file = str(files(__package__ or "f5_tts").joinpath("examples/vocab.txt"))
     tokenizer = "custom"
 
     # print("\nvocab : ", vocab_file)
