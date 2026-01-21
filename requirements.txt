@@ -17,6 +17,7 @@
 torch>=2.0.0
 torchaudio>=2.0.0
 numpy>=1.26.4,<2.3.0  # Compatible with both numpy 1.26.4 and 2.x series
+setuptools>=65.0.0    # Provides distutils compatibility for Python 3.12+ (required by FunASR bundled code)
 
 # Audio processing (safe)
 soundfile>=0.12.0

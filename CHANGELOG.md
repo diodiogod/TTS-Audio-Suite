@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.13] - 2026-01-21
+
+### Fixed
+
+- Fix Step Audio EditX initialization on embedded Python 3.12+
+- Add setuptools dependency for Python 3.12+ distutils compatibility
+- Fix Step Audio EditX failing to load on embedded Python installations
+- Resolve model registration failures in FunASR bundled code
+- Address 'NoneType' object is not callable error during engine initialization
 ## [4.16.12] - 2026-01-20
 
 ### Added
