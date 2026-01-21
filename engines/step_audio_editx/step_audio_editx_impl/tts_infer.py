@@ -15,7 +15,7 @@ import soundfile as sf
 from tokenizer import StepAudioTokenizer
 from tts import StepAudioTTS
 from model_loader import ModelSource
-from config.edit_config import get_supported_edit_types
+from .config.edit_config import get_supported_edit_types
 
 
 # Save audio to temporary directory

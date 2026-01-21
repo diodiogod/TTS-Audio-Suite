@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.12] - 2026-01-20
+
+### Added
+
+- Step Audio EditX engine now initializes correctly
+
+### Fixed
+
+- Fix Step Audio EditX import errors preventing engine initialization
+- Fix ModuleNotFoundError: No module named 'config.prompts'
+- Resolve module name collision with other config.py files in project
 ## [4.16.11] - 2026-01-16
 
 ### Fixed

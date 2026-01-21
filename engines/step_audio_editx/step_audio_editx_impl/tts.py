@@ -20,7 +20,7 @@ if _impl_dir not in sys.path:
     sys.path.insert(0, _impl_dir)
 
 from model_loader import model_loader, ModelSource
-from config.prompts import AUDIO_EDIT_CLONE_SYSTEM_PROMPT_TPL, AUDIO_EDIT_SYSTEM_PROMPT
+from .config.prompts import AUDIO_EDIT_CLONE_SYSTEM_PROMPT_TPL, AUDIO_EDIT_SYSTEM_PROMPT
 from stepvocoder.cosyvoice2.cli.cosyvoice import CosyVoice
 from transformers.generation.logits_process import LogitsProcessor, LogitsProcessorList
 from transformers.generation.stopping_criteria import StoppingCriteria
