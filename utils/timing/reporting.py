@@ -311,16 +311,24 @@ No segments were processed due to immediate interruption.
                 return f"{hours:02}:{minutes:02}:{seconds_int:02},{milliseconds:03}"
             
             # Determine timing based on mode
+            # UPDATED: Always use actual audio duration for end time to ensure perfect alignment
             if timing_mode == "smart_natural":
+                # Use final start time (may be shifted) and actual segment duration
                 start_time = adj.get('final_srt_start', adj.get('original_srt_start', 0))
-                end_time = start_time + adj.get('final_segment_duration', adj.get('natural_audio_duration', 1))
+                natural_duration = adj.get('final_segment_duration', adj.get('natural_audio_duration', 1))
+                end_time = start_time + natural_duration
             elif timing_mode == "concatenate":
-                # Use the recalculated timings from concatenation
+                # Use the recalculated sequential timings from concatenation
                 start_time = adj.get('start_time', 0)
-                end_time = adj.get('end_time', adj.get('start_time', 0) + adj.get('natural_duration', 1))
+                natural_duration = adj.get('natural_duration', 1)
+                end_time = start_time + natural_duration
             else:
-                start_time = adj.get('start_time', subtitles[i].start_time if i < len(subtitles) else 0)
-                end_time = adj.get('end_time', subtitles[i].end_time if i < len(subtitles) else 1)
+                # For stretch_to_fit and pad_with_silence modes:
+                # Use original SRT start time, but calculate end time from actual audio duration
+                start_time = subtitles[i].start_time if i < len(subtitles) else adj.get('start_time', 0)
+                natural_duration = adj.get('natural_duration', subtitles[i].duration if i < len(subtitles) else 1)
+                # End time = start time + actual audio duration (allows overlaps if audio is longer)
+                end_time = start_time + natural_duration
             
             start_time_str = format_time(start_time)
             end_time_str = format_time(end_time)
