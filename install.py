@@ -110,25 +110,46 @@ class TTSAudioInstaller:
         else:
             return self.check_linux_dependencies()
     
+    def _find_macos_library(self, lib_name):
+        """Find library on macOS, checking both system paths and Homebrew installations"""
+        import ctypes.util
+        import glob
+
+        # First try standard ctypes.util.find_library (works for system libraries)
+        if ctypes.util.find_library(lib_name):
+            return True
+
+        # Fallback: Check Homebrew installation paths directly
+        # Apple Silicon Macs: /opt/homebrew/lib
+        # Intel Macs: /usr/local/lib
+        homebrew_paths = ['/opt/homebrew/lib', '/usr/local/lib']
+
+        for homebrew_path in homebrew_paths:
+            # Look for .dylib files matching the library name
+            pattern = f"{homebrew_path}/lib{lib_name}*.dylib"
+            matches = glob.glob(pattern)
+            if matches:
+                return True
+
+        return False
+
     def check_macos_dependencies(self):
         """Check for required system libraries on macOS"""
         self.log("Checking macOS system dependencies...", "INFO")
         missing_deps = []
-        
+
         # Check for libsamplerate (needed by resampy/soxr)
         try:
-            import ctypes.util
-            if not ctypes.util.find_library('samplerate'):
+            if not self._find_macos_library('samplerate'):
                 missing_deps.append(('libsamplerate', 'audio resampling'))
-        except:
+        except Exception:
             pass
-        
+
         # Check for portaudio (needed for sounddevice)
         try:
-            import ctypes.util
-            if not ctypes.util.find_library('portaudio'):
+            if not self._find_macos_library('portaudio'):
                 missing_deps.append(('portaudio', 'voice recording'))
-        except:
+        except Exception:
             pass
         
         if missing_deps:

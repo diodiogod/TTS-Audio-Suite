@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.14] - 2026-01-24
+
+### Added
+
+- Add support for Apple Silicon Homebrew path (/opt/homebrew/lib)
+- Add support for Intel Mac Homebrew path (/usr/local/lib)
+
+### Fixed
+
+- Fix macOS install script failing on Apple Silicon with Homebrew
+- Fix dependency check not detecting Homebrew-installed libsamplerate and portaudio
+- Address issue #228
 ## [4.16.13] - 2026-01-21
 
 ### Fixed
