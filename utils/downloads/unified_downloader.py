@@ -244,18 +244,29 @@ class UnifiedDownloader:
             ]
         
         # Create target directory - use different paths for different ChatterBox variants
-        if "Official 23-Lang" in model_name:
+        # Check if this is an official 23-lang model (including community finetunes like Vietnamese Viterbox)
+        is_official_23lang = ("Official 23-Lang" in model_name or
+                             "Vietnamese (Viterbox)" in model_name or
+                             repo_id == "dolly-vn/viterbox")
+
+        if is_official_23lang:
             model_dir = os.path.join(self.tts_dir, "chatterbox_official_23lang", model_name)
         else:
             model_dir = os.path.join(self.tts_dir, "chatterbox", model_name)
-        
+
         success = True
-        # Different critical files for Official 23-Lang model
-        if "Official 23-Lang" in model_name:
-            # Check if downloading v2 model (t3_mtl23ls_v2.safetensors)
-            is_v2 = "t3_mtl23ls_v2.safetensors" in files
+        # Different critical files for Official 23-Lang model and its variants
+        if is_official_23lang:
+            # Check if downloading v2 model - supports both official and Vietnamese variants
+            # Official: t3_mtl23ls_v2.safetensors, Vietnamese: t3_ml24ls_v2.safetensors
+            is_v2 = any(f.startswith("t3_") and f.endswith("_v2.safetensors") for f in files)
+
             if is_v2:
-                critical_files = ["t3_mtl23ls_v2.safetensors", "mtl_tokenizer.json"]  # v2 requirements
+                # For v2, the critical file is whichever t3_*_v2.safetensors exists + tokenizer
+                t3_file = next((f for f in files if f.startswith("t3_") and f.endswith("_v2.safetensors")), None)
+                # Accept either mtl_tokenizer.json or tokenizer_vi_expanded.json
+                tokenizer_file = next((f for f in files if "tokenizer" in f and f.endswith(".json")), None)
+                critical_files = [t3_file, tokenizer_file] if (t3_file and tokenizer_file) else ["t3_mtl23ls_v2.safetensors", "mtl_tokenizer.json"]
             else:
                 critical_files = ["t3_23lang.safetensors", "mtl_tokenizer.json"]  # v1 requirements
         else:

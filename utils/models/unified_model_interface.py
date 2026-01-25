@@ -747,7 +747,7 @@ def register_chatterbox_23lang_factory():
 
         # Extract parameters
         device = config.device or "auto"
-        model_name = config.model_name or "Official 23-Lang"  # Always same model
+        model_name = config.model_name or "ChatterBox Official 23-Lang"
         language = config.language or "english"  # This is the actual language to use
         model_version = config.additional_params.get("model_version", "v2") if config.additional_params else "v2"  # v1 or v2
 
@@ -755,11 +755,15 @@ def register_chatterbox_23lang_factory():
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # Get model directory path
+        # Get model directory path - use model_name for the directory
+        # For "Vietnamese (Viterbox)", this will be "Vietnamese (Viterbox)"
+        # For "ChatterBox Official 23-Lang", this will be "ChatterBox Official 23-Lang"
         models_dir = folder_paths.models_dir
-        ckpt_dir = os.path.join(models_dir, "TTS", "chatterbox_official_23lang", "Official 23-Lang")
+        # Strip "ChatterBox " prefix for directory structure consistency
+        dir_name = model_name.replace("ChatterBox ", "") if model_name.startswith("ChatterBox ") else model_name
+        ckpt_dir = os.path.join(models_dir, "TTS", "chatterbox_official_23lang", dir_name)
 
-        print(f"🌍 Loading ChatterBox Official 23-Lang model for {language} on {device}")
+        print(f"🌍 Loading {model_name} model for {language} on {device}")
         print(f"📁 Using model directory: {ckpt_dir}")
 
         # Try local first, then use from_pretrained for auto-download if needed
@@ -768,10 +772,10 @@ def register_chatterbox_23lang_factory():
                 engine = ChatterboxOfficial23LangTTS.from_local(
                     ckpt_dir=ckpt_dir,
                     device=device,
-                    model_name="Official 23-Lang",
+                    model_name=model_name,
                     model_version=model_version
                 )
-                print(f"✅ ChatterBox Official 23-Lang '{language}' loaded via unified interface")
+                print(f"✅ {model_name} '{language}' loaded via unified interface")
                 return engine
             except FileNotFoundError as e:
                 print(f"⚠️ Local model incomplete: {e}")
@@ -780,7 +784,7 @@ def register_chatterbox_23lang_factory():
         # Use from_pretrained for auto-download
         engine = ChatterboxOfficial23LangTTS.from_pretrained(
             device=device,
-            model_name="ChatterBox Official 23-Lang",
+            model_name=model_name,
             model_version=model_version
         )
 

@@ -45,6 +45,10 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             "ChatterBox Official 23-Lang": {
                 "repo": "ResembleAI/chatterbox",
                 "format": "mixed",
+            },
+            "Vietnamese (Viterbox)": {
+                "repo": "dolly-vn/viterbox",
+                "format": "mixed",
             }
         }
 
@@ -70,25 +74,21 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
                         if not os.path.isdir(item_path):
                             continue
 
-                        # Check if it contains official 23-lang model files
-                        # Must have at least: t3_23lang.safetensors or t3_mtl23ls_v2.safetensors + s3gen.pt + ve.pt + mtl_tokenizer.json
-                        required_files = ["s3gen.pt", "ve.pt", "mtl_tokenizer.json"]
-                        has_model = True
+                        # Check if it contains official 23-lang model files with flexible detection
+                        # Support different T3 filenames and tokenizers for community finetunes
+                        has_model = False
+                        item_files = os.listdir(item_path)
 
-                        # Check for essential files
-                        try:
-                            item_files = os.listdir(item_path)
-                            for required_file in required_files:
-                                if required_file not in item_files:
-                                    has_model = False
-                                    break
+                        # Check for essential components
+                        has_s3gen = "s3gen.pt" in item_files
+                        has_ve = "ve.pt" in item_files
+                        has_tokenizer = any(f in item_files for f in ["mtl_tokenizer.json", "tokenizer_vi_expanded.json"])
 
-                            # Check for t3 model file (v1 or v2)
-                            if has_model:
-                                has_t3 = any(f in item_files for f in ["t3_23lang.safetensors", "t3_mtl23ls_v2.safetensors"])
-                                has_model = has_t3
-                        except OSError:
-                            has_model = False
+                        # Check for T3 model file with flexible pattern matching
+                        # Supports: t3_23lang.safetensors, t3_mtl23ls_v2.safetensors, t3_ml24ls_v2.safetensors, etc.
+                        has_t3 = any(f.startswith("t3_") and f.endswith(".safetensors") for f in item_files)
+
+                        has_model = has_s3gen and has_ve and has_tokenizer and has_t3
 
                         if has_model:
                             local_model = f"local:{item}"
@@ -136,14 +136,15 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             "sw": "Swahili",
             "tr": "Turkish",
             "zh": "Chinese",
+            "vi": "Vietnamese (Viterbox only)",
         }
         available_languages = list(SUPPORTED_LANGUAGES.values())
 
         return {
             "required": {
-                "model_version": (["v1", "v2"], {
+                "model_version": (["v1", "v2", "Vietnamese (Viterbox)"], {
                     "default": "v2",
-                    "tooltip": "ChatterBox model version. v2 adds special tokens for emotions ([giggle], [laughter], [sigh]), sounds ([cough], [sneeze]), vocal styles ([singing], [whisper]), and improved Russian support."
+                    "tooltip": "ChatterBox model version:\n• v1: Original 23-language model\n• v2: Enhanced with special tokens for emotions ([giggle], [laughter], [sigh]), sounds ([cough], [sneeze]), vocal styles ([singing], [whisper]), and improved Russian support\n• Vietnamese (Viterbox): Community finetune optimized for Vietnamese (3000+ hours training data), supports all 24 languages with Vietnamese language support"
                 }),
                 "language": (available_languages, {
                     "default": "English",
@@ -224,6 +225,16 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             Tuple containing ChatterBox Official 23-Lang engine adapter
         """
         try:
+            # Validate Vietnamese language is only used with Viterbox model
+            if "Vietnamese" in language and model_version not in ["Vietnamese (Viterbox)"]:
+                raise ValueError(
+                    f"Vietnamese language is only supported with 'Vietnamese (Viterbox)' model version.\n"
+                    f"Current model_version: '{model_version}'\n\n"
+                    f"Please either:\n"
+                    f"  • Change model_version to 'Vietnamese (Viterbox)', OR\n"
+                    f"  • Select a different language from the 23 languages supported by v1/v2"
+                )
+
             # Import the adapter class
             from engines.adapters.chatterbox_official_23lang_adapter import ChatterBoxOfficial23LangEngineAdapter
 

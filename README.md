@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.16.14
+# TTS Audio Suite v4.17.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -496,9 +496,11 @@ The **Chatterbox Multilingual TTS** (referred to internally as "ChatterBox Offic
 * **MIT Licensed**: Fully open-source with commercial usage rights
 * **Perth Watermarking**: Built-in responsible AI usage (disabled by default for compatibility)
 
-**🌍 Supported Languages (23 total):**
+**🌍 Supported Languages (23 total + Vietnamese community finetune):**
 
 Arabic (ar), Danish (da), German (de), Greek (el), English (en), Spanish (es), Finnish (fi), French (fr), Hebrew (he), Hindi (hi), Italian (it), Japanese (ja), Korean (ko), Malay (ms), Dutch (nl), Norwegian (no), Polish (pl), Portuguese (pt), Russian (ru), Swedish (sv), Swahili (sw), Turkish (tr), Chinese (zh)
+
+**🇻🇳 Vietnamese (Viterbox)**: Community finetune by Dolly AI 23 with expanded Vietnamese tokenization (dolly-vn/viterbox) - select from model version dropdown
 
 **🔧 Fully Integrated Features:**
 
@@ -1222,9 +1224,10 @@ ComfyUI/models/TTS/chatterbox_official_23lang/
 **Model Selection:**
 
 - Choose "ChatterBox Official 23-Lang" from Unified TTS Engine dropdown
-- Select model version (v1 or v2) in the Engine Configuration node
-- **Auto-download**: Missing v2 files download automatically on first use (only ~2.2GB if v1 already installed)
-- Both versions can coexist - switch between them without re-downloading
+- Select model version (v1, v2, or Vietnamese (Viterbox)) in the Engine Configuration node
+- **Auto-download**: Missing files download automatically on first use
+- All versions can coexist - switch between them without re-downloading
+- Vietnamese (Viterbox) is a community finetune with expanded Vietnamese tokenization (24 languages total)
 
 ### 5. F5-TTS Models (Optional)
 

@@ -166,6 +166,7 @@ LANGUAGE_ALIASES = {
     # Additional Asian/African languages
     # Vietnamese variations
     'vi': 'vi', 'vietnamese': 'vi', 'tiếng việt': 'vi', 'vietnam': 'vi',
+    'vietnamese (viterbox only)': 'vi',  # Display name from ChatterBox Official 23-Lang
     
     # Indonesian variations
     'id': 'id', 'indonesian': 'id', 'bahasa indonesia': 'id', 'indonesia': 'id',

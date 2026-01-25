@@ -256,6 +256,18 @@ class ChatterboxOfficial23LangSRTProcessor:
                 # e.g., "Alice" alias resolves to "female_01"
                 character_segments_with_lang = [(seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
 
+                # Validate Vietnamese language tags with model version
+                for _, _, lang, _ in character_segments_with_lang:
+                    if lang == 'vi' and current_model_version not in ["Vietnamese (Viterbox)"]:
+                        raise ValueError(
+                            f"Vietnamese language tag [vi:name] found in subtitle {i+1}, but current model is '{current_model_version}'.\n\n"
+                            f"Vietnamese is only supported with 'Vietnamese (Viterbox)' model version.\n"
+                            f"Subtitle text: \"{subtitle.text}\"\n\n"
+                            f"Please either:\n"
+                            f"  • Change model_version to 'Vietnamese (Viterbox)' in the engine node, OR\n"
+                            f"  • Remove Vietnamese language tags from your SRT file"
+                        )
+
                 # Check if we have character switching, language switching, or parameter changes
                 characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                 languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))

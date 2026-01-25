@@ -273,39 +273,95 @@ class ChatterboxOfficial23LangTTS:
                 raise FileNotFoundError(f"Voice encoder not found: tried {ve_safetensors_path} and {ve_pt_path}")
             
             ve.to(actual_device).eval()
-            
-            # Load T3 multilingual model based on version
-            print(f"📦 Loading T3 23-Lang {model_version} model...")
-            if model_version == "v2":
-                t3_path = ckpt_dir / "t3_mtl23ls_v2.safetensors"
+
+            # Normalize model_version for file lookups (Vietnamese (Viterbox) -> v2)
+            version_for_files = "v2" if model_version == "Vietnamese (Viterbox)" else model_version
+
+            # Load version-specific multilingual tokenizer FIRST to get vocab size
+            print("📦 Loading multilingual tokenizer...")
+            tokenizer_path = None
+
+            if version_for_files == "v2":
+                # Try v2 enhanced tokenizer first
+                candidate_path = ckpt_dir / "grapheme_mtl_merged_expanded_v1.json"
+                if candidate_path.exists():
+                    tokenizer_path = candidate_path
+                else:
+                    # Try Vietnamese-expanded tokenizer (community finetunes)
+                    candidate_path = ckpt_dir / "tokenizer_vi_expanded.json"
+                    if candidate_path.exists():
+                        print("🌐 Using Vietnamese-expanded tokenizer")
+                        tokenizer_path = candidate_path
+                    else:
+                        # Fallback to v1 tokenizer
+                        print("⚠️ v2 tokenizer not found, falling back to v1 tokenizer")
+                        tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
             else:
+                # v1 model - try standard tokenizer
+                tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
+
+            if not tokenizer_path.exists():
+                raise FileNotFoundError(f"Multilingual tokenizer not found: {tokenizer_path}")
+
+            tokenizer = MTLTokenizer(str(tokenizer_path))
+
+            # Get actual vocab size from tokenizer for T3 config
+            vocab = tokenizer.tokenizer.get_vocab()
+            actual_vocab_size = len(vocab)
+            print(f"📊 Detected tokenizer vocab size: {actual_vocab_size}")
+
+            # Load T3 multilingual model based on version with flexible filename detection
+            print(f"📦 Loading T3 23-Lang {model_version} model...")
+
+            # Support multiple T3 filename patterns:
+            # - Official v1: t3_23lang.safetensors
+            # - Official v2: t3_mtl23ls_v2.safetensors
+            # - Vietnamese Viterbox: t3_ml24ls_v2.safetensors
+            # - Future variants: any t3_*.safetensors
+            t3_path = None
+            if version_for_files == "v2":
+                # Try specific v2 patterns first
+                for pattern in ["t3_mtl23ls_v2.safetensors", "t3_ml24ls_v2.safetensors"]:
+                    candidate = ckpt_dir / pattern
+                    if candidate.exists():
+                        t3_path = candidate
+                        break
+
+                # Fallback: find any t3_*_v2.safetensors file
+                if not t3_path:
+                    import glob
+                    matches = list(ckpt_dir.glob("t3_*_v2.safetensors"))
+                    if matches:
+                        t3_path = matches[0]
+            else:
+                # v1
                 t3_path = ckpt_dir / "t3_23lang.safetensors"
 
-            if not t3_path.exists():
-                raise FileNotFoundError(f"T3 multilingual {model_version} model not found: {t3_path}")
-            
-            # Load T3 with version-specific multilingual config
+            if not t3_path or not t3_path.exists():
+                raise FileNotFoundError(f"T3 multilingual {model_version} model not found in {ckpt_dir}")
+
+            # Load T3 with actual vocab size from tokenizer (supports community finetunes)
             from .models.t3.t3 import T3Config
-            config = T3Config.multilingual(version=model_version)
+            config = T3Config(text_tokens_dict_size=actual_vocab_size)
             t3 = T3(config)
-            
+
             t3_state = load_file(t3_path, device=actual_device)
             if "model" in t3_state.keys():
                 t3_state = t3_state["model"][0]
-            
+
             t3.load_state_dict(t3_state)
             t3.to(actual_device).eval()
-            
+
             # Load S3Gen (try safetensors first, fallback to pt)
             print("📦 Loading S3Gen model...")
             s3gen_safetensors_path = ckpt_dir / "s3gen.safetensors"
             s3gen_pt_path = ckpt_dir / "s3gen.pt"
-            
+
             s3gen = S3Gen()
             # Smart loading: prefer official .pt, but support user's safetensors
             has_safetensors = s3gen_safetensors_path.exists()
             has_pt = s3gen_pt_path.exists()
-            
+
             if has_pt:
                 # Use official .pt format (guaranteed compatibility)
                 s3gen_state = torch.load(s3gen_pt_path, map_location=map_location, weights_only=True)
@@ -317,24 +373,8 @@ class ChatterboxOfficial23LangTTS:
                 s3gen.load_state_dict(s3gen_state, strict=False)
             else:
                 raise FileNotFoundError(f"S3Gen model not found: tried {s3gen_safetensors_path} and {s3gen_pt_path}")
-            
+
             s3gen.to(actual_device).eval()
-            
-            # Load version-specific multilingual tokenizer
-            print("📦 Loading multilingual tokenizer...")
-            if model_version == "v2":
-                tokenizer_path = ckpt_dir / "grapheme_mtl_merged_expanded_v1.json"
-                if not tokenizer_path.exists():
-                    # Fallback to v1 tokenizer if v2 tokenizer not found
-                    print("⚠️ v2 tokenizer not found, falling back to v1 tokenizer")
-                    tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
-            else:
-                tokenizer_path = ckpt_dir / "mtl_tokenizer.json"
-
-            if not tokenizer_path.exists():
-                raise FileNotFoundError(f"Multilingual tokenizer not found: {tokenizer_path}")
-
-            tokenizer = MTLTokenizer(str(tokenizer_path))
             
             # Load conditioning (optional)
             conds = None
@@ -491,17 +531,21 @@ class ChatterboxOfficial23LangTTS:
         
         repo_id = model_config.get("repo", REPO_ID)
         model_format = model_config.get("format", "pt")
-        
+
+        # Normalize model_version for file lookups
+        # "Vietnamese (Viterbox)" is treated as v2 for file requirements
+        version_for_files = "v2" if model_version == "Vietnamese (Viterbox)" else model_version
+
         # Silent loading unless errors occur
-        
+
         # Check if local model exists first
         model_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox_official_23lang", model_name)
         if os.path.exists(model_dir):
             # Validate model completeness with version
-            is_complete, missing_files = validate_model_completeness(model_dir, model_name, model_version)
+            is_complete, missing_files = validate_model_completeness(model_dir, model_name, version_for_files)
             if is_complete:
                 print(f"📁 Using existing local {model_version} model: {model_dir}")
-                return cls.from_local(model_dir, device, model_name, model_version)
+                return cls.from_local(model_dir, device, model_name, version_for_files)
             else:
                 print(f"⚠️ Local {model_version} model incomplete, missing: {missing_files}")
                 print(f"📥 Downloading missing {model_version} files...")
@@ -510,10 +554,12 @@ class ChatterboxOfficial23LangTTS:
         from utils.downloads.unified_downloader import unified_downloader
 
         # Get files to download based on model version
-        files_to_download = get_model_requirements(model_name, model_version)
+        files_to_download = get_model_requirements(model_name, version_for_files)
         
-        # Handle mixed format models (try safetensors first, fallback to pt)
-        # Exception: conds.pt doesn't have a safetensors version, keep as .pt
+        # Handle format conversion based on model_format
+        # "as-is": Use files exactly as specified (for models with custom mixed formats like Vietnamese Viterbox)
+        # "mixed": Try safetensors first, fallback to pt (for official models)
+        # "pt": Force .pt format
         if model_format == "mixed":
             # Try safetensors first, but exclude files that only exist as .pt
             files_to_download = [
@@ -522,6 +568,9 @@ class ChatterboxOfficial23LangTTS:
             ]
         elif model_format == "pt":
             files_to_download = [f.replace('.safetensors', '.pt') if f.endswith('.safetensors') else f for f in files_to_download]
+        elif model_format == "as-is":
+            # Don't modify file extensions - use exactly as specified in registry
+            pass
         
         # Normalize model name for download path (strip "ChatterBox " prefix if present)
         # This ensures consistent paths: "ChatterBox Official 23-Lang" → "Official 23-Lang"

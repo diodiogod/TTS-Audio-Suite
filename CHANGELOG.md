@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.17.0] - 2026-01-25
+
+### Added
+
+- Add ChatterBox Official 23-Lang Vietnamese community finetune
+- Add Vietnamese (Viterbox) support - community finetune with 24 languages total
+- Vietnamese model auto-downloads from dolly-vn/viterbox on first use
+- Select Vietnamese (Viterbox) from model version dropdown
+- Support for custom community finetunes with different vocab sizes
+
+### Changed
+
+- Expanded Vietnamese tokenization for better quality
 ## [4.16.14] - 2026-01-24
 
 ### Added

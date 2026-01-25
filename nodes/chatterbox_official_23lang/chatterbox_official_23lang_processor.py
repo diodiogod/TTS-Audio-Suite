@@ -194,10 +194,17 @@ Back to the main narrator voice for the conclusion.""",
         from utils.models.unified_model_interface import load_tts_model
 
         try:
+            # Determine model name based on model_version
+            # Vietnamese (Viterbox) is a separate model, not just a version
+            if model_version == "Vietnamese (Viterbox)":
+                model_name = "Vietnamese (Viterbox)"
+            else:
+                model_name = "ChatterBox Official 23-Lang"
+
             # Load through unified interface which handles caching and VRAM management
             engine = load_tts_model(
                 engine_name="chatterbox_official_23lang",
-                model_name="Official 23-Lang",  # Always same model for ChatterBox 23-Lang
+                model_name=model_name,
                 language=language,
                 device=device,
                 model_version=model_version

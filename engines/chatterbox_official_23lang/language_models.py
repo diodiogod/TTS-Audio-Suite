@@ -58,14 +58,36 @@ OFFICIAL_23LANG_MODELS = {
             ]
         },
         "multilingual": True
+    },
+    # Vietnamese community finetune by Dolly AI 23
+    "Vietnamese (Viterbox)": {
+        "repo": "dolly-vn/viterbox",
+        "format": "as-is",  # Use files exactly as specified (mixed .pt and .safetensors)
+        "description": "Vietnamese-optimized ChatterBox finetune with expanded Vietnamese tokenization",
+        "languages": [
+            "vi",  # Vietnamese (primary)
+            "en",  # English (secondary)
+        ],
+        "required_files": {
+            "v2": [  # Based on v2 architecture
+                "t3_ml24ls_v2.safetensors",   # Vietnamese-optimized T3 model (safetensors)
+                "s3gen.pt",                    # S3Gen model (pt only)
+                "ve.pt",                       # Voice encoder (pt only)
+                "tokenizer_vi_expanded.json",  # Vietnamese-expanded tokenizer
+                "mtl_tokenizer.json",          # Multilingual tokenizer (fallback)
+                "conds.pt"                     # Conditioning (optional)
+            ]
+        },
+        "multilingual": False,  # Primarily Vietnamese-focused
+        "community_finetune": True
     }
 }
 
-# Language code to display name mapping  
+# Language code to display name mapping
 SUPPORTED_LANGUAGES = {
     "ar": "Arabic",
     "da": "Danish",
-    "de": "German", 
+    "de": "German",
     "el": "Greek",
     "en": "English",
     "es": "Spanish",
@@ -86,46 +108,53 @@ SUPPORTED_LANGUAGES = {
     "sw": "Swahili",
     "tr": "Turkish",
     "zh": "Chinese",
+    "vi": "Vietnamese (Viterbox only)",
 }
 
 def get_official_23lang_models() -> List[str]:
     """
     Get list of available official 23-lang models.
-    This implementation only supports the unified multilingual model.
+    Supports both predefined models and auto-discovered local models.
     """
     models = list(OFFICIAL_23LANG_MODELS.keys())
-    
+
     # Check for local models in ComfyUI models directory
     try:
         # Check both new TTS organization and legacy path
         tts_models_dir = os.path.join(folder_paths.models_dir, "TTS", "chatterbox_official_23lang")
         legacy_models_dir = os.path.join(folder_paths.models_dir, "chatterbox_official_23lang")
-        
+
         # Try TTS path first, then legacy
         for models_dir in [tts_models_dir, legacy_models_dir]:
             if not os.path.exists(models_dir):
                 continue
-                
+
             for item in os.listdir(models_dir):
                 item_path = os.path.join(models_dir, item)
                 if os.path.isdir(item_path):
                     # Check if it contains official 23-lang model files
-                    required_files = ["t3_23lang.safetensors", "s3gen.pt", "ve.pt", "mtl_tokenizer.json"]
-                    has_model = True
-                    
-                    for required_file in required_files:
-                        file_path = os.path.join(item_path, required_file)
-                        if not os.path.exists(file_path):
-                            has_model = False
-                            break
-                    
+                    # Support flexible T3 model filename detection (t3_*.safetensors pattern)
+                    has_model = False
+                    item_files = os.listdir(item_path)
+
+                    # Check for essential components
+                    has_s3gen = "s3gen.pt" in item_files
+                    has_ve = "ve.pt" in item_files
+                    has_tokenizer = any(f in item_files for f in ["mtl_tokenizer.json", "tokenizer_vi_expanded.json"])
+
+                    # Check for T3 model file with flexible pattern matching
+                    # Supports: t3_23lang.safetensors, t3_mtl23ls_v2.safetensors, t3_ml24ls_v2.safetensors, etc.
+                    has_t3 = any(f.startswith("t3_") and f.endswith(".safetensors") for f in item_files)
+
+                    has_model = has_s3gen and has_ve and has_tokenizer and has_t3
+
                     if has_model:
                         local_model = f"local:{item}"
                         if local_model not in models:
                             models.append(local_model)
     except Exception:
         pass  # Ignore errors in model discovery
-    
+
     return models
 
 def get_supported_languages() -> List[str]:
