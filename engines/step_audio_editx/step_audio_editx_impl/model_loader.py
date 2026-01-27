@@ -18,7 +18,7 @@ if _impl_dir in sys.path:
     sys.path.remove(_impl_dir)
 sys.path.insert(0, _impl_dir)
 
-from funasr_detach import AutoModel
+from funasr_detach.auto.auto_model import AutoModel
 
 # Global cache for downloaded models to avoid repeated downloads
 # Key: (model_path, source)

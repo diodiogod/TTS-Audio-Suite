@@ -19,7 +19,7 @@ if _impl_dir in sys.path:
     sys.path.remove(_impl_dir)
 sys.path.insert(0, _impl_dir)
 
-from funasr_detach import AutoModel
+from funasr_detach.auto.auto_model import AutoModel
 from model_loader import model_loader, ModelSource
 
 # Import from local utils.py (not TTS Suite's utils package)

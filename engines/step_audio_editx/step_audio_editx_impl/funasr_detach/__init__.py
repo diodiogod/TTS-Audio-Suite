@@ -24,8 +24,8 @@ def import_submodules(package, recursive=True):
         try:
             results[name] = importlib.import_module(name)
         except Exception as e:
-            # 如果想要看到导入错误的具体信息，可以取消注释下面的行
-            # print(f"Failed to import {name}: {e}")
+            # Debug: Print import errors to help diagnose model registration failures
+            print(f"⚠️ FunASR import failed - {name}: {e}")
             pass
         if recursive and is_pkg:
             results.update(import_submodules(name))
