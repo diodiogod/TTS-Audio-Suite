@@ -53,7 +53,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "required": {
                 "model": (available_models, {
                     "default": "vibevoice-1.5B",
-                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n\nBoth support multi-speaker and long-form generation."
+                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n• vibevoice-hindi-1.5B: Hindi finetune (2.7B params, ~5.4GB) - Optimized for Hindi\n• vibevoice-hindi-7B: Hindi finetune (9B params, ~18GB) - Best Hindi quality\n\nAll support multi-speaker and long-form generation. Hindi models support both Hindi and English."
                 }),
                 "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
@@ -140,11 +140,17 @@ class VibeVoiceEngineNode(BaseTTSNode):
     def _get_available_vibevoice_models(cls) -> list:
         """Get available VibeVoice models without importing heavy modules.
         Reconstructs the discovery logic using file reading only."""
-        # Official models (static list)
-        VIBEVOICE_MODELS = {
-            "vibevoice-1.5B": {"repo": "microsoft/VibeVoice-1.5B"},
-            "vibevoice-7B": {"repo": "aoi-ot/VibeVoice-Large"}
-        }
+        # Import full model registry from downloader
+        try:
+            from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
+        except ImportError:
+            # Fallback if import fails
+            VIBEVOICE_MODELS = {
+                "vibevoice-1.5B": {"repo": "microsoft/VibeVoice-1.5B"},
+                "vibevoice-7B": {"repo": "aoi-ot/VibeVoice-Large"},
+                "vibevoice-hindi-1.5B": {"repo": "tarun7r/vibevoice-hindi-1.5B"},
+                "vibevoice-hindi-7B": {"repo": "tarun7r/vibevoice-hindi-7b"}
+            }
 
         available = list(VIBEVOICE_MODELS.keys())
         found_local_models = set()

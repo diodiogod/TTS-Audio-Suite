@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.17.0
+# TTS Audio Suite v4.18.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -294,7 +294,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 **Technical Features:**
 
-- **Dual Model Support**: Microsoft vibevoice-1.5B (2.7B params, faster) and community vibevoice-7B (9.3B params, higher quality)
+- **Model Support**: Microsoft vibevoice-1.5B/7B (official models for English/Chinese) + vibevoice-hindi-1.5B/7B (Hindi community finetunes supporting Hindi/English)
 - **Intelligent Caching**: Advanced caching system with mode-aware invalidation for instant regeneration
 - **Memory Optimization**: Configurable chunking system balances quality with memory usage
 - **Unified Architecture**: Seamless integration with existing TTS Text and TTS SRT nodes

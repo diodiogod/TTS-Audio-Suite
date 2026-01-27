@@ -61,7 +61,7 @@ class UnifiedDownloader:
             env['PYTHONIOENCODING'] = 'utf-8'
 
             # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
-            # Suppress output since we'll use HTTP fallback anyway
+            # Show progress bar by not capturing output
             result = subprocess.run(
                 [
                     "hf", "download",
@@ -71,7 +71,7 @@ class UnifiedDownloader:
                 ],
                 check=False,
                 env=env,
-                capture_output=True
+                capture_output=False  # Allow progress bar to show
             )
 
             # If new command succeeded, return
@@ -88,7 +88,7 @@ class UnifiedDownloader:
                 ],
                 check=False,
                 env=env,
-                capture_output=True
+                capture_output=False  # Allow progress bar to show
             )
 
             if result.returncode == 0 and os.path.exists(target_path):

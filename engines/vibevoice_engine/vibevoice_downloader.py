@@ -70,6 +70,49 @@ VIBEVOICE_MODELS = {
             # Tokenizer files from Qwen2.5-7B (required to prevent crashes)
             {"remote": "tokenizer.json", "local": "tokenizer.json", "alt_repo": "Qwen/Qwen2.5-7B"}
         ]
+    },
+    "vibevoice-hindi-1.5B": {
+        "repo": "tarun7r/vibevoice-hindi-1.5B",
+        "description": "VibeVoice Hindi 1.5B - Community finetune optimized for Hindi (2.7B params)",
+        "size": "5.4GB",
+        "tokenizer_repo": "Qwen/Qwen2.5-1.5B",
+        "languages": ["hi", "en"],  # Hindi primary, English secondary
+        "community_finetune": True,
+        "files": [
+            # Required model files (3 shards like base 1.5B)
+            {"remote": "model-00001-of-00003.safetensors", "local": "model-00001-of-00003.safetensors"},
+            {"remote": "model-00002-of-00003.safetensors", "local": "model-00002-of-00003.safetensors"},
+            {"remote": "model-00003-of-00003.safetensors", "local": "model-00003-of-00003.safetensors"},
+            {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
+            {"remote": "config.json", "local": "config.json"},
+            # Note: preprocessor_config.json not present in Hindi finetune, will use defaults
+            # Tokenizer files from Qwen2.5-1.5B (required)
+            {"remote": "tokenizer.json", "local": "tokenizer.json", "alt_repo": "Qwen/Qwen2.5-1.5B"}
+        ]
+    },
+    "vibevoice-hindi-7B": {
+        "repo": "tarun7r/vibevoice-hindi-7b",
+        "description": "VibeVoice Hindi 7B - Community finetune optimized for Hindi (9B params)",
+        "size": "18GB",
+        "tokenizer_repo": "Qwen/Qwen2.5-7B",
+        "languages": ["hi", "en"],  # Hindi primary, English secondary
+        "community_finetune": True,
+        "files": [
+            # Required model files (8 shards - different from base 7B which has 10)
+            {"remote": "model-00001-of-00008.safetensors", "local": "model-00001-of-00008.safetensors"},
+            {"remote": "model-00002-of-00008.safetensors", "local": "model-00002-of-00008.safetensors"},
+            {"remote": "model-00003-of-00008.safetensors", "local": "model-00003-of-00008.safetensors"},
+            {"remote": "model-00004-of-00008.safetensors", "local": "model-00004-of-00008.safetensors"},
+            {"remote": "model-00005-of-00008.safetensors", "local": "model-00005-of-00008.safetensors"},
+            {"remote": "model-00006-of-00008.safetensors", "local": "model-00006-of-00008.safetensors"},
+            {"remote": "model-00007-of-00008.safetensors", "local": "model-00007-of-00008.safetensors"},
+            {"remote": "model-00008-of-00008.safetensors", "local": "model-00008-of-00008.safetensors"},
+            {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
+            {"remote": "config.json", "local": "config.json"},
+            {"remote": "preprocessor_config.json", "local": "preprocessor_config.json"},
+            # Tokenizer files from Qwen2.5-7B (required)
+            {"remote": "tokenizer.json", "local": "tokenizer.json", "alt_repo": "Qwen/Qwen2.5-7B"}
+        ]
     }
 }
 

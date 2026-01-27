@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.18.0] - 2026-01-26
+
+### Added
+
+- Add VibeVoice Hindi community finetunes
+- Add vibevoice-hindi-1.5B support - Hindi-optimized 2.7B model
+- Add vibevoice-hindi-7B support - Hindi-optimized 9B model
+- Both models support Hindi and English languages
+- Auto-download from tarun7r HuggingFace repositories
+- Show download progress bars during model downloads
 ## [4.17.0] - 2026-01-25
 
 ### Added
