@@ -211,3 +211,93 @@ def generate_speech(self, TTS_engine, ...):
 The refactoring successfully transformed a collection of engine-specific nodes into a unified, extensible architecture while preserving all existing functionality. The smart delegation pattern ensures zero feature loss while providing a clean foundation for future engine integrations.
 
 **Next Steps**: Test thoroughly, add RVC engine support, and potentially submit to ComfyUI Manager as the new universal TTS solution.
+
+---
+
+## Future Refactoring Tasks
+
+### Architecture Inconsistency: Processor Location
+
+**Issue Identified**: 2025-01-28
+
+CosyVoice and IndexTTS have TTS processors in a different location than all other engines, causing inconsistent import patterns and architecture confusion.
+
+**Current State:**
+
+**Standard Pattern (9 engines):**
+- TTS processor location: `nodes/engine_name/engine_processor.py`
+- Import pattern: File-based import using `importlib.util.spec_from_file_location()`
+- Examples:
+  - `nodes/qwen3_tts/qwen3_tts_processor.py`
+  - `nodes/step_audio_editx/step_audio_editx_processor.py`
+  - `nodes/vibevoice/vibevoice_processor.py`
+  - `nodes/higgs_audio/higgs_audio_tts_processor.py`
+  - `nodes/chatterbox_official_23lang/chatterbox_official_23lang_processor.py`
+
+**Inconsistent Pattern (2 engines):**
+- TTS processor location: `engines/processors/`
+- Import pattern: Package import (`from engines.processors import`)
+- Examples:
+  - `engines/processors/cosyvoice_processor.py`
+  - `engines/processors/index_tts_processor.py`
+
+**Why This Is a Problem:**
+
+1. **Confusing Architecture**: Why are some TTS processors in `engines/processors/` and some in `nodes/engine_name/`?
+2. **Inconsistent Import Patterns**: Some use package imports, some use file-based imports
+3. **Documentation Mismatch**: The implementation guide assumes processors are in `nodes/`
+4. **Harder to Maintain**: New developers don't know which pattern to follow
+5. **Breaks Conventions**: All other engines follow the standard pattern
+
+**Proposed Fix:**
+
+Move TTS processors to match the standard architecture:
+
+```bash
+# Move CosyVoice processor
+engines/processors/cosyvoice_processor.py → nodes/cosyvoice/cosyvoice_processor.py
+
+# Move IndexTTS processor
+engines/processors/index_tts_processor.py → nodes/index_tts/index_tts_processor.py
+```
+
+**Files to Update:**
+
+1. **Move processor files** to `nodes/engine_name/`
+
+2. **Update imports in SRT processors:**
+   - `nodes/cosyvoice/cosyvoice_srt_processor.py` line 34
+   - `nodes/index_tts/index_tts_srt_processor.py` (if exists)
+
+   Change from:
+   ```python
+   from engines.processors.cosyvoice_processor import CosyVoiceProcessor
+   ```
+
+   To file-based import:
+   ```python
+   import importlib.util
+   processor_path = os.path.join(current_dir, "cosyvoice_processor.py")
+   processor_spec = importlib.util.spec_from_file_location("cosyvoice_processor_module", processor_path)
+   processor_module = importlib.util.module_from_spec(processor_spec)
+   processor_spec.loader.exec_module(processor_module)
+   CosyVoiceProcessor = processor_module.CosyVoiceProcessor
+   ```
+
+3. **Update any other imports** that reference `engines.processors.cosyvoice_processor` or `engines.processors.index_tts_processor`
+
+4. **Update PROJECT_INDEX.md** to reflect new locations
+
+5. **Test thoroughly** to ensure no import breakage
+
+**Priority**: Medium - Not breaking functionality, but important for maintainability and consistency
+
+**Estimated Effort**: 1-2 hours (move files, update imports, test)
+
+**Benefits:**
+- Consistent architecture across all engines
+- Easier to understand and maintain
+- Matches documentation and implementation guide
+- Clearer separation of concerns (engines/ = low-level, nodes/ = high-level orchestration)
+
+**Note**: The `engines/processors/` directory can be removed after this refactoring, or kept for future use if there's a valid architectural reason (currently unclear).

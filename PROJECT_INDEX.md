@@ -7,9 +7,9 @@
 This extension features a **unified modular architecture** supporting multiple TTS engines:
 - **Unified Node Interface**: Single set of nodes (TTS Text, TTS SRT, Voice Changer) that work with any engine via clean delegation
 - **ComfyUI Model Management Integration**: All TTS models now integrate with ComfyUI's native model management system, enabling "Clear VRAM" functionality and automatic memory management
-- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, Step Audio EditX, RVC, Audio Separation) with fallback support
-- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, Step Audio EditX) handling engine-specific orchestration
-- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, Step Audio EditX, and RVC voice conversion
+- **Universal Model Loading System**: Standardized model loading interface across all engines (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, Step Audio EditX, Qwen3-TTS, RVC, Audio Separation) with fallback support
+- **Engine Processors**: Internal processing engines for each TTS system (ChatterBox, F5-TTS, Higgs Audio, VibeVoice, Step Audio EditX, Qwen3-TTS) handling engine-specific orchestration
+- **Engine Adapters**: Modular adapters for ChatterBox, F5-TTS, Higgs Audio 2, VibeVoice, Step Audio EditX, Qwen3-TTS, and RVC voice conversion
 - **Inline Edit Tag System**: Universal post-processing system applying Step Audio EditX effects (emotion, style, speed, paralinguistic) to any TTS engine's output via inline tags like `<Laughter>` or `<happy>`
 - **Centralized Download System**: Unified downloader eliminates HuggingFace cache duplication with direct downloads to organized TTS/ folder structure, with full extra_model_paths.yaml support for shared model directories
 - **Thread-Safe Architecture**: Stateless ChatterBox wrapper eliminates shared state corruption (Note: parallel processing is slower than sequential)
@@ -118,6 +118,11 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/processors/cosyvoice_processor.py** - CosyVoice3 TTS processor with pause tags, character switching, and chunking support
 
+**engines/qwen3_tts/** - Qwen3-TTS engine with CustomVoice (presets), VoiceDesign (text-to-voice), and Base (voice cloning) models
+- **qwen3_tts.py** - Core wrapper with VRAM management and 3 model type support (0.6B/1.7B sizes)
+- **qwen3_tts_downloader.py** - Auto-download system for 6 model variants and tokenizer
+- **impl/** - Bundled official Qwen3-TTS implementation
+
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
 - **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
@@ -149,6 +154,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **engines/adapters/cosyvoice_adapter.py** - CosyVoice3 engine adapter with zero-shot, instruct, and cross-lingual mode support and character switching
 
+**engines/adapters/qwen3_tts_adapter.py** - Qwen3-TTS adapter with intelligent model selection (CustomVoice/VoiceDesign/Base), character-to-speaker mapping, and audio hash integration
+
 **engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
 
 **engines/adapters/f5tts_streaming_adapter.py** - F5-TTS streaming adapter enabling parallel processing with language model switching
@@ -174,6 +181,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/engines/step_audio_editx_engine_node.py** - ⚙️ Step Audio EditX Engine configuration node with zero-shot voice cloning, quantization options (int4/int8), and generation parameters for both clone and edit modes
 
 **nodes/engines/cosyvoice_engine_node.py** - ⚙️ CosyVoice3 Engine configuration node with mode selection (zero_shot, instruct, cross_lingual), speed control, and FP16 support
+
+**nodes/engines/qwen3_tts_engine_node.py** - ⚙️ Qwen3-TTS Engine configuration node with unified voice_preset dropdown (9 speakers + zero-shot), model size selection (0.6B/1.7B), language support (10 languages), and conditional instruction field
 
 ### Unified Interface Nodes
 
@@ -224,6 +233,10 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/cosyvoice/** - CosyVoice3 internal processors
 - **cosyvoice_srt_processor.py** - CosyVoice3 SRT processor with character switching, timing modes, and interrupt handling
 - **cosyvoice_vc_processor.py** - CosyVoice3 voice conversion processor with zero-shot, instruct, and cross-lingual voice cloning modes
+
+**nodes/qwen3_tts/** - Qwen3-TTS internal processors
+- **qwen3_tts_processor.py** - Qwen3-TTS TTS processor with character switching (CustomVoice presets + Base cloning + VoiceDesign), pause tags, language switching, and MD5-based character-to-speaker mapping
+- **qwen3_tts_voice_designer_node.py** - 🎨 Qwen3-TTS Voice Designer node creating voices from text descriptions with smart disk caching and unified NARRATOR_VOICE output
 
 ### Step Audio EditX Specialized Nodes
 
@@ -404,6 +417,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **web/chatterbox_srt_showcontrol.js** - SRT subtitle display and timing controls
 
 **web/step_audio_editx_showcontrol.js** - Step Audio EditX SRT subtitle display and timing controls
+
+**web/qwen3_tts_widgets.js** - Qwen3-TTS widget locking system for conditional instruction field based on voice_preset and model_size
 
 **web/audio_analyzer.css** - Styling for audio analyzer interface components
 

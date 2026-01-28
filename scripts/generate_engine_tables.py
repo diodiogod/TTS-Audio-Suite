@@ -87,13 +87,13 @@ def generate_readme_condensed_table(data):
     engines = data["engines"]
 
     output = []
-    output.append("## 🎯 Quick Engine Comparison")
+    output.append("## Quick Engine Comparison")
     output.append("")
-    output.append("| Engine | Languages | Size | Speed | Key Features |")
-    output.append("|--------|-----------|------|-------|--------------|")
+    output.append("| Engine | Languages | Size | Key Features |")
+    output.append("|--------|-----------|------|--------------|")
 
     # Select representative engines for README (not all 10)
-    featured_engines = ["f5-tts", "chatterbox-23l", "vibevoice", "qwen3-tts", "step-editx", "rvc"]
+    featured_engines = ["f5-tts", "chatterbox", "chatterbox-23l", "vibevoice", "qwen3-tts", "step-editx", "rvc"]
 
     for e in engines:
         if e["id"] not in featured_engines:
@@ -123,10 +123,6 @@ def generate_readme_condensed_table(data):
             if total_langs > 6:
                 lang_display += f" +{total_langs - 6}"
 
-        # Get speed emoji
-        speed_note = e["features"]["speed_performance"]["notes"]
-        speed_emoji = get_speed_emoji(speed_note)
-
         # Get 1-2 key features
         special_features = e.get("special_features", [])
         if len(special_features) > 2:
@@ -138,7 +134,6 @@ def generate_readme_condensed_table(data):
             f"**{e['name']}**",
             lang_display,
             e["size"],
-            speed_emoji,
             key_features
         ]
 
