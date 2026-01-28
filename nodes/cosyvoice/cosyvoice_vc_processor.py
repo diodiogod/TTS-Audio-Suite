@@ -33,12 +33,13 @@ class CosyVoiceVCProcessor:
 
     SAMPLE_RATE = 24000  # CosyVoice3 native sample rate
 
-    def __init__(self, engine_config: Dict[str, Any]):
+    def __init__(self, engine_config: Dict[str, Any], existing_adapter=None):
         """
         Initialize CosyVoice3 VC processor.
 
         Args:
             engine_config: Engine configuration from CosyVoice3 Engine node
+            existing_adapter: Optional existing CosyVoiceAdapter to reuse (avoids model reload)
         """
         self.engine_config = engine_config
 
@@ -50,16 +51,41 @@ class CosyVoiceVCProcessor:
         self.load_trt = engine_config.get('load_trt', False)
         self.load_vllm = engine_config.get('load_vllm', False)
 
-        # Initialize adapter
-        from engines.adapters.cosyvoice_adapter import CosyVoiceAdapter
-        self.adapter = CosyVoiceAdapter()
-        self.adapter.initialize_engine(
-            model_path=self.model_path,
-            device=self.device,
-            use_fp16=self.use_fp16,
-            load_trt=self.load_trt,
-            load_vllm=self.load_vllm
-        )
+        # Try to reuse existing CosyVoice TTS adapter if one is loaded (avoids model thrashing)
+        existing_tts_adapter = None
+        if existing_adapter is None:
+            try:
+                # Check if there's a cached CosyVoice TTS engine in the global engine cache
+                from nodes.unified.tts_text_node import UnifiedTTSTextNode
+                if hasattr(UnifiedTTSTextNode, '_cached_engine_instances'):
+                    for cache_key, cached_entry in UnifiedTTSTextNode._cached_engine_instances.items():
+                        if 'cosyvoice' in cache_key.lower() and cached_entry.get('instance'):
+                            instance = cached_entry['instance']
+                            # Check if it's a CosyVoice processor with an adapter
+                            if hasattr(instance, 'adapter') and instance.adapter is not None:
+                                existing_tts_adapter = instance.adapter
+                                print(f"🔄 CosyVoice VC: Reusing existing TTS engine adapter (prevents model reload)")
+                                break
+            except Exception:
+                pass  # Fallback to creating new adapter
+
+        # Reuse existing adapter if available
+        if existing_adapter is not None:
+            print(f"🔄 CosyVoice VC: Reusing provided adapter (no model reload)")
+            self.adapter = existing_adapter
+        elif existing_tts_adapter is not None:
+            self.adapter = existing_tts_adapter
+        else:
+            # Initialize new adapter
+            from engines.adapters.cosyvoice_adapter import CosyVoiceAdapter
+            self.adapter = CosyVoiceAdapter()
+            self.adapter.initialize_engine(
+                model_path=self.model_path,
+                device=self.device,
+                use_fp16=self.use_fp16,
+                load_trt=self.load_trt,
+                load_vllm=self.load_vllm
+            )
 
         # Track temp files for cleanup
         self._temp_files = []

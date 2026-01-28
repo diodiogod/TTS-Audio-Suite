@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.3] - 2026-01-28
+
+### Added
+
+- CosyVoice VC now reuses existing TTS engine instance when available
+- Prevents model thrashing when using CosyVoice for both TTS and voice restoration
+- Significantly faster VC processing when TTS model already loaded
+
+### Fixed
+
+- Fix CosyVoice voice conversion causing model reload errors
+- Eliminates device mismatch errors (tensors on different devices)
 ## [4.19.2] - 2026-01-28
 
 ### Added
