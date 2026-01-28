@@ -415,7 +415,7 @@ class Qwen3TTSEngineAdapter:
                 # Unified Character Voices format: {"audio": {"waveform": ..., "sample_rate": ...}, "audio_path": ..., ...}
                 audio_dict = voice_ref.get("audio")
                 audio_component = generate_stable_audio_component(reference_audio=audio_dict)
-            elif ref_audio_original and isinstance(ref_audio_original, str):
+            elif ref_audio_original is not None and isinstance(ref_audio_original, str):
                 # File path format: {"audio_path": "/path/to/file.wav", "reference_text": "..."}
                 audio_component = generate_stable_audio_component(audio_file_path=ref_audio_original)
             elif "waveform" in voice_ref:
@@ -423,7 +423,7 @@ class Qwen3TTSEngineAdapter:
                 audio_component = generate_stable_audio_component(reference_audio=voice_ref)
             else:
                 audio_component = "default_voice"
-        elif ref_audio_original and isinstance(ref_audio_original, str):
+        elif ref_audio_original is not None and isinstance(ref_audio_original, str):
             # File path case (voice_ref is None but ref_audio_original extracted)
             audio_component = generate_stable_audio_component(audio_file_path=ref_audio_original)
         else:

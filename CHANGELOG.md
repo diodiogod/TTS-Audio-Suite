@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.6] - 2026-01-28
+
+### Changed
+
+- Improve handling of different voice reference formats (file paths, tensors, audio dicts)
+
+### Fixed
+
+- Fix Qwen3-TTS voice cloning error with tensor references
+- Fix 'Boolean value of Tensor with more than one value is ambiguous' error when using voice references
 ## [4.19.5] - 2026-01-28
 
 ### Added
