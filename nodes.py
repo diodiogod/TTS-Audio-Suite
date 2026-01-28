@@ -108,6 +108,14 @@ except Exception as e:
     VIBEVOICE_ENGINE_AVAILABLE = False
 
 try:
+    qwen3_tts_engine_module = load_node_module("qwen3_tts_engine_node", "engines/qwen3_tts_engine_node.py")
+    Qwen3TTSEngineNode = qwen3_tts_engine_module.Qwen3TTSEngineNode
+    QWEN3_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Qwen3-TTS Engine failed: {e}")
+    QWEN3_TTS_ENGINE_AVAILABLE = False
+
+try:
     chatterbox_official_23lang_engine_module = load_node_module("chatterbox_official_23lang_engine_node", "engines/chatterbox_official_23lang_engine_node.py")
     ChatterBoxOfficial23LangEngineNode = chatterbox_official_23lang_engine_module.ChatterBoxOfficial23LangEngineNode
     CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE = True
@@ -234,6 +242,15 @@ try:
 except Exception as e:
     print(f"❌ Step Audio EditX Audio Editor failed: {e}")
     STEP_AUDIO_EDITX_EDITOR_AVAILABLE = False
+
+# Load Qwen3-TTS Voice Designer node
+try:
+    qwen3_tts_voice_designer_module = load_node_module("qwen3_tts_voice_designer_node", "qwen3_tts/qwen3_tts_voice_designer_node.py")
+    Qwen3TTSVoiceDesignerNode = qwen3_tts_voice_designer_module.Qwen3TTSVoiceDesignerNode
+    QWEN3_TTS_VOICE_DESIGNER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Qwen3-TTS Voice Designer failed: {e}")
+    QWEN3_TTS_VOICE_DESIGNER_AVAILABLE = False
 
 # Load RVC nodes
 try:
@@ -417,6 +434,14 @@ if STEP_AUDIO_EDITX_ENGINE_AVAILABLE:
 if VIBEVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["VibeVoiceEngineNode"] = VibeVoiceEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["VibeVoiceEngineNode"] = "⚙️ VibeVoice Engine"
+
+if QWEN3_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["Qwen3TTSEngineNode"] = Qwen3TTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSEngineNode"] = "⚙️ Qwen3-TTS Engine"
+
+if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode
+    NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = "🎨 Qwen3-TTS Voice Designer"
 
 if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = ChatterBoxOfficial23LangEngineNode

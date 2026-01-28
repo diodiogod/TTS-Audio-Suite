@@ -18,10 +18,11 @@ LANGUAGE_ALIASES = {
     # Brazilian Portuguese (separate from European Portuguese)
     'pt-br': 'pt-br', 'ptbr': 'pt-br', 'brazilian': 'pt-br', 'brasilian': 'pt-br',
     'brazil': 'pt-br', 'brasil': 'pt-br', 'br': 'pt-br', 'português brasileiro': 'pt-br',
-    
+
     # European Portuguese (separate from Brazilian)
     'pt-pt': 'pt-pt', 'portugal': 'pt-pt', 'european portuguese': 'pt-pt',
     'portuguese': 'pt-pt', 'português': 'pt-pt', 'portugues': 'pt-pt',
+    'po': 'pt-pt',  # Common abbreviation defaults to European Portuguese
     
     # French variations
     'fr': 'fr', 'french': 'fr', 'français': 'fr', 'francais': 'fr', 
@@ -415,6 +416,38 @@ class LanguageModelMapper:
             del self.mappings[self.engine_type][lang_code]
 
 
+# Qwen3-TTS language mappings (code -> full name for Qwen3-TTS API)
+# Qwen3-TTS expects FULL language names, not ISO codes
+QWEN3_TTS_LANGUAGE_MAP = {
+    # Canonical codes to Qwen3-TTS full names
+    "zh": "Chinese",
+    "zh-cn": "Chinese",
+    "chinese": "Chinese",
+    "en": "English",
+    "english": "English",
+    "ja": "Japanese",
+    "japanese": "Japanese",
+    "ko": "Korean",
+    "korean": "Korean",
+    "de": "German",
+    "german": "German",
+    "fr": "French",
+    "french": "French",
+    "ru": "Russian",
+    "russian": "Russian",
+    "pt": "Portuguese",
+    "pt-br": "Portuguese",  # Qwen3-TTS doesn't distinguish PT-BR vs PT-PT
+    "pt-pt": "Portuguese",
+    "portuguese": "Portuguese",
+    "po": "Portuguese",  # Common abbreviation
+    "es": "Spanish",
+    "spanish": "Spanish",
+    "it": "Italian",
+    "italian": "Italian",
+    "auto": "Auto",
+}
+
+
 # Global instances for easy access
 f5tts_language_mapper = LanguageModelMapper("f5tts")
 chatterbox_language_mapper = LanguageModelMapper("chatterbox")
@@ -458,3 +491,39 @@ def get_model_for_language(engine_type: str, lang_code: str, default_model: str)
     """
     mapper = get_language_mapper(engine_type)
     return mapper.get_model_for_language(lang_code, default_model)
+
+
+def map_language_code_to_qwen3_tts(lang_code: str) -> str:
+    """
+    Map language code to Qwen3-TTS format (full language name).
+
+    Qwen3-TTS expects FULL language names, not ISO codes.
+    Examples: "en" -> "English", "pt" -> "Portuguese", "po" -> "Portuguese"
+
+    Args:
+        lang_code: Language code (ISO, alias, or full name)
+
+    Returns:
+        Qwen3-TTS language name (e.g., "English", "Portuguese", "Auto")
+    """
+    # Normalize input
+    normalized = lang_code.strip().lower()
+
+    # First try direct lookup
+    if normalized in QWEN3_TTS_LANGUAGE_MAP:
+        return QWEN3_TTS_LANGUAGE_MAP[normalized]
+
+    # Try resolving via global language aliases
+    canonical = resolve_language_alias(normalized)
+    if canonical in QWEN3_TTS_LANGUAGE_MAP:
+        return QWEN3_TTS_LANGUAGE_MAP[canonical]
+
+    # Fallback: check if it's already a full name (case-insensitive)
+    for full_name in ["Chinese", "English", "Japanese", "Korean", "German",
+                      "French", "Russian", "Portuguese", "Spanish", "Italian", "Auto"]:
+        if normalized == full_name.lower():
+            return full_name
+
+    # Unknown language - default to Auto with warning
+    print(f"⚠️ Qwen3-TTS: Unknown language '{lang_code}', defaulting to 'Auto'")
+    return "Auto"

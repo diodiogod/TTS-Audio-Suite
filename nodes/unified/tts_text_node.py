@@ -185,6 +185,12 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['quantization'] = config.get('quantization', 'none')
                 stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
 
+            # For Qwen3-TTS, include voice_preset, instruct, and model_size since they determine model type
+            if engine_type == "qwen3_tts":
+                stable_params['voice_preset'] = config.get('voice_preset', 'None (Zero-shot / Custom)')
+                stable_params['instruct'] = config.get('instruct', '')
+                stable_params['model_size'] = config.get('model_size', '1.7B')
+
             # For IndexTTS-2, include low_vram in cache key since it requires model reload
             if engine_type == "index_tts":
                 stable_params['low_vram'] = config.get('low_vram', False)
@@ -447,6 +453,26 @@ Back to the main narrator voice for the conclusion.""",
 
                 return engine_instance
 
+            elif engine_type == "qwen3_tts":
+                # Create Qwen3-TTS processor instance
+                # Use global nodes_dir (already defined at module level)
+                qwen3_processor_path = os.path.join(nodes_dir, "qwen3_tts", "qwen3_tts_processor.py")
+                qwen3_processor_spec = importlib.util.spec_from_file_location("qwen3_tts_processor_module", qwen3_processor_path)
+                qwen3_processor_module = importlib.util.module_from_spec(qwen3_processor_spec)
+                qwen3_processor_spec.loader.exec_module(qwen3_processor_module)
+
+                Qwen3TTSProcessor = qwen3_processor_module.Qwen3TTSProcessor
+                engine_instance = Qwen3TTSProcessor(self, config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
             elif engine_type == "step_audio_editx":
                 # Create Step Audio EditX wrapper instance
                 class StepAudioEditXWrapper:
@@ -690,8 +716,17 @@ Back to the main narrator voice for the conclusion.""",
                 lang_code = language.lower()[:2]  # en, fr, de, etc.
             
             char_display = character_name if character_name else "default"
-            
-            print(f"🎤 Generating {engine_type.title()} for '{char_display}' (lang: {lang_code})")
+
+            # For Qwen3-TTS CustomVoice mode, show preset speaker instead of narrator
+            if engine_type == "qwen3_tts":
+                voice_preset = config.get('voice_preset', 'None (Zero-shot / Custom)')
+                if voice_preset != 'None (Zero-shot / Custom)':
+                    print(f"🎤 TTS Text: Using CustomVoice preset speaker (voice reference ignored)")
+                    print(f"🎤 Generating {engine_type.title()} with voice preset '{voice_preset}' (lang: {lang_code})")
+                else:
+                    print(f"🎤 Generating {engine_type.title()} for '{char_display}' (lang: {lang_code})")
+            else:
+                print(f"🎤 Generating {engine_type.title()} for '{char_display}' (lang: {lang_code})")
             
             # Validate F5-TTS requirements: must have reference text
             if engine_type == "f5tts" and not reference_text.strip():
@@ -1057,6 +1092,194 @@ Back to the main narrator voice for the conclusion.""",
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
                 result = (formatted_audio, generation_info)
                 
+            elif engine_type == "qwen3_tts":
+                # Qwen3-TTS uses processor pattern - call through processor
+                # Extract characters from text first
+                import re
+                character_tags = re.findall(r'\[([^\]]+)\]', text)
+                characters_from_tags = []
+                for tag in character_tags:
+                    if not tag.startswith('pause:'):
+                        character_name = tag.split('|')[0].strip().lower()
+                        characters_from_tags.append(character_name)
+
+                # Parse segments to get actual characters used
+                from utils.text.character_parser import character_parser
+                from utils.voice.discovery import voice_discovery, get_available_characters
+
+                # Get available characters
+                available_chars = get_available_characters()
+                character_aliases = voice_discovery.get_character_aliases()
+
+                # Build complete available set
+                all_available = set()
+                if available_chars:
+                    all_available.update(available_chars)
+                for alias, target in character_aliases.items():
+                    all_available.add(alias.lower())
+                    all_available.add(target.lower())
+
+                # Add characters from text
+                for char in characters_from_tags:
+                    all_available.add(char.lower())
+
+                # Add "narrator"
+                all_available.add("narrator")
+
+                character_parser.set_available_characters(list(all_available))
+
+                # Set language defaults
+                char_lang_defaults = voice_discovery.get_character_language_defaults()
+                for char, lang in char_lang_defaults.items():
+                    character_parser.set_character_language_default(char, lang)
+
+                character_parser.reset_session_cache()
+
+                # Parse segments to get actual characters
+                segment_objects = character_parser.parse_text_segments(text)
+                characters = list(set([seg.character for seg in segment_objects]))
+
+                # Get character voice mapping
+                from utils.voice.discovery import get_character_mapping
+                character_mapping = get_character_mapping(characters, engine_type="qwen3_tts")
+
+                # Build voice mapping for character switching
+                # Note: Qwen3-TTS requires ref_text in ICL mode, so include it in the voice dict
+                voice_mapping = {}
+                for character in characters:
+                    # Special handling for narrator - use provided voice reference
+                    if character == "narrator" and audio_tensor is not None and reference_text:
+                        voice_mapping[character] = {
+                            "waveform": audio_tensor,
+                            "sample_rate": 24000,
+                            "text": reference_text or ""  # Include transcript for ICL mode
+                        }
+                    else:
+                        # Use character-specific voice from voices/ folder with fallback to narrator
+                        audio_path, ref_text = character_mapping.get(character, (None, None))
+
+                        # Case 1: Have both audio and text (ICL mode - best quality)
+                        if audio_path and ref_text:
+                            try:
+                                waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
+
+                                # Resample to 24kHz if needed
+                                if sample_rate != 24000:
+                                    import torchaudio
+                                    resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=24000)
+                                    waveform = resampler(waveform)
+                                    sample_rate = 24000
+
+                                voice_mapping[character] = {
+                                    "waveform": waveform,
+                                    "sample_rate": sample_rate,
+                                    "text": ref_text,
+                                    "x_vector_only_mode": False  # ICL mode for best quality
+                                }
+                                print(f"🎭 Qwen3-TTS: Using character-specific voice for '{character}' (ICL mode)")
+                            except Exception as e:
+                                print(f"⚠️ Failed to load character audio for '{character}': {e}")
+                                # Fallback to narrator voice if available
+                                if audio_tensor is not None and reference_text:
+                                    voice_mapping[character] = {
+                                        "waveform": audio_tensor,
+                                        "sample_rate": 24000,
+                                        "text": reference_text or "",
+                                        "x_vector_only_mode": False
+                                    }
+                                    print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}'")
+                                else:
+                                    voice_mapping[character] = None
+                                    print(f"⚠️ Qwen3-TTS: No voice available for '{character}' and no narrator fallback")
+
+                        # Case 2: Have audio but no text (x_vector_only mode - lower quality)
+                        elif audio_path and not ref_text:
+                            try:
+                                waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
+
+                                # Resample to 24kHz if needed
+                                if sample_rate != 24000:
+                                    import torchaudio
+                                    resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=24000)
+                                    waveform = resampler(waveform)
+                                    sample_rate = 24000
+
+                                voice_mapping[character] = {
+                                    "waveform": waveform,
+                                    "sample_rate": sample_rate,
+                                    "text": "",  # Empty text for x_vector_only mode
+                                    "x_vector_only_mode": True  # Use speaker embedding only
+                                }
+                                print(f"⚠️⚠️ Qwen3-TTS: Character '{character}' has audio but NO reference text")
+                                print(f"⚠️⚠️ Using x_vector_only mode (speaker embedding only) - LOWER QUALITY than ICL mode")
+                            except Exception as e:
+                                print(f"⚠️ Failed to load character audio for '{character}': {e}")
+                                # Fallback to narrator voice if available
+                                if audio_tensor is not None:
+                                    voice_mapping[character] = {
+                                        "waveform": audio_tensor,
+                                        "sample_rate": 24000,
+                                        "text": reference_text or "",
+                                        "x_vector_only_mode": False if reference_text else True
+                                    }
+                                    if reference_text:
+                                        print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}'")
+                                    else:
+                                        print(f"⚠️⚠️ Qwen3-TTS: Using narrator voice fallback for '{character}' (x_vector_only mode)")
+                                else:
+                                    voice_mapping[character] = None
+                                    print(f"⚠️ Qwen3-TTS: No voice available for '{character}' and no narrator fallback")
+
+                        # Case 3: No audio file at all - fallback to narrator
+                        else:
+                            # Fallback to narrator voice for characters without voice files
+                            if audio_tensor is not None and reference_text:
+                                voice_mapping[character] = {
+                                    "waveform": audio_tensor,
+                                    "sample_rate": 24000,
+                                    "text": reference_text or ""
+                                }
+                                print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}'")
+                            else:
+                                # No narrator voice available
+                                voice_mapping[character] = None
+                                print(f"⚠️ Qwen3-TTS: No voice available for '{character}' and no narrator fallback")
+
+                audio_segments = engine_instance.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk
+                )
+
+                # Combine audio segments
+                audio_result, chunk_info = engine_instance.combine_audio_segments(
+                    segments=audio_segments,
+                    method="auto",
+                    silence_ms=silence_between_chunks_ms,
+                    text_length=len(text),
+                    return_info=True
+                )
+
+                # Calculate statistics
+                total_duration = audio_result.shape[-1] / 24000.0  # Qwen3-TTS uses 24kHz
+                import re
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                # Build detailed generation info
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (Qwen3-TTS, narrator: {char_display})"
+                base_info += "\n🎭 Character switching and intelligent model selection enabled"
+
+                # Enhance with chunk timing details
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                # Format as ComfyUI audio format (processor returns tensor, we need dict)
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 24000)
+                result = (formatted_audio, generation_info)
+
             elif engine_type == "cosyvoice":
                 # CosyVoice3 uses wrapper pattern - call directly through wrapper
                 result = engine_instance.generate_tts_audio(
@@ -1066,7 +1289,7 @@ Back to the main narrator voice for the conclusion.""",
                     character=char_display,
                     seed=seed
                 )
-                
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
             
@@ -1078,8 +1301,20 @@ Back to the main narrator voice for the conclusion.""",
             
             # Add unified prefix to generation info
             unified_info = f"🎤 TTS Text (Unified) - {engine_type.upper()} Engine:\n{enhanced_info}"
-            
-            print(f"✅ {engine_type.title()} generation complete. Default narrator: {char_display}")
+
+            # Build completion message based on engine type and voice source
+            if engine_type == "qwen3_tts":
+                voice_preset = config.get('voice_preset', 'None (Zero-shot / Custom)')
+                if voice_preset != 'None (Zero-shot / Custom)':
+                    # Using CustomVoice preset speaker
+                    print(f"✅ {engine_type.title()} generation complete. Voice preset: {voice_preset}")
+                else:
+                    # Using Base model with narrator voice
+                    print(f"✅ {engine_type.title()} generation complete. Default narrator: {char_display}")
+            else:
+                # Other engines always use narrator voice
+                print(f"✅ {engine_type.title()} generation complete. Default narrator: {char_display}")
+
             return (audio_output, unified_info)
                 
         except Exception as e:

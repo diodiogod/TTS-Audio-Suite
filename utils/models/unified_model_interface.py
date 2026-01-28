@@ -1123,18 +1123,111 @@ def register_cosyvoice_factory():
     unified_model_interface.register_model_factory("cosyvoice", "tts", cosyvoice_factory)
 
 
+def register_qwen3_tts_factory():
+    """Register Qwen3-TTS model factory"""
+    def qwen3_tts_factory(config: ModelLoadConfig):
+        """Factory for Qwen3-TTS models with ComfyUI integration"""
+        import os
+        import sys
+        import torch
+
+        # Extract parameters
+        model_name = config.model_name  # e.g., "Qwen3-TTS-12Hz-1.7B-CustomVoice"
+        model_path = config.model_path or model_name
+        device = config.device or "auto"
+
+        # Get additional params
+        additional_params = config.additional_params or {}
+        dtype_str = additional_params.get('dtype', 'auto')
+        attn_implementation = additional_params.get('attn_implementation', 'auto')
+
+        # Resolve model path using downloader (handles "local:" prefix and auto-download)
+        from engines.qwen3_tts.qwen3_tts_downloader import Qwen3TTSDownloader
+        downloader = Qwen3TTSDownloader()
+        resolved_model_path = downloader.resolve_model_path(model_path)
+
+        if not resolved_model_path or not os.path.exists(resolved_model_path):
+            raise RuntimeError(f"Qwen3-TTS model not found at {resolved_model_path}. Auto-download should have been triggered earlier.")
+
+        try:
+            # Add bundled implementation to sys.path
+            qwen3_impl_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'engines', 'qwen3_tts', 'impl')
+            qwen3_impl_dir = os.path.abspath(qwen3_impl_dir)
+            if qwen3_impl_dir not in sys.path:
+                sys.path.insert(0, qwen3_impl_dir)
+
+            # Import bundled Qwen3-TTS implementation
+            from qwen_tts import Qwen3TTSModel
+
+            # Resolve torch dtype
+            dtype_map = {
+                "bfloat16": torch.bfloat16,
+                "float16": torch.float16,
+                "float32": torch.float32,
+            }
+            if dtype_str in dtype_map:
+                torch_dtype = dtype_map[dtype_str]
+            else:
+                # Auto mode: detect GPU compute capability
+                if torch.cuda.is_available():
+                    major, minor = torch.cuda.get_device_capability()
+                    torch_dtype = torch.bfloat16 if major >= 8 else torch.float16
+                else:
+                    torch_dtype = torch.float16
+
+            # Resolve device
+            if device == "auto":
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # Resolve attention implementation
+            if attn_implementation == "auto":
+                # Try flash_attention_2 first, fallback to sdpa
+                try:
+                    import flash_attn
+                    resolved_attn = "flash_attention_2"
+                except ImportError:
+                    resolved_attn = "sdpa"  # PyTorch scaled dot product attention
+            else:
+                resolved_attn = attn_implementation
+
+            print(f"🔄 Loading Qwen3-TTS: {model_name}")
+            print(f"   Path: {resolved_model_path}")
+            print(f"   Device: {device} | Dtype: {torch_dtype} | Attention: {resolved_attn}")
+
+            # Load the bundled Qwen3-TTS model using from_pretrained
+            # Note: Use 'dtype' not 'torch_dtype' (deprecated warning)
+            qwen3_model = Qwen3TTSModel.from_pretrained(
+                pretrained_model_name_or_path=resolved_model_path,
+                device_map=device,
+                dtype=torch_dtype,
+                attn_implementation=resolved_attn
+            )
+
+            print(f"✅ Qwen3-TTS model '{model_name}' loaded successfully")
+
+            # Return the bundled model directly
+            return qwen3_model
+
+        except ImportError as e:
+            raise ImportError(f"Qwen3-TTS bundled implementation not available. Error: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load Qwen3-TTS model: {e}")
+
+    unified_model_interface.register_model_factory("qwen3_tts", "tts", qwen3_tts_factory)
+
 
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
     register_chatterbox_23lang_factory()
     register_f5tts_factory()
-    register_step_audio_editx_factory() 
+    register_step_audio_editx_factory()
     register_higgs_audio_factory()
     register_rvc_factory()
     register_vibevoice_factory()
     register_index_tts_factory()
     register_cosyvoice_factory()
+    register_qwen3_tts_factory()
 
 
 # Auto-initialize on import

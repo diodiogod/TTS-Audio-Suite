@@ -528,8 +528,8 @@ class VoiceDiscovery:
         if engine_type == "audio_only" or engine_type == "chatterbox":  # Keep backward compatibility
             return character_info
         
-        # For audio+text engines (F5-TTS, Step Audio EditX, CosyVoice), we need both audio and text
-        if engine_type in ("audio_and_text", "f5tts", "step_audio_editx", "cosyvoice", "index_tts"):
+        # For audio+text engines (F5-TTS, Step Audio EditX, CosyVoice, Qwen3-TTS), we need both audio and text
+        if engine_type in ("audio_and_text", "f5tts", "step_audio_editx", "cosyvoice", "index_tts", "qwen3_tts"):
             if character_info.get('text_content'):
                 return character_info
         
