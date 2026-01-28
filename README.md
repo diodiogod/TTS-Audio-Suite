@@ -29,6 +29,9 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **ChatterBox** | 🇺🇸🇩🇪🇫🇷🇮🇹🇯🇵🇰🇷 +4 | ~4.3GB | Expressiveness slider |
 | **ChatterBox 23L** | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
 | **VibeVoice** | 🇺🇸🇨🇳🇮🇳 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker |
+| **Higgs Audio 2** | 🇺🇸🇨🇳🇩🇪🇪🇸🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
+| **IndexTTS-2** | 🇺🇸🇨🇳🇯🇵 | ? | Emotion Control: 8 vectors, Text as reference |
+| **CosyVoice3** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | 🇺🇸🇨🇳🇩🇪🇪🇸🇫🇷🇮🇹 +4 | ~3-6GB | Voice design |
 | **Step Audio EditX** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |

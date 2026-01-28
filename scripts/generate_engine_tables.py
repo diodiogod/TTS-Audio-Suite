@@ -92,12 +92,8 @@ def generate_readme_condensed_table(data):
     output.append("| Engine | Languages | Size | Key Features |")
     output.append("|--------|-----------|------|--------------|")
 
-    # Select representative engines for README (not all 10)
-    featured_engines = ["f5-tts", "chatterbox", "chatterbox-23l", "vibevoice", "qwen3-tts", "step-editx", "rvc"]
-
+    # Show ALL engines
     for e in engines:
-        if e["id"] not in featured_engines:
-            continue
 
         # Get first 6-8 language flags
         flags = []
@@ -236,7 +232,7 @@ def generate_feature_comparison(data):
 
 
 def inject_into_readme(condensed_table):
-    """Inject condensed table into README.md between markers"""
+    """Inject condensed table into README.md between markers. Returns: True=written, False=unchanged, None=error"""
     readme_path = Path(__file__).parent.parent / "README.md"
 
     # Read current README
@@ -253,7 +249,7 @@ def inject_into_readme(condensed_table):
         print(f"   Please add these markers where you want the table:")
         print(f"   {start_marker}")
         print(f"   {end_marker}")
-        return False
+        return None  # Error
 
     # Replace content between markers
     pattern = f"{re.escape(start_marker)}.*?{re.escape(end_marker)}"
@@ -261,11 +257,31 @@ def inject_into_readme(condensed_table):
 
     new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
 
-    # Write back
+    # Check if content actually changed
+    if new_content == content:
+        return False  # No change
+
+    # Write back only if changed
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(new_content)
 
-    return True
+    return True  # Written
+
+
+def write_if_changed(file_path, new_content):
+    """Write file only if content changed. Returns True if written."""
+    # Check if file exists and compare content
+    if file_path.exists():
+        with open(file_path, "r", encoding="utf-8") as f:
+            existing_content = f.read()
+
+        if existing_content == new_content:
+            return False  # No change needed
+
+    # Write the file
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    return True  # File was written
 
 
 def main():
@@ -278,23 +294,26 @@ def main():
     # Generate Engine Comparison
     print("Generating Engine Comparison table...")
     engine_comp = generate_engine_comparison(data)
-    with open(docs_dir / "ENGINE_COMPARISON.md", "w", encoding="utf-8") as f:
-        f.write(engine_comp)
-    print(f"✅ Written to {docs_dir / 'ENGINE_COMPARISON.md'}")
+    if write_if_changed(docs_dir / "ENGINE_COMPARISON.md", engine_comp):
+        print(f"✅ Written to {docs_dir / 'ENGINE_COMPARISON.md'}")
+    else:
+        print(f"⏭️  Skipped {docs_dir / 'ENGINE_COMPARISON.md'} (unchanged)")
 
     # Generate Language Support
     print("Generating Language Support table...")
     lang_support = generate_language_support(data)
-    with open(docs_dir / "LANGUAGE_SUPPORT.md", "w", encoding="utf-8") as f:
-        f.write(lang_support)
-    print(f"✅ Written to {docs_dir / 'LANGUAGE_SUPPORT.md'}")
+    if write_if_changed(docs_dir / "LANGUAGE_SUPPORT.md", lang_support):
+        print(f"✅ Written to {docs_dir / 'LANGUAGE_SUPPORT.md'}")
+    else:
+        print(f"⏭️  Skipped {docs_dir / 'LANGUAGE_SUPPORT.md'} (unchanged)")
 
     # Generate Feature Comparison
     print("Generating Feature Comparison table...")
     feat_comp = generate_feature_comparison(data)
-    with open(docs_dir / "FEATURE_COMPARISON.md", "w", encoding="utf-8") as f:
-        f.write(feat_comp)
-    print(f"✅ Written to {docs_dir / 'FEATURE_COMPARISON.md'}")
+    if write_if_changed(docs_dir / "FEATURE_COMPARISON.md", feat_comp):
+        print(f"✅ Written to {docs_dir / 'FEATURE_COMPARISON.md'}")
+    else:
+        print(f"⏭️  Skipped {docs_dir / 'FEATURE_COMPARISON.md'} (unchanged)")
 
     # Generate and inject condensed README table
     print("\nGenerating condensed README table...")
@@ -303,9 +322,12 @@ def main():
     # Check if --readme flag is passed
     if "--readme" in sys.argv:
         print("Injecting into README.md...")
-        if inject_into_readme(condensed):
+        result = inject_into_readme(condensed)
+        if result is True:
             print("✅ README.md updated successfully!")
-        else:
+        elif result is False:
+            print("⏭️  Skipped README.md (unchanged)")
+        else:  # None = error
             print("❌ README.md injection failed (markers not found)")
     else:
         print("ℹ️  Condensed table generated (use --readme flag to inject into README.md)")
