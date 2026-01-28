@@ -76,12 +76,12 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                 }),
                 "language": (["Auto", "Chinese", "English", "Japanese", "Korean", "German", "French", "Russian", "Portuguese", "Spanish", "Italian"], {
                     "default": "Auto",
-                    "tooltip": "Target language for speech generation:\n• Auto: Automatically detect from text\n• Other options: Force specific language\nQwen3-TTS supports 10 languages for all model types (Base, CustomVoice, VoiceDesign)"
+                    "tooltip": "Target language for speech generation:\n• Auto: Automatically detect from text\n• Portuguese: European Portuguese only for Base model\n  - Brazilian Portuguese: Only available with CustomVoice presets + instruction\n  - Example instruction: 'Speak with Brazilian Portuguese accent'"
                 }),
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "Instruction for emotion/style control (CustomVoice with presets only):\n• Examples: 'Speak slowly with sadness', 'Energetic and excited'\n• LOCKED when:\n  - voice_preset = None (Base model has no instruction)\n  - model_size = 0.6B + preset (0.6B CustomVoice has no instruction)\n• UNLOCKED when: 1.7B + preset selected"
+                    "tooltip": "Instruction for emotion/style/accent control (CustomVoice with presets only):\n• Emotion: 'Speak slowly with sadness', 'Energetic and excited'\n• Accent: 'Speak with Brazilian Portuguese accent'\n• Works best in English instructions\n• LOCKED when:\n  - voice_preset = None (Base model has no instruction)\n  - model_size = 0.6B + preset (0.6B CustomVoice has no instruction)\n• UNLOCKED when: 1.7B + preset selected"
                 }),
 
                 # Generation Parameters
