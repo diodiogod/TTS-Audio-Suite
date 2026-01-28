@@ -1,0 +1,585 @@
+# TTS Audio Suite Engines - Complete Reference Data
+# This is the single source of truth for all engine documentation tables
+
+engines:
+  - id: f5-tts
+    name: F5-TTS
+    models: "Base, v1, E2TTS + 8 lang models"
+    size: "~1.2GB each"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+
+    special_features:
+      - "Targeted Word/Speech Editing"
+      - "Speed control"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: false, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: false, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇧🇷", notes: "(BR)" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: true, notes: "" }
+      vram_efficient: { supported: true, notes: "" }
+      speed_performance: { supported: true, notes: "Very Fast" }
+
+  - id: chatterbox
+    name: ChatterBox
+    models: "EN, DE×3, IT, FR, RU, HY, KA, JA, KO, NO"
+    size: "~4.3GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: true
+
+    special_features:
+      - "Expressiveness slider"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: false, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "(×3)" }
+      es: { supported: false, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: true, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: true, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: true, notes: "" }
+      vram_efficient: { supported: true, notes: "" }
+      speed_performance: { supported: true, notes: "Fast" }
+
+  - id: chatterbox-23l
+    name: ChatterBox 23L
+    models: "v1, v2, Vietnamese (Viterbox)"
+    size: "~4.3GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: true
+
+    special_features:
+      - "24 languages in single model"
+      - "emotion tokens (v2 - doesn't work)"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "(Viterbox)" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: true, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: true, notes: "" }
+      emotion_control: { supported: "partial", notes: "(v2 tags - doesn't work)" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: true, notes: "" }
+      vram_efficient: { supported: true, notes: "" }
+      speed_performance: { supported: true, notes: "Fast" }
+
+  - id: vibevoice
+    name: VibeVoice
+    models: "1.5B, 7B, Hindi-1.5B, Hindi-7B"
+    size: "5.4GB / 18GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+
+    special_features:
+      - "90-min long-form"
+      - "Native 4-speaker"
+      - "4-bit quantization"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: false, flag: "🇩🇪", notes: "" }
+      es: { supported: false, flag: "🇪🇸", notes: "" }
+      fr: { supported: false, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: false, flag: "🇯🇵", notes: "" }
+      ko: { supported: false, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: true, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: true, notes: "" }
+      community_finetunes: { supported: true, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(5-18GB)" }
+      speed_performance: { supported: "partial", notes: "" }
+
+  - id: higgs-audio-2
+    name: Higgs Audio 2
+    models: "3B"
+    size: "~9GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+
+    special_features:
+      - "3 multi-speaker"
+      - "CUDA graphs (55+ tokens/sec)"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "(Mandarin)" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: false, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: false, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: true, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      emotion_control: { supported: "partial", notes: "(via prompt)" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(9GB)" }
+      speed_performance: { supported: "partial", notes: "" }
+
+  - id: indextts-2
+    name: IndexTTS-2
+    models: "IndexTTS-2"
+    size: "?"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+
+    special_features:
+      - "Emotion Control: 8 vectors"
+      - "Text as reference"
+      - "Audio as reference"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: false, flag: "🇩🇪", notes: "" }
+      es: { supported: false, flag: "🇪🇸", notes: "" }
+      fr: { supported: false, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "?" }
+      ko: { supported: false, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      emotion_control: { supported: true, notes: "(8 emotions)" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(9-12GB)" }
+      speed_performance: { supported: "partial", notes: "" }
+
+  - id: cosyvoice3
+    name: CosyVoice3
+    models: "0.5B, 0.5B-RL"
+    size: "~5.4GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: true
+
+    special_features:
+      - "Paralinguistic tags"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "+ 18 dialects" }
+      de: { supported: false, flag: "🇩🇪", notes: "" }
+      es: { supported: false, flag: "🇪🇸", notes: "" }
+      fr: { supported: false, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: true, notes: "" }
+      emotion_control: { supported: "partial", notes: "(via instruct)" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: true, notes: "(5.4GB)" }
+      speed_performance: { supported: true, notes: "Fast" }
+
+  - id: qwen3-tts
+    name: Qwen3-TTS
+    models: "0.6B, 1.7B (CustomVoice/VoiceDesign/Base)"
+    size: "~3-6GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+
+    special_features:
+      - "Voice design"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "(EU/BR*)" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "(Base model)" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      emotion_control: { supported: "partial", notes: "(via instruct)" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: true, notes: "(3-6GB)" }
+      speed_performance: { supported: "partial", notes: "" }
+
+  - id: step-editx
+    name: Step Audio EditX
+    models: "3B LLM + CosyVoice"
+    size: "~7GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+
+    special_features:
+      - "Second Pass Speech Editing Node: 14 emotions"
+      - "32 speaking styles"
+      - "Paralinguistic effects"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "(Mandarin + Sichuanese, Cantonese)" }
+      de: { supported: false, flag: "🇩🇪", notes: "" }
+      es: { supported: false, flag: "🇪🇸", notes: "" }
+      fr: { supported: false, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      emotion_control: { supported: true, notes: "(14 emotions)" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(7GB)" }
+      speed_performance: { supported: "partial", notes: "" }
+
+  - id: rvc
+    name: RVC
+    models: "Community .pth"
+    size: "100-300MB"
+
+    capabilities:
+      tts: false
+      srt: false
+      vc: true
+
+    special_features:
+      - "Real-time VC"
+      - "Pitch shift (±14)"
+      - "6 HuBERT models"
+      - "Language-independent"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇧🇷", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: true, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: true, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: "partial", notes: "(needs training)" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: true, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: null, notes: "N/A" }
+      community_finetunes: { supported: true, notes: "" }
+      vram_efficient: { supported: true, notes: "" }
+      speed_performance: { supported: true, notes: "Fast" }
+
+# Language metadata for reference
+language_metadata:
+  en: { name: "English", code: "EN" }
+  zh: { name: "Chinese", code: "ZH" }
+  de: { name: "German", code: "DE" }
+  es: { name: "Spanish", code: "ES" }
+  fr: { name: "French", code: "FR" }
+  it: { name: "Italian", code: "IT" }
+  ja: { name: "Japanese", code: "JA" }
+  ko: { name: "Korean", code: "KO" }
+  ru: { name: "Russian", code: "RU" }
+  pt: { name: "Portuguese", code: "PT" }
+  pl: { name: "Polish", code: "PL" }
+  hi: { name: "Hindi", code: "HI" }
+  ar: { name: "Arabic", code: "AR" }
+  tr: { name: "Turkish", code: "TR" }
+  th: { name: "Thai", code: "TH" }
+  no: { name: "Norwegian", code: "NO" }
+  vi: { name: "Vietnamese", code: "VI" }
+  hy: { name: "Armenian", code: "HY" }
+  ka: { name: "Georgian", code: "KA" }
+  da: { name: "Danish", code: "DA" }
+  fi: { name: "Finnish", code: "FI" }
+  el: { name: "Greek", code: "EL" }
+  he: { name: "Hebrew", code: "HE" }
+  ms: { name: "Malay", code: "MS" }
+  nl: { name: "Dutch", code: "NL" }
+  sv: { name: "Swedish", code: "SV" }
+  sw: { name: "Swahili", code: "SW" }
+
+# Feature metadata for reference
+feature_metadata:
+  voice_cloning: { name: "Voice Cloning", display: "**Voice Cloning**" }
+  native_multi_speaker: { name: "Native Multi-Speaker", display: "**Native Multi-Speaker**" }
+  voice_conversion: { name: "Voice Conversion", display: "**Voice Conversion**" }
+  emotion_control: { name: "Emotion Control", display: "**Emotion Control**" }
+  native_long_form: { name: "Native Long-form (90min)", display: "**Native Long-form (90min)**" }
+  community_finetunes: { name: "Community Finetunes", display: "**Community Finetunes**" }
+  vram_efficient: { name: "VRAM Efficient", display: "**VRAM Efficient**" }
+  speed_performance: { name: "Speed/Performance", display: "**Speed/Performance**" }
+
+# Table notes for additional context
+table_notes:
+  language_support:
+    - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
+    - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"
+    - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
+    - "**RVC**: Language-independent (work as post-processors VC with any TTS output)"
+    - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
