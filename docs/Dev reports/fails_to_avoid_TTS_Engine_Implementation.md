@@ -109,3 +109,16 @@
 - **Cache key components**: `engine_name`, `model_type`, `model_name`, `device`, `quantization`, etc.
 - **Fix Step Audio EditX**: Updated adapter and Audio Editor node to use unified interface with `model_type="tts"`
 - **Prevention**: When adding new engines, ALWAYS use unified interface in ALL code paths (adapters, nodes, processors)
+
+### Engine Wrapper Implementation - Always Compare First
+- **CRITICAL**: Before writing engine wrapper, open existing reference engine (Step Audio EditX, F5-TTS) side-by-side and compare patterns
+- **Common mistakes when NOT comparing**:
+  - Missing required imports (`folder_paths`, `resolve_torch_device`, `unified_model_interface`, `extra_paths`)
+  - Manual device/dtype resolution instead of using utils functions
+  - Missing `_find_model_directory()` with `extra_model_paths` support
+  - Using `load_model()` method instead of `_ensure_model_loaded()` pattern
+  - Direct model instantiation instead of `unified_model_interface.load_model()`
+  - Missing `_model_config` tracking (needed for unload)
+  - Not using `tts_model_manager.ensure_device()` before fallback to `.to()`
+  - Missing GPU capability detection for dtype auto-selection
+- **Prevention**: ALWAYS open Step Audio EditX engine file as reference when creating new engine wrapper, copy the patterns

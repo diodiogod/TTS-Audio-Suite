@@ -408,8 +408,10 @@ class Qwen3TTSEngineAdapter:
         # This ensures different voices generate different cache keys
         from utils.audio.audio_hash import generate_stable_audio_component
         if voice_ref and isinstance(voice_ref, dict):
-            # Pass the full voice_ref dict (contains waveform + sample_rate in proper format)
-            audio_component = generate_stable_audio_component(reference_audio=voice_ref)
+            # Extract the audio dict from voice_ref (unified Character Voices format)
+            # voice_ref = {"audio": {"waveform": ..., "sample_rate": ...}, "audio_path": ..., ...}
+            audio_dict = voice_ref.get("audio") if "audio" in voice_ref else voice_ref
+            audio_component = generate_stable_audio_component(reference_audio=audio_dict)
         elif ref_audio_original and isinstance(ref_audio_original, str):
             # File path case
             audio_component = generate_stable_audio_component(audio_file_path=ref_audio_original)

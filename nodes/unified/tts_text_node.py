@@ -1149,9 +1149,13 @@ Back to the main narrator voice for the conclusion.""",
                 for character in characters:
                     # Special handling for narrator - use provided voice reference
                     if character == "narrator" and audio_tensor is not None and reference_text:
+                        # Extract tensor from audio dict if needed
+                        actual_waveform = audio_tensor["waveform"] if isinstance(audio_tensor, dict) and "waveform" in audio_tensor else audio_tensor
+                        actual_sample_rate = audio_tensor["sample_rate"] if isinstance(audio_tensor, dict) and "sample_rate" in audio_tensor else 24000
+
                         voice_mapping[character] = {
-                            "waveform": audio_tensor,
-                            "sample_rate": 24000,
+                            "waveform": actual_waveform,
+                            "sample_rate": actual_sample_rate,
                             "text": reference_text or ""  # Include transcript for ICL mode
                         }
                     else:
@@ -1181,9 +1185,13 @@ Back to the main narrator voice for the conclusion.""",
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
                                 if audio_tensor is not None and reference_text:
+                                    # Extract tensor from audio dict if needed
+                                    actual_waveform = audio_tensor["waveform"] if isinstance(audio_tensor, dict) and "waveform" in audio_tensor else audio_tensor
+                                    actual_sample_rate = audio_tensor["sample_rate"] if isinstance(audio_tensor, dict) and "sample_rate" in audio_tensor else 24000
+
                                     voice_mapping[character] = {
-                                        "waveform": audio_tensor,
-                                        "sample_rate": 24000,
+                                        "waveform": actual_waveform,
+                                        "sample_rate": actual_sample_rate,
                                         "text": reference_text or "",
                                         "x_vector_only_mode": False
                                     }
@@ -1204,9 +1212,13 @@ Back to the main narrator voice for the conclusion.""",
                                     waveform = resampler(waveform)
                                     sample_rate = 24000
 
+                                # Extract tensor from audio dict if needed
+                                actual_waveform = waveform["waveform"] if isinstance(waveform, dict) and "waveform" in waveform else waveform
+                                actual_sample_rate = waveform["sample_rate"] if isinstance(waveform, dict) and "sample_rate" in waveform else sample_rate
+
                                 voice_mapping[character] = {
-                                    "waveform": waveform,
-                                    "sample_rate": sample_rate,
+                                    "waveform": actual_waveform,
+                                    "sample_rate": actual_sample_rate,
                                     "text": "",  # Empty text for x_vector_only mode
                                     "x_vector_only_mode": True  # Use speaker embedding only
                                 }
@@ -1216,9 +1228,13 @@ Back to the main narrator voice for the conclusion.""",
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
                                 if audio_tensor is not None:
+                                    # Extract tensor from audio dict if needed
+                                    actual_waveform = audio_tensor["waveform"] if isinstance(audio_tensor, dict) and "waveform" in audio_tensor else audio_tensor
+                                    actual_sample_rate = audio_tensor["sample_rate"] if isinstance(audio_tensor, dict) and "sample_rate" in audio_tensor else 24000
+
                                     voice_mapping[character] = {
-                                        "waveform": audio_tensor,
-                                        "sample_rate": 24000,
+                                        "waveform": actual_waveform,
+                                        "sample_rate": actual_sample_rate,
                                         "text": reference_text or "",
                                         "x_vector_only_mode": False if reference_text else True
                                     }
@@ -1234,9 +1250,13 @@ Back to the main narrator voice for the conclusion.""",
                         else:
                             # Fallback to narrator voice for characters without voice files
                             if audio_tensor is not None and reference_text:
+                                # Extract tensor from audio dict if needed
+                                actual_waveform = audio_tensor["waveform"] if isinstance(audio_tensor, dict) and "waveform" in audio_tensor else audio_tensor
+                                actual_sample_rate = audio_tensor["sample_rate"] if isinstance(audio_tensor, dict) and "sample_rate" in audio_tensor else 24000
+
                                 voice_mapping[character] = {
-                                    "waveform": audio_tensor,
-                                    "sample_rate": 24000,
+                                    "waveform": actual_waveform,
+                                    "sample_rate": actual_sample_rate,
                                     "text": reference_text or ""
                                 }
                                 print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}'")

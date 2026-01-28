@@ -265,15 +265,15 @@ class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
 
 class CosyVoiceCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for CosyVoice3 engine."""
-    
+
     def generate_cache_key(self, **params) -> str:
         """Generate CosyVoice3 cache key from parameters."""
         # Round floating point values to avoid precision issues
         speed = params.get('speed', 1.0)
-        
+
         if isinstance(speed, (int, float)):
             speed = round(float(speed), 3)
-        
+
         cache_data = {
             'text': params.get('text', ''),
             'speaker_audio': params.get('speaker_audio', ''),
@@ -289,7 +289,58 @@ class CosyVoiceCacheKeyGenerator(CacheKeyGenerator):
             'character': params.get('character', 'narrator'),
             'engine': 'cosyvoice'
         }
-        
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
+class Qwen3TTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Qwen3-TTS engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        """Generate Qwen3-TTS cache key from parameters."""
+        # Round floating point values to avoid precision issues
+        temperature = params.get('temperature', 0.9)
+        top_p = params.get('top_p', 1.0)
+        repetition_penalty = params.get('repetition_penalty', 1.05)
+        subtalker_temperature = params.get('subtalker_temperature', 0.9)
+        subtalker_top_p = params.get('subtalker_top_p', 1.0)
+
+        if isinstance(temperature, (int, float)):
+            temperature = round(float(temperature), 3)
+        if isinstance(top_p, (int, float)):
+            top_p = round(float(top_p), 3)
+        if isinstance(repetition_penalty, (int, float)):
+            repetition_penalty = round(float(repetition_penalty), 3)
+        if isinstance(subtalker_temperature, (int, float)):
+            subtalker_temperature = round(float(subtalker_temperature), 3)
+        if isinstance(subtalker_top_p, (int, float)):
+            subtalker_top_p = round(float(subtalker_top_p), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model_type': params.get('model_type', 'Base'),  # CustomVoice, VoiceDesign, Base
+            'speaker': params.get('speaker', ''),
+            'instruct': params.get('instruct', ''),
+            'language': params.get('language', 'Auto'),
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': params.get('top_k', 50),
+            'repetition_penalty': repetition_penalty,
+            'max_new_tokens': params.get('max_new_tokens', 2048),
+            'subtalker_temperature': subtalker_temperature,
+            'subtalker_top_p': subtalker_top_p,
+            'subtalker_top_k': params.get('subtalker_top_k', 50),
+            'seed': params.get('seed', 0),
+            'model_size': params.get('model_size', '1.7B'),
+            'device': params.get('device', 'auto'),
+            'dtype': params.get('dtype', 'auto'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'qwen3_tts'
+        }
+
         cache_string = str(sorted(cache_data.items()))
         return hashlib.md5(cache_string.encode()).hexdigest()
 
@@ -306,7 +357,8 @@ class AudioCache:
             'vibevoice': VibeVoiceCacheKeyGenerator(),
             'step_audio_editx': StepAudioEditXCacheKeyGenerator(),
             'index_tts': IndexTTSCacheKeyGenerator(),
-            'cosyvoice': CosyVoiceCacheKeyGenerator()
+            'cosyvoice': CosyVoiceCacheKeyGenerator(),
+            'qwen3_tts': Qwen3TTSCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):
@@ -377,7 +429,7 @@ class AudioCache:
             num_samples = audio_tensor.numel()
 
         # Use engine-specific sample rates
-        if engine_type in ('f5tts', 'step_audio_editx'):
+        if engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts'):
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050

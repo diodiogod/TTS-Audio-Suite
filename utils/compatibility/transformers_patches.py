@@ -40,6 +40,8 @@ class TransformersPatches:
         cls.patch_accelerate_compatibility(verbose=verbose)
         # Step Audio EditX tokenization patch no longer needed - fixed via config.json
         # cls.patch_step_audio_tokenization(verbose=verbose)
+        # Qwen3-TTS check_model_inputs patch no longer needed - fixed directly in bundled code
+        # cls.patch_qwen3_tts_check_model_inputs(verbose=verbose)
     
     @classmethod
     def patch_flash_attention_kwargs(cls, verbose: bool = True):
@@ -581,6 +583,11 @@ class TransformersPatches:
                 print(f"   ❌ transformers not available: {e}")
         except Exception as e:
             warnings.warn(f"Step Audio EditX tokenization patching failed: {e}")
+
+    # REMOVED: patch_qwen3_tts_check_model_inputs
+    # This patch is no longer needed - the @check_model_inputs() decorator has been
+    # removed directly from the bundled Qwen3-TTS code in:
+    # engines/qwen3_tts/impl/qwen_tts/core/tokenizer_12hz/modeling_qwen3_tts_tokenizer_v2.py
 
     @classmethod
     def get_applied_patches(cls):

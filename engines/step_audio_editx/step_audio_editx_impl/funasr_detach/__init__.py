@@ -24,8 +24,8 @@ def import_submodules(package, recursive=True):
         try:
             results[name] = importlib.import_module(name)
         except Exception as e:
-            # Debug: Print import errors to help diagnose model registration failures
-            print(f"⚠️ FunASR import failed - {name}: {e}")
+            # Silently ignore import errors for unused FunASR modules
+            # (many bundled modules have missing dependencies we don't need)
             pass
         if recursive and is_pkg:
             results.update(import_submodules(name))

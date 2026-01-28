@@ -39,13 +39,35 @@ def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = 
     if reference_audio is not None:
         # For direct audio input, hash the waveform data
         try:
-            # print(f"🐛 AUDIO_HASH: Hashing reference_audio with keys: {list(reference_audio.keys())}")
-            waveform_hash = hashlib.md5(reference_audio["waveform"].cpu().numpy().tobytes()).hexdigest()
-            result = f"ref_audio_{waveform_hash}_{reference_audio['sample_rate']}"
+            # Handle nested structure from Character Voices / Voice Designer
+            # Format: {"audio": {"waveform": tensor, "sample_rate": N}, ...}
+            if "audio" in reference_audio and isinstance(reference_audio["audio"], dict):
+                audio_dict = reference_audio["audio"]
+            else:
+                # Direct format: {"waveform": tensor, "sample_rate": N}
+                audio_dict = reference_audio
+
+            # Extract waveform tensor
+            waveform = audio_dict["waveform"]
+            sample_rate = audio_dict["sample_rate"]
+
+            # Check if waveform is actually a tensor
+            import torch
+            if not isinstance(waveform, torch.Tensor):
+                print(f"⚠️ Audio hash: waveform is {type(waveform)}, not tensor")
+                print(f"   Keys in audio_dict: {list(audio_dict.keys())}")
+                print(f"   Keys in reference_audio: {list(reference_audio.keys())}")
+                return "ref_audio_error_not_tensor"
+
+            # Hash the waveform
+            waveform_hash = hashlib.md5(waveform.cpu().numpy().tobytes()).hexdigest()
+            result = f"ref_audio_{waveform_hash}_{sample_rate}"
             # print(f"🐛 AUDIO_HASH: Generated hash: {result}")
             return result
         except Exception as e:
             print(f"⚠️ Failed to hash reference audio: {e}")
+            print(f"   reference_audio type: {type(reference_audio)}")
+            print(f"   reference_audio keys: {list(reference_audio.keys()) if isinstance(reference_audio, dict) else 'N/A'}")
             # print(f"🐛 AUDIO_HASH: ERROR - returning 'ref_audio_error'")
             return "ref_audio_error"
     

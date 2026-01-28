@@ -6,6 +6,35 @@
 
 Don't ever make PLACEHOLDERS during implementation.
 
+## Implementation Methodology
+
+**Recommended Approach: Implement First, Then Compare**
+
+When creating new engine components (wrapper, downloader, adapter, processor), follow this pattern:
+
+1. **Implement based on understanding**: Write code using:
+   - This guide's patterns and requirements
+   - Implementation plan for the specific engine
+   - `fails_to_avoid_TTS_Engine_Implementation.md` lessons
+   - Engine-specific architecture documents
+
+2. **Compare with reference implementation**: After writing, compare your code with the corresponding Step Audio EditX file:
+   - Engine wrapper → `engines/step_audio_editx/step_audio_editx.py`
+   - Downloader → `engines/step_audio_editx/step_audio_editx_downloader.py`
+   - Adapter → `engines/adapters/step_audio_editx_adapter.py`
+   - Processor → `nodes/step_audio_editx/step_audio_editx_processor.py`
+
+3. **Fix discrepancies**: Correct patterns, imports, and methods that don't match established conventions
+
+**Why this approach works better than copying:**
+- **Learning reinforcement**: Making and fixing mistakes creates stronger memory patterns
+- **Adaptation not copying**: Each engine has unique requirements that pure copying might miss
+- **Faster iteration**: Write quickly, then one focused comparison pass catches issues
+- **Documents real mistakes**: Comparison reveals actual errors worth adding to fails doc
+- **Preserves reasoning**: Shows understanding of WHY patterns exist, not just WHAT they are
+
+This is the pattern that successfully created Step Audio EditX and should be followed for all future engines.
+
 ## Pre-Implementation Analysis
 
 ### 1. Research the Original Implementation
