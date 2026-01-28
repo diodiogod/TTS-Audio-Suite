@@ -23,6 +23,8 @@ from utils.text.segment_parameters import apply_segment_parameters
 from utils.text.pause_processor import PauseTagProcessor
 from engines.adapters.qwen3_tts_adapter import Qwen3TTSEngineAdapter
 from utils.models.language_mapper import resolve_language_alias
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 
 
 class Qwen3TTSProcessor:
@@ -353,6 +355,15 @@ class Qwen3TTSProcessor:
         if not self._srt_mode:
             self.adapter.end_job()
 
+        # Apply inline edit tags post-processing if any segments have edit_tags
+        if any(seg.get('edit_tags') for seg in audio_segments):
+            print(f"🎨 Applying Step Audio EditX inline edit tags post-processing...")
+            audio_segments = apply_edit_post_processing(
+                audio_segments,
+                self.config,
+                pre_loaded_engine=None  # Will load Step EditX engine if needed
+            )
+
         return audio_segments
 
     def _process_character_block(self, character: str, combined_text: str,
@@ -426,7 +437,10 @@ class Qwen3TTSProcessor:
             # Get language for logging
             segment_lang = params.get('language', 'Auto')
 
-            chunks = self.chunker.split_into_chunks(combined_text, max_chars)
+            # Extract inline edit tags BEFORE chunking
+            combined_text_clean, combined_text_edit_tags = get_edit_tags_for_segment(combined_text)
+
+            chunks = self.chunker.split_into_chunks(combined_text_clean, max_chars)
             print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks (Language: {segment_lang}){voice_note}")
 
             for chunk_idx, chunk in enumerate(chunks):
@@ -458,7 +472,8 @@ class Qwen3TTSProcessor:
                     'waveform': audio_tensor,
                     'sample_rate': 24000,
                     'character': character,
-                    'text': chunk
+                    'text': chunk,
+                    'edit_tags': combined_text_edit_tags  # Pass edit tags for post-processing
                 }
                 audio_segments.append(audio_dict)
         else:
@@ -473,18 +488,21 @@ class Qwen3TTSProcessor:
             # Get language for logging
             segment_lang = params.get('language', 'Auto')
 
+            # Extract inline edit tags BEFORE generation
+            combined_text_clean, combined_text_edit_tags = get_edit_tags_for_segment(combined_text)
+
             print(f"🎭 Qwen3-TTS - Generating for '{character}' (Language: {segment_lang}){voice_note}:")
             print("="*60)
-            print(combined_text)
+            print(combined_text_clean)
             print("="*60)
 
             # Set current segment for time tracking (skip in SRT mode - managed at subtitle level)
             if not self._srt_mode:
                 self.adapter.set_current_block(self._chunk_idx)
 
-            # Process pause tags
+            # Process pause tags with clean text
             audio_tensor = self.adapter.generate_with_pause_tags(
-                combined_text, voice_ref, params, True, character
+                combined_text_clean, voice_ref, params, True, character
             )
 
             # Mark segment as completed for time tracking (skip in SRT mode)
@@ -502,7 +520,8 @@ class Qwen3TTSProcessor:
                 'waveform': audio_tensor,
                 'sample_rate': 24000,
                 'character': character,
-                'text': combined_text
+                'text': combined_text_clean,
+                'edit_tags': combined_text_edit_tags  # Pass edit tags for post-processing
             }
             audio_segments.append(audio_dict)
 
