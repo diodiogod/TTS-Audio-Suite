@@ -361,10 +361,12 @@ class AudioProcessingUtils:
         temp_file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
         temp_file.close()
         
-        # Normalize audio for saving
+        # Normalize audio for saving (torchaudio.save requires 2D: [channels, samples])
         if audio.dim() == 3:
             audio = audio.squeeze(0)  # Remove batch dimension
-        
+        elif audio.dim() == 1:
+            audio = audio.unsqueeze(0)  # Add channel dimension
+
         torchaudio.save(temp_file.name, audio, sample_rate)
         return temp_file.name
     

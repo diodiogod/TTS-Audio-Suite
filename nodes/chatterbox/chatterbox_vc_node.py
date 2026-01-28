@@ -32,6 +32,7 @@ base_spec.loader.exec_module(base_module)
 BaseVCNode = base_module.BaseVCNode
 
 import torchaudio
+from utils.audio.processing import AudioProcessingUtils
 
 # Global cache for VC iterations (max 5 to avoid memory issues)
 GLOBAL_VC_ITERATION_CACHE = {}
@@ -119,31 +120,20 @@ class ChatterboxVCNode(BaseVCNode):
         source_audio = self._get_audio(source_audio, "source_audio")
         target_audio = self._get_audio(target_audio, "target_audio")
         
-        # Save source audio to temporary file
-        source_temp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-        source_temp.close()
+        # Save audio to temporary files using centralized function
+        source_temp_path = AudioProcessingUtils.save_audio_to_temp_file(
+            source_audio["waveform"].cpu(),
+            source_audio["sample_rate"]
+        )
+        self._temp_files.append(source_temp_path)
+
+        target_temp_path = AudioProcessingUtils.save_audio_to_temp_file(
+            target_audio["waveform"].cpu(),
+            target_audio["sample_rate"]
+        )
+        self._temp_files.append(target_temp_path)
         
-        source_waveform = source_audio["waveform"]
-        # Normalize to 2D for torchaudio.save (channels, samples)
-        while source_waveform.dim() > 2:
-            source_waveform = source_waveform.squeeze(0)  # Remove batch/extra dimensions
-
-        torchaudio.save(source_temp.name, source_waveform.cpu(), source_audio["sample_rate"])
-        self._temp_files.append(source_temp.name)
-
-        # Save target audio to temporary file
-        target_temp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-        target_temp.close()
-
-        target_waveform = target_audio["waveform"]
-        # Normalize to 2D for torchaudio.save (channels, samples)
-        while target_waveform.dim() > 2:
-            target_waveform = target_waveform.squeeze(0)  # Remove batch/extra dimensions
-
-        torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
-        self._temp_files.append(target_temp.name)
-        
-        return source_temp.name, target_temp.name
+        return source_temp_path, target_temp_path
 
     def convert_voice(self, source_audio, target_audio, refinement_passes, device, language="English"):
         """
@@ -215,16 +205,11 @@ class ChatterboxVCNode(BaseVCNode):
                 return (cached_iterations[refinement_passes],)
             
             # Prepare target audio file (constant across all iterations)
-            target_temp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            target_temp.close()
-            
-            target_waveform = target_audio["waveform"]
-            # Normalize to 2D for torchaudio.save (channels, samples)
-            while target_waveform.dim() > 2:
-                target_waveform = target_waveform.squeeze(0)  # Remove batch/extra dimensions
-
-            torchaudio.save(target_temp.name, target_waveform.cpu(), target_audio["sample_rate"])
-            self._temp_files.append(target_temp.name)
+            target_temp_path = AudioProcessingUtils.save_audio_to_temp_file(
+                target_audio["waveform"].cpu(),
+                target_audio["sample_rate"]
+            )
+            self._temp_files.append(target_temp_path)
             
             # Start from the highest cached iteration or from beginning
             start_iteration = 0
@@ -253,19 +238,18 @@ class ChatterboxVCNode(BaseVCNode):
                     # Prepare current source audio file
                     source_temp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
                     source_temp.close()
-                    
-                    source_waveform = current_audio["waveform"]
-                    # Normalize to 2D for torchaudio.save (channels, samples)
-                    while source_waveform.dim() > 2:
-                        source_waveform = source_waveform.squeeze(0)  # Remove batch/extra dimensions
 
-                    torchaudio.save(source_temp.name, source_waveform.cpu(), current_audio["sample_rate"])
-                    self._temp_files.append(source_temp.name)
-                    
+                    # Save current audio to temp file using centralized function
+                    source_temp_path_iter = AudioProcessingUtils.save_audio_to_temp_file(
+                        current_audio["waveform"].cpu(),
+                        current_audio["sample_rate"]
+                    )
+                    self._temp_files.append(source_temp_path_iter)
+
                     # Perform voice conversion
                     wav = self.vc_model.generate(
-                        source_temp.name,
-                        target_voice_path=target_temp.name
+                        source_temp_path_iter,
+                        target_voice_path=target_temp_path
                     )
                     
                     # Update current_audio for next iteration
