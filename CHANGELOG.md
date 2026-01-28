@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.0] - 2026-01-28
+
+### Added
+
+- Add Qwen3-TTS engine with voice design capabilities
+- New Qwen3-TTS engine supporting 0.6B and 1.7B models
+- Three model types: CustomVoice (9 preset speakers), VoiceDesign (create voices from text descriptions), Base (zero-shot voice cloning)
+- Support for 10 languages (Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian)
+- Voice Designer node creates custom voices from natural language descriptions
+- Full SRT subtitle support with character switching and all timing modes
+- Sage attention support for improved VRAM efficiency
+- Step Audio EditX inline edit tags for post-processing (emotions, styles, paralinguistic effects)
+- Auto-download system for all 6 model variants
+
+### Changed
+
+- Smart caching prevents duplicate voice generation
 ## [4.18.0] - 2026-01-26
 
 ### Added
