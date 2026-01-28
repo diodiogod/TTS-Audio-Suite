@@ -173,6 +173,14 @@ class Qwen3TTSEngine:
         CRITICAL for ComfyUI model management - ensures all components move together
         when models are detached to CPU and later reloaded to CUDA.
 
+        Qwen3-TTS structure:
+        - _model (Qwen3TTSModel wrapper)
+          - _model.model (Qwen3TTSForConditionalGeneration)
+            - _model.model.talker (Qwen3TTSTalkerForConditionalGeneration)
+            - _model.model.speaker_encoder (Qwen3TTSSpeakerEncoder, Base only)
+            - _model.model.speech_tokenizer (optional)
+          - _model.processor (Qwen3TTSProcessor)
+
         Args:
             device: Target device ("cuda", "cpu", or torch.device)
         """
@@ -183,11 +191,29 @@ class Qwen3TTSEngine:
             print(f"🔄 Moving Qwen3-TTS model to {device}")
 
             try:
-                # Qwen3TTSModel should have .to() method that moves all sub-components
+                # Move top-level wrapper (should recursively move most components)
                 if hasattr(self._model, 'to'):
                     self._model = self._model.to(device)
 
-                # Update device attribute on model if it exists
+                # Explicitly move nested Qwen3TTSForConditionalGeneration model
+                if hasattr(self._model, 'model') and hasattr(self._model.model, 'to'):
+                    self._model.model = self._model.model.to(device)
+
+                    # Move talker (main TTS component)
+                    if hasattr(self._model.model, 'talker') and hasattr(self._model.model.talker, 'to'):
+                        self._model.model.talker = self._model.model.talker.to(device)
+
+                    # Move speaker_encoder (Base model only, may be None)
+                    if hasattr(self._model.model, 'speaker_encoder') and self._model.model.speaker_encoder is not None:
+                        if hasattr(self._model.model.speaker_encoder, 'to'):
+                            self._model.model.speaker_encoder = self._model.model.speaker_encoder.to(device)
+
+                    # Move speech_tokenizer (optional, may be None)
+                    if hasattr(self._model.model, 'speech_tokenizer') and self._model.model.speech_tokenizer is not None:
+                        if hasattr(self._model.model.speech_tokenizer, 'to'):
+                            self._model.model.speech_tokenizer = self._model.model.speech_tokenizer.to(device)
+
+                # Update device attribute on wrapper
                 if hasattr(self._model, 'device'):
                     self._model.device = torch.device(device) if isinstance(device, str) else device
 

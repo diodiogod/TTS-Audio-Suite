@@ -410,12 +410,21 @@ class Qwen3TTSEngineAdapter:
         # This ensures different voices generate different cache keys
         from utils.audio.audio_hash import generate_stable_audio_component
         if voice_ref and isinstance(voice_ref, dict):
-            # Extract the audio dict from voice_ref (unified Character Voices format)
-            # voice_ref = {"audio": {"waveform": ..., "sample_rate": ...}, "audio_path": ..., ...}
-            audio_dict = voice_ref.get("audio") if "audio" in voice_ref else voice_ref
-            audio_component = generate_stable_audio_component(reference_audio=audio_dict)
+            # Check if voice_ref has audio tensor or file path
+            if "audio" in voice_ref:
+                # Unified Character Voices format: {"audio": {"waveform": ..., "sample_rate": ...}, "audio_path": ..., ...}
+                audio_dict = voice_ref.get("audio")
+                audio_component = generate_stable_audio_component(reference_audio=audio_dict)
+            elif ref_audio_original and isinstance(ref_audio_original, str):
+                # File path format: {"audio_path": "/path/to/file.wav", "reference_text": "..."}
+                audio_component = generate_stable_audio_component(audio_file_path=ref_audio_original)
+            elif "waveform" in voice_ref:
+                # Direct tensor format: {"waveform": tensor, "sample_rate": 24000}
+                audio_component = generate_stable_audio_component(reference_audio=voice_ref)
+            else:
+                audio_component = "default_voice"
         elif ref_audio_original and isinstance(ref_audio_original, str):
-            # File path case
+            # File path case (voice_ref is None but ref_audio_original extracted)
             audio_component = generate_stable_audio_component(audio_file_path=ref_audio_original)
         else:
             audio_component = "default_voice"

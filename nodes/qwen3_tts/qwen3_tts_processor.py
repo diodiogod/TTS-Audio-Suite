@@ -340,6 +340,13 @@ class Qwen3TTSProcessor:
 
             # Apply per-segment parameters
             segment_params = params.copy()
+
+            # Apply segment language if character has language default
+            if hasattr(segment, 'language') and segment.language:
+                segment_params['language'] = self._language_name_to_code(segment.language)
+                if segment.language != params.get('language', 'Auto'):
+                    print(f"  🌍 Language switched to: {segment_params['language']}")
+
             if segment.parameters:
                 seg_param_updates = apply_segment_parameters(segment_params, segment.parameters, 'qwen3_tts')
                 segment_params.update(seg_param_updates)
