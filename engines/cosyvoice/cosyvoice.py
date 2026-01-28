@@ -190,36 +190,42 @@ class CosyVoiceEngine:
         self._cosyvoice = unified_model_interface.load_model(self._model_config)
     
     def _ensure_device_loaded(self):
-        """Check and reload model if it was offloaded to CPU."""
-        from utils.device import resolve_torch_device
-        target_device = resolve_torch_device("auto")
-        
+        """
+        Check and reload model if it was offloaded to CPU.
+
+        Delegates to the ComfyUI wrapper's model_load() method for proper device management.
+        """
         if self._cosyvoice is None:
             return
-        
-        # Check if model was offloaded - look for a model component
-        model_component = None
-        if hasattr(self._cosyvoice, 'model') and hasattr(self._cosyvoice.model, 'llm'):
-            model_component = self._cosyvoice.model.llm
-        elif hasattr(self._cosyvoice, 'llm'):
-            model_component = self._cosyvoice.llm
-        
-        if model_component is not None and hasattr(model_component, 'parameters'):
-            try:
-                first_param = next(model_component.parameters())
-                current_device = str(first_param.device)
-                
-                if current_device != target_device:
-                    # Use unified model manager for device movement
-                    try:
-                        from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
-                        if not tts_model_manager.ensure_device("cosyvoice", target_device):
-                            # Fallback to direct movement
-                            self.to(target_device)
-                    except Exception:
-                        self.to(target_device)
-            except StopIteration:
-                pass
+
+        from utils.device import resolve_torch_device
+        target_device = resolve_torch_device("auto")
+
+        # The unified interface returns a ComfyUIModelWrapper, not the raw model
+        # Check if wrapper indicates model is not on GPU
+        if hasattr(self._cosyvoice, '_is_loaded_on_gpu') and not self._cosyvoice._is_loaded_on_gpu:
+            # Model was offloaded, use wrapper's model_load to properly reload
+            if hasattr(self._cosyvoice, 'model_load'):
+                self._cosyvoice.model_load(target_device)
+            return
+
+        # Also check actual component devices as a safety check
+        if hasattr(self._cosyvoice, 'model'):
+            cosyvoice_model = self._cosyvoice.model
+
+            # Check llm component device
+            if hasattr(cosyvoice_model, 'llm') and hasattr(cosyvoice_model.llm, 'parameters'):
+                try:
+                    first_param = next(cosyvoice_model.llm.parameters())
+                    current_device = first_param.device
+
+                    # Normalize device comparison (cuda:0 == cuda)
+                    if current_device.type != torch.device(target_device).type:
+                        # Device mismatch detected, trigger reload
+                        if hasattr(self._cosyvoice, 'model_load'):
+                            self._cosyvoice.model_load(target_device)
+                except StopIteration:
+                    pass
     
     def generate_zero_shot(
         self,
@@ -617,28 +623,14 @@ class CosyVoiceEngine:
         """
         Move all model components to the specified device.
 
-        Critical for ComfyUI model management - ensures all components move together
-        when models are detached to CPU and later reloaded to CUDA.
+        Delegates to the CosyVoiceHandler via the ComfyUI wrapper for proper
+        component-level device management.
         """
         self.device = device
 
-        # Move the underlying CosyVoice model if loaded
-        if self._cosyvoice is not None:
-            # CosyVoice has model, frontend components
-            if hasattr(self._cosyvoice, 'model') and hasattr(self._cosyvoice.model, 'to'):
-                try:
-                    self._cosyvoice.model = self._cosyvoice.model.to(device)
-                except ValueError as e:
-                    if "is not supported for" in str(e) and ("8-bit" in str(e) or "4-bit" in str(e)):
-                        if not self._quantized_move_warning_shown:
-                            print(f"⚠️ Skipping device move for quantized model: {e}")
-                            self._quantized_move_warning_shown = True
-                    else:
-                        raise
-
-            # Update device attribute
-            if hasattr(self._cosyvoice, 'device'):
-                self._cosyvoice.device = torch.device(device) if isinstance(device, str) else device
+        # Delegate to the ComfyUI wrapper's model_load which uses CosyVoiceHandler
+        if self._cosyvoice is not None and hasattr(self._cosyvoice, 'model_load'):
+            self._cosyvoice.model_load(device)
 
         return self
 

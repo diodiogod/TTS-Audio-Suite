@@ -10,8 +10,9 @@ async function sendSettingsToBackend() {
         const precision = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Precision", "auto");
         const device = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Device", "auto");
         const vcEngine = app.ui.settings.getSettingValue("TTSAudioSuite.RestoreTags.VCEngine", "chatterbox_23lang");
+        const cosyvoiceVariant = app.ui.settings.getSettingValue("TTSAudioSuite.RestoreTags.CosyVoiceVariant", "RL");
 
-        console.log(`TTS Audio Suite: Sending settings to backend - precision=${precision}, device=${device}, vcEngine=${vcEngine}`);
+        console.log(`TTS Audio Suite: Sending settings to backend - precision=${precision}, device=${device}, vcEngine=${vcEngine}, cosyvoiceVariant=${cosyvoiceVariant}`);
 
         const response = await fetch("/api/tts-audio-suite/settings", {
             method: "POST",
@@ -21,7 +22,8 @@ async function sendSettingsToBackend() {
             body: JSON.stringify({
                 precision: precision,
                 device: device,
-                vc_engine: vcEngine
+                vc_engine: vcEngine,
+                cosyvoice_variant: cosyvoiceVariant
             })
         });
 
@@ -77,6 +79,20 @@ app.registerExtension({
                 "ChatterBox 23-Lang (default): Best quality, supports 23 languages\n" +
                 "ChatterBox: Original engine, English/German/Norwegian\n" +
                 "CosyVoice: New option with native CosyVoice3 VC (24kHz output)\n\n" +
+                "⚠️ IMPORTANT: Refresh browser (F5) after changing settings for them to take effect."
+        },
+        {
+            id: "TTSAudioSuite.RestoreTags.CosyVoiceVariant",
+            name: "CosyVoice Model Variant for <restore> Tags",
+            type: "combo",
+            defaultValue: "RL",
+            options: ["RL", "standard"],
+            category: [SETTING_CATEGORY, SETTING_SECTION_RESTORE_VC, "CosyVoice Variant"],
+            tooltip:
+                "CosyVoice model variant to use for voice restoration (only applies when VC Engine is CosyVoice).\n" +
+                "RL: Fun-CosyVoice3-0.5B-RL (reinforcement learning variant, default)\n" +
+                "standard: Fun-CosyVoice3-0.5B (standard variant)\n\n" +
+                "💡 Tip: Match this to the variant you use for TTS to avoid model unload/reload during restore.\n\n" +
                 "⚠️ IMPORTANT: Refresh browser (F5) after changing settings for them to take effect."
         }
     ],

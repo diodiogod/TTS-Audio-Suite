@@ -312,8 +312,9 @@ def setup_api_routes():
                 precision = data.get("precision", "auto")
                 device = data.get("device", "auto")
                 vc_engine = data.get("vc_engine", "chatterbox_23lang")
+                cosyvoice_variant = data.get("cosyvoice_variant", "RL")
 
-                print(f"🔧 Received settings: precision={precision}, device={device}, vc_engine={vc_engine}")
+                print(f"🔧 Received settings: precision={precision}, device={device}, vc_engine={vc_engine}, cosyvoice_variant={cosyvoice_variant}")
 
                 # Import edit_post_processor using normal import to ensure we get the same module instance
                 # that will be used during workflow execution
@@ -329,9 +330,9 @@ def setup_api_routes():
                     spec.loader.exec_module(edit_post_processor_module)
 
                 # Store in global settings that edit_post_processor can access
-                edit_post_processor_module.set_inline_tag_settings(precision=precision, device=device, vc_engine=vc_engine)
+                edit_post_processor_module.set_inline_tag_settings(precision=precision, device=device, vc_engine=vc_engine, cosyvoice_variant=cosyvoice_variant)
 
-                return web.json_response({"status": "success", "precision": precision, "device": device, "vc_engine": vc_engine})
+                return web.json_response({"status": "success", "precision": precision, "device": device, "vc_engine": vc_engine, "cosyvoice_variant": cosyvoice_variant})
             except Exception as e:
                 print(f"⚠️ Error setting inline tag settings: {e}")
                 return web.json_response({"status": "error", "error": str(e)})

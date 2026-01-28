@@ -29,7 +29,8 @@ _audio_editor_node = None
 _inline_tag_settings = {
     "precision": "auto",
     "device": "auto",
-    "vc_engine": "chatterbox_23lang"  # Default VC engine for <restore> tags
+    "vc_engine": "chatterbox_23lang",  # Default VC engine for <restore> tags
+    "cosyvoice_variant": "RL"  # CosyVoice model variant: "RL" or "standard"
 }
 
 # Settings cache file to persist across module reloads
@@ -47,7 +48,7 @@ except Exception:
     pass
 
 
-def set_inline_tag_settings(precision: str = "auto", device: str = "auto", vc_engine: str = "chatterbox_23lang"):
+def set_inline_tag_settings(precision: str = "auto", device: str = "auto", vc_engine: str = "chatterbox_23lang", cosyvoice_variant: str = "RL"):
     """
     Set global settings for inline edit tag processing and voice restoration.
     Called from the API endpoint when user changes settings in ComfyUI menu.
@@ -56,13 +57,17 @@ def set_inline_tag_settings(precision: str = "auto", device: str = "auto", vc_en
         precision: Model precision (auto, fp32, fp16, bf16, int8, int4)
         device: Device (auto, cuda, cpu, xpu)
         vc_engine: Voice conversion engine for <restore> tags (chatterbox_23lang, chatterbox, cosyvoice)
+        cosyvoice_variant: CosyVoice model variant (RL, standard) - only used when vc_engine is cosyvoice
     """
     global _inline_tag_settings
     _inline_tag_settings["precision"] = precision
     _inline_tag_settings["device"] = device
     _inline_tag_settings["vc_engine"] = vc_engine
+    _inline_tag_settings["cosyvoice_variant"] = cosyvoice_variant
     print(f"🎨 Step Audio EditX inline tags: precision={precision}, device={device}")
     print(f"🔄 Voice restoration engine: {vc_engine}")
+    if vc_engine == "cosyvoice":
+        print(f"   CosyVoice variant: {cosyvoice_variant}")
 
     # Save to cache file to persist across module reloads
     try:
@@ -272,12 +277,23 @@ def _restore_voice_via_vc(edited_audio_dict, original_voice_dict, iterations=1, 
 
     # Create engine config based on selected VC engine
     if vc_engine == "cosyvoice":
+        # Get CosyVoice variant from settings
+        settings = get_inline_tag_settings()
+        variant = settings.get("cosyvoice_variant", "RL")
+
+        # Map variant to model path
+        if variant == "RL":
+            model_path = "local:Fun-CosyVoice3-0.5B-RL"
+        else:
+            model_path = "local:Fun-CosyVoice3-0.5B"
+
         engine_config = {
             'engine_type': 'cosyvoice',
             'config': {
                 'device': 'auto',
                 'mode': 'zero_shot',  # Use zero_shot for VC
-                'speed': 1.0
+                'speed': 1.0,
+                'model_path': model_path
             }
         }
     elif vc_engine == "chatterbox":

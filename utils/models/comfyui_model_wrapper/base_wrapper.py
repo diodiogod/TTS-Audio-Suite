@@ -213,17 +213,33 @@ class ComfyUIModelWrapper:
                 print(f"⚠️ Could not use ensure_device() for clearing, proceeding with direct load: {e}")
 
         try:
-            # Move model back to GPU (comprehensive approach)
-            if hasattr(model, 'to'):
-                model.to(target_device)
-                print(f"🔄 Moved main {self.model_info.model_type} model ({self.model_info.engine}) to {target_device}")
+            # Check if engine handler has custom load logic
+            from .engine_handlers import get_engine_handler
+            handler = get_engine_handler(self.model_info.engine)
 
-            # CRITICAL: Recursively move ALL nested components to ensure device consistency
-            self._move_all_components_to_device(model, target_device, depth=0)
+            # Try engine-specific partial_load first (e.g., CosyVoice needs special handling)
+            if hasattr(handler, 'partially_load'):
+                success = handler.partially_load(self, str(target_device))
+                if success:
+                    self.current_device = target_device
+                    self._is_loaded_on_gpu = True
+                    # Skip the generic movement code below
+                else:
+                    print(f"⚠️ Engine handler partially_load failed, falling back to generic movement")
+                    # Fall through to generic movement
+            else:
+                # Generic movement for engines without custom partially_load
+                # Move model back to GPU (comprehensive approach)
+                if hasattr(model, 'to'):
+                    model.to(target_device)
+                    print(f"🔄 Moved main {self.model_info.model_type} model ({self.model_info.engine}) to {target_device}")
 
-            self.current_device = target_device
-            self._is_loaded_on_gpu = True
-            print(f"✅ Fully moved {self.model_info.model_type} model components ({self.model_info.engine}) back to {target_device}")
+                # CRITICAL: Recursively move ALL nested components to ensure device consistency
+                self._move_all_components_to_device(model, target_device, depth=0)
+
+                self.current_device = target_device
+                self._is_loaded_on_gpu = True
+                print(f"✅ Fully moved {self.model_info.model_type} model components ({self.model_info.engine}) back to {target_device}")
 
             # Re-register with ComfyUI after reload so "Clear VRAM" continues to work
             try:

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.5] - 2026-01-28
+
+### Added
+
+- Add CosyVoice model variant setting (RL/standard) for <restore> tags in settings menu
+- Prevent unnecessary model reload when TTS and VC use the same variant
+
+### Changed
+
+- Improve device management to properly reload CosyVoice components after unload
+
+### Fixed
+
+- Fix CosyVoice voice restoration device errors and add variant setting
+- Fix "Expected all tensors to be on the same device" errors during CosyVoice <restore> tag processing
 ## [4.19.4] - 2026-01-28
 
 ### Changed

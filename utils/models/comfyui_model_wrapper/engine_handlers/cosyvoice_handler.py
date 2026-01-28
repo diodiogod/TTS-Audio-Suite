@@ -103,6 +103,81 @@ class CosyVoiceHandler(GenericHandler):
 
         return freed_memory
 
+    def partially_load(self, wrapper: 'ComfyUIModelWrapper', device: str) -> bool:
+        """
+        CosyVoice partial load - move components from CPU to GPU.
+
+        Mirrors partially_unload() by moving all CosyVoice components back to target device.
+        """
+        if wrapper._is_loaded_on_gpu:
+            return True
+
+        model = wrapper._model_ref() if wrapper._model_ref else None
+        if model is None:
+            return False
+
+        try:
+            # CosyVoice AutoModel has a 'model' attribute that contains the actual CosyVoice instance
+            # The CosyVoice instance has: llm, flow, hift, campplus components
+            if hasattr(model, 'model'):
+                cosyvoice_instance = model.model
+
+                # List of component names to move
+                component_names = ['llm', 'flow', 'hift', 'campplus']
+                components_moved = []
+
+                for comp_name in component_names:
+                    if hasattr(cosyvoice_instance, comp_name):
+                        component = getattr(cosyvoice_instance, comp_name)
+                        if component is not None and hasattr(component, 'to'):
+                            try:
+                                component.to(device)
+                                # CRITICAL: Move all nested modules to ensure device consistency
+                                # This fixes "Expected all tensors to be on the same device" errors
+                                for module in component.modules():
+                                    module.to(device)
+                                components_moved.append(comp_name)
+                            except Exception as e:
+                                print(f"⚠️ Failed to move CosyVoice {comp_name} to {device}: {e}")
+
+                if components_moved:
+                    wrapper.current_device = device
+                    wrapper._is_loaded_on_gpu = True
+                    print(f"🔄 Moved CosyVoice components ({', '.join(components_moved)}) to {device}")
+                    return True
+                else:
+                    print(f"⚠️ No CosyVoice components found to move")
+                    return False
+            else:
+                # Fallback: AutoModel might directly expose components
+                component_names = ['llm', 'flow', 'hift', 'campplus']
+                components_moved = []
+
+                for comp_name in component_names:
+                    if hasattr(model, comp_name):
+                        component = getattr(model, comp_name)
+                        if component is not None and hasattr(component, 'to'):
+                            try:
+                                component.to(device)
+                                # Move all nested modules
+                                for module in component.modules():
+                                    module.to(device)
+                                components_moved.append(comp_name)
+                            except Exception as e:
+                                print(f"⚠️ Failed to move CosyVoice {comp_name} to {device}: {e}")
+
+                if components_moved:
+                    wrapper.current_device = device
+                    wrapper._is_loaded_on_gpu = True
+                    print(f"🔄 Moved CosyVoice components ({', '.join(components_moved)}) to {device}")
+                    return True
+
+        except Exception as e:
+            print(f"⚠️ Failed to partially load CosyVoice model: {e}")
+            return False
+
+        return False
+
     def model_unload(self, wrapper: 'ComfyUIModelWrapper', memory_to_free: Optional[int], unpatch_weights: bool) -> bool:
         """
         CosyVoice full unload using CPU migration.
