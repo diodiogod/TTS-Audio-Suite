@@ -237,7 +237,25 @@ def main():
             print("Restoring backup...")
             vm.restore_files(backup)
             sys.exit(1)
-        
+
+        # Generate engine documentation tables
+        print("\nGenerating engine documentation tables...")
+        try:
+            table_gen_path = os.path.join(vm.project_root, "scripts", "generate_engine_tables.py")
+            result = subprocess.run(
+                [sys.executable, table_gen_path, "--readme"],
+                cwd=vm.project_root,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                print(f"Warning: Table generation had issues:\n{result.stderr}")
+            else:
+                print("✓ Engine tables and README updated")
+        except Exception as e:
+            print(f"Warning: Could not generate tables: {e}")
+            print("Continuing with version bump...")
+
         # Git operations
         if not args.no_commit:
             print("\nCommitting changes...")

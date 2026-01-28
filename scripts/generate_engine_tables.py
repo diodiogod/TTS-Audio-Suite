@@ -2,9 +2,11 @@
 """
 TTS Audio Suite - Engine Tables Generator
 Generates three documentation tables from YAML source of truth
+Also injects condensed table into README.md between markers
 """
 
 import yaml
+import re
 from pathlib import Path
 
 
@@ -25,6 +27,16 @@ def format_support(value, notes=""):
         return f"✅ {notes}" if notes else "✅"
     else:
         return "❌"
+
+
+def get_speed_emoji(speed_note):
+    """Convert speed note to emoji"""
+    if "Very Fast" in speed_note:
+        return "⚡⚡"
+    elif "Fast" in speed_note:
+        return "⚡"
+    else:
+        return "🐌"
 
 
 def generate_engine_comparison(data):
@@ -66,6 +78,77 @@ def generate_engine_comparison(data):
         ]
 
         output.append("| " + " | ".join(row) + " |")
+
+    return "\n".join(output)
+
+
+def generate_readme_condensed_table(data):
+    """Generate condensed table for README.md"""
+    engines = data["engines"]
+
+    output = []
+    output.append("## 🎯 Quick Engine Comparison")
+    output.append("")
+    output.append("| Engine | Languages | Size | Speed | Key Features |")
+    output.append("|--------|-----------|------|-------|--------------|")
+
+    # Select representative engines for README (not all 10)
+    featured_engines = ["f5-tts", "chatterbox-23l", "vibevoice", "qwen3-tts", "step-editx", "rvc"]
+
+    for e in engines:
+        if e["id"] not in featured_engines:
+            continue
+
+        # Get first 6-8 language flags
+        flags = []
+        count = 0
+        for lang_data in e["languages"].values():
+            if lang_data["supported"]:
+                flags.append(lang_data["flag"])
+                count += 1
+                if count >= 6:  # Limit to 6 flags for readability
+                    break
+
+        lang_display = "".join(flags)
+
+        # Special handling for ChatterBox 23L
+        if e["id"] == "chatterbox-23l":
+            lang_display = "🌐 24 languages"
+        # Special handling for RVC
+        elif e["id"] == "rvc":
+            lang_display = "🌐 Any"
+        else:
+            # Add count if more languages exist
+            total_langs = sum(1 for ld in e["languages"].values() if ld["supported"])
+            if total_langs > 6:
+                lang_display += f" +{total_langs - 6}"
+
+        # Get speed emoji
+        speed_note = e["features"]["speed_performance"]["notes"]
+        speed_emoji = get_speed_emoji(speed_note)
+
+        # Get 1-2 key features
+        special_features = e.get("special_features", [])
+        if len(special_features) > 2:
+            key_features = ", ".join(special_features[:2])
+        else:
+            key_features = ", ".join(special_features)
+
+        row = [
+            f"**{e['name']}**",
+            lang_display,
+            e["size"],
+            speed_emoji,
+            key_features
+        ]
+
+        output.append("| " + " | ".join(row) + " |")
+
+    # Add footer with links
+    output.append("")
+    output.append("📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | "
+                  "**[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | "
+                  "**[Feature matrix →](docs/FEATURE_COMPARISON.md)**")
 
     return "\n".join(output)
 
@@ -157,8 +240,43 @@ def generate_feature_comparison(data):
     return "\n".join(output)
 
 
+def inject_into_readme(condensed_table):
+    """Inject condensed table into README.md between markers"""
+    readme_path = Path(__file__).parent.parent / "README.md"
+
+    # Read current README
+    with open(readme_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Define markers
+    start_marker = "<!-- ENGINE_COMPARISON_START -->"
+    end_marker = "<!-- ENGINE_COMPARISON_END -->"
+
+    # Check if markers exist
+    if start_marker not in content or end_marker not in content:
+        print("⚠️  Markers not found in README.md")
+        print(f"   Please add these markers where you want the table:")
+        print(f"   {start_marker}")
+        print(f"   {end_marker}")
+        return False
+
+    # Replace content between markers
+    pattern = f"{re.escape(start_marker)}.*?{re.escape(end_marker)}"
+    replacement = f"{start_marker}\n\n{condensed_table}\n\n{end_marker}"
+
+    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+
+    # Write back
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    return True
+
+
 def main():
-    """Generate all three tables"""
+    """Generate all tables and optionally inject into README"""
+    import sys
+
     data = load_data()
     docs_dir = Path(__file__).parent.parent / "docs"
 
@@ -182,6 +300,22 @@ def main():
     with open(docs_dir / "FEATURE_COMPARISON.md", "w", encoding="utf-8") as f:
         f.write(feat_comp)
     print(f"✅ Written to {docs_dir / 'FEATURE_COMPARISON.md'}")
+
+    # Generate and inject condensed README table
+    print("\nGenerating condensed README table...")
+    condensed = generate_readme_condensed_table(data)
+
+    # Check if --readme flag is passed
+    if "--readme" in sys.argv:
+        print("Injecting into README.md...")
+        if inject_into_readme(condensed):
+            print("✅ README.md updated successfully!")
+        else:
+            print("❌ README.md injection failed (markers not found)")
+    else:
+        print("ℹ️  Condensed table generated (use --readme flag to inject into README.md)")
+        print("\nPreview:")
+        print(condensed)
 
     print("\n✅ All tables generated successfully!")
 
