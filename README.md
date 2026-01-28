@@ -57,12 +57,12 @@ Control               Official (23-lang)        90min Generation
 │
 │             🎨 Inline Editor Tags Era
 ▼                            |
-v4.12 ──────────────► v4.15 ────────────► v4.16
-Oct 25                Dez 25              Dez 25
-│                     │                   │
-Per-Seg Parameter     Step Audio EditX    CosyVoice3
-Switching [seed:24]   Inline Edit tags    TTS + VC
-                      <laughter:2>        
+v4.12 ──────────────► v4.15 ────────────► v4.16 ──────────► v4.19
+Oct 25                Dez 25              Dez 25          Jan 26
+│                     │                   │               │
+Per-Seg Parameter     Step Audio EditX    CosyVoice3      Qwen3-TTS
+Switching [seed:24]   Inline Edit tags    TTS + VC        3 Model Types
+                      <laughter:2>                        CustomVoice/VoiceDesign/Base        
 ```
 
 <details>
@@ -87,6 +87,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
   - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
+  - [🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design](#-qwen3-tts---3-model-types-with-text-to-voice-design)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
   - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
@@ -150,7 +151,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, and **CosyVoice3** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, and **Qwen3-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -716,6 +717,54 @@ Instruct: 用兴奋的语气说话。
 - Voice cloning with fine emotional control via instructions
 - Multi-character conversations across languages
 - Professional localization with native accent preservation
+
+</details>
+
+<details>
+<summary><h3>🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design</h3></summary>
+
+**NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning!
+
+**Model Types:**
+
+* **🎭 CustomVoice Model**: 9 preset multilingual speakers (Vivian, Serena, Uncle_Fu, Dylan, Eric, Ryan, Aiden, Ono_Anna, Sohee)
+  - Optional instruction field for style control ("Speak cheerfully", "Sound professional")
+  - Character switching auto-maps to different preset speakers
+
+* **✍️ VoiceDesign Model**: **UNIQUE** - Create voices from text descriptions
+  - Input: "A cheerful young woman with a bright, energetic tone"
+  - Output: Instant voice generation matching the description
+  - Smart disk caching for reuse across sessions
+
+* **🎤 Base Model**: Zero-shot voice cloning from 3-30s reference audio
+  - In-Context Learning (ICL) mode for best quality
+  - X-Vector mode for faster generation
+
+**Technical Specs:**
+
+* **🌍 10 Languages**: Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian
+* **📏 2 Model Sizes**: 0.6B and 1.7B parameter variants
+* **⚡ Attention Options**: eager, flash_attention_2, sdpa, sage_attn for performance tuning
+* **🔧 Generation Control**: Temperature, top_k, top_p, repetition_penalty parameters
+
+**Unified Features Support:**
+- Works with all project features: character switching, language switching, pause tags, SRT timing, Step Audio EditX post-processing
+
+**Voice Designer Node:**
+
+Unique text-to-voice generation node that creates voices from descriptions and outputs unified NARRATOR_VOICE format for use with any TTS node.
+
+```
+Description: "A deep, authoritative male voice with clear articulation"
+→ Voice generated and cached → Use in TTS Text/SRT nodes
+```
+
+**Perfect for:**
+
+- Quick multilingual content with preset speakers (CustomVoice)
+- **Creative voice design from text descriptions** (VoiceDesign) - **unique to Qwen3-TTS**
+- High-quality voice cloning with reference audio (Base)
+- Content requiring specific vocal characteristics defined by text
 
 </details>
 
@@ -1618,7 +1667,48 @@ ComfyUI/models/TTS/CosyVoice/
 
 **Usage**: Select CosyVoice3 from Unified TTS Engine → Choose model variant → Auto-download on first use!
 
-### 13. Restart ComfyUI
+### 13. Qwen3-TTS Models (NEW in v4.19+)
+
+**Repository:** [Qwen/Qwen3-TTS](https://huggingface.co/collections/Qwen/qwen3-tts-67898f07e56fcde8e7b57fb1) | **Size:** 0.6B (~1.5GB), 1.7B (~4.2GB) | **Auto-Download:** ✅
+
+**Model Types & Variants:**
+
+| Model Type | Size | Description | Repository | Auto-Download |
+|------------|------|-------------|------------|---------------|
+| **CustomVoice** | 0.6B / 1.7B | 9 preset speakers + instruction control | [0.6B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice) / [1.7B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) | ✅ |
+| **VoiceDesign** | 1.7B only | **Text-to-voice design** (unique) | [1.7B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign) | ✅ |
+| **Base** | 0.6B / 1.7B | Zero-shot voice cloning | [0.6B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base) / [1.7B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base) | ✅ |
+
+**Model Sizes:**
+- **0.6B**: ~1.5GB (faster, good quality) - CustomVoice & Base only
+- **1.7B**: ~4.2GB (slower, better quality) - All 3 model types
+
+**Installation Structure:**
+
+```
+ComfyUI/models/TTS/qwen3_tts/
+├── Qwen3-TTS-12Hz-0.6B-CustomVoice/    # ~1.5GB
+├── Qwen3-TTS-12Hz-1.7B-CustomVoice/    # ~4.2GB
+├── Qwen3-TTS-12Hz-1.7B-VoiceDesign/    # ~4.2GB (1.7B only)
+├── Qwen3-TTS-12Hz-0.6B-Base/           # ~1.5GB
+├── Qwen3-TTS-12Hz-1.7B-Base/           # ~4.2GB
+└── qwen2-audio-encoder/                # ~0.5GB (shared tokenizer)
+```
+
+**Note**:
+- **Intelligent model selection** - automatically loads the right model type based on voice_preset selection
+- **Shared tokenizer** - qwen2-audio-encoder downloaded once, used by all models
+- Only downloads the specific model type + size you select
+- Switching between model types/sizes downloads the new variant
+
+**Usage**:
+- Select Qwen3-TTS from Unified TTS Engine
+- Choose model size (0.6B or 1.7B)
+- Choose voice preset (for CustomVoice) or "None" (for Base cloning)
+- Use Voice Designer node for VoiceDesign model
+- Auto-download on first use!
+
+### 14. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
