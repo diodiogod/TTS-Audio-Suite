@@ -38,6 +38,8 @@ from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import apply_segment_parameters
 from utils.voice.discovery import get_character_mapping, get_available_characters, voice_discovery
 from engines.adapters.cosyvoice_adapter import CosyVoiceAdapter
+from utils.text.step_audio_editx_special_tags import extract_restore_tags_only
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 
 
 class CosyVoiceProcessor:
@@ -250,7 +252,8 @@ class CosyVoiceProcessor:
                 if short_text_warning_shown:
                     break
 
-        audio_segments = []
+        # Collect audio segments with metadata for post-processing
+        audio_segments_with_metadata = []
 
         for segment in segment_objects:
             character = segment.character.lower() if segment.character else "narrator"
@@ -259,6 +262,13 @@ class CosyVoiceProcessor:
             segment_text = segment_text.strip()
             if not segment_text:
                 continue
+
+            # Extract ONLY <restore> tags (leaves CosyVoice native tags intact)
+            # CosyVoice has its own paralinguistics (<breath>, <laughter>, etc.)
+            clean_segment_text, restore_tags = extract_restore_tags_only(segment_text)
+
+            # Use clean text for generation (with <restore> removed but CosyVoice tags intact)
+            segment_text = clean_segment_text
 
             # Prepend CosyVoice language tag if language is specified
             # Maps segment language to CosyVoice's native <|lang|> format
@@ -378,7 +388,25 @@ class CosyVoiceProcessor:
                         speed=segment_speed
                     )
 
-            audio_segments.append(segment_audio)
+            # Collect segment with metadata for post-processing
+            audio_segments_with_metadata.append({
+                'waveform': segment_audio,
+                'sample_rate': self.SAMPLE_RATE,
+                'text': clean_segment_text,  # Clean text without <restore> tags
+                'edit_tags': restore_tags  # Only <restore> tags
+            })
+
+        # Apply inline edit post-processing (ONLY <restore> tags for CosyVoice)
+        if any(seg.get('edit_tags') for seg in audio_segments_with_metadata):
+            print(f"🎨🔄 Applying voice restoration post-processing...")
+            audio_segments_with_metadata = apply_edit_post_processing(
+                audio_segments_with_metadata,
+                self.engine_config,
+                pre_loaded_engine=None
+            )
+
+        # Extract audio tensors from segments
+        audio_segments = [seg['waveform'] for seg in audio_segments_with_metadata]
 
         # Combine all character segments
         if audio_segments:

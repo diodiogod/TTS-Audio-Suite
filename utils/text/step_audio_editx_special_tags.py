@@ -559,3 +559,47 @@ def sort_edit_tags_for_processing(tags: List[EditTag]) -> List[EditTag]:
     }
 
     return sorted(tags, key=lambda t: type_priority.get(t.edit_type, 99))
+
+
+def extract_restore_tags_only(text: str) -> Tuple[str, List[EditTag]]:
+    """
+    Extract ONLY <restore> tags while preserving all other tags (including engine-native tags).
+
+    Use this for engines like CosyVoice that have their own native paralinguistic system.
+    This prevents Step Audio EditX emotion/style/speed/paralinguistic tags from being processed,
+    while still allowing voice restoration via <restore> tags.
+
+    Args:
+        text: Text potentially containing <restore> tags and other engine-native tags
+
+    Returns:
+        Tuple of (clean_text_without_restore_tags, restore_tags_list)
+
+    Example:
+        >>> text = "Hello <breath> world <restore:2> test <laughter>"
+        >>> clean, tags = extract_restore_tags_only(text)
+        >>> clean
+        "Hello <breath> world  test <laughter>"  # Only <restore> removed
+        >>> tags
+        [EditTag(edit_type='restore', value='restore', iterations=2, position=None)]
+    """
+    # Parse ALL edit tags
+    _, all_edit_tags = parse_edit_tags_with_iterations(text)
+
+    # Filter to ONLY restore tags
+    restore_tags = [tag for tag in all_edit_tags if tag.edit_type == 'restore']
+
+    # Strip ONLY restore tags from text (leave all other tags intact)
+    # Pattern matches <restore>, <restore:N>, <restore:N@M>, <restore@M>, <restore:@M>
+    import re
+    clean_text = re.sub(
+        r'<restore(?::\d+)?(?:@\d+)?(?::@\d+)?>',
+        '',
+        text,
+        flags=re.IGNORECASE
+    )
+
+    # Clean up double spaces from removed tags
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+
+    return clean_text, restore_tags

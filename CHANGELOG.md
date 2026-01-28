@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.1] - 2026-01-28
+
+### Added
+
+- Add CosyVoice3 voice restoration support via <restore> tags
+- CosyVoice now supports <restore> tags for voice restoration using ChatterBox VC
+- Native CosyVoice paralinguistic tags (<breath>, <laughter>, <cough>, etc.) remain fully functional
+- Step Audio EditX emotion/style/speed tags are blocked to avoid conflicts with CosyVoice's native system
+- Voice restoration applies after TTS generation as post-processing step
 ## [4.19.0] - 2026-01-28
 
 ### Added
