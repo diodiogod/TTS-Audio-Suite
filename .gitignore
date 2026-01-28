@@ -228,3 +228,6 @@ ignore/
 
 # Test output files
 tests/output/
+
+# TTS Audio Suite settings cache (user preferences)
+.inline_tag_settings_cache.json

@@ -305,25 +305,33 @@ def setup_api_routes():
 
         @PromptServer.instance.routes.post("/api/tts-audio-suite/settings")
         async def set_inline_tag_settings_endpoint(request):
-            """API endpoint to receive settings from frontend for inline edit tags"""
+            """API endpoint to receive settings from frontend for inline edit tags and restore VC"""
             print("🔧 Settings endpoint called")  # Immediate print to verify endpoint is reached
             try:
                 data = await request.json()
                 precision = data.get("precision", "auto")
                 device = data.get("device", "auto")
+                vc_engine = data.get("vc_engine", "chatterbox_23lang")
 
-                print(f"🔧 Received settings: precision={precision}, device={device}")
+                print(f"🔧 Received settings: precision={precision}, device={device}, vc_engine={vc_engine}")
 
-                # Load edit_post_processor directly by file path to avoid package import issues
-                edit_post_processor_path = os.path.join(os.path.dirname(__file__), "utils", "audio", "edit_post_processor.py")
-                spec = importlib.util.spec_from_file_location("edit_post_processor_module", edit_post_processor_path)
-                edit_post_processor_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(edit_post_processor_module)
+                # Import edit_post_processor using normal import to ensure we get the same module instance
+                # that will be used during workflow execution
+                # CRITICAL: Must use the same module instance, not create a new one via importlib!
+                try:
+                    from utils.audio import edit_post_processor as edit_post_processor_module
+                except ImportError:
+                    # Fallback: Load directly by file path if normal import fails
+                    edit_post_processor_path = os.path.join(os.path.dirname(__file__), "utils", "audio", "edit_post_processor.py")
+                    spec = importlib.util.spec_from_file_location("utils.audio.edit_post_processor", edit_post_processor_path)
+                    edit_post_processor_module = importlib.util.module_from_spec(spec)
+                    sys.modules["utils.audio.edit_post_processor"] = edit_post_processor_module  # Register in sys.modules!
+                    spec.loader.exec_module(edit_post_processor_module)
 
                 # Store in global settings that edit_post_processor can access
-                edit_post_processor_module.set_inline_tag_settings(precision=precision, device=device)
+                edit_post_processor_module.set_inline_tag_settings(precision=precision, device=device, vc_engine=vc_engine)
 
-                return web.json_response({"status": "success", "precision": precision, "device": device})
+                return web.json_response({"status": "success", "precision": precision, "device": device, "vc_engine": vc_engine})
             except Exception as e:
                 print(f"⚠️ Error setting inline tag settings: {e}")
                 return web.json_response({"status": "error", "error": str(e)})
