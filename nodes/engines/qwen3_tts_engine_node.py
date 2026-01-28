@@ -112,9 +112,9 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "default": "auto",
                     "tooltip": "Model precision:\n• auto: Selects bfloat16 if GPU supports it (SM 8.0+), else float16\n• bfloat16: Best quality, stable (RTX 30xx+, A100+)\n• float16: Good quality, wider compatibility\n• float32: Maximum precision, 2x VRAM"
                 }),
-                "attn_implementation": (["auto", "flash_attention_2", "sdpa", "eager"], {
+                "attn_implementation": (["auto", "sage_attn", "flash_attention_2", "sdpa", "eager"], {
                     "default": "auto",
-                    "tooltip": "Attention mechanism:\n• auto: Best available (recommended)\n• flash_attention_2: Fastest (requires flash-attn installed)\n• sdpa: Good balance\n• eager: Slowest, most compatible"
+                    "tooltip": "Attention mechanism:\n• auto: Best available (priority: sage_attn > flash_attention_2 > sdpa > eager)\n• sage_attn: Fastest (requires sageattention package)\n• flash_attention_2: Very fast (requires flash-attn installed)\n• sdpa: Good balance (PyTorch native)\n• eager: Slowest, most compatible"
                 }),
                 "x_vector_only_mode": ("BOOLEAN", {
                     "default": False,

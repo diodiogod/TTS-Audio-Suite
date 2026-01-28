@@ -185,8 +185,21 @@ class ComfyUITTSModelManager:
             
             print(f"🔄 Force reloading {model_type} ({engine}) - removing from cache")
             self.remove_model(model_key)
-            
+
+        # CRITICAL: Unload old same-engine model variants BEFORE ComfyUI's free_memory
+        # (prevents loading multiple Qwen3-TTS variants with different attn_implementation, etc.)
+        if model_type == "tts" and engine != "":
+            cached_models = list(self._model_cache.keys())
+            for existing_key in cached_models:
+                if existing_key.startswith(f"{engine}_tts_") and existing_key != model_key:
+                    wrapper = self._model_cache.get(existing_key)
+                    if wrapper and wrapper._is_loaded_on_gpu:
+                        print(f"🗑️ Unloading old {engine} model variant to prevent VRAM accumulation")
+                        self.remove_model(existing_key)
+                        break  # Only unload one old variant
+
         # Aggressive memory management before loading new model
+        memory_freed = 0  # Track if ComfyUI freed memory (indicates VRAM pressure)
         if COMFYUI_AVAILABLE and model_management is not None and device != 'cpu':
             try:
                 # Free up memory aggressively - request 3GB to ensure space for new model
@@ -197,10 +210,10 @@ class ComfyUITTSModelManager:
                         memory_freed = model_management.free_memory(3 * 1024 * 1024 * 1024, torch_device)
                         if memory_freed and memory_freed > 0:
                             print(f"🧹 Freed {memory_freed // 1024 // 1024}MB VRAM for new {model_type} model")
-                
+
                 # Also try manual cleanup of our own TTS model cache
-                # Clear models from other engines to make room
-                if model_type == "tts" and engine != "":
+                # Only if ComfyUI actually had to free memory (VRAM was tight)
+                if model_type == "tts" and engine != "" and memory_freed > 0:
                     # Get current cache stats
                     cached_models = list(self._model_cache.keys())
                     models_to_offload = []
@@ -208,9 +221,16 @@ class ComfyUITTSModelManager:
                     for cache_key in cached_models:
                         wrapper = self._model_cache[cache_key]
 
-                        # Move models from different engines to CPU to free VRAM
+                        # Move models to CPU to free VRAM if:
+                        # 1. Different engine, OR
+                        # 2. Same engine but different model variant (different cache key)
                         # (Don't delete - keep in cache for fast reload)
-                        if wrapper.model_info.engine != engine and wrapper.model_info.model_type == "tts" and wrapper._is_loaded_on_gpu:
+                        should_offload = (
+                            wrapper.model_info.model_type == "tts" and
+                            wrapper._is_loaded_on_gpu and
+                            (wrapper.model_info.engine != engine or cache_key != model_key)
+                        )
+                        if should_offload:
                             models_to_offload.append((cache_key, wrapper))
 
                     if models_to_offload:

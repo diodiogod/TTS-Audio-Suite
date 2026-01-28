@@ -337,6 +337,8 @@ class Qwen3TTSCacheKeyGenerator(CacheKeyGenerator):
             'model_size': params.get('model_size', '1.7B'),
             'device': params.get('device', 'auto'),
             'dtype': params.get('dtype', 'auto'),
+            'attn_implementation': params.get('attn_implementation', 'auto'),  # Affects output quality
+            'x_vector_only': params.get('x_vector_only', False),  # ICL mode vs x-vector only mode
             'character': params.get('character', 'narrator'),
             'engine': 'qwen3_tts'
         }

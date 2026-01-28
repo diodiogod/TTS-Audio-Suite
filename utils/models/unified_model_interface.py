@@ -1180,13 +1180,25 @@ def register_qwen3_tts_factory():
                 device = "cuda" if torch.cuda.is_available() else "cpu"
 
             # Resolve attention implementation
+            use_sage_attn = False
             if attn_implementation == "auto":
-                # Try flash_attention_2 first, fallback to sdpa
+                # Priority: sage_attn > flash_attention_2 > sdpa > eager
                 try:
-                    import flash_attn
-                    resolved_attn = "flash_attention_2"
+                    from sageattention import sageattn
+                    resolved_attn = "sage_attn"
+                    use_sage_attn = True
+                    print(f"[Qwen3-TTS] Auto-selected attention: sage_attn")
                 except ImportError:
-                    resolved_attn = "sdpa"  # PyTorch scaled dot product attention
+                    try:
+                        import flash_attn
+                        resolved_attn = "flash_attention_2"
+                        print(f"[Qwen3-TTS] Auto-selected attention: flash_attention_2")
+                    except ImportError:
+                        resolved_attn = "sdpa"  # PyTorch scaled dot product attention
+                        print(f"[Qwen3-TTS] Auto-selected attention: sdpa")
+            elif attn_implementation == "sage_attn":
+                resolved_attn = "sage_attn"
+                use_sage_attn = True
             else:
                 resolved_attn = attn_implementation
 
@@ -1194,14 +1206,67 @@ def register_qwen3_tts_factory():
             print(f"   Path: {resolved_model_path}")
             print(f"   Device: {device} | Dtype: {torch_dtype} | Attention: {resolved_attn}")
 
-            # Load the bundled Qwen3-TTS model using from_pretrained
-            # Note: Use 'dtype' not 'torch_dtype' (deprecated warning)
-            qwen3_model = Qwen3TTSModel.from_pretrained(
-                pretrained_model_name_or_path=resolved_model_path,
-                device_map=device,
-                dtype=torch_dtype,
-                attn_implementation=resolved_attn
-            )
+            # Handle sage_attn (requires post-load patching)
+            if use_sage_attn:
+                try:
+                    from sageattention import sageattn
+                    print(f"🔧 [Qwen3-TTS] Loading model with sage_attn (sageattention)")
+
+                    # Load model without attn_implementation (will use default)
+                    qwen3_model = Qwen3TTSModel.from_pretrained(
+                        pretrained_model_name_or_path=resolved_model_path,
+                        device_map=device,
+                        dtype=torch_dtype
+                    )
+
+                    # Patch attention modules to use sageattention
+                    patched_count = 0
+                    for name, module in qwen3_model.model.named_modules():
+                        # Look for attention modules
+                        if hasattr(module, 'forward') and ('Attention' in type(module).__name__ or 'attn' in name.lower()):
+                            try:
+                                original_forward = module.forward
+
+                                def make_sage_forward(orig_forward, mod):
+                                    def sage_forward(*args, **kwargs):
+                                        # Extract q, k, v from attention call
+                                        if len(args) >= 3:
+                                            q, k, v = args[0], args[1], args[2]
+                                        else:
+                                            return orig_forward(*args, **kwargs)
+
+                                        # Handle attention_mask
+                                        attn_mask = kwargs.get('attention_mask', None)
+
+                                        # Call sageattention
+                                        out = sageattn(q, k, v, is_causal=False, attn_mask=attn_mask)
+                                        return out
+                                    return sage_forward
+
+                                module.forward = make_sage_forward(original_forward, module)
+                                patched_count += 1
+                            except Exception:
+                                pass
+
+                    print(f"🔧 [Qwen3-TTS] Patched {patched_count} attention modules with sage_attn")
+
+                except (ImportError, Exception) as e:
+                    print(f"⚠️ [Qwen3-TTS] Failed with sage_attn, falling back to sdpa: {e}")
+                    # Fallback to sdpa
+                    qwen3_model = Qwen3TTSModel.from_pretrained(
+                        pretrained_model_name_or_path=resolved_model_path,
+                        device_map=device,
+                        dtype=torch_dtype,
+                        attn_implementation="sdpa"
+                    )
+            else:
+                # Load with standard attention implementation
+                qwen3_model = Qwen3TTSModel.from_pretrained(
+                    pretrained_model_name_or_path=resolved_model_path,
+                    device_map=device,
+                    dtype=torch_dtype,
+                    attn_implementation=resolved_attn
+                )
 
             print(f"✅ Qwen3-TTS model '{model_name}' loaded successfully")
 

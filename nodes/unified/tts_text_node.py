@@ -185,11 +185,13 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['quantization'] = config.get('quantization', 'none')
                 stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
 
-            # For Qwen3-TTS, include voice_preset, instruct, and model_size since they determine model type
+            # For Qwen3-TTS, include voice_preset, instruct, model_size, and attn_implementation
+            # since they determine model type and require model reload
             if engine_type == "qwen3_tts":
                 stable_params['voice_preset'] = config.get('voice_preset', 'None (Zero-shot / Custom)')
                 stable_params['instruct'] = config.get('instruct', '')
                 stable_params['model_size'] = config.get('model_size', '1.7B')
+                stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
 
             # For IndexTTS-2, include low_vram in cache key since it requires model reload
             if engine_type == "index_tts":

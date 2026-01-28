@@ -247,7 +247,7 @@ class Qwen3TTSEngineAdapter:
         language = params.get('language', 'Auto')
         instruct = params.get('instruct')  # Optional instruction
 
-        # Generate cache key
+        # Generate cache key (include attn_implementation since it affects output quality)
         cache_key = self.audio_cache.generate_cache_key(
             'qwen3_tts',
             text=text,
@@ -261,6 +261,7 @@ class Qwen3TTSEngineAdapter:
             repetition_penalty=params.get('repetition_penalty', 1.05),
             max_new_tokens=params.get('max_new_tokens', 2048),
             seed=params.get('seed', 0),
+            attn_implementation=attn_impl,
             character=character_name or 'narrator'
         )
 
@@ -325,7 +326,7 @@ class Qwen3TTSEngineAdapter:
 
         language = params.get('language', 'Auto')
 
-        # Generate cache key
+        # Generate cache key (include attn_implementation since it affects output quality)
         cache_key = self.audio_cache.generate_cache_key(
             'qwen3_tts',
             text=text,
@@ -338,6 +339,7 @@ class Qwen3TTSEngineAdapter:
             repetition_penalty=params.get('repetition_penalty', 1.05),
             max_new_tokens=params.get('max_new_tokens', 2048),
             seed=params.get('seed', 0),
+            attn_implementation=params.get('attn_implementation', 'auto'),
             character=character_name or 'narrator'
         )
 
@@ -432,6 +434,7 @@ class Qwen3TTSEngineAdapter:
             repetition_penalty=params.get('repetition_penalty', 1.05),
             max_new_tokens=params.get('max_new_tokens', 2048),
             seed=params.get('seed', 0),
+            attn_implementation=params.get('attn_implementation', 'auto'),
             character=character_name or 'narrator'
         )
 
