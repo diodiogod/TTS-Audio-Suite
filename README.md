@@ -61,8 +61,8 @@ v4.12 ──────────────► v4.15 ───────�
 Oct 25                Dez 25              Dez 25          Jan 26
 │                     │                   │               │
 Per-Seg Parameter     Step Audio EditX    CosyVoice3      Qwen3-TTS
-Switching [seed:24]   Inline Edit tags    TTS + VC        3 Model Types
-                      <laughter:2>                        CustomVoice/VoiceDesign/Base        
+Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
+                      <laughter:2>                        VoiceDesign     
 ```
 
 <details>
