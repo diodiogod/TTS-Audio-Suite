@@ -239,10 +239,13 @@ class Qwen3TTSEngine:
         target_device = resolve_torch_device("auto")
 
         try:
-            # Check current device of model - similar to Step EditX pattern
-            if hasattr(self._model, 'parameters'):
+            # Check current device of the actual model (not wrapper)
+            # The wrapper is Qwen3TTSModel, the actual model is self._model.model (Qwen3TTSForConditionalGeneration)
+            actual_model = self._model.model if hasattr(self._model, 'model') else self._model
+
+            if hasattr(actual_model, 'parameters'):
                 try:
-                    first_param = next(self._model.parameters())
+                    first_param = next(actual_model.parameters())
                     current_device = str(first_param.device)
 
                     if current_device != target_device:

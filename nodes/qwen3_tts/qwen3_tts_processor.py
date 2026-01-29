@@ -99,8 +99,52 @@ class Qwen3TTSProcessor:
         )
 
     def update_config(self, new_config: Dict[str, Any]):
-        """Update processor configuration with new parameters."""
+        """
+        Update processor configuration with new parameters.
+
+        CRITICAL: When voice_preset changes, we need to reload the model because
+        VoiceDesign, CustomVoice, and Base are different model files.
+        """
+        # Check if voice_preset changed (determines model type: Base vs CustomVoice vs VoiceDesign)
+        old_voice_preset = self.config.get('voice_preset', 'None (Zero-shot / Custom)')
+        new_voice_preset = new_config.get('voice_preset', old_voice_preset)
+
+        # Update config first
         self.config.update(new_config)
+
+        # Determine if model type changed
+        old_model_type = "Base" if old_voice_preset == "None (Zero-shot / Custom)" else "CustomVoice"
+        new_model_type = "Base" if new_voice_preset == "None (Zero-shot / Custom)" else "CustomVoice"
+
+        # If model type changed, trigger reload via adapter
+        # The unified_model_interface will automatically unload the old variant
+        if old_model_type != new_model_type:
+            print(f"🔄 Voice preset changed: {old_voice_preset} → {new_voice_preset}")
+            print(f"   Reloading model type: {old_model_type} → {new_model_type}")
+
+            model_size = self.config.get('model_size', '1.7B')
+            device = self.config.get('device', 'auto')
+            dtype = self.config.get('dtype', 'auto')
+            attn_implementation = self.config.get('attn_implementation', 'auto')
+
+            # Build model path for new type
+            model_path = f'Qwen3-TTS-12Hz-{model_size}-{new_model_type}'
+
+            # Create context for model type determination
+            context = {
+                "voice_preset": new_voice_preset,
+                "model_size": model_size
+            }
+
+            # Reload via adapter - unified interface will handle cleanup automatically
+            self.adapter.load_base_model(
+                model_path=model_path,
+                device=device,
+                dtype=dtype,
+                model_size=model_size,
+                attn_implementation=attn_implementation,
+                context=context
+            )
 
     def _language_name_to_code(self, language_input: str) -> str:
         """Convert language name or code to Qwen3-TTS language parameter."""

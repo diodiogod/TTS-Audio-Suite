@@ -44,9 +44,11 @@ class Qwen3TTSEngineAdapter:
             node_instance: Parent node instance for context
         """
         self.node = node_instance
-        self.engine = None
+        # DO NOT store engine reference - always query unified interface
+        # Storing references causes stale CPU-bound engines when models are unloaded
         self.audio_cache = get_audio_cache()
         self.current_model_type = None  # Track which model variant is loaded
+        self._last_config = None  # Store last ModelLoadConfig for engine retrieval
 
         # Job-level timing tracker (persists across blocks)
         self.job_tracker = None
@@ -147,11 +149,13 @@ class Qwen3TTSEngineAdapter:
 
         # Build model name
         model_name = f"Qwen3-TTS-12Hz-{model_size}-{model_type}"
+
+        # Track current model type (unified interface handles unloading automatically)
         self.current_model_type = model_type
 
         # Loading message is printed by unified_model_interface
 
-        # Create config and load via unified interface
+        # Create config for unified interface
         config = ModelLoadConfig(
             engine_name="qwen3_tts",
             model_type="tts",
@@ -164,7 +168,75 @@ class Qwen3TTSEngineAdapter:
             }
         )
 
-        self.engine = unified_model_interface.load_model(config)
+        # Store config for later engine retrieval (DO NOT store engine reference)
+        self._last_config = config
+
+        # Load model via unified interface (but don't store the reference)
+        unified_model_interface.load_model(config)
+
+    def _get_engine(self):
+        """
+        Get current engine from unified interface.
+
+        CRITICAL: Always query unified interface instead of storing references.
+        This prevents stale CPU-bound engine references when models are unloaded.
+
+        Returns:
+            Current Qwen3-TTS engine from unified interface
+
+        Raises:
+            RuntimeError: If no engine is loaded or config not set
+        """
+        if self._last_config is None:
+            raise RuntimeError("No model loaded. Call load_base_model() first.")
+
+        # Query unified interface for current engine
+        from utils.models.unified_model_interface import unified_model_interface
+        engine = unified_model_interface.load_model(self._last_config)
+
+        if engine is None:
+            raise RuntimeError("Engine not found in unified interface cache. Model may have been unloaded.")
+
+        return engine
+
+    def _ensure_engine_on_device(self, target_device: str = "auto"):
+        """
+        Ensure engine is loaded and on the correct device.
+
+        CRITICAL: After unified_model_interface unloads a model variant, the adapter
+        may still hold a reference to a CPU-bound engine. This method detects that
+        and triggers a reload.
+
+        Args:
+            target_device: Target device (auto/cuda/cpu)
+        """
+        if self.engine is None:
+            raise RuntimeError("Engine not loaded. Call load_base_model() first.")
+
+        # Check if engine has been moved to CPU (likely by model manager unload)
+        # The engine wrapper has a _model attribute that's the actual Qwen3TTSModel
+        if hasattr(self.engine, '_model') and hasattr(self.engine._model, 'model'):
+            actual_model = self.engine._model.model
+            if hasattr(actual_model, 'parameters'):
+                try:
+                    first_param = next(actual_model.parameters())
+                    current_device = str(first_param.device)
+
+                    # If model is on CPU but we want CUDA, it was likely unloaded
+                    from utils.device import resolve_torch_device
+                    expected_device = resolve_torch_device(target_device)
+
+                    if current_device == "cpu" and expected_device != "cpu":
+                        print(f"⚠️ Qwen3-TTS engine is on CPU but {expected_device} requested")
+                        print(f"   This usually means the model was unloaded by unified interface")
+                        print(f"   Engine reference is stale - please check adapter state")
+                        raise RuntimeError(
+                            "Qwen3-TTS engine is on wrong device (CPU). "
+                            "This indicates the cached processor has a stale engine reference. "
+                            "The processor should have been reloaded by update_config()."
+                        )
+                except StopIteration:
+                    pass
 
     def generate_with_pause_tags(self,
                                  text: str,
@@ -185,8 +257,8 @@ class Qwen3TTSEngineAdapter:
         Returns:
             Generated audio tensor [1, samples] at 24000 Hz
         """
-        if self.engine is None:
-            raise RuntimeError("Engine not loaded. Call load_base_model() first.")
+        # Get current engine from unified interface (always fresh reference)
+        engine = self._get_engine()
 
         # Extract seed from params and set global torch seed for reproducibility
         seed = params.get('seed', 0)
@@ -198,16 +270,17 @@ class Qwen3TTSEngineAdapter:
         # Check if text has pause tags
         if process_pauses and PauseTagProcessor.has_pause_tags(text):
             # Process pause tags and generate segments
-            return self._generate_with_pauses(text, voice_ref, params, character_name)
+            return self._generate_with_pauses(text, voice_ref, params, character_name, engine)
         else:
             # Direct generation without pause processing
-            return self._generate_direct(text, voice_ref, params, character_name)
+            return self._generate_direct(text, voice_ref, params, character_name, engine)
 
     def _generate_direct(self,
                         text: str,
                         voice_ref: Optional[Dict[str, Any]],
                         params: Dict[str, Any],
-                        character_name: Optional[str] = None) -> torch.Tensor:
+                        character_name: Optional[str] = None,
+                        engine = None) -> torch.Tensor:
         """
         Direct generation without pause processing.
 
@@ -220,18 +293,23 @@ class Qwen3TTSEngineAdapter:
         Returns:
             Audio tensor [1, samples]
         """
+        # Get engine if not provided
+        if engine is None:
+            engine = self._get_engine()
+
         # Determine generation method based on current model type
         if self.current_model_type == "CustomVoice":
-            return self._generate_custom_voice(text, params, character_name)
+            return self._generate_custom_voice(text, params, character_name, engine)
         elif self.current_model_type == "VoiceDesign":
-            return self._generate_voice_design(text, params, character_name)
+            return self._generate_voice_design(text, params, character_name, engine)
         else:  # Base
-            return self._generate_voice_clone(text, voice_ref, params, character_name)
+            return self._generate_voice_clone(text, voice_ref, params, character_name, engine)
 
     def _generate_custom_voice(self,
                               text: str,
                               params: Dict[str, Any],
-                              character_name: Optional[str] = None) -> torch.Tensor:
+                              character_name: Optional[str] = None,
+                              engine = None) -> torch.Tensor:
         """
         Generate with CustomVoice model using preset speakers.
 
@@ -282,8 +360,12 @@ class Qwen3TTSEngineAdapter:
             from engines.qwen3_tts.progress_callback import Qwen3TTSProgressStreamer
             streamer = Qwen3TTSProgressStreamer(max_new_tokens, progress_bar, text_input=text)
 
+        # Get engine if not provided
+        if engine is None:
+            engine = self._get_engine()
+
         # Generate
-        wavs, sr = self.engine.generate_custom_voice(
+        wavs, sr = engine.generate_custom_voice(
             text=text,
             language=language,
             speaker=speaker,
@@ -308,7 +390,8 @@ class Qwen3TTSEngineAdapter:
     def _generate_voice_design(self,
                               text: str,
                               params: Dict[str, Any],
-                              character_name: Optional[str] = None) -> torch.Tensor:
+                              character_name: Optional[str] = None,
+                              engine = None) -> torch.Tensor:
         """
         Generate with VoiceDesign model using text description.
 
@@ -360,8 +443,12 @@ class Qwen3TTSEngineAdapter:
             from engines.qwen3_tts.progress_callback import Qwen3TTSProgressStreamer
             streamer = Qwen3TTSProgressStreamer(max_new_tokens, progress_bar, text_input=text)
 
+        # Get engine if not provided
+        if engine is None:
+            engine = self._get_engine()
+
         # Generate
-        wavs, sr = self.engine.generate_voice_design(
+        wavs, sr = engine.generate_voice_design(
             text=text,
             language=language,
             instruct=instruct,
@@ -386,7 +473,8 @@ class Qwen3TTSEngineAdapter:
                              text: str,
                              voice_ref: Optional[Dict[str, Any]],
                              params: Dict[str, Any],
-                             character_name: Optional[str] = None) -> torch.Tensor:
+                             character_name: Optional[str] = None,
+                             engine = None) -> torch.Tensor:
         """
         Generate with Base model using zero-shot voice cloning.
 
@@ -464,8 +552,12 @@ class Qwen3TTSEngineAdapter:
             from engines.qwen3_tts.progress_callback import Qwen3TTSProgressStreamer
             streamer = Qwen3TTSProgressStreamer(max_new_tokens, progress_bar, text_input=text)
 
+        # Get engine if not provided
+        if engine is None:
+            engine = self._get_engine()
+
         # Generate
-        wavs, sr = self.engine.generate_voice_clone(
+        wavs, sr = engine.generate_voice_clone(
             text=text,
             language=language,
             ref_audio=ref_audio,
@@ -492,7 +584,8 @@ class Qwen3TTSEngineAdapter:
                              text: str,
                              voice_ref: Optional[Dict[str, Any]],
                              params: Dict[str, Any],
-                             character_name: Optional[str] = None) -> torch.Tensor:
+                             character_name: Optional[str] = None,
+                             engine = None) -> torch.Tensor:
         """
         Generate with pause tag processing.
 
@@ -513,10 +606,14 @@ class Qwen3TTSEngineAdapter:
         audio_parts = []
         sample_rate = 24000  # Qwen3-TTS native sample rate
 
+        # Get engine if not provided
+        if engine is None:
+            engine = self._get_engine()
+
         for segment_type, content in segments:
             if segment_type == 'text':
                 # Generate audio for text segment
-                audio_tensor = self._generate_direct(content, voice_ref, params, character_name)
+                audio_tensor = self._generate_direct(content, voice_ref, params, character_name, engine)
 
                 # Ensure correct shape [1, samples] (2D)
                 if audio_tensor.dim() == 1:

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.8] - 2026-01-28
+
+### Changed
+
+- Improve model lifecycle management for VoiceDesign↔Base switching
+
+### Fixed
+
+- Fix Qwen3-TTS crashes when switching between Voice Designer and TTS Text
+- Fix device mismatch errors (CPU/CUDA tensor conflicts)
+- Fix language dropdown selection being overridden by English
+- Better handling of cached processors with correct engine references
 ## [4.19.7] - 2026-01-28
 
 ### Added

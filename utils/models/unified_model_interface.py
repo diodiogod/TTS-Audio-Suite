@@ -120,6 +120,22 @@ class UnifiedModelInterface:
         if force_reload:
             tts_model_manager.remove_model(cache_key)
 
+        # CRITICAL: For engines that support multiple model variants (like Qwen3-TTS),
+        # check if a DIFFERENT variant is already loaded and unload it to prevent device conflicts
+        # Only applies to engines where model variants are mutually exclusive
+        if config.engine_name == "qwen3_tts":
+            # Check for any cached qwen3_tts model
+            cached_keys = [k for k in tts_model_manager._model_cache.keys() if k.startswith("qwen3_tts_tts_")]
+            for existing_key in cached_keys:
+                if existing_key != cache_key:
+                    # Different model variant is loaded - unload it first
+                    print(f"🗑️ Unloading old qwen3_tts model variant to prevent VRAM accumulation")
+                    tts_model_manager.remove_model(existing_key)
+
+                    # CRITICAL: Invalidate processor caches so they reload engines
+                    from utils.models.comfyui_model_wrapper.cache_utils import invalidate_all_caches
+                    invalidate_all_caches()
+
         # Get existing model if cached
         wrapper = tts_model_manager.get_model(cache_key)
         if wrapper is not None:
