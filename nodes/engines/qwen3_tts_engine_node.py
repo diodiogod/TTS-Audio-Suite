@@ -102,8 +102,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "tooltip": "Repetition penalty:\n• 1.0: No penalty\n• 1.05: Slight penalty (default)\n• 1.2+: Strong penalty (may affect quality)"
                 }),
                 "max_new_tokens": ("INT", {
-                    "default": 2048, "min": 512, "max": 4096, "step": 256,
-                    "tooltip": "Maximum tokens to generate:\n• 512: Very short\n• 2048: Standard (default)\n• 4096: Long generation\nHigher = more VRAM + longer generation"
+                    "default": 2048, "min": 64, "max": 8192, "step": 64,
+                    "tooltip": "Maximum tokens to generate:\n• 64-512: Very short\n• 2048: Standard (default)\n• 4096-8192: Long generation\nHigher = more VRAM + longer generation"
                 }),
             },
             "optional": {

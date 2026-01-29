@@ -352,7 +352,7 @@ class Qwen3TTSEngineAdapter:
 
         # Create ComfyUI progress bar and convert to transformers streamer
         max_new_tokens = params.get('max_new_tokens', 2048)
-        progress_bar = self._create_progress_bar(max_new_tokens)
+        progress_bar = self._create_progress_bar(max_new_tokens, text)
 
         # Convert progress_bar to transformers streamer for bundled model
         streamer = None
@@ -435,7 +435,7 @@ class Qwen3TTSEngineAdapter:
 
         # Create ComfyUI progress bar and convert to transformers streamer
         max_new_tokens = params.get('max_new_tokens', 2048)
-        progress_bar = self._create_progress_bar(max_new_tokens)
+        progress_bar = self._create_progress_bar(max_new_tokens, text)
 
         # Convert progress_bar to transformers streamer for bundled model
         streamer = None
@@ -494,6 +494,10 @@ class Qwen3TTSEngineAdapter:
         # Use voice_ref x_vector_only_mode if provided, otherwise use params
         x_vector_only = voice_x_vector_only if voice_x_vector_only else params.get('x_vector_only_mode', False)
 
+        # Warn user when x_vector_only mode is forced or ignoring available ref text
+        if x_vector_only and ref_text:
+            print(f"⚠️ Qwen3-TTS: x_vector_only mode enabled - ignoring reference text (using speaker embedding only)")
+
         # Generate cache key using voice_ref dict (contains waveform + sample_rate)
         # This ensures different voices generate different cache keys
         from utils.audio.audio_hash import generate_stable_audio_component
@@ -544,7 +548,7 @@ class Qwen3TTSEngineAdapter:
 
         # Create ComfyUI progress bar and convert to transformers streamer
         max_new_tokens = params.get('max_new_tokens', 2048)
-        progress_bar = self._create_progress_bar(max_new_tokens)
+        progress_bar = self._create_progress_bar(max_new_tokens, text)
 
         # Convert progress_bar to transformers streamer for bundled model
         streamer = None
@@ -735,19 +739,30 @@ class Qwen3TTSEngineAdapter:
         # None or unsupported
         return ref_audio
 
-    def _create_progress_bar(self, max_tokens: int):
+    def _create_progress_bar(self, max_tokens: int, text: str = ""):
         """
-        Create ComfyUI progress bar for generation tracking.
+        Create ComfyUI progress bar for generation tracking with accurate estimation.
 
         Args:
             max_tokens: Maximum tokens to generate
+            text: Input text for estimating actual token count
 
         Returns:
             Progress bar instance or None if ComfyUI utils not available
         """
         try:
             import comfy.utils
-            return comfy.utils.ProgressBar(max_tokens)
+
+            # Estimate actual tokens based on text length (same heuristic as progress streamer)
+            # Rough heuristic: ~1.5 tokens per character for TTS
+            if text:
+                estimated_tokens = int(len(text) * 1.5)
+                # Cap estimate to max_tokens
+                progress_total = min(estimated_tokens, max_tokens)
+            else:
+                progress_total = max_tokens
+
+            return comfy.utils.ProgressBar(progress_total)
         except (ImportError, AttributeError):
             return None  # ComfyUI progress not available
 

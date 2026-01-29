@@ -130,9 +130,10 @@ Leave empty to use text from selected character's files."""
                     
                     audio_tensor = {"waveform": waveform, "sample_rate": sample_rate}
                     character_name = os.path.splitext(os.path.basename(voice_name))[0]
-                    
-                    # Use folder reference text if provided text is empty
-                    if not reference_text.strip() and folder_reference_text:
+
+                    # When voice is selected from dropdown, ALWAYS use folder reference text
+                    # Manual text field is only used for direct audio input
+                    if folder_reference_text:
                         reference_text = folder_reference_text
                         used_folder_text = True
                 else:

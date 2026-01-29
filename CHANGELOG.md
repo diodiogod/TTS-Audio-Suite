@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.10] - 2026-01-29
+
+### Added
+
+- Increase Qwen3-TTS max_tokens range to 64-8192 (previously limited to 512-4096)
+- Add clear warning when x_vector_only mode is enabled with reference text available
+
+### Fixed
+
+- Fix Qwen3-TTS mode selection and Character Voices reference text handling
+- Fix Character Voices always using folder reference text when character is selected from dropdown (manual field now only for direct audio)
+- Fix Qwen3-TTS x_vector_only mode properly respecting engine widget setting when reference text is available
+- Fix Qwen3-TTS progress bar showing accurate progress (0-100%) instead of tiny percentages
 ## [4.19.9] - 2026-01-29
 
 ### Added
