@@ -609,9 +609,9 @@ Back to the main narrator voice for the conclusion.""",
                     audio_tensor = opt_narrator
                     character_name = "narrator"
                     reference_text = ""  # No reference text available from direct audio
-                    
+
                     print(f"🎤 TTS Text: Using direct audio input ({character_name})")
-                    print(f"⚠️ TTS Text: Direct audio input has no reference text - F5-TTS engines will fail")
+                    print(f"⚠️ TTS Text: Direct audio input has no reference text - F5-TTS will fail, Qwen3-TTS will use x_vector_only mode (lower quality)")
                     return None, audio_tensor, reference_text, character_name
             
             # Priority 2: narrator_voice dropdown (fallback)
@@ -1150,7 +1150,7 @@ Back to the main narrator voice for the conclusion.""",
                 voice_mapping = {}
                 for character in characters:
                     # Special handling for narrator - use provided voice reference
-                    if character == "narrator" and audio_tensor is not None and reference_text:
+                    if character == "narrator" and audio_tensor is not None:
                         # Extract tensor from audio dict if needed
                         actual_waveform = audio_tensor["waveform"] if isinstance(audio_tensor, dict) and "waveform" in audio_tensor else audio_tensor
                         actual_sample_rate = audio_tensor["sample_rate"] if isinstance(audio_tensor, dict) and "sample_rate" in audio_tensor else 24000
@@ -1158,7 +1158,8 @@ Back to the main narrator voice for the conclusion.""",
                         voice_mapping[character] = {
                             "waveform": actual_waveform,
                             "sample_rate": actual_sample_rate,
-                            "text": reference_text or ""  # Include transcript for ICL mode
+                            "text": reference_text or "",  # Include transcript for ICL mode (empty for x_vector_only)
+                            "x_vector_only_mode": not bool(reference_text)  # Use x_vector_only if no text
                         }
                     else:
                         # Use character-specific voice from voices/ folder with fallback to narrator
@@ -1251,7 +1252,7 @@ Back to the main narrator voice for the conclusion.""",
                         # Case 3: No audio file at all - fallback to narrator
                         else:
                             # Fallback to narrator voice for characters without voice files
-                            if audio_tensor is not None and reference_text:
+                            if audio_tensor is not None:
                                 # Extract tensor from audio dict if needed
                                 actual_waveform = audio_tensor["waveform"] if isinstance(audio_tensor, dict) and "waveform" in audio_tensor else audio_tensor
                                 actual_sample_rate = audio_tensor["sample_rate"] if isinstance(audio_tensor, dict) and "sample_rate" in audio_tensor else 24000
@@ -1259,9 +1260,13 @@ Back to the main narrator voice for the conclusion.""",
                                 voice_mapping[character] = {
                                     "waveform": actual_waveform,
                                     "sample_rate": actual_sample_rate,
-                                    "text": reference_text or ""
+                                    "text": reference_text or "",
+                                    "x_vector_only_mode": not bool(reference_text)  # Use x_vector_only if no text
                                 }
-                                print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}'")
+                                if reference_text:
+                                    print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}' (ICL mode)")
+                                else:
+                                    print(f"🔄 Qwen3-TTS: Using narrator voice fallback for '{character}' (x_vector_only mode)")
                             else:
                                 # No narrator voice available
                                 voice_mapping[character] = None
