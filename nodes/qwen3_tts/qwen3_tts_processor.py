@@ -266,7 +266,24 @@ class Qwen3TTSProcessor:
 
         character_parser.set_available_characters(list(all_available))
 
-        # Set language defaults
+        # Set global default language for character parser BEFORE parsing segments
+        # This ensures segments without explicit language tags use the engine's configured language
+        # Convert from Qwen3-TTS format (Spanish, English) to standard codes (es, en)
+        global_language = params.get('language', 'Auto')
+
+        # Map Qwen3 language names back to standard codes for character parser
+        qwen3_to_code = {
+            'Chinese': 'zh', 'English': 'en', 'Japanese': 'ja', 'Korean': 'ko',
+            'German': 'de', 'French': 'fr', 'Russian': 'ru', 'Portuguese': 'pt',
+            'Spanish': 'es', 'Italian': 'it', 'Auto': 'auto'
+        }
+        standard_lang_code = qwen3_to_code.get(global_language, global_language.lower())
+
+        # Directly set the default language on the language resolver
+        character_parser.language_resolver.default_language = standard_lang_code
+        character_parser.default_language = standard_lang_code
+
+        # Set character-specific language defaults from alias system
         char_lang_defaults = voice_discovery.get_character_language_defaults()
         for char, lang in char_lang_defaults.items():
             character_parser.set_character_language_default(char, lang)
