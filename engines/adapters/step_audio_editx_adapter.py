@@ -211,6 +211,16 @@ class StepAudioEditXEngineAdapter:
 
         # Create ComfyUI progress bar for generation tracking with time prediction
         max_new_tokens = params.get('max_new_tokens', 8192)
+
+        # Estimate actual tokens based on text length (same heuristic as Qwen3-TTS)
+        # Rough heuristic: ~0.7 tokens per character for TTS (conservative estimate)
+        if text:
+            estimated_tokens = int(len(text) * 0.7)
+            # Cap estimate to max_tokens
+            progress_total = min(estimated_tokens, max_new_tokens)
+        else:
+            progress_total = max_new_tokens
+
         progress_bar = None
         try:
             import comfy.utils
@@ -306,7 +316,7 @@ class StepAudioEditXEngineAdapter:
                     # If no remaining text but still processing, show nothing
                     return None
 
-            progress_bar = TimedProgressBar(max_new_tokens, job_tracker)
+            progress_bar = TimedProgressBar(progress_total, job_tracker)
         except (ImportError, AttributeError):
             pass  # ComfyUI progress not available
 
