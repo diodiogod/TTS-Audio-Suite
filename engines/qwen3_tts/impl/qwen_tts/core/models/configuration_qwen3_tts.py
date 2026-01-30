@@ -396,6 +396,7 @@ class Qwen3TTSTalkerConfig(PretrainedConfig):
         codec_think_bos_id=4204,
         codec_think_eos_id=4205,
         codec_pad_id=4196,
+        pad_token_id=None,
         codec_bos_id=4197,
         spk_id=None,
         spk_is_dialect=None,
@@ -446,6 +447,7 @@ class Qwen3TTSTalkerConfig(PretrainedConfig):
         self.codec_think_bos_id = codec_think_bos_id
         self.codec_think_eos_id = codec_think_eos_id
         self.codec_pad_id = codec_pad_id
+        self.pad_token_id = pad_token_id if pad_token_id is not None else codec_pad_id
         self.codec_bos_id = codec_bos_id
         self.spk_id = spk_id
         self.spk_is_dialect = spk_is_dialect
