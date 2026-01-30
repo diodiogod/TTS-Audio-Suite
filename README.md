@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.19.11
+# TTS Audio Suite v4.19.12
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -187,6 +187,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
 - 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
 - 🗣️ **Silent Speech Analyzer** - Video analysis with experimental viseme detection, mouth movement tracking, and base SRT timing generation from silent video using MediaPipe
 - ⚙️ **Parallel Processing** - Configurable worker-based processing via `batch_size` parameter (Note: sequential processing with `batch_size=0` remains optimal for performance)
+- ⚡ **Performance Optimizations** - Qwen3-TTS supports torch.compile for ~1.7x speedup (requires PyTorch 2.10+ and triton-windows 3.6+) → **[📖 Optimization Guide](docs/qwen3_tts_optimizations.md)**
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -767,6 +768,7 @@ Instruct: 用兴奋的语气说话。
 * **📏 2 Model Sizes**: 0.6B and 1.7B parameter variants
 * **⚡ Attention Options**: eager, flash_attention_2, sdpa, sage_attn for performance tuning
 * **🔧 Generation Control**: Temperature, top_k, top_p, repetition_penalty parameters
+* **⚡ torch.compile Optimizations**: Optional 1.7x speedup (PyTorch 2.10+ required) → [📖 Setup Guide](docs/qwen3_tts_optimizations.md)
 
 **Unified Features Support:**
 - Works with all project features: character switching, language switching, pause tags, SRT timing, Step Audio EditX post-processing
@@ -1721,6 +1723,7 @@ ComfyUI/models/TTS/qwen3_tts/
 - **Shared tokenizer** - qwen2-audio-encoder downloaded once, used by all models
 - Only downloads the specific model type + size you select
 - Switching between model types/sizes downloads the new variant
+- **⚡ torch.compile optimizations available** - Optional 1.7x speedup with PyTorch 2.10+ → [Setup Guide](docs/qwen3_tts_optimizations.md)
 
 **Usage**:
 - Select Qwen3-TTS from Unified TTS Engine

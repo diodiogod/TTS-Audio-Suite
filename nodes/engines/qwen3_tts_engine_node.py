@@ -120,6 +120,18 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "default": False,
                     "tooltip": "X-vector only mode (Base model only):\n• False: Full voice cloning (high quality, requires ref_text)\n• True: Fast speaker embedding only (lower quality, no ref_text needed)\nOnly applies when voice_preset = None"
                 }),
+                "use_torch_compile": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable torch.compile for decoder (~1.5-2x speedup):\n• False: Standard inference (RECOMMENDED - works with all PyTorch versions)\n• True: Compiled decoder (REQUIRES PyTorch 2.10+ and triton-windows 3.6+)\n⚠️ REQUIREMENTS: PyTorch 2.10.0+cu130, triton-windows 3.6.0+\n⚠️ See docs/qwen3_tts_optimizations.md for installation\nFirst generation slower due to compilation, then ~1.5-2x faster"
+                }),
+                "use_cuda_graphs": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable manual CUDA graph capture:\n• False: RECOMMENDED (reduce-overhead mode already has auto CUDA graphs)\n• True: Manual capture - minimal gain (~0.1 it/s), only works with mode='default'\nNote: reduce-overhead/max-autotune include CUDA graphs automatically"
+                }),
+                "compile_mode": (["default", "reduce-overhead", "max-autotune"], {
+                    "default": "default",
+                    "tooltip": "torch.compile mode (if use_torch_compile enabled):\n• default: RECOMMENDED - Standard torch.compile, ~1.7x speedup, works on Windows\n• reduce-overhead: Auto CUDA graphs, ~2-3x speedup, LINUX ONLY (fails on Windows)\n• max-autotune: Best optimization, longest compile, LINUX ONLY\n⚠️ Windows: Only 'default' works - reduce-overhead/max-autotune fail with cudaMallocAsync error\n⚠️ Model must be reloaded to test different modes (cache reuse otherwise)"
+                }),
             }
         }
 
@@ -142,7 +154,10 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         max_new_tokens: int,
         dtype: str = "auto",
         attn_implementation: str = "auto",
-        x_vector_only_mode: bool = False
+        x_vector_only_mode: bool = False,
+        use_torch_compile: bool = False,
+        use_cuda_graphs: bool = False,
+        compile_mode: str = "reduce-overhead"
     ) -> tuple:
         """
         Create Qwen3-TTS engine configuration.
@@ -168,6 +183,9 @@ class Qwen3TTSEngineNode(BaseTTSNode):
             "repetition_penalty": repetition_penalty,
             "max_new_tokens": max_new_tokens,
             "x_vector_only_mode": x_vector_only_mode,
+            "use_torch_compile": use_torch_compile,
+            "use_cuda_graphs": use_cuda_graphs,
+            "compile_mode": compile_mode,
         }
 
         # Print configuration summary (matching other engines)
@@ -175,6 +193,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         print(f"   Model: {model_size} | Language: {language}")
         print(f"   Settings: voice_preset={voice_preset}, temperature={temperature}, top_k={top_k}, top_p={top_p}")
         print(f"   Advanced: repetition_penalty={repetition_penalty}, max_tokens={max_new_tokens}, x_vector_only={x_vector_only_mode}")
+        if use_torch_compile or use_cuda_graphs:
+            print(f"   Optimizations: torch.compile={use_torch_compile}, cuda_graphs={use_cuda_graphs}, mode={compile_mode}")
         if instruct:
             print(f"   Instruction: {instruct[:50]}..." if len(instruct) > 50 else f"   Instruction: {instruct}")
 

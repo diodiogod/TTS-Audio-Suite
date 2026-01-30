@@ -8,17 +8,28 @@ Unified architecture supporting ChatterBox, F5-TTS, and future engines like RVC:
 • 🎭 Character Voices (voice reference management)
 """
 
+# Note: PYTORCH_ALLOC_CONF should be set in ComfyUI launch script if needed
+# Setting it here causes "allocator mismatch" errors because ComfyUI already imported torch
+
 # Import from the main nodes.py file which handles the new unified architecture
 import importlib.util
 import os
 import sys
 
-# CRITICAL: Apply compatibility patches BEFORE any other imports
-#
-# Timing is critical: The monkey-patches must be applied BEFORE libraries are imported
-# by any other module. If we wait until after other imports, they will already
-# be loaded and our monkey-patches won't affect the already-imported module references.
-#
+# Note: PyTorch inductor patches removed - not needed for PyTorch 2.10+ with triton-windows 3.6+
+# Qwen3-TTS torch.compile optimizations require:
+# - PyTorch 2.10.0+ with CUDA 13.0
+# - triton-windows 3.6.0+ (Windows) or triton 3.6.0+ (Linux)
+# See docs/qwen3_tts_optimizations.md for installation instructions
+
+# Enable TensorFloat32 for better performance on Ampere+ GPUs (RTX 30xx+)
+try:
+    import torch
+    if torch.cuda.is_available():
+        torch.set_float32_matmul_precision('high')
+except Exception:
+    pass
+
 # PyTorch patches solve TWO PyTorch 2.9 issues:
 # 1. TorchCodec DLL incompatibility on Windows - Global patch uses scipy instead
 # 2. PyTorch 2.9's changed torchaudio.load() returning raw int16 - safe_load_audio() normalizes

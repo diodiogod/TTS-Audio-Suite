@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.12] - 2026-01-30
+
+### Added
+
+- Add Qwen3-TTS torch.compile optimizations for 1.7x speedup
+- Add torch.compile support with ~1.7x faster generation (5 it/s → 8.5 it/s on RTX 4090)
+- Add optimization mode selection: default (Windows), reduce-overhead (Linux), max-autotune (Linux)
+- Add optional manual CUDA graph capture (minimal gain over torch.compile alone)
+- Add comprehensive optimization guide with tested benchmark results and requirements
+- Note: Optimizations disabled by default, Windows users should use compile_mode='default'
+- Based on streaming implementation by dffdeeq: https://github.com/dffdeeq/Qwen3-TTS-streaming
+
+### Fixed
+
+- Improve compatibility with PyTorch 2.10+ and triton-windows 3.6+ required for optimizations
+- Fix encoding errors in startup messages
 ## [4.19.11] - 2026-01-30
 
 ### Added

@@ -95,7 +95,10 @@ class Qwen3TTSProcessor:
             dtype=dtype,
             model_size=model_size,
             attn_implementation=attn_implementation,
-            context=context
+            context=context,
+            use_torch_compile=engine_config.get('use_torch_compile', False),
+            use_cuda_graphs=engine_config.get('use_cuda_graphs', False),
+            compile_mode=engine_config.get('compile_mode', 'reduce-overhead')
         )
 
     def update_config(self, new_config: Dict[str, Any]):
@@ -143,7 +146,10 @@ class Qwen3TTSProcessor:
                 dtype=dtype,
                 model_size=model_size,
                 attn_implementation=attn_implementation,
-                context=context
+                context=context,
+                use_torch_compile=self.config.get('use_torch_compile', False),
+                use_cuda_graphs=self.config.get('use_cuda_graphs', False),
+                compile_mode=self.config.get('compile_mode', 'reduce-overhead')
             )
 
     def _language_name_to_code(self, language_input: str) -> str:

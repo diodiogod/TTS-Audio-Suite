@@ -8,6 +8,9 @@ Wraps official Qwen3-TTS implementation with ComfyUI integration:
 - Audio format conversion
 """
 
+# Note: PyTorch inductor patches removed - not needed for PyTorch 2.10+ with triton-windows 3.6+
+# torch.compile optimizations work correctly without patching
+
 import sys
 import os
 import torch
@@ -509,6 +512,78 @@ class Qwen3TTSEngine:
     def get_sample_rate(self) -> int:
         """Get the native sample rate of the engine."""
         return 24000  # Qwen3-TTS native sample rate
+
+    def enable_streaming_optimizations(self, use_compile=True, use_cuda_graphs=True,
+                                       compile_mode="reduce-overhead", decode_window_frames=80):
+        """
+        Enable streaming optimizations for faster generation.
+
+        WARNING: CUDA graphs may prevent safe model unloading (see Higgs Audio behavior).
+        If enabled, user may not be able to use "Clear VRAM" until ComfyUI restart.
+
+        Args:
+            use_compile: Enable torch.compile for decoder (~1.3-1.5x speedup)
+            use_cuda_graphs: Enable CUDA graph capture (~2-3x decoder speedup)
+            compile_mode: torch.compile mode ("reduce-overhead", "max-autotune", "default")
+            decode_window_frames: Static window size for CUDA graph capture (default 80)
+        """
+        self._ensure_model_loaded()
+        self._check_and_reload_device()
+
+        if not hasattr(self._model, 'enable_streaming_optimizations'):
+            raise RuntimeError("Bundled Qwen3-TTS doesn't support streaming optimizations")
+
+        # Mark model as having optimizations enabled for external tracking
+        self._cuda_graphs_enabled = use_cuda_graphs
+        self._streaming_optimized = True
+
+        self._model.enable_streaming_optimizations(
+            decode_window_frames=decode_window_frames,
+            use_compile=use_compile,
+            use_cuda_graphs=use_cuda_graphs,
+            compile_mode=compile_mode,
+        )
+        return self
+
+    def stream_generate_voice_clone(self, text, language, ref_audio=None,
+                                    ref_text=None, x_vector_only_mode=False,
+                                    voice_clone_prompt=None, emit_every_frames=8,
+                                    decode_window_frames=80, **kwargs):
+        """
+        Stream voice cloning generation, yielding audio chunks.
+
+        Returns generator of (chunk, sample_rate) tuples.
+        WARNING: Only use non-streaming mode if you need to unload the model with "Clear VRAM".
+
+        Args:
+            text: Text to synthesize
+            language: Language code (e.g., "English", "Chinese")
+            ref_audio: Reference audio path or numpy array
+            ref_text: Transcript of reference audio (for ICL mode)
+            x_vector_only_mode: Use only speaker embedding (False = ICL mode, better quality)
+            voice_clone_prompt: Pre-built VoiceClonePromptItem (overrides ref_audio/ref_text)
+            emit_every_frames: Emit audio every N codec frames (lower = lower latency)
+            decode_window_frames: Decoder context window size (larger = better quality)
+            **kwargs: Additional generation parameters
+        """
+        self._ensure_model_loaded()
+        self._check_and_reload_device()
+
+        if not hasattr(self._model, 'stream_generate_voice_clone'):
+            raise RuntimeError("Bundled Qwen3-TTS doesn't support streaming")
+
+        for chunk, sr in self._model.stream_generate_voice_clone(
+            text=text,
+            language=language,
+            ref_audio=ref_audio,
+            ref_text=ref_text,
+            x_vector_only_mode=x_vector_only_mode,
+            voice_clone_prompt=voice_clone_prompt,
+            emit_every_frames=emit_every_frames,
+            decode_window_frames=decode_window_frames,
+            **kwargs
+        ):
+            yield chunk, sr
 
     def unload(self):
         """Unload the model to free memory."""

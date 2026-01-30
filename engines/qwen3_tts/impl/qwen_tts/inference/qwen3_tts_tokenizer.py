@@ -409,3 +409,78 @@ class Qwen3TTSTokenizer:
             int: Decode upsample rate.
         """
         return int(self.model.get_decode_upsample_rate())
+
+    def enable_streaming_optimizations(
+        self,
+        decode_window_frames: int = 80,
+        use_compile: bool = True,
+        use_cuda_graphs: bool = True,
+        compile_mode: str = "reduce-overhead",
+    ):
+        """
+        Enable torch.compile and CUDA graphs optimizations for streaming decode.
+
+        Args:
+            decode_window_frames: Fixed window size for streaming (must match streaming params)
+            use_compile: Apply torch.compile to decoder
+            use_cuda_graphs: Capture CUDA graphs for fixed-size operations
+            compile_mode: torch.compile mode ("reduce-overhead" recommended for streaming)
+
+        Returns:
+            self for method chaining
+        """
+        model_type = self.model.get_model_type()
+        if model_type != "qwen3_tts_tokenizer_12hz":
+            print(f"[Tokenizer] Optimizations only supported for 12Hz tokenizer, got {model_type}")
+            return self
+
+        return self.model.enable_streaming_optimizations(
+            decode_window_frames=decode_window_frames,
+            use_compile=use_compile,
+            use_cuda_graphs=use_cuda_graphs,
+            compile_mode=compile_mode,
+        )
+
+    def decode_streaming(
+        self,
+        audio_codes: torch.Tensor,
+        use_optimized: bool = True,
+        pad_to_size: Optional[int] = None,
+    ) -> Tuple[List[np.ndarray], int]:
+        """
+        Decode audio codes optimized for streaming windows.
+
+        Unlike regular decode(), this method:
+        - Uses CUDA graphs when available and window matches captured size
+        - Does not use chunked decode (assumes single streaming window)
+        - Is optimized for repeated calls with same window size
+        - Optionally pads to fixed size for torch.compile optimization
+
+        Args:
+            audio_codes: [T, num_quantizers] tensor (single window, no batch dim)
+            use_optimized: Whether to use CUDA graph path when available
+            pad_to_size: If specified, pad input to this size (in frames) for
+                        consistent torch.compile behavior. Should match
+                        decode_window_frames for streaming.
+
+        Returns:
+            Tuple[List[np.ndarray], int]: (list with single waveform, sample_rate)
+        """
+        model_type = self.model.get_model_type()
+        if model_type != "qwen3_tts_tokenizer_12hz":
+            # Fallback to regular decode for other tokenizers
+            return self.decode({"audio_codes": audio_codes})
+
+        # Add batch dimension if needed: [T, Q] -> [1, T, Q]
+        if audio_codes.dim() == 2:
+            audio_codes = audio_codes.unsqueeze(0)
+
+        wav_tensor = self.model.decode_streaming(
+            audio_codes,
+            use_optimized=use_optimized,
+            pad_to_size=pad_to_size,
+        )
+
+        # Convert to numpy and return
+        wav = wav_tensor[0].to(torch.float32).detach().cpu().numpy()
+        return [wav], int(self.model.get_output_sample_rate())

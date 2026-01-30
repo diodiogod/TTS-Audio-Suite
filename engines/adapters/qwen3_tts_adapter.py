@@ -123,7 +123,10 @@ class Qwen3TTSEngineAdapter:
                        dtype: str = "auto",
                        model_size: str = "1.7B",
                        attn_implementation: str = "auto",
-                       context: Optional[Dict[str, Any]] = None):
+                       context: Optional[Dict[str, Any]] = None,
+                       use_torch_compile: bool = False,
+                       use_cuda_graphs: bool = False,
+                       compile_mode: str = "reduce-overhead"):
         """
         Load Qwen3-TTS engine via unified interface with intelligent model selection.
 
@@ -134,6 +137,9 @@ class Qwen3TTSEngineAdapter:
             model_size: Model size (0.6B/1.7B)
             attn_implementation: Attention mechanism (auto/flash_attention_2/sdpa/eager)
             context: Context dict for model type determination
+            use_torch_compile: Enable torch.compile optimization
+            use_cuda_graphs: Enable CUDA graph capture
+            compile_mode: torch.compile mode (reduce-overhead/max-autotune/default)
         """
         from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
         from utils.device import resolve_torch_device
@@ -164,7 +170,10 @@ class Qwen3TTSEngineAdapter:
             device=resolve_torch_device(device),
             additional_params={
                 "dtype": dtype,
-                "attn_implementation": attn_implementation
+                "attn_implementation": attn_implementation,
+                "use_torch_compile": use_torch_compile,
+                "use_cuda_graphs": use_cuda_graphs,
+                "compile_mode": compile_mode
             }
         )
 
@@ -172,7 +181,19 @@ class Qwen3TTSEngineAdapter:
         self._last_config = config
 
         # Load model via unified interface (but don't store the reference)
-        unified_model_interface.load_model(config)
+        engine = unified_model_interface.load_model(config)
+
+        # Enable streaming optimizations if requested
+        if use_torch_compile or use_cuda_graphs:
+            try:
+                engine.enable_streaming_optimizations(
+                    use_compile=use_torch_compile,
+                    use_cuda_graphs=use_cuda_graphs,
+                    compile_mode=compile_mode
+                )
+                print(f"✅ Qwen3-TTS: Streaming optimizations enabled (compile={use_torch_compile}, cuda_graphs={use_cuda_graphs})")
+            except Exception as e:
+                print(f"⚠️ Failed to enable streaming optimizations: {e}")
 
     def _get_engine(self):
         """

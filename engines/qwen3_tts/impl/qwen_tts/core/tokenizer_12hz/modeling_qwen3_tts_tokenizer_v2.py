@@ -16,7 +16,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Callable, Optional, Union, List
+from typing import Callable, Optional, Union, List, Any
 
 import numpy as np
 import torch
@@ -39,7 +39,19 @@ from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from transformers.processing_utils import Unpack
 from transformers.utils import ModelOutput, auto_docstring, logging
 from transformers.utils.deprecation import deprecate_kwarg
-from transformers.utils.generic import check_model_inputs
+
+# PATCH: TTS Audio Suite - Fix PyTorch 2.8.0 duplicate template name bug
+# This happens when torch._inductor tries to register templates multiple times
+# We clear the registry before compilation to prevent the assertion error
+try:
+    import torch._inductor.select_algorithm as select_algo
+    if hasattr(select_algo, 'TritonTemplate') and hasattr(select_algo.TritonTemplate, 'all_templates'):
+        # Clear any pre-existing template registrations that might cause duplicates
+        # This is safe because templates get re-registered during first use
+        if 'triton_grouped_mm_template' in select_algo.TritonTemplate.all_templates:
+            del select_algo.TritonTemplate.all_templates['triton_grouped_mm_template']
+except Exception:
+    pass  # If patching fails, compilation will still be attempted
 
 from .configuration_qwen3_tts_tokenizer_v2 import (
     Qwen3TTSTokenizerV2Config,
@@ -495,10 +507,6 @@ class Qwen3TTSTokenizerV2DecoderTransformerModel(Qwen3TTSTokenizerV2DecoderPreTr
         # Initialize weights and apply final processing
         self.post_init()
 
-    # PATCH: TTS Audio Suite - Removed @check_model_inputs() decorator
-    # The decorator syntax changed in transformers 4.51.3+ causing errors.
-    # Since this is just input validation (non-critical), we remove it entirely.
-    # Original: @check_model_inputs()
     @auto_docstring
     def forward(
         self,
@@ -828,6 +836,14 @@ class Qwen3TTSTokenizerV2Decoder(Qwen3TTSTokenizerV2DecoderPreTrainedModel):
         super().__init__(config)
         self.total_upsample = np.prod(config.upsample_rates + config.upsampling_ratios)
         self.pre_transformer = Qwen3TTSTokenizerV2DecoderTransformerModel._from_config(config)
+
+        # Optimization state
+        self._compiled_forward: Optional[Callable] = None
+        self._compile_mode: Optional[str] = None
+        self._cuda_graph: Optional[torch.cuda.CUDAGraph] = None
+        self._static_input: Optional[torch.Tensor] = None
+        self._static_output: Optional[torch.Tensor] = None
+        self._graph_window_size: Optional[int] = None
         
         self.quantizer = SplitResidualVectorQuantizer(
             dimension=config.codebook_dim // 2,
@@ -896,6 +912,178 @@ class Qwen3TTSTokenizerV2Decoder(Qwen3TTSTokenizerV2DecoderPreTrainedModel):
             wavs.append(wav_chunk[..., context_size * self.total_upsample :])
             start_index = end_index
         return torch.cat(wavs, dim=-1)
+
+    def compile_for_streaming(self, mode: str = "reduce-overhead", backend: str = "inductor"):
+        """
+        Apply torch.compile to the forward pass for faster streaming decode.
+
+        Note: "reduce-overhead" mode already includes CUDA graph optimizations internally,
+        so you should NOT use capture_cuda_graph() when using this mode.
+
+        Args:
+            mode: Compilation mode:
+                - "reduce-overhead" (recommended): Uses CUDA graphs internally, best for streaming
+                - "max-autotune": Maximum optimization, longer compile time
+                - "default": Good balance, no internal CUDA graphs
+            backend: Compilation backend ("inductor" recommended)
+        """
+        if not hasattr(torch, 'compile'):
+            print("[Decoder] torch.compile not available (requires PyTorch 2.0+)")
+            return self
+
+        print(f"[Decoder] Compiling forward with mode={mode}, backend={backend}...")
+        print(f"[Decoder] Note: mode='reduce-overhead' includes CUDA graphs automatically")
+        self._compiled_forward = torch.compile(
+            self._forward_impl,
+            mode=mode,
+            fullgraph=False,
+            dynamic=False,
+            backend=backend,
+        )
+        self._compile_mode = mode
+        print("[Decoder] Compilation complete")
+        return self
+
+    def _forward_impl(self, codes):
+        """Internal forward implementation for compilation."""
+        hidden = self.quantizer.decode(codes)
+        hidden = self.pre_conv(hidden).transpose(1, 2)
+        hidden = self.pre_transformer(inputs_embeds=hidden).last_hidden_state
+        hidden = hidden.permute(0, 2, 1)
+        for blocks in self.upsample:
+            for block in blocks:
+                hidden = block(hidden)
+        wav = hidden
+        for block in self.decoder:
+            wav = block(wav)
+        return wav.clamp(min=-1, max=1)
+
+    def capture_cuda_graph(self, window_size: int = 80, warmup_runs: int = 3):
+        """
+        Capture CUDA graph for a fixed window size.
+
+        CUDA graphs eliminate CPU overhead by capturing and replaying
+        GPU operations. Best for streaming with fixed decode_window_frames.
+
+        WARNING: Do NOT use this with torch.compile mode='reduce-overhead',
+        as that mode already uses CUDA graphs internally and will conflict.
+        Use this only with mode='default' or without torch.compile.
+
+        Args:
+            window_size: Fixed number of codec frames (must match decode_window_frames)
+            warmup_runs: Number of warmup iterations before capture
+        """
+        if not torch.cuda.is_available():
+            print("[Decoder] CUDA not available, skipping graph capture")
+            return self
+
+        # Check for conflict with torch.compile reduce-overhead mode
+        if self._compiled_forward is not None and getattr(self, '_compile_mode', None) == 'reduce-overhead':
+            print("[Decoder] WARNING: torch.compile with mode='reduce-overhead' already uses CUDA graphs internally.")
+            print("[Decoder] Skipping manual CUDA graph capture to avoid conflicts.")
+            print("[Decoder] The compiled forward will be used instead (already optimized).")
+            return self
+
+        device = next(self.parameters()).device
+        num_quantizers = self.config.num_quantizers
+
+        # Create static input buffer
+        self._static_input = torch.zeros(
+            1, num_quantizers, window_size,
+            dtype=torch.long,
+            device=device
+        )
+        self._graph_window_size = window_size
+
+        # Use non-compiled forward for manual CUDA graph capture
+        forward_fn = self._forward_impl
+
+        # Warmup
+        print(f"[Decoder] Warming up CUDA graph (window_size={window_size})...")
+        s = torch.cuda.Stream()
+        s.wait_stream(torch.cuda.current_stream())
+
+        with torch.cuda.stream(s):
+            for _ in range(warmup_runs):
+                _ = forward_fn(self._static_input)
+        torch.cuda.current_stream().wait_stream(s)
+
+        # Capture
+        print("[Decoder] Capturing CUDA graph...")
+        self._cuda_graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(self._cuda_graph):
+            self._static_output = forward_fn(self._static_input)
+
+        print("[Decoder] CUDA graph captured successfully")
+        return self
+
+    def forward_optimized(self, codes):
+        """
+        Forward pass with optimizations if available.
+
+        Priority:
+        1. Manual CUDA graph (if captured and input matches size)
+        2. Compiled forward (torch.compile, may include internal CUDA graphs)
+        3. Regular forward
+
+        Note: With compile_mode="reduce-overhead", the compiled forward
+        already includes CUDA graph optimizations internally.
+        """
+        B, Q, T = codes.shape
+
+        # Try manual CUDA graph path (only if we captured one)
+        if (self._cuda_graph is not None
+            and B == 1
+            and T == self._graph_window_size):
+            self._static_input.copy_(codes)
+            self._cuda_graph.replay()
+            return self._static_output.clone()
+
+        # Use compiled forward if available (includes CUDA graphs with reduce-overhead)
+        if self._compiled_forward is not None:
+            # Mark step begin for CUDA graphs to avoid tensor overwrite errors
+            torch.compiler.cudagraph_mark_step_begin()
+            return self._compiled_forward(codes)
+
+        # Fallback to regular forward
+        return self._forward_impl(codes)
+
+    def decode_padded(self, codes: torch.Tensor, target_length: int) -> torch.Tensor:
+        """
+        Decode with left-padding to fixed size for torch.compile optimization.
+
+        When using torch.compile with dynamic=False, the model recompiles for each
+        new input size. By padding all inputs to target_length, we ensure a single
+        compilation that can be reused for all streaming decode calls.
+
+        Args:
+            codes: Input tensor of shape [B, Q, T] where T <= target_length
+            target_length: Fixed size to pad to (should be decode_window_frames)
+
+        Returns:
+            Waveform tensor with padding samples trimmed from the left
+        """
+        B, Q, T = codes.shape
+
+        if T < target_length:
+            # Pad with zeros on the left
+            pad = torch.zeros(B, Q, target_length - T, dtype=codes.dtype, device=codes.device)
+            codes_padded = torch.cat([pad, codes], dim=-1)
+        else:
+            codes_padded = codes.contiguous()  # Ensure uniform tensor format to avoid recompilation
+
+        # Run forward (uses compiled path if available)
+        wav = self.forward_optimized(codes_padded)
+
+        # Trim padding from output
+        if T < target_length:
+            # Calculate how many samples correspond to the padding frames
+            total_samples = wav.shape[-1]
+            samples_per_frame = total_samples / target_length
+            trim_samples = int((target_length - T) * samples_per_frame)
+            wav = wav[..., trim_samples:]
+
+        return wav
 
 
 class Qwen3TTSTokenizerV2Encoder(MimiModel):
@@ -1023,6 +1211,96 @@ class Qwen3TTSTokenizerV2Model(Qwen3TTSTokenizerV2PreTrainedModel):
             )
 
         return Qwen3TTSTokenizerV2DecoderOutput(audio_values)
+
+    def enable_streaming_optimizations(
+        self,
+        decode_window_frames: int = 80,
+        use_compile: bool = True,
+        use_cuda_graphs: bool = False,  # Changed default: not needed with reduce-overhead
+        compile_mode: str = "reduce-overhead",
+    ):
+        """
+        Enable optimizations for streaming decode.
+
+        This method applies torch.compile to the decoder for faster streaming generation.
+
+        IMPORTANT: compile_mode="reduce-overhead" (default) already includes CUDA graph
+        optimizations internally. You do NOT need to set use_cuda_graphs=True with this mode.
+        Manual CUDA graphs are only useful with compile_mode="default".
+
+        Args:
+            decode_window_frames: Window size for streaming decode (used for manual CUDA graphs)
+            use_compile: Apply torch.compile to the decoder (recommended)
+            use_cuda_graphs: Capture manual CUDA graphs (only useful with compile_mode="default")
+            compile_mode: Mode for torch.compile:
+                - "reduce-overhead" (recommended): Includes CUDA graphs automatically
+                - "max-autotune": Maximum optimization
+                - "default": Basic compilation, can combine with manual CUDA graphs
+
+        Returns:
+            self for method chaining
+
+        Example:
+            # Recommended: just use torch.compile with reduce-overhead
+            model.speech_tokenizer.model.enable_streaming_optimizations(
+                use_compile=True,
+                compile_mode="reduce-overhead",
+            )
+        """
+        print(f"[Tokenizer] Enabling streaming optimizations...")
+        print(f"  use_compile={use_compile}, compile_mode={compile_mode}")
+        print(f"  use_cuda_graphs={use_cuda_graphs} (manual)")
+
+        if use_compile:
+            self.decoder.compile_for_streaming(mode=compile_mode)
+
+        # Only capture manual CUDA graphs if explicitly requested AND not using reduce-overhead
+        if use_cuda_graphs:
+            if compile_mode == "reduce-overhead":
+                print(f"[Tokenizer] Note: compile_mode='reduce-overhead' already includes CUDA graphs")
+                print(f"[Tokenizer] Manual CUDA graph capture skipped (not needed)")
+            else:
+                self.decoder.capture_cuda_graph(window_size=decode_window_frames)
+
+        return self
+
+    def decode_streaming(
+        self,
+        audio_codes: torch.Tensor,
+        use_optimized: bool = True,
+        pad_to_size: Optional[int] = None,
+    ) -> torch.Tensor:
+        """
+        Decode audio codes optimized for streaming (single window).
+
+        Unlike the regular decode(), this method:
+        - Does not use chunked decoding (assumes small window)
+        - Uses CUDA graphs if available
+        - Returns raw tensor (not list)
+        - Optionally pads to fixed size for torch.compile optimization
+
+        Args:
+            audio_codes: [B, T, num_quantizers] tensor of codec indices
+            use_optimized: If True, use CUDA graph path when available
+            pad_to_size: If specified, pad input to this size (in frames) for
+                        consistent torch.compile behavior. Should match
+                        decode_window_frames for streaming.
+
+        Returns:
+            Waveform tensor [B, samples]
+        """
+        # Transpose to [B, num_quantizers, T] for decoder
+        codes = audio_codes.transpose(1, 2)
+
+        if use_optimized:
+            if pad_to_size is not None:
+                wav = self.decoder.decode_padded(codes, pad_to_size)
+            else:
+                wav = self.decoder.forward_optimized(codes)
+        else:
+            wav = self.decoder(codes)
+
+        return wav.squeeze(1)
 
 
 __all__ = ["Qwen3TTSTokenizerV2Model", "Qwen3TTSTokenizerV2PreTrainedModel"]
