@@ -99,8 +99,11 @@ class Qwen3TTSVoiceDesignerNode:
                 f"Connect '⚙️ Qwen3-TTS Engine' node."
             )
 
+        # Extract config from nested structure (matching unified TTS node pattern)
+        config = TTS_engine.get('config', TTS_engine)
+
         # Force VoiceDesign model and 1.7B
-        model_size = TTS_engine.get('model_size', '1.7B')
+        model_size = config.get('model_size', '1.7B')
         if model_size == "0.6B":
             print("⚠️ VoiceDesign requires 1.7B model, auto-switching from 0.6B")
             model_size = "1.7B"
@@ -136,7 +139,7 @@ class Qwen3TTSVoiceDesignerNode:
                         # Cache the loaded audio for same-session reuse
                         from utils.audio.cache import audio_cache
                         import hashlib
-                        cache_key_data = f"{voice_description}|{reference_text}|{language}|{TTS_engine.get('temperature', 0.9)}|{TTS_engine.get('top_k', 50)}|{TTS_engine.get('top_p', 1.0)}"
+                        cache_key_data = f"{voice_description}|{reference_text}|{language}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
                         cache_key = hashlib.md5(cache_key_data.encode()).hexdigest()
                         duration = waveform.shape[-1] / float(sr)
                         audio_cache.cache_audio(f"voice_designer_{cache_key}", waveform, duration)
@@ -170,7 +173,7 @@ class Qwen3TTSVoiceDesignerNode:
 
         # Generate cache key for runtime caching (same session regeneration)
         import hashlib
-        cache_key_data = f"{voice_description}|{reference_text}|{language}|{TTS_engine.get('temperature', 0.9)}|{TTS_engine.get('top_k', 50)}|{TTS_engine.get('top_p', 1.0)}"
+        cache_key_data = f"{voice_description}|{reference_text}|{language}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
         cache_key = hashlib.md5(cache_key_data.encode()).hexdigest()
 
         # Check audio cache (for same-session regeneration optimization)
@@ -185,10 +188,10 @@ class Qwen3TTSVoiceDesignerNode:
             from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
             from utils.device import resolve_torch_device
 
-            model_path = TTS_engine.get('model_path', f'Qwen3-TTS-12Hz-{model_size}-VoiceDesign')
-            device = TTS_engine.get('device', 'auto')
-            dtype = TTS_engine.get('dtype', 'auto')
-            attn_implementation = TTS_engine.get('attn_implementation', 'auto')
+            model_path = config.get('model_path', f'Qwen3-TTS-12Hz-{model_size}-VoiceDesign')
+            device = config.get('device', 'auto')
+            dtype = config.get('dtype', 'auto')
+            attn_implementation = config.get('attn_implementation', 'auto')
 
             # Build config with VoiceDesign context
             model_config = ModelLoadConfig(
@@ -217,7 +220,7 @@ class Qwen3TTSVoiceDesignerNode:
 
             # Create ComfyUI progress bar (same pattern as processor)
             import comfy.utils
-            max_new_tokens = TTS_engine.get('max_new_tokens', 2048)
+            max_new_tokens = config.get('max_new_tokens', 2048)
             pbar = comfy.utils.ProgressBar(max_new_tokens)
 
             # Convert to transformers streamer
@@ -229,10 +232,10 @@ class Qwen3TTSVoiceDesignerNode:
                     text=reference_text,
                     language=language,
                     instruct=voice_description,
-                    top_k=TTS_engine.get('top_k', 50),
-                    top_p=TTS_engine.get('top_p', 1.0),
-                    temperature=TTS_engine.get('temperature', 0.9),
-                    repetition_penalty=TTS_engine.get('repetition_penalty', 1.05),
+                    top_k=config.get('top_k', 50),
+                    top_p=config.get('top_p', 1.0),
+                    temperature=config.get('temperature', 0.9),
+                    repetition_penalty=config.get('repetition_penalty', 1.05),
                     max_new_tokens=max_new_tokens,
                     streamer=streamer
                 )

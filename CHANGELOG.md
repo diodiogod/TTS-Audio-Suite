@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.11] - 2026-01-30
+
+### Added
+
+- Properly respect user's attention mechanism choice (sdpa/eager/flash_attention_2)
+
+### Fixed
+
+- Fix Qwen3-TTS Voice Designer attention selection on AMD GPUs
+- Fix flash_attn import error when user selects sdpa attention
+- Fix config parameter extraction in Voice Designer node
 ## [4.19.10] - 2026-01-29
 
 ### Added
