@@ -58,6 +58,82 @@ class Qwen3TTSDownloader:
         }
     }
 
+    # Strict required file lists based on HF repos (2026-01-31).
+    # Keep this tight to catch partial downloads that crash with KeyError 'default'.
+    REQUIRED_FILES = {
+        "Qwen3-TTS-Tokenizer-12Hz": [
+            "config.json",
+            "configuration.json",
+            "model.safetensors",
+            "preprocessor_config.json",
+        ],
+        "Qwen3-TTS-12Hz-0.6B-CustomVoice": [
+            "config.json",
+            "generation_config.json",
+            "merges.txt",
+            "model.safetensors",
+            "preprocessor_config.json",
+            "tokenizer_config.json",
+            "vocab.json",
+            "speech_tokenizer/config.json",
+            "speech_tokenizer/configuration.json",
+            "speech_tokenizer/model.safetensors",
+            "speech_tokenizer/preprocessor_config.json",
+        ],
+        "Qwen3-TTS-12Hz-0.6B-Base": [
+            "config.json",
+            "generation_config.json",
+            "merges.txt",
+            "model.safetensors",
+            "preprocessor_config.json",
+            "tokenizer_config.json",
+            "vocab.json",
+            "speech_tokenizer/config.json",
+            "speech_tokenizer/configuration.json",
+            "speech_tokenizer/model.safetensors",
+            "speech_tokenizer/preprocessor_config.json",
+        ],
+        "Qwen3-TTS-12Hz-1.7B-CustomVoice": [
+            "config.json",
+            "generation_config.json",
+            "merges.txt",
+            "model.safetensors",
+            "preprocessor_config.json",
+            "tokenizer_config.json",
+            "vocab.json",
+            "speech_tokenizer/config.json",
+            "speech_tokenizer/configuration.json",
+            "speech_tokenizer/model.safetensors",
+            "speech_tokenizer/preprocessor_config.json",
+        ],
+        "Qwen3-TTS-12Hz-1.7B-VoiceDesign": [
+            "config.json",
+            "generation_config.json",
+            "merges.txt",
+            "model.safetensors",
+            "preprocessor_config.json",
+            "tokenizer_config.json",
+            "vocab.json",
+            "speech_tokenizer/config.json",
+            "speech_tokenizer/configuration.json",
+            "speech_tokenizer/model.safetensors",
+            "speech_tokenizer/preprocessor_config.json",
+        ],
+        "Qwen3-TTS-12Hz-1.7B-Base": [
+            "config.json",
+            "generation_config.json",
+            "merges.txt",
+            "model.safetensors",
+            "preprocessor_config.json",
+            "tokenizer_config.json",
+            "vocab.json",
+            "speech_tokenizer/config.json",
+            "speech_tokenizer/configuration.json",
+            "speech_tokenizer/model.safetensors",
+            "speech_tokenizer/preprocessor_config.json",
+        ],
+    }
+
     def __init__(self, base_path: Optional[str] = None):
         """
         Initialize downloader.
@@ -237,10 +313,42 @@ class Qwen3TTSDownloader:
             if not os.path.exists(model_dir) or not os.listdir(model_dir):
                 print(f"📥 Model not found, downloading {model_name}...")
                 return self.download_model(model_name)
+            if not self._is_model_complete(model_name, model_dir):
+                print(f"⚠️ Incomplete Qwen3-TTS model detected: {model_dir}")
+                print(f"📥 Re-downloading {model_name} to fix missing files...")
+                return self.download_model(model_name, force=True)
         elif not os.path.exists(model_dir):
             raise FileNotFoundError(f"Model not found: {model_name}")
 
         return model_dir
+
+    def _is_model_complete(self, model_name: str, model_dir: str) -> bool:
+        """
+        Strict completeness check for Qwen3-TTS model folders.
+
+        Uses HF repo file lists captured in REQUIRED_FILES.
+        """
+        if not os.path.isdir(model_dir):
+            return False
+        required = self.REQUIRED_FILES.get(model_name)
+        if not required:
+            # Fall back to basic check if we don't have a strict list
+            return os.path.exists(os.path.join(model_dir, "config.json"))
+
+        missing = []
+        for rel_path in required:
+            if not os.path.exists(os.path.join(model_dir, rel_path)):
+                missing.append(rel_path)
+
+        if missing:
+            print(f"❌ Qwen3-TTS model incomplete. Missing {len(missing)} file(s):")
+            for path in missing[:20]:
+                print(f"   - {path}")
+            if len(missing) > 20:
+                print(f"   ... and {len(missing) - 20} more")
+            return False
+
+        return True
 
 
 def main():
