@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "4.19.12"
+VERSION = "4.20.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -491,7 +491,7 @@ if UNIFIED_VC_AVAILABLE:
 
 if UNIFIED_ASR_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedASRTranscribeNode"] = UnifiedASRTranscribeNode
-    NODE_DISPLAY_NAME_MAPPINGS["UnifiedASRTranscribeNode"] = "📝 ASR Transcribe"
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedASRTranscribeNode"] = "✏️ ASR Transcribe"
 
 # Register legacy support nodes
 if VOICE_CAPTURE_AVAILABLE:

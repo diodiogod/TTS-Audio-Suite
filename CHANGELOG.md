@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.0] - 2026-01-31
+
+### Added
+
+- Add Qwen3-ASR transcription with unified SRT output
+- New ASR Transcribe node with text, SRT, and word timestamps
+- Built-in subtitle readability presets and punctuation-aware SRT formatting
+- Automatic Qwen3-ASR downloads with forced aligner support
+- Faster experimentation via ASR result caching
 ## [4.19.12] - 2026-01-30
 
 ### Added

@@ -41,7 +41,7 @@ GLOBAL_ASR_CACHE = {}
 class UnifiedASRTranscribeNode(BaseChatterBoxNode):
     @classmethod
     def NAME(cls):
-        return "📝 ASR Transcribe"
+        return "✏️ ASR Transcribe"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -107,7 +107,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                     "tooltip": "SRT construction:\n• smart: Groups words by punctuation, gaps, duration, and CPS\n• engine_segments: Use model segment boundaries\n• words: One subtitle per word (debug)"
                 }),
                 "srt_max_chars_per_line": ("INT", {
-                    "default": 42, "min": 20, "max": 80, "step": 1,
+                    "default": 42, "min": 10, "max": 10000, "step": 1,
                     "tooltip": "Max characters per line (CPL). Lower = easier to read, higher = fewer subtitles."
                 }),
                 "srt_max_lines": ("INT", {
@@ -115,19 +115,19 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                     "tooltip": "Max lines per subtitle. Industry standard is 2."
                 }),
                 "srt_max_duration": ("FLOAT", {
-                    "default": 6.0, "min": 1.0, "max": 10.0, "step": 0.1,
+                    "default": 6.0, "min": 0.2, "max": 9999.0, "step": 0.1,
                     "tooltip": "Max subtitle duration (seconds). Longer = fewer subtitles but slower updates."
                 }),
                 "srt_min_duration": ("FLOAT", {
-                    "default": 1.0, "min": 0.2, "max": 3.0, "step": 0.1,
+                    "default": 1.0, "min": 0.0, "max": 9999.0, "step": 0.1,
                     "tooltip": "Min subtitle duration (seconds). Prevents flickering subtitles."
                 }),
                 "srt_min_gap": ("FLOAT", {
-                    "default": 0.6, "min": 0.0, "max": 2.0, "step": 0.1,
+                    "default": 0.6, "min": 0.0, "max": 9999.0, "step": 0.1,
                     "tooltip": "Minimum gap (seconds) that forces a split. Higher values create more breaks."
                 }),
                 "srt_max_cps": ("FLOAT", {
-                    "default": 20.0, "min": 10.0, "max": 30.0, "step": 0.5,
+                    "default": 20.0, "min": 0.1, "max": 9999.0, "step": 0.5,
                     "tooltip": "Max characters per second (CPS). Lower = easier to read, higher = denser subtitles."
                 }),
                 "chunk_size": ("INT", {
@@ -275,5 +275,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "UnifiedASRTranscribeNode": "📝 ASR Transcribe"
+    "UnifiedASRTranscribeNode": "✏️ ASR Transcribe"
 }
