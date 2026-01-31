@@ -56,6 +56,10 @@ class Qwen3TTSVoiceDesignerNode:
                     "default": "",
                     "tooltip": "Optional: Save this voice with a character name.\n• If provided: Saves to models/voices/{character_name}/\n• If blank: Temporary preview only (not saved)\n\nSaved voices can be used in character switching and TTS Text node."
                 }),
+                "overwrite_character": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Overwrite existing character files instead of creating versioned copies.\n• False (default): Creates name_1, name_2, etc. if character exists\n• True: Overwrites existing character files (useful for refining voices)"
+                }),
             }
         }
 
@@ -69,7 +73,8 @@ class Qwen3TTSVoiceDesignerNode:
                     voice_description: str,
                     reference_text: str,
                     language: str,
-                    character_name: str = "") -> Tuple[Dict, Dict, str]:
+                    character_name: str = "",
+                    overwrite_character: bool = False) -> Tuple[Dict, Dict, str]:
         """
         Design a custom voice from text description.
 
@@ -79,6 +84,7 @@ class Qwen3TTSVoiceDesignerNode:
             reference_text: Reference text for preview generation
             language: Target language
             character_name: Optional character name to save voice
+            overwrite_character: If True, overwrite existing character files instead of versioning
 
         Returns:
             Tuple of (narrator_voice, preview_audio, voice_info)
@@ -120,12 +126,24 @@ class Qwen3TTSVoiceDesignerNode:
             existing_metadata = os.path.join(voices_dir, f"{char_name}.txt")
 
             if os.path.exists(existing_audio) and os.path.exists(existing_metadata):
-                # Check if voice description matches
+                # Check if BOTH voice description AND reference text match
                 try:
                     with open(existing_metadata, 'r', encoding='utf-8') as f:
                         existing_content = f.read()
 
-                    if f"Voice Description:\n{voice_description}\n" in existing_content:
+                    # Check voice description
+                    description_matches = f"Voice Description:\n{voice_description}\n" in existing_content
+                    
+                    # Check reference text from .reference.txt file
+                    existing_ref_text_path = os.path.join(voices_dir, f"{char_name}.reference.txt")
+                    reference_matches = False
+                    if os.path.exists(existing_ref_text_path):
+                        with open(existing_ref_text_path, 'r', encoding='utf-8') as f:
+                            saved_ref_text = f.read().strip()
+                        reference_matches = (saved_ref_text == reference_text.strip())
+                    
+                    # Only load from disk if BOTH match (prevents stale audio)
+                    if description_matches and reference_matches:
                         print(f"💾 Character '{char_name}' already exists with identical voice - loading from disk (skipped model loading)")
 
                         # Load existing audio
@@ -166,6 +184,8 @@ class Qwen3TTSVoiceDesignerNode:
                         voice_info = f"Voice loaded from disk\nDescription: {voice_description}\nTest text: {reference_text}\n\n💾 Character '{char_name}' already exists with identical voice"
 
                         return (narrator_voice, preview_audio, voice_info)
+                    elif description_matches and not reference_matches:
+                        print(f"⚠️ Character '{char_name}' exists but reference text changed - regenerating voice")
                 except Exception as e:
                     # If can't read metadata, proceed with generation
                     print(f"⚠️ Could not verify existing character: {e}")
@@ -298,13 +318,23 @@ class Qwen3TTSVoiceDesignerNode:
             existing_metadata = os.path.join(voices_dir, f"{char_name}.txt")
 
             should_save = True
-            if os.path.exists(existing_metadata):
+            # When overwrite_character is True, always save (skip duplicate check)
+            if not overwrite_character and os.path.exists(existing_metadata):
                 # Read existing metadata to check if it's the same voice
                 try:
                     with open(existing_metadata, 'r', encoding='utf-8') as f:
                         existing_content = f.read()
-                    # Check if the voice description matches
-                    if f"Voice Description:\n{voice_description}\n" in existing_content:
+                    # Check if BOTH voice description AND reference text match
+                    description_matches = f"Voice Description:\n{voice_description}\n" in existing_content
+                    
+                    existing_ref_text_path = os.path.join(voices_dir, f"{char_name}.reference.txt")
+                    reference_matches = False
+                    if os.path.exists(existing_ref_text_path):
+                        with open(existing_ref_text_path, 'r', encoding='utf-8') as f:
+                            saved_ref_text = f.read().strip()
+                        reference_matches = (saved_ref_text == reference_text.strip())
+                    
+                    if description_matches and reference_matches:
                         print(f"💾 Character '{char_name}' already exists with identical voice - skipping save")
                         voice_info += f"\n\n💾 Character '{char_name}' already exists with identical voice"
                         should_save = False
@@ -317,7 +347,8 @@ class Qwen3TTSVoiceDesignerNode:
                     voice_description,
                     preview_audio,
                     reference_text,
-                    language
+                    language,
+                    overwrite_character
                 )
                 # Update narrator_voice with saved audio path
                 saved_audio_path = os.path.join(save_path, f"{final_char_name}.wav")
@@ -344,7 +375,8 @@ class Qwen3TTSVoiceDesignerNode:
                                 voice_description: str,
                                 audio: Dict,
                                 reference_text: str,
-                                language: str) -> Tuple[str, str]:
+                                language: str,
+                                overwrite: bool = False) -> Tuple[str, str]:
         """
         Save designed voice to models/voices/ for character system.
 
@@ -359,6 +391,7 @@ class Qwen3TTSVoiceDesignerNode:
             audio: Audio dict with waveform and sample_rate
             reference_text: Test text used (transcription of audio)
             language: Language used
+            overwrite: If True, overwrite existing files; if False, create versioned names
 
         Returns:
             Tuple of (voices_dir path, final_character_name)
@@ -367,15 +400,21 @@ class Qwen3TTSVoiceDesignerNode:
         voices_dir = os.path.join(folder_paths.models_dir, "voices")
         os.makedirs(voices_dir, exist_ok=True)
 
-        # Check if character name already exists, append number if needed
-        original_name = character_name
-        counter = 1
-        while os.path.exists(os.path.join(voices_dir, f"{character_name}.wav")):
-            character_name = f"{original_name}_{counter}"
-            counter += 1
+        # Handle existing character names based on overwrite setting
+        if not overwrite:
+            # Versioning mode: append number if needed
+            original_name = character_name
+            counter = 1
+            while os.path.exists(os.path.join(voices_dir, f"{character_name}.wav")):
+                character_name = f"{original_name}_{counter}"
+                counter += 1
 
-        if character_name != original_name:
-            print(f"⚠️ Character '{original_name}' already exists - saving as '{character_name}'")
+            if character_name != original_name:
+                print(f"⚠️ Character '{original_name}' already exists - saving as '{character_name}'")
+        else:
+            # Overwrite mode: use name directly
+            if os.path.exists(os.path.join(voices_dir, f"{character_name}.wav")):
+                print(f"♻️ Overwriting existing character '{character_name}'")
 
         # Save voice audio as {character_name}.wav
         audio_path = os.path.join(voices_dir, f"{character_name}.wav")

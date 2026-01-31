@@ -216,6 +216,9 @@ docs/Dev reports/CLAUDE_VERSION_MANAGEMENT_GUIDE.md
 *AGENTS.md
 AGENTS.md
 
+# Antigravity / agent configuration
+.agent/
+
 IgnoredForGitHubDocs/
 
 # Windows Zone.Identifier files

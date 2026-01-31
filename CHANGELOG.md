@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.1] - 2026-01-31
+
+### Added
+
+- Add .agent/ directory to .gitignore for personal development tools
+
+### Changed
+
+- Improve cache validation to check both voice description and reference text before loading from disk
+
+### Fixed
+
+- Fix Qwen3-TTS Voice Designer caching issues and add voice refinement support
+- Fix Voice Designer loading stale audio when reference text changes but description stays same
+- Add overwrite_character toggle to enable voice refinement workflow (default: False for backward compatibility)
 ## [4.20.0] - 2026-01-31
 
 ### Added
