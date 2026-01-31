@@ -1,0 +1,13 @@
+global-exclude *
+
+recursive-include qwen_asr *.py *.pyi py.typed
+recursive-include qwen_asr *.dict
+
+include LICENSE
+include MANIFEST.in
+include pyproject.toml
+
+prune assets
+prune examples
+prune finetuning
+prune qwen_asr.egg-info
