@@ -212,6 +212,10 @@ docs/Dev reports/CLAUDE_VERSION_MANAGEMENT_GUIDE.md
 .claude-code.json
 .claude/
 
+#codex
+*AGENTS.md
+AGENTS.md
+
 IgnoredForGitHubDocs/
 
 # Windows Zone.Identifier files

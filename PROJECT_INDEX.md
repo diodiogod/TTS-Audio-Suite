@@ -123,6 +123,9 @@ This extension features a **unified modular architecture** supporting multiple T
 - **qwen3_tts_downloader.py** - Auto-download system for 6 model variants and tokenizer
 - **impl/** - Bundled official Qwen3-TTS implementation
 
+**engines/qwen3_asr/** - Qwen3-ASR engine implementation (bundled)
+- **impl/** - Bundled official Qwen3-ASR implementation (qwen_asr package)
+
 **engines/rvc/** - RVC (Real-time Voice Conversion) engine implementation
 - **__init__.py** - RVC engine initialization and ComfyUI integration
 - **hubert_downloader.py** - HuBERT model auto-download from Hugging Face with TTS/ folder organization
@@ -155,6 +158,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **engines/adapters/cosyvoice_adapter.py** - CosyVoice3 engine adapter with zero-shot, instruct, and cross-lingual mode support and character switching
 
 **engines/adapters/qwen3_tts_adapter.py** - Qwen3-TTS adapter with intelligent model selection (CustomVoice/VoiceDesign/Base), character-to-speaker mapping, and audio hash integration
+
+**engines/adapters/asr_qwen3_adapter.py** - Qwen3-ASR adapter providing unified ASR interface with forced aligner support
 
 **engines/adapters/chatterbox_streaming_adapter.py** - ChatterBox streaming adapter bridging existing implementation to universal streaming system
 
@@ -191,6 +196,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **nodes/unified/tts_srt_node.py** - Universal SRT subtitle processing node - clean delegation layer that routes to engine-specific processors
 
 **nodes/unified/voice_changer_node.py** - Universal voice conversion node with multilingual model support and flexible audio inputs
+
+**nodes/unified/asr_transcribe_node.py** - Universal ASR transcription node working with any engine that advertises ASR capability
 
 ### Shared Components
 
@@ -378,6 +385,14 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **utils/streaming/work_queue_processor.py** - Engine-agnostic parallel processing system
 
+## ASR System
+
+**utils/asr/types.py** - ASR data types (requests, results, segments, word timestamps)
+
+**utils/asr/adapter_registry.py** - ASR adapter registry mapping engine_type to adapter classes
+
+**utils/asr/pipeline.py** - Unified ASR pipeline orchestration and output formatting
+
 ## Web Interface Components
 
 ### TTS Tag Editor (Modularized Architecture)
@@ -419,6 +434,8 @@ This extension features a **unified modular architecture** supporting multiple T
 **web/step_audio_editx_showcontrol.js** - Step Audio EditX SRT subtitle display and timing controls
 
 **web/qwen3_tts_widgets.js** - Qwen3-TTS widget locking system for conditional instruction field based on voice_preset and model_size
+
+**web/asr_srt_preset_widgets.js** - ASR SRT preset widget locking and auto-apply for readability presets
 
 **web/audio_analyzer.css** - Styling for audio analyzer interface components
 

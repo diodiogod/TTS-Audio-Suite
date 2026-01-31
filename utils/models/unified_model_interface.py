@@ -1297,6 +1297,85 @@ def register_qwen3_tts_factory():
     unified_model_interface.register_model_factory("qwen3_tts", "tts", qwen3_tts_factory)
 
 
+def register_qwen3_asr_factory():
+    """Register Qwen3-ASR model factory"""
+    def qwen3_asr_factory(config: ModelLoadConfig):
+        """Factory for Qwen3-ASR models with ComfyUI integration"""
+        import torch
+
+        model_name = config.model_name or "Qwen3-ASR-1.7B"
+        model_path = config.model_path or model_name
+        device = config.device or "auto"
+
+        additional_params = config.additional_params or {}
+        precision = additional_params.get("precision", "auto")
+        attn_implementation = additional_params.get("attn_implementation", "sdpa")
+        max_new_tokens = int(additional_params.get("max_new_tokens", 256))
+        forced_aligner = additional_params.get("forced_aligner")
+        forced_aligner_kwargs = additional_params.get("forced_aligner_kwargs")
+
+        from engines.qwen3_tts.qwen3_asr_downloader import Qwen3ASRDownloader
+        downloader = Qwen3ASRDownloader()
+        resolved_model_path = downloader.resolve_model_path(model_path)
+
+        dtype_map = {
+            "bf16": torch.bfloat16,
+            "fp16": torch.float16,
+            "fp32": torch.float32,
+        }
+        if precision in dtype_map:
+            torch_dtype = dtype_map[precision]
+        else:
+            if torch.cuda.is_available():
+                major, _minor = torch.cuda.get_device_capability()
+                torch_dtype = torch.bfloat16 if major >= 8 else torch.float16
+            else:
+                torch_dtype = torch.float32
+
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        try:
+            from qwen_asr import Qwen3ASRModel
+        except ImportError:
+            try:
+                import sys
+                import os
+                qwen3_asr_impl = os.path.join(os.path.dirname(__file__), "..", "..", "engines", "qwen3_asr", "impl")
+                qwen3_asr_impl = os.path.abspath(qwen3_asr_impl)
+                if qwen3_asr_impl not in sys.path:
+                    sys.path.insert(0, qwen3_asr_impl)
+                from qwen_asr import Qwen3ASRModel
+            except Exception as e:
+                raise ImportError(f"Qwen3-ASR dependency not available. Error: {e}")
+
+        loader_kwargs = {
+            "pretrained_model_name_or_path": resolved_model_path,
+            "dtype": torch_dtype,
+            "device_map": device,
+            "max_new_tokens": max_new_tokens,
+            "attn_implementation": attn_implementation,
+        }
+
+        if forced_aligner:
+            loader_kwargs["forced_aligner"] = downloader.resolve_model_path(forced_aligner)
+            loader_kwargs["forced_aligner_kwargs"] = forced_aligner_kwargs or {
+                "dtype": torch_dtype,
+                "device_map": device,
+                "attn_implementation": attn_implementation,
+            }
+
+        print(f"🔄 Loading Qwen3-ASR: {model_name}")
+        print(f"   Path: {resolved_model_path}")
+        print(f"   Device: {device} | Dtype: {torch_dtype} | Attention: {attn_implementation}")
+
+        model = Qwen3ASRModel.from_pretrained(**loader_kwargs)
+        print(f"✅ Qwen3-ASR model '{model_name}' loaded successfully")
+        return model
+
+    unified_model_interface.register_model_factory("qwen3_asr", "asr", qwen3_asr_factory)
+
+
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
@@ -1309,6 +1388,7 @@ def initialize_all_factories():
     register_index_tts_factory()
     register_cosyvoice_factory()
     register_qwen3_tts_factory()
+    register_qwen3_asr_factory()
 
 
 # Auto-initialize on import

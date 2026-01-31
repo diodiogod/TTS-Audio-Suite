@@ -191,6 +191,14 @@ except Exception as e:
     print(f"❌ Unified Voice Changer failed: {e}")
     UNIFIED_VC_AVAILABLE = False
 
+try:
+    unified_asr_module = load_node_module("unified_asr_transcribe_node", "unified/asr_transcribe_node.py")
+    UnifiedASRTranscribeNode = unified_asr_module.UnifiedASRTranscribeNode
+    UNIFIED_ASR_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Unified ASR Transcribe failed: {e}")
+    UNIFIED_ASR_AVAILABLE = False
+
 # Load support nodes
 try:
     audio_recorder_module = load_node_module("chatterbox_audio_recorder_node", "audio/recorder_node.py")
@@ -480,6 +488,10 @@ if UNIFIED_SRT_AVAILABLE:
 if UNIFIED_VC_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedVoiceChangerNode"] = UnifiedVoiceChangerNode
     NODE_DISPLAY_NAME_MAPPINGS["UnifiedVoiceChangerNode"] = "🔄 Voice Changer"
+
+if UNIFIED_ASR_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedASRTranscribeNode"] = UnifiedASRTranscribeNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedASRTranscribeNode"] = "📝 ASR Transcribe"
 
 # Register legacy support nodes
 if VOICE_CAPTURE_AVAILABLE:

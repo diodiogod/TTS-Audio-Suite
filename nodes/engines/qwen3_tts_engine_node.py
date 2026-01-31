@@ -132,6 +132,10 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "default": "default",
                     "tooltip": "torch.compile mode (if use_torch_compile enabled):\n• default: RECOMMENDED - Standard torch.compile, ~1.7x speedup, works on Windows\n• reduce-overhead: Auto CUDA graphs, ~2-3x speedup, LINUX ONLY (fails on Windows)\n• max-autotune: Best optimization, longest compile, LINUX ONLY\n⚠️ Windows: Only 'default' works - reduce-overhead/max-autotune fail with cudaMallocAsync error\n⚠️ Model must be reloaded to test different modes (cache reuse otherwise)"
                 }),
+                "asr_use_forced_aligner": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable Qwen3 forced aligner for timestamps (if installed)."
+                }),
             }
         }
 
@@ -157,7 +161,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         x_vector_only_mode: bool = False,
         use_torch_compile: bool = False,
         use_cuda_graphs: bool = False,
-        compile_mode: str = "reduce-overhead"
+        compile_mode: str = "reduce-overhead",
+        asr_use_forced_aligner: bool = False,
     ) -> tuple:
         """
         Create Qwen3-TTS engine configuration.
@@ -186,6 +191,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
             "use_torch_compile": use_torch_compile,
             "use_cuda_graphs": use_cuda_graphs,
             "compile_mode": compile_mode,
+            "asr_use_forced_aligner": asr_use_forced_aligner,
         }
 
         # Print configuration summary (matching other engines)
@@ -201,7 +207,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         # Return in the same structure as other engines (nested config)
         engine_data = {
             "engine_type": "qwen3_tts",
-            "config": engine_config
+            "config": engine_config,
+            "capabilities": ["tts", "asr"]
         }
 
         return (engine_data,)

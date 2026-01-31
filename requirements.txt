@@ -64,6 +64,7 @@ textstat>=0.7.10      # Text statistics and readability
 # Step Audio EditX engine dependencies (safe)
 openai-whisper        # Mel spectrogram extraction for audio tokenizer
 funasr>=1.1.3         # FunASR speech processing toolkit
+nagisa>=0.2.11        # Japanese tokenizer required by Qwen3-ASR forced aligner
 hyperpyyaml           # YAML configuration parser
 protobuf>=3.20.0      # Protocol buffers (compatible with descript-audiotools)
 # onnxruntime installed by install.py with --no-deps to avoid conflicts
