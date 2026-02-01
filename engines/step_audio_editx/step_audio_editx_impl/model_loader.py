@@ -190,6 +190,16 @@ class UnifiedModelLoader:
         quantization_kwargs, should_set_torch_dtype = self._prepare_quantization_config(quantization_config, kwargs.get("torch_dtype"))
 
         try:
+            # CRITICAL: Clear transformers module cache for Step-Audio-EditX to avoid stale imports
+            # Issue: transformers caches custom modules with sanitized names (Step_hyphen_Audio_hyphen_EditX)
+            # but the cached module may have stale/incomplete auto_map causing "Unrecognized configuration" errors
+            # Solution: Force fresh import by clearing transformers_modules cache
+            import sys
+            stale_modules = [key for key in sys.modules.keys() if 'Step' in key and ('hyphen' in key or 'Audio' in key or 'EditX' in key)]
+            for module_key in stale_modules:
+                del sys.modules[module_key]
+                self.logger.debug(f"Cleared stale transformers module cache: {module_key}")
+
             if source == ModelSource.LOCAL:
                 # Local loading
                 load_kwargs = {
