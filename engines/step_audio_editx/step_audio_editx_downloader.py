@@ -199,6 +199,12 @@ class StepAudioEditXDownloader:
                 check_files = files
 
             if self._is_model_complete(model_dir, check_files):
+                # CRITICAL: Patch config.json if it's missing the AutoModelForCausalLM auto_map entry
+                # HuggingFace's stepfun-ai/Step-Audio-EditX has incomplete auto_map causing loading failures
+                # See: https://github.com/diodiogod/TTS-Audio-Suite/issues/226
+                if model_name == "Step-Audio-EditX":
+                    self._patch_config_json(model_dir)
+
                 print(f"\n✅ Download complete: {model_dir}")
                 return model_dir
             else:
@@ -225,6 +231,56 @@ class StepAudioEditXDownloader:
                 continue
 
         print("\n✅ All Step Audio EditX models downloaded!")
+
+    def _patch_config_json(self, model_dir: str):
+        """
+        Patch config.json to add missing AutoModelForCausalLM auto_map entry.
+
+        HuggingFace's stepfun-ai/Step-Audio-EditX model has incomplete auto_map in config.json:
+        - Present: "AutoConfig": "configuration_step1.Step1Config"
+        - Missing: "AutoModelForCausalLM": "modeling_step1.Step1ForCausalLM"
+
+        Without this entry, transformers can't auto-load the custom model class, causing:
+        TypeError: 'NoneType' object is not callable
+
+        This patch ensures compatibility regardless of what's on HuggingFace.
+
+        Args:
+            model_dir: Model directory containing config.json
+        """
+        import json
+
+        config_path = os.path.join(model_dir, "config.json")
+        if not os.path.exists(config_path):
+            print(f"⚠️ config.json not found at {config_path}, skipping patch")
+            return
+
+        try:
+            # Read existing config
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            # Check if patch is needed
+            auto_map = config.get("auto_map", {})
+            if "AutoModelForCausalLM" in auto_map:
+                # Already patched
+                return
+
+            # Apply patch
+            if "auto_map" not in config:
+                config["auto_map"] = {}
+
+            config["auto_map"]["AutoModelForCausalLM"] = "modeling_step1.Step1ForCausalLM"
+
+            # Write patched config
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            print(f"✅ Patched config.json: Added AutoModelForCausalLM to auto_map")
+
+        except Exception as e:
+            print(f"⚠️ Failed to patch config.json: {e}")
+            print(f"   Model may fail to load. Manual fix: add '\"AutoModelForCausalLM\": \"modeling_step1.Step1ForCausalLM\"' to auto_map in {config_path}")
 
     def _is_model_complete(self, model_dir: str, required_files: list) -> bool:
         """
@@ -312,6 +368,8 @@ class StepAudioEditXDownloader:
                     local_path = os.path.join(base_tts_path, folder_name, local_name)
                     if os.path.exists(local_path):
                         print(f"📁 Using local Step Audio EditX model: {local_path}")
+                        # Patch config.json if it's a Step-Audio-EditX model
+                        self._patch_config_json(local_path)
                         return local_path
 
             # If not found, raise error
@@ -332,6 +390,9 @@ class StepAudioEditXDownloader:
         """
         # If already a full path, return it as-is (handles cached resolved paths)
         if os.path.isabs(model_name) and os.path.exists(model_name):
+            # Patch config.json even for absolute paths (may be from local: or extra_model_paths)
+            if model_name.endswith("Step-Audio-EditX") or "Step-Audio-EditX" in model_name:
+                self._patch_config_json(model_name)
             return model_name
 
         model_dir = os.path.join(self.base_path, model_name)
@@ -341,6 +402,10 @@ class StepAudioEditXDownloader:
             if not self._is_model_complete(model_dir, self.MODELS[model_name]["files"]):
                 print(f"📥 Model not found, downloading {model_name}...")
                 return self.download_model(model_name)
+            else:
+                # Model exists - patch config.json if needed
+                if model_name == "Step-Audio-EditX":
+                    self._patch_config_json(model_dir)
         elif not os.path.exists(model_dir):
             raise FileNotFoundError(f"Model not found: {model_name}")
 
