@@ -1,5 +1,4 @@
 # System imports - needed throughout the module
-# fmt: off
 import sys
 import os
 
