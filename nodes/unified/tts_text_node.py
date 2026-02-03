@@ -185,13 +185,18 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['quantization'] = config.get('quantization', 'none')
                 stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
 
-            # For Qwen3-TTS, include voice_preset, instruct, model_size, and attn_implementation
-            # since they determine model type and require model reload
+            # For Qwen3-TTS, include voice_preset, instruct, model_size, attn_implementation,
+            # and optimization settings since they determine model type and require model reload
             if engine_type == "qwen3_tts":
                 stable_params['voice_preset'] = config.get('voice_preset', 'None (Zero-shot / Custom)')
                 stable_params['instruct'] = config.get('instruct', '')
                 stable_params['model_size'] = config.get('model_size', '1.7B')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
+                # CRITICAL: Include optimization settings - changing these requires model reload
+                # Without this, enabling torch.compile/cuda_graphs would reuse the non-compiled model
+                stable_params['use_torch_compile'] = config.get('use_torch_compile', False)
+                stable_params['use_cuda_graphs'] = config.get('use_cuda_graphs', False)
+                stable_params['compile_mode'] = config.get('compile_mode', 'default')
 
             # For IndexTTS-2, include low_vram in cache key since it requires model reload
             if engine_type == "index_tts":
