@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.2] - 2026-02-02
+
+### Added
+
+- Add guidance for Transformers 5.x incompatibility (Qwen3-TTS)
+- Add a startup warning when Transformers 5.x is installed
+- Cap supported Transformers versions to <=4.57.3 for Qwen3-TTS stability
+- Add a public report on the Qwen3-TTS tokenizer incompatibility
 ## [4.20.1] - 2026-01-31
 
 ### Added
