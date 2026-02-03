@@ -308,6 +308,22 @@ class ComfyUIModelWrapper:
                 except Exception:
                     pass
     
+    def is_dynamic(self) -> bool:
+        """
+        ComfyUI 0.12.0+ compatibility method.
+        
+        Dynamic models can have their memory requirements change during inference
+        (e.g., models using dynamic batching or variable sequence lengths).
+        TTS models have fixed memory requirements, so we return False.
+        
+        This prevents AttributeError when ComfyUI's model_management.py calls
+        is_dynamic() on loaded models in free_memory() and load_models_gpu_orig().
+        
+        Returns:
+            False - TTS models are not dynamic
+        """
+        return False
+
     def is_clone(self, other) -> bool:
         """Check if this model is a clone of another model"""
         if not isinstance(other, ComfyUIModelWrapper):

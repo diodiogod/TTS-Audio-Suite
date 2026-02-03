@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.4] - 2026-02-03
+
+### Added
+
+- Backward compatible with ComfyUI 0.11.x and earlier
+
+### Fixed
+
+- Fix ComfyUI 0.12.0+ compatibility issue
+- Fix AttributeError: 'Qwen3TTSModel' object has no attribute 'is_dynamic'
+- Compatibility fix affects all TTS engines using ComfyUI model management
 ## [4.20.3] - 2026-02-03
 
 ### Changed
