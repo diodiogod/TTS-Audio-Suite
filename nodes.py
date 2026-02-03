@@ -1,4 +1,5 @@
 # System imports - needed throughout the module
+# fmt: off
 import sys
 import os
 
@@ -165,6 +166,14 @@ try:
 except Exception as e:
     print(f"❌ Character Voices failed: {e}")
     CHARACTER_VOICES_AVAILABLE = False
+
+try:
+    refresh_voice_cache_module = load_node_module("refresh_voice_cache_node", "shared/refresh_voice_cache_node.py")
+    RefreshVoiceCacheNode = refresh_voice_cache_module.RefreshVoiceCacheNode
+    REFRESH_VOICE_CACHE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Refresh Voice Cache failed: {e}")
+    REFRESH_VOICE_CACHE_AVAILABLE = False
 
 # Load unified nodes
 try:
@@ -475,6 +484,10 @@ if QWEN_EMOTION_AVAILABLE:
 if CHARACTER_VOICES_AVAILABLE:
     NODE_CLASS_MAPPINGS["CharacterVoicesNode"] = CharacterVoicesNode
     NODE_DISPLAY_NAME_MAPPINGS["CharacterVoicesNode"] = "🎭 Character Voices"
+
+if REFRESH_VOICE_CACHE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["RefreshVoiceCacheNode"] = RefreshVoiceCacheNode
+    NODE_DISPLAY_NAME_MAPPINGS["RefreshVoiceCacheNode"] = "🔄 Refresh Voice Cache"
 
 # Register unified nodes
 if UNIFIED_TEXT_AVAILABLE:
