@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.7] - 2026-02-04
+
+### Added
+
+- Credit: Timing improvement contributed by @rongsam
+
+### Changed
+
+- Improve SRT output to show actual audio duration
+
+### Fixed
+
+- Fix SRT timing accuracy for video editors
+- Fix timing drift in stretch_to_fit and pad_with_silence modes
+- Better compatibility with video editing software
 ## [4.20.6] - 2026-02-03
 
 ### Added

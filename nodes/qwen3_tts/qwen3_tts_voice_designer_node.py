@@ -213,6 +213,11 @@ class Qwen3TTSVoiceDesignerNode:
             dtype = config.get('dtype', 'auto')
             attn_implementation = config.get('attn_implementation', 'auto')
 
+            # Extract torch.compile optimization parameters from engine config
+            use_torch_compile = config.get('use_torch_compile', False)
+            use_cuda_graphs = config.get('use_cuda_graphs', False)
+            compile_mode = config.get('compile_mode', 'default')
+
             # Build config with VoiceDesign context
             model_config = ModelLoadConfig(
                 engine_name="qwen3_tts",
@@ -223,6 +228,9 @@ class Qwen3TTSVoiceDesignerNode:
                 additional_params={
                     "dtype": dtype,
                     "attn_implementation": attn_implementation,
+                    "use_torch_compile": use_torch_compile,
+                    "use_cuda_graphs": use_cuda_graphs,
+                    "compile_mode": compile_mode,
                     "context": {
                         "node_type": "voice_designer",  # Force VoiceDesign model
                         "model_size": model_size
