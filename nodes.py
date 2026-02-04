@@ -484,9 +484,7 @@ if CHARACTER_VOICES_AVAILABLE:
     NODE_CLASS_MAPPINGS["CharacterVoicesNode"] = CharacterVoicesNode
     NODE_DISPLAY_NAME_MAPPINGS["CharacterVoicesNode"] = "🎭 Character Voices"
 
-if REFRESH_VOICE_CACHE_AVAILABLE:
-    NODE_CLASS_MAPPINGS["RefreshVoiceCacheNode"] = RefreshVoiceCacheNode
-    NODE_DISPLAY_NAME_MAPPINGS["RefreshVoiceCacheNode"] = "♻️ Refresh Voice Cache"
+
 
 # Register unified nodes
 if UNIFIED_TEXT_AVAILABLE:
@@ -581,6 +579,10 @@ if STRING_MULTILINE_TAG_EDITOR_AVAILABLE:
     NODE_CLASS_MAPPINGS["StringMultilineTagEditor"] = StringMultilineTagEditor
     NODE_DISPLAY_NAME_MAPPINGS["StringMultilineTagEditor"] = "🏷️ Multiline TTS Tag Editor"
 
+if REFRESH_VOICE_CACHE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["RefreshVoiceCacheNode"] = RefreshVoiceCacheNode
+    NODE_DISPLAY_NAME_MAPPINGS["RefreshVoiceCacheNode"] = "♻️ Refresh Voice Cache"
+
 # Register video analysis nodes
 if MOUTH_MOVEMENT_AVAILABLE:
     NODE_CLASS_MAPPINGS["MouthMovementAnalyzer"] = MouthMovementAnalyzerNode
@@ -636,7 +638,11 @@ if DEPENDENCY_CHECKER_AVAILABLE and AsyncDependencyChecker:
         pass  # Silently fail - background check is optional
 
 print(f"✅ TTS Audio Suite {VERSION_DISPLAY} loaded with {len(NODE_DISPLAY_NAME_MAPPINGS)} nodes:")
-for node in sorted(NODE_DISPLAY_NAME_MAPPINGS.values()):
+# Group engines first, then everything else
+nodes = sorted(NODE_DISPLAY_NAME_MAPPINGS.values())
+engines = [n for n in nodes if "⚙️" in n]
+others = [n for n in nodes if "⚙️" not in n]
+for node in engines + others:
     print(f"   • {node}")
 print(SEPARATOR)
 
