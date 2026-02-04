@@ -486,7 +486,7 @@ if CHARACTER_VOICES_AVAILABLE:
 
 if REFRESH_VOICE_CACHE_AVAILABLE:
     NODE_CLASS_MAPPINGS["RefreshVoiceCacheNode"] = RefreshVoiceCacheNode
-    NODE_DISPLAY_NAME_MAPPINGS["RefreshVoiceCacheNode"] = "🔄 Refresh Voice Cache"
+    NODE_DISPLAY_NAME_MAPPINGS["RefreshVoiceCacheNode"] = "♻️ Refresh Voice Cache"
 
 # Register unified nodes
 if UNIFIED_TEXT_AVAILABLE:

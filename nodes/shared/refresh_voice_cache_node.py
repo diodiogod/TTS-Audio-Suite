@@ -44,7 +44,7 @@ any_typ = AnyType("*")
 class RefreshVoiceCacheNode(BaseTTSNode):
     @classmethod
     def NAME(cls):
-        return "🔄 Refresh Voice Cache"
+        return "♻️ Refresh Voice Cache"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -53,11 +53,18 @@ class RefreshVoiceCacheNode(BaseTTSNode):
                 "signal": (
                     any_typ,
                     {
-                        "tooltip": "Any passthrough signal. When this node executes, it refreshes voice/character caches."  # noqa: E501
+                        "tooltip": "Primary signal input. Connect this to the output of a node that creates new voice files (e.g., Voice Designer) to ensure voices are refreshed after file creation."  # noqa: E501
                     },
                 ),
             },
             "optional": {
+                "signal2": (
+                    any_typ,
+                    {
+                        "default": None,
+                        "tooltip": "Secondary passthrough signal. Use this to chain execution order: connect your ENGINE/config here, and connect signal2_out to downstream TTS nodes. This ensures TTS nodes run after voice cache refresh."  # noqa: E501
+                    },
+                ),
                 "force_refresh": (
                     "BOOLEAN",
                     {
@@ -68,12 +75,12 @@ class RefreshVoiceCacheNode(BaseTTSNode):
             },
         }
 
-    RETURN_TYPES = (any_typ, "STRING")
-    RETURN_NAMES = ("signal", "info")
+    RETURN_TYPES = (any_typ, any_typ, "STRING")
+    RETURN_NAMES = ("signal", "signal2", "info")
     FUNCTION = "refresh"
     CATEGORY = "TTS Audio Suite/🎭 Voice & Character"
 
-    def refresh(self, signal: Any, force_refresh: bool = True) -> Tuple[Any, str]:
+    def refresh(self, signal: Any, signal2: Any = None, force_refresh: bool = True) -> Tuple[Any, Any, str]:
         try:
             if force_refresh:
                 voices = get_available_voices(force_refresh=True)
@@ -84,12 +91,12 @@ class RefreshVoiceCacheNode(BaseTTSNode):
 
             voice_count = max(0, len(voices) - 1)  # exclude "none"
             info = f"✅ Voice cache refreshed: {voice_count} voices, {len(chars)} characters"
-            print(f"🔄 Refresh Voice Cache: {info}")
-            return signal, info
+            print(f"♻️ Refresh Voice Cache: {info}")
+            return signal, signal2, info
         except Exception as e:
             msg = f"❌ Voice cache refresh failed: {e}"
-            print(f"🔄 Refresh Voice Cache: {msg}")
-            return signal, msg
+            print(f"♻️ Refresh Voice Cache: {msg}")
+            return signal, signal2, msg
 
 
 NODE_CLASS_MAPPINGS = {
@@ -97,5 +104,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RefreshVoiceCacheNode": "🔄 Refresh Voice Cache",
+    "RefreshVoiceCacheNode": "♻️ Refresh Voice Cache",
 }
