@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.6] - 2026-02-03
+
+### Added
+
+- Add Refresh Voice Cache node for dynamic voice workflows
+- New ♻️ Refresh Voice Cache node for on-the-fly voice discovery
+- Support dual signal passthrough to guarantee execution order
+- Enable dynamic workflows where voices are created during execution
+
+### Fixed
+
+- Fix voice files created mid-workflow being unavailable to downstream nodes
 ## [4.20.5] - 2026-02-03
 
 ### Added
