@@ -15,8 +15,57 @@ class PyTorchPatches:
     _patches_applied = set()
 
     @classmethod
+    def patch_torch_distributed_reduceop(cls, verbose: bool = True):
+        """
+        Patch torch.distributed.ReduceOp for incomplete Windows AMD ROCm builds.
+
+        Issues Fixed:
+        1. PyTorch 2.9.1+rocmsdk20260116 (Windows AMD ROCm 7.2) incomplete torch.distributed
+           - Symptom: "module 'torch.distributed' has no attribute 'ReduceOp'" on engine initialization
+           - Root cause: Windows AMD ROCm nightly builds have partial torch.distributed (missing ReduceOp)
+           - Fix: Create stub ReduceOp class when missing to allow bundled engines to import safely
+
+        This allows bundled engine implementations (Step Audio EditX, Higgs Audio, IndexTTS, etc.)
+        to import without crashing, even though distributed training won't work on this platform.
+        Single-GPU inference works fine with the stub.
+        """
+        if "torch_distributed_reduceop" in cls._patches_applied:
+            return
+
+        try:
+            import torch
+
+            # Check if torch.distributed exists but is incomplete
+            if hasattr(torch, 'distributed'):
+                if not hasattr(torch.distributed, 'ReduceOp'):
+                    # Create stub ReduceOp class
+                    class ReduceOp:
+                        """Stub ReduceOp for incomplete torch.distributed implementations"""
+                        SUM = 0
+                        PRODUCT = 1
+                        MIN = 2
+                        MAX = 3
+                        BAND = 4
+                        BOR = 5
+                        BXOR = 6
+                        AVG = 7
+                        PREMUL_SUM = 8
+
+                    # Inject stub into torch.distributed
+                    torch.distributed.ReduceOp = ReduceOp
+
+                    cls._patches_applied.add("torch_distributed_reduceop")
+
+                    if verbose:
+                        print("   🔧 torch.distributed.ReduceOp stub created (Windows AMD ROCm compatibility)")
+
+        except Exception as e:
+            warnings.warn(f"torch.distributed.ReduceOp patching failed: {e}")
+
+    @classmethod
     def apply_all_patches(cls, verbose: bool = True):
         """Apply all necessary PyTorch compatibility patches"""
+        cls.patch_torch_distributed_reduceop(verbose=verbose)
         cls.patch_torchaudio_torchcodec(verbose=verbose)
         cls.suppress_torchaudio_warnings(verbose=verbose)
 

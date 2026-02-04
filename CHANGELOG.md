@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.10] - 2026-02-04
+
+### Added
+
+- Enable single-GPU inference on Windows AMD Radeon RX 9070 XT and similar GPUs
+
+### Fixed
+
+- Fix compatibility with Windows AMD ROCm 7.2 PyTorch builds
+- Fix all TTS engines crashing on Windows AMD systems with PyTorch 2.9.1+rocmsdk20260116
+- Resolve 'module torch.distributed has no attribute ReduceOp' errors
+- Automatically detect and patch incomplete torch.distributed implementations
 ## [4.20.9] - 2026-02-04
 
 ### Added

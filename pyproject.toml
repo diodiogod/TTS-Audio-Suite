@@ -1,7 +1,7 @@
 [project]
 name = "tts_audio_suite"
 description = "TTS Audio Suite - Universal multi-engine TTS extension for ComfyUI with unified architecture supporting IndexTTS-2, ChatterBox, Chatterbox Multilingual TTS (Official 23-Lang), F5-TTS, Higgs Audio 2, VibeVoice, and RVC engines. It has character voice management, SRT subtitle TTS support, and audio processing capabilities."
-version = "4.20.9"
+version = "4.20.10"
 license = {file = "LICENSE"}
 
 [project.urls]
