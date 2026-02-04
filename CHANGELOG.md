@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.8] - 2026-02-04
+
+### Added
+
+- Extend Qwen3-TTS torch.compile optimizations to Voice Designer
+- Voice Designer now inherits torch.compile settings from Qwen3-TTS Engine node
+- Enable via use_torch_compile parameter in connected Engine node
+- Supports all compile modes (default, reduce-overhead, max-autotune)
+
+### Changed
+
+- Significant performance improvement (~2x speedup: 4 it/s → 8.3 it/s confirmed)
 ## [4.20.7] - 2026-02-04
 
 ### Added

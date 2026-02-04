@@ -3,6 +3,8 @@ Qwen3-TTS Voice Designer Node
 
 Creates custom voices from natural language descriptions using the VoiceDesign model.
 This is a unique feature of Qwen3-TTS - no other engine has text-to-voice design capability.
+
+Inherits torch.compile optimization settings from the connected Qwen3-TTS Engine node.
 """
 
 import os
@@ -240,6 +242,23 @@ class Qwen3TTSVoiceDesignerNode:
 
             print(f"🎨 Loading Qwen3-TTS VoiceDesign model...")
             engine = unified_model_interface.load_model(model_config)
+
+            # Apply torch.compile optimizations if enabled
+            if use_torch_compile:
+                print(f"🚀 Applying torch.compile optimizations (mode={compile_mode})...")
+                try:
+                    if hasattr(engine, 'enable_streaming_optimizations'):
+                        engine.enable_streaming_optimizations(
+                            use_compile=use_torch_compile,
+                            use_cuda_graphs=use_cuda_graphs,
+                            compile_mode=compile_mode
+                        )
+                        print(f"✅ torch.compile optimizations applied")
+                    else:
+                        print(f"⚠️ Model doesn't support enable_streaming_optimizations, skipping")
+                except Exception as e:
+                    print(f"⚠️ Failed to apply torch.compile optimizations: {e}")
+
             # Generate preview audio with voice description
             print(f"🎨 Generating preview audio with voice description...")
             print(f"   Language: {language}")
