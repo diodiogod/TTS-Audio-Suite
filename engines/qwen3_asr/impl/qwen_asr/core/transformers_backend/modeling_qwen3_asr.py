@@ -983,8 +983,8 @@ class Qwen3ASRThinkerTextModel(Qwen3ASRPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-    # PATCH (TTS Audio Suite): transformers compatibility - older versions require decorator without call
-    @check_model_inputs
+    # PATCH (TTS Audio Suite): transformers compatibility - check_model_inputs is a decorator factory in modern transformers
+    @check_model_inputs()
     @auto_docstring
     def forward(
         self,
