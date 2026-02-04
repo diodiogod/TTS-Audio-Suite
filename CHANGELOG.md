@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.9] - 2026-02-04
+
+### Added
+
+- Step Audio EditX now works on Apple Silicon (MPS) and CPU
+
+### Changed
+
+- CUDA users unaffected (same performance and behavior)
+
+### Fixed
+
+- Add Step Audio EditX Mac (MPS) compatibility patch
+- Fix crash on Mac: 'Torch not compiled with CUDA enabled'
+- Centralized patch system in utils/compatibility/ for maintainability
+- Note: Tentative fix addressing issue #245 - requires Mac user testing
 ## [4.20.8] - 2026-02-04
 
 ### Added
