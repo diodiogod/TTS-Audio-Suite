@@ -248,7 +248,10 @@ class TTSAudioInstaller:
             return True
         except subprocess.CalledProcessError as e:
             if ignore_errors:
-                self.log(f"Warning: {description} failed (continuing anyway): {e.stderr.strip()}", "WARNING")
+                error_msg = e.stderr.strip()
+                if len(error_msg) > 1000:
+                    error_msg = f"...(last 1000 chars)...\n{error_msg[-1000:]}"
+                self.log(f"Warning: {description} failed (continuing anyway): {error_msg}", "WARNING")
                 return False
             else:
                 self.log(f"Error: {description} failed: {e.stderr.strip()}", "ERROR")
@@ -842,8 +845,9 @@ class TTSAudioInstaller:
             self.log("CUDA detected - attempting onnxruntime-gpu for GPU acceleration", "INFO")
             try:
                 # Try GPU version without --no-deps (modern versions don't force numpy downgrade)
+                # Relaxed constraint to >=1.19.0 to avoid forcing upgrades from 1.22.0
                 gpu_success = self.run_pip_command(
-                    ["install", "onnxruntime-gpu>=1.23.0"],
+                    ["install", "onnxruntime-gpu>=1.19.0"],
                     "Installing onnxruntime-gpu (GPU acceleration for ONNX models)",
                     ignore_errors=True
                 )
@@ -902,6 +906,17 @@ class TTSAudioInstaller:
         self.log("Installing VibeVoice TTS engine", "INFO")
         
         # First ensure critical dependencies that VibeVoice needs but might downgrade
+        
+        # Handle 'av' (PyAV) dependency specifically - frequent failure point on Windows
+        self.log("Checking VibeVoice 'av' dependency...", "INFO")
+        # Try installing av first (often fails on Windows without Build Tools)
+        av_success = self.run_pip_command(["install", "av"], "Installing av (PyAV)", ignore_errors=True)
+        if not av_success:
+            self.log("Failed to install 'av' (PyAV) - VibeVoice may not work", "WARNING")
+            if self.is_windows:
+                self.log("Windows Fix: Install Visual C++ Build Tools or use a compatible Python version", "INFO")
+                self.log("This is often due to missing pre-built wheels for your Python version", "INFO")
+
         vibevoice_deps = [
             "aiortc",      # Audio/video real-time communication - safe to install
             "pyee",        # Event emitter - lightweight
