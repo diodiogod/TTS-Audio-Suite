@@ -124,6 +124,44 @@ def _get_audio_editor_node():
         return None
 
 
+def _resample_waveform(waveform: torch.Tensor, orig_sr: int, target_sr: int) -> torch.Tensor:
+    """
+    Resample waveform to target sample rate, preserving shape conventions.
+
+    Args:
+        waveform: Audio tensor (1D, 2D [C,S], or 3D [B,C,S])
+        orig_sr: Original sample rate
+        target_sr: Target sample rate
+
+    Returns:
+        Resampled waveform tensor with same dimensionality as input (when possible)
+    """
+    if orig_sr == target_sr:
+        return waveform
+
+    import torchaudio
+
+    # Normalize to 2D [C, S] for resampling
+    had_batch = False
+    if waveform.dim() == 3:
+        had_batch = True
+        waveform_2d = waveform.squeeze(0)
+    elif waveform.dim() == 1:
+        waveform_2d = waveform.unsqueeze(0)
+    else:
+        waveform_2d = waveform
+
+    resampler = torchaudio.transforms.Resample(orig_freq=orig_sr, new_freq=target_sr)
+    resampled = resampler(waveform_2d.cpu())
+
+    # Restore original dimensionality
+    if waveform.dim() == 1:
+        return resampled.squeeze(0)
+    if had_batch:
+        return resampled.unsqueeze(0)
+    return resampled
+
+
 def _validate_audio_duration(audio_tensor: torch.Tensor, sample_rate: int) -> bool:
     """
     Validate audio duration is within Step Audio EditX limits (0.5-30s).
@@ -405,6 +443,7 @@ def process_segments(
 
         waveform = segment.get('waveform')
         sample_rate = segment.get('sample_rate', 24000)
+        original_sample_rate = sample_rate
         transcript = segment.get('text', '')
 
         if waveform is None:
@@ -421,6 +460,7 @@ def process_segments(
             'waveform': waveform.clone() if hasattr(waveform, 'clone') else waveform,
             'sample_rate': sample_rate
         }
+        segment['_inline_edit_orig_sr'] = original_sample_rate
 
         # Show segment being edited with clean formatting
         print(f"\n📝 Segment {idx + 1} - Applying edit tags:")
@@ -558,7 +598,20 @@ def process_segments(
             })
 
         # Update segment with edited audio (pre-restore)
-        segment['waveform'] = current_audio_dict['waveform']
+        if not restore_tags:
+            edited_sr = int(current_audio_dict.get('sample_rate', original_sample_rate))
+            if edited_sr != original_sample_rate:
+                segment['waveform'] = _resample_waveform(
+                    current_audio_dict['waveform'], edited_sr, original_sample_rate
+                )
+                segment['sample_rate'] = original_sample_rate
+            else:
+                segment['waveform'] = current_audio_dict['waveform']
+                segment['sample_rate'] = original_sample_rate
+            segment.pop('_inline_edit_orig_sr', None)
+        else:
+            # Store pre-restore audio; final resample happens after restore
+            segment['waveform'] = current_audio_dict['waveform']
 
     # BATCH RESTORE: Process all voice restorations at once (loads VC model only once)
     if segments_needing_restore:
@@ -623,8 +676,15 @@ def process_segments(
                     traceback.print_exc()
                     # Continue with current audio (skip restoration)
 
-            # Update segment with restored audio
-            segment['waveform'] = edited_audio['waveform']
+            # Update segment with restored audio, resampling if needed
+            orig_sr = segment.pop('_inline_edit_orig_sr', segment.get('sample_rate', 24000))
+            edited_sr = int(edited_audio.get('sample_rate', orig_sr))
+            if edited_sr != orig_sr:
+                segment['waveform'] = _resample_waveform(edited_audio['waveform'], edited_sr, orig_sr)
+                segment['sample_rate'] = orig_sr
+            else:
+                segment['waveform'] = edited_audio['waveform']
+                segment['sample_rate'] = orig_sr
 
     print(f"\n✅ EditPostProcessor: Completed edit post-processing")
     return segments
