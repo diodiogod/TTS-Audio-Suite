@@ -318,7 +318,14 @@ class EchoTTSSRTProcessor:
 
             if segment_records and any(seg["edit_tags"] for seg in segment_records):
                 segment_records = apply_edit_post_processing(segment_records, engine_config=self.config)
-                segment_audio_list = [seg["waveform"] for seg in segment_records]
+                segment_audio_list = []
+                for seg in segment_records:
+                    wf = seg["waveform"]
+                    # Normalize 3D [B,C,S] -> 2D [C,S] for timing engine compatibility
+                    if hasattr(wf, "dim") and wf.dim() == 3:
+                        wf = wf.squeeze(0)
+                    seg["waveform"] = wf
+                    segment_audio_list.append(wf)
 
             if segment_audio_list:
                 audio = torch.cat(segment_audio_list, dim=-1)
