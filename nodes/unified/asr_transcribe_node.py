@@ -151,6 +151,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             if language != "Auto" and language not in aligner_supported:
                 print(f"⚠️ Forced aligner may not support language '{language}'. "
                       f"Supported: {sorted(aligner_supported)}")
+        forced_aligner_enabled = engine.get("config", engine).get("asr_use_forced_aligner", False)
 
         req = ASRRequest(
             audio=audio_dict,
@@ -304,6 +305,12 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             merge_incomplete_split_next=opts["merge_incomplete_split_next"],
             merge_allow_overlong=opts["merge_allow_overlong"],
         )
+        if not forced_aligner_enabled:
+            out["srt"] = "⚠️ SRT output requires the Qwen3 Forced Aligner. Enable it in the Qwen3 Engine node to get timestamps."
+            if out.get("info"):
+                out["info"] += "\n⚠️ SRT/word timestamps require Qwen3 Forced Aligner (enable in Qwen3 Engine node)."
+            else:
+                out["info"] = "⚠️ SRT/word timestamps require Qwen3 Forced Aligner (enable in Qwen3 Engine node)."
         return (out["text"], out["srt"], out["timestamps"], out["info"])
 
 

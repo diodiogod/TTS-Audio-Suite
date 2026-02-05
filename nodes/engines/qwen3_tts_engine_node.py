@@ -134,7 +134,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                 }),
                 "asr_use_forced_aligner": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable Qwen3 forced aligner for timestamps (if installed)."
+                    "tooltip": "Enable Qwen3 forced aligner (required for word timestamps + accurate SRT).\nIf OFF: ASR text works, but SRT output is limited and will show a warning."
                 }),
             }
         }
