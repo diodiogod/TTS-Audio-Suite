@@ -38,6 +38,7 @@ class EchoTTSEngineAdapter:
         self.pca_state = None
         self._sample_pipeline = None
         self._loaded_key = None
+        self._wrapper = None
 
     def update_config(self, new_config: Dict[str, Any]):
         self.config = new_config.copy() if new_config else {}
@@ -65,16 +66,16 @@ class EchoTTSEngineAdapter:
 
     def _resolve_device(self, device: str) -> str:
         device = (device or "auto").lower()
-        if device == "cuda":
-            if torch.cuda.is_available():
-                return "cuda"
+        if device == "cuda" and not torch.cuda.is_available():
             print("WARNING: Echo-TTS: CUDA requested but not available. Falling back to CPU.")
             return "cpu"
-        if device == "auto":
-            return "cuda" if torch.cuda.is_available() else "cpu"
-        if device == "cpu":
+
+        from utils.device import resolve_torch_device
+        resolved = resolve_torch_device(device)
+
+        if resolved == "cpu":
             print("WARNING: Echo-TTS running on CPU will be very slow.")
-        return "cpu"
+        return resolved
 
     @staticmethod
     def _normalize_prompt_text(text: str) -> str:
@@ -112,52 +113,28 @@ class EchoTTSEngineAdapter:
 
     def _ensure_model_loaded(self):
         load_key = self._get_load_key()
-        if self.model is not None and self._loaded_key == load_key:
+        if self.model is not None and self._loaded_key == load_key and self._wrapper is not None:
             return
 
-        device = self._resolve_device(self.config.get("device", "auto"))
+        from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
+        from utils.device import resolve_torch_device
+
+        device = resolve_torch_device(self.config.get("device", "auto"))
         model_id = self.config.get("model", "jordand/echo-tts-base")
 
-        # Ensure HF downloads land under ComfyUI/models/TTS/<model name>
-        base_dir = get_preferred_download_path("TTS")
-        os.makedirs(base_dir, exist_ok=True)
-        model_name = model_id.split("/")[-1]
-
-        # Download required files into ComfyUI models dir
-        self._hf_download(model_id, "pytorch_model.safetensors", base_dir=base_dir)
-        self._hf_download(model_id, "pca_state.safetensors", base_dir=base_dir)
-        self._hf_download("jordand/fish-s1-dac-min", "pytorch_model.safetensors", base_dir=base_dir)
-
-        from echo_tts.inference import (
-            load_model_from_hf,
-            load_fish_ae_from_hf,
-            load_pca_state_from_hf,
-            sample_pipeline,
-        )
-
-        model_dtype = torch.bfloat16 if device == "cuda" else torch.float32
-
-        self.model = load_model_from_hf(
-            repo_id=model_name,
+        config = ModelLoadConfig(
+            engine_name="echo_tts",
+            model_type="tts",
+            model_name=model_id,
             device=device,
-            dtype=model_dtype,
-            model_path=base_dir,
         )
 
-        self.ae = load_fish_ae_from_hf(
-            repo_id="fish-s1-dac-min",
-            device=device,
-            dtype=model_dtype,
-            model_path=base_dir,
-        )
-
-        self.pca_state = load_pca_state_from_hf(
-            repo_id=model_name,
-            device=device,
-            model_path=base_dir,
-        )
-
-        self._sample_pipeline = sample_pipeline
+        self._wrapper = unified_model_interface.load_model(config)
+        bundle = self._wrapper.model
+        self.model = bundle.model
+        self.ae = bundle.ae
+        self.pca_state = bundle.pca_state
+        self._sample_pipeline = bundle.sample_pipeline
         self._loaded_key = load_key
 
     def _prepare_reference_audio(self, speaker_audio: Any) -> Tuple[torch.Tensor, int]:

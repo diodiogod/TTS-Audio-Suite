@@ -154,6 +154,7 @@ _ENGINE_HANDLERS = {
     'chatterbox': BaseEngineHandler(),
     'chatterbox_official_23lang': BaseEngineHandler(),
     'f5tts': BaseEngineHandler(),
+    'echo_tts': BaseEngineHandler(),
     'higgs_audio': HiggsAudioHandler(),
     'step_audio_editx': StepAudioEditXHandler(),
     'vibevoice': BaseEngineHandler(),
