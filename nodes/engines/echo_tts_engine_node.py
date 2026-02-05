@@ -111,7 +111,7 @@ class EchoTTSEngineNode(BaseTTSNode):
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
-                    "tooltip": "Device to run Echo-TTS on:\n- auto: Use CUDA if available, else CPU\n- cuda: Force NVIDIA GPU (falls back to CPU if unavailable)\n- cpu: CPU-only (very slow)"
+                    "tooltip": "Device to run Echo-TTS on:\n- auto: Use CUDA if available, else CPU\n- cuda: Force NVIDIA GPU (falls back to CPU if unavailable)\n- cpu: CPU-only (very slow)\nNote: CUDA recommended; Echo-TTS is non-commercial (CC-BY-NC-SA)."
                 }),
                 "languages": ("STRING", {
                     "default": "en",
@@ -167,7 +167,7 @@ class EchoTTSEngineNode(BaseTTSNode):
                 }),
                 "sequence_length": ("INT", {
                     "default": 640, "min": 64, "max": 2048,
-                    "tooltip": "Sample latent length. 640 is ~30s (max seen during training). Shorter lengths generate prefixes."
+                    "tooltip": "Sample latent length. 640 is ~30s (max seen during training). Best results at ≤30s; longer text uses unified chunking (best-effort)."
                 }),
             }
         }
