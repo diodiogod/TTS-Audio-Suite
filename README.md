@@ -32,7 +32,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **Higgs Audio 2** | 🇺🇸🇨🇳🇩🇪🇪🇸🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
 | **IndexTTS-2** | 🇺🇸🇨🇳🇯🇵 | ? | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~5.4GB | Paralinguistic tags |
-| **Qwen3-TTS** | 🇺🇸🇨🇳🇩🇪🇪🇸🇫🇷🇮🇹 +4 | ~3-6GB | Voice design |
+| **Qwen3-TTS** | 🇺🇸🇨🇳🇩🇪🇪🇸🇫🇷🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
 | **Step Audio EditX** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
 
@@ -173,6 +173,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
 ## Features
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, and **Qwen3-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- ✏️ **ASR Transcription** - Qwen3-ASR via the ✏️ ASR Transcribe node (more engines planned)
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -746,6 +747,7 @@ Instruct: 用兴奋的语气说话。
 <summary><h3>🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design</h3></summary>
 
 **NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning!
+**NEW**: ✏️ Qwen3-ASR transcription via the Unified ASR Transcribe node (Qwen3 engine)
 
 **Model Types:**
 
@@ -772,6 +774,7 @@ Instruct: 用兴奋的语气说话。
 
 **Unified Features Support:**
 - Works with all project features: character switching, language switching, pause tags, SRT timing, Step Audio EditX post-processing
+- **ASR Transcription**: Qwen3 engine now supports ASR via the ✏️ ASR Transcribe node
 
 **Voice Designer Node:**
 
@@ -1706,6 +1709,10 @@ ComfyUI/models/TTS/CosyVoice/
 - **0.6B**: ~1.5GB (faster, good quality) - CustomVoice & Base only
 - **1.7B**: ~4.2GB (slower, better quality) - All 3 model types
 
+**Qwen3-ASR Models:**
+- **Qwen3-ASR-1.7B**: [Qwen/Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B)
+- **Qwen3-ForcedAligner-0.6B** (word timestamps): [Qwen/Qwen3-ForcedAligner-0.6B](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B)
+
 **Installation Structure:**
 
 ```
@@ -1715,7 +1722,10 @@ ComfyUI/models/TTS/qwen3_tts/
 ├── Qwen3-TTS-12Hz-1.7B-VoiceDesign/    # ~4.2GB (1.7B only)
 ├── Qwen3-TTS-12Hz-0.6B-Base/           # ~1.5GB
 ├── Qwen3-TTS-12Hz-1.7B-Base/           # ~4.2GB
-└── qwen2-audio-encoder/                # ~0.5GB (shared tokenizer)
+├── qwen2-audio-encoder/                # ~0.5GB (shared tokenizer)
+└── asr/
+    ├── Qwen3-ASR-1.7B/                  # ~?GB
+    └── Qwen3-ForcedAligner-0.6B/        # ~?GB (word timestamps)
 ```
 
 **Note**:
@@ -1731,6 +1741,11 @@ ComfyUI/models/TTS/qwen3_tts/
 - Choose voice preset (for CustomVoice) or "None" (for Base cloning)
 - Use Voice Designer node for VoiceDesign model
 - Auto-download on first use!
+
+**ASR Usage**:
+- Use the ✏️ ASR Transcribe node
+- Connect the Qwen3 Engine
+- Auto-downloads Qwen3-ASR models on first use
 
 ### 14. Restart ComfyUI
 

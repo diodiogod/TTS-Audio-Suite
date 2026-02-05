@@ -11,6 +11,7 @@ engines:
       tts: true
       srt: true
       vc: false
+      asr: false
 
     special_features:
       - "Targeted Word/Speech Editing"
@@ -49,6 +50,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: true, notes: "" }
@@ -64,6 +66,7 @@ engines:
       tts: true
       srt: true
       vc: true
+      asr: false
 
     special_features:
       - "Expressiveness slider"
@@ -101,6 +104,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: true, notes: "" }
@@ -116,6 +120,7 @@ engines:
       tts: true
       srt: true
       vc: true
+      asr: false
 
     special_features:
       - "24 languages in single model"
@@ -154,6 +159,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: "partial", notes: "(v2 tags - doesn't work)" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: true, notes: "" }
@@ -169,6 +175,7 @@ engines:
       tts: true
       srt: true
       vc: false
+      asr: false
 
     special_features:
       - "90-min long-form"
@@ -208,6 +215,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: true, notes: "" }
       voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
       native_long_form: { supported: true, notes: "" }
       community_finetunes: { supported: true, notes: "" }
@@ -223,6 +231,7 @@ engines:
       tts: true
       srt: true
       vc: false
+      asr: false
 
     special_features:
       - "3 multi-speaker"
@@ -261,6 +270,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: true, notes: "" }
       voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: "partial", notes: "(via prompt)" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: false, notes: "" }
@@ -276,6 +286,7 @@ engines:
       tts: true
       srt: true
       vc: false
+      asr: false
 
     special_features:
       - "Emotion Control: 8 vectors"
@@ -315,6 +326,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: true, notes: "(8 emotions)" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: false, notes: "" }
@@ -330,6 +342,7 @@ engines:
       tts: true
       srt: true
       vc: true
+      asr: false
 
     special_features:
       - "Paralinguistic tags"
@@ -367,6 +380,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: "partial", notes: "(via instruct)" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: false, notes: "" }
@@ -382,9 +396,11 @@ engines:
       tts: true
       srt: true
       vc: false
+      asr: true
 
     special_features:
       - "Voice design"
+      - "ASR (Automatic Speech Recognition)"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -419,6 +435,7 @@ engines:
       voice_cloning: { supported: true, notes: "(Base model)" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: true, notes: "" }
       emotion_control: { supported: "partial", notes: "(via instruct)" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: false, notes: "" }
@@ -434,6 +451,7 @@ engines:
       tts: true
       srt: true
       vc: false
+      asr: false
 
     special_features:
       - "Second Pass Speech Editing Node: 14 emotions"
@@ -473,6 +491,7 @@ engines:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: true, notes: "(14 emotions)" }
       native_long_form: { supported: false, notes: "" }
       community_finetunes: { supported: false, notes: "" }
@@ -488,6 +507,7 @@ engines:
       tts: false
       srt: false
       vc: true
+      asr: false
 
     special_features:
       - "Real-time VC"
@@ -528,6 +548,7 @@ engines:
       voice_cloning: { supported: "partial", notes: "(needs training)" }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
       native_long_form: { supported: null, notes: "N/A" }
       community_finetunes: { supported: true, notes: "" }
@@ -569,6 +590,7 @@ feature_metadata:
   voice_cloning: { name: "Voice Cloning", display: "**Voice Cloning**" }
   native_multi_speaker: { name: "Native Multi-Speaker", display: "**Native Multi-Speaker**" }
   voice_conversion: { name: "Voice Conversion", display: "**Voice Conversion**" }
+  asr_transcribe: { name: "ASR (Transcribe)", display: "**ASR (Transcribe)**" }
   emotion_control: { name: "Emotion Control", display: "**Emotion Control**" }
   native_long_form: { name: "Native Long-form (90min)", display: "**Native Long-form (90min)**" }
   community_finetunes: { name: "Community Finetunes", display: "**Community Finetunes**" }
