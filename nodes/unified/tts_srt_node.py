@@ -1130,6 +1130,9 @@ Hello! This is unified SRT TTS with character switching.
             return (audio_output, unified_info, timing_report, adjusted_srt)
                 
         except Exception as e:
+            # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
+            if "Pause tags are not compatible with force_speaker_kv" in str(e):
+                raise
             error_msg = f"❌ TTS SRT generation failed: {e}"
             print(error_msg)
             import traceback

@@ -151,7 +151,7 @@ class EchoTTSEngineNode(BaseTTSNode):
                 }),
                 "force_speaker_kv": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable speaker KV scaling to more strongly match the reference voice. Higher values may reduce quality."
+                    "tooltip": "Enable speaker KV scaling to more strongly match the reference voice. Higher values may reduce quality. ⚠️ Not compatible with pause tags ([pause:...])."
                 }),
                 "speaker_kv_scale": ("FLOAT", {
                     "default": 1.5, "min": 0.0, "max": 10.0, "step": 0.1,
