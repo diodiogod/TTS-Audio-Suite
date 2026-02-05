@@ -459,6 +459,32 @@ Back to the main narrator voice for the conclusion.""",
                 }
 
                 return engine_instance
+            
+            elif engine_type == "echo_tts":
+                from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
+
+                class EchoTTSWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg
+                        self.adapter = EchoTTSEngineAdapter(cfg)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+
+                    def process_text(self, **kwargs):
+                        return self.adapter.process_text(**kwargs)
+
+                engine_instance = EchoTTSWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
 
             elif engine_type == "qwen3_tts":
                 # Create Qwen3-TTS processor instance
@@ -1097,6 +1123,32 @@ Back to the main narrator voice for the conclusion.""",
 
                 # Format as ComfyUI audio format (processor returns tensor, we need dict)
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
+                result = (formatted_audio, generation_info)
+                
+            elif engine_type == "echo_tts":
+                # Echo-TTS uses adapter pattern - call through adapter
+                audio_result, chunk_info = engine_instance.process_text(
+                    text=text,
+                    speaker_audio=audio_tensor,
+                    reference_text=reference_text,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    return_info=True
+                )
+
+                total_duration = audio_result.shape[-1] / 44100.0
+                import re
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (Echo-TTS, narrator: {char_display})"
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 44100)
                 result = (formatted_audio, generation_info)
                 
             elif engine_type == "qwen3_tts":

@@ -937,6 +937,24 @@ class TTSAudioInstaller:
             ignore_errors=True
         )
 
+    def install_echo_tts(self):
+        """Install Echo-TTS with minimal dependency impact"""
+        self.log("Installing Echo-TTS engine", "INFO")
+
+        installed = self.run_pip_command(
+            ["install", "echo-tts", "--no-deps"],
+            "Installing Echo-TTS (--no-deps)",
+            ignore_errors=True
+        )
+
+        if not installed:
+            self.log("Echo-TTS pip install failed - trying GitHub source", "WARNING")
+            self.run_pip_command(
+                ["install", "git+https://github.com/jordandare/echo-tts.git", "--no-deps"],
+                "Installing Echo-TTS from GitHub (--no-deps)",
+                ignore_errors=True
+            )
+
     def install_f5tts_multilingual_support(self):
         """Install phonemization support for F5-TTS multilingual models (Polish, German, French, Spanish, etc.)"""
         self.log("Installing F5-TTS multilingual phonemization support", "INFO")
@@ -1288,6 +1306,7 @@ def main():
         installer.install_problematic_packages()
         installer.install_onnxruntime_with_gpu_support()  # Install ONNX with GPU acceleration if available
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
+        installer.install_echo_tts()  # Install Echo-TTS with minimal dependency impact
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
         installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
         installer.handle_wandb_issues()  # Fix wandb circular import

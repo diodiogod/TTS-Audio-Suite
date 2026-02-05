@@ -440,6 +440,28 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
 
+            elif engine_type == "echo_tts":
+                from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
+
+                class EchoTTSSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = EchoTTSEngineAdapter(config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                engine_instance = EchoTTSSRTWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             elif engine_type == "vibevoice":
                 # Import and create the VibeVoice SRT processor using absolute import
                 vibevoice_srt_processor_path = os.path.join(nodes_dir, "vibevoice", "vibevoice_srt_processor.py")
@@ -903,6 +925,24 @@ Hello! This is unified SRT TTS with character switching.
                 result = engine_instance.processor.process_srt_content(
                     srt_content=srt_content,
                     voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params
+                )
+
+            elif engine_type == "echo_tts":
+                # Echo-TTS SRT processing via adapter
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    speaker_audio=audio_tensor,
+                    reference_text=reference_text,
                     seed=seed,
                     timing_mode=timing_mode,
                     timing_params=timing_params
