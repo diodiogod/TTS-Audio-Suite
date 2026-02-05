@@ -31,7 +31,17 @@ except ImportError as e:
         def __init__(self, *args, **kwargs):
             raise ImportError(f"CosyVoice adapter not available: {e}")
 
+try:
+    from .echo_tts_adapter import EchoTTSEngineAdapter
+    ECHO_TTS_ADAPTER_AVAILABLE = True
+except ImportError as e:
+    ECHO_TTS_ADAPTER_AVAILABLE = False
+    class EchoTTSEngineAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Echo-TTS adapter not available: {e}")
+
 __all__ = [
-    'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter',
-    'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE'
+    'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter', 'EchoTTSEngineAdapter',
+    'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE',
+    'ECHO_TTS_ADAPTER_AVAILABLE'
 ]

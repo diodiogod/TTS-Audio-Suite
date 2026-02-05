@@ -46,6 +46,9 @@ wandb                # F5-TTS logging
 ema-pytorch          # F5-TTS exponential moving average
 vocos                # F5-TTS vocoder
 
+# Echo-TTS engine (CUDA recommended)
+echo-tts
+
 # Audio restoration
 # VoiceFixer is bundled in utils/voicefixer_bundled/
 # Uses librosa (already required) for STFT/ISTFT instead of torchlibrosa - reduces dependencies
