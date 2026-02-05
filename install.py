@@ -853,20 +853,12 @@ class TTSAudioInstaller:
                 )
 
                 if gpu_success:
-                    # Verify GPU provider is available
-                    try:
-                        result = subprocess.run([
-                            sys.executable, "-c",
-                            "import onnxruntime; providers = onnxruntime.get_available_providers(); print('CUDAExecutionProvider' in providers)"
-                        ], capture_output=True, text=True, timeout=10)
-
-                        if "True" in result.stdout:
-                            self.log("onnxruntime-gpu with CUDA support installed successfully", "SUCCESS")
-                            return
-                        else:
-                            self.log("onnxruntime-gpu installed but CUDA provider not available - trying CPU version", "WARNING")
-                    except Exception as e:
-                        self.log(f"Could not verify CUDA provider: {e}", "WARNING")
+                    # Trust that onnxruntime-gpu installation succeeded
+                    # Note: CUDA provider verification can fail in restricted environments (Docker, containers)
+                    # even when onnxruntime-gpu works fine at runtime. Installing both CPU and GPU versions
+                    # causes Python to prefer the CPU version, degrading performance.
+                    self.log("onnxruntime-gpu installed successfully", "SUCCESS")
+                    return
 
             except subprocess.CalledProcessError:
                 self.log("onnxruntime-gpu installation failed - falling back to CPU version", "WARNING")
