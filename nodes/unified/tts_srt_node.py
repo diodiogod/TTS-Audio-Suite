@@ -441,12 +441,17 @@ Hello! This is unified SRT TTS with character switching.
                 return engine_instance
 
             elif engine_type == "echo_tts":
-                from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
+                echo_tts_srt_processor_path = os.path.join(nodes_dir, "echo_tts", "echo_tts_srt_processor.py")
+                echo_tts_srt_spec = importlib.util.spec_from_file_location("echo_tts_srt_processor_module", echo_tts_srt_processor_path)
+                echo_tts_srt_module = importlib.util.module_from_spec(echo_tts_srt_spec)
+                echo_tts_srt_spec.loader.exec_module(echo_tts_srt_module)
+
+                EchoTTSSRTProcessor = echo_tts_srt_module.EchoTTSSRTProcessor
 
                 class EchoTTSSRTWrapper:
                     def __init__(self, config):
                         self.config = config
-                        self.processor = EchoTTSEngineAdapter(config)
+                        self.processor = EchoTTSSRTProcessor(self, config)
 
                     def update_config(self, new_config):
                         self.config = new_config.copy()
@@ -931,7 +936,7 @@ Hello! This is unified SRT TTS with character switching.
                 )
 
             elif engine_type == "echo_tts":
-                # Echo-TTS SRT processing via adapter
+                # Echo-TTS SRT processing via processor
                 timing_params = {
                     'fade_for_StretchToFit': fade_for_StretchToFit,
                     'max_stretch_ratio': max_stretch_ratio,
@@ -939,10 +944,17 @@ Hello! This is unified SRT TTS with character switching.
                     'timing_tolerance': timing_tolerance
                 }
 
+                voice_mapping = {}
+                if audio_tensor:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or ""
+                    }
+
                 result = engine_instance.processor.process_srt_content(
                     srt_content=srt_content,
-                    speaker_audio=audio_tensor,
-                    reference_text=reference_text,
+                    voice_mapping=voice_mapping,
                     seed=seed,
                     timing_mode=timing_mode,
                     timing_params=timing_params
