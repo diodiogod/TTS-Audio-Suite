@@ -132,7 +132,17 @@ class ComfyUIModelWrapper:
     def model_offloaded_memory(self) -> int:
         """Return the amount of memory that would be freed if offloaded"""
         return self.model_size() - self.loaded_size()
-    
+
+    def partially_unload_ram(self, ram_to_unload: int) -> int:
+        """
+        ComfyUI compatibility: partially unload RAM/VRAM.
+        Newer ComfyUI versions call this on loaded models.
+        """
+        try:
+            return self.partially_unload('cpu', ram_to_unload)
+        except Exception:
+            return 0
+
     def current_loaded_device(self) -> str:
         """Return the current device the model is loaded on"""
         return self.current_device
