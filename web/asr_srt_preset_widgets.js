@@ -76,7 +76,7 @@ function lockFields(node, shouldLock) {
 }
 
 function asrPresetHandler(node) {
-    if (node.comfyClass !== "UnifiedASRTranscribeNode") {
+    if (node.comfyClass !== "ASRSRTAdvancedOptionsNode") {
         return;
     }
 
@@ -117,7 +117,7 @@ function asrPresetHandler(node) {
 app.registerExtension({
     name: "tts-audio-suite.asr-srt-preset.widgets",
     nodeCreated(node) {
-        if (node.comfyClass !== "UnifiedASRTranscribeNode") {
+        if (node.comfyClass !== "ASRSRTAdvancedOptionsNode") {
             return;
         }
 

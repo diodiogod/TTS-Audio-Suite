@@ -199,6 +199,8 @@ This extension features a **unified modular architecture** supporting multiple T
 
 **nodes/unified/asr_transcribe_node.py** - Universal ASR transcription node working with any engine that advertises ASR capability
 
+**nodes/asr/asr_srt_options_node.py** - 🔧 ASR SRT Advanced Options node for subtitle construction tuning
+
 ### Shared Components
 
 **nodes/shared/character_voices_node.py** - Character voice management system providing NARRATOR_VOICE outputs for any TTS node

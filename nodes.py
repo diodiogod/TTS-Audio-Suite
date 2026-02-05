@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "4.20.11"
+VERSION = "4.20.12"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -206,6 +206,14 @@ try:
 except Exception as e:
     print(f"❌ Unified ASR Transcribe failed: {e}")
     UNIFIED_ASR_AVAILABLE = False
+
+try:
+    asr_srt_options_module = load_node_module("asr_srt_options_node", "asr/asr_srt_options_node.py")
+    ASRSRTAdvancedOptionsNode = asr_srt_options_module.ASRSRTAdvancedOptionsNode
+    ASR_SRT_OPTIONS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ ASR SRT Advanced Options failed: {e}")
+    ASR_SRT_OPTIONS_AVAILABLE = False
 
 # Load support nodes
 try:
@@ -502,6 +510,10 @@ if UNIFIED_VC_AVAILABLE:
 if UNIFIED_ASR_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedASRTranscribeNode"] = UnifiedASRTranscribeNode
     NODE_DISPLAY_NAME_MAPPINGS["UnifiedASRTranscribeNode"] = "✏️ ASR Transcribe"
+
+if ASR_SRT_OPTIONS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ASRSRTAdvancedOptionsNode"] = ASRSRTAdvancedOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["ASRSRTAdvancedOptionsNode"] = "🔧 ASR SRT Advanced Options"
 
 # Register legacy support nodes
 if VOICE_CAPTURE_AVAILABLE:

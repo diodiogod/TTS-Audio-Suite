@@ -98,37 +98,8 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                     "default": "none",
                     "tooltip": "Timestamp output:\n• none: Text only\n• word: Word-level timestamps (requires forced aligner support)"
                 }),
-                "srt_preset": (["Custom", "Netflix-Standard", "Broadcast", "Fast speech", "Mobile"], {
-                    "default": "Broadcast",
-                    "tooltip": "SRT readability preset:\n• Netflix-Standard: 2 lines, ~42 CPL, 0.85–7s\n• Broadcast: 2 lines, ~42 CPL, 1–6s\n• Fast speech: Higher CPS\n• Mobile: Shorter lines\n• Custom: Use manual controls below"
-                }),
-                "srt_mode": (["smart", "engine_segments", "words"], {
-                    "default": "smart",
-                    "tooltip": "SRT construction:\n• smart: Groups words by punctuation, gaps, duration, and CPS\n• engine_segments: Use model segment boundaries\n• words: One subtitle per word (debug)"
-                }),
-                "srt_max_chars_per_line": ("INT", {
-                    "default": 42, "min": 10, "max": 10000, "step": 1,
-                    "tooltip": "Max characters per line (CPL). Lower = easier to read, higher = fewer subtitles."
-                }),
-                "srt_max_lines": ("INT", {
-                    "default": 2, "min": 1, "max": 3, "step": 1,
-                    "tooltip": "Max lines per subtitle. Industry standard is 2."
-                }),
-                "srt_max_duration": ("FLOAT", {
-                    "default": 6.0, "min": 0.2, "max": 9999.0, "step": 0.1,
-                    "tooltip": "Max subtitle duration (seconds). Longer = fewer subtitles but slower updates."
-                }),
-                "srt_min_duration": ("FLOAT", {
-                    "default": 1.0, "min": 0.0, "max": 9999.0, "step": 0.1,
-                    "tooltip": "Min subtitle duration (seconds). Prevents flickering subtitles."
-                }),
-                "srt_min_gap": ("FLOAT", {
-                    "default": 0.6, "min": 0.0, "max": 9999.0, "step": 0.1,
-                    "tooltip": "Minimum gap (seconds) that forces a split. Higher values create more breaks."
-                }),
-                "srt_max_cps": ("FLOAT", {
-                    "default": 20.0, "min": 0.1, "max": 9999.0, "step": 0.5,
-                    "tooltip": "Max characters per second (CPS). Lower = easier to read, higher = denser subtitles."
+                "srt_options": ("ASR_SRT_OPTIONS", {
+                    "tooltip": "Advanced SRT construction options (optional)."
                 }),
                 "chunk_size": ("INT", {
                     "default": 30, "min": 0, "max": 600, "step": 1,
@@ -148,7 +119,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
     RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = ("text", "srt", "timestamps", "info")
     FUNCTION = "transcribe"
-    CATEGORY = "TTS Audio Suite/📝 ASR"
+    CATEGORY = "TTS Audio Suite/✏️ ASR"
 
     def transcribe(
         self,
@@ -157,14 +128,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
         language: str = "Auto",
         task: str = "transcribe",
         timestamps: str = "none",
-        srt_preset: str = "Broadcast",
-        srt_mode: str = "smart",
-        srt_max_chars_per_line: int = 42,
-        srt_max_lines: int = 2,
-        srt_max_duration: float = 6.0,
-        srt_min_duration: float = 1.0,
-        srt_min_gap: float = 0.6,
-        srt_max_cps: float = 20.0,
+        srt_options: Dict[str, Any] = None,
         chunk_size: int = 30,
         overlap: int = 2,
         enable_asr_cache: bool = True,
@@ -227,45 +191,118 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
         else:
             result = run_asr(engine, req)
 
-        if srt_preset != "Custom":
-            if srt_preset == "Netflix-Standard":
-                srt_max_chars_per_line = 42
-                srt_max_lines = 2
-                srt_max_duration = 7.0
-                srt_min_duration = 0.85
-                srt_min_gap = 0.2
-                srt_max_cps = 17.0
-            elif srt_preset == "Fast speech":
-                srt_max_chars_per_line = 42
-                srt_max_lines = 2
-                srt_max_duration = 6.0
-                srt_min_duration = 0.8
-                srt_min_gap = 0.4
-                srt_max_cps = 20.0
-            elif srt_preset == "Mobile":
-                srt_max_chars_per_line = 32
-                srt_max_lines = 2
-                srt_max_duration = 5.0
-                srt_min_duration = 1.0
-                srt_min_gap = 0.6
-                srt_max_cps = 17.0
-            else:  # Broadcast
-                srt_max_chars_per_line = 42
-                srt_max_lines = 2
-                srt_max_duration = 6.0
-                srt_min_duration = 1.0
-                srt_min_gap = 0.6
-                srt_max_cps = 17.0
+        # Default SRT options (Broadcast preset)
+        opts = {
+            "srt_preset": "Broadcast",
+            "srt_mode": "smart",
+            "srt_max_chars_per_line": 42,
+            "srt_max_lines": 2,
+            "srt_max_duration": 6.0,
+            "srt_min_duration": 1.0,
+            "srt_min_gap": 0.6,
+            "srt_max_cps": 17.0,
+            "dedupe_overlaps": True,
+            "dedupe_window_ms": 1500,
+            "dedupe_min_words": 2,
+            "dedupe_overlap_ratio": 0.6,
+            "punctuation_grace_chars": 12,
+            "min_words_per_segment": 2,
+            "min_segment_seconds": 0.4,
+            "merge_trailing_punct_word": True,
+            "merge_trailing_punct_max_gap": 1.0,
+            "merge_leading_short_phrase": True,
+            "merge_leading_short_max_words": 2,
+            "merge_leading_short_max_gap": 2.0,
+            "merge_dangling_tail": True,
+            "merge_dangling_tail_max_words": 3,
+            "merge_dangling_tail_max_gap": 3.0,
+            "merge_dangling_tail_allowlist": "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+            "merge_leading_short_no_punct": True,
+            "merge_leading_short_no_punct_max_words": 2,
+            "merge_leading_short_no_punct_max_gap": 1.5,
+            "merge_incomplete_sentence": True,
+            "merge_incomplete_max_gap": 1.2,
+            "merge_incomplete_keywords": "what,why,how,where,who,which,when",
+            "merge_incomplete_split_next": True,
+            "merge_allow_overlong": True,
+        }
+
+        if isinstance(srt_options, dict):
+            opts.update(srt_options)
+
+        # Apply preset overrides
+        preset = opts.get("srt_preset", "Broadcast")
+        if preset != "Custom":
+            if preset == "Netflix-Standard":
+                opts.update({
+                    "srt_max_chars_per_line": 42,
+                    "srt_max_lines": 2,
+                    "srt_max_duration": 7.0,
+                    "srt_min_duration": 0.85,
+                    "srt_min_gap": 0.2,
+                    "srt_max_cps": 17.0,
+                })
+            elif preset == "Fast speech":
+                opts.update({
+                    "srt_max_chars_per_line": 42,
+                    "srt_max_lines": 2,
+                    "srt_max_duration": 6.0,
+                    "srt_min_duration": 0.8,
+                    "srt_min_gap": 0.4,
+                    "srt_max_cps": 20.0,
+                })
+            elif preset == "Mobile":
+                opts.update({
+                    "srt_max_chars_per_line": 32,
+                    "srt_max_lines": 2,
+                    "srt_max_duration": 5.0,
+                    "srt_min_duration": 1.0,
+                    "srt_min_gap": 0.6,
+                    "srt_max_cps": 17.0,
+                })
+            else:
+                opts.update({
+                    "srt_max_chars_per_line": 42,
+                    "srt_max_lines": 2,
+                    "srt_max_duration": 6.0,
+                    "srt_min_duration": 1.0,
+                    "srt_min_gap": 0.6,
+                    "srt_max_cps": 17.0,
+                })
 
         out = format_asr_output(
             result,
-            srt_mode=srt_mode,
-            max_chars_per_line=srt_max_chars_per_line,
-            max_lines=srt_max_lines,
-            max_duration=srt_max_duration,
-            min_duration=srt_min_duration,
-            min_gap=srt_min_gap,
-            max_cps=srt_max_cps,
+            srt_mode=opts["srt_mode"],
+            max_chars_per_line=opts["srt_max_chars_per_line"],
+            max_lines=opts["srt_max_lines"],
+            max_duration=opts["srt_max_duration"],
+            min_duration=opts["srt_min_duration"],
+            min_gap=opts["srt_min_gap"],
+            max_cps=opts["srt_max_cps"],
+            dedupe_overlaps=opts["dedupe_overlaps"],
+            dedupe_window_ms=opts["dedupe_window_ms"],
+            dedupe_min_words=opts["dedupe_min_words"],
+            dedupe_overlap_ratio=opts["dedupe_overlap_ratio"],
+            punctuation_grace_chars=opts["punctuation_grace_chars"],
+            min_words_per_segment=opts["min_words_per_segment"],
+            min_segment_seconds=opts["min_segment_seconds"],
+            merge_trailing_punct_word=opts["merge_trailing_punct_word"],
+            merge_trailing_punct_max_gap=opts["merge_trailing_punct_max_gap"],
+            merge_leading_short_phrase=opts["merge_leading_short_phrase"],
+            merge_leading_short_max_words=opts["merge_leading_short_max_words"],
+            merge_leading_short_max_gap=opts["merge_leading_short_max_gap"],
+            merge_dangling_tail=opts["merge_dangling_tail"],
+            merge_dangling_tail_max_words=opts["merge_dangling_tail_max_words"],
+            merge_dangling_tail_max_gap=opts["merge_dangling_tail_max_gap"],
+            merge_dangling_tail_allowlist=opts["merge_dangling_tail_allowlist"],
+            merge_leading_short_no_punct=opts["merge_leading_short_no_punct"],
+            merge_leading_short_no_punct_max_words=opts["merge_leading_short_no_punct_max_words"],
+            merge_leading_short_no_punct_max_gap=opts["merge_leading_short_no_punct_max_gap"],
+            merge_incomplete_sentence=opts["merge_incomplete_sentence"],
+            merge_incomplete_max_gap=opts["merge_incomplete_max_gap"],
+            merge_incomplete_keywords=opts["merge_incomplete_keywords"],
+            merge_incomplete_split_next=opts["merge_incomplete_split_next"],
+            merge_allow_overlong=opts["merge_allow_overlong"],
         )
         return (out["text"], out["srt"], out["timestamps"], out["info"])
 
