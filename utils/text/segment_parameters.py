@@ -21,6 +21,22 @@ PARAMETER_ALIASES = {
     'cfg': 'cfg',
     'cfg_weight': 'cfg',  # cfg_weight alias -> cfg (more universal)
     'cfgweight': 'cfg',
+    'num_steps': 'num_steps',
+    'cfg_text': 'cfg_scale_text',
+    'cfg_scale_text': 'cfg_scale_text',
+    'cfg_speaker': 'cfg_scale_speaker',
+    'cfg_scale_speaker': 'cfg_scale_speaker',
+    'cfg_min_t': 'cfg_min_t',
+    'cfg_max_t': 'cfg_max_t',
+    'truncation': 'truncation_factor',
+    'truncation_factor': 'truncation_factor',
+    'rescale_k': 'rescale_k',
+    'rescale_sigma': 'rescale_sigma',
+    'speaker_kv_scale': 'speaker_kv_scale',
+    'speaker_kv_max_layers': 'speaker_kv_max_layers',
+    'speaker_kv_min_t': 'speaker_kv_min_t',
+    'sequence_length': 'sequence_length',
+    'seq_len': 'sequence_length',
     'exaggeration': 'exaggeration',
     'exag': 'exaggeration',
     'speed': 'speed',
@@ -38,7 +54,8 @@ PARAMETER_ALIASES = {
 PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts'
+        'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
+        'echo_tts'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
@@ -46,6 +63,42 @@ PARAMETER_ENGINES = {
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang'
+    },
+    'num_steps': {
+        'echo_tts'
+    },
+    'cfg_scale_text': {
+        'echo_tts'
+    },
+    'cfg_scale_speaker': {
+        'echo_tts'
+    },
+    'cfg_min_t': {
+        'echo_tts'
+    },
+    'cfg_max_t': {
+        'echo_tts'
+    },
+    'truncation_factor': {
+        'echo_tts'
+    },
+    'rescale_k': {
+        'echo_tts'
+    },
+    'rescale_sigma': {
+        'echo_tts'
+    },
+    'speaker_kv_scale': {
+        'echo_tts'
+    },
+    'speaker_kv_max_layers': {
+        'echo_tts'
+    },
+    'speaker_kv_min_t': {
+        'echo_tts'
+    },
+    'sequence_length': {
+        'echo_tts'
     },
     'exaggeration': {
         'chatterbox', 'chatterbox_official_23lang'
@@ -72,6 +125,18 @@ PARAMETER_VALIDATION = {
     'seed': (int, 0, 2**32 - 1, "Random seed for reproducible generation"),
     'temperature': (float, 0.1, 2.0, "Randomness/creativity control (lower=more deterministic)"),
     'cfg': (float, 0.0, 20.0, "Classifier-free guidance strength"),
+    'num_steps': (int, 1, 200, "Number of inference steps"),
+    'cfg_scale_text': (float, 0.0, 20.0, "CFG scale for text guidance (Echo-TTS)"),
+    'cfg_scale_speaker': (float, 0.0, 20.0, "CFG scale for speaker guidance (Echo-TTS)"),
+    'cfg_min_t': (float, 0.0, 1.0, "CFG minimum t value (Echo-TTS)"),
+    'cfg_max_t': (float, 0.0, 1.0, "CFG maximum t value (Echo-TTS)"),
+    'truncation_factor': (float, 0.0, 2.0, "Truncation factor (Echo-TTS)"),
+    'rescale_k': (float, 0.0, 5.0, "Rescale k (Echo-TTS)"),
+    'rescale_sigma': (float, 0.0, 10.0, "Rescale sigma (Echo-TTS)"),
+    'speaker_kv_scale': (float, 0.0, 10.0, "Speaker KV scale (Echo-TTS)"),
+    'speaker_kv_max_layers': (int, 0, 100, "Speaker KV max layers (Echo-TTS)"),
+    'speaker_kv_min_t': (float, 0.0, 1.0, "Speaker KV min t (Echo-TTS)"),
+    'sequence_length': (int, 1, 2048, "Sequence length / block size (Echo-TTS)"),
     'exaggeration': (float, 0.0, 2.0, "Voice emotion exaggeration (ChatterBox only)"),
     'speed': (float, 0.5, 2.0, "Speech speed multiplier (F5-TTS only)"),
     'top_p': (float, 0.0, 1.0, "Nucleus sampling probability"),
@@ -86,6 +151,18 @@ PARAMETER_NODE_KEYS = {
     'seed': 'seed',
     'temperature': 'temperature',
     'cfg': {'default': 'cfg_weight', 'f5tts': 'cfg_strength'},  # Engine-specific mapping
+    'num_steps': 'num_steps',
+    'cfg_scale_text': 'cfg_scale_text',
+    'cfg_scale_speaker': 'cfg_scale_speaker',
+    'cfg_min_t': 'cfg_min_t',
+    'cfg_max_t': 'cfg_max_t',
+    'truncation_factor': 'truncation_factor',
+    'rescale_k': 'rescale_k',
+    'rescale_sigma': 'rescale_sigma',
+    'speaker_kv_scale': 'speaker_kv_scale',
+    'speaker_kv_max_layers': 'speaker_kv_max_layers',
+    'speaker_kv_min_t': 'speaker_kv_min_t',
+    'sequence_length': 'sequence_length',
     'exaggeration': 'exaggeration',
     'speed': 'speed',
     'top_p': 'top_p',

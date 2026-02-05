@@ -76,6 +76,23 @@ class EchoTTSEngineAdapter:
             print("WARNING: Echo-TTS running on CPU will be very slow.")
         return "cpu"
 
+    @staticmethod
+    def _normalize_prompt_text(text: str) -> str:
+        """
+        Ensure Echo-TTS prompt format uses [S1] prefix for narrator.
+
+        If [S1] is already present, remove it and re-add once to normalize.
+        This avoids character tag parsing conflicts elsewhere in the pipeline.
+        """
+        if not text:
+            return "[S1]"
+
+        cleaned = text.strip()
+        if cleaned.lower().startswith("[s1]"):
+            cleaned = cleaned[4:].lstrip()
+
+        return f"[S1] {cleaned}".strip()
+
     def _get_local_repo_dir(self, repo_id: str, base_dir: Optional[str] = None) -> str:
         base_dir = base_dir or get_preferred_download_path("TTS")
         repo_name = repo_id.split("/")[-1]
@@ -278,13 +295,15 @@ class EchoTTSEngineAdapter:
                     **self._filter_kwargs(sample_euler_cfg, sampler_kwargs),
                 )
 
+        prompt_text = self._normalize_prompt_text(text)
+
         with torch.no_grad():
             result = self._sample_pipeline(
                 model=self.model,
                 fish_ae=self.ae,
                 pca_state=self.pca_state,
                 sample_fn=sample_fn,
-                text_prompt=text,
+                text_prompt=prompt_text,
                 speaker_audio=ref_audio,
                 rng_seed=seed,
                 pad_to_max_speaker_latent_length=2560,
