@@ -8,7 +8,12 @@ import torch
 import logging
 from typing import Dict, Tuple
 from contextlib import contextmanager
-from distutils.version import LooseVersion
+
+# TTS Audio Suite Patch: Remove distutils dependency (removed in Python 3.12+)
+# Original code checked if PyTorch >= 1.6.0 to use autocast
+# PyTorch 1.6.0 released in July 2020 - all modern installations have it
+# Safe to assume autocast is always available in 2026
+from torch.cuda.amp import autocast
 
 from funasr_detach.register import tables
 from funasr_detach.models.ctc.ctc import CTC
@@ -23,15 +28,6 @@ from funasr_detach.losses.label_smoothing_loss import LabelSmoothingLoss
 from funasr_detach.models.transformer.utils.add_sos_eos import add_sos_eos
 from funasr_detach.models.transformer.utils.nets_utils import make_pad_mask, pad_list
 from funasr_detach.utils.load_utils import load_audio_text_image_video, extract_fbank
-
-
-if LooseVersion(torch.__version__) >= LooseVersion("1.6.0"):
-    from torch.cuda.amp import autocast
-else:
-    # Nothing to do if torch<1.6.0
-    @contextmanager
-    def autocast(enabled=True):
-        yield
 
 
 @tables.register("model_classes", "ParaformerStreaming")
