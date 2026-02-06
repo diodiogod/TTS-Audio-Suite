@@ -32,6 +32,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **Higgs Audio 2** | 🇺🇸🇨🇳🇩🇪🇪🇸🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
 | **IndexTTS-2** | 🇺🇸🇨🇳🇯🇵 | ? | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~5.4GB | Paralinguistic tags |
+| **Echo-TTS** | 🇺🇸 (en) | ? | DiT voice cloning, reference audio |
 | **Qwen3-TTS** | 🇺🇸🇨🇳🇩🇪🇪🇸🇫🇷🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
 | **Step Audio EditX** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
@@ -109,6 +110,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
   - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
   - [🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design](#-qwen3-tts---3-model-types-with-text-to-voice-design)
+  - [🎧 Echo-TTS Voice Cloning](#-echo-tts-voice-cloning)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
   - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
@@ -172,7 +174,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, and **Qwen3-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Echo-TTS**, and **Qwen3-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Qwen3-ASR via the ✏️ ASR Transcribe node (more engines planned)
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
@@ -791,6 +793,32 @@ Description: "A deep, authoritative male voice with clear articulation"
 - **Creative voice design from text descriptions** (VoiceDesign) - **unique to Qwen3-TTS**
 - High-quality voice cloning with reference audio (Base)
 - Content requiring specific vocal characteristics defined by text
+
+</details>
+
+<details>
+<summary><h3>🎧 Echo-TTS Voice Cloning</h3></summary>
+
+**NEW**: Echo‑TTS DiT-based voice cloning with reference audio support.
+
+**Best Practices:**
+* **⏱️ Best at ≤30s per generation** — Echo‑TTS performs best at ~30 seconds or less.
+* **🧩 Long‑form (best‑effort)** — Longer text is handled via the unified TTS Text chunking system when Echo‑TTS is used as a `TTS_engine` input.
+* **⚡ CUDA recommended** — CPU works but is very slow for real workloads.
+* **🪪 License** — Echo‑TTS weights are non‑commercial (CC‑BY‑NC‑SA).
+
+**Windows / Linux:**
+* Works on Windows and Linux with standard PyTorch + CUDA installs.
+
+**Model Location:**
+```
+ComfyUI/models/TTS/echo-tts-base/
+```
+
+**Usage:**
+1. Add `⚙️ Echo‑TTS Engine` node
+2. Connect to `🎤 TTS Text` or `📺 TTS SRT`
+3. First run auto‑downloads the model into the path above
 
 </details>
 
@@ -1747,7 +1775,25 @@ ComfyUI/models/TTS/qwen3_tts/
 - Connect the Qwen3 Engine
 - Auto-downloads Qwen3-ASR models on first use
 
-### 14. Restart ComfyUI
+### 14. Echo-TTS Models (NEW)
+
+**Repository:** `jordand/echo-tts-base` | **Auto-Download:** ✅
+
+**Installation Structure:**
+```
+ComfyUI/models/TTS/echo-tts-base/
+├── pytorch_model.safetensors
+├── pca_state.safetensors
+└── (auto-downloaded dependencies)
+```
+
+**Notes:**
+- **CUDA recommended** for practical performance; CPU is very slow.
+- **Best at ≤30s** per generation; longer text uses unified chunking (best‑effort).
+- **License:** non‑commercial (CC‑BY‑NC‑SA).
+- **Current download sizes (local):** `echo-tts-base` ≈ 5.3GB + `fish-s1-dac-min` ≈ 1.8GB (≈ 7.1GB total).
+
+### 15. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 

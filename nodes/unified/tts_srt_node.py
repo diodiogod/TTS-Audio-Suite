@@ -440,6 +440,33 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
 
+            elif engine_type == "echo_tts":
+                echo_tts_srt_processor_path = os.path.join(nodes_dir, "echo_tts", "echo_tts_srt_processor.py")
+                echo_tts_srt_spec = importlib.util.spec_from_file_location("echo_tts_srt_processor_module", echo_tts_srt_processor_path)
+                echo_tts_srt_module = importlib.util.module_from_spec(echo_tts_srt_spec)
+                echo_tts_srt_spec.loader.exec_module(echo_tts_srt_module)
+
+                EchoTTSSRTProcessor = echo_tts_srt_module.EchoTTSSRTProcessor
+
+                class EchoTTSSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = EchoTTSSRTProcessor(self, config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                engine_instance = EchoTTSSRTWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             elif engine_type == "vibevoice":
                 # Import and create the VibeVoice SRT processor using absolute import
                 vibevoice_srt_processor_path = os.path.join(nodes_dir, "vibevoice", "vibevoice_srt_processor.py")
@@ -908,6 +935,31 @@ Hello! This is unified SRT TTS with character switching.
                     timing_params=timing_params
                 )
 
+            elif engine_type == "echo_tts":
+                # Echo-TTS SRT processing via processor
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+
+                voice_mapping = {}
+                if audio_tensor:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or ""
+                    }
+
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params
+                )
+
             elif engine_type == "vibevoice":
                 # Use the VibeVoice SRT processor from the wrapper instance
                 voice_mapping = {"narrator": audio_tensor} if audio_tensor else {}
@@ -1078,6 +1130,9 @@ Hello! This is unified SRT TTS with character switching.
             return (audio_output, unified_info, timing_report, adjusted_srt)
                 
         except Exception as e:
+            # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
+            if "Pause tags are not compatible with force_speaker_kv" in str(e):
+                raise
             error_msg = f"❌ TTS SRT generation failed: {e}"
             print(error_msg)
             import traceback

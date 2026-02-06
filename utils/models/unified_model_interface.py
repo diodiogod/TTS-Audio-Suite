@@ -1025,6 +1025,92 @@ def register_step_audio_editx_factory():
     unified_model_interface.register_model_factory("step_audio_editx", "tts", step_audio_editx_factory)
 
 
+def register_echo_tts_factory():
+    """Register Echo-TTS model factory"""
+    def echo_tts_factory(config: ModelLoadConfig):
+        """Factory for Echo-TTS models with ComfyUI integration"""
+        import os
+        import torch
+        from huggingface_hub import hf_hub_download
+        from utils.models.extra_paths import get_preferred_download_path
+        from utils.device import resolve_torch_device
+
+        from echo_tts.inference import (
+            load_model_from_hf,
+            load_fish_ae_from_hf,
+            load_pca_state_from_hf,
+            sample_pipeline,
+        )
+
+        model_id = config.model_name or "jordand/echo-tts-base"
+        device = resolve_torch_device(config.device or "auto")
+
+        # Ensure HF downloads land under ComfyUI/models/TTS/<model name>
+        base_dir = get_preferred_download_path("TTS")
+        os.makedirs(base_dir, exist_ok=True)
+        model_name = model_id.split("/")[-1]
+
+        def _hf_download(repo_id: str, filename: str) -> None:
+            repo_dir = os.path.join(base_dir, repo_id.split("/")[-1])
+            os.makedirs(repo_dir, exist_ok=True)
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                local_dir=repo_dir,
+                local_dir_use_symlinks=False,
+            )
+
+        # Download required files into ComfyUI models dir
+        _hf_download(model_id, "pytorch_model.safetensors")
+        _hf_download(model_id, "pca_state.safetensors")
+        _hf_download("jordand/fish-s1-dac-min", "pytorch_model.safetensors")
+
+        model_dtype = torch.bfloat16 if device == "cuda" else torch.float32
+
+        model = load_model_from_hf(
+            repo_id=model_name,
+            device=device,
+            dtype=model_dtype,
+            model_path=base_dir,
+        )
+
+        ae = load_fish_ae_from_hf(
+            repo_id="fish-s1-dac-min",
+            device=device,
+            dtype=model_dtype,
+            model_path=base_dir,
+        )
+
+        pca_state = load_pca_state_from_hf(
+            repo_id=model_name,
+            device=device,
+            model_path=base_dir,
+        )
+
+        class EchoTTSModelBundle:
+            def __init__(self, model, ae, pca_state, sample_pipeline, device):
+                self.model = model
+                self.ae = ae
+                self.pca_state = pca_state
+                self.sample_pipeline = sample_pipeline
+                self.device = device
+
+            def to(self, target_device):
+                if hasattr(self.model, "to"):
+                    self.model = self.model.to(target_device)
+                if hasattr(self.ae, "to"):
+                    self.ae = self.ae.to(target_device)
+                if hasattr(self.pca_state, "to"):
+                    self.pca_state = self.pca_state.to(target_device)
+                self.device = target_device
+                return self
+
+        print(f"✅ Echo-TTS model '{model_name}' loaded via unified interface")
+        return EchoTTSModelBundle(model, ae, pca_state, sample_pipeline, device)
+
+    unified_model_interface.register_model_factory("echo_tts", "tts", echo_tts_factory)
+
+
 def register_cosyvoice_factory():
     """Register CosyVoice3 model factory"""
     def cosyvoice_factory(config: ModelLoadConfig):
@@ -1382,6 +1468,7 @@ def initialize_all_factories():
     register_chatterbox_23lang_factory()
     register_f5tts_factory()
     register_step_audio_editx_factory()
+    register_echo_tts_factory()
     register_higgs_audio_factory()
     register_rvc_factory()
     register_vibevoice_factory()

@@ -116,6 +116,14 @@ except Exception as e:
     QWEN3_TTS_ENGINE_AVAILABLE = False
 
 try:
+    echo_tts_engine_module = load_node_module("echo_tts_engine_node", "engines/echo_tts_engine_node.py")
+    EchoTTSEngineNode = echo_tts_engine_module.EchoTTSEngineNode
+    ECHO_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Echo-TTS Engine failed: {e}")
+    ECHO_TTS_ENGINE_AVAILABLE = False
+
+try:
     chatterbox_official_23lang_engine_module = load_node_module("chatterbox_official_23lang_engine_node", "engines/chatterbox_official_23lang_engine_node.py")
     ChatterBoxOfficial23LangEngineNode = chatterbox_official_23lang_engine_module.ChatterBoxOfficial23LangEngineNode
     CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE = True
@@ -462,6 +470,10 @@ if VIBEVOICE_ENGINE_AVAILABLE:
 if QWEN3_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSEngineNode"] = Qwen3TTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSEngineNode"] = "⚙️ Qwen3-TTS Engine"
+
+if ECHO_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["EchoTTSEngineNode"] = EchoTTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["EchoTTSEngineNode"] = "⚙️ Echo-TTS Engine"
 
 if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode
