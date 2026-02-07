@@ -188,14 +188,19 @@ Hello! This is unified SRT TTS with character switching.
             if engine_type == "chatterbox_official_23lang":
                 stable_params['model_version'] = config.get('model_version', 'v1')
 
-            # For Qwen3-TTS, include voice_preset, model_size, and attn_implementation
-            # voice_preset + model_size determine model type (CustomVoice vs Base) which requires reload
-            # attn_implementation affects model loading
+            # For Qwen3-TTS, include voice_preset, model_size, attn_implementation,
+            # and optimization settings since they determine model type and require model reload
             # NOTE: instruct is a generation parameter, doesn't require model reload
             if engine_type == "qwen3_tts":
                 stable_params['voice_preset'] = config.get('voice_preset', 'None (Zero-shot / Custom)')
+                stable_params['instruct'] = config.get('instruct', '')
                 stable_params['model_size'] = config.get('model_size', '1.7B')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
+                # CRITICAL: Include optimization settings - changing these requires model reload
+                # Without this, SRT and TTS text nodes would have different cache keys for the same model
+                stable_params['use_torch_compile'] = config.get('use_torch_compile', False)
+                stable_params['use_cuda_graphs'] = config.get('use_cuda_graphs', False)
+                stable_params['compile_mode'] = config.get('compile_mode', 'default')
 
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             

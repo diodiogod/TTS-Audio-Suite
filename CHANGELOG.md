@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.17] - 2026-02-06
+
+### Added
+
+- Properly cleanup CUDA graph memory pools on unload
+- Allow safe model reloading while keeping CUDA graph optimizations
+
+### Fixed
+
+- Fix Qwen3-TTS Windows CUDA graph crashes on model reload
+- Fix crash when clearing VRAM with CUDA graphs enabled
+- Fix crash when switching between TTS Text and SRT nodes
+- Fix crash when changing model parameters after VRAM clear
 ## [4.20.16] - 2026-02-05
 
 ### Added
