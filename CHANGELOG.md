@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.19] - 2026-02-06
+
+### Added
+
+- Higgs Audio engine was incorrectly being passed to Step Audio EditX editor
+- Inline tags now properly load Step Audio EditX engine for editing operations
+
+### Fixed
+
+- Fix Higgs Audio SRT inline tag processing crash
+- Fix AttributeError when using inline edit tags with Higgs Audio in SRT mode
 ## [4.20.18] - 2026-02-06
 
 ### Added

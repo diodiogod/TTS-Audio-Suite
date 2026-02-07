@@ -402,12 +402,12 @@ class HiggsAudioSRTProcessor:
             if all_segments_for_editing:
                 print(f"\n🎨 Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
                 # Create adapter to access engine
-                from engines.adapters.higgs_audio_adapter import HiggsAudioEngineAdapter
-                temp_adapter = HiggsAudioEngineAdapter(self.engine_wrapper)
+                # Don't pass Higgs Audio engine - it can't do editing
+                # Edit post processor will load Step Audio EditX engine as needed
                 processed_segments = apply_edit_post_processing(
                     all_segments_for_editing,
                     self.engine_wrapper.config,
-                    pre_loaded_engine=temp_adapter.higgs_engine
+                    pre_loaded_engine=None
                 )
 
                 # Store processed segments back (each subtitle has 1 segment)
