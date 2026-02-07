@@ -136,15 +136,15 @@ class HiggsAudioHandler(BaseEngineHandler):
 
     def model_unload(self, wrapper, memory_to_free=None, unpatch_weights=True) -> bool:
         """
-        Higgs Audio uses CUDA graphs which get corrupted by CPU offloading.
-        Mark model as invalid after unloading.
+        Higgs Audio uses CUDA graphs which are safely cleaned up during device migration.
+        CUDA graphs will be recreated automatically on the next generation call.
         """
         result = super().model_unload(wrapper, memory_to_free, unpatch_weights)
 
         if result:
-            # Mark model as invalid to prevent reuse
+            # Mark model as invalid to force fresh CUDA graph initialization
             wrapper._is_valid_for_reuse = False
-            print(f"🚫 Marked Higgs Audio model as invalid for reuse (CUDA graphs corrupted)")
+            print(f"🔄 Marked Higgs Audio model for cache refresh (CUDA graphs will be recreated)")
 
         return result
 

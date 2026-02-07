@@ -282,15 +282,8 @@ class StatelessHiggsAudioWrapper:
                 # Check if CUDA Graphs are enabled - if not, skip cleanup entirely
                 cuda_graphs_enabled = getattr(serve_engine, '_cuda_graphs_enabled', True)
                 
-                if device == "cpu" and torch.cuda.is_available() and cuda_graphs_enabled:
-                    # CUDA Graphs enabled - show warning and skip cleanup to prevent crashes
-                    print(f"⚠️ CUDA Graph Mode: Memory cleanup disabled to prevent crashes")
-                    print(f"   This model will stay in memory - restart ComfyUI to fully free VRAM")
-                    print(f"   To enable safe memory unloading, disable CUDA Graphs in engine settings")
-                elif device == "cpu" and torch.cuda.is_available() and not cuda_graphs_enabled:
+                if device == "cpu" and torch.cuda.is_available() and not cuda_graphs_enabled:
                     # Memory Safe mode - safe to perform cleanup since no CUDA Graphs
-                    print(f"🛡️ Memory Safe Mode: Performing standard memory cleanup...")
-
                     try:
                         # Standard cleanup since no CUDA Graphs to worry about
                         torch.cuda.synchronize()
@@ -301,13 +294,10 @@ class StatelessHiggsAudioWrapper:
                             serve_engine.kv_caches.clear()
                             # Set flag to force cache recreation on next _prepare_kv_caches() call
                             serve_engine._force_cache_recreation = True
-                            print(f"  🧹 Cleared KV caches and set force_cache_recreation flag")
 
                         import gc
                         gc.collect()
                         torch.cuda.empty_cache()
-
-                        print(f"✅ Memory Safe cleanup completed")
 
                     except Exception as safe_cleanup_error:
                         print(f"⚠️ Memory Safe cleanup error: {safe_cleanup_error}")

@@ -339,7 +339,6 @@ class HiggsAudioServeEngine:
                 )
                 for length in sorted(kv_cache_lengths)
             }
-            print(f"🔥 Created StaticCache buckets for CUDA Graph optimization")
         else:
             # Use DynamicCache for memory safety (no CUDA Graph capture)
             def safe_create_dynamic_cache():
@@ -442,8 +441,8 @@ class HiggsAudioServeEngine:
 
     def disable_cuda_graphs_permanently(self):
         """
-        Permanently disable CUDA graphs for models that have been corrupted by CPU moves.
-        This sacrifices performance but restores correct generation behavior.
+        Disable CUDA graphs (legacy fallback, now handled by automatic cleanup in handlers).
+        CUDA graphs are now safely managed during device migration and auto-recreated on reload.
         """
         try:
             logger.info("🚫 Permanently disabling CUDA graphs for resurrected model")
@@ -649,7 +648,6 @@ class HiggsAudioServeEngine:
                     )
                     for length in sorted(cache_lengths)
                 }
-                print(f"  🔥 Created StaticCache buckets for CUDA Graph optimization")
             else:
                 # Use DynamicCache for memory safety (no pre-allocation)
                 def safe_create_dynamic_cache():

@@ -286,7 +286,6 @@ class ComfyUITTSModelManager:
             # This is a stateless wrapper - use generic name to prevent ComfyUI from doing special CUDA handling
             original_engine = engine  # Store original engine name
             actual_engine = "stateless_tts"
-            print(f"🔒 Treating {engine} stateless wrapper as generic TTS model to avoid CUDA graph interference")
 
         model_info = ModelInfo(
             model=model,

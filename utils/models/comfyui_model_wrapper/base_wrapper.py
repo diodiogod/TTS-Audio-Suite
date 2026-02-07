@@ -366,10 +366,8 @@ class ComfyUIModelWrapper:
 
         if is_higgs:
             self._is_valid_for_reuse = False
-            print(f"🚫 Marked {original_engine} model as invalid for reuse (CUDA graphs corrupted by CPU migration)")
-
-            # CRITICAL: Clear node-level engine caches to prevent reuse of corrupted engines
-            # This is essential because TTS nodes have their own caching separate from ComfyUI wrapper cache
+            # Clear node-level engine caches to force fresh CUDA graph initialization
+            # CUDA graphs are device-specific and must be recreated after CPU migration
             invalidate_all_caches()
         else:
             # Other engines (ChatterBox, F5-TTS, VibeVoice) can be safely reused after device movement

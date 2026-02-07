@@ -94,8 +94,8 @@ class HiggsAudioEngine:
         Critical for ComfyUI model management - ensures all components move together
         when models are detached to CPU and later reloaded to CUDA.
 
-        Note: Higgs Audio uses CUDA graphs which are corrupted by CPU migration.
-        After offloading to CPU, the model should be marked as invalid for reuse.
+        Note: Higgs Audio uses CUDA graphs which are safely cleaned up during device migration.
+        CUDA graphs will be recreated automatically on the next generation call.
         """
         self.device = device
 
@@ -166,16 +166,6 @@ class HiggsAudioEngine:
             # Disable CUDA graphs if this was loaded after cache invalidation (memory pressure)
             if force_disable_cuda_graphs and hasattr(self.engine, 'disable_cuda_graphs_for_memory_management'):
                 self.engine.disable_cuda_graphs_for_memory_management()
-            
-            print(f"📦 Higgs Audio engine ready")
-            
-            # Show memory management warning only once per session
-            if not HiggsAudioEngine._memory_warning_shown:
-                print(f"⚠️  Memory Management Limitation: Higgs Audio uses CUDA graphs for performance")
-                print(f"   CUDA graphs lock GPU memory and cannot be safely unloaded without crashes")
-                print(f"   This model will stay in memory until ComfyUI restart")
-                print(f"📝 For dynamic memory management, use ChatterBox or F5-TTS engines instead")
-                HiggsAudioEngine._memory_warning_shown = True
             return
             
         except Exception as e:
@@ -204,9 +194,7 @@ class HiggsAudioEngine:
             self.model_path = model_path
             self.tokenizer_path = tokenizer_path
             self.device = device
-            
-            print(f"📦 Higgs Audio engine ready")
-            
+
         except Exception as e:
             print(f"❌ Failed to initialize Higgs Audio engine: {e}")
             raise

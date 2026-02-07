@@ -58,36 +58,23 @@ class HiggsAudioEngineAdapter:
     def load_base_model(self, model_name: str, device: str, enable_cuda_graphs: bool = True):
         """
         Load base Higgs Audio model.
-        
+
         Args:
             model_name: Model name to load
             device: Device to load model on
             enable_cuda_graphs: Whether to enable CUDA Graph optimization
         """
         # Check if the model is already loaded AND engine is initialized
-        # Also check for corruption flags that require recreation
         current_model = getattr(self.node, 'current_model_name', None)
-        cuda_graph_corrupted = getattr(self.higgs_engine, '_cuda_graph_corrupted', False)
-        needs_recreation = getattr(self.higgs_engine, '_needs_recreation', False)
-        
+
         if (current_model == model_name and
-            self.higgs_engine.engine is not None and
-            not cuda_graph_corrupted and
-            not needs_recreation):
+            self.higgs_engine.engine is not None):
             print(f"💾 Higgs Audio adapter: Model '{model_name}' already loaded - ensuring device and clearing other models")
             # Even if model is loaded, ensure it's on the right device and clear other models
             from utils.models.comfyui_model_wrapper.model_manager import tts_model_manager
             # This will clear other TTS models (like Step Audio EditX) from VRAM
             tts_model_manager.ensure_device("higgs_audio", device)
             return
-        
-        if cuda_graph_corrupted or needs_recreation:
-            print(f"🔥 Higgs Audio adapter: Engine corruption detected - forcing complete recreation")
-            # Clear the corruption flags
-            self.higgs_engine._cuda_graph_corrupted = False
-            self.higgs_engine._needs_recreation = False
-            # Force new engine creation by clearing current engine
-            self.higgs_engine.engine = None
         
         # Determine model paths based on model name
         if model_name in HIGGS_AUDIO_MODELS:

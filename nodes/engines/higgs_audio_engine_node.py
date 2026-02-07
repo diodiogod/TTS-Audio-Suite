@@ -197,7 +197,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
                 }),
                 "enable_cuda_graphs": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "⚡ CUDA Graph Optimization:\n\n• True (High Performance): 55+ tokens/sec generation speed, but memory cannot be unloaded safely (may crash on 'Unload Models'). Use for maximum speed in single-session workflows.\n\n• False (Memory Safe): ~12 tokens/sec generation speed (78% slower), but enables safe memory unloading with 'Unload Models' button. Use for dynamic workflows with multiple models.\n\n⚠️ IMPORTANT: When enabled, DO NOT use 'Unload Models' button - keep model loaded or restart ComfyUI to free memory."
+                    "tooltip": "⚡ CUDA Graph Optimization:\n\n• True (High Performance): 55+ tokens/sec generation speed with safe VRAM unloading. CUDA graphs auto-recreate on next generation. Recommended for best performance.\n\n• False (Memory Safe): ~12 tokens/sec generation speed (78% slower), but uses no CUDA graphs. Use if you encounter any issues or need to minimize memory fragmentation.\n\n✅ Both modes now support safe 'Unload Models' - CUDA graphs are automatically managed."
                 })
             }
         }

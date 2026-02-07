@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.18] - 2026-02-06
+
+### Added
+
+- Safe VRAM unloading now works properly - audio quality preserved
+- Simplified cleanup to only reset necessary flags, let engine handle recreation
+- Improved console output clarity - removed debug noise
+- Updated node tooltip to reflect safe CUDA graph management
+- CUDA graphs now auto-recreate properly without audio degradation
+
+### Fixed
+
+- Fix Higgs Audio CUDA graph crashes when clearing VRAM and reloading
+- Fix generation quality issues after model reload with CUDA graphs enabled
 ## [4.20.17] - 2026-02-06
 
 ### Added
