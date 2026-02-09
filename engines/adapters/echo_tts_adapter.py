@@ -125,17 +125,24 @@ class EchoTTSEngineAdapter:
     @staticmethod
     def _normalize_prompt_text(text: str) -> str:
         """
-        Ensure Echo-TTS prompt format uses [S1] prefix for narrator.
+        Normalize prompt text following Echo-TTS inference behavior.
 
-        If [S1] is already present, remove it and re-add once to normalize.
-        This avoids character tag parsing conflicts elsewhere in the pipeline.
+        Add [S1] only when text is plain content without speaker/metadata tags.
         """
         if not text:
             return "[S1]"
 
         cleaned = text.strip()
-        if cleaned.lower().startswith("[s1]"):
-            cleaned = cleaned[4:].lstrip()
+        if not cleaned:
+            return "[S1]"
+
+        if (
+            cleaned.startswith("[")
+            or cleaned.startswith("(")
+            or "S1" in cleaned
+            or "S2" in cleaned
+        ):
+            return cleaned
 
         return f"[S1] {cleaned}".strip()
 
