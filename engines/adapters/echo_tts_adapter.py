@@ -644,6 +644,10 @@ class EchoTTSEngineAdapter:
                             enable_audio_cache: bool = True):
         from utils.system.import_manager import import_manager
         from utils.timing.assembly import AudioAssemblyEngine
+        from utils.timing.engine import TimingEngine
+        from utils.timing.overlap_detection import SRTOverlapHandler
+
+        timing_params = timing_params or {}
 
         success, modules, _ = import_manager.import_srt_modules()
         if not success:
@@ -655,11 +659,10 @@ class EchoTTSEngineAdapter:
 
         srt_parser = SRTParser()
         subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
-
-        # Echo-TTS SRT support is minimal; fall back to pad_with_silence if needed
-        if timing_mode not in ["pad_with_silence", "concatenate"]:
-            print(f"WARNING: Echo-TTS SRT: timing_mode '{timing_mode}' not supported, using pad_with_silence")
-            timing_mode = "pad_with_silence"
+        has_overlaps = SRTOverlapHandler.detect_overlaps(subtitles)
+        current_timing_mode, mode_switched = SRTOverlapHandler.handle_smart_natural_fallback(
+            timing_mode, has_overlaps, "Echo-TTS SRT Adapter"
+        )
 
         if seed is not None:
             self.config["seed"] = seed
@@ -676,15 +679,36 @@ class EchoTTSEngineAdapter:
             )
             audio_segments.append(audio_tensor.cpu())
 
+        adjustments = None
+        processed_segments = None
+        fade_duration = float(timing_params.get("fade_for_StretchToFit", 0.01))
+
+        if current_timing_mode == "concatenate":
+            timing_engine = TimingEngine(self.SAMPLE_RATE)
+            adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
+        elif current_timing_mode == "smart_natural":
+            timing_engine = TimingEngine(self.SAMPLE_RATE)
+            tolerance = float(timing_params.get("timing_tolerance", 2.0))
+            max_stretch_ratio = float(timing_params.get("max_stretch_ratio", 1.0))
+            min_stretch_ratio = float(timing_params.get("min_stretch_ratio", 0.5))
+            adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+                audio_segments,
+                subtitles,
+                tolerance,
+                max_stretch_ratio,
+                min_stretch_ratio,
+                torch.device("cpu"),
+            )
+
         assembler = AudioAssemblyEngine(sample_rate=self.SAMPLE_RATE)
         final_audio = assembler.assemble_by_timing_mode(
             audio_segments=audio_segments,
             subtitles=subtitles,
-            timing_mode=timing_mode,
+            timing_mode=current_timing_mode,
             device="cpu",
-            adjustments=None,
-            processed_segments=None,
-            fade_duration=0.01
+            adjustments=adjustments,
+            processed_segments=processed_segments,
+            fade_duration=fade_duration,
         )
 
         if final_audio.dim() == 1:
@@ -695,14 +719,18 @@ class EchoTTSEngineAdapter:
         audio_output = {"waveform": final_audio, "sample_rate": self.SAMPLE_RATE}
 
         timing_info = srt_parser.get_timing_info(subtitles)
+        mode_info = current_timing_mode
+        if mode_switched:
+            mode_info = f"{current_timing_mode} (switched from {timing_mode} due to overlaps)"
+
         timing_report = (
             f"Echo-TTS SRT timing\n"
             f"Subtitles: {timing_info.get('subtitle_count', 0)}\n"
             f"Total duration: {timing_info.get('total_duration', 0):.2f}s\n"
-            f"Mode: {timing_mode}"
+            f"Mode: {mode_info}"
         )
 
         total_duration = final_audio.shape[-1] / float(self.SAMPLE_RATE)
-        info = f"Generated {total_duration:.1f}s Echo-TTS SRT audio using {timing_mode} mode"
+        info = f"Generated {total_duration:.1f}s Echo-TTS SRT audio using {mode_info} mode"
 
         return audio_output, info, timing_report, srt_content
