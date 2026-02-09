@@ -462,18 +462,23 @@ Back to the main narrator voice for the conclusion.""",
             
             elif engine_type == "echo_tts":
                 from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
+                echo_tts_processor_path = os.path.join(nodes_dir, "echo_tts", "echo_tts_processor.py")
+                echo_tts_processor_spec = importlib.util.spec_from_file_location("echo_tts_processor_module", echo_tts_processor_path)
+                echo_tts_processor_module = importlib.util.module_from_spec(echo_tts_processor_spec)
+                echo_tts_processor_spec.loader.exec_module(echo_tts_processor_module)
+
+                EchoTTSProcessor = echo_tts_processor_module.EchoTTSProcessor
 
                 class EchoTTSWrapper:
                     def __init__(self, cfg):
-                        self.config = cfg
-                        self.adapter = EchoTTSEngineAdapter(cfg)
+                        self.config = cfg.copy()
+                        self.adapter = EchoTTSEngineAdapter(self.config)
+                        self.processor = EchoTTSProcessor(self.adapter, self.config)
 
                     def update_config(self, new_config):
                         self.config = new_config.copy()
                         self.adapter.update_config(new_config)
-
-                    def process_text(self, **kwargs):
-                        return self.adapter.process_text(**kwargs)
+                        self.processor.update_config(new_config)
 
                 engine_instance = EchoTTSWrapper(config)
 
@@ -1126,174 +1131,42 @@ Back to the main narrator voice for the conclusion.""",
                 result = (formatted_audio, generation_info)
                 
             elif engine_type == "echo_tts":
-                # Echo-TTS: add character switching, pause tags, and inline edit tags
+                # Echo-TTS uses processor pattern - orchestration lives in EchoTTSProcessor
                 import re
-                from utils.text.pause_processor import PauseTagProcessor
-                from utils.text.segment_parameters import apply_segment_parameters
-                from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
-                from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
-                from utils.voice.discovery import get_available_characters, voice_discovery, get_character_mapping
-                from utils.text.character_parser import character_parser
                 from utils.audio.chunk_timing import ChunkTimingHelper
 
-                def _strip_s1_tag(text_value: str) -> str:
-                    return re.sub(r'\[s1\]\s*', '', text_value, flags=re.IGNORECASE)
+                # Backward compatibility for older cached wrappers created before processor refactor.
+                if not hasattr(engine_instance, "processor"):
+                    echo_tts_processor_path = os.path.join(nodes_dir, "echo_tts", "echo_tts_processor.py")
+                    echo_tts_processor_spec = importlib.util.spec_from_file_location("echo_tts_processor_module", echo_tts_processor_path)
+                    echo_tts_processor_module = importlib.util.module_from_spec(echo_tts_processor_spec)
+                    echo_tts_processor_spec.loader.exec_module(echo_tts_processor_module)
+                    EchoTTSProcessor = echo_tts_processor_module.EchoTTSProcessor
+                    engine_instance.processor = EchoTTSProcessor(engine_instance.adapter, config)
+                    engine_instance.processor.update_config(config)
 
-                # Build character availability for parser (preserve unknown tags)
-                character_tags = re.findall(r'\[([^\]]+)\]', text)
-                characters_from_tags = []
-                for tag in character_tags:
-                    if not tag.startswith('pause:'):
-                        character_name = tag.split('|')[0].strip()
-                        characters_from_tags.append(character_name)
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    narrator_audio=audio_tensor,
+                    narrator_reference_text=reference_text,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache
+                )
 
-                available_chars = get_available_characters()
-                character_aliases = voice_discovery.get_character_aliases()
-
-                all_available = set()
-                if available_chars:
-                    all_available.update(available_chars)
-                for alias, target in character_aliases.items():
-                    all_available.add(alias.lower())
-                    all_available.add(target.lower())
-                for char in characters_from_tags:
-                    all_available.add(char.lower())
-                all_available.add("narrator")
-
-                character_parser.set_available_characters(list(all_available))
-                char_lang_defaults = voice_discovery.get_character_language_defaults()
-                for char, lang in char_lang_defaults.items():
-                    character_parser.set_character_language_default(char, lang)
-                character_parser.reset_session_cache()
-
-                base_config = config.copy()
-                parsed_text = _strip_s1_tag(text)
-                segment_objects = character_parser.parse_text_segments(parsed_text)
-                if not segment_objects:
-                    segment_objects = character_parser.parse_text_segments("narrator " + parsed_text)
-
-                characters = list(set([seg.character for seg in segment_objects]))
-                character_mapping = get_character_mapping(characters, engine_type="audio_only")
-
-                audio_segments = []
-                segment_records = []
-                clean_text_parts = []
-
-                for seg in segment_objects:
-                    segment_text = (seg.text or "").strip()
-                    if not segment_text:
-                        continue
-
-                    segment_params = seg.parameters if seg.parameters else {}
-                    current_config = base_config
-                    current_seed = seed
-                    if segment_params:
-                        current_config = apply_segment_parameters(base_config, segment_params, "echo_tts")
-                        if 'seed' in current_config:
-                            current_seed = current_config.get('seed', seed)
-                        print(f"📊 Echo-TTS segment: Character '{seg.character}' with parameters {segment_params}")
-
-                    engine_instance.update_config(current_config)
-
-                    speaker_audio = audio_tensor
-                    current_ref_text = reference_text or ""
-                    if seg.character == "narrator":
-                        # Always prefer the provided narrator voice input for narrator segments
-                        if audio_tensor is not None:
-                            speaker_audio = audio_tensor
-                            current_ref_text = reference_text or current_ref_text
-                    elif seg.character and seg.character in character_mapping:
-                        char_audio, char_text = character_mapping[seg.character]
-                        if char_audio:
-                            speaker_audio = char_audio
-                            current_ref_text = char_text or current_ref_text
-                        else:
-                            print(f"⚠️ Echo-TTS: No voice file found for '{seg.character}', using narrator voice")
-
-                    clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
-                    clean_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
-                        clean_text,
-                        enable_pause_tags=True
-                    )
-                    if pause_segments and any(
-                        current_config.get(k) is not None for k in (
-                            "speaker_kv_scale", "speaker_kv_max_layers", "speaker_kv_min_t"
-                        )
-                    ):
-                        raise ValueError(
-                            "Echo-TTS: Pause tags are not compatible with force_speaker_kv settings. "
-                            "Disable force_speaker_kv (speaker_kv_*) or remove pause tags."
-                        )
-                    clean_text_parts.append(clean_text)
-
-                    pause_mode = pause_segments is not None
-                    seed_offset = 0
-
-                    def _tts_generate_func(text_content: str) -> torch.Tensor:
-                        nonlocal seed_offset
-                        segment_seed = current_seed + seed_offset
-                        seed_offset += 1
-                        # Ensure full config (including speaker_kv_*) is applied for each text segment
-                        engine_instance.update_config(current_config)
-                        audio = engine_instance.process_text(
-                            text=text_content,
-                            speaker_audio=speaker_audio,
-                            reference_text=current_ref_text,
-                            seed=segment_seed,
-                            enable_chunking=False if pause_mode else enable_chunking,
-                            max_chars_per_chunk=max_chars_per_chunk,
-                            chunk_combination_method=chunk_combination_method,
-                            silence_between_chunks_ms=0 if pause_mode else silence_between_chunks_ms,
-                            enable_audio_cache=enable_audio_cache,
-                            return_info=False
-                        )
-                        if isinstance(audio, tuple):
-                            audio = audio[0]
-                        if not isinstance(audio, torch.Tensor):
-                            audio = torch.tensor(audio, dtype=torch.float32)
-                        if audio.dim() > 1:
-                            audio = audio.squeeze()
-                        return audio
-
-                    if pause_segments:
-                        audio_segment = PauseTagProcessor.generate_audio_with_pauses(
-                            pause_segments,
-                            _tts_generate_func,
-                            sample_rate=44100
-                        )
-                        if audio_segment.dim() > 1:
-                            audio_segment = audio_segment.squeeze()
-                    else:
-                        audio_segment = _tts_generate_func(clean_text)
-
-                    audio_segments.append(audio_segment)
-                    segment_records.append({
-                        "waveform": audio_segment,
-                        "sample_rate": 44100,
-                        "text": clean_text,
-                        "edit_tags": edit_tags
-                    })
-
-                if segment_records and any(seg["edit_tags"] for seg in segment_records):
-                    segment_records = apply_edit_post_processing(segment_records, engine_config=config)
-                    audio_segments = [seg["waveform"] for seg in segment_records]
-
-                if audio_segments:
-                    combined_audio, chunk_info = ChunkTimingHelper.combine_audio_with_timing(
-                        audio_segments=audio_segments,
-                        combination_method=chunk_combination_method,
-                        silence_ms=silence_between_chunks_ms,
-                        crossfade_duration=0.1,
-                        sample_rate=44100,
-                        text_length=len(" ".join(clean_text_parts)),
-                        original_text=text,
-                        text_chunks=[seg.get("text", "") for seg in segment_records]
-                    )
-                else:
-                    combined_audio = torch.zeros(0, dtype=torch.float32)
-                    chunk_info = {}
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True
+                )
 
                 total_duration = combined_audio.shape[-1] / 44100.0 if combined_audio.numel() else 0.0
+                parsed_text = re.sub(r'\[s1\]\s*', '', text, flags=re.IGNORECASE)
                 clean_text = re.sub(r'\[.*?\]', '', parsed_text)
                 text_length = len(clean_text)
 
