@@ -138,7 +138,7 @@ class StepAudioTTS:
         tts_model_id=None,
         quantization_config=None,
         torch_dtype=torch.bfloat16,
-        device_map="cuda"
+        device_map="auto"
     ):
         """
         Initialize StepAudioTTS

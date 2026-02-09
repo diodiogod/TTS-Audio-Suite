@@ -337,7 +337,8 @@ class CosyVoice_stream_impl_(torch.nn.Module):
         self.estimator_prompt_length_dict.pop(session_id, None)
         self.spk_embedding_cache_dict.pop(session_id, None)
         self.speech_token_dict.pop(session_id, None)
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 """Keep compatible with cosyvoice1
@@ -351,7 +352,18 @@ class CosyVoice:
                  enable_cuda_graph: bool = False,
                  dtype=torch.float32,
                  ):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Use centralized device resolution for specific hardware support (MPS/CPU/CUDA)
+        try:
+            from utils.device import resolve_torch_device
+            self.device = torch.device(resolve_torch_device("auto"))
+        except ImportError:
+            # Fallback if utils.device not available
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         self.dtype = dtype
         # initiate streaming wrapper
         self.model_dir = model_dir

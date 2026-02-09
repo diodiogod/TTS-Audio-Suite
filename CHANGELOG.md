@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.20] - 2026-02-09
+
+### Changed
+
+- Improve device detection for non-CUDA systems
+
+### Fixed
+
+- Fix Mac compatibility for Step Audio EditX and ChatterBox VC
+- Fix 'Torch not compiled with CUDA' error on Mac (Step Audio EditX)
+- Fix serialization error when loading models on Mac (ChatterBox VC)
 ## [4.20.19] - 2026-02-06
 
 ### Added

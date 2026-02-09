@@ -123,7 +123,7 @@ class ChatterboxVC:
             
             ref_dict = None
             if (builtin_voice := ckpt_dir / "conds.pt").exists():
-                states = torch.load(builtin_voice)
+                states = torch.load(builtin_voice, map_location=device)
                 ref_dict = states['gen']
 
             s3gen = S3Gen()
