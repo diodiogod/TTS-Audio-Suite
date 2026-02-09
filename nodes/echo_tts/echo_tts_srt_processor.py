@@ -9,6 +9,7 @@ import importlib.util
 from typing import Dict, Any, List, Tuple, Optional
 
 import torch
+import comfy.model_management as model_management
 
 # Add project root directory to path for imports
 current_dir = os.path.dirname(__file__)
@@ -92,6 +93,9 @@ class EchoTTSSRTProcessor:
         if not self.srt_available:
             raise ImportError("SRT support not available - missing required SRT parser")
 
+        # Check for interrupt before starting expensive processing
+        self._check_interrupt()
+
         # Parse SRT content with overlap support
         srt_parser = self.SRTParser()
         subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
@@ -119,6 +123,9 @@ class EchoTTSSRTProcessor:
         audio_segments, adjustments = self._process_all_subtitles(
             subtitles, voice_mapping, seed, enable_audio_cache=enable_audio_cache
         )
+
+        # Check for interrupt before timing assembly/reporting
+        self._check_interrupt()
 
         # Assemble final audio based on timing mode
         final_audio, final_adjustments, stretch_method = self._assemble_final_audio(
@@ -149,6 +156,26 @@ class EchoTTSSRTProcessor:
 
         audio_output = {"waveform": final_audio, "sample_rate": self.SAMPLE_RATE}
         return audio_output, info, timing_report, adjusted_srt_string
+
+    def _check_interrupt(
+        self,
+        subtitle_index: Optional[int] = None,
+        total_subtitles: Optional[int] = None,
+        character: Optional[str] = None,
+    ):
+        """Check if generation should be interrupted by user."""
+        if model_management.interrupt_processing:
+            if subtitle_index is not None and total_subtitles is not None:
+                if character:
+                    raise InterruptedError(
+                        f"Echo-TTS SRT generation interrupted at subtitle "
+                        f"{subtitle_index + 1}/{total_subtitles}, character '{character}'"
+                    )
+                raise InterruptedError(
+                    f"Echo-TTS SRT generation interrupted at subtitle "
+                    f"{subtitle_index + 1}/{total_subtitles}"
+                )
+            raise InterruptedError("Echo-TTS SRT generation interrupted by user")
 
     def _process_all_subtitles(
         self,
@@ -185,6 +212,8 @@ class EchoTTSSRTProcessor:
             return re.sub(r'\[s1\]\s*', '', text_value, flags=re.IGNORECASE)
 
         for i, sub in enumerate(subtitles):
+            self._check_interrupt(i, len(subtitles))
+
             text = sub.text.strip()
             if not text:
                 target_duration = sub.duration
@@ -226,6 +255,9 @@ class EchoTTSSRTProcessor:
                 segments = character_parser.parse_text_segments("narrator " + _strip_s1_tag(text))
 
             for seg in segments:
+                current_character = seg.character or "narrator"
+                self._check_interrupt(i, len(subtitles), current_character)
+
                 segment_text = (seg.text or "").strip()
                 if not segment_text:
                     continue
@@ -278,6 +310,7 @@ class EchoTTSSRTProcessor:
 
                 def _tts_generate_func(text_content: str) -> torch.Tensor:
                     nonlocal seed_offset
+                    self._check_interrupt(i, len(subtitles), current_character)
                     segment_seed = current_seed + seed_offset
                     seed_offset += 1
                     # Ensure full config (including speaker_kv_*) is applied for each text segment
