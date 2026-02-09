@@ -957,7 +957,8 @@ Hello! This is unified SRT TTS with character switching.
                     voice_mapping=voice_mapping,
                     seed=seed,
                     timing_mode=timing_mode,
-                    timing_params=timing_params
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache
                 )
 
             elif engine_type == "vibevoice":

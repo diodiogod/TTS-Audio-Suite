@@ -5,6 +5,7 @@ Provides a unified interface for Echo-TTS integration with TTS Audio Suite.
 """
 
 import os
+import hashlib
 import inspect
 import sys
 from typing import Dict, Any, List, Optional, Tuple
@@ -20,6 +21,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.audio.processing import AudioProcessingUtils
+from utils.audio.cache import get_audio_cache
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.chunk_timing import ChunkTimingHelper
 from utils.models.extra_paths import get_preferred_download_path
@@ -39,6 +41,7 @@ class EchoTTSEngineAdapter:
         self._sample_pipeline = None
         self._loaded_key = None
         self._wrapper = None
+        self.audio_cache = get_audio_cache()
 
     def update_config(self, new_config: Dict[str, Any]):
         self.config = new_config.copy() if new_config else {}
@@ -194,7 +197,13 @@ class EchoTTSEngineAdapter:
         parts = [part.strip() for part in langs.split(",") if part.strip()]
         return parts or ["en"]
 
-    def _generate_audio_for_text(self, text: str, ref_audio: torch.Tensor, ref_text: str) -> Tuple[torch.Tensor, int]:
+    def _generate_audio_for_text(
+        self,
+        text: str,
+        ref_audio: torch.Tensor,
+        ref_text: str,
+        enable_audio_cache: bool = True,
+    ) -> Tuple[torch.Tensor, int]:
         self._ensure_model_loaded()
 
         # Seed for reproducibility if provided
@@ -218,6 +227,48 @@ class EchoTTSEngineAdapter:
             "speaker_kv_min_t": self.config.get("speaker_kv_min_t", None),
             "sequence_length": int(self.config.get("sequence_length", 640)),
         }
+
+        prompt_text = self._normalize_prompt_text(text)
+
+        cache_key = None
+        if enable_audio_cache:
+            try:
+                ref_audio_hash = hashlib.md5(ref_audio.detach().cpu().contiguous().numpy().tobytes()).hexdigest()
+                audio_component = f"ref_audio_{ref_audio_hash}_{self.SAMPLE_RATE}"
+            except Exception as e:
+                print(f"⚠️ Echo-TTS: Failed to hash reference audio for cache key: {e}")
+                audio_component = "ref_audio_error"
+
+            resolved_device = self.config.get("device", "auto")
+            if self._loaded_key and "::" in self._loaded_key:
+                _, resolved_device = self._loaded_key.split("::", 1)
+
+            cache_key = self.audio_cache.generate_cache_key(
+                'echo_tts',
+                text=prompt_text,
+                audio_component=audio_component,
+                reference_text=ref_text,
+                model=self.config.get("model", "jordand/echo-tts-base"),
+                device=resolved_device,
+                num_steps=params["num_steps"],
+                cfg_scale_text=params["cfg_scale_text"],
+                cfg_scale_speaker=params["cfg_scale_speaker"],
+                cfg_min_t=params["cfg_min_t"],
+                cfg_max_t=params["cfg_max_t"],
+                truncation_factor=params["truncation_factor"],
+                rescale_k=params["rescale_k"],
+                rescale_sigma=params["rescale_sigma"],
+                speaker_kv_scale=params["speaker_kv_scale"],
+                speaker_kv_max_layers=params["speaker_kv_max_layers"],
+                speaker_kv_min_t=params["speaker_kv_min_t"],
+                sequence_length=params["sequence_length"],
+                seed=seed,
+            )
+
+            cached_audio = self.audio_cache.get_cached_audio(cache_key)
+            if cached_audio:
+                print(f"💾 Using cached Echo-TTS audio: '{text[:30]}...'")
+                return cached_audio[0], self.SAMPLE_RATE
 
         # Resolve sampler
         sampler_kwargs = {
@@ -272,8 +323,6 @@ class EchoTTSEngineAdapter:
                     **self._filter_kwargs(sample_euler_cfg, sampler_kwargs),
                 )
 
-        prompt_text = self._normalize_prompt_text(text)
-
         with torch.no_grad():
             result = self._sample_pipeline(
                 model=self.model,
@@ -315,12 +364,16 @@ class EchoTTSEngineAdapter:
             audio_tensor = resampler(audio_tensor)
             sample_rate = self.SAMPLE_RATE
 
+        if enable_audio_cache and cache_key:
+            duration = self.audio_cache._calculate_duration(audio_tensor, 'echo_tts')
+            self.audio_cache.cache_audio(cache_key, audio_tensor, duration)
+
         return audio_tensor, sample_rate
 
     def process_text(self, text: str, speaker_audio: Any, reference_text: str, seed: int = 0,
                      enable_chunking: bool = True, max_chars_per_chunk: int = 400,
                      chunk_combination_method: str = "auto", silence_between_chunks_ms: int = 100,
-                     return_info: bool = False):
+                     enable_audio_cache: bool = True, return_info: bool = False):
         if seed is not None:
             self.config["seed"] = seed
 
@@ -335,7 +388,12 @@ class EchoTTSEngineAdapter:
 
         audio_segments = []
         for chunk in text_chunks:
-            audio_tensor, _ = self._generate_audio_for_text(chunk, ref_audio, ref_text)
+            audio_tensor, _ = self._generate_audio_for_text(
+                chunk,
+                ref_audio,
+                ref_text,
+                enable_audio_cache=enable_audio_cache,
+            )
             audio_segments.append(audio_tensor)
 
         combined_audio, chunk_info = ChunkTimingHelper.combine_audio_with_timing(
@@ -355,7 +413,8 @@ class EchoTTSEngineAdapter:
 
     def process_srt_content(self, srt_content: str, speaker_audio: Any, reference_text: str,
                             seed: int = 0, timing_mode: str = "pad_with_silence",
-                            timing_params: Optional[Dict[str, Any]] = None):
+                            timing_params: Optional[Dict[str, Any]] = None,
+                            enable_audio_cache: bool = True):
         from utils.system.import_manager import import_manager
         from utils.timing.assembly import AudioAssemblyEngine
 
@@ -382,7 +441,12 @@ class EchoTTSEngineAdapter:
 
         audio_segments = []
         for subtitle in subtitles:
-            audio_tensor, _ = self._generate_audio_for_text(subtitle.text, ref_audio, ref_text)
+            audio_tensor, _ = self._generate_audio_for_text(
+                subtitle.text,
+                ref_audio,
+                ref_text,
+                enable_audio_cache=enable_audio_cache,
+            )
             audio_segments.append(audio_tensor.cpu())
 
         assembler = AudioAssemblyEngine(sample_rate=self.SAMPLE_RATE)

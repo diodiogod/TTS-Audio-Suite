@@ -1244,6 +1244,7 @@ Back to the main narrator voice for the conclusion.""",
                             max_chars_per_chunk=max_chars_per_chunk,
                             chunk_combination_method=chunk_combination_method,
                             silence_between_chunks_ms=0 if pause_mode else silence_between_chunks_ms,
+                            enable_audio_cache=enable_audio_cache,
                             return_info=False
                         )
                         if isinstance(audio, tuple):
