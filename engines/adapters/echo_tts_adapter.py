@@ -42,6 +42,48 @@ class EchoTTSEngineAdapter:
         self._loaded_key = None
         self._wrapper = None
         self.audio_cache = get_audio_cache()
+        self.job_tracker = None
+
+    def start_job(self, total_blocks: int, block_texts: list):
+        """Initialize job tracker for weighted multi-block progress estimation."""
+        import time
+
+        normalized_texts = [max(1, int(v)) for v in (block_texts or [])]
+        self.job_tracker = {
+            "start_time": time.time(),
+            "total_blocks": max(0, int(total_blocks)),
+            "blocks_completed": 0,
+            "block_texts": normalized_texts,
+            "total_text": sum(normalized_texts),
+            "text_completed": 0,
+            "current_block_text": 0,
+            "current_block_steps": 0,
+            "current_block_total_steps": 0,
+            "total_steps_completed": 0,
+        }
+
+    def set_current_block(self, block_idx: int):
+        """Set current block metadata for weighted ETA calculation."""
+        if not self.job_tracker:
+            return
+        block_texts = self.job_tracker.get("block_texts", [])
+        if block_idx < 0 or block_idx >= len(block_texts):
+            return
+        self.job_tracker["current_block_text"] = block_texts[block_idx]
+        self.job_tracker["current_block_steps"] = 0
+        self.job_tracker["current_block_total_steps"] = 0
+
+    def complete_block(self):
+        """Mark current block as completed in the job tracker."""
+        if not self.job_tracker:
+            return
+        self.job_tracker["blocks_completed"] += 1
+        self.job_tracker["text_completed"] += self.job_tracker.get("current_block_text", 0)
+        self.job_tracker["total_steps_completed"] += self.job_tracker.get("current_block_steps", 0)
+
+    def end_job(self):
+        """Clear active job tracker."""
+        self.job_tracker = None
 
     def update_config(self, new_config: Dict[str, Any]):
         self.config = new_config.copy() if new_config else {}
@@ -188,6 +230,192 @@ class EchoTTSEngineAdapter:
 
         return audio, sample_rate
 
+    def _create_progress_bar(self, total_steps: int, text: str = ""):
+        """
+        Create a ComfyUI progress bar with optional weighted job ETA support.
+
+        Args:
+            total_steps: Number of denoising steps expected for this generation call
+            text: Input text for this generation call (kept for API parity)
+        """
+        del text  # Progress total is step-accurate for Echo-TTS.
+        try:
+            import time
+            import comfy.utils
+
+            class TimedProgressBar:
+                """ComfyUI progress wrapper that also provides job-level timing helpers."""
+
+                def __init__(self, total: int, tracker: Optional[Dict[str, Any]]):
+                    self.total = max(1, int(total))
+                    self.current = 0
+                    self.start_time = time.time()
+                    self.tracker = tracker
+                    self.wrapped = comfy.utils.ProgressBar(self.total)
+                    if self.tracker is not None:
+                        self.tracker["current_block_total_steps"] = self.total
+                        self.tracker["current_block_steps"] = 0
+
+                def update(self, delta: int = 1):
+                    if delta <= 0:
+                        return
+                    remaining = max(self.total - self.current, 0)
+                    step = min(int(delta), remaining)
+                    if step <= 0:
+                        return
+                    self.current += step
+                    self.wrapped.update(step)
+                    if self.tracker is not None:
+                        self.tracker["current_block_steps"] = self.current
+
+                def get_job_elapsed(self):
+                    if self.tracker is not None:
+                        return time.time() - self.tracker["start_time"]
+                    return time.time() - self.start_time
+
+                def get_job_remaining_str(self):
+                    if self.tracker is None:
+                        return None
+                    total_text = self.tracker.get("total_text", 0)
+                    if total_text <= 0:
+                        return None
+
+                    elapsed = time.time() - self.tracker["start_time"]
+                    if elapsed <= 0:
+                        return None
+
+                    current_block_text = self.tracker.get("current_block_text", 0)
+                    current_total_steps = max(self.tracker.get("current_block_total_steps", self.total), 1)
+                    current_ratio = min(self.current / current_total_steps, 1.0)
+
+                    effective_text_done = self.tracker.get("text_completed", 0) + (current_block_text * current_ratio)
+                    if effective_text_done <= 0:
+                        return None
+
+                    remaining_text = max(total_text - effective_text_done, 0)
+                    if remaining_text <= 0:
+                        return None
+
+                    seconds_per_text = elapsed / effective_text_done
+                    remaining_seconds = remaining_text * seconds_per_text
+
+                    if remaining_seconds < 60:
+                        return f"~{remaining_seconds:.0f}s left"
+                    return f"~{remaining_seconds / 60:.1f}m left"
+
+            return TimedProgressBar(total_steps, self.job_tracker)
+        except (ImportError, AttributeError):
+            return None
+
+    @torch.inference_mode()
+    def _sample_euler_cfg_independent_guidances_with_progress(
+        self,
+        model,
+        speaker_latent: torch.Tensor,
+        speaker_mask: torch.Tensor,
+        text_input_ids: torch.Tensor,
+        text_mask: torch.Tensor,
+        rng_seed: int,
+        num_steps: int,
+        cfg_scale_text: float,
+        cfg_scale_speaker: float,
+        cfg_min_t: float,
+        cfg_max_t: float,
+        truncation_factor: Optional[float],
+        rescale_k: Optional[float],
+        rescale_sigma: Optional[float],
+        speaker_kv_scale: Optional[float],
+        speaker_kv_max_layers: Optional[int],
+        speaker_kv_min_t: Optional[float],
+        sequence_length: Optional[int] = None,
+        progress_bar=None,
+    ) -> torch.Tensor:
+        """Echo-TTS sampler equivalent with ComfyUI progress updates per denoise step."""
+        from echo_tts.inference import _multiply_kv_cache, _concat_kv_caches, _temporal_score_rescale
+
+        try:
+            import comfy.model_management as model_management
+        except Exception:
+            model_management = None
+
+        if sequence_length is None:
+            sequence_length = 640
+
+        init_scale = 0.999
+        num_steps = max(1, int(num_steps))
+        device, dtype = model.device, model.dtype
+        batch_size = text_input_ids.shape[0]
+        rng = torch.Generator(device=device).manual_seed(rng_seed)
+        t_schedule = torch.linspace(1.0, 0.0, num_steps + 1, device=device) * init_scale
+
+        text_mask_uncond = torch.zeros_like(text_mask)
+        speaker_mask_uncond = torch.zeros_like(speaker_mask)
+
+        kv_text_cond = model.get_kv_cache_text(text_input_ids, text_mask)
+        kv_speaker_cond = model.get_kv_cache_speaker(speaker_latent.to(dtype))
+
+        if speaker_kv_scale is not None:
+            _multiply_kv_cache(kv_speaker_cond, speaker_kv_scale, speaker_kv_max_layers)
+
+        kv_text_full = _concat_kv_caches(kv_text_cond, kv_text_cond, kv_text_cond)
+        kv_speaker_full = _concat_kv_caches(kv_speaker_cond, kv_speaker_cond, kv_speaker_cond)
+
+        full_text_mask = torch.cat([text_mask, text_mask_uncond, text_mask], dim=0)
+        full_speaker_mask = torch.cat([speaker_mask, speaker_mask, speaker_mask_uncond], dim=0)
+
+        x_t = torch.randn((batch_size, sequence_length, 80), device=device, dtype=torch.float32, generator=rng)
+        if truncation_factor is not None:
+            x_t = x_t * truncation_factor
+
+        for i in range(num_steps):
+            if model_management is not None and getattr(model_management, "interrupt_processing", False):
+                raise InterruptedError("Echo-TTS generation interrupted by user")
+
+            t, t_next = t_schedule[i], t_schedule[i + 1]
+            has_cfg = ((t >= cfg_min_t) * (t <= cfg_max_t)).item()
+
+            if has_cfg:
+                v_cond, v_uncond_text, v_uncond_speaker = model(
+                    x=torch.cat([x_t, x_t, x_t], dim=0).to(dtype),
+                    t=(torch.ones((batch_size * 3,), device=device) * t).to(dtype),
+                    text_mask=full_text_mask,
+                    speaker_mask=full_speaker_mask,
+                    kv_cache_text=kv_text_full,
+                    kv_cache_speaker=kv_speaker_full,
+                ).float().chunk(3, dim=0)
+                v_pred = v_cond + cfg_scale_text * (v_cond - v_uncond_text) + cfg_scale_speaker * (v_cond - v_uncond_speaker)
+            else:
+                v_pred = model(
+                    x=x_t.to(dtype),
+                    t=(torch.ones((batch_size,), device=device) * t).to(dtype),
+                    text_mask=text_mask,
+                    speaker_mask=speaker_mask,
+                    kv_cache_text=kv_text_cond,
+                    kv_cache_speaker=kv_speaker_cond,
+                ).float()
+
+            if rescale_k is not None and rescale_sigma is not None:
+                v_pred = _temporal_score_rescale(v_pred, x_t, t, rescale_k, rescale_sigma)
+
+            if (
+                speaker_kv_scale is not None
+                and speaker_kv_min_t is not None
+                and t_next < speaker_kv_min_t
+                and t >= speaker_kv_min_t
+            ):
+                _multiply_kv_cache(kv_speaker_cond, 1.0 / speaker_kv_scale, speaker_kv_max_layers)
+                kv_speaker_full = _concat_kv_caches(kv_speaker_cond, kv_speaker_cond, kv_speaker_cond)
+
+            x_t = x_t + v_pred * (t_next - t)
+
+            if progress_bar is not None:
+                try:
+                    progress_bar.update(1)
+                except Exception:
+                    pass
+
+        return x_t
+
     def _generate_audio_for_text(
         self,
         text: str,
@@ -261,6 +489,8 @@ class EchoTTSEngineAdapter:
                 print(f"💾 Using cached Echo-TTS audio: '{text[:30]}...'")
                 return cached_audio[0], self.SAMPLE_RATE
 
+        progress_bar = self._create_progress_bar(params["num_steps"], text)
+
         # Resolve sampler
         sampler_kwargs = {
             "num_steps": params["num_steps"],
@@ -283,29 +513,30 @@ class EchoTTSEngineAdapter:
             "block_size": params["sequence_length"],
         }
         try:
-            from echo_tts.samplers import sample_euler_cfg_any, GuidanceMode
+            from echo_tts.inference import sample_euler_cfg_independent_guidances
             sample_fn = partial(
-                sample_euler_cfg_any,
-                **self._filter_kwargs(
-                    sample_euler_cfg_any,
-                    {
-                        **sampler_kwargs,
-                        "guidance_mode": GuidanceMode.INDEPENDENT,
-                        "apg_eta_text": None,
-                        "apg_eta_speaker": None,
-                        "apg_momentum_text": None,
-                        "apg_momentum_speaker": None,
-                        "apg_norm_text": None,
-                        "apg_norm_speaker": None,
-                    },
-                ),
+                self._sample_euler_cfg_independent_guidances_with_progress,
+                progress_bar=progress_bar,
+                **self._filter_kwargs(sample_euler_cfg_independent_guidances, sampler_kwargs),
             )
         except Exception:
             try:
-                from echo_tts.inference import sample_euler_cfg_independent_guidances
+                from echo_tts.samplers import sample_euler_cfg_any, GuidanceMode
                 sample_fn = partial(
-                    sample_euler_cfg_independent_guidances,
-                    **self._filter_kwargs(sample_euler_cfg_independent_guidances, sampler_kwargs),
+                    sample_euler_cfg_any,
+                    **self._filter_kwargs(
+                        sample_euler_cfg_any,
+                        {
+                            **sampler_kwargs,
+                            "guidance_mode": GuidanceMode.INDEPENDENT,
+                            "apg_eta_text": None,
+                            "apg_eta_speaker": None,
+                            "apg_momentum_text": None,
+                            "apg_momentum_speaker": None,
+                            "apg_norm_text": None,
+                            "apg_norm_speaker": None,
+                        },
+                    ),
                 )
             except Exception:
                 from echo_tts.samplers import sample_euler_cfg
@@ -327,6 +558,11 @@ class EchoTTSEngineAdapter:
                 pad_to_max_text_length=768,
                 normalize_text=True,
             )
+
+        if progress_bar is not None and hasattr(progress_bar, "total") and hasattr(progress_bar, "current"):
+            remaining = progress_bar.total - progress_bar.current
+            if remaining > 0:
+                progress_bar.update(remaining)
 
         audio = None
         sample_rate = self.SAMPLE_RATE
