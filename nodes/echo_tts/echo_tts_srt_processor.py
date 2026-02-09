@@ -73,6 +73,7 @@ class EchoTTSSRTProcessor:
         seed: int,
         timing_mode: str,
         timing_params: Dict[str, Any],
+        enable_audio_cache: bool = True,
     ) -> Tuple[Dict[str, Any], str, str, str]:
         """
         Process complete SRT content and generate timed audio with Echo-TTS.
@@ -83,6 +84,7 @@ class EchoTTSSRTProcessor:
             seed: Random seed for generation
             timing_mode: SRT timing mode (stretch_to_fit, pad_with_silence, etc.)
             timing_params: Additional timing parameters
+            enable_audio_cache: Enable audio caching for generated subtitle segments
 
         Returns:
             Tuple of (audio_output, generation_info, timing_report, adjusted_srt)
@@ -115,7 +117,7 @@ class EchoTTSSRTProcessor:
         # Process subtitles and generate audio segments
         print(f"🚀 Echo-TTS SRT: Processing {len(subtitles)} subtitles in {current_timing_mode} mode")
         audio_segments, adjustments = self._process_all_subtitles(
-            subtitles, voice_mapping, seed
+            subtitles, voice_mapping, seed, enable_audio_cache=enable_audio_cache
         )
 
         # Assemble final audio based on timing mode
@@ -153,6 +155,7 @@ class EchoTTSSRTProcessor:
         subtitles: List,
         voice_mapping: Dict[str, Any],
         seed: int,
+        enable_audio_cache: bool = True,
     ) -> Tuple[List[torch.Tensor], List[Dict]]:
         """
         Generate audio for each subtitle and compute timing adjustments.
@@ -285,6 +288,7 @@ class EchoTTSSRTProcessor:
                         reference_text=reference_text or "",
                         seed=segment_seed,
                         enable_chunking=False,
+                        enable_audio_cache=enable_audio_cache,
                         return_info=False
                     )
                     if isinstance(audio, tuple):
