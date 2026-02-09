@@ -8,7 +8,7 @@ import os
 import hashlib
 import inspect
 import sys
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
 from functools import partial
 
 import torch
@@ -187,15 +187,6 @@ class EchoTTSEngineAdapter:
             audio = audio[:, :max_samples]
 
         return audio, sample_rate
-
-    def _parse_languages(self) -> List[str]:
-        langs = self.config.get("languages", "en")
-        if isinstance(langs, list):
-            return langs
-        if not isinstance(langs, str):
-            return ["en"]
-        parts = [part.strip() for part in langs.split(",") if part.strip()]
-        return parts or ["en"]
 
     def _generate_audio_for_text(
         self,

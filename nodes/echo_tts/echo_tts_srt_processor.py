@@ -111,12 +111,6 @@ class EchoTTSSRTProcessor:
         available_chars = get_available_characters()
         character_parser.set_available_characters(list(available_chars))
         character_parser.reset_session_cache()
-        # Echo-TTS is not registered in the language mapper; use explicit language defaults if provided.
-        languages = self.config.get("languages", "")
-        if isinstance(languages, str) and languages.strip():
-            primary_lang = languages.split(",")[0].strip()
-            if primary_lang:
-                character_parser.set_character_language_default("narrator", primary_lang)
 
         # Process subtitles and generate audio segments
         print(f"🚀 Echo-TTS SRT: Processing {len(subtitles)} subtitles in {current_timing_mode} mode")

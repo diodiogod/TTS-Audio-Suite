@@ -113,10 +113,6 @@ class EchoTTSEngineNode(BaseTTSNode):
                     "default": "auto",
                     "tooltip": "Device to run Echo-TTS on:\n- auto: Use CUDA if available, else CPU\n- cuda: Force NVIDIA GPU (falls back to CPU if unavailable)\n- cpu: CPU-only (very slow)\nNote: CUDA recommended; Echo-TTS is non-commercial (CC-BY-NC-SA)."
                 }),
-                "languages": ("STRING", {
-                    "default": "en",
-                    "tooltip": "Comma-separated language codes passed to Echo-TTS (e.g., en,fr)."
-                }),
                 "num_steps": ("INT", {
                     "default": 40, "min": 1, "max": 200,
                     "tooltip": "Number of sampling steps. Higher can improve quality but increases time and VRAM."
@@ -177,7 +173,7 @@ class EchoTTSEngineNode(BaseTTSNode):
     FUNCTION = "create_engine_adapter"
     CATEGORY = "TTS Audio Suite/Engines"
 
-    def create_engine_adapter(self, preset: str, device: str, languages: str, num_steps: int,
+    def create_engine_adapter(self, preset: str, device: str, num_steps: int,
                               cfg_scale_text: float, cfg_scale_speaker: float,
                               cfg_min_t: float, cfg_max_t: float,
                               truncation_factor: float, rescale_k: float, rescale_sigma: float,
@@ -189,15 +185,11 @@ class EchoTTSEngineNode(BaseTTSNode):
             from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
             _ = EchoTTSEngineAdapter  # silence unused
 
-            # Normalize languages to a comma-separated string (adapter will split)
-            languages_str = languages.strip() if isinstance(languages, str) else "en"
-
             config = {
                 "engine_type": "echo_tts",
                 "preset": preset,
                 "model": "jordand/echo-tts-base",
                 "device": device,
-                "languages": languages_str,
                 "num_steps": int(num_steps),
                 "cfg_scale_text": float(cfg_scale_text),
                 "cfg_scale_speaker": float(cfg_scale_speaker),
