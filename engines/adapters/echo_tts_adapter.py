@@ -7,6 +7,7 @@ Provides a unified interface for Echo-TTS integration with TTS Audio Suite.
 import os
 import hashlib
 import inspect
+import re
 import sys
 from typing import Dict, Any, Optional, Tuple
 from functools import partial
@@ -32,6 +33,12 @@ class EchoTTSEngineAdapter:
 
     SAMPLE_RATE = 44100
     MAX_REF_SECONDS = 300  # 5 minutes
+    DEFAULT_SEQUENCE_LENGTH = 640
+    DEFAULT_SEQUENCE_SECONDS = 30.0
+    FORCE_KV_GUARD_MIN_SEQUENCE_LENGTH = 160
+    FORCE_KV_GUARD_CHAR_RATE = 12.0
+    FORCE_KV_GUARD_BASE_SECONDS = 1.25
+    FORCE_KV_GUARD_SAFETY_MULTIPLIER = 1.35
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config.copy() if config else {}
@@ -145,6 +152,30 @@ class EchoTTSEngineAdapter:
             return cleaned
 
         return f"[S1] {cleaned}".strip()
+
+    @staticmethod
+    def _count_prompt_chars_for_length_guard(prompt_text: str) -> int:
+        """Count visible prompt characters, excluding bracketed metadata tags."""
+        without_tags = re.sub(r"\[[^\]]+\]", " ", prompt_text or "")
+        return len(" ".join(without_tags.split()))
+
+    @classmethod
+    def _estimate_force_kv_sequence_length(cls, prompt_text: str) -> int:
+        """
+        Estimate a safer sequence length for Force Speaker KV runs.
+
+        Force-KV can prevent the latent flattening crop from triggering, so using a full
+        default sequence window (640) on short prompts can yield overlong output.
+        """
+        prompt_chars = cls._count_prompt_chars_for_length_guard(prompt_text)
+        frames_per_second = cls.DEFAULT_SEQUENCE_LENGTH / cls.DEFAULT_SEQUENCE_SECONDS
+        estimated_seconds = (prompt_chars / cls.FORCE_KV_GUARD_CHAR_RATE) + cls.FORCE_KV_GUARD_BASE_SECONDS
+        estimated_seconds *= cls.FORCE_KV_GUARD_SAFETY_MULTIPLIER
+        estimated_sequence_length = int(round(estimated_seconds * frames_per_second))
+        return max(
+            cls.FORCE_KV_GUARD_MIN_SEQUENCE_LENGTH,
+            min(cls.DEFAULT_SEQUENCE_LENGTH, estimated_sequence_length),
+        )
 
     def _get_local_repo_dir(self, repo_id: str, base_dir: Optional[str] = None) -> str:
         base_dir = base_dir or get_preferred_download_path("TTS")
@@ -451,10 +482,23 @@ class EchoTTSEngineAdapter:
             "speaker_kv_scale": self.config.get("speaker_kv_scale", None),
             "speaker_kv_max_layers": self.config.get("speaker_kv_max_layers", None),
             "speaker_kv_min_t": self.config.get("speaker_kv_min_t", None),
-            "sequence_length": int(self.config.get("sequence_length", 640)),
+            "sequence_length": int(self.config.get("sequence_length", self.DEFAULT_SEQUENCE_LENGTH)),
         }
 
         prompt_text = self._normalize_prompt_text(text)
+        effective_sequence_length = params["sequence_length"]
+        if (
+            params["speaker_kv_scale"] is not None
+            and params["sequence_length"] == self.DEFAULT_SEQUENCE_LENGTH
+        ):
+            guarded_sequence_length = self._estimate_force_kv_sequence_length(prompt_text)
+            prompt_chars = self._count_prompt_chars_for_length_guard(prompt_text)
+            if guarded_sequence_length != params["sequence_length"]:
+                print(
+                    "Echo-TTS: Force-KV sequence_length guard active "
+                    f"({params['sequence_length']} -> {guarded_sequence_length}, text_chars={prompt_chars})"
+                )
+            effective_sequence_length = guarded_sequence_length
 
         cache_key = None
         if enable_audio_cache:
@@ -487,7 +531,7 @@ class EchoTTSEngineAdapter:
                 speaker_kv_scale=params["speaker_kv_scale"],
                 speaker_kv_max_layers=params["speaker_kv_max_layers"],
                 speaker_kv_min_t=params["speaker_kv_min_t"],
-                sequence_length=params["sequence_length"],
+                sequence_length=effective_sequence_length,
                 seed=seed,
             )
 
@@ -511,13 +555,13 @@ class EchoTTSEngineAdapter:
             "speaker_kv_scale": params["speaker_kv_scale"],
             "speaker_kv_max_layers": params["speaker_kv_max_layers"],
             "speaker_kv_min_t": params["speaker_kv_min_t"],
-            "sequence_length": params["sequence_length"],
+            "sequence_length": effective_sequence_length,
             # Alternate parameter names used by some sampler variants
             "cfg_scale": params["cfg_scale_text"],
             "speaker_k_scale": params["speaker_kv_scale"],
             "speaker_k_max_layers": params["speaker_kv_max_layers"],
             "speaker_k_min_t": params["speaker_kv_min_t"],
-            "block_size": params["sequence_length"],
+            "block_size": effective_sequence_length,
         }
         try:
             from echo_tts.inference import sample_euler_cfg_independent_guidances
