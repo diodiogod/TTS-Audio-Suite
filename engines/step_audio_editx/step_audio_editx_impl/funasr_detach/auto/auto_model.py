@@ -176,10 +176,29 @@ class AutoModel:
 
         set_all_random_seed(kwargs.get("seed", 0))
 
-        device = kwargs.get("device", "cuda")
-        if not torch.cuda.is_available() or kwargs.get("ngpu", 1) == 0:
+        # Patch: TTS Audio Suite - Enhanced device resolution for Mac/MPS compatibility
+        try:
+            from utils.device import resolve_torch_device
+            device_arg = kwargs.get("device", "auto")
+            device = resolve_torch_device(device_arg)
+        except ImportError:
+            # Fallback if utils not available
+            device = kwargs.get("device", "cuda")
+            if device == "auto" or device == "cuda":
+                if torch.cuda.is_available():
+                    device = "cuda"
+                elif torch.backends.mps.is_available():
+                    device = "mps"
+                else:
+                    device = "cpu"
+        
+        # Override if no GPU available but requested
+        if device == "cuda" and not torch.cuda.is_available():
             device = "cpu"
+            
+        if device == "cpu":
             kwargs["batch_size"] = 1
+            
         kwargs["device"] = device
 
         if kwargs.get("ncpu", None):
@@ -244,7 +263,15 @@ class AutoModel:
         kwargs = self.kwargs if kwargs is None else kwargs
         kwargs.update(cfg)
         model = self.model if model is None else model
-        model = model.cuda()
+        # Patch: TTS Audio Suite - Use dynamic device instead of hardcoded .cuda()
+        device = kwargs.get("device", "cuda")
+        if device == "auto":
+             try:
+                 device = str(next(model.parameters()).device)
+             except:
+                 device = "cuda" if torch.cuda.is_available() else "cpu"
+                 
+        model = model.to(device)
         model.eval()
 
         batch_size = kwargs.get("batch_size", 1)
@@ -547,7 +574,18 @@ class AutoModel:
         kwargs = self.kwargs if kwargs is None else kwargs
         kwargs.update(cfg)
         model = self.model if model is None else model
-        model = model.cuda()
+        # Patch: TTS Audio Suite - Use dynamic device instead of hardcoded .cuda()
+        device = kwargs.get("device", "cuda")
+        if device == "auto":
+             # Try to infer from model parameters if possible
+             try:
+                 device = str(next(model.parameters()).device)
+             except:
+                 device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        # Only move if not already on correct device to save time
+        # model.to(device) is a no-op if already on device
+        model = model.to(device)
         model.eval()
 
         batch_size = kwargs.get("batch_size", 1)
@@ -573,5 +611,6 @@ class AutoModel:
                 results, meta_data, cache = model.infer_encoder(**batch, **kwargs)
             asr_result_list.extend(results)
 
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache() # Patch: TTS Audio Suite - Safe empty cache
         return asr_result_list, cache
