@@ -29,6 +29,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **ChatterBox** | 🇺🇸🇩🇪🇫🇷🇮🇹🇯🇵🇰🇷 +4 | ~4.3GB | Expressiveness slider |
 | **ChatterBox 23L** | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
 | **VibeVoice** | 🇺🇸🇨🇳🇮🇳 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker |
+| **KugelAudio** | 🇺🇸🇨🇳🇩🇪🇪🇸🇫🇷🇮🇹 +21 | ~7GB | Multilingual (claimed), Native fallback to Custom |
 | **Higgs Audio 2** | 🇺🇸🇨🇳🇩🇪🇪🇸🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
 | **IndexTTS-2** | 🇺🇸🇨🇳🇯🇵 | ? | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~5.4GB | Paralinguistic tags |
@@ -105,6 +106,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
+  - [🎙️ KugelAudio Multilingual Voice Cloning](#-kugelaudio-multilingual-voice-cloning)
   - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
   - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
@@ -300,16 +302,6 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 <details>
 <summary><h3>🎵 VibeVoice Long-Form Generation</h3></summary>
 
-**NEW in v4.6.0**: Microsoft VibeVoice engine for unprecedented long-form audio generation!
-
-* **90-Minute Generation Capability**: Generate up to 90 minutes of continuous audio in a single session
-* **Dual Multi-Speaker Modes**: Choose between Custom Character Switching and Native Multi-Speaker for different workflow needs
-* **Microsoft Quality**: Official Microsoft VibeVoice models (1.5B and 7B parameter variants) with production-grade output
-* **Advanced Parameter Control**: CFG scale, sampling modes, temperature, and token limits for fine-tuned generation
-
-**Key Capabilities:**
-
-- **Long-Form Audio**: Break through traditional TTS length limitations with 90-minute generation
 - **Custom Character Switching**: Use `[Alice]`, `[Bob]` character tags with voice files from the voices folder - supports unlimited characters with pause tags and per-character control
 - **Native Multi-Speaker**: Efficient single-pass generation supporting both `[Character]` tag auto-conversion and manual "Speaker 1: Hello" format for up to 4 speakers  
 - **Voice File Integration**: Seamless compatibility with existing voice folder structure and Character Voices node

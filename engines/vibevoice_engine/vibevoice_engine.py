@@ -160,6 +160,11 @@ class VibeVoiceEngine:
         if not model_path:
             raise RuntimeError(f"Failed to get VibeVoice model '{model_name}'")
         
+        # Check if this is KugelAudio
+        self.is_kugelaudio = self._is_kugelaudio_model(model_name, model_path)
+        if self.is_kugelaudio:
+            return self._initialize_kugelaudio(model_path, model_name, device, attention_mode, quantize_llm_4bit)
+        
         # Determine device
         from utils.device import resolve_torch_device
         device = resolve_torch_device(device)
@@ -886,6 +891,14 @@ class VibeVoiceEngine:
             # print(f"🐛 VibeVoice ENGINE: Generation params - cfg_scale={cfg_scale}, use_sampling={use_sampling}, seed={seed}")
             # print(f"🐛 VibeVoice ENGINE: Text length: {len(text)} chars")
             
+            # KugelAudio specific generation logic
+            if getattr(self, 'is_kugelaudio', False):
+                return self._generate_kugelaudio(
+                    text, voice_samples, cfg_scale, seed, 
+                    use_sampling, temperature, top_p, 
+                    max_new_tokens
+                )
+            
             # Prepare inputs using processor
             inputs = self.processor(
                 [text],  # Wrap text in list
@@ -1036,6 +1049,126 @@ class VibeVoiceEngine:
         # Generate with multi-speaker text
         return self.generate_speech(formatted_text, speaker_voices, **kwargs)
     
+    def _generate_kugelaudio(self, text, voice_samples, cfg_scale, seed, 
+                            use_sampling, temperature, top_p, max_new_tokens):
+        """Handle generation specifically for KugelAudio"""
+        try:
+            device = next(self.model.parameters()).device
+            
+            # Prepare voice_prompt from voice samples (raw audio)
+            voice_prompt_audio = None
+            if voice_samples and voice_samples[0] is not None:
+                voice_prompt_audio = voice_samples[0]
+                logger.info(f"KugelAudio voice cloning: {len(voice_prompt_audio)/24000:.1f}s reference audio")
+            
+            batch = self.processor(
+                text=text,
+                voice_prompt=voice_prompt_audio,
+                return_tensors="pt"
+            )
+            
+            # Move inputs to device
+            batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+            
+            # Generate
+            with torch.no_grad():
+                gen_args = {
+                    "cfg_scale": cfg_scale,
+                    "max_new_tokens": max_new_tokens or 2048,
+                }
+                
+                if use_sampling:
+                    gen_args.update({
+                        "do_sample": True,
+                        "temperature": temperature,
+                    })
+                else:
+                     gen_args["do_sample"] = False
+                
+                output = self.model.generate(**batch, **gen_args)
+            
+            # Extract audio from KugelAudioGenerationOutput
+            if hasattr(output, 'speech_outputs') and output.speech_outputs:
+                audio_output = output.speech_outputs[0]
+                if audio_output is not None:
+                    audio_output = audio_output.cpu().float()
+                    # Ensure proper shape (1, 1, samples) for downstream
+                    if audio_output.dim() == 1:
+                        audio_output = audio_output.unsqueeze(0).unsqueeze(0)
+                    elif audio_output.dim() == 2:
+                        audio_output = audio_output.unsqueeze(0)
+                    return {
+                        "waveform": audio_output,
+                        "sample_rate": 24000
+                    }
+            
+            logger.warning(f"KugelAudio generation produced no audio output")
+            return {
+                "waveform": torch.zeros(1, 1, 24000),
+                "sample_rate": 24000
+            }
+
+        except Exception as e:
+            logger.error(f"KugelAudio generation failed: {e}")
+            raise RuntimeError(f"KugelAudio generation failed: {e}")
+
+    def _is_kugelaudio_model(self, model_name: str, model_path: str) -> bool:
+        """Detect if current model is KugelAudio"""
+        if "kugelaudio" in model_name.lower():
+            return True
+        
+        # Check config.json if directory exists
+        if model_path and os.path.isdir(model_path):
+            config_file = os.path.join(model_path, "config.json")
+            if os.path.exists(config_file):
+                try:
+                    import json
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                    return config.get("model_type") == "kugelaudio"
+                except:
+                    pass
+        return False
+
+    def _initialize_kugelaudio(self, model_path: str, model_name: str, device: str, 
+                              attention_mode: str, quantize_llm_4bit: bool):
+        """Initialize KugelAudio model specifically"""
+        try:
+            from .kugelaudio_impl import KugelAudioForConditionalGenerationInference, KugelAudioProcessor
+             
+            print(f"🔄 Loading KugelAudio model '{model_name}' on {device}...")
+            
+            # Use bfloat16 if available (matching standard VibeVoice)
+            dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+            
+            # Load model
+            # Note: KugelAudio implementation handles its own loading logic
+            self.model = KugelAudioForConditionalGenerationInference.from_pretrained(
+                model_path,
+                torch_dtype=dtype,
+                low_cpu_mem_usage=True,
+                device_map=device if device != "auto" else "auto"
+            )
+            
+            # Load processor
+            self.processor = KugelAudioProcessor.from_pretrained(model_path)
+            
+            self.model.eval()
+            
+            # Store configuration
+            self.model_path = model_path
+            self.device = device
+            self._original_device = device
+            self.current_model_name = model_name
+            self._current_config = (model_name, device, attention_mode, quantize_llm_4bit)
+            self._quantize_llm_4bit = False # KugelAudio specific quantization not implemented here yet
+            
+            print(f"✅ KugelAudio model '{model_name}' loaded successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to load KugelAudio model: {e}")
+            raise RuntimeError(f"KugelAudio loading failed: {e}")
+
     def cleanup(self):
         """Clean up resources"""
         if self.model is not None:

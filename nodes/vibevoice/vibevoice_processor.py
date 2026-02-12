@@ -98,9 +98,23 @@ class VibeVoiceProcessor:
         multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')
         if multi_speaker_mode == "Custom Character Switching":
             if self._contains_manual_speaker_format(text):
-                print("🔄 Auto-switching to Native Multi-Speaker mode (detected manual 'Speaker N:' format)")
-                print("💡 TIP: Use 'Native Multi-Speaker' mode for better performance with manual format")
-                multi_speaker_mode = "Native Multi-Speaker"
+                # KugelAudio doesn't support Native Multi-Speaker, so don't auto-switch but warn
+                if self.adapter.is_kugelaudio:
+                    print(f"\n⚠️  WARNING: Manual 'Speaker N:' format detected with KugelAudio")
+                    print(f"⚠️  KugelAudio does NOT support Native Multi-Speaker mode.")
+                    print(f"⚠️  Text will be processed using the main narrator voice unless character tags [Name] are used.")
+                    print(f"💡 TIP: Use named character tags like [Alice] and matching voice files for character switching.\n")
+                else:
+                    print("🔄 Auto-switching to Native Multi-Speaker mode (detected manual 'Speaker N:' format)")
+                    print("💡 TIP: Use 'Native Multi-Speaker' mode for better performance with manual format")
+                    multi_speaker_mode = "Native Multi-Speaker"
+            
+            # Additional check for numeric tags [1], [2] in Custom mode
+            import re
+            if re.search(r'\[\d+\]', text):
+                print(f"\n⚠️  WARNING: Numeric character tags like [1] or [2] detected in Custom mode")
+                print(f"⚠️  These tags likely won't match your named character voice files (e.g. 'Alice.wav').")
+                print(f"⚠️  They will fall back to the narrator voice. Use named tags or Native mode instead.\n")
 
         if multi_speaker_mode == "Native Multi-Speaker":
             # Check if we can use native mode (max 4 characters, no pause tags, no parameter changes)
@@ -115,7 +129,13 @@ class VibeVoiceProcessor:
                     has_param_changes = True
                     break
 
-            if len(unique_chars) <= 4 and not has_pause_tags and not has_param_changes:
+            if self.adapter.is_kugelaudio:
+                print(f"\n⚠️  KUGELAUDIO FALLBACK: Native Multi-Speaker → Custom Character Switching")
+                print(f"⚠️  Reason: KugelAudio model does not support native cross-speaker cross-talk.")
+                print(f"⚠️  Speaker 2/3/4 inputs will be ignored (using 'narrator' voice if missing).")
+                print(f"💡 TIP: Use named character tags [CharacterName] instead of speaker inputs for KugelAudio.\n")
+                multi_speaker_mode = "Custom Character Switching"
+            elif len(unique_chars) <= 4 and not has_pause_tags and not has_param_changes:
                 print(f"🎙️ Using VibeVoice native multi-speaker mode for {len(unique_chars)} speakers")
                 return self._process_native_multispeaker(character_segments, voice_mapping, params)
             else:
@@ -168,7 +188,7 @@ class VibeVoiceProcessor:
             print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
 
             # Combine text blocks for this character (VibeVoice style)
-            combined_text = '\n'.join(f"Speaker 1: {seg.text.strip()}" for seg in segment_list)
+            combined_text = '\n'.join(seg.text.strip() for seg in segment_list)
 
             # All segments in a group have the same parameters (grouping broke on parameter changes)
             # So just take parameters from first segment

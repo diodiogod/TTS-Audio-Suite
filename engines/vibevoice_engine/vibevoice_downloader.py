@@ -113,6 +113,23 @@ VIBEVOICE_MODELS = {
             # Tokenizer files from Qwen2.5-7B (required)
             {"remote": "tokenizer.json", "local": "tokenizer.json", "alt_repo": "Qwen/Qwen2.5-7B"}
         ]
+    },
+    "kugelaudio-0-open": {
+        "repo": "kugelaudio/kugelaudio-0-open",
+        "description": "KugelAudio-0-Open - 7B VibeVoice finetune with 23 European languages",
+        "size": "18GB",
+        "tokenizer_repo": "Qwen/Qwen2.5-7B",
+        "languages": ["bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "pt", "ro", "sk", "sl", "sv", "uk"],
+        "files": [
+            {"remote": "model-00001-of-00004.safetensors", "local": "model-00001-of-00004.safetensors"},
+            {"remote": "model-00002-of-00004.safetensors", "local": "model-00002-of-00004.safetensors"},
+            {"remote": "model-00003-of-00004.safetensors", "local": "model-00003-of-00004.safetensors"},
+            {"remote": "model-00004-of-00004.safetensors", "local": "model-00004-of-00004.safetensors"},
+            {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
+            {"remote": "config.json", "local": "config.json"},
+            {"remote": "generation_config.json", "local": "generation_config.json"},
+            {"remote": "voices/voices.json", "local": "voices/voices.json"},
+        ]
     }
 }
 
@@ -474,7 +491,8 @@ class VibeVoiceDownloader:
             files = os.listdir(model_path)
 
             # VibeVoice models need these specific files
-            required_files = ["config.json", "preprocessor_config.json"]
+            # preprocessor_config.json is NOT required (missing in Hindi finetunes and KugelAudio)
+            required_files = ["config.json"]
 
             # Check for required files
             has_required = all(any(f == req for f in files) for req in required_files)

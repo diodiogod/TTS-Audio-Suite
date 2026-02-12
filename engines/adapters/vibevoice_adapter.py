@@ -79,6 +79,11 @@ class VibeVoiceEngineAdapter:
         """Get current processor from engine."""
         return self.vibevoice_engine.processor if self.vibevoice_engine else None
 
+    @property
+    def is_kugelaudio(self) -> bool:
+        """Check if current model is KugelAudio."""
+        return getattr(self.vibevoice_engine, 'is_kugelaudio', False) if self.vibevoice_engine else False
+
     def get_model_for_language(self, lang_code: str, default_model: str) -> str:
         """
         Get VibeVoice model name for specified language.
@@ -94,6 +99,10 @@ class VibeVoiceEngineAdapter:
         """
         # VibeVoice models support both English and Chinese
         supported_languages = ['en', 'zh', 'zh-cn', 'chinese', 'english']
+        
+        # KugelAudio supports 23 languages, skip language validation
+        if "kugelaudio" in default_model.lower():
+            return default_model
         
         if lang_code.lower() in supported_languages:
             # Both models support EN/ZH, return the configured one
@@ -149,7 +158,8 @@ class VibeVoiceEngineAdapter:
                 processed_text = processed_text.replace(f'[{lang}:{char}]', f'[{char}]')
             
             # Warn about language since VibeVoice doesn't have language control
-            if detected_lang not in ['en', 'zh', 'chinese', 'english']:
+            # Skip warning for KugelAudio as it is multilingual
+            if not self.is_kugelaudio and detected_lang not in ['en', 'zh', 'chinese', 'english']:
                 print(f"⚠️ VibeVoice: Language tag '{detected_lang}' found but model only supports EN/ZH")
         
         return processed_text, detected_lang

@@ -222,6 +222,61 @@ engines:
       vram_efficient: { supported: "partial", notes: "(5-18GB)" }
       speed_performance: { supported: "partial", notes: "" }
 
+  - id: kugelaudio
+    name: KugelAudio
+    models: "kugelaudio-0-open"
+    size: "~7GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+
+    special_features:
+      - "Multilingual (claimed)"
+      - "Native fallback to Custom"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇧🇷", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: true, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: true, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "Fallback to Custom" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: true, notes: "" }
+      community_finetunes: { supported: true, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(7GB)" }
+      speed_performance: { supported: "partial", notes: "" }
+
   - id: higgs-audio-2
     name: Higgs Audio 2
     models: "3B"

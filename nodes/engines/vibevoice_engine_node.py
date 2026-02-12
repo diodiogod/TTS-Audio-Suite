@@ -53,7 +53,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
             "required": {
                 "model": (available_models, {
                     "default": "vibevoice-1.5B",
-                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n• vibevoice-hindi-1.5B: Hindi finetune (2.7B params, ~5.4GB) - Optimized for Hindi\n• vibevoice-hindi-7B: Hindi finetune (9B params, ~18GB) - Best Hindi quality\n\nAll support multi-speaker and long-form generation. Hindi models support both Hindi and English."
+                    "tooltip": "VibeVoice model selection:\n• vibevoice-1.5B: Official Microsoft model (2.7B params, ~5.4GB) - Faster, 90-min generation\n• vibevoice-7B: Community preview (9.3B params, ~18GB) - Better quality, 45-min generation\n• kugelaudio-0-open: KugelAudio Multilingual (7B, ~18GB) - 23 European languages support\n• vibevoice-hindi-1.5B: Hindi finetune (2.7B params, ~5.4GB) - Optimized for Hindi\n• vibevoice-hindi-7B: Hindi finetune (9B params, ~18GB) - Best Hindi quality\n\nAll support long-form generation. Note: KugelAudio uses auto-fallback for multi-speaker."
                 }),
                 "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
