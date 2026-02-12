@@ -38,6 +38,8 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)**
 
+*Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*
+
 <!-- ENGINE_COMPARISON_END -->
 
 ## 🚀 Project Evolution Timeline

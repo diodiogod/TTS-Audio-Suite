@@ -142,6 +142,8 @@ def generate_readme_condensed_table(data):
     output.append("📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | "
                   "**[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | "
                   "**[Feature matrix →](docs/FEATURE_COMPARISON.md)**")
+    output.append("")
+    output.append("*Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*")
 
     return "\n".join(output)
 
