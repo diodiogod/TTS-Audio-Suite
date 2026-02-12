@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.0] - 2026-02-11
+
+### Added
+
+- Add KugelAudio-0-Open multilingual support via VibeVoice
+- **New Model Support**: Added full support for KugelAudio-0-Open localized model (~7GB)
+- **Voice Cloning**: Enable high-quality voice cloning with KugelAudio
+- **Seamless Integration**: Automatically detected via VibeVoice Engine node
+- **Improved Robustness**: Fixed import errors affecting some ComfyUI installations
+- **Documentation**: Updated all engine comparison tables and guides
+
+### Fixed
+
+- **Bug Fixes**: Resolved issue where model would speak 'Speaker 1:' tags
 ## [4.20.21] - 2026-02-09
 
 ### Added
