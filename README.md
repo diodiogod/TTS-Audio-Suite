@@ -36,8 +36,10 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **Step Audio EditX** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
 
+
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)**
 
+*Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*
 <!-- ENGINE_COMPARISON_END -->
 
 ## 🚀 Project Evolution Timeline
