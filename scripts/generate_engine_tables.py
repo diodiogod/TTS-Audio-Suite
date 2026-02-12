@@ -53,7 +53,8 @@ def generate_engine_comparison(data):
 
     for e in engines:
         # Extract flags from languages
-        flags = "".join(
+        # Use Zero Width Space to prevent flag ligature issues
+        flags = "\u200B".join(
             lang_data["flag"]
             for lang_data in e["languages"].values()
             if lang_data["supported"]
@@ -106,7 +107,7 @@ def generate_readme_condensed_table(data):
                 if count >= 6:  # Limit to 6 flags for readability
                     break
 
-        lang_display = "".join(flags)
+        lang_display = "\u200B".join(flags)
 
         # Special handling for ChatterBox 23L
         if e["id"] == "chatterbox-23l":

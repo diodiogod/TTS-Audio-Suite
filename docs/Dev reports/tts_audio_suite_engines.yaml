@@ -281,7 +281,7 @@ engines:
   - id: indextts-2
     name: IndexTTS-2
     models: "IndexTTS-2"
-    size: "?"
+    size: "~4.7GB"
 
     capabilities:
       tts: true
