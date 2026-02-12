@@ -28,8 +28,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **F5-TTS** | 🇺🇸🇩🇪🇪🇸🇫🇷🇮🇹🇯🇵 +4 | ~1.2GB each | Targeted Word/Speech Editing, Speed control |
 | **ChatterBox** | 🇺🇸🇩🇪🇫🇷🇮🇹🇯🇵🇰🇷 +4 | ~4.3GB | Expressiveness slider |
 | **ChatterBox 23L** | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
-| **VibeVoice** | 🇺🇸🇨🇳🇮🇳 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker |
-| **KugelAudio** | 🇺🇸🇨🇳🇩🇪🇪🇸🇫🇷🇮🇹 +21 | ~7GB | Multilingual (claimed), Native fallback to Custom |
+| **VibeVoice** | 🇺🇸🇨🇳�🇪🇪🇸🇫🇷�🇮� +21 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker (Base models) |
 | **Higgs Audio 2** | 🇺🇸🇨🇳🇩🇪🇪🇸🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
 | **IndexTTS-2** | 🇺🇸🇨🇳🇯🇵 | ? | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸🇨🇳🇯🇵🇰🇷 | ~5.4GB | Paralinguistic tags |
@@ -106,8 +105,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
-  - [🎙️ KugelAudio Multilingual Voice Cloning](#-kugelaudio-multilingual-voice-cloning)
-  - [🌈 IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
+  - [ IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
   - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
   - [🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design](#-qwen3-tts---3-model-types-with-text-to-voice-design)
@@ -310,7 +308,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 **Technical Features:**
 
-- **Model Support**: Microsoft vibevoice-1.5B/7B (official models for English/Chinese) + vibevoice-hindi-1.5B/7B (Hindi community finetunes supporting Hindi/English)
+- **Model Support**: Microsoft vibevoice-1.5B/7B (official models for English/Chinese) + vibevoice-hindi-1.5B/7B (community Hindi finetunes) + **KugelAudio-0-Open (multilingual 7B variant)**
 - **Intelligent Caching**: Advanced caching system with mode-aware invalidation for instant regeneration
 - **Memory Optimization**: Configurable chunking system balances quality with memory usage
 - **Unified Architecture**: Seamless integration with existing TTS Text and TTS SRT nodes
