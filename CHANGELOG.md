@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.1] - 2026-02-13
+
+### Added
+
+- Ensure opt_narrator input is validated before overriding dropdown selection
+- Apply consistent fallback logic across all engines using Unified nodes
+
+### Fixed
+
+- Fix narrator fallback behavior in Unified TTS nodes
+- Fix issue where bypassing Character Voices node caused fallback to default 'David' voice
 ## [4.21.0] - 2026-02-11
 
 ### Added

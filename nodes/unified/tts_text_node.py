@@ -595,7 +595,25 @@ Back to the main narrator voice for the conclusion.""",
         """
         try:
             # Priority 1: opt_narrator input
+            # Check if opt_narrator is connected AND has valid content
+            valid_opt_narrator = False
+            
             if opt_narrator is not None:
+                # Check for empty/bypass input (might be a list/tuple from ComfyUI internals)
+                if isinstance(opt_narrator, (list, tuple)) and len(opt_narrator) == 0:
+                    valid_opt_narrator = False
+                # Check for specific dictionary content
+                elif isinstance(opt_narrator, dict) and ("audio" in opt_narrator or "waveform" in opt_narrator):
+                    valid_opt_narrator = True
+                else:
+                    # Some other non-empty input? Assume valid for now unless it breaks
+                    # If it's just "None" string or empty dict, treat as invalid
+                    if isinstance(opt_narrator, dict) and not opt_narrator:
+                        valid_opt_narrator = False
+                    else:
+                        valid_opt_narrator = True
+
+            if valid_opt_narrator:
                 # Check if it's a Character Voices node output (dict with specific keys)
                 if isinstance(opt_narrator, dict) and "audio" in opt_narrator:
                     # Character Voices node output
@@ -620,7 +638,8 @@ Back to the main narrator voice for the conclusion.""",
                     return None, audio_tensor, reference_text, character_name
             
             # Priority 2: narrator_voice dropdown (fallback)
-            elif narrator_voice != "none":
+            # This is now reached if opt_narrator is None OR invalid/empty (bypassed)
+            if narrator_voice != "none":
                 # print(f"🐛 TTS_TEXT: Trying narrator_voice dropdown: {narrator_voice}")
                 audio_path, reference_text = load_voice_reference(narrator_voice)
                 # print(f"🐛 TTS_TEXT: Dropdown - audio_path={audio_path}, exists={os.path.exists(audio_path) if audio_path else False}")
