@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.21.1
+# TTS Audio Suite v4.21.2
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -311,6 +311,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 **Technical Features:**
 
 - **Model Support**: Microsoft vibevoice-1.5B/7B (official models for English/Chinese) + vibevoice-hindi-1.5B/7B (community Hindi finetunes) + **KugelAudio-0-Open (multilingual 7B variant)**
+- **Language Detection**: VibeVoice/KugelAudio automatically detect language from input text and reference audio - **no language parameters are used**
 - **Intelligent Caching**: Advanced caching system with mode-aware invalidation for instant regeneration
 - **Memory Optimization**: Configurable chunking system balances quality with memory usage
 - **Unified Architecture**: Seamless integration with existing TTS Text and TTS SRT nodes
@@ -374,6 +375,8 @@ Back to the narrator for the conclusion.
 
 * **F5-TTS**: English (en), German (de), Spanish (es), French (fr), Italian (it), Japanese (jp), Thai (th), Portuguese (pt), Hindi (hi)
 * **ChatterBox**: English (en), German (de, de-best, de-expressive), Italian (it), French (fr), Russian (ru), Armenian (hy), Georgian (ka), Japanese (ja), Korean (ko), Norwegian (no/nb/nn)
+* **ChatterBox 23-Lang** & **Qwen3-TTS**: Use explicit language parameters - language tags directly control output
+* **VibeVoice/KugelAudio**: Do NOT use language parameters - auto-detect from text (language tags have no effect on these models)
 
 Example usage:
 

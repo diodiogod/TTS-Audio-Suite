@@ -28,11 +28,12 @@ class LanguageResolver:
     def __init__(self, default_language: str = "en"):
         """
         Initialize language resolver.
-        
+
         Args:
             default_language: Default language code
         """
         self.default_language = default_language
+        self.engine_type = None  # Can be set per parse call via parse_text_segments()
         self._known_languages = self._build_known_languages()
         
     def _build_known_languages(self) -> Set[str]:
@@ -239,9 +240,12 @@ class LanguageResolver:
                 pass  # Silently handle voice discovery errors
 
         # Log once per character only if language was explicitly resolved (not default)
+        # Skip logging for engines that don't use language parameters (VibeVoice, KugelAudio)
         if resolved_language and resolved_language != self.default_language:
             if character_lower not in logged_characters:
-                print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
+                # Suppress language logs for engines that auto-detect language from text
+                if self.engine_type not in ["vibevoice", "kugelaudio"]:
+                    print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
                 logged_characters.add(character_lower)
         
         # Priority 3: Fall back to global default

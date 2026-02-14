@@ -361,11 +361,11 @@ Back to the main narrator voice for the conclusion.""",
                         self.processor.update_config(new_config)
                     
                     def generate_tts_audio(self, text, char_audio, char_text, character="narrator", **params):
-                        # Parse characters from text first (like F5 does)
+                        # Parse characters from text first (like F5 does) - suppress language logs for VibeVoice
                         from utils.text.character_parser import parse_character_text
                         from utils.voice.discovery import get_character_mapping
-                        
-                        character_segments = parse_character_text(text, None)  # Auto-discover characters
+
+                        character_segments = parse_character_text(text, None, engine_type="vibevoice")  # Auto-discover characters
                         characters = list(set(char for char, _ in character_segments))
                         print(f"🎭 VibeVoice: Character switching mode - found characters: {', '.join(characters)}")
                         

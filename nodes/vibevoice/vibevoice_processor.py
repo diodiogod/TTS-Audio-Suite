@@ -87,9 +87,9 @@ class VibeVoiceProcessor:
             max_chars_per_chunk = 999999  # Effectively disable chunking
         # Note: If chunk_minutes is not set (None), fall back to TTS Text settings
         
-        # Parse character segments with parameter support
+        # Parse character segments with parameter support (suppress language logs for VibeVoice)
         character_parser.reset_session_cache()
-        segment_objects = character_parser.parse_text_segments(text)
+        segment_objects = character_parser.parse_text_segments(text, engine_type="vibevoice")
 
         # Convert segment objects to tuples for backward compatibility
         character_segments = [(seg.character, seg.text) for seg in segment_objects]

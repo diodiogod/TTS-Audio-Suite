@@ -47,7 +47,7 @@ class CharacterParser(ValidationMixin):
     def __init__(self, default_character: str = "narrator", default_language: Optional[str] = None):
         """
         Initialize character parser.
-        
+
         Args:
             default_character: Default character name for untagged text
             default_language: Default language for characters without explicit language
@@ -57,11 +57,11 @@ class CharacterParser(ValidationMixin):
         self.available_characters = set()
         self.character_fallbacks = {}
         self.character_language_defaults = {}
-        
-        # Initialize helper components
+
+        # Initialize helper components (engine_type can be set per parse call)
         self.language_resolver = LanguageResolver(self.default_language)
         self.segment_processor = SegmentProcessor(self.CHARACTER_TAG_PATTERN, self.default_character)
-        
+
         # Cache for character language resolution to prevent duplicate logging
         self._character_language_cache = {}
         self._logged_characters = set()
@@ -182,19 +182,29 @@ class CharacterParser(ValidationMixin):
             self._logged_character_warnings.add(character_name)
         return self.default_character
     
-    def parse_text_segments(self, text: str) -> List[CharacterSegment]:
+    def parse_text_segments(self, text: str, engine_type: Optional[str] = None) -> List[CharacterSegment]:
         """
         Parse text into character-specific segments with proper line-by-line processing.
-        
+
         Args:
             text: Input text with [Character] tags
-            
+            engine_type: Optional engine identifier to temporarily override logging behavior (e.g., "vibevoice")
+
         Returns:
             List of CharacterSegment objects
         """
-        return self.segment_processor.parse_text_segments(
-            text, self.language_resolver, self
-        )
+        # Temporarily override engine_type if provided
+        original_engine_type = self.language_resolver.engine_type
+        if engine_type is not None:
+            self.language_resolver.engine_type = engine_type
+
+        try:
+            return self.segment_processor.parse_text_segments(
+                text, self.language_resolver, self
+            )
+        finally:
+            # Restore original engine_type
+            self.language_resolver.engine_type = original_engine_type
     
     def parse_character_mapping(self, text: str) -> Dict[str, List[str]]:
         """
@@ -408,13 +418,14 @@ class CharacterParser(ValidationMixin):
 character_parser = CharacterParser()
 
 
-def parse_character_text(text: str, available_characters: Optional[List[str]] = None) -> List[Tuple[str, str]]:
+def parse_character_text(text: str, available_characters: Optional[List[str]] = None, engine_type: Optional[str] = None) -> List[Tuple[str, str]]:
     """
     Convenience function to parse character text.
 
     Args:
         text: Input text with [Character] tags
         available_characters: Optional list of available character voices
+        engine_type: Optional engine identifier to suppress irrelevant logs (e.g., "vibevoice")
 
     Returns:
         List of (character_name, text_content) tuples
@@ -434,7 +445,7 @@ def parse_character_text(text: str, available_characters: Optional[List[str]] = 
             print(f"⚠️ Character Parser: Auto-discovery failed: {e}")
 
     # Parse segments and filter out parameter-only tags (which have empty text)
-    segments = character_parser.parse_text_segments(text)
+    segments = character_parser.parse_text_segments(text, engine_type=engine_type)
     result = [(seg.character, seg.text) for seg in segments if seg.text.strip()]
 
     return result

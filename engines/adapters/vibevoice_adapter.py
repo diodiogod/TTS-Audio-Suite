@@ -17,7 +17,7 @@ if parent_dir not in sys.path:
 
 from utils.models.language_mapper import get_model_for_language
 from utils.text.pause_processor import PauseTagProcessor
-from utils.text.character_parser import CharacterParser
+from utils.text.character_parser import character_parser
 from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
 from utils.models.manager import model_manager
 
@@ -36,7 +36,6 @@ class VibeVoiceEngineAdapter:
         self.node = node_instance
         self.engine_type = "vibevoice"
         self.model_manager = model_manager
-        self.character_parser = CharacterParser()
         self.pause_processor = PauseTagProcessor()
 
         # Track character to speaker mapping for native multi-speaker mode
@@ -175,8 +174,8 @@ class VibeVoiceEngineAdapter:
         Returns:
             Tuple of (formatted_text, character_mapping)
         """
-        # Parse character segments
-        segments = self.character_parser.parse_text(text)
+        # Parse character segments (using global parser with engine_type suppression)
+        segments = character_parser.parse_text_segments(text, engine_type="vibevoice")
         
         # Build character to speaker mapping and combine continuous segments
         character_map = {}

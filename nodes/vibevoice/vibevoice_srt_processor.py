@@ -244,9 +244,9 @@ class VibeVoiceSRTProcessor:
             
             print(f"🎭 VibeVoice SRT Subtitle {i+1}/{len(subtitles)} (Seq {subtitle.sequence}): Processing '{subtitle.text[:50]}...'")
 
-            # Parse character segments with parameter support
+            # Parse character segments with parameter support (suppress language logs for VibeVoice)
             character_parser.reset_session_cache()
-            segment_objects = character_parser.parse_text_segments(subtitle.text)
+            segment_objects = character_parser.parse_text_segments(subtitle.text, engine_type="vibevoice")
 
             # Determine processing mode
             multi_speaker_mode = self.config.get('multi_speaker_mode', 'Custom Character Switching')

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.2] - 2026-02-14
+
+### Added
+
+- These engines auto-detect language from text and don't use language parameters
+
+### Changed
+
+- Console output is now cleaner when using VibeVoice or KugelAudio models
+
+### Fixed
+
+- Fix VibeVoice/KugelAudio console log spam
+
+### Removed
+
+- Remove misleading language auto-switching logs for VibeVoice and KugelAudio engines
 ## [4.21.1] - 2026-02-13
 
 ### Added
