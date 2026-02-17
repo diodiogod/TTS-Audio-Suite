@@ -5,6 +5,7 @@ Calls the original reference code directly with minimal modifications
 
 import os
 import sys
+import weakref
 
 # CRITICAL FIX for Python 3.13 + numba + librosa compatibility
 # 🔬 NUMBA WORKAROUND: Commented out - testing if still needed with numba 0.61.2+ and librosa 0.11.0+
@@ -191,7 +192,13 @@ class MinimalRVCWrapper:
 
             # Register with ComfyUI's model list - this makes Clear VRAM work
             if hasattr(model_management, 'current_loaded_models'):
-                model_management.current_loaded_models.append(wrapper)
+                if hasattr(model_management, 'LoadedModel'):
+                    loaded_model = model_management.LoadedModel(wrapper)
+                    loaded_model._tts_wrapper_ref = wrapper  # prevent GC
+                    loaded_model.model_finalizer = weakref.finalize(wrapper, lambda: None)
+                    model_management.current_loaded_models.insert(0, loaded_model)
+                else:
+                    model_management.current_loaded_models.append(wrapper)
                 print(f"✅ Registered new RVC model with ComfyUI model management")
 
         except Exception as e:
@@ -232,7 +239,13 @@ class MinimalRVCWrapper:
 
             # Register with ComfyUI's model list - this makes Clear VRAM work
             if hasattr(model_management, 'current_loaded_models'):
-                model_management.current_loaded_models.append(wrapper)
+                if hasattr(model_management, 'LoadedModel'):
+                    loaded_model = model_management.LoadedModel(wrapper)
+                    loaded_model._tts_wrapper_ref = wrapper  # prevent GC
+                    loaded_model.model_finalizer = weakref.finalize(wrapper, lambda: None)
+                    model_management.current_loaded_models.insert(0, loaded_model)
+                else:
+                    model_management.current_loaded_models.append(wrapper)
                 print(f"✅ Registered new Hubert model with ComfyUI model management")
 
         except Exception as e:

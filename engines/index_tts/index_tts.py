@@ -263,9 +263,11 @@ class IndexTTSEngine:
                                     already_registered = False
                                     if hasattr(model_management, 'current_loaded_models'):
                                         for wrapper in model_management.current_loaded_models:
-                                            if hasattr(wrapper, 'model_info') and wrapper.model_info.engine == "index_tts":
+                                            # Support both direct ComfyUIModelWrapper and LoadedModel wrapping
+                                            inner = wrapper.model if hasattr(wrapper, 'model') and not hasattr(wrapper, 'model_info') else wrapper
+                                            if hasattr(inner, 'model_info') and inner.model_info.engine == "index_tts":
                                                 # Found an index_tts wrapper, just reload it
-                                                wrapper.model_load(target_device)
+                                                inner.model_load(target_device)
                                                 print(f"✅ Reloaded Index-TTS via existing ComfyUI wrapper")
                                                 already_registered = True
                                                 break
@@ -291,7 +293,14 @@ class IndexTTSEngine:
                                         )
                                         new_wrapper = ComfyUIModelWrapper(wrapped_model, model_info)
 
-                                        model_management.current_loaded_models.append(new_wrapper)
+                                        if hasattr(model_management, 'LoadedModel'):
+                                            import weakref
+                                            lm = model_management.LoadedModel(new_wrapper)
+                                            lm._tts_wrapper_ref = new_wrapper
+                                            lm.model_finalizer = weakref.finalize(new_wrapper, lambda: None)
+                                            model_management.current_loaded_models.insert(0, lm)
+                                        else:
+                                            model_management.current_loaded_models.append(new_wrapper)
                                         print(f"✅ Re-registered Index-TTS with ComfyUI model management")
                                 except Exception as reg_error:
                                     print(f"⚠️ Re-registration failed: {reg_error}")

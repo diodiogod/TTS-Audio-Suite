@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.3] - 2026-02-17
+
+### Added
+
+- Backward compatible with older ComfyUI versions
+
+### Fixed
+
+- Fix crashes when using RVC or IndexTTS alongside diffusion nodes on ComfyUI 0.13+
+- Fix AttributeError crash when ComfyUI memory manager runs after RVC voice conversion
+- Fix AttributeError crash when ComfyUI memory manager runs after IndexTTS generation
+- Fix affected workflows: any mix of TTS and image/video generation nodes (Flux, Wan, etc.)
 ## [4.21.2] - 2026-02-14
 
 ### Added
