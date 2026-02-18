@@ -360,6 +360,7 @@ class Qwen3TTSEngineAdapter:
             repetition_penalty=params.get('repetition_penalty', 1.05),
             max_new_tokens=params.get('max_new_tokens', 2048),
             seed=params.get('seed', 0),
+            model_size=params.get('model_size', '1.7B'),
             attn_implementation=params.get('attn_implementation', 'auto'),
             character=character_name or 'narrator'
         )
@@ -443,6 +444,7 @@ class Qwen3TTSEngineAdapter:
             repetition_penalty=params.get('repetition_penalty', 1.05),
             max_new_tokens=params.get('max_new_tokens', 2048),
             seed=params.get('seed', 0),
+            model_size=params.get('model_size', '1.7B'),
             attn_implementation=params.get('attn_implementation', 'auto'),
             character=character_name or 'narrator'
         )
@@ -556,6 +558,7 @@ class Qwen3TTSEngineAdapter:
             repetition_penalty=params.get('repetition_penalty', 1.05),
             max_new_tokens=params.get('max_new_tokens', 2048),
             seed=params.get('seed', 0),
+            model_size=params.get('model_size', '1.7B'),
             attn_implementation=params.get('attn_implementation', 'auto'),
             character=character_name or 'narrator'
         )
