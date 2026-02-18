@@ -133,8 +133,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "tooltip": "torch.compile mode (if use_torch_compile enabled):\n• default: RECOMMENDED - Standard torch.compile, ~1.7x speedup, works on Windows\n• reduce-overhead: Auto CUDA graphs, ~2-3x speedup, LINUX ONLY (fails on Windows)\n• max-autotune: Best optimization, longest compile, LINUX ONLY\n⚠️ Windows: Only 'default' works - reduce-overhead/max-autotune fail with cudaMallocAsync error\n⚠️ Model must be reloaded to test different modes (cache reuse otherwise)"
                 }),
                 "asr_use_forced_aligner": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Enable Qwen3 forced aligner (required for word timestamps + accurate SRT).\nIf OFF: ASR text works, but SRT output is limited and will show a warning."
+                    "default": True,
+                    "tooltip": "Enable Qwen3 forced aligner (required for word timestamps + accurate SRT).\nTurn OFF to save VRAM and skip downloading the extra aligner model if you only need text (no timestamps)."
                 }),
             }
         }
@@ -162,7 +162,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         use_torch_compile: bool = False,
         use_cuda_graphs: bool = False,
         compile_mode: str = "reduce-overhead",
-        asr_use_forced_aligner: bool = False,
+        asr_use_forced_aligner: bool = True,
     ) -> tuple:
         """
         Create Qwen3-TTS engine configuration.
