@@ -46,46 +46,47 @@ except ImportError:
     # Try import again
     from utils.models.manager import model_manager
 
-# Defense-in-depth: save_audio_safe provides fallback for PyTorch 2.9 TorchCodec issues
+# Defense-in-depth: save_audio_safe provides fallback for PyTorch 2.9 TorchCodec issues.
 # The global monkey-patch in __init__.py handles most cases, but this function provides
 # an additional layer of protection with scipy fallback if torchaudio.save() fails.
-try:
-    from engines.processors.index_tts_processor import save_audio_safe
-except ImportError:
-    # Fallback: define it locally with scipy as primary fallback (no TorchCodec dependency)
-    def save_audio_safe(filepath: str, waveform: torch.Tensor, sample_rate: int):
-        """
-        Save audio to file with defense-in-depth fallback handling.
+#
+# LAZY IMPORT: Previously imported from engines.processors.index_tts_processor, but that
+# module eagerly imports character_parser -> language_mapper -> engines.chatterbox.language_models
+# -> transformers + diffusers (adding ~8s to startup). The save_audio_safe function is
+# self-contained and defined here directly to break that import chain.
+def save_audio_safe(filepath: str, waveform: torch.Tensor, sample_rate: int):
+    """
+    Save audio to file with defense-in-depth fallback handling.
 
-        With the global PyTorch 2.9 patch applied at startup, torchaudio.save() should
-        not fail. However, this function provides an extra layer of protection by falling
-        back to scipy if needed.
-        """
-        try:
-            import torchaudio
-            torchaudio.save(filepath, waveform, sample_rate)
-        except RuntimeError as e:
-            if "torchcodec" in str(e).lower() or "libtorchcodec" in str(e).lower():
-                # TorchCodec error - use scipy.io.wavfile (pure Python, no native deps)
+    With the global PyTorch 2.9 patch applied at startup, torchaudio.save() should
+    not fail. However, this function provides an extra layer of protection by falling
+    back to scipy if needed.
+    """
+    try:
+        import torchaudio
+        torchaudio.save(filepath, waveform, sample_rate)
+    except RuntimeError as e:
+        if "torchcodec" in str(e).lower() or "libtorchcodec" in str(e).lower():
+            # TorchCodec error - use scipy.io.wavfile (pure Python, no native deps)
+            try:
+                from scipy.io import wavfile as scipy_wavfile
+                audio_np = waveform.cpu().detach().numpy().astype(np.float32)
+                # scipy.io.wavfile requires int16 for WAV - convert exactly as torchaudio does
+                audio_np = np.clip(audio_np, -1.0, 1.0)
+                audio_int16 = (audio_np * 32767.0).astype(np.int16)
+                # scipy expects (samples, channels)
+                if audio_int16.ndim == 2 and audio_int16.shape[0] <= 2:
+                    audio_int16 = audio_int16.T
+                scipy_wavfile.write(filepath, sample_rate, audio_int16)
+            except Exception as scipy_err:
+                # Final fallback to soundfile
                 try:
-                    from scipy.io import wavfile as scipy_wavfile
-                    audio_np = waveform.cpu().detach().numpy().astype(np.float32)
-                    # scipy.io.wavfile requires int16 for WAV - convert exactly as torchaudio does
-                    audio_np = np.clip(audio_np, -1.0, 1.0)
-                    audio_int16 = (audio_np * 32767.0).astype(np.int16)
-                    # scipy expects (samples, channels)
-                    if audio_int16.ndim == 2 and audio_int16.shape[0] <= 2:
-                        audio_int16 = audio_int16.T
-                    scipy_wavfile.write(filepath, sample_rate, audio_int16)
-                except Exception as scipy_err:
-                    # Final fallback to soundfile
-                    try:
-                        import soundfile as sf
-                        audio_np = waveform.cpu().detach().numpy()
-                        if audio_np.ndim == 2 and audio_np.shape[0] <= 2:
-                            audio_np = audio_np.T
-                        sf.write(filepath, audio_np, sample_rate)
-                    except Exception as fallback_err:
+                    import soundfile as sf
+                    audio_np = waveform.cpu().detach().numpy()
+                    if audio_np.ndim == 2 and audio_np.shape[0] <= 2:
+                        audio_np = audio_np.T
+                    sf.write(filepath, audio_np, sample_rate)
+                except Exception as fallback_err:
                         raise RuntimeError(f"All save methods failed: {e}")
             else:
                 raise

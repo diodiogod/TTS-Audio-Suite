@@ -12,12 +12,33 @@ import tempfile
 from typing import Dict, List, Tuple, Optional, Any, Union
 from dataclasses import dataclass
 
-# Add support for more audio formats
-try:
-    import librosa
-    LIBROSA_AVAILABLE = True
-except ImportError:
-    LIBROSA_AVAILABLE = False
+# Librosa availability is checked lazily to avoid the ~0.7s import cost at startup.
+# The actual import happens on first use via _get_librosa().
+_librosa_module = None
+_librosa_checked = False
+
+def _get_librosa():
+    """Lazily import librosa on first use, caching the result."""
+    global _librosa_module, _librosa_checked
+    if not _librosa_checked:
+        _librosa_checked = True
+        try:
+            import librosa as _lib
+            _librosa_module = _lib
+        except ImportError:
+            _librosa_module = None
+    return _librosa_module
+
+# Keep LIBROSA_AVAILABLE as a property-like check for backward compatibility.
+# Callers that test this flag will trigger the lazy import.
+class _LazyLibrosaFlag:
+    """Lazy bool that defers librosa import until truth-tested."""
+    def __bool__(self):
+        return _get_librosa() is not None
+    def __repr__(self):
+        return repr(bool(self))
+
+LIBROSA_AVAILABLE = _LazyLibrosaFlag()
 
 from utils.audio.processing import AudioProcessingUtils
 
@@ -89,7 +110,7 @@ class AudioAnalyzer:
             if LIBROSA_AVAILABLE:
                 try:
                     print(f"⚠️ safe_load_audio failed: {e}, falling back to librosa")
-                    audio_np, sr = librosa.load(audio_path, sr=None, mono=False)
+                    audio_np, sr = _get_librosa().load(audio_path, sr=None, mono=False)
 
                     # Convert to torch tensor
                     if audio_np.ndim == 1:

@@ -11,8 +11,8 @@ from typing import Dict, Any, Tuple, Optional, List
 import hashlib
 import numpy as np
 import torch
-import librosa
-import scipy.signal
+# librosa (~0.7s) and scipy.signal (~2s) are imported lazily inside methods that
+# need them, not at module level. This avoids adding ~3s to plugin startup time.
 
 # Add project root directory to path for imports
 current_dir = os.path.dirname(__file__)
@@ -346,6 +346,7 @@ Choose how to combine multiple audio sources:
                 # Simple resampling (in production, would use librosa or similar)
                 resample_ratio = target_sr / sr
                 new_length = int(len(audio) * resample_ratio)
+                import scipy.signal
                 resampled = scipy.signal.resample(audio, new_length)
             else:
                 resampled = audio
@@ -431,10 +432,11 @@ Choose how to combine multiple audio sources:
     def _pad_audio(self, *audios, axis=0):
         """Pad audio arrays to same length (from reference implementation)"""
         try:
+            import librosa
             maxlen = max(len(a) if a is not None else 0 for a in audios)
             if maxlen > 0:
                 stack = librosa.util.stack([
-                    librosa.util.fix_length(a, size=maxlen) 
+                    librosa.util.fix_length(a, size=maxlen)
                     for a in audios if a is not None
                 ], axis=axis)
                 return stack
@@ -560,6 +562,7 @@ Choose how to combine multiple audio sources:
         Apply separate pitch shifting to vocal (audio1) and instrumental (audio2) tracks.
         Implements Replay's Instrumental Pitch Control feature.
         """
+        import librosa
         try:
             # Apply pitch shifts to the first two audio tracks
             # audio1 = vocal (gets vocal_pitch_shift)

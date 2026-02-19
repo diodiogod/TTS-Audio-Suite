@@ -6,53 +6,113 @@ warnings.filterwarnings("ignore", message=".*LoRACompatibleLinear.*")
 warnings.filterwarnings("ignore", message=".*PerthNet.*")
 warnings.filterwarnings("ignore", message=".*requires authentication.*")
 
-# Import main TTS/VC modules with error handling
-try:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        from .tts import ChatterboxTTS
-    TTS_AVAILABLE = True
-except ImportError:
-    TTS_AVAILABLE = False
-    # Create dummy class
-    class ChatterboxTTS:
-        @classmethod
-        def from_pretrained(cls, device):
-            raise ImportError("ChatterboxTTS not available - missing dependencies")
-        @classmethod
-        def from_local(cls, path, device):
-            raise ImportError("ChatterboxTTS not available - missing dependencies")
+# --- LAZY ENGINE IMPORTS ---
+# TTS/VC/F5TTS classes are NOT imported at module level to avoid pulling in
+# transformers (~5s), diffusers (~3s), and torch._dynamo (~3s) at plugin startup.
+# Instead they are loaded on first access via module-level __getattr__.
+# This breaks the import chain:
+#   language_mapper -> engines.chatterbox.language_models -> (this __init__.py)
+#   which previously triggered: .tts -> models.t3 -> transformers/diffusers
+#
+# Consumers that only need language_models (CHATTERBOX_MODELS, get_available_languages)
+# no longer pay the ~8s cost of importing the model definition code.
 
-try:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        from .vc import ChatterboxVC
-    VC_AVAILABLE = True
-except ImportError:
-    VC_AVAILABLE = False
-    # Create dummy class
-    class ChatterboxVC:
-        @classmethod
-        def from_pretrained(cls, device):
-            raise ImportError("ChatterboxVC not available - missing dependencies")
-        @classmethod
-        def from_local(cls, path, device):
-            raise ImportError("ChatterboxVC not available - missing dependencies")
+_TTS_AVAILABLE = None
+_VC_AVAILABLE = None
+_F5TTS_SUPPORT_AVAILABLE = None
+_ChatterboxTTS = None
+_ChatterboxVC = None
+_ChatterBoxF5TTS = None
 
-# F5-TTS support modules - import independently
-try:
-    from .f5tts import ChatterBoxF5TTS, F5TTS_AVAILABLE
-    F5TTS_SUPPORT_AVAILABLE = F5TTS_AVAILABLE
-except ImportError:
-    F5TTS_SUPPORT_AVAILABLE = False
-    # Create dummy class
-    class ChatterBoxF5TTS:
-        @classmethod
-        def from_pretrained(cls, device, model_name):
-            raise ImportError("F5-TTS not available - missing dependencies")
-        @classmethod
-        def from_local(cls, path, device, model_name):
-            raise ImportError("F5-TTS not available - missing dependencies")
+
+def _ensure_tts_loaded():
+    """Lazily load ChatterboxTTS on first use."""
+    global _TTS_AVAILABLE, _ChatterboxTTS
+    if _TTS_AVAILABLE is not None:
+        return
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            from .tts import ChatterboxTTS as _cls
+        _ChatterboxTTS = _cls
+        _TTS_AVAILABLE = True
+    except ImportError:
+        _TTS_AVAILABLE = False
+        class _DummyTTS:
+            @classmethod
+            def from_pretrained(cls, device):
+                raise ImportError("ChatterboxTTS not available - missing dependencies")
+            @classmethod
+            def from_local(cls, path, device):
+                raise ImportError("ChatterboxTTS not available - missing dependencies")
+        _ChatterboxTTS = _DummyTTS
+
+
+def _ensure_vc_loaded():
+    """Lazily load ChatterboxVC on first use."""
+    global _VC_AVAILABLE, _ChatterboxVC
+    if _VC_AVAILABLE is not None:
+        return
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            from .vc import ChatterboxVC as _cls
+        _ChatterboxVC = _cls
+        _VC_AVAILABLE = True
+    except ImportError:
+        _VC_AVAILABLE = False
+        class _DummyVC:
+            @classmethod
+            def from_pretrained(cls, device):
+                raise ImportError("ChatterboxVC not available - missing dependencies")
+            @classmethod
+            def from_local(cls, path, device):
+                raise ImportError("ChatterboxVC not available - missing dependencies")
+        _ChatterboxVC = _DummyVC
+
+
+def _ensure_f5tts_loaded():
+    """Lazily load ChatterBoxF5TTS on first use."""
+    global _F5TTS_SUPPORT_AVAILABLE, _ChatterBoxF5TTS
+    if _F5TTS_SUPPORT_AVAILABLE is not None:
+        return
+    try:
+        from .f5tts import ChatterBoxF5TTS as _cls, F5TTS_AVAILABLE
+        _ChatterBoxF5TTS = _cls
+        _F5TTS_SUPPORT_AVAILABLE = F5TTS_AVAILABLE
+    except ImportError:
+        _F5TTS_SUPPORT_AVAILABLE = False
+        class _DummyF5TTS:
+            @classmethod
+            def from_pretrained(cls, device, model_name):
+                raise ImportError("F5-TTS not available - missing dependencies")
+            @classmethod
+            def from_local(cls, path, device, model_name):
+                raise ImportError("F5-TTS not available - missing dependencies")
+        _ChatterBoxF5TTS = _DummyF5TTS
+
+
+def __getattr__(name):
+    """Module-level lazy attribute access for TTS/VC/F5TTS classes and availability flags."""
+    if name == "ChatterboxTTS":
+        _ensure_tts_loaded()
+        return _ChatterboxTTS
+    elif name == "TTS_AVAILABLE":
+        _ensure_tts_loaded()
+        return _TTS_AVAILABLE
+    elif name == "ChatterboxVC":
+        _ensure_vc_loaded()
+        return _ChatterboxVC
+    elif name == "VC_AVAILABLE":
+        _ensure_vc_loaded()
+        return _VC_AVAILABLE
+    elif name == "ChatterBoxF5TTS":
+        _ensure_f5tts_loaded()
+        return _ChatterBoxF5TTS
+    elif name == "F5TTS_SUPPORT_AVAILABLE":
+        _ensure_f5tts_loaded()
+        return _F5TTS_SUPPORT_AVAILABLE
+    raise AttributeError(f"module 'engines.chatterbox' has no attribute {name!r}")
 
 # Language models support
 try:

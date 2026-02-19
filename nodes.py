@@ -35,25 +35,39 @@ current_dir = os.path.dirname(__file__)
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-# Check transformers version compatibility
-try:
-    import transformers
-    from packaging import version
+# Transformers version check deferred to first engine use to avoid
+# importing transformers (~1.3s) at plugin load time.
+# The check runs lazily via _check_transformers_version() below.
+_transformers_version_checked = False
 
-    required_version = "4.51.3"
-    current_version = transformers.__version__
+def _check_transformers_version():
+    """Check transformers version compatibility on first engine use.
 
-    if version.parse(current_version) < version.parse(required_version):
-        print(f"🚨 COMPATIBILITY WARNING:")
-        print(f"   Transformers version {current_version} is too old (requires >={required_version})")
-        print(f"   This WILL cause errors like 'DynamicCache property has no setter'")
-        print(f"   📋 SOLUTION: Run this command to upgrade:")
-        print(f"   pip install --upgrade transformers>={required_version}")
-        print(f"   (Or use your environment's package manager)")
-        print()
-except Exception as e:
-    print(f"⚠️ Could not check transformers version: {e}")
-    print("   If you encounter DynamicCache errors, upgrade transformers to >=4.51.3")
+    Deferred from module level to avoid the ~1.3s import cost at startup.
+    Called automatically by nodes that need transformers.
+    """
+    global _transformers_version_checked
+    if _transformers_version_checked:
+        return
+    _transformers_version_checked = True
+    try:
+        import transformers
+        from packaging import version
+
+        required_version = "4.51.3"
+        current_version = transformers.__version__
+
+        if version.parse(current_version) < version.parse(required_version):
+            print(f"🚨 COMPATIBILITY WARNING:")
+            print(f"   Transformers version {current_version} is too old (requires >={required_version})")
+            print(f"   This WILL cause errors like 'DynamicCache property has no setter'")
+            print(f"   📋 SOLUTION: Run this command to upgrade:")
+            print(f"   pip install --upgrade transformers>={required_version}")
+            print(f"   (Or use your environment's package manager)")
+            print()
+    except Exception as e:
+        print(f"⚠️ Could not check transformers version: {e}")
+        print("   If you encounter DynamicCache errors, upgrade transformers to >=4.51.3")
 
 # Import nodes using direct file loading to avoid package path issues
 def load_node_module(module_name, file_name):

@@ -49,59 +49,33 @@ try:
 except Exception as e:
     print(f"⚠️ Warning: Could not apply PyTorch patches: {e}")
 
-# Apply transformers compatibility patches
-try:
-    # Load transformers_patches directly by file path
-    transformers_patches_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "transformers_patches.py")
-    spec = importlib.util.spec_from_file_location("transformers_patches_module", transformers_patches_path)
-    transformers_patches_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(transformers_patches_module)
+# Transformers compatibility patches DEFERRED to first engine use.
+# The patches module is deprecated (all patches are for old transformers versions),
+# and importing it eagerly pulls in transformers (~1.3s).
+# Patches will be applied lazily when an engine first imports transformers.
+_transformers_patches_applied = False
+def _apply_transformers_patches_once():
+    """Apply transformers patches lazily, on first engine use."""
+    global _transformers_patches_applied
+    if _transformers_patches_applied:
+        return
+    _transformers_patches_applied = True
+    try:
+        transformers_patches_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "transformers_patches.py")
+        spec = importlib.util.spec_from_file_location("transformers_patches_module", transformers_patches_path)
+        transformers_patches_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(transformers_patches_module)
+        transformers_patches_module.apply_transformers_patches(verbose=True)
+    except Exception as e:
+        print(f"⚠️ Warning: Could not apply Transformers patches: {e}")
 
-    # Apply the patches (will only apply on transformers 4.54+, silently skip on older versions)
-    transformers_patches_module.apply_transformers_patches(verbose=True)
-except Exception as e:
-    print(f"⚠️ Warning: Could not apply Transformers patches: {e}")
-
-# Smart Numba Compatibility System - tests and applies fixes only when needed
-try:
-    # Load numba_compat directly by file path to avoid package import issues
-    numba_compat_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "numba_compat.py")
-    spec = importlib.util.spec_from_file_location("numba_compat_module", numba_compat_path)
-    numba_compat_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(numba_compat_module)
-
-    # Apply smart compatibility setup (fast startup test)
-    compatibility_results = numba_compat_module.setup_numba_compatibility(quick_startup=True, verbose=False)
-except Exception:
-    # Fallback to simple approach if compatibility module not found
-    import sys
-    import os
-    if sys.version_info >= (3, 13):
-        # Basic test: try librosa.stft and apply workaround if it fails
-        try:
-            import numpy as np
-            import librosa
-            test_audio = np.random.randn(512).astype(np.float32)
-            _ = librosa.stft(test_audio, hop_length=256, n_fft=512)
-            # Only show when there's a problem, not success
-            # Mark that we've tested numba compatibility
-            import sys
-            sys.modules['__main__']._tts_numba_tested = True
-        except Exception as e:
-            if "'function' object has no attribute 'get_call_template'" in str(e):
-                os.environ['NUMBA_DISABLE_JIT'] = '1'
-                os.environ['NUMBA_ENABLE_CUDASIM'] = '1'
-                try:
-                    import numba
-                    numba.config.DISABLE_JIT = True
-                except ImportError:
-                    pass
-                print("🔧 Applied numba JIT workaround for Python 3.13 compatibility")
-            else:
-                print(f"⚠️ Librosa test failed with different error: {e}")
-    else:
-        # Only show warning when JIT is disabled (indicates a problem)
-        pass
+# Numba/Librosa compatibility check DEFERRED to first engine use.
+# The numba_compat module imports librosa (~0.7s) to test JIT compilation,
+# which is too expensive for startup. Instead, we defer the test until
+# an engine actually needs librosa. On Python 3.13+ we preemptively set
+# the safe env var since numba JIT is known to be problematic there.
+if sys.version_info >= (3, 13):
+    os.environ.setdefault('NUMBA_DISABLE_JIT', '1')
 
 # TorchCodec note: Removed torchcodec dependency to eliminate FFmpeg system requirement
 # torchaudio.load() works fine with fallback backends (soundfile, scipy)
@@ -111,7 +85,12 @@ import os
 
 # Version disclosure for troubleshooting
 def print_critical_versions():
-    """Print versions of critical packages for troubleshooting"""
+    """Print versions of critical packages for troubleshooting.
+
+    Uses importlib.metadata to read versions without importing the actual
+    packages. This avoids pulling in transformers (~1.3s), librosa (~0.7s),
+    and other heavy modules just to print a version string at startup.
+    """
     critical_packages = [
         ('numpy', 'NumPy'),
         ('librosa', 'Librosa'),
@@ -123,21 +102,31 @@ def print_critical_versions():
         ('soundfile', 'SoundFile'),
     ]
 
+    from importlib.metadata import version as _pkg_version, PackageNotFoundError
+
     version_info = []
     for pkg_name, display_name in critical_packages:
         try:
-            module = __import__(pkg_name)
-            version = getattr(module, '__version__', 'unknown')
-            version_info.append(f"{display_name} {version}")
-        except ImportError:
+            ver = _pkg_version(pkg_name)
+            version_info.append(f"{display_name} {ver}")
+        except PackageNotFoundError:
             version_info.append(f"{display_name} not installed")
 
     print(f"ℹ️ Critical package versions: {', '.join(version_info)}")
 
 def warn_transformers_5_unsupported():
-    """Warn when Transformers 5.x is installed (Qwen3-TTS tokenizer is incompatible)."""
+    """Warn when Transformers 5.x is installed (Qwen3-TTS tokenizer is incompatible).
+
+    NOTE: This check uses sys.modules to avoid eagerly importing transformers (~1.3s).
+    If transformers hasn't been imported yet (e.g. by the version-printing function above),
+    we skip the check -- it will be caught later when an engine actually loads transformers.
+    """
     try:
-        import transformers
+        # Only check if transformers is already loaded (avoids ~1.3s eager import)
+        import sys as _sys
+        if 'transformers' not in _sys.modules:
+            return
+        transformers = _sys.modules['transformers']
         try:
             from packaging.version import Version
             version = Version(transformers.__version__)
