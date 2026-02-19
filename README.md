@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.21.5
+# TTS Audio Suite v4.21.6
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -739,30 +739,36 @@ Instruct: 用兴奋的语气说话。
 </details>
 
 <details>
-<summary><h3>🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design</h3></summary>
+<summary><h3>🎤 Qwen3-TTS - 4 Model Types with Text-to-Voice Design</h3></summary>
 
-**NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning!
+**NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct TTS model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning! A **single engine** automatically selects and downloads the correct model based on your settings — no manual model management needed.
 **NEW**: ✏️ Qwen3-ASR transcription via the Unified ASR Transcribe node (Qwen3 engine)
 
 **Model Types:**
 
-* **🎭 CustomVoice Model**: 9 preset multilingual speakers (Vivian, Serena, Uncle_Fu, Dylan, Eric, Ryan, Aiden, Ono_Anna, Sohee)
-  - Optional instruction field for style control ("Speak cheerfully", "Sound professional")
+* **🎭 CustomVoice Model** (0.6B / 1.7B): 9 preset multilingual speakers (Vivian, Serena, Uncle_Fu, Dylan, Eric, Ryan, Aiden, Ono_Anna, Sohee)
+  - ✅ Supports style instructions ("Speak cheerfully", "Sound professional")
   - Character switching auto-maps to different preset speakers
 
-* **✍️ VoiceDesign Model**: **UNIQUE** - Create voices from text descriptions
+* **✍️ VoiceDesign Model** (1.7B only): **UNIQUE** - Create voices from text descriptions
   - Input: "A cheerful young woman with a bright, energetic tone"
   - Output: Instant voice generation matching the description
+  - ✅ Supports style instructions alongside the voice description
   - Smart disk caching for reuse across sessions
 
-* **🎤 Base Model**: Zero-shot voice cloning from 3-30s reference audio
-  - In-Context Learning (ICL) mode for best quality
-  - X-Vector mode for faster generation
+* **🎤 Base Model** (0.6B / 1.7B): Zero-shot voice cloning from 3-30s reference audio
+  - **ICL mode** (default, best quality): requires reference audio **+ reference transcript** — use the 🎭 Character Voices node which always includes both
+  - **X-Vector mode**: uses only the audio to extract a speaker embedding, no transcript needed — faster but lower quality
+  - ⚠️ **Does NOT support style instructions** — instruction field is ignored in this mode
+
+* **🔤 ASR**: Transcription via the ✏️ Unified ASR Transcribe node
+
+> **⚠️ Style instructions only work with CustomVoice and VoiceDesign.** Voice cloning (Base) ignores the instruction field entirely.
 
 **Technical Specs:**
 
 * **🌍 10 Languages**: Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian
-* **📏 2 Model Sizes**: 0.6B and 1.7B parameter variants
+* **📏 2 Model Sizes**: 0.6B and 1.7B parameter variants (VoiceDesign is 1.7B only)
 * **⚡ Attention Options**: eager, flash_attention_2, sdpa, sage_attn for performance tuning
 * **🔧 Generation Control**: Temperature, top_k, top_p, repetition_penalty parameters
 * **⚡ torch.compile Optimizations**: Optional 1.7x speedup (PyTorch 2.10+ required) → [📖 Setup Guide](docs/qwen3_tts_optimizations.md)
@@ -1898,6 +1904,7 @@ Your support helps maintain and improve this project for the entire community!
 | **⚙️ Step Audio EditX Integration**            | Step Audio EditX TTS engine with zero-shot voice cloning   | ✅ **New in v4.14**   | [📁 JSON](example_workflows/Step%20Audio%20EditX%20Integration.json)                                                |
 | **🌈 IndexTTS-2 Integration**                  | IndexTTS-2 engine with advanced emotion control            | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)                                                     |
 | **📝 F5 TTS + Text Normalizer**                | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)                     |
+| **Qwen3 integration + ASR**                    | Qwen3-TTS voice generation with ASR transcription          | ✅ **New in v4.21**   | [📁 JSON](example_workflows/Qwen3%20integration%20+%20ASR.json)                                                     |
 | **VibeVoice Integration**                      | VibeVoice long-form TTS with multi-speaker support         | ✅ **Compatible**     | [📁 JSON](example_workflows/VibeVoice%20integration.json)                                                           |
 | **ChatterBox Integration**                     | General ChatterBox TTS and Voice Conversion                | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                                                          |
 | **F5-TTS Speech Editor**                       | Interactive waveform analysis for F5-TTS editing           | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json)                                          |
