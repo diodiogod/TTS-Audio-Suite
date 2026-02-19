@@ -1197,7 +1197,29 @@ sudo dnf install ffmpeg
 
 If FFmpeg is not available, ChatterBox will automatically fall back to using the built-in phase vocoder method for audio stretching - your workflows will continue to work without interruption.
 
-### 4. Download Models
+### 4. Models — All Auto-Download
+
+**No manual downloads needed.** Every engine downloads its models automatically on first use. Just select an engine, run your workflow, and models appear.
+
+| Engine | Auto | Size | Notes |
+|--------|:---:|------|-------|
+| **ChatterBox** | ✅ | ~4.3GB/lang | 12 languages |
+| **ChatterBox 23-Lang** | ✅ | ~4.3GB | 24 languages, single model |
+| **F5-TTS** | ✅ | ~1.2GB/lang | 6+ language models |
+| **Higgs Audio 2** | ✅ | ~9.2GB | Generation model + tokenizer |
+| **VibeVoice** | ✅ | 5.4–18GB | 1.5B or 7B variant |
+| **IndexTTS-2** | ✅ | ~4.7GB | Emotion control |
+| **CosyVoice3** | ✅ | ~5.4GB | 9-language zero-shot |
+| **Qwen3-TTS** | ✅ | 1.5–4.2GB | 6 model variants |
+| **Step Audio EditX** | ✅ | ~7GB | LLM audio editing |
+| **RVC** | ✅\* | 100–300MB | Voice conversion |
+
+\*RVC auto-downloads base models; character `.pth` voice files are user-provided.
+
+> The sections below are for **offline or manual setup only**. You can safely skip them unless you need to pre-download models for an air-gapped environment.
+
+<details>
+<summary><strong>4a. ChatterBox (manual/offline)</strong></summary>
 
 **Download the ChatterboxTTS models** and place them in the new organized structure:
 
@@ -1221,7 +1243,7 @@ ComfyUI/models/chatterbox/        ← Legacy (still works)
 
 **Download from:** https://huggingface.co/ResembleAI/chatterbox/tree/main
 
-#### 4.1. Multilanguage ChatterBox Models (Optional)
+#### 4a.1. Multilanguage ChatterBox Models (Optional)
 
 **NEW in v3.3.0**: ChatterBox now supports multiple languages! Models will auto-download on first use, or you can manually install them for offline use.
 
@@ -1270,7 +1292,7 @@ ComfyUI/models/TTS/chatterbox/    ← Recommended structure
 
 **Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model.
 
-### 4.2. Chatterbox Multilingual TTS (Official 23-Lang)
+#### 4a.2. Chatterbox Multilingual TTS (Official 23-Lang)
 
 **Repository:** [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | **Size:** ~4.3GB | **Auto-Download:** ✅
 
@@ -1304,6 +1326,11 @@ ComfyUI/models/TTS/chatterbox_official_23lang/
 - **Auto-download**: Missing files download automatically on first use
 - All versions can coexist - switch between them without re-downloading
 - Vietnamese (Viterbox) is a community finetune with expanded Vietnamese tokenization (24 languages total)
+
+</details>
+
+<details>
+<summary><strong>4b. F5-TTS (manual/offline)</strong></summary>
 
 ### 5. F5-TTS Models (Optional)
 
@@ -1369,6 +1396,11 @@ ComfyUI/models/TTS/F5-TTS/
 
 **Note:** F5-TTS models and vocoder will auto-download from HuggingFace if not found locally. The first generation may take longer while downloading (~1.2GB per model).
 
+</details>
+
+<details>
+<summary><strong>4c. F5-TTS Voice References</strong></summary>
+
 ### 6. F5-TTS Voice References Setup
 
 **For easy voice reference management**, create a dedicated voices folder:
@@ -1411,6 +1443,11 @@ To avoid possible inference failures, make sure you follow these F5-TTS optimiza
 These guidelines help ensure optimal F5-TTS generation quality and prevent common audio artifacts.
 
 </details>
+
+</details>
+
+<details>
+<summary><strong>4d. Higgs Audio 2 (manual/offline)</strong></summary>
 
 ### 7. Higgs Audio 2 Models (Optional - NEW in v4.5.0+)
 
@@ -1474,6 +1511,11 @@ To pre-download models for offline use:
 
 **Usage**: Simply use the ⚙️ Higgs Audio 2 Engine node → Select model → All required files download automatically!
 
+</details>
+
+<details>
+<summary><strong>4e. VibeVoice (manual/offline)</strong></summary>
+
 ### 8. VibeVoice Models (NEW in v4.6.0+)
 
 **For Microsoft VibeVoice Long-Form TTS**, models are automatically downloaded to:
@@ -1512,6 +1554,11 @@ ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
 - **Automatic Management**: Models download automatically on first use
 
 **Usage**: Simply use the ⚙️ VibeVoice Engine node → Select model → Connect to TTS Text/SRT → All files download automatically!
+
+</details>
+
+<details>
+<summary><strong>4f. RVC (manual/offline)</strong></summary>
 
 ### 9. RVC Models (Optional - NEW in v4.0.0+)
 
@@ -1570,6 +1617,11 @@ Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/
 
 **Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
 
+</details>
+
+<details>
+<summary><strong>4g. IndexTTS-2 (manual/offline)</strong></summary>
+
 ### 10. IndexTTS-2 Models (NEW in v4.9.0+)
 
 **For IndexTTS-2 advanced emotion control capabilities**, models are automatically downloaded to the organized structure:
@@ -1614,6 +1666,11 @@ ComfyUI/models/TTS/IndexTTS/
 - **8-Emotion Vector Control**: Manual precision control over emotional expression
 
 **Usage**: Simply use the ⚙️ IndexTTS-2 Engine node → Connect emotion control → All required models download automatically!
+
+</details>
+
+<details>
+<summary><strong>4h. Step Audio EditX (manual/offline)</strong></summary>
 
 ### 11. Step Audio EditX Models (NEW in v4.15+)
 
@@ -1660,6 +1717,11 @@ ComfyUI/models/TTS/step_audio_editx/
 
 **Usage**: Simply use the 🎨 Step Audio EditX - Audio Editor node → All required models download automatically! Or use inline edit tags with any TTS node for automatic post-processing.
 
+</details>
+
+<details>
+<summary><strong>4i. CosyVoice3 (manual/offline)</strong></summary>
+
 ### 12. CosyVoice3 Models (NEW in v4.16+)
 
 **Repository:** [FunAudioLLM/Fun-CosyVoice3-0.5B-2512](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512) | **Size:** ~5.4GB | **Auto-Download:** ✅
@@ -1693,6 +1755,11 @@ ComfyUI/models/TTS/CosyVoice/
 - Shared files (flow.pt, hift.pt, etc.) are downloaded once and reused by both variants
 
 **Usage**: Select CosyVoice3 from Unified TTS Engine → Choose model variant → Auto-download on first use!
+
+</details>
+
+<details>
+<summary><strong>4j. Qwen3-TTS (manual/offline)</strong></summary>
 
 ### 13. Qwen3-TTS Models (NEW in v4.19+)
 
@@ -1748,7 +1815,9 @@ ComfyUI/models/TTS/qwen3_tts/
 - Connect the Qwen3 Engine
 - Auto-downloads Qwen3-ASR models on first use
 
-### 14. Restart ComfyUI
+</details>
+
+### 5. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
