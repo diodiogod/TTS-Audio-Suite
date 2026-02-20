@@ -264,11 +264,11 @@ engines:
         auto_download: true
         notes: "v1 + v2 files and tokenizer"
       - component: "Vietnamese (Viterbox)"
-        source_name: "ResembleAI/chatterbox"
-        source_url: "https://huggingface.co/ResembleAI/chatterbox"
+        source_name: "dolly-vn/viterbox"
+        source_url: "https://huggingface.co/dolly-vn/viterbox"
         size: "~4.3GB"
         auto_download: true
-        notes: "Community finetune option in engine"
+        notes: "Vietnamese community finetune used by downloader"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -775,11 +775,17 @@ engines:
 
     model_sources:
       - component: "RVC character pack"
-        source_name: "SayanoAI/RVC-Studio"
-        source_url: "https://huggingface.co/datasets/SayanoAI/RVC-Studio"
+        source_name: "SayanoAI/RVC-Studio (RVC folder)"
+        source_url: "https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main/RVC"
         size: "Varies"
         auto_download: true
-        notes: "Default characters (Claire/Sayano/Mae/Fuji/Monika)"
+        notes: "Default auto-download characters: Claire, Sayano, Mae_v2, Fuji, Monika (extras also available)"
+      - component: "RVC index pack (.index)"
+        source_name: "SayanoAI/RVC-Studio (.index folder)"
+        source_url: "https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main/RVC/.index"
+        size: "Varies"
+        auto_download: true
+        notes: "Optional FAISS indexes for improved voice similarity"
       - component: "content-vec-best.safetensors"
         source_name: "lengyue233/content-vec-best"
         source_url: "https://huggingface.co/lengyue233/content-vec-best"

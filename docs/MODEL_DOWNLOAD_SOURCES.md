@@ -39,7 +39,7 @@ Use this as the canonical list of model repositories/links for offline setup.
 | Component | Source | Size | Auto-Download | Notes |
 |---|---|---|---|---|
 | Official 23-Lang (v1/v2) | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | ~4.3GB | ✅ | v1 + v2 files and tokenizer |
-| Vietnamese (Viterbox) | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | ~4.3GB | ✅ | Community finetune option in engine |
+| Vietnamese (Viterbox) | [dolly-vn/viterbox](https://huggingface.co/dolly-vn/viterbox) | ~4.3GB | ✅ | Vietnamese community finetune used by downloader |
 
 ## VibeVoice
 
@@ -92,7 +92,8 @@ Use this as the canonical list of model repositories/links for offline setup.
 
 | Component | Source | Size | Auto-Download | Notes |
 |---|---|---|---|---|
-| RVC character pack | [SayanoAI/RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | Varies | ✅ | Default characters (Claire/Sayano/Mae/Fuji/Monika) |
+| RVC character pack | [SayanoAI/RVC-Studio (RVC folder)](https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main/RVC) | Varies | ✅ | Default auto-download characters: Claire, Sayano, Mae_v2, Fuji, Monika (extras also available) |
+| RVC index pack (.index) | [SayanoAI/RVC-Studio (.index folder)](https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main/RVC/.index) | Varies | ✅ | Optional FAISS indexes for improved voice similarity |
 | content-vec-best.safetensors | [lengyue233/content-vec-best](https://huggingface.co/lengyue233/content-vec-best) | ~300MB | ✅ | Voice feature model |
 | rmvpe.pt | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | ~55MB | ✅ | Pitch extraction model |
 
