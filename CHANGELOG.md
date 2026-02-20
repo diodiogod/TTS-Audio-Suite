@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.8] - 2026-02-20
+
+### Added
+
+- Clarify default auto-download characters and optional index pack
+
+### Changed
+
+- Improve RVC character pack links to direct dataset folders
+
+### Fixed
+
+- Fix ChatterBox 23L and RVC model download references
+- Fix ChatterBox 23L Vietnamese (Viterbox) source link
 ## [4.21.7] - 2026-02-20
 
 ### Added
