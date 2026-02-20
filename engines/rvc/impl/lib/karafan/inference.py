@@ -140,7 +140,11 @@ class MusicSeparationModel:
 
 		self.output = os.path.join(BASE_CACHE_DIR,"temp","karafan") if cache_dir is None else cache_dir
 		
-		self.ffmpeg = os.path.join(self.Gdrive, "ffmpeg") + (".exe" if platform.system() == 'Windows' else "")
+		try:
+			from utils.ffmpeg_utils import FFmpegUtils
+			self.ffmpeg = FFmpegUtils.get_ffmpeg_path() or "ffmpeg"
+		except ImportError:
+			self.ffmpeg = "ffmpeg"
 		
 		if torch.cuda.is_available():
 			self.GPU_device = 'cuda:0'
