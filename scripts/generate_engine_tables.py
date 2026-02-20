@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 TTS Audio Suite - Engine Tables Generator
-Generates three documentation tables from YAML source of truth
-Also injects condensed table into README.md between markers
+Generates documentation tables from YAML source of truth.
+Also injects condensed table into README.md between markers.
 """
 
 import yaml
@@ -27,6 +27,15 @@ def format_support(value, notes=""):
         return f"✅ {notes}" if notes else "✅"
     else:
         return "❌"
+
+
+def format_markdown_link(name, url):
+    """Format optional markdown link."""
+    if not name and not url:
+        return "-"
+    if url:
+        return f"[{name}]({url})" if name else f"[link]({url})"
+    return name
 
 
 def get_speed_emoji(speed_note):
@@ -141,10 +150,68 @@ def generate_readme_condensed_table(data):
     output.append("")
     output.append("📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | "
                   "**[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | "
-                  "**[Feature matrix →](docs/FEATURE_COMPARISON.md)**")
+                  "**[Feature matrix →](docs/FEATURE_COMPARISON.md)** | "
+                  "**[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | "
+                  "**[Model folder layouts →](docs/MODEL_LAYOUTS.md)**")
     output.append("")
     output.append("*Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*")
 
+    return "\n".join(output)
+
+
+def generate_model_download_sources(data):
+    """Generate model download sources table grouped by engine."""
+    engines = data["engines"]
+
+    output = []
+    output.append("# Model Download Sources")
+    output.append("")
+    output.append("All entries below are generated from the single source of truth YAML.")
+    output.append("Use this as the canonical list of model repositories/links for offline setup.")
+    output.append("")
+
+    for engine in engines:
+        sources = engine.get("model_sources", [])
+        if not sources:
+            continue
+
+        output.append(f"## {engine['name']}")
+        output.append("")
+        output.append("| Component | Source | Size | Auto-Download | Notes |")
+        output.append("|---|---|---|---|---|")
+
+        for source in sources:
+            component = source.get("component", "-")
+            source_name = source.get("source_name", "")
+            source_url = source.get("source_url", "")
+            source_display = format_markdown_link(source_name, source_url)
+            size = source.get("size", "-")
+            auto_download = format_support(source.get("auto_download"))
+            notes = source.get("notes", "")
+
+            output.append(
+                f"| {component} | {source_display} | {size} | {auto_download} | {notes} |"
+            )
+
+        output.append("")
+
+    output.append("*Generated from [tts_audio_suite_engines.yaml](Dev%20reports/tts_audio_suite_engines.yaml).*")
+    return "\n".join(output)
+
+
+def generate_model_layouts(data):
+    """Generate model layout documentation from YAML source."""
+    model_layouts_markdown = data.get("model_layouts_markdown", "")
+    if model_layouts_markdown:
+        return model_layouts_markdown.strip() + "\n"
+
+    # Fallback so the file is still generated even without YAML content.
+    output = []
+    output.append("# Model Folder Layouts")
+    output.append("")
+    output.append("No model layout data found in YAML source.")
+    output.append("")
+    output.append("Populate `model_layouts_markdown` in `docs/Dev reports/tts_audio_suite_engines.yaml`.")
     return "\n".join(output)
 
 
@@ -318,6 +385,22 @@ def main():
         print(f"✅ Written to {docs_dir / 'FEATURE_COMPARISON.md'}")
     else:
         print(f"⏭️  Skipped {docs_dir / 'FEATURE_COMPARISON.md'} (unchanged)")
+
+    # Generate Model Download Sources
+    print("Generating Model Download Sources table...")
+    model_sources = generate_model_download_sources(data)
+    if write_if_changed(docs_dir / "MODEL_DOWNLOAD_SOURCES.md", model_sources):
+        print(f"✅ Written to {docs_dir / 'MODEL_DOWNLOAD_SOURCES.md'}")
+    else:
+        print(f"⏭️  Skipped {docs_dir / 'MODEL_DOWNLOAD_SOURCES.md'} (unchanged)")
+
+    # Generate Model Layouts
+    print("Generating Model Folder Layouts doc...")
+    model_layouts = generate_model_layouts(data)
+    if write_if_changed(docs_dir / "MODEL_LAYOUTS.md", model_layouts):
+        print(f"✅ Written to {docs_dir / 'MODEL_LAYOUTS.md'}")
+    else:
+        print(f"⏭️  Skipped {docs_dir / 'MODEL_LAYOUTS.md'} (unchanged)")
 
     # Generate and inject condensed README table
     print("\nGenerating condensed README table...")

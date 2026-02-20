@@ -17,6 +17,62 @@ engines:
       - "Targeted Word/Speech Editing"
       - "Speed control"
 
+    model_sources:
+      - component: "F5TTS_Base"
+        source_name: "SWivid/F5-TTS"
+        source_url: "https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "English base model"
+      - component: "F5TTS_v1_Base"
+        source_name: "SWivid/F5-TTS"
+        source_url: "https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "English v1 model"
+      - component: "E2TTS_Base"
+        source_name: "SWivid/E2-TTS"
+        source_url: "https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "English E2-TTS model"
+      - component: "F5-DE"
+        source_name: "aihpi/F5-TTS-German"
+        source_url: "https://huggingface.co/aihpi/F5-TTS-German"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "German finetune"
+      - component: "F5-ES"
+        source_name: "jpgallegoar/F5-Spanish"
+        source_url: "https://huggingface.co/jpgallegoar/F5-Spanish"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "Spanish finetune"
+      - component: "F5-FR"
+        source_name: "RASPIAUDIO/F5-French-MixedSpeakers-reduced"
+        source_url: "https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "French finetune"
+      - component: "F5-JP"
+        source_name: "Jmica/F5TTS"
+        source_url: "https://huggingface.co/Jmica/F5TTS"
+        size: "~1.2GB"
+        auto_download: true
+        notes: "Japanese finetune"
+      - component: "F5-Hindi-Small"
+        source_name: "SPRINGLab/F5-Hindi-24KHz"
+        source_url: "https://huggingface.co/SPRINGLab/F5-Hindi-24KHz"
+        size: "~632MB"
+        auto_download: true
+        notes: "Hindi finetune"
+      - component: "Vocos Mel-24kHz"
+        source_name: "charactr/vocos-mel-24khz"
+        source_url: "https://huggingface.co/charactr/vocos-mel-24khz"
+        size: "N/A"
+        auto_download: true
+        notes: "Optional vocoder"
+
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
       zh: { supported: false, flag: "🇨🇳", notes: "" }
@@ -70,6 +126,80 @@ engines:
 
     special_features:
       - "Expressiveness slider"
+
+    model_sources:
+      - component: "English"
+        source_name: "ResembleAI/chatterbox"
+        source_url: "https://huggingface.co/ResembleAI/chatterbox"
+        size: "~2GB"
+        auto_download: true
+        notes: ".pt model set"
+      - component: "German"
+        source_name: "stlohrey/chatterbox_de"
+        source_url: "https://huggingface.co/stlohrey/chatterbox_de"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "German (havok2)"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "German (SebastianBodza)"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Italian"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".pt model set"
+      - component: "French"
+        source_name: "Thomcles/ChatterBox-fr"
+        source_url: "https://huggingface.co/Thomcles/ChatterBox-fr"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Russian"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Armenian"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Georgian"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Japanese"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Korean"
+        source_name: "niobures/Chatterbox-TTS"
+        source_url: "https://huggingface.co/niobures/Chatterbox-TTS"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
+      - component: "Norwegian"
+        source_name: "akhbar/chatterbox-tts-norwegian"
+        source_url: "https://huggingface.co/akhbar/chatterbox-tts-norwegian"
+        size: "~4.3GB"
+        auto_download: true
+        notes: ".safetensors model set"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -125,6 +255,20 @@ engines:
     special_features:
       - "24 languages in single model"
       - "emotion tokens (v2 - doesn't work)"
+
+    model_sources:
+      - component: "Official 23-Lang (v1/v2)"
+        source_name: "ResembleAI/chatterbox"
+        source_url: "https://huggingface.co/ResembleAI/chatterbox"
+        size: "~4.3GB"
+        auto_download: true
+        notes: "v1 + v2 files and tokenizer"
+      - component: "Vietnamese (Viterbox)"
+        source_name: "ResembleAI/chatterbox"
+        source_url: "https://huggingface.co/ResembleAI/chatterbox"
+        size: "~4.3GB"
+        auto_download: true
+        notes: "Community finetune option in engine"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -183,6 +327,20 @@ engines:
       - "Multilingual (KugelAudio)"
       - "4-bit quantization"
 
+    model_sources:
+      - component: "vibevoice-1.5B"
+        source_name: "microsoft/VibeVoice-1.5B"
+        source_url: "https://huggingface.co/microsoft/VibeVoice-1.5B"
+        size: "~5.4GB"
+        auto_download: true
+        notes: "Microsoft official model"
+      - component: "vibevoice-7B"
+        source_name: "aoi-ot/VibeVoice-Large"
+        source_url: "https://huggingface.co/aoi-ot/VibeVoice-Large"
+        size: "~18GB"
+        auto_download: true
+        notes: "Community mirror used by downloader"
+
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
       zh: { supported: true, flag: "🇨🇳", notes: "" }
@@ -237,6 +395,20 @@ engines:
     special_features:
       - "3 multi-speaker"
       - "CUDA graphs (55+ tokens/sec)"
+
+    model_sources:
+      - component: "higgs-audio-v2-3B"
+        source_name: "bosonai/higgs-audio-v2-generation-3B-base"
+        source_url: "https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base"
+        size: "~9GB"
+        auto_download: true
+        notes: "Generation model"
+      - component: "Audio tokenizer"
+        source_name: "bosonai/higgs-audio-v2-tokenizer"
+        source_url: "https://huggingface.co/bosonai/higgs-audio-v2-tokenizer"
+        size: "~200MB"
+        auto_download: true
+        notes: "Tokenizer model"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -294,6 +466,25 @@ engines:
       - "Text as reference"
       - "Audio as reference"
 
+    model_sources:
+      - component: "IndexTTS-2"
+        source_name: "IndexTeam/IndexTTS-2"
+        source_url: "https://huggingface.co/IndexTeam/IndexTTS-2"
+        size: "Multiple files"
+        auto_download: true
+        notes: "Main TTS engine"
+      - component: "w2v-bert-2.0"
+        source_name: "facebook/w2v-bert-2.0"
+        source_url: "https://huggingface.co/facebook/w2v-bert-2.0"
+        size: "~2GB"
+        auto_download: true
+        notes: "Semantic feature extractor"
+      - component: "qwen0.6bemo4-merge"
+        source_name: "Included with IndexTTS-2"
+        size: "Included"
+        auto_download: true
+        notes: "Text emotion model bundle"
+
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
       zh: { supported: true, flag: "🇨🇳", notes: "" }
@@ -347,6 +538,14 @@ engines:
 
     special_features:
       - "Paralinguistic tags"
+
+    model_sources:
+      - component: "Fun-CosyVoice3-0.5B / 0.5B-RL"
+        source_name: "FunAudioLLM/Fun-CosyVoice3-0.5B-2512"
+        source_url: "https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512"
+        size: "~5.4GB first variant (+~2GB second)"
+        auto_download: true
+        notes: "Both variants share common files"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -402,6 +601,50 @@ engines:
     special_features:
       - "Voice design"
       - "ASR (Automatic Speech Recognition)"
+
+    model_sources:
+      - component: "CustomVoice 0.6B"
+        source_name: "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
+        source_url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
+        size: "~1.5GB"
+        auto_download: true
+        notes: "Preset voices + instructions"
+      - component: "CustomVoice 1.7B"
+        source_name: "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+        source_url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+        size: "~4.2GB"
+        auto_download: true
+        notes: "Preset voices + instructions"
+      - component: "VoiceDesign 1.7B"
+        source_name: "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
+        source_url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
+        size: "~4.2GB"
+        auto_download: true
+        notes: "Text-to-voice design model"
+      - component: "Base 0.6B"
+        source_name: "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+        source_url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+        size: "~1.5GB"
+        auto_download: true
+        notes: "Zero-shot voice cloning"
+      - component: "Base 1.7B"
+        source_name: "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+        source_url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+        size: "~4.2GB"
+        auto_download: true
+        notes: "Zero-shot voice cloning"
+      - component: "Qwen3-ASR-1.7B"
+        source_name: "Qwen/Qwen3-ASR-1.7B"
+        source_url: "https://huggingface.co/Qwen/Qwen3-ASR-1.7B"
+        size: "N/A"
+        auto_download: true
+        notes: "ASR transcribe model"
+      - component: "Qwen3-ForcedAligner-0.6B"
+        source_name: "Qwen/Qwen3-ForcedAligner-0.6B"
+        source_url: "https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B"
+        size: "N/A"
+        auto_download: true
+        notes: "Word-level timestamps"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -459,6 +702,20 @@ engines:
       - "32 speaking styles"
       - "Paralinguistic effects"
 
+    model_sources:
+      - component: "Step-Audio-EditX"
+        source_name: "stepfun-ai/Step-Audio-EditX"
+        source_url: "https://huggingface.co/stepfun-ai/Step-Audio-EditX"
+        size: "~7GB"
+        auto_download: true
+        notes: "Main 3B audio editing model"
+      - component: "Step-Audio-Tokenizer"
+        source_name: "stepfun-ai/Step-Audio-Tokenizer"
+        source_url: "https://huggingface.co/stepfun-ai/Step-Audio-Tokenizer"
+        size: "Included"
+        auto_download: true
+        notes: "Tokenizer bundle used by Step EditX"
+
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
       zh: { supported: true, flag: "🇨🇳", notes: "(Mandarin + Sichuanese, Cantonese)" }
@@ -515,6 +772,26 @@ engines:
       - "Pitch shift (±14)"
       - "6 HuBERT models"
       - "Language-independent"
+
+    model_sources:
+      - component: "RVC character pack"
+        source_name: "SayanoAI/RVC-Studio"
+        source_url: "https://huggingface.co/datasets/SayanoAI/RVC-Studio"
+        size: "Varies"
+        auto_download: true
+        notes: "Default characters (Claire/Sayano/Mae/Fuji/Monika)"
+      - component: "content-vec-best.safetensors"
+        source_name: "lengyue233/content-vec-best"
+        source_url: "https://huggingface.co/lengyue233/content-vec-best"
+        size: "~300MB"
+        auto_download: true
+        notes: "Voice feature model"
+      - component: "rmvpe.pt"
+        source_name: "lj1995/VoiceConversionWebUI"
+        source_url: "https://huggingface.co/lj1995/VoiceConversionWebUI"
+        size: "~55MB"
+        auto_download: true
+        notes: "Pitch extraction model"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -606,3 +883,231 @@ table_notes:
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**RVC**: Language-independent (work as post-processors VC with any TTS output)"
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
+
+model_layouts_markdown: |
+  # Model Folder Layouts
+  
+  Use this document for folder structures and placement notes.
+  For repository/source URLs, use [MODEL_DOWNLOAD_SOURCES.md](MODEL_DOWNLOAD_SOURCES.md).
+  
+  ## ChatterBox
+  
+  Recommended:
+  
+  ```text
+  ComfyUI/models/TTS/chatterbox/
+  ```
+  
+  Legacy (still supported):
+  
+  ```text
+  ComfyUI/models/chatterbox/
+  ```
+  
+  Required base files:
+  
+  - `conds.pt`
+  - `s3gen.pt`
+  - `t3_cfg.pt`
+  - `tokenizer.json`
+  - `ve.pt`
+  
+  Optional multilingual subfolders:
+  
+  ```text
+  ComfyUI/models/TTS/chatterbox/
+  ├── English/
+  ├── German/
+  └── Norwegian/
+  ```
+  
+  ## ChatterBox Official 23-Lang
+  
+  ```text
+  ComfyUI/models/TTS/chatterbox_official_23lang/
+  └── ChatterBox Official 23-Lang/
+      ├── t3_23lang.safetensors
+      ├── t3_mtl23ls_v2.safetensors
+      ├── grapheme_mtl_merged_expanded_v1.json
+      ├── s3gen.pt
+      ├── ve.pt
+      ├── mtl_tokenizer.json
+      └── conds.pt
+  ```
+  
+  Notes:
+  
+  - v1 and v2 coexist in one directory.
+  - Vietnamese (Viterbox) is available as a community finetune option.
+  
+  ## F5-TTS
+  
+  Recommended:
+  
+  ```text
+  ComfyUI/models/TTS/F5-TTS/
+  ```
+  
+  Legacy (still supported):
+  
+  ```text
+  ComfyUI/models/F5-TTS/
+  ```
+  
+  Typical structure:
+  
+  ```text
+  ComfyUI/models/TTS/F5-TTS/
+  ├── F5TTS_Base/
+  │   ├── model_1200000.safetensors
+  │   └── vocab.txt
+  ├── F5TTS_v1_Base/
+  │   ├── model_1250000.safetensors
+  │   └── vocab.txt
+  └── vocos/
+      ├── config.yaml
+      └── pytorch_model.bin
+  ```
+  
+  Notes:
+  
+  - F5-TTS models auto-download on first use.
+  - `vocab.txt` is required per model.
+  - Vocos is optional and also auto-downloadable.
+  
+  ## F5-TTS Voice References
+  
+  ```text
+  ComfyUI/models/voices/
+  ├── character1.wav
+  ├── character1.reference.txt
+  ├── narrator.wav
+  └── narrator.txt
+  ```
+  
+  Requirements:
+  
+  - WAV, clean speech, 5-30s (24kHz recommended).
+  - Text must match spoken audio.
+  - Naming: `name.wav` + `name.reference.txt` (preferred) or `name.txt`.
+  
+  Inference guidelines:
+  
+  1. Keep reference audio under ~12s with a little trailing silence.
+  2. Use uppercase letter-by-letter only when desired.
+  3. Use spaces/punctuation for explicit pauses.
+  4. Keep a space after sentence-ending punctuation.
+  5. For Chinese output, preprocess numbers if needed.
+  
+  ## Higgs Audio 2
+  
+  ```text
+  ComfyUI/models/TTS/HiggsAudio/
+  └── higgs-audio-v2-3B/
+      ├── generation/
+      ├── tokenizer/
+      └── voices/
+  ```
+  
+  Notes:
+  
+  - Both generation model and tokenizer auto-download.
+  - Place reference audio/transcription in `voices/`.
+  
+  ## VibeVoice
+  
+  ```text
+  ComfyUI/models/TTS/VibeVoice/
+  ├── vibevoice-1.5B/
+  └── vibevoice-7B/
+  ```
+  
+  Notes:
+  
+  - Both variants auto-download on first use.
+  - `vibevoice-7B` uses a community mirror in downloader config.
+  
+  ## RVC
+  
+  Recommended:
+  
+  ```text
+  ComfyUI/models/TTS/RVC/
+  ├── *.pth
+  ├── content-vec-best.safetensors
+  ├── rmvpe.pt
+  ├── hubert/
+  └── .index/
+  ```
+  
+  Legacy (still supported):
+  
+  ```text
+  ComfyUI/models/RVC/
+  ```
+  
+  Notes:
+  
+  - Base models auto-download.
+  - Character `.pth` models can be auto-downloaded defaults or user-provided.
+  - UVR models are downloaded under `ComfyUI/models/TTS/UVR/` (or legacy `ComfyUI/models/UVR/`).
+  
+  ## IndexTTS-2
+  
+  ```text
+  ComfyUI/models/TTS/IndexTTS/
+  ├── IndexTTS-2/
+  └── w2v-bert-2.0/
+  ```
+  
+  Notes:
+  
+  - Emotion components and semantic feature models auto-download.
+  
+  ## Step Audio EditX
+  
+  ```text
+  ComfyUI/models/TTS/step_audio_editx/
+  ├── Step-Audio-EditX/
+  │   └── CosyVoice-300M-25Hz/
+  └── FunASR-Paraformer/
+  ```
+  
+  Notes:
+  
+  - Main model, tokenizer assets, and speech stack auto-download.
+  
+  ## CosyVoice3
+  
+  ```text
+  ComfyUI/models/TTS/CosyVoice/
+  └── Fun-CosyVoice3-0.5B/
+      ├── llm.pt
+      ├── llm.rl.pt
+      └── shared model files...
+  ```
+  
+  Notes:
+  
+  - First selected variant downloads first.
+  - Shared files are reused across variants.
+  
+  ## Qwen3-TTS and Qwen3-ASR
+  
+  ```text
+  ComfyUI/models/TTS/qwen3_tts/
+  ├── Qwen3-TTS-12Hz-0.6B-CustomVoice/
+  ├── Qwen3-TTS-12Hz-1.7B-CustomVoice/
+  ├── Qwen3-TTS-12Hz-1.7B-VoiceDesign/
+  ├── Qwen3-TTS-12Hz-0.6B-Base/
+  ├── Qwen3-TTS-12Hz-1.7B-Base/
+  ├── qwen2-audio-encoder/
+  └── asr/
+      ├── Qwen3-ASR-1.7B/
+      └── Qwen3-ForcedAligner-0.6B/
+  ```
+  
+  Notes:
+  
+  - Only selected variants download.
+  - Shared tokenizer assets are reused.

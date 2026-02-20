@@ -36,7 +36,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
 
-📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)**
+📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
 
 *Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*
 
@@ -430,7 +430,7 @@ Hello! Welcome to our multilingual show.
 * **Cache Intelligence**: Skip recomputation - change 5→3→4 passes instantly
 * **Neural Network Quality**: High-quality voice conversion using trained RVC models
 
-📖 **See [RVC Models Setup](#7-rvc-models-optional---new-in-v400) for detailed installation guide**
+📖 **See [Model folder layouts](docs/MODEL_LAYOUTS.md#rvc) for detailed setup paths**
 
 **How it works:**
 
@@ -938,10 +938,12 @@ Perfect for:
    
    The installer automatically handles all dependency conflicts and Python version compatibility.
 
-3. **Manual Download Models** (OR It will auto-download on first run)
+3. **Run your first workflow**
    
-   - Download from [HuggingFace ChatterBox](https://huggingface.co/ResembleAI/chatterbox/tree/main)
-   - Place in `ComfyUI/models/TTS/chatterbox/English/` (recommended) or `ComfyUI/models/chatterbox/` (legacy)
+   - Models auto-download on first use for all engines.
+   - If you need offline/manual setup, use:
+     - [Model Download Sources](docs/MODEL_DOWNLOAD_SOURCES.md)
+     - [Model Folder Layouts](docs/MODEL_LAYOUTS.md)
 
 4. **Try a Workflow**
    
@@ -952,7 +954,7 @@ Perfect for:
 
 > **🧪 Python 3.13 Users**: Installation is fully supported! The system automatically uses OpenSeeFace for mouth movement analysis when MediaPipe is unavailable.
 
-> **Need F5-TTS?** Also download F5-TTS models to `ComfyUI/models/F5-TTS/` from the links in the detailed installation below.
+> **Need offline/manual setup?** Use [docs/MODEL_DOWNLOAD_SOURCES.md](docs/MODEL_DOWNLOAD_SOURCES.md) and [docs/MODEL_LAYOUTS.md](docs/MODEL_LAYOUTS.md)
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -1197,558 +1199,29 @@ sudo dnf install ffmpeg
 
 If FFmpeg is not available, ChatterBox will automatically fall back to using the built-in phase vocoder method for audio stretching - your workflows will continue to work without interruption.
 
-### 4. Download Models
-
-**Download the ChatterboxTTS models** and place them in the new organized structure:
-
-```
-ComfyUI/models/TTS/chatterbox/    ← Recommended (new structure)
-```
-
-Or use the legacy location (still supported):
-
-```
-ComfyUI/models/chatterbox/        ← Legacy (still works)
-```
-
-**Required files:**
-
-- `conds.pt` (105 KB)
-- `s3gen.pt` (~1 GB)
-- `t3_cfg.pt` (~1 GB)
-- `tokenizer.json` (25 KB)
-- `ve.pt` (5.5 MB)
-
-**Download from:** https://huggingface.co/ResembleAI/chatterbox/tree/main
-
-#### 4.1. Multilanguage ChatterBox Models (Optional)
-
-**NEW in v3.3.0**: ChatterBox now supports multiple languages! Models will auto-download on first use, or you can manually install them for offline use.
-
-**For manual installation**, create language-specific folders in the organized structure:
-
-```
-ComfyUI/models/TTS/chatterbox/    ← Recommended structure
-├── English/          # Optional - for explicit English organization
-│   ├── conds.pt
-│   ├── s3gen.pt
-│   ├── t3_cfg.pt
-│   ├── tokenizer.json
-│   └── ve.pt
-├── German/           # German language models
-│   ├── conds.safetensors
-│   ├── s3gen.safetensors
-│   ├── t3_cfg.safetensors
-│   ├── tokenizer.json
-│   └── ve.safetensors
-└── Norwegian/        # Norwegian language models
-    ├── conds.safetensors
-    ├── s3gen.safetensors
-    ├── t3_cfg.safetensors
-    ├── tokenizer.json
-    └── ve.safetensors
-```
-
-> **Note**: Legacy location `ComfyUI/models/chatterbox/` still works for backward compatibility.
-
-**Available ChatterBox Language Models:**
-
-| Language                | HuggingFace Repository                                                                    | Format       | Auto-Download |
-| ----------------------- | ----------------------------------------------------------------------------------------- | ------------ | ------------- |
-| English                 | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox)                     | .pt          | ✅             |
-| German                  | [stlohrey/chatterbox_de](https://huggingface.co/stlohrey/chatterbox_de)                   | .safetensors | ✅             |
-| German (havok2)         | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| German (SebastianBodza) | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| Italian                 | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .pt          | ✅             |
-| French                  | [Thomcles/ChatterBox-fr](https://huggingface.co/Thomcles/ChatterBox-fr)                   | .safetensors | ✅             |
-| Russian                 | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| Armenian                | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| Georgian                | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| Japanese                | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| Korean                  | [niobures/Chatterbox-TTS](https://huggingface.co/niobures/Chatterbox-TTS)                 | .safetensors | ✅             |
-| Norwegian               | [akhbar/chatterbox-tts-norwegian](https://huggingface.co/akhbar/chatterbox-tts-norwegian) | .safetensors | ✅             |
-
-**Usage:** Simply select your desired language from the dropdown in ChatterBox TTS or SRT nodes. First generation will auto-download the model.
-
-### 4.2. Chatterbox Multilingual TTS (Official 23-Lang)
-
-**Repository:** [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | **Size:** ~4.3GB | **Auto-Download:** ✅
-
-The official ResembleAI multilingual model supporting 23 languages in a unified model structure.
-
-**Installation Structure:**
-
-All v1 and v2 files coexist in the same directory (they share most files):
-
-```
-ComfyUI/models/TTS/chatterbox_official_23lang/
-└── ChatterBox Official 23-Lang/          # Single directory for both versions
-    # v1 Model Files:
-    ├── t3_23lang.safetensors             # Multilingual T3 model v1 (2.14GB)
-
-    # v2 Model Files (auto-downloads when v2 selected):
-    ├── t3_mtl23ls_v2.safetensors           # Multilingual T3 model v2 with enhanced tokenization (2.14GB)
-    ├── grapheme_mtl_merged_expanded_v1.json # Enhanced grapheme/phoneme mappings with special tokens (68KB)
-
-    # Shared Files (used by both v1 and v2):
-    ├── s3gen.pt                 # S3Gen model (1.06GB)
-    ├── ve.pt                    # Voice encoder (5.7MB)
-    ├── mtl_tokenizer.json       # Multilingual tokenizer (68KB)
-    └── conds.pt                 # Conditioning (107KB, optional)
-```
-
-**Model Selection:**
-
-- Choose "ChatterBox Official 23-Lang" from Unified TTS Engine dropdown
-- Select model version (v1, v2, or Vietnamese (Viterbox)) in the Engine Configuration node
-- **Auto-download**: Missing files download automatically on first use
-- All versions can coexist - switch between them without re-downloading
-- Vietnamese (Viterbox) is a community finetune with expanded Vietnamese tokenization (24 languages total)
-
-### 5. F5-TTS Models (Optional)
-
-**For F5-TTS voice synthesis capabilities**, download F5-TTS models and place them in the organized structure:
-
-```
-ComfyUI/models/TTS/F5-TTS/       ← Recommended (new structure)
-```
-
-Or use the legacy location (still supported):
-
-```
-ComfyUI/models/F5-TTS/           ← Legacy (still works)
-```
-
-**Available F5-TTS Models:**
-
-| Model              | Language         | Download                                                                         | Size   |
-| ------------------ | ---------------- | -------------------------------------------------------------------------------- | ------ |
-| **F5TTS_Base**     | English          | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_Base)         | ~1.2GB |
-| **F5TTS_v1_Base**  | English (v1)     | [HuggingFace](https://huggingface.co/SWivid/F5-TTS/tree/main/F5TTS_v1_Base)      | ~1.2GB |
-| **E2TTS_Base**     | English (E2-TTS) | [HuggingFace](https://huggingface.co/SWivid/E2-TTS/tree/main/E2TTS_Base)         | ~1.2GB |
-| **F5-DE**          | German           | [HuggingFace](https://huggingface.co/aihpi/F5-TTS-German)                        | ~1.2GB |
-| **F5-ES**          | Spanish          | [HuggingFace](https://huggingface.co/jpgallegoar/F5-Spanish)                     | ~1.2GB |
-| **F5-FR**          | French           | [HuggingFace](https://huggingface.co/RASPIAUDIO/F5-French-MixedSpeakers-reduced) | ~1.2GB |
-| **F5-JP**          | Japanese         | [HuggingFace](https://huggingface.co/Jmica/F5TTS)                                | ~1.2GB |
-| **F5-Hindi-Small** | Hindi            | [HuggingFace](https://huggingface.co/SPRINGLab/F5-Hindi-24KHz)                   | ~632MB |
-
-**Vocoder (Optional but Recommended):**
-
-```
-ComfyUI/models/TTS/F5-TTS/vocos/     ← Recommended
-├── config.yaml
-├── pytorch_model.bin
-└── vocab.txt
-```
-
-Legacy location also supported: `ComfyUI/models/F5-TTS/vocos/`
-
-Download from: [Vocos Mel-24kHz](https://huggingface.co/charactr/vocos-mel-24khz)
-
-**Complete Folder Structure (Recommended):**
-
-```
-ComfyUI/models/TTS/F5-TTS/
-├── F5TTS_Base/
-│   ├── model_1200000.safetensors    ← Main model file
-│   └── vocab.txt                    ← Vocabulary file
-├── vocos/                           ← For offline vocoder
-│   ├── config.yaml
-│   └── pytorch_model.bin
-└── F5TTS_v1_Base/
-    ├── model_1250000.safetensors
-    └── vocab.txt
-```
-
-**Required Files for Each Model:**
-
-- `model_XXXXXX.safetensors` - The main model weights
-- `vocab.txt` - Vocabulary/tokenizer file (download from same HuggingFace repo)
-
-**Note:** F5-TTS uses internal config files, no config.yaml needed. Vocos vocoder doesn't need vocab.txt.
-
-**Note:** F5-TTS models and vocoder will auto-download from HuggingFace if not found locally. The first generation may take longer while downloading (~1.2GB per model).
-
-### 6. F5-TTS Voice References Setup
-
-**For easy voice reference management**, create a dedicated voices folder:
-
-```
-ComfyUI/models/voices/
-├── character1.wav
-├── character1.reference.txt ← Contains: "Hello, I am character one speaking clearly."
-├── character1.txt          ← Contains: "BBC Radio sample, licensed under CC3..."
-├── narrator.wav
-├── narrator.txt            ← Contains: "This is the narrator voice for storytelling."
-├── my_voice.wav
-└── my_voice.txt            ← Contains: "This is my personal voice sample."
-```
-
-**Voice Reference Requirements:**
-
-- **Audio files**: WAV format, 5-30 seconds, clean speech, 24kHz recommended
-- **Text files**: Exact transcription of what's spoken in the audio file
-- **Naming**: `filename.wav` + `filename.reference.txt` (preferred) or `filename.txt` (fallback)
-- **Character Names**: Character name = audio filename (without extension). Subfolders supported for organization.
-
-**⚠️ F5-TTS Best Practices**: [Follow these guidelines to avoid inference failures](#f5-tts-inference-guidelines)
-
-<details>
-<summary><strong>📋 F5-TTS Inference Guidelines</strong></summary>
-
-To avoid possible inference failures, make sure you follow these F5-TTS optimization guidelines:
-
-1. **Reference Audio Duration**: Use reference audio <12s and leave proper silence space (e.g. 1s) at the end. Otherwise there is a risk of truncating in the middle of word, leading to suboptimal generation.
-
-2. **Letter Case Handling**: Uppercased letters (best with form like K.F.C.) will be uttered letter by letter, and lowercased letters used for common words.
-
-3. **Pause Control**: Add some spaces (blank: " ") or punctuations (e.g. "," ".") to explicitly introduce some pauses.
-
-4. **Punctuation Spacing**: If English punctuation marks the end of a sentence, make sure there is a space " " after it. Otherwise not regarded as sentence chunk.
-
-5. **Number Processing**: Preprocess numbers to Chinese letters if you want to have them read in Chinese, otherwise they will be read in English.
-
-These guidelines help ensure optimal F5-TTS generation quality and prevent common audio artifacts.
-
-</details>
-
-### 7. Higgs Audio 2 Models (Optional - NEW in v4.5.0+)
-
-**For state-of-the-art voice cloning capabilities**, Higgs Audio 2 models are automatically downloaded to the organized structure:
-
-```
-ComfyUI/models/TTS/HiggsAudio/        ← Recommended (new structure)
-├── higgs-audio-v2-3B/               ← Main model directory
-│   ├── generation/                  ← Generation model files
-│   │   ├── config.json
-│   │   ├── model.safetensors.index.json
-│   │   ├── model-00001-of-00003.safetensors (~3GB)
-│   │   ├── model-00002-of-00003.safetensors (~3GB) 
-│   │   ├── model-00003-of-00003.safetensors (~3GB)
-│   │   ├── generation_config.json
-│   │   ├── tokenizer.json
-│   │   ├── tokenizer_config.json
-│   │   └── special_tokens_map.json
-│   └── tokenizer/                   ← Audio tokenizer files
-│       ├── config.json
-│       └── model.pth (~200MB)
-└── voices/                          ← Voice reference files
-    ├── character1.wav               ← 30+ second reference audio
-    ├── character1.txt               ← Exact transcription
-    ├── narrator.wav
-    └── narrator.txt
-```
-
-**Available Higgs Audio Models (Auto-Download):**
-
-| Model             | Type          | Source                                                                                                        | Size   | Auto-Download |
-| ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------- | ------ | ------------- |
-| higgs-audio-v2-3B | Voice Cloning | [bosonai/higgs-audio-v2-generation-3B-base](https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base) | ~9GB   | ✅             |
-| Audio Tokenizer   | Tokenization  | [bosonai/higgs-audio-v2-tokenizer](https://huggingface.co/bosonai/higgs-audio-v2-tokenizer)                   | ~200MB | ✅             |
-
-**Voice Reference Requirements:**
-
-- **Audio files**: WAV format, 30+ seconds, clean speech, single speaker
-- **Text files**: Exact transcription of the reference audio
-- **Naming**: `filename.wav` + `filename.txt` (transcription)
-- **Quality**: Clear, noise-free audio for best voice cloning results
-
-**How Higgs Audio Auto-Download Works:**
-
-1. **Select Model**: Choose "higgs-audio-v2-3B" in Higgs Audio Engine node
-2. **Auto-Download**: Both generation model (~9GB) and tokenizer (~200MB) download automatically
-3. **Voice References**: Place reference audio and transcriptions in voices/ folder
-4. **Local Cache**: Once downloaded, models are used from local cache for fast loading
-
-**Manual Installation (Optional):**
-
-To pre-download models for offline use:
-
-```bash
-# Download generation model files to:
-# ComfyUI/models/TTS/HiggsAudio/higgs-audio-v2-3B/generation/
-
-# Download tokenizer files to:  
-# ComfyUI/models/TTS/HiggsAudio/higgs-audio-v2-3B/tokenizer/
-```
-
-**Usage**: Simply use the ⚙️ Higgs Audio 2 Engine node → Select model → All required files download automatically!
-
-### 8. VibeVoice Models (NEW in v4.6.0+)
-
-**For Microsoft VibeVoice Long-Form TTS**, models are automatically downloaded to:
-
-```
-ComfyUI/models/TTS/VibeVoice/        ← Recommended (new structure)
-├── vibevoice-1.5B/                  ← Microsoft official model (2.7B params)
-│   ├── model-00001-of-00003.safetensors (~2GB)
-│   ├── model-00002-of-00003.safetensors (~2GB)
-│   ├── model-00003-of-00003.safetensors (~2GB)
-│   ├── model.safetensors.index.json
-│   ├── config.json
-│   └── preprocessor_config.json
-└── vibevoice-7B/                    ← Community preview model (9.3B params, 18GB)
-    ├── model-00001-of-00010.safetensors (~1.9GB)
-    ├── model-00002-of-00010.safetensors (~1.9GB)
-    ├── ... (10 model files total)
-    ├── model-00010-of-00010.safetensors (~1.7GB)
-    ├── model.safetensors.index.json
-    ├── config.json
-    └── preprocessor_config.json
-```
-
-**Available VibeVoice Models (Auto-Download):**
-
-| Model          | Description                                     | Size   | Source                                                                        | Auto-Download |
-| -------------- | ----------------------------------------------- | ------ | ----------------------------------------------------------------------------- | ------------- |
-| vibevoice-1.5B | Microsoft official (2.7B params, faster)        | ~5.4GB | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B)   | ✅             |
-| vibevoice-7B   | Official Microsoft model (9.3B params, quality) | ~18GB  | [microsoft/VibeVoice-Large](https://huggingface.co/microsoft/VibeVoice-Large) | ✅             |
-
-**Key Features:**
-
-- **90-Minute Generation**: Both models support up to 90 minutes of continuous audio
-- **Multi-Speaker Support**: Native dual-mode multi-speaker generation
-- **Voice Cloning**: Works with existing voices folder structure for character switching
-- **Automatic Management**: Models download automatically on first use
-
-**Usage**: Simply use the ⚙️ VibeVoice Engine node → Select model → Connect to TTS Text/SRT → All files download automatically!
-
-### 9. RVC Models (Optional - NEW in v4.0.0+)
-
-**For Real-time Voice Conversion capabilities**, RVC models are automatically downloaded to the organized structure:
-
-```
-ComfyUI/models/TTS/RVC/          ← Recommended (new structure)
-├── Claire.pth                   ← Character voice models
-├── Sayano.pth
-├── Mae_v2.pth
-├── Fuji.pth
-├── Monika.pth
-├── content-vec-best.safetensors ← Base models (auto-download)
-├── rmvpe.pt
-├── hubert/                      ← HuBERT models (auto-organized)
-│   ├── hubert-base-rvc.safetensors
-│   ├── hubert-soft-japanese.safetensors
-│   └── hubert-soft-korean.safetensors
-└── .index/                      ← Index files for better similarity
-    ├── added_IVF1063_Flat_nprobe_1_Sayano_v2.index
-    ├── added_IVF985_Flat_nprobe_1_Fuji_v2.index
-    ├── Monika_v2_40k.index
-    └── Sayano_v2_40k.index
-```
-
-> **Note**: Legacy location `ComfyUI/models/RVC/` still works for backward compatibility.
-
-**Available RVC Character Models (Auto-Download):**
-
-| Model      | Type      | Source                                                                     | Auto-Download |
-| ---------- | --------- | -------------------------------------------------------------------------- | ------------- |
-| Claire.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
-| Sayano.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
-| Mae_v2.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
-| Fuji.pth   | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
-| Monika.pth | Character | [SayanoAI RVC-Studio](https://huggingface.co/datasets/SayanoAI/RVC-Studio) | ✅             |
-
-**Required Base Models (Auto-Download):**
-
-| Model                        | Purpose          | Source                                                                            | Size   |
-| ---------------------------- | ---------------- | --------------------------------------------------------------------------------- | ------ |
-| content-vec-best.safetensors | Voice features   | [lengyue233/content-vec-best](https://huggingface.co/lengyue233/content-vec-best) | ~300MB |
-| rmvpe.pt                     | Pitch extraction | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | ~55MB  |
-
-**How RVC Auto-Download Works:**
-
-1. **Select Character Model**: Choose from available models in 🎭 Load RVC Character Model node
-2. **Auto-Download**: Models download automatically when first selected (with auto_download=True)
-3. **Base Models**: Required base models download automatically when RVC engine first runs
-4. **Index Files**: Optional FAISS index files download for improved voice similarity
-5. **Local Cache**: Once downloaded, models are used from local cache for fast loading
-
-**UVR Models for Vocal Separation (Auto-Download):**
-
-Additional models for the 🤐 Noise or Vocal Removal node download to `ComfyUI/models/TTS/UVR/` (recommended) or `ComfyUI/models/UVR/` (legacy) as needed.
-
-**Usage**: Simply use the 🎭 Load RVC Character Model node → Select a character → Connect to Voice Changer node. All required models download automatically!
-
-### 10. IndexTTS-2 Models (NEW in v4.9.0+)
-
-**For IndexTTS-2 advanced emotion control capabilities**, models are automatically downloaded to the organized structure:
-
-```
-ComfyUI/models/TTS/IndexTTS/
-├── IndexTTS-2/                         ← Main TTS model
-│   ├── config.yaml                     ← Model configuration
-│   ├── feat1.pt                        ← Feature extraction model 1
-│   ├── feat2.pt                        ← Feature extraction model 2
-│   ├── gpt.pth                         ← GPT model weights
-│   ├── s2mel.pth                       ← Speech-to-mel conversion
-│   ├── bpe.model                       ← BPE tokenizer model
-│   ├── wav2vec2bert_stats.pt           ← Wav2Vec2BERT statistics
-│   └── qwen0.6bemo4-merge/             ← QwenEmotion model (for text emotion)
-│       ├── config.json
-│       ├── generation_config.json
-│       ├── model.safetensors
-│       ├── tokenizer.json
-│       ├── tokenizer_config.json
-│       └── other model files...
-└── w2v-bert-2.0/                       ← W2V-BERT semantic features
-    ├── config.json
-    ├── model.safetensors               ← ~2GB model weights
-    └── preprocessor_config.json
-```
-
-**Available IndexTTS-2 Models (Auto-Download):**
-
-| Model              | Description                          | Source                                                                | Size           | Auto-Download |
-| ------------------ | ------------------------------------ | --------------------------------------------------------------------- | -------------- | ------------- |
-| IndexTTS-2         | Main TTS engine with emotion control | [IndexTeam/IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2)   | Multiple files | ✅             |
-| w2v-bert-2.0       | W2V-BERT semantic feature extractor  | [facebook/w2v-bert-2.0](https://huggingface.co/facebook/w2v-bert-2.0) | ~2GB           | ✅             |
-| qwen0.6bemo4-merge | QwenEmotion text analysis (built-in) | Included with IndexTTS-2                                              | Part of main   | ✅             |
-
-**Key Features:**
-
-- **Unified Emotion Control**: Single emotion_control input supporting multiple emotion sources
-- **Dynamic Text Emotion**: AI-powered QwenEmotion analysis with {seg} template processing
-- **Character Tag Emotions**: Per-character emotion control using [Character:emotion_ref] syntax
-- **Audio Reference Emotion**: Use any audio file or Character Voices as emotion reference
-- **8-Emotion Vector Control**: Manual precision control over emotional expression
-
-**Usage**: Simply use the ⚙️ IndexTTS-2 Engine node → Connect emotion control → All required models download automatically!
-
-### 11. Step Audio EditX Models (NEW in v4.15+)
-
-**For Step Audio EditX audio post-processing capabilities**, models are automatically downloaded to the organized structure:
-
-```
-ComfyUI/models/TTS/step_audio_editx/
-├── Step-Audio-EditX/                    ← Main LLM model directory (~7GB auto-download)
-│   ├── config.json                      ← Model configuration
-│   ├── configuration_step1.py           ← Step-1 configuration
-│   ├── modeling_step1.py                ← Step-1 modeling code
-│   ├── model-00001.safetensors          ← Main 3B LLM weights (~6.3GB)
-│   ├── model.safetensors.index.json     ← Model index
-│   ├── tokenizer.model                  ← SentencePiece tokenizer
-│   ├── tokenizer_config.json            ← Tokenizer configuration
-│   ├── linguistic_tokenizer.npy         ← Linguistic tokenizer (from Step-Audio-Tokenizer)
-│   ├── speech_tokenizer_v1.onnx         ← Speech tokenizer (from Step-Audio-Tokenizer)
-│   └── CosyVoice-300M-25Hz/             ← CosyVoice vocoder (24kHz output)
-│       ├── FLOW_VERSION
-│       ├── campplus.onnx                ← Speaker verification
-│       ├── cosyvoice.yaml
-│       ├── flow.pt                      ← Flow matching model
-│       ├── hift.pt                      ← HiFi-GAN vocoder
-│       └── speech_tokenizer_v1.onnx     ← VQ-VAE tokenizer
-└── FunASR-Paraformer/                   ← Speech recognition model (auto-downloaded)
-    └── [FunASR model files]
-```
-
-**Available Step Audio EditX Models (Auto-Download):**
-
-| Model               | Description                               | Source                                                                      | Size   | Auto-Download |
-| ------------------- | ----------------------------------------- | --------------------------------------------------------------------------- | ------ | ------------- |
-| Step-Audio-EditX    | 3B LLM-based audio editor with CosyVoice  | [stepfun-ai/Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX) | ~7GB   | ✅             |
-| Step-Audio-Tokenizer | Dual-codebook speech tokenizer (VQ02+VQ06) | [stepfun-ai/Step-Audio-Tokenizer](https://huggingface.co/stepfun-ai/Step-Audio-Tokenizer) | Included | ✅             |
-
-**Key Features:**
-
-- **LLM-Based Editing**: 3B parameter Step-1 model for intelligent audio manipulation
-- **Paralinguistic Control**: Insert Laughter, Breathing, Sigh, and other natural sounds
-- **14 Emotions + 32 Styles**: Comprehensive emotion and speaking style control
-- **Multi-Language**: Mandarin Chinese, English, Sichuanese, Cantonese, Japanese, Korean
-- **Voice Restoration**: ChatterBox VC integration to recover original voice after editing
-- **Inline Tag Support**: Apply effects using `<Laughter:2>`, `<emotion:happy>`, `<style:whisper>` syntax
-
-**Usage**: Simply use the 🎨 Step Audio EditX - Audio Editor node → All required models download automatically! Or use inline edit tags with any TTS node for automatic post-processing.
-
-### 12. CosyVoice3 Models (NEW in v4.16+)
-
-**Repository:** [FunAudioLLM/Fun-CosyVoice3-0.5B-2512](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512) | **Size:** ~5.4GB | **Auto-Download:** ✅
-
-**Model Variants:**
-
-| Model | Description | Auto-Download | Default |
-|-------|-------------|---------------|---------|
-| **Fun-CosyVoice3-0.5B-RL** | RL-enhanced (better quality) | ✅ | ✅ |
-| **Fun-CosyVoice3-0.5B** | Standard model | ✅ | |
-
-**Installation Structure:**
-
-```
-ComfyUI/models/TTS/CosyVoice/
-└── Fun-CosyVoice3-0.5B/                # Shared folder for both variants
-    ├── cosyvoice3.yaml                 # Model config (shared)
-    ├── campplus.onnx                   # Speaker encoder (shared)
-    ├── flow.pt                         # Flow model (shared)
-    ├── hift.pt                         # HiFi-GAN vocoder (shared)
-    ├── llm.pt                          # Standard LLM (2GB)
-    ├── llm.rl.pt                       # RL-enhanced LLM (2GB)
-    ├── speech_tokenizer_v3.onnx        # Speech tokenizer (shared)
-    └── CosyVoice-BlankEN/              # Qwen text processor (shared)
-        └── [model files]
-```
-
-**Note**:
-- **Lazy download** - only downloads the LLM file for the variant you select (~5.4GB for first variant)
-- Switching variants later downloads the other LLM file (~2GB additional)
-- Shared files (flow.pt, hift.pt, etc.) are downloaded once and reused by both variants
-
-**Usage**: Select CosyVoice3 from Unified TTS Engine → Choose model variant → Auto-download on first use!
-
-### 13. Qwen3-TTS Models (NEW in v4.19+)
-
-**Repository:** [Qwen/Qwen3-TTS](https://huggingface.co/collections/Qwen/qwen3-tts-67898f07e56fcde8e7b57fb1) | **Size:** 0.6B (~1.5GB), 1.7B (~4.2GB) | **Auto-Download:** ✅
-
-**Model Types & Variants:**
-
-| Model Type | Size | Description | Repository | Auto-Download |
-|------------|------|-------------|------------|---------------|
-| **CustomVoice** | 0.6B / 1.7B | 9 preset speakers + instruction control | [0.6B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice) / [1.7B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) | ✅ |
-| **VoiceDesign** | 1.7B only | **Text-to-voice design** (unique) | [1.7B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign) | ✅ |
-| **Base** | 0.6B / 1.7B | Zero-shot voice cloning | [0.6B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base) / [1.7B](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base) | ✅ |
-
-**Model Sizes:**
-- **0.6B**: ~1.5GB (faster, good quality) - CustomVoice & Base only
-- **1.7B**: ~4.2GB (slower, better quality) - All 3 model types
-
-**Qwen3-ASR Models:**
-- **Qwen3-ASR-1.7B**: [Qwen/Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B)
-- **Qwen3-ForcedAligner-0.6B** (word timestamps): [Qwen/Qwen3-ForcedAligner-0.6B](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B)
-
-**Installation Structure:**
-
-```
-ComfyUI/models/TTS/qwen3_tts/
-├── Qwen3-TTS-12Hz-0.6B-CustomVoice/    # ~1.5GB
-├── Qwen3-TTS-12Hz-1.7B-CustomVoice/    # ~4.2GB
-├── Qwen3-TTS-12Hz-1.7B-VoiceDesign/    # ~4.2GB (1.7B only)
-├── Qwen3-TTS-12Hz-0.6B-Base/           # ~1.5GB
-├── Qwen3-TTS-12Hz-1.7B-Base/           # ~4.2GB
-├── qwen2-audio-encoder/                # ~0.5GB (shared tokenizer)
-└── asr/
-    ├── Qwen3-ASR-1.7B/                  # ~?GB
-    └── Qwen3-ForcedAligner-0.6B/        # ~?GB (word timestamps)
-```
-
-**Note**:
-- **Intelligent model selection** - automatically loads the right model type based on voice_preset selection
-- **Shared tokenizer** - qwen2-audio-encoder downloaded once, used by all models
-- Only downloads the specific model type + size you select
-- Switching between model types/sizes downloads the new variant
-- **⚡ torch.compile optimizations available** - Optional 1.7x speedup with PyTorch 2.10+ → [Setup Guide](docs/qwen3_tts_optimizations.md)
-
-**Usage**:
-- Select Qwen3-TTS from Unified TTS Engine
-- Choose model size (0.6B or 1.7B)
-- Choose voice preset (for CustomVoice) or "None" (for Base cloning)
-- Use Voice Designer node for VoiceDesign model
-- Auto-download on first use!
-
-**ASR Usage**:
-- Use the ✏️ ASR Transcribe node
-- Connect the Qwen3 Engine
-- Auto-downloads Qwen3-ASR models on first use
-
-### 14. Restart ComfyUI
+### 4. Models — All Auto-Download
+
+**No manual downloads needed.** All engines download required models automatically on first use.
+
+For offline/manual setup:
+
+- **All model source links (single source of truth):** [docs/MODEL_DOWNLOAD_SOURCES.md](docs/MODEL_DOWNLOAD_SOURCES.md)
+- **All folder trees and placement notes:** [docs/MODEL_LAYOUTS.md](docs/MODEL_LAYOUTS.md)
+
+| Engine | Primary model path | Auto-download | Notes |
+|---|---|---|---|
+| ChatterBox | `ComfyUI/models/TTS/chatterbox/` | ✅ | Legacy `ComfyUI/models/chatterbox/` still works |
+| ChatterBox 23-Lang | `ComfyUI/models/TTS/chatterbox_official_23lang/` | ✅ | v1/v2 coexist in same folder |
+| F5-TTS | `ComfyUI/models/TTS/F5-TTS/` | ✅ | Optional Vocos and voice refs |
+| Higgs Audio 2 | `ComfyUI/models/TTS/HiggsAudio/` | ✅ | Generation + tokenizer |
+| VibeVoice | `ComfyUI/models/TTS/VibeVoice/` | ✅ | 1.5B and 7B variants |
+| RVC | `ComfyUI/models/TTS/RVC/` | ✅* | Base models auto; character `.pth` can be user-provided |
+| IndexTTS-2 | `ComfyUI/models/TTS/IndexTTS/` | ✅ | Emotion components included |
+| Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
+| CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
+| Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
+
+### 5. Restart ComfyUI
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -2009,7 +1482,8 @@ MIT License - Same as ChatterboxTTS
 ## 🔗 Links
 
 - [Resemble AI ChatterBox](https://github.com/resemble-ai/chatterbox)
-- [Model Downloads (Hugging Face)](https://huggingface.co/ResembleAI/chatterbox/tree/main) ⬅️ **Download models here**
+- [Model Download Sources](docs/MODEL_DOWNLOAD_SOURCES.md)
+- [Model Folder Layouts](docs/MODEL_LAYOUTS.md)
 - [ChatterBox Demo](https://resemble-ai.github.io/chatterbox_demopage/)
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 - [Resemble AI Official Site](https://www.resemble.ai/chatterbox/)

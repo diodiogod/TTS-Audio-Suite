@@ -34,7 +34,7 @@ VIBEVOICE_MODELS = {
         "files": [...],  # 5.4GB total
     },
     "vibevoice-7B": {
-        "repo": "microsoft/VibeVoice-Large",
+        "repo": "aoi-ot/VibeVoice-Large",  # community mirror (Microsoft repo removed)
         "files": [...],  # 9.3GB total
     }
 }
