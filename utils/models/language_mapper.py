@@ -219,16 +219,29 @@ def resolve_language_alias(language_input: str) -> str:
 
 class LanguageModelMapper:
     """Maps language codes to engine-specific model names."""
-    
+
     def __init__(self, engine_type: str):
         """
         Initialize language model mapper.
-        
+
         Args:
             engine_type: "f5tts" or "chatterbox"
         """
         self.engine_type = engine_type
-        self.mappings = self._load_mappings()
+        # LAZY LOADING: Defer _load_mappings() to first access to avoid importing
+        # engines.chatterbox.language_models at module load time. That import triggers
+        # engines/chatterbox/__init__.py -> .tts -> transformers + diffusers (~8s).
+        self._mappings = None
+
+    @property
+    def mappings(self):
+        if self._mappings is None:
+            self._mappings = self._load_mappings()
+        return self._mappings
+
+    @mappings.setter
+    def mappings(self, value):
+        self._mappings = value
     
     def get_model_for_language(self, lang_code: str, default_model: str) -> str:
         """

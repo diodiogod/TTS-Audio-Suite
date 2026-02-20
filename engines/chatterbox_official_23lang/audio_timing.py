@@ -13,8 +13,9 @@ import torch
 import torchaudio
 import numpy as np
 from typing import Tuple, Optional, List, Union
-import librosa
-from scipy.signal import stft, istft
+# librosa (~0.7s) and scipy.signal (~2s) are imported lazily inside functions that
+# use them, not at module level. This avoids adding ~3s to plugin startup time.
+# Note: stft/istft from scipy.signal were previously imported but never used.
 import warnings
 import subprocess
 import tempfile
@@ -201,8 +202,9 @@ class PhaseVocoderTimeStretcher:
             
             try:
                 # Use librosa for phase vocoder time stretching
+                import librosa
                 stretched = librosa.effects.time_stretch(
-                    channel_audio, 
+                    channel_audio,
                     rate=1.0/stretch_factor,  # librosa uses rate = 1/stretch_factor
                     hop_length=self.hop_length
                 )

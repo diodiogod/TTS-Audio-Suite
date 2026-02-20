@@ -113,6 +113,14 @@ class UnifiedModelInterface:
         # Check PyTorch consistency on first model load
         self._check_pytorch_consistency()
 
+        # Apply transformers compatibility patches
+        try:
+            import __init__ as tts_suite_init
+            if hasattr(tts_suite_init, "_apply_transformers_patches_once"):
+                tts_suite_init._apply_transformers_patches_once()
+        except ImportError:
+            pass
+
         # Generate unique cache key
         cache_key = self._generate_cache_key(config)
 

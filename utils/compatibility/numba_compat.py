@@ -24,6 +24,12 @@ class NumbaCompatibilityManager:
         """
         Test numba JIT compilation compatibility.
         Returns dict with test results and timing info.
+
+        When quick_test=True (default at startup), we skip the actual librosa import
+        to avoid the ~0.7s cost. Instead we rely on Python version heuristics:
+        Python 3.13+ is known to be incompatible with numba JIT, so we preemptively
+        disable it. For older Python, we assume compatibility and defer the real test
+        to when librosa is first used by an engine.
         """
         start_time = time.time()
         results = {
@@ -35,15 +41,27 @@ class NumbaCompatibilityManager:
                 'is_python_313': sys.version_info >= (3, 13)
             }
         }
-        
+
+        # FAST PATH: skip actual librosa import during startup to save ~0.7s.
+        # Python 3.13+ is handled by __init__.py setting NUMBA_DISABLE_JIT=1.
+        # For older Python, assume JIT works (will be caught at first engine use).
+        if quick_test:
+            if sys.version_info >= (3, 13):
+                results['jit_compatible'] = False
+                results['errors'].append("Python 3.13+ detected - numba JIT known incompatible (skipped librosa test)")
+            results['test_duration'] = time.time() - start_time
+            self._test_results = results
+            return results
+
+        # Full test path: actually import librosa and test JIT compilation
         # Test 1: Basic librosa.stft compilation (most common failure point)
         try:
             import numpy as np
             import librosa
-            
+
             # Create minimal test signal
             test_audio = np.random.randn(1024).astype(np.float32)
-            
+
             # This will trigger numba JIT compilation if enabled
             _ = librosa.stft(test_audio, hop_length=256, n_fft=512)
             
