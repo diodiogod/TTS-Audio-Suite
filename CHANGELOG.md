@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.9] - 2026-02-20
+
+### Added
+
+- Drastically reduce extension startup time
+
+### Changed
+
+- Optimize internal model loading for better initialization performance
+
+### Fixed
+
+- Fix ComfyUI slowing down during startup by making heavy AI modules load only when first requested
+- Improve dependency checking to instantly verify missing packages without freezing ComfyUI
 ## [4.21.8] - 2026-02-20
 
 ### Added
