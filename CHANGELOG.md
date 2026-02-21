@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.13] - 2026-02-21
+
+### Added
+
+- Add Egyptian Arabic (oddadmix) model support to ChatterBox 23L
+- Added new Egyptian Arabic community model 'oddadmix/chatterbox-egyptian-v0'
+
+### Fixed
+
+- Fixed 'Vocabulary Mismatch' errors by automatically handling official v2 tokenizer dependencies
+- Updated documentation tables and README with correct Egyptian flags and dialect notes
 ## [4.21.12] - 2026-02-21
 
 ### Fixed

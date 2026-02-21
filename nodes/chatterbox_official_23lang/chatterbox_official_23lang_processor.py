@@ -198,6 +198,8 @@ Back to the main narrator voice for the conclusion.""",
             # Vietnamese (Viterbox) is a separate model, not just a version
             if model_version == "Vietnamese (Viterbox)":
                 model_name = "Vietnamese (Viterbox)"
+            elif model_version == "Egyptian Arabic (oddadmix)":
+                model_name = "Egyptian Arabic (oddadmix)"
             else:
                 model_name = "ChatterBox Official 23-Lang"
 

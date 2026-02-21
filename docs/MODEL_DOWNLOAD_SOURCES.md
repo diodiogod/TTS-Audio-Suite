@@ -40,6 +40,7 @@ Use this as the canonical list of model repositories/links for offline setup.
 |---|---|---|---|---|
 | Official 23-Lang (v1/v2) | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox) | ~4.3GB | ✅ | v1 + v2 files and tokenizer |
 | Vietnamese (Viterbox) | [dolly-vn/viterbox](https://huggingface.co/dolly-vn/viterbox) | ~4.3GB | ✅ | Vietnamese community finetune used by downloader |
+| Egyptian Arabic (oddadmix) | [oddadmix/chatterbox-egyptian-v0](https://huggingface.co/oddadmix/chatterbox-egyptian-v0) | ~4.3GB | ✅ | Egyptian Arabic community finetune (architecture v2) |
 
 ## VibeVoice
 

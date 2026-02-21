@@ -80,6 +80,26 @@ OFFICIAL_23LANG_MODELS = {
         },
         "multilingual": False,  # Primarily Vietnamese-focused
         "community_finetune": True
+    },
+    # Egyptian Arabic community finetune
+    "Egyptian Arabic (oddadmix)": {
+        "repo": "oddadmix/chatterbox-egyptian-v0",
+        "format": "as-is",
+        "description": "Egyptian Arabic-optimized ChatterBox finetune",
+        "languages": [
+            "ar",  # Arabic
+        ],
+        "required_files": {
+            "v2": [  # Based on v2 architecture
+                "t3_mtl23ls_v2.safetensors", 
+                "s3gen.safetensors",
+                "ve.safetensors",
+                "mtl_tokenizer.json",
+                "conds.pt"
+            ]
+        },
+        "multilingual": False,
+        "community_finetune": True
     }
 }
 

@@ -86,7 +86,7 @@ engines:
       pt: { supported: true, flag: "🇧🇷", notes: "(BR)" }
       pl: { supported: true, flag: "🇵🇱", notes: "" }
       hi: { supported: true, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "🇪🇬", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: true, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }
@@ -214,7 +214,7 @@ engines:
       pt: { supported: false, flag: "🇧🇷", notes: "" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "🇪🇬", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: true, flag: "🇳🇴", notes: "" }
@@ -243,7 +243,7 @@ engines:
 
   - id: chatterbox-23l
     name: ChatterBox 23L
-    models: "v1, v2, Vietnamese (Viterbox)"
+    models: "v1, v2, Vietnamese (Viterbox), Egyptian Arabic (oddadmix)"
     size: "~4.3GB"
 
     capabilities:
@@ -269,6 +269,12 @@ engines:
         size: "~4.3GB"
         auto_download: true
         notes: "Vietnamese community finetune used by downloader"
+      - component: "Egyptian Arabic (oddadmix)"
+        source_name: "oddadmix/chatterbox-egyptian-v0"
+        source_url: "https://huggingface.co/oddadmix/chatterbox-egyptian-v0"
+        size: "~4.3GB"
+        auto_download: true
+        notes: "Egyptian Arabic community finetune (architecture v2)"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -283,7 +289,7 @@ engines:
       pt: { supported: true, flag: "🇵🇹", notes: "" }
       pl: { supported: true, flag: "🇵🇱", notes: "" }
       hi: { supported: true, flag: "🇮🇳", notes: "" }
-      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      ar: { supported: true, flag: "🇪🇬", notes: "(Egyptian)" }
       tr: { supported: true, flag: "🇹🇷", notes: "" }
       th: { supported: true, flag: "🇹🇭", notes: "" }
       no: { supported: true, flag: "🇳🇴", notes: "" }
@@ -354,7 +360,7 @@ engines:
       pt: { supported: true, flag: "🇧🇷", notes: "(Kugel)" }
       pl: { supported: true, flag: "🇵🇱", notes: "(Kugel)" }
       hi: { supported: true, flag: "🇮🇳", notes: "" }
-      ar: { supported: true, flag: "🇦🇪", notes: "(Kugel)" }
+      ar: { supported: true, flag: "🇪🇬", notes: "(Kugel)" }
       tr: { supported: true, flag: "🇹🇷", notes: "(Kugel)" }
       th: { supported: true, flag: "🇹🇭", notes: "(Kugel)" }
       no: { supported: true, flag: "🇳🇴", notes: "(Kugel)" }
@@ -423,7 +429,7 @@ engines:
       pt: { supported: false, flag: "🇧🇷", notes: "" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "🇬", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }
@@ -498,7 +504,7 @@ engines:
       pt: { supported: false, flag: "🇧🇷", notes: "" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "��", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }
@@ -560,7 +566,7 @@ engines:
       pt: { supported: false, flag: "🇧🇷", notes: "" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "🇪🇬", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }
@@ -659,7 +665,7 @@ engines:
       pt: { supported: true, flag: "🇵🇹", notes: "(EU/BR*)" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "🇬", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }
@@ -729,7 +735,7 @@ engines:
       pt: { supported: false, flag: "🇧🇷", notes: "" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      ar: { supported: false, flag: "��", notes: "" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }
@@ -812,7 +818,7 @@ engines:
       pt: { supported: true, flag: "🇧🇷", notes: "" }
       pl: { supported: true, flag: "🇵🇱", notes: "" }
       hi: { supported: true, flag: "🇮🇳", notes: "" }
-      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      ar: { supported: true, flag: "🇪🇬", notes: "" }
       tr: { supported: true, flag: "🇹🇷", notes: "" }
       th: { supported: true, flag: "🇹🇭", notes: "" }
       no: { supported: true, flag: "🇳🇴", notes: "" }

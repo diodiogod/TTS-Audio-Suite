@@ -244,10 +244,11 @@ class UnifiedDownloader:
             ]
         
         # Create target directory - use different paths for different ChatterBox variants
-        # Check if this is an official 23-lang model (including community finetunes like Vietnamese Viterbox)
+        # Check if this is an official 23-lang model (including community finetunes)
         is_official_23lang = ("Official 23-Lang" in model_name or
                              "Vietnamese (Viterbox)" in model_name or
-                             repo_id == "dolly-vn/viterbox")
+                             "Egyptian Arabic (oddadmix)" in model_name or
+                             repo_id in ["dolly-vn/viterbox", "oddadmix/chatterbox-egyptian-v0"])
 
         if is_official_23lang:
             model_dir = os.path.join(self.tts_dir, "chatterbox_official_23lang", model_name)
@@ -264,8 +265,23 @@ class UnifiedDownloader:
             if is_v2:
                 # For v2, the critical file is whichever t3_*_v2.safetensors exists + tokenizer
                 t3_file = next((f for f in files if f.startswith("t3_") and f.endswith("_v2.safetensors")), None)
-                # Accept either mtl_tokenizer.json or tokenizer_vi_expanded.json
+                # Check for either the standard mtl_tokenizer or the expanded V2 one
                 tokenizer_file = next((f for f in files if "tokenizer" in f and f.endswith(".json")), None)
+                if not tokenizer_file:
+                    tokenizer_file = "grapheme_mtl_merged_expanded_v1.json"
+                
+                # SPECIAL CASE: Community v2 models (like Egyptian) often need the official v2 enhanced tokenizer 
+                # but don't include it in their repos. We'll grab it from the official repo as a dependency.
+                if repo_id != "ResembleAI/chatterbox" and not any("grapheme_mtl_merged_expanded" in f for f in files):
+                    official_v2_tokenizer = "grapheme_mtl_merged_expanded_v1.json"
+                    target_tokenizer_path = os.path.join(model_dir, official_v2_tokenizer)
+                    if not os.path.exists(target_tokenizer_path):
+                        print(f"📥 Architecture v2 detected. Downloading official v2 tokenizer as dependency...")
+                        if not self.download_from_hf_cli("ResembleAI/chatterbox", official_v2_tokenizer, model_dir):
+                            # Try HTTP fallback
+                            url = f"https://huggingface.co/ResembleAI/chatterbox/resolve/main/{official_v2_tokenizer}"
+                            self.download_file(url, target_tokenizer_path, f"Official V2 Tokenizer Dependency")
+                
                 critical_files = [t3_file, tokenizer_file] if (t3_file and tokenizer_file) else ["t3_mtl23ls_v2.safetensors", "mtl_tokenizer.json"]
             else:
                 critical_files = ["t3_23lang.safetensors", "mtl_tokenizer.json"]  # v1 requirements

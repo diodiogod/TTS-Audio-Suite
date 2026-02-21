@@ -49,6 +49,10 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             "Vietnamese (Viterbox)": {
                 "repo": "dolly-vn/viterbox",
                 "format": "mixed",
+            },
+            "Egyptian Arabic (oddadmix)": {
+                "repo": "oddadmix/chatterbox-egyptian-v0",
+                "format": "as-is",
             }
         }
 
@@ -142,9 +146,9 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
 
         return {
             "required": {
-                "model_version": (["v1", "v2", "Vietnamese (Viterbox)"], {
+                "model_version": (["v1", "v2", "Vietnamese (Viterbox)", "Egyptian Arabic (oddadmix)"], {
                     "default": "v2",
-                    "tooltip": "ChatterBox model version:\n• v1: Original 23-language model\n• v2: Enhanced with special tokens for emotions ([giggle], [laughter], [sigh]), sounds ([cough], [sneeze]), vocal styles ([singing], [whisper]), and improved Russian support\n• Vietnamese (Viterbox): Community finetune optimized for Vietnamese (3000+ hours training data), supports all 24 languages with Vietnamese language support"
+                    "tooltip": "ChatterBox model version:\n• v1: Original 23-language model\n• v2: Enhanced with special tokens for emotions ([giggle], [laughter], [sigh]), sounds ([cough], [sneeze]), vocal styles ([singing], [whisper]), and improved Russian support\n• Vietnamese (Viterbox): Community finetune optimized for Vietnamese (3000+ hours training data), supports all 24 languages with Vietnamese language support\n• Egyptian Arabic (oddadmix): Community finetune optimized for Egyptian Arabic (requires 'Arabic' language selection)"
                 }),
                 "language": (available_languages, {
                     "default": "English",
@@ -225,6 +229,10 @@ class ChatterBoxOfficial23LangEngineNode(BaseTTSNode):
             Tuple containing ChatterBox Official 23-Lang engine adapter
         """
         try:
+            # Egyptian (oddadmix) model is an Arabic finetune, so it should be used with the Arabic language option
+            if model_version == "Egyptian Arabic (oddadmix)" and language != "Arabic":
+                raise ValueError("The 'Egyptian Arabic (oddadmix)' model is an Arabic finetune. Please set the language to 'Arabic'.")
+
             # Validate Vietnamese language is only used with Viterbox model
             if "Vietnamese" in language and model_version not in ["Vietnamese (Viterbox)"]:
                 raise ValueError(

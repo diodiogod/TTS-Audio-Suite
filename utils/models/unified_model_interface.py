@@ -781,6 +781,7 @@ def register_chatterbox_23lang_factory():
 
         # Get model directory path - use model_name for the directory
         # For "Vietnamese (Viterbox)", this will be "Vietnamese (Viterbox)"
+        # For "Egyptian Arabic (oddadmix)", this will be "Egyptian Arabic (oddadmix)"
         # For "ChatterBox Official 23-Lang", this will be "ChatterBox Official 23-Lang"
         models_dir = folder_paths.models_dir
         # Strip "ChatterBox " prefix for directory structure consistency
