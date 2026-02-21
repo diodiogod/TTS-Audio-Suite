@@ -142,8 +142,8 @@ class MusicSeparationModel:
 		
 		try:
 			from utils.ffmpeg_utils import FFmpegUtils
-			self.ffmpeg = FFmpegUtils.get_ffmpeg_path() or "ffmpeg"
-		except ImportError:
+			self.ffmpeg = FFmpegUtils.get_path() or "ffmpeg"
+		except Exception:
 			self.ffmpeg = "ffmpeg"
 		
 		if torch.cuda.is_available():
