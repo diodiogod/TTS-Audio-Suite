@@ -296,6 +296,10 @@ class IndexTTSEngine:
                                         if hasattr(model_management, 'LoadedModel'):
                                             import weakref
                                             lm = model_management.LoadedModel(new_wrapper)
+                                            if hasattr(new_wrapper, 'model') and new_wrapper.model is not None:
+                                                lm.real_model = weakref.ref(new_wrapper.model)
+                                            else:
+                                                lm.real_model = weakref.ref(new_wrapper)
                                             lm._tts_wrapper_ref = new_wrapper
                                             lm.model_finalizer = weakref.finalize(new_wrapper, lambda: None)
                                             model_management.current_loaded_models.insert(0, lm)

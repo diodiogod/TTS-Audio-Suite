@@ -307,7 +307,6 @@ class ComfyUITTSModelManager:
         if COMFYUI_AVAILABLE and model_management is not None:
             # Try the safer manual approach first since load_models_gpu seems to have issues
             try:
-                # Manually add to current_loaded_models using LoadedModel (ComfyUI's internal approach)
                 if hasattr(model_management, 'LoadedModel') and hasattr(model_management, 'current_loaded_models'):
                     loaded_model = model_management.LoadedModel(wrapper)
                     if model is not None:
@@ -318,6 +317,9 @@ class ComfyUITTSModelManager:
                         else:
                             # Create a dummy finalizer that doesn't crash
                             loaded_model.model_finalizer = weakref.finalize(model, lambda: None)
+                    else:
+                        loaded_model.real_model = weakref.ref(wrapper)
+                        loaded_model.model_finalizer = weakref.finalize(wrapper, lambda: None)
                     
                     # Keep a strong reference to our wrapper to prevent garbage collection
                     # This ensures LoadedModel.model property doesn't return None

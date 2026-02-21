@@ -323,7 +323,7 @@ class ModelManager:
             ImportError: If ChatterboxTTS is not available
             RuntimeError: If model loading fails
         """
-        if not CHATTERBOX_TTS_AVAILABLE:
+        if not _get_chatterbox_tts_available():
             raise ImportError("ChatterboxTTS not available - check installation or add bundled version")
         
         # Resolve auto device
@@ -538,7 +538,7 @@ class ModelManager:
             ImportError: If ChatterboxVC is not available
             RuntimeError: If model loading fails
         """
-        if not CHATTERBOX_VC_AVAILABLE:
+        if not _get_chatterbox_vc_available():
             raise ImportError("ChatterboxVC not available - check installation or add bundled version")
         
         # Resolve auto device
@@ -738,11 +738,11 @@ class ModelManager:
             Dictionary with availability status
         """
         return {
-            "tts": CHATTERBOX_TTS_AVAILABLE,
-            "vc": CHATTERBOX_VC_AVAILABLE,
-            "bundled": USING_BUNDLED_CHATTERBOX,
-            "any": CHATTERBOX_TTS_AVAILABLE or CHATTERBOX_VC_AVAILABLE,
-            "vibevoice": VIBEVOICE_AVAILABLE
+            "tts": _get_chatterbox_tts_available(),
+            "vc": _get_chatterbox_vc_available(),
+            "bundled": _get_using_bundled_chatterbox(),
+            "any": _get_chatterbox_tts_available() or _get_chatterbox_vc_available(),
+            "vibevoice": _get_vibevoice_available()
         }
     
     def load_vibevoice_model(self, model_name: str = "vibevoice-1.5B", device: str = "auto", force_reload: bool = False):
@@ -761,7 +761,7 @@ class ModelManager:
             ImportError: If VibeVoice is not available
             RuntimeError: If model loading fails
         """
-        if not VIBEVOICE_AVAILABLE:
+        if not _get_vibevoice_available():
             raise ImportError("VibeVoice not available - check installation")
         
         # Use ComfyUI model manager for consistent behavior

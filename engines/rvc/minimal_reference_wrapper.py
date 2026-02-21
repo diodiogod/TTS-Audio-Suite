@@ -194,6 +194,7 @@ class MinimalRVCWrapper:
             if hasattr(model_management, 'current_loaded_models'):
                 if hasattr(model_management, 'LoadedModel'):
                     loaded_model = model_management.LoadedModel(wrapper)
+                    loaded_model.real_model = weakref.ref(rvc_wrapped)
                     loaded_model._tts_wrapper_ref = wrapper  # prevent GC
                     loaded_model.model_finalizer = weakref.finalize(wrapper, lambda: None)
                     model_management.current_loaded_models.insert(0, loaded_model)
@@ -241,6 +242,7 @@ class MinimalRVCWrapper:
             if hasattr(model_management, 'current_loaded_models'):
                 if hasattr(model_management, 'LoadedModel'):
                     loaded_model = model_management.LoadedModel(wrapper)
+                    loaded_model.real_model = weakref.ref(hubert_wrapped)
                     loaded_model._tts_wrapper_ref = wrapper  # prevent GC
                     loaded_model.model_finalizer = weakref.finalize(wrapper, lambda: None)
                     model_management.current_loaded_models.insert(0, loaded_model)
