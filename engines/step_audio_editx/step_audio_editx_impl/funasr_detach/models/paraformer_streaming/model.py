@@ -366,7 +366,7 @@ class ParaformerStreaming(Paraformer):
                 if target_num > 0:
                     input_mask[li].scatter_(
                         dim=0,
-                        index=torch.randperm(seq_lens[li])[:target_num].cuda(),
+                        index=torch.randperm(seq_lens[li])[:target_num].to(ys_pad.device),
                         value=0,
                     )
             input_mask = input_mask.eq(1)

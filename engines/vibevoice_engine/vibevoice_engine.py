@@ -363,8 +363,8 @@ class VibeVoiceEngine:
             self.processor = self._load_processor_with_unified_tokenizer(processor_path, model_name)
             
             # Move to device if needed (only if not using quantization which handles device_map)
-            if not quant_config and device == "cuda" and torch.cuda.is_available():
-                self.model = self.model.cuda()
+            if not quant_config and device != "cpu":
+                self.model = self.model.to(device)
                 
             # Ensure all model parameters are on the same device (fix for speech_bias_factor issue)
             if quant_config and hasattr(self.model, 'speech_bias_factor'):

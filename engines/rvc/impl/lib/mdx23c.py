@@ -280,8 +280,7 @@ class MDX23CSeparator:
         self.model = self._load_model(model_path)
         self.model.eval()
         
-        if 'cuda' in str(device).lower() and torch.cuda.is_available():
-            self.model = self.model.cuda()
+        self.model = self.model.to(self.device)
         
         print(f"✅ MDX23C model loaded: {model_path}")
 
@@ -395,9 +394,7 @@ class MDX23CSeparator:
                 else:
                     print(f"🔧 Processing chunk {start//sample_rate}s-{end//sample_rate}s")
                 
-                # Move to device
-                if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
-                    chunk = chunk.cuda()
+                chunk = chunk.to(self.device)
                     
                 # Run separation on chunk (now guaranteed to have consistent dimensions)
                 with torch.no_grad():
@@ -455,16 +452,14 @@ class MDX23CSeparator:
             # Process entire audio - optimized for memory usage
             print(f"🔄 Processing full {total_samples//sample_rate}s audio (no chunking)")
             
-            # Move to device
-            if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
-                audio_tensor = audio_tensor.cuda()
+            audio_tensor = audio_tensor.to(self.device)
+            
+            # Enable memory efficient attention if available
+            if hasattr(torch.backends, 'cuda') and hasattr(torch.backends.cuda, 'enable_flash_sdp'):
+                torch.backends.cuda.enable_flash_sdp(False)  # Disable flash attention to save memory
                 
-                # Enable memory efficient attention if available
-                if hasattr(torch.backends, 'cuda') and hasattr(torch.backends.cuda, 'enable_flash_sdp'):
-                    torch.backends.cuda.enable_flash_sdp(False)  # Disable flash attention to save memory
-                    
-                # Clear cache before processing
-                torch.cuda.empty_cache()
+            # Clear cache before processing
+            torch.cuda.empty_cache()
                 
             # Run separation with memory optimizations
             with torch.no_grad():

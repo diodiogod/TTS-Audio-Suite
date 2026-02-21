@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.10] - 2026-02-20
+
+### Added
+
+- Fixed crashes occurring on macOS and CPU-only devices during inference
+
+### Fixed
+
+- Fix Mac/MPS compatibility issues
+- Improved device compatibility across Step Audio EditX, RVC Engine, and VibeVoice engines
 ## [4.21.9] - 2026-02-20
 
 ### Added

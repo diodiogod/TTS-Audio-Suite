@@ -510,8 +510,7 @@ class SCNetSeparator:
         self.model = self._load_model(model_path)
         self.model.eval()
         
-        if 'cuda' in str(device).lower() and torch.cuda.is_available():
-            self.model = self.model.cuda()
+        self.model = self.model.to(self.device)
         
         print(f"✅ SCNet model loaded: {model_path}")
 
@@ -620,9 +619,7 @@ class SCNetSeparator:
                 end = min(start + chunk_size, total_samples)
                 chunk = audio_tensor[:, :, start:end]
                 
-                # Move to device
-                if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
-                    chunk = chunk.cuda()
+                chunk = chunk.to(self.device)
                     
                 # Run separation on chunk
                 with torch.no_grad():
@@ -642,9 +639,7 @@ class SCNetSeparator:
             
         else:
             # Process entire audio if small enough
-            # Move to device
-            if 'cuda' in str(self.device).lower() and torch.cuda.is_available():
-                audio_tensor = audio_tensor.cuda()
+            audio_tensor = audio_tensor.to(self.device)
                 
             # Run separation
             with torch.no_grad():
