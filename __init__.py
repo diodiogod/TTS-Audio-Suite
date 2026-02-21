@@ -378,6 +378,40 @@ def setup_api_routes():
             except Exception as e:
                 print(f"⚠️ Error setting inline tag settings: {e}")
                 return web.json_response({"status": "error", "error": str(e)})
+
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-preview")
+        async def get_voice_preview_endpoint(request):
+            """
+            Stream selected Character Voices dropdown audio for browser preview playback.
+
+            Query params:
+            - voice_name: exact dropdown key from get_available_voices()
+            """
+            try:
+                voice_name = request.query.get("voice_name", "").strip()
+                if not voice_name or voice_name == "none":
+                    return web.json_response({"error": "voice_name is required and cannot be 'none'"}, status=400)
+
+                # Load voice discovery directly by file path to avoid package import issues
+                voice_discovery_path = os.path.join(os.path.dirname(__file__), "utils", "voice", "discovery.py")
+                spec = importlib.util.spec_from_file_location("voice_discovery_module", voice_discovery_path)
+                voice_discovery_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(voice_discovery_module)
+
+                # Use cached discovery for fast preview playback.
+                voice_discovery_module.get_available_voices(force_refresh=False)
+                audio_path, _ = voice_discovery_module.load_voice_reference(voice_name)
+
+                if not audio_path or not os.path.exists(audio_path):
+                    return web.json_response({"error": f"Voice file not found: {voice_name}"}, status=404)
+
+                # Direct stream of resolved local audio file.
+                response = web.FileResponse(path=audio_path)
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+                return response
+            except Exception as e:
+                print(f"⚠️ Error serving voice preview audio: {e}")
+                return web.json_response({"error": str(e)}, status=500)
     except Exception as e:
         print(f"⚠️ Could not setup API routes: {e}")
 

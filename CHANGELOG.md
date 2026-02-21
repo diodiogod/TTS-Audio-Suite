@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.14] - 2026-02-21
+
+### Added
+
+- Add in-node audio player with seek bar, scrub, and volume controls for selected Character Voices entries
+- Add quick voice preview playback for dropdown voices without running full TTS
+- Keep existing Character Voices workflows compatible with no input/output changes
+
+### Changed
+
+- Improve Character Voices voice preview controls
+
+### Fixed
+
+- Fix Character Voices source metadata reporting when direct input is used
 ## [4.21.13] - 2026-02-21
 
 ### Added

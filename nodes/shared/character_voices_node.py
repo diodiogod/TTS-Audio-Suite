@@ -103,12 +103,14 @@ Leave empty to use text from selected character's files."""
         """
         try:
             used_folder_text = False
+            voice_source = None
             # Determine audio source and character name
             if opt_audio_input is not None:
                 # Use direct audio input
                 audio_path = None
                 audio_tensor = opt_audio_input
                 character_name = "direct_input"
+                voice_source = "direct"
                 print("🎭 Character Voices: Using direct audio input")
             elif voice_name != "none":
                 # Load from voice folder
@@ -130,6 +132,7 @@ Leave empty to use text from selected character's files."""
                     
                     audio_tensor = {"waveform": waveform, "sample_rate": sample_rate}
                     character_name = os.path.splitext(os.path.basename(voice_name))[0]
+                    voice_source = "folder"
 
                     # When voice is selected from dropdown, ALWAYS use folder reference text
                     # Manual text field is only used for direct audio input
@@ -151,7 +154,7 @@ Leave empty to use text from selected character's files."""
                 "audio_path": audio_path if 'audio_path' in locals() else None,
                 "reference_text": reference_text.strip() if reference_text else "",
                 "character_name": character_name,
-                "source": "folder" if voice_name != "none" else "direct"
+                "source": voice_source
             }
             
             # Add validation info
