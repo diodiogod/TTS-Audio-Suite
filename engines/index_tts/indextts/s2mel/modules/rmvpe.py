@@ -6,7 +6,35 @@ import torch
 
 import torch.nn as nn
 import torch.nn.functional as F
-from librosa.util import normalize, pad_center, tiny
+
+# TTS Audio Suite Patch: librosa 0.11.0 compatibility for removed generic utilities
+try:
+    from librosa.util import normalize
+except ImportError:
+    def normalize(S):
+        max_val = np.max(np.abs(S))
+        return S / max_val if max_val > 0 else S
+
+try:
+    from librosa.util import pad_center
+except ImportError:
+    def pad_center(data, size, axis=-1, **kwargs):
+        kwargs.setdefault('mode', 'constant')
+        n = data.shape[axis]
+        lpad = int((size - n) // 2)
+        lengths = [(0, 0)] * data.ndim
+        lengths[axis] = (lpad, int(size - n - lpad))
+        if lpad < 0 or lengths[axis][1] < 0:
+            raise ValueError(f"Target size ({size}) must be at least input size ({n})")
+        return np.pad(data, lengths, **kwargs)
+
+try:
+    from librosa.util import tiny
+except ImportError:
+    def tiny(x):
+        if isinstance(x, torch.Tensor):
+            return torch.finfo(x.dtype).tiny
+        return np.finfo(x.dtype).tiny
 from scipy.signal import get_window
 
 import logging

@@ -21,6 +21,22 @@ def apply_librosa_compatibility_patches():
         import librosa.util
         import numpy as np
         
+        # Check if normalize is missing and add it
+        if not hasattr(librosa.util, 'normalize'):
+            def normalize(S, norm=np.inf, axis=-1, threshold=None, fill=None):
+                """Manual implementation of librosa's normalize for compatibility"""
+                S = np.asarray(S)
+                if norm == np.inf:
+                    max_val = np.max(np.abs(S), axis=axis, keepdims=True)
+                    max_val[max_val == 0] = 1.0
+                    return S / max_val
+                else:
+                    norm_val = np.sum(np.abs(S)**norm, axis=axis, keepdims=True)**(1./norm)
+                    norm_val[norm_val == 0] = 1.0
+                    return S / norm_val
+            librosa.util.normalize = normalize
+            print("🔧 RVC: Applied normalize compatibility patch to librosa.util")
+            
         # Check if pad_center is missing and add it
         if not hasattr(librosa.util, 'pad_center'):
             def pad_center(data, size, axis=-1, **kwargs):
@@ -295,6 +311,22 @@ class MinimalRVCWrapper:
             if sys.version_info >= (3, 13):
                 try:
                     import librosa.util
+                    if not hasattr(librosa.util, 'normalize'):
+                        def normalize(S, norm=float('inf'), axis=-1, threshold=None, fill=None):
+                            """Manual implementation of librosa's normalize for compatibility"""
+                            import numpy as np
+                            S = np.asarray(S)
+                            if norm == float('inf') or norm == np.inf:
+                                max_val = np.max(np.abs(S), axis=axis, keepdims=True)
+                                max_val[max_val == 0] = 1.0
+                                return S / max_val
+                            else:
+                                norm_val = np.sum(np.abs(S)**norm, axis=axis, keepdims=True)**(1./norm)
+                                norm_val[norm_val == 0] = 1.0
+                                return S / norm_val
+                        librosa.util.normalize = normalize
+                        print("🔧 RVC: Applied normalize compatibility patch")
+                        
                     if not hasattr(librosa.util, 'pad_center'):
                         def pad_center(data, size, axis=-1, **kwargs):
                             """Manual implementation of librosa's pad_center for compatibility"""

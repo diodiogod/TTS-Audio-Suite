@@ -569,7 +569,10 @@ class IndexTTSProcessor:
             traceback.print_exc()
             
             # Return silence on error
-            return torch.zeros(1, self.sample_rate)  # 1 second of silence
+            silence = torch.zeros(1, self.sample_rate)  # 1 second of silence
+            if return_info:
+                return silence, {"method_used": "error", "total_chunks": 1, "chunk_timings": [{"start": 0.0, "end": 1.0, "text": "Error"}]}
+            return silence
     
     def combine_audio_segments(self,
                               segments: List[torch.Tensor],

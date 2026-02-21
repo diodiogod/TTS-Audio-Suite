@@ -1,6 +1,26 @@
 import torch
 import torch.utils.data
+import numpy as np
 from librosa.filters import mel as librosa_mel_fn
+
+# TTS Audio Suite Patch: librosa 0.11.0 compatibility for removed generic utilities
+try:
+    from librosa.util import pad_center
+except ImportError:
+    def pad_center(data, size, axis=-1, **kwargs):
+        kwargs.setdefault('mode', 'constant')
+        is_tensor = False
+        if hasattr(data, 'detach'):
+            data = data.detach().cpu().numpy()
+            is_tensor = True
+        n = data.shape[axis]
+        lpad = int((size - n) // 2)
+        lengths = [(0, 0)] * data.ndim
+        lengths[axis] = (lpad, int(size - n - lpad))
+        if lpad < 0 or lengths[axis][1] < 0:
+            raise ValueError(f"Target size ({size}) must be at least input size ({n})")
+        res = np.pad(data, lengths, **kwargs)
+        return res
 
 MAX_WAV_VALUE = 32768.0
 
@@ -98,7 +118,7 @@ def spectrogram_torch_conv(y, n_fft, sampling_rate, hop_size, win_size, center=F
     freq_cutoff = n_fft // 2 + 1
     fourier_basis = torch.view_as_real(torch.fft.fft(torch.eye(n_fft)))
     forward_basis = fourier_basis[:freq_cutoff].permute(2, 0, 1).reshape(-1, 1, fourier_basis.shape[1])
-    forward_basis = forward_basis * torch.as_tensor(librosa.util.pad_center(torch.hann_window(win_size), size=n_fft)).float()
+    forward_basis = forward_basis * torch.as_tensor(pad_center(torch.hann_window(win_size).numpy(), size=n_fft)).float()
 
     import torch.nn.functional as F
 
