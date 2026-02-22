@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.16] - 2026-02-21
+
+### Added
+
+- Release v4.21.16
+
+### Fixed
+
+- Fix: Comprehensive fix for Numba @guvectorize crashes with Librosa on Python 3.12+ and NumPy 2.4+
 ## [4.21.15] - 2026-02-21
 
 ### Added
