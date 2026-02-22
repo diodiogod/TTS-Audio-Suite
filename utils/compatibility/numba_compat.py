@@ -109,74 +109,9 @@ class NumbaCompatibilityManager:
             import numba
             numba.config.DISABLE_JIT = True
             numba.config.ENABLE_CUDASIM = True
-
-            # CRITICAL FIX for Numpy 2.4+ / Numba 0.64+ crash:
-            # NUMBA_DISABLE_JIT does NOT disable @guvectorize (used heavily in librosa.util.utils)
-            # We must monkey-patch it to act as a dummy decorator or simple numpy vectorize
-            if not hasattr(numba, '_guvectorize_patched_by_tts_suite'):
-                original_guvectorize = numba.guvectorize
-                def dummy_guvectorize(*args, **kwargs):
-                    def decorator(func):
-                        # Simply return the original function, bypassing Numba compilation
-                        return func
-                    return decorator
-                numba.guvectorize = dummy_guvectorize
-                numba._guvectorize_patched_by_tts_suite = True
-                print("🔧 Applied numba @guvectorize bypass for librosa compatibility")
         except ImportError:
             pass  # numba not imported yet, environment variable will handle it
         
-        # 2. Global Librosa Monkey-Patch for Complete Package Failure
-        # On Python 3.12+ with Numpy 2.4+ and Numba 0.64+, librosa completely dies
-        # due to @guvectorize crashes. We inject pure python fallbacks globally
-        # to save all 8 engines without modifying their deep third-party code.
-        try:
-            import sys
-            
-            # Ensure librosa parent is registered
-            if 'librosa' not in sys.modules:
-                class MockLibrosa: pass
-                sys.modules['librosa'] = MockLibrosa()
-                
-            # Inject safe_mel_filters globally
-            from utils.audio.librosa_fallback import safe_mel_filters
-            if 'librosa.filters' not in sys.modules:
-                class MockFilters: pass
-                sys.modules['librosa.filters'] = MockFilters()
-            sys.modules['librosa.filters'].mel = safe_mel_filters
-            
-            # Inject utility functions
-            if 'librosa.util' not in sys.modules:
-                class MockUtil: pass
-                sys.modules['librosa.util'] = MockUtil()
-            
-            import numpy as np
-            def safe_normalize(S, norm=np.inf, axis=-1, threshold=None, fill=None):
-                max_val = np.max(np.abs(S))
-                return S / max_val if max_val > 0 else S
-
-            def safe_pad_center(data, size, axis=-1, **kwargs):
-                kwargs.setdefault('mode', 'constant')
-                is_tensor = hasattr(data, 'detach')
-                if is_tensor: data = data.detach().cpu().numpy()
-                n = data.shape[axis]
-                lpad = int((size - n) // 2)
-                rpad = int(size - n - lpad)
-                pad_widths = [(0, 0)] * data.ndim
-                pad_widths[axis] = (lpad, rpad)
-                res = np.pad(data, pad_widths, **kwargs)
-                if getattr(res, 'ndim', 0) == 0: res = np.array([0.0], dtype=np.float32)
-                from utils.audio.librosa_fallback import torch
-                return torch.from_numpy(res) if is_tensor else res
-                
-            sys.modules['librosa.util'].normalize = safe_normalize
-            sys.modules['librosa.util'].pad_center = safe_pad_center
-            sys.modules['librosa.util'].tiny = lambda x: np.finfo(np.float32).tiny
-            
-            print("🔧 Applied global pure-python fallbacks for librosa functionalities")
-        except Exception as e:
-            print(f"⚠️ Could not apply global librosa fallbacks: {e}")
-            
         self._jit_disabled = True
         print("🔧 Applied numba JIT workaround for Python 3.12+/Numpy 2.x compatibility")
     

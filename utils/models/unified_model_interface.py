@@ -121,17 +121,6 @@ class UnifiedModelInterface:
         except ImportError:
             pass
 
-        # Defer deep Numba/Librosa JIT testing to first model load to save startup time.
-        # This catches hostile Numba 0.6x/Numpy 2.x environments before engines crash.
-        try:
-            from utils.compatibility import numba_compat
-            status = numba_compat.get_compatibility_status()
-            # If the initial test was quick (<0.1s), run the full rigorous test now
-            if status.get('test_results', {}).get('test_duration', 1) < 0.1:
-                numba_compat.setup_numba_compatibility(quick_startup=False, verbose=False)
-        except Exception:
-            pass
-
         # Generate unique cache key
         cache_key = self._generate_cache_key(config)
 
