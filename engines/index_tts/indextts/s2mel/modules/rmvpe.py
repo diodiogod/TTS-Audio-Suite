@@ -10,7 +10,7 @@ import torch.nn.functional as F
 # TTS Audio Suite Patch: librosa 0.11.0 compatibility for removed generic utilities
 try:
     from librosa.util import normalize
-except ImportError:
+except Exception:
     def normalize(S):
         max_val = np.max(np.abs(S))
         return S / max_val if max_val > 0 else S
@@ -428,7 +428,10 @@ class E2E(nn.Module):
         return x
 
 
-from librosa.filters import mel
+try:
+    from librosa.filters import mel
+except Exception:
+    from utils.audio.librosa_fallback import safe_mel_filters as mel
 
 
 class MelSpectrogram(torch.nn.Module):

@@ -530,7 +530,10 @@ class E2E(nn.Module):
         return x
 
 
-from librosa.filters import mel
+try:
+    from librosa.filters import mel
+except Exception:
+    from utils.audio.librosa_fallback import safe_mel_filters as mel
 
 
 class MelSpectrogram(torch.nn.Module):

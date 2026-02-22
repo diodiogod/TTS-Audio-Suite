@@ -1,12 +1,15 @@
 import torch
 import torch.utils.data
 import numpy as np
-from librosa.filters import mel as librosa_mel_fn
+try:
+    from librosa.filters import mel as librosa_mel_fn
+except Exception:
+    from utils.audio.librosa_fallback import safe_mel_filters as librosa_mel_fn
 
 # TTS Audio Suite Patch: librosa 0.11.0 compatibility for removed generic utilities
 try:
     from librosa.util import pad_center
-except ImportError:
+except Exception:
     def pad_center(data, size, axis=-1, **kwargs):
         kwargs.setdefault('mode', 'constant')
         is_tensor = False
