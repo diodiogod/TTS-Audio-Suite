@@ -69,13 +69,25 @@ def _apply_transformers_patches_once():
     except Exception as e:
         print(f"⚠️ Warning: Could not apply Transformers patches: {e}")
 
-# Numba/Librosa compatibility check DEFERRED to first engine use.
-# The numba_compat module imports librosa (~0.7s) to test JIT compilation,
-# which is too expensive for startup. Instead, we defer the test until
-# an engine actually needs librosa. On Python 3.13+ we preemptively set
-# the safe env var since numba JIT is known to be problematic there.
+# Numba/Librosa compatibility check at startup.
+# On Python 3.13+ we preemptively disable JIT (known incompatible).
+# On NumPy 2.x we run the full librosa JIT test (~0.7s) because numba's
+# @guvectorize crashes on some hardware with NumPy 2.x — this must happen
+# before any engine lazy-loads librosa/numba, or the env var is too late.
+# On NumPy 1.x we skip the test entirely (not affected).
 if sys.version_info >= (3, 13):
     os.environ.setdefault('NUMBA_DISABLE_JIT', '1')
+else:
+    try:
+        import numpy as _np
+        if int(_np.__version__.split('.')[0]) >= 2:
+            numba_compat_path = os.path.join(os.path.dirname(__file__), "utils", "compatibility", "numba_compat.py")
+            _spec = importlib.util.spec_from_file_location("numba_compat_module", numba_compat_path)
+            _numba_compat = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_numba_compat)
+            _numba_compat.setup_numba_compatibility(quick_startup=False, verbose=False)
+    except Exception:
+        pass
 
 # TorchCodec note: Removed torchcodec dependency to eliminate FFmpeg system requirement
 # torchaudio.load() works fine with fallback backends (soundfile, scipy)

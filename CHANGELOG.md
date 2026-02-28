@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.18] - 2026-02-28
+
+### Added
+
+- Engines like IndexTTS-2, Qwen3-TTS, RVC and others failed with AttributeError
+
+### Changed
+
+- No performance impact for users on NumPy 1.x
+
+### Fixed
+
+- Fix all engines crashing with Numba/librosa JIT error on NumPy 2.x
+- Fix crash affecting all TTS engines on NumPy 2.x with certain hardware
+- in librosa audio processing (get_call_template error)
+- Numba JIT compatibility is now correctly detected and disabled at startup
 ## [4.21.17] - 2026-02-22
 
 ### Added

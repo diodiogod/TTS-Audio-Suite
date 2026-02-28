@@ -50,7 +50,7 @@ class NumbaCompatibilityManager:
             if sys.version_info >= (3, 13):
                 results['jit_compatible'] = False
                 results['errors'].append("Python 3.13+ detected - numba JIT known incompatible (skipped librosa test)")
-            
+
             results['test_duration'] = time.time() - start_time
             self._test_results = results
             return results
@@ -111,7 +111,7 @@ class NumbaCompatibilityManager:
             numba.config.ENABLE_CUDASIM = True
         except ImportError:
             pass  # numba not imported yet, environment variable will handle it
-        
+
         self._jit_disabled = True
         print("🔧 Applied numba JIT workaround for Python 3.12+/Numpy 2.x compatibility")
     
