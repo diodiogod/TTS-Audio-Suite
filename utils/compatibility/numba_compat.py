@@ -55,41 +55,24 @@ class NumbaCompatibilityManager:
             self._test_results = results
             return results
 
-        # Full test path: actually import librosa and test JIT compilation
-        # Test 1: Basic librosa.stft compilation (most common failure point)
+        # Test librosa.resample — this lazy-loads librosa.core.audio which contains
+        # the @guvectorize decorated function that crashes on NumPy 2.x + certain hardware.
+        # librosa.stft does NOT trigger this code path, so we must test resample directly.
         try:
             import numpy as np
             import librosa
 
-            # Create minimal test signal
             test_audio = np.random.randn(1024).astype(np.float32)
+            _ = librosa.resample(y=test_audio, orig_sr=22050, target_sr=16000)
 
-            # This will trigger numba JIT compilation if enabled
-            _ = librosa.stft(test_audio, hop_length=256, n_fft=512)
-            
         except Exception as e:
             error_msg = str(e)
-            if "'function' object has no attribute 'get_call_template'" in error_msg:
+            if "'function' object has no attribute 'get_call_template'" in error_msg or \
+               "Cannot determine Numba type" in error_msg:
                 results['jit_compatible'] = False
-                results['errors'].append(f"librosa.stft JIT failure: {error_msg}")
-            elif "Cannot determine Numba type" in error_msg:
-                results['jit_compatible'] = False  
-                results['errors'].append(f"Numba type inference failure: {error_msg}")
+                results['errors'].append(f"librosa.resample JIT failure: {error_msg}")
             else:
-                # Other errors might not be JIT-related
                 results['errors'].append(f"librosa test error: {error_msg}")
-        
-        if not quick_test and results['jit_compatible']:
-            # Test 2: librosa.filters.mel (secondary failure point)
-            try:
-                _ = librosa.filters.mel(sr=16000, n_fft=400, n_mels=128)
-            except Exception as e:
-                error_msg = str(e)
-                if "get_call_template" in error_msg or "Cannot determine Numba type" in error_msg:
-                    results['jit_compatible'] = False
-                    results['errors'].append(f"librosa.filters.mel JIT failure: {error_msg}")
-                else:
-                    results['errors'].append(f"librosa.filters.mel error: {error_msg}")
         
         results['test_duration'] = time.time() - start_time
         self._test_results = results

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.19] - 2026-02-28
+
+### Added
+
+- All engines (Qwen3-TTS, IndexTTS-2, RVC, etc.) now correctly protected at startup
+
+### Fixed
+
+- Fix numba JIT compatibility test to correctly detect crashes on all affected hardware
+- Fix startup test that was not catching the Numba/librosa crash on some systems
 ## [4.21.18] - 2026-02-28
 
 ### Added
