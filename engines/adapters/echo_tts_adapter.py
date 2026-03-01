@@ -670,6 +670,18 @@ class EchoTTSEngineAdapter:
 
         return audio_tensor, sample_rate
 
+    def generate_single(self, text: str, speaker_audio: Any, reference_text: str,
+                        seed: int = 0, enable_audio_cache: bool = True) -> torch.Tensor:
+        """Generate audio for a single chunk of text (no chunking, no combining)."""
+        if seed is not None:
+            self.config["seed"] = seed
+        ref_audio, _ = self._prepare_reference_audio(speaker_audio)
+        ref_text = reference_text or ""
+        audio_tensor, _ = self._generate_audio_for_text(
+            text, ref_audio, ref_text, enable_audio_cache=enable_audio_cache
+        )
+        return audio_tensor
+
     def process_text(self, text: str, speaker_audio: Any, reference_text: str, seed: int = 0,
                      enable_chunking: bool = True, max_chars_per_chunk: int = 400,
                      chunk_combination_method: str = "auto", silence_between_chunks_ms: int = 100,
@@ -683,18 +695,11 @@ class EchoTTSEngineAdapter:
         if enable_chunking:
             max_chars = ImprovedChatterBoxChunker.validate_chunking_params(max_chars_per_chunk)
             text_chunks = ImprovedChatterBoxChunker.split_into_chunks(text, max_chars=max_chars)
-            if len(text_chunks) > 1:
-                print(f"📝 Echo-TTS: Chunking text into {len(text_chunks)} chunks (max {max_chars} chars each)")
         else:
             text_chunks = [text]
 
         audio_segments = []
         for chunk_idx, chunk in enumerate(text_chunks):
-            if len(text_chunks) > 1:
-                print(f"🎤 Echo-TTS chunk {chunk_idx + 1}/{len(text_chunks)}:")
-                print("=" * 60)
-                print(chunk)
-                print("=" * 60)
             audio_tensor, _ = self._generate_audio_for_text(
                 chunk,
                 ref_audio,

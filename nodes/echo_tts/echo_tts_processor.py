@@ -173,20 +173,10 @@ class EchoTTSProcessor:
                     )
                 )
                 SHORT_FRAGMENT_THRESHOLD = 20
-
-                # Parse pause tags FIRST so edit tags are extracted per-fragment (not from
-                # the whole segment). This ensures <Laughter> etc only apply to the fragment
-                # they appear in, not the entire combined audio.
-                has_pauses = PauseTagProcessor.has_pause_tags(segment_text)
-                if has_pauses:
-                    raw_pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
-                else:
-                    raw_pause_segments = None
-
-                pause_mode = raw_pause_segments is not None
                 seed_offset = 0
 
-                def _generate_fragment(text_content: str) -> torch.Tensor:
+                def _generate_single(text_content: str) -> torch.Tensor:
+                    """Generate a single chunk - no chunking, just raw model call."""
                     nonlocal seed_offset
                     fragment_seed = current_seed + seed_offset
                     seed_offset += 1
@@ -202,97 +192,72 @@ class EchoTTSProcessor:
                         }
                         print(f"⚠️ Echo-TTS: Auto-disabled force_speaker_kv for short fragment ({len(text_content.strip())} chars)")
 
-                    print(f"🎤 Echo-TTS - Generating for '{seg.character}':")
-                    print("=" * 60)
-                    print(text_content)
-                    print("=" * 60)
-
                     self.adapter.update_config(fragment_config)
-                    audio = self.adapter.process_text(
+                    audio = self.adapter.generate_single(
                         text=text_content,
                         speaker_audio=speaker_audio,
                         reference_text=current_ref_text,
                         seed=fragment_seed,
-                        enable_chunking=enable_chunking,
-                        max_chars_per_chunk=max_chars_per_chunk,
-                        chunk_combination_method=chunk_combination_method,
-                        silence_between_chunks_ms=silence_between_chunks_ms,
                         enable_audio_cache=enable_audio_cache,
-                        return_info=False
                     )
-                    if isinstance(audio, tuple):
-                        audio = audio[0]
                     if not isinstance(audio, torch.Tensor):
                         audio = torch.tensor(audio, dtype=torch.float32)
                     if audio.dim() > 1:
                         audio = audio.squeeze()
                     return audio
 
-                if raw_pause_segments:
-                    # Process each fragment independently so edit tags scope to their fragment.
-                    # Build per-fragment segment records, apply edit post-processing per fragment,
-                    # then combine with silence spliced in original order.
-                    frag_records = []  # {waveform, sample_rate, text, edit_tags}
-                    frag_order = []   # ('text', idx) or ('pause', tensor)
+                def _generate_chunks(text_content: str, edit_tags: list) -> None:
+                    """Split text into chunks, generate each, append segment records."""
+                    if enable_chunking:
+                        from utils.text.chunking import ImprovedChatterBoxChunker
+                        max_chars = ImprovedChatterBoxChunker.validate_chunking_params(max_chars_per_chunk)
+                        chunks = ImprovedChatterBoxChunker.split_into_chunks(text_content, max_chars=max_chars)
+                    else:
+                        chunks = [text_content]
 
+                    if len(chunks) > 1:
+                        print(f"📝 Echo-TTS: Chunking '{seg.character}' into {len(chunks)} chunks (max {max_chars_per_chunk} chars each)")
+
+                    for chunk_idx, chunk in enumerate(chunks):
+                        print(f"🎤 Echo-TTS - Generating for '{seg.character}'" + (f" (chunk {chunk_idx + 1}/{len(chunks)})" if len(chunks) > 1 else "") + ":")
+                        print("=" * 60)
+                        print(chunk)
+                        print("=" * 60)
+                        audio = _generate_single(chunk).cpu()
+                        if audio.dim() == 1:
+                            audio = audio.unsqueeze(0)
+                        segment_records.append({
+                            "waveform": audio,
+                            "sample_rate": self.SAMPLE_RATE,
+                            "text": chunk,
+                            "edit_tags": edit_tags if chunk_idx == 0 else [],
+                        })
+
+                # Split by pause tags first so edit tags scope to their fragment.
+                # Each chunk and silence becomes its own segment record - batch edit
+                # post-processing happens at the end over all segment_records (gold standard).
+                if PauseTagProcessor.has_pause_tags(segment_text):
+                    raw_pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
                     for frag_type, frag_content in raw_pause_segments:
                         if frag_type == 'text':
                             frag_clean, frag_edit_tags = get_edit_tags_for_segment(frag_content)
                             frag_clean = frag_clean.strip()
                             if not frag_clean:
                                 continue
-                            frag_audio = _generate_fragment(frag_clean)
-                            if frag_audio.dim() == 1:
-                                frag_audio = frag_audio.unsqueeze(0)
-                            idx = len(frag_records)
-                            frag_records.append({
-                                "waveform": frag_audio,
-                                "sample_rate": self.SAMPLE_RATE,
-                                "text": frag_clean,
-                                "edit_tags": frag_edit_tags,
-                            })
-                            frag_order.append(('text', idx))
+                            _generate_chunks(frag_clean, frag_edit_tags)
                         elif frag_type == 'pause':
-                            frag_order.append(('pause', frag_content))
-
-                    # Apply edit post-processing per fragment
-                    if frag_records and any(r["edit_tags"] for r in frag_records):
-                        frag_records = apply_edit_post_processing(frag_records, engine_config=base_config)
-
-                    # Interleave audio and silence in original order, all on CPU
-                    all_parts = []
-                    for order_type, order_val in frag_order:
-                        if order_type == 'text':
-                            w = frag_records[order_val]["waveform"].cpu()
-                            if w.dim() == 1:
-                                w = w.unsqueeze(0)
-                            all_parts.append(w)
-                        elif order_type == 'pause':
-                            silence = PauseTagProcessor.create_silence_segment(order_val, self.SAMPLE_RATE, torch.device('cpu'), torch.float32)
+                            silence = PauseTagProcessor.create_silence_segment(frag_content, self.SAMPLE_RATE, torch.device('cpu'), torch.float32)
                             if silence.dim() == 1:
                                 silence = silence.unsqueeze(0)
-                            all_parts.append(silence)
-
-                    if all_parts:
-                        audio_segment = torch.cat(all_parts, dim=-1).squeeze()
-                    else:
-                        audio_segment = torch.zeros(0, dtype=torch.float32)
-
-                    segment_records.append({
-                        "waveform": audio_segment,
-                        "sample_rate": self.SAMPLE_RATE,
-                        "text": segment_text,
-                        "edit_tags": [],  # already applied per-fragment above
-                    })
+                            segment_records.append({
+                                "waveform": silence,
+                                "sample_rate": self.SAMPLE_RATE,
+                                "text": f"[pause:{frag_content}s]",
+                                "edit_tags": [],
+                            })
                 else:
                     clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
-                    audio_segment = _generate_fragment(clean_text)
-                    segment_records.append({
-                        "waveform": audio_segment,
-                        "sample_rate": self.SAMPLE_RATE,
-                        "text": clean_text,
-                        "edit_tags": edit_tags,
-                    })
+                    _generate_chunks(clean_text, edit_tags)
 
                 self.adapter.complete_block()
 
