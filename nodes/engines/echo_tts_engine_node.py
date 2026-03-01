@@ -107,7 +107,16 @@ class EchoTTSEngineNode(BaseTTSNode):
             "required": {
                 "preset": (preset_choices, {
                     "default": "Custom",
-                    "tooltip": "Sampler preset from Echo-TTS. If not Custom, preset values override num_steps, CFG scales, CFG t-range, truncation, and rescale settings."
+                    "tooltip": (
+                        "Sampler preset (overrides steps/CFG/truncation/rescale fields).\n"
+                        "Independent-High-Speaker-CFG: steps=40, cfg_text=3, cfg_speaker=8, trunc=1.0, rescale_k=1.0\n"
+                        "Independent-High-Speaker-CFG-Flat: steps=40, cfg_text=3, cfg_speaker=8, trunc=0.8, rescale_k=1.2 (flattened tail)\n"
+                        "Independent-High-CFG: steps=40, cfg_text=8, cfg_speaker=8, trunc=1.0, rescale_k=1.0\n"
+                        "Independent-High-CFG-Flat: steps=40, cfg_text=8, cfg_speaker=8, trunc=0.8, rescale_k=1.2\n"
+                        "Independent-Low-CFG: steps=40, cfg_text=3, cfg_speaker=3, trunc=1.0, rescale_k=1.0\n"
+                        "Independent-Low-CFG-Flat: steps=40, cfg_text=3, cfg_speaker=3, trunc=0.8, rescale_k=1.2\n"
+                        "Custom: use the values set manually below."
+                    )
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
