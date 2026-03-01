@@ -350,22 +350,20 @@ def generate_license_table(data):
 
 
 def inject_into_license(license_table):
-    """Inject license table into LICENSE file between markers. Returns: True=written, False=unchanged, None=error"""
+    """Inject license table into LICENSE file after the '---' separator. Returns: True=written, False=unchanged, None=error"""
     license_path = Path(__file__).parent.parent / "LICENSE"
 
     with open(license_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    start_marker = "<!-- MODEL_LICENSES_START -->"
-    end_marker = "<!-- MODEL_LICENSES_END -->"
-
-    if start_marker not in content or end_marker not in content:
-        print("⚠️  Markers not found in LICENSE")
+    separator = "\n---\n"
+    sep_idx = content.find(separator)
+    if sep_idx == -1:
+        print("⚠️  '---' separator not found in LICENSE")
         return None
 
-    pattern = f"{re.escape(start_marker)}.*?{re.escape(end_marker)}"
-    replacement = f"{start_marker}\n\n{license_table}\n\n{end_marker}"
-    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+    mit_section = content[: sep_idx + len(separator)]
+    new_content = mit_section + "\n" + license_table + "\n"
 
     if new_content == content:
         return False

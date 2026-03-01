@@ -22,8 +22,6 @@ SOFTWARE.
 
 ---
 
-<!-- MODEL_LICENSES_START -->
-
 Third-Party Model Licenses
 ──────────────────────────
 
@@ -46,5 +44,3 @@ The project code is MIT. Model weights carry their own licenses:
   ────────────────  ─────────────────────────────────────────  ──────────────
 
 Users are responsible for complying with respective model licenses.
-
-<!-- MODEL_LICENSES_END -->
