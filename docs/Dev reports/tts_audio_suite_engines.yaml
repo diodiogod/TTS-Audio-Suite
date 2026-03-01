@@ -6,6 +6,8 @@ engines:
     name: F5-TTS
     models: "Base, v1, E2TTS + 8 lang models"
     size: "~1.2GB each"
+    license: "CC-BY-NC-4.0"
+    commercial: false
 
     capabilities:
       tts: true
@@ -117,6 +119,8 @@ engines:
     name: ChatterBox
     models: "EN, DE×3, IT, FR, RU, HY, KA, JA, KO, NO"
     size: "~4.3GB"
+    license: "MIT"
+    commercial: true
 
     capabilities:
       tts: true
@@ -245,6 +249,8 @@ engines:
     name: ChatterBox 23L
     models: "v1, v2, Vietnamese (Viterbox), Egyptian Arabic (oddadmix)"
     size: "~4.3GB"
+    license: "MIT"
+    commercial: true
 
     capabilities:
       tts: true
@@ -320,6 +326,8 @@ engines:
     name: VibeVoice
     models: "1.5B, 7B, KugelAudio-0 (7B), Hindi-1.5B/7B"
     size: "5.4GB / 18GB"
+    license: "MIT (research-only per model card)"
+    commercial: false
 
     capabilities:
       tts: true
@@ -391,6 +399,8 @@ engines:
     name: Higgs Audio 2
     models: "3B"
     size: "~9GB"
+    license: "Boson Higgs Audio 2 Community License"
+    commercial: "conditional"
 
     capabilities:
       tts: true
@@ -460,6 +470,8 @@ engines:
     name: IndexTTS-2
     models: "IndexTTS-2"
     size: "~4.7GB"
+    license: "bilibili Model Use License"
+    commercial: "conditional"
 
     capabilities:
       tts: true
@@ -535,6 +547,8 @@ engines:
     name: CosyVoice3
     models: "0.5B, 0.5B-RL"
     size: "~5.4GB"
+    license: "Apache-2.0"
+    commercial: true
 
     capabilities:
       tts: true
@@ -597,6 +611,8 @@ engines:
     name: Qwen3-TTS
     models: "0.6B, 1.7B (CustomVoice/VoiceDesign/Base)"
     size: "~3-6GB"
+    license: "Apache-2.0"
+    commercial: true
 
     capabilities:
       tts: true
@@ -696,6 +712,8 @@ engines:
     name: Step Audio EditX
     models: "3B LLM + CosyVoice"
     size: "~7GB"
+    license: "Apache-2.0 (code); depends on CosyVoice checkpoints - verify before commercial use"
+    commercial: "conditional"
 
     capabilities:
       tts: true
@@ -766,6 +784,8 @@ engines:
     name: Echo-TTS
     models: "echo-tts-base + fish-s1-dac-min"
     size: "~5.3GB + ~1.8GB"
+    license: "CC-BY-NC-SA-4.0"
+    commercial: false
 
     capabilities:
       tts: true
@@ -776,7 +796,6 @@ engines:
     special_features:
       - "Diffusion-based (~30s best)"
       - "Force Speaker KV (speaker drift control)"
-      - "Non-commercial (CC-BY-NC-SA)"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -836,6 +855,8 @@ engines:
     name: RVC
     models: "Community .pth"
     size: "100-300MB"
+    license: "MIT (framework); community models vary"
+    commercial: "varies"
 
     capabilities:
       tts: false
