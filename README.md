@@ -34,6 +34,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **CosyVoice3** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
+| **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
@@ -80,12 +81,19 @@ Control               Official (23-lang)        90min Generation
 │
 │             🎨 Inline Editor Tags Era
 ▼                            |
-v4.12 ──────────────► v4.15 ────────────► v4.16 ──────────► v4.19
-Oct 25                Dez 25              Dez 25          Jan 26
-│                     │                   │               │
-Per-Seg Parameter     Step Audio EditX    CosyVoice3      Qwen3-TTS
-Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
-                      <laughter:2>                        VoiceDesign     
+v4.12 ──────────────► v4.15 ────────────► v4.16 ──────────┐
+Oct 25                Dez 25              Dez 25           │
+│                     │                   │                │
+Per-Seg Parameter     Step Audio EditX    CosyVoice3       │
+Switching [seed:24]   Inline Edit tags    TTS + VC         │
+                      <laughter:2>                         │
+                                                           ▼
+v4.22 ◄──────────────────── v4.19 ◄──────────────────────-┘
+Mar 26                      Jan 26
+│                           │
+Echo-TTS                    Qwen3-TTS
+DiT Voice Cloning           TTS + ASR
+Reference Audio             VoiceDesign
 ```
 
 <details>
@@ -111,6 +119,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
   - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
   - [🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design](#-qwen3-tts---3-model-types-with-text-to-voice-design)
+  - [🎧 Echo-TTS Voice Cloning](#-echo-tts-voice-cloning)
   - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
   - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
@@ -174,7 +183,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC        TTS
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, and **Qwen3-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Qwen3-ASR via the ✏️ ASR Transcribe node (more engines planned)
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
@@ -796,6 +805,26 @@ Description: "A deep, authoritative male voice with clear articulation"
 </details>
 
 <details>
+<summary><h3>🎧 Echo-TTS Voice Cloning</h3></summary>
+
+**NEW in v4.22**: Echo-TTS DiT-based voice cloning with reference audio support.
+
+* **⏱️ Best at ≤30s per generation** — Echo-TTS performs best at ~30 seconds or less per chunk
+* **🧩 Long-form (best-effort)** — Longer text is handled via the unified chunking system
+* **⚡ CUDA recommended** — CPU works but is very slow for real workloads
+* **🔑 Force Speaker KV** — Controls speaker identity drift across chunks
+* **🪪 License** — Echo-TTS weights are non-commercial (CC-BY-NC-SA)
+
+**Usage:**
+1. Add `⚙️ Echo-TTS Engine` node
+2. Connect to `🎤 TTS Text` or `📺 TTS SRT`
+3. First run auto-downloads the model (~7.1GB total) into `ComfyUI/models/TTS/echo-tts-base/`
+
+📖 **See [Model folder layouts](docs/MODEL_LAYOUTS.md#echo-tts) for detailed setup paths**
+
+</details>
+
+<details>
 <summary><h3>📝 Phoneme Text Normalizer</h3></summary>
 
 **NEW in v4.10.0**: Universal multilingual text preprocessing node for improved TTS pronunciation quality across languages!
@@ -1220,6 +1249,7 @@ For offline/manual setup:
 | Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
+| Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 
 ### 5. Restart ComfyUI
 
