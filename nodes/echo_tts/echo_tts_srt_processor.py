@@ -121,11 +121,6 @@ class EchoTTSSRTProcessor:
             timing_mode, has_overlaps, "Echo-TTS SRT"
         )
 
-        # Set up character parser with available characters
-        available_chars = get_available_characters()
-        character_parser.set_available_characters(list(available_chars))
-        character_parser.reset_session_cache()
-
         # Process subtitles and generate audio segments
         print(f"🚀 Echo-TTS SRT: Processing {len(subtitles)} subtitles in {current_timing_mode} mode")
         audio_segments, adjustments = self._process_all_subtitles(
