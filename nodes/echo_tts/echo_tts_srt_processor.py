@@ -19,8 +19,6 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
-from utils.voice.discovery import get_available_characters, get_character_mapping
-from utils.text.character_parser import character_parser
 
 
 class EchoTTSSRTProcessor:
@@ -34,7 +32,9 @@ class EchoTTSSRTProcessor:
     def __init__(self, node_instance, config: Dict[str, Any]):
         self.node_instance = node_instance
         self.config = config.copy() if config else {}
-        self.processor = EchoTTSEngineAdapter(self.config)
+        self.adapter = EchoTTSEngineAdapter(self.config)
+        # Lazily import EchoTTSProcessor to avoid circular imports
+        self._tts_processor = None
         self.srt_available = False
         self.SRTParser = None
         self.SRTSubtitle = None
@@ -61,11 +61,25 @@ class EchoTTSSRTProcessor:
         except Exception as e:
             print(f"⚠️ Echo-TTS SRT: Failed to load SRT modules: {e}")
 
+    @property
+    def processor(self):
+        """Lazily instantiate EchoTTSProcessor to avoid circular imports."""
+        if self._tts_processor is None:
+            import importlib.util as _ilu
+            import os as _os
+            _proc_path = _os.path.join(_os.path.dirname(__file__), "echo_tts_processor.py")
+            _spec = _ilu.spec_from_file_location("echo_tts_processor_module", _proc_path)
+            _mod = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_mod)
+            self._tts_processor = _mod.EchoTTSProcessor(self.adapter, self.config)
+        return self._tts_processor
+
     def update_config(self, new_config: Dict[str, Any]):
         """Update processor configuration with new parameters."""
         self.config = new_config.copy() if new_config else {}
-        if self.processor:
-            self.processor.update_config(self.config)
+        self.adapter.update_config(self.config)
+        if self._tts_processor is not None:
+            self._tts_processor.update_config(self.config)
 
     def process_srt_content(
         self,
@@ -180,36 +194,16 @@ class EchoTTSSRTProcessor:
     ) -> Tuple[List[torch.Tensor], List[Dict]]:
         """
         Generate audio for each subtitle and compute timing adjustments.
+        Delegates all character switching, pause tags, and edit tags to EchoTTSProcessor.
         """
         audio_segments: List[torch.Tensor] = []
         adjustments: List[Dict[str, Any]] = []
 
-        # Build character mapping from available voices
-        unique_characters = set()
-        for sub in subtitles:
-            segments = character_parser.split_by_character(sub.text, include_language=False)
-            for char, _ in segments:
-                if char:
-                    unique_characters.add(char)
-
-        character_mapping = {}
-        if unique_characters:
-            character_mapping = get_character_mapping(list(unique_characters), engine_type="audio_only")
-
-        from utils.text.pause_processor import PauseTagProcessor
-        from utils.text.segment_parameters import apply_segment_parameters
-        from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
-        from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
-        import re
-
-        def _strip_s1_tag(text_value: str) -> str:
-            return re.sub(r'\[s1\]\s*', '', text_value, flags=re.IGNORECASE)
-
         subtitle_lengths = [max(1, len((sub.text or "").strip())) for sub in subtitles]
-        self.processor.start_job(total_blocks=len(subtitles), block_texts=subtitle_lengths)
+        self.processor.adapter.start_job(total_blocks=len(subtitles), block_texts=subtitle_lengths)
         try:
             for i, sub in enumerate(subtitles):
-                self.processor.set_current_block(i)
+                self.processor.adapter.set_current_block(i)
                 self._check_interrupt(i, len(subtitles))
 
                 text = sub.text.strip()
@@ -235,194 +229,41 @@ class EchoTTSSRTProcessor:
                         'adjusted_end': sub.end_time,
                         'adjusted_duration': target_duration
                     })
-                    self.processor.complete_block()
+                    self.processor.adapter.complete_block()
                     continue
 
-                print(f"📖 Echo-TTS Subtitle {i+1}/{len(subtitles)}: Processing '{text[:50]}...'")
+                print(f"📖 Echo-TTS SRT Subtitle {i+1}/{len(subtitles)}: '{text[:60]}'")
 
-                narrator_info = (voice_mapping or {}).get('narrator', {})
-                narrator_audio = narrator_info.get('audio')
-                narrator_reference = narrator_info.get('reference_text', '')
-                if narrator_audio is None:
-                    narrator_audio = narrator_info.get('audio_path')
+                # Delegate fully to EchoTTSProcessor - handles character switching,
+                # pause tags, edit tags, force_speaker_kv guards, and generation prints.
+                segment_records = self.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed + i,
+                    enable_chunking=False,  # SRT handles timing, no chunking
+                    enable_audio_cache=enable_audio_cache,
+                )
 
-                # Split by character tags and generate per-segment audio (with parameters + pause tags + edit tags)
-                segment_audio_list: List[torch.Tensor] = []
-                segment_records: List[Dict[str, Any]] = []
-                segments = character_parser.parse_text_segments(_strip_s1_tag(text))
-                if not segments:
-                    segments = character_parser.parse_text_segments("narrator " + _strip_s1_tag(text))
-
-                for seg in segments:
-                    current_character = seg.character or "narrator"
-                    self._check_interrupt(i, len(subtitles), current_character)
-
-                    segment_text = (seg.text or "").strip()
-                    if not segment_text:
-                        continue
-
-                    speaker_audio = narrator_audio
-                    reference_text = narrator_reference
-
-                    if seg.character == "narrator":
-                        # Always prefer the provided narrator voice input for narrator segments
-                        if narrator_audio is not None:
-                            speaker_audio = narrator_audio
-                            reference_text = narrator_reference or reference_text
-                    elif seg.character and seg.character in character_mapping:
-                        char_audio, char_text = character_mapping[seg.character]
-                        if char_audio:
-                            speaker_audio = char_audio
-                            reference_text = char_text or reference_text
-                            print(f"📖 Echo-TTS: Using character voice '{seg.character}'")
-                        else:
-                            print(f"⚠️ Echo-TTS: No voice file found for '{seg.character}', using narrator voice")
-
-                    segment_params = seg.parameters if seg.parameters else {}
-                    current_seed = seed + i
-                    current_config = self.config
-                    if segment_params:
-                        current_config = apply_segment_parameters(self.config, segment_params, "echo_tts")
-                        if 'seed' in current_config:
-                            current_seed = int(current_config.get('seed', current_seed))
-                        print(f"📊 Echo-TTS SRT segment: Character '{seg.character}' with parameters {segment_params}")
-
-                    self.processor.update_config(current_config)
-
-                    has_kv = any(
-                        current_config.get(k) is not None for k in (
-                            "speaker_kv_scale", "speaker_kv_max_layers", "speaker_kv_min_t"
-                        )
+                # Combine character segments into a single audio for this subtitle
+                if len(segment_records) > 1:
+                    audio, _ = self.processor.combine_audio_segments(
+                        segments=segment_records,
+                        method="auto",
+                        silence_ms=0,
+                        original_text=text,
+                        return_info=True,
                     )
-                    SHORT_FRAGMENT_THRESHOLD = 20
-
-                    # Parse pause tags FIRST so edit tags are extracted per-fragment
-                    has_pauses = PauseTagProcessor.has_pause_tags(segment_text)
-                    if has_pauses:
-                        raw_pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
-                    else:
-                        raw_pause_segments = None
-
-                    pause_mode = raw_pause_segments is not None
-                    seed_offset = 0
-
-                    def _generate_fragment(text_content: str) -> torch.Tensor:
-                        nonlocal seed_offset
-                        self._check_interrupt(i, len(subtitles), current_character)
-                        fragment_seed = current_seed + seed_offset
-                        seed_offset += 1
-
-                        print(f"🎤 Echo-TTS SRT - Generating for '{current_character}':")
-                        print("=" * 60)
-                        print(text_content)
-                        print("=" * 60)
-
-                        fragment_config = current_config
-                        if has_kv and len(text_content.strip()) < SHORT_FRAGMENT_THRESHOLD:
-                            fragment_config = {
-                                **current_config,
-                                "speaker_kv_scale": None,
-                                "speaker_kv_max_layers": None,
-                                "speaker_kv_min_t": None,
-                            }
-                            print(f"⚠️ Echo-TTS: Auto-disabled force_speaker_kv for short fragment ({len(text_content.strip())} chars)")
-
-                        self.processor.update_config(fragment_config)
-                        audio = self.processor.process_text(
-                            text=text_content,
-                            speaker_audio=speaker_audio,
-                            reference_text=reference_text or "",
-                            seed=fragment_seed,
-                            enable_chunking=False,
-                            enable_audio_cache=enable_audio_cache,
-                            return_info=False
-                        )
-                        if isinstance(audio, tuple):
-                            audio = audio[0]
-                        if not isinstance(audio, torch.Tensor):
-                            audio = torch.tensor(audio, dtype=torch.float32)
-                        if audio.dim() > 1:
-                            audio = audio.squeeze()
-                        return audio
-
-                    if raw_pause_segments:
-                        frag_records = []
-                        frag_order = []
-
-                        for frag_type, frag_content in raw_pause_segments:
-                            if frag_type == 'text':
-                                frag_clean, frag_edit_tags = get_edit_tags_for_segment(frag_content)
-                                frag_clean = frag_clean.strip()
-                                if not frag_clean:
-                                    continue
-                                frag_audio = _generate_fragment(frag_clean)
-                                if frag_audio.dim() == 1:
-                                    frag_audio = frag_audio.unsqueeze(0)
-                                idx = len(frag_records)
-                                frag_records.append({
-                                    "waveform": frag_audio,
-                                    "sample_rate": self.SAMPLE_RATE,
-                                    "text": frag_clean,
-                                    "edit_tags": frag_edit_tags,
-                                })
-                                frag_order.append(('text', idx))
-                            elif frag_type == 'pause':
-                                frag_order.append(('pause', frag_content))
-
-                        if frag_records and any(r["edit_tags"] for r in frag_records):
-                            frag_records = apply_edit_post_processing(frag_records, engine_config=self.config)
-
-                        all_parts = []
-                        for order_type, order_val in frag_order:
-                            if order_type == 'text':
-                                w = frag_records[order_val]["waveform"].cpu()
-                                if w.dim() == 1:
-                                    w = w.unsqueeze(0)
-                                all_parts.append(w)
-                            elif order_type == 'pause':
-                                silence = PauseTagProcessor.create_silence_segment(order_val, self.SAMPLE_RATE, torch.device('cpu'), torch.float32)
-                                if silence.dim() == 1:
-                                    silence = silence.unsqueeze(0)
-                                all_parts.append(silence)
-
-                        if all_parts:
-                            segment_audio = torch.cat(all_parts, dim=-1).squeeze()
-                        else:
-                            segment_audio = torch.zeros(0, dtype=torch.float32)
-
-                        segment_audio_list.append(segment_audio)
-                        segment_records.append({
-                            "waveform": segment_audio,
-                            "sample_rate": self.SAMPLE_RATE,
-                            "text": segment_text,
-                            "edit_tags": [],
-                        })
-                    else:
-                        clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
-                        segment_audio = _generate_fragment(clean_text)
-                        segment_audio_list.append(segment_audio)
-                        segment_records.append({
-                            "waveform": segment_audio,
-                            "sample_rate": self.SAMPLE_RATE,
-                            "text": clean_text,
-                            "edit_tags": edit_tags,
-                        })
-
-                if segment_records and any(seg["edit_tags"] for seg in segment_records):
-                    segment_records = apply_edit_post_processing(segment_records, engine_config=self.config)
-                    segment_audio_list = []
-                    for seg in segment_records:
-                        wf = seg["waveform"].cpu()
-                        # Normalize 3D [B,C,S] -> 2D [C,S] for timing engine compatibility
-                        if hasattr(wf, "dim") and wf.dim() == 3:
-                            wf = wf.squeeze(0)
-                        seg["waveform"] = wf
-                        segment_audio_list.append(wf)
-
-                if segment_audio_list:
-                    audio = torch.cat(segment_audio_list, dim=-1)
+                elif segment_records:
+                    audio = segment_records[0]["waveform"]
                 else:
                     audio = torch.zeros(1, 0)
+
+                # Normalize to 2D [C, S] for timing engine
+                if audio.dim() == 1:
+                    audio = audio.unsqueeze(0)
+                elif audio.dim() == 3:
+                    audio = audio.squeeze(0)
+                audio = audio.cpu()
 
                 audio_segments.append(audio)
 
@@ -451,10 +292,10 @@ class EchoTTSSRTProcessor:
                     'adjusted_duration': natural_duration
                 })
 
-                self.processor.complete_block()
+                self.processor.adapter.complete_block()
                 print(f"✅ Echo-TTS Subtitle {i+1}/{len(subtitles)}: {natural_duration:.2f}s (expected {target_duration:.2f}s)")
         finally:
-            self.processor.end_job()
+            self.processor.adapter.end_job()
 
         return audio_segments, adjustments
 

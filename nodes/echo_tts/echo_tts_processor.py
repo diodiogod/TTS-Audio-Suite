@@ -86,8 +86,7 @@ class EchoTTSProcessor:
     def process_text(
         self,
         text: str,
-        narrator_audio: Any,
-        narrator_reference_text: str,
+        voice_mapping: Dict[str, Any],
         seed: int,
         enable_chunking: bool = True,
         max_chars_per_chunk: int = 400,
@@ -98,14 +97,18 @@ class EchoTTSProcessor:
         """
         Process text and generate Echo-TTS segment records.
 
+        Args:
+            voice_mapping: Dict mapping character names to {'audio': tensor, 'reference_text': str}.
+                           Must include 'narrator' key for the default voice.
+
         Returns:
-            List of segment dicts:
-            - waveform: torch.Tensor
-            - sample_rate: int
-            - text: str
-            - edit_tags: list
+            List of segment dicts with keys: waveform, sample_rate, text, edit_tags
         """
         self._setup_character_parser(text)
+
+        narrator_info = voice_mapping.get('narrator', {})
+        narrator_audio = narrator_info.get('audio') if isinstance(narrator_info, dict) else narrator_info
+        narrator_reference_text = narrator_info.get('reference_text', '') if isinstance(narrator_info, dict) else ''
 
         base_config = self.config.copy()
         parsed_text = self._strip_s1_tag(text)
@@ -144,19 +147,24 @@ class EchoTTSProcessor:
 
                 self.adapter.update_config(current_config)
 
+                # Resolve voice: check voice_mapping first, then file-based character_mapping
                 speaker_audio = narrator_audio
                 current_ref_text = narrator_reference_text or ""
-                if seg.character == "narrator":
-                    if narrator_audio is not None:
-                        speaker_audio = narrator_audio
-                        current_ref_text = narrator_reference_text or current_ref_text
-                elif seg.character and seg.character in character_mapping:
-                    char_audio, char_text = character_mapping[seg.character]
+                char_name = seg.character or "narrator"
+                if char_name != "narrator" and char_name in voice_mapping:
+                    char_info = voice_mapping[char_name]
+                    if isinstance(char_info, dict):
+                        speaker_audio = char_info.get('audio', narrator_audio)
+                        current_ref_text = char_info.get('reference_text', current_ref_text)
+                    else:
+                        speaker_audio = char_info
+                elif char_name != "narrator" and char_name in character_mapping:
+                    char_audio, char_text = character_mapping[char_name]
                     if char_audio:
                         speaker_audio = char_audio
                         current_ref_text = char_text or current_ref_text
                     else:
-                        print(f"⚠️ Echo-TTS: No voice file found for '{seg.character}', using narrator voice")
+                        print(f"⚠️ Echo-TTS: No voice file found for '{char_name}', using narrator voice")
 
                 has_kv = any(
                     current_config.get(k) is not None for k in (

@@ -1164,10 +1164,10 @@ Back to the main narrator voice for the conclusion.""",
                     engine_instance.processor = EchoTTSProcessor(engine_instance.adapter, config)
                     engine_instance.processor.update_config(config)
 
+                voice_mapping = {'narrator': {'audio': audio_tensor, 'reference_text': reference_text or ''}}
                 segment_records = engine_instance.processor.process_text(
                     text=text,
-                    narrator_audio=audio_tensor,
-                    narrator_reference_text=reference_text,
+                    voice_mapping=voice_mapping,
                     seed=seed,
                     enable_chunking=enable_chunking,
                     max_chars_per_chunk=max_chars_per_chunk,
