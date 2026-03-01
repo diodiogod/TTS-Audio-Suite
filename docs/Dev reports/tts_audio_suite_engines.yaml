@@ -712,7 +712,7 @@ engines:
     name: Step Audio EditX
     models: "3B LLM + CosyVoice"
     size: "~7GB"
-    license: "Apache-2.0 (code); depends on CosyVoice checkpoints - verify before commercial use"
+    license: "Apache-2.0 (verify before commercial use)"
     commercial: "conditional"
 
     capabilities:

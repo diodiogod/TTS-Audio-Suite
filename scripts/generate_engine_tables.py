@@ -306,32 +306,45 @@ def generate_feature_comparison(data):
 
 
 def generate_license_table(data):
-    """Generate model licenses summary table for LICENSE file"""
+    """Generate model licenses summary table for LICENSE file (plain text)"""
     engines = data["engines"]
 
     commercial_map = {
-        True: "✅ Yes",
-        False: "❌ No",
-        "conditional": "⚠️ Conditional",
-        "varies": "⚠️ Varies",
+        True: "Yes",
+        False: "No",
+        "conditional": "Conditional",
+        "varies": "Varies",
     }
 
-    output = []
-    output.append("## Third-Party Model Licenses")
-    output.append("")
-    output.append("The project code is MIT. The bundled/downloaded model weights carry their own licenses:")
-    output.append("")
-    output.append("| Engine | License | Commercial Use |")
-    output.append("|--------|---------|----------------|")
-
+    rows = []
     for e in engines:
         license_str = e.get("license", "Unknown")
         commercial = e.get("commercial", "varies")
-        commercial_str = commercial_map.get(commercial, "⚠️ Unknown")
-        output.append(f"| {e['name']} | {license_str} | {commercial_str} |")
+        commercial_str = commercial_map.get(commercial, "Unknown")
+        rows.append((e["name"], license_str, commercial_str))
 
+    # Calculate column widths
+    col1 = max(len("Engine"), max(len(r[0]) for r in rows))
+    col2 = max(len("License"), max(len(r[1]) for r in rows))
+    col3 = max(len("Commercial Use"), max(len(r[2]) for r in rows))
+
+    sep = f"  {'─' * col1}  {'─' * col2}  {'─' * col3}"
+    header = f"  {'Engine':<{col1}}  {'License':<{col2}}  {'Commercial Use':<{col3}}"
+
+    output = []
+    output.append("Third-Party Model Licenses")
+    output.append("──────────────────────────")
     output.append("")
-    output.append("Users are responsible for complying with the respective model licenses when using this extension.")
+    output.append("The project code is MIT. Model weights carry their own licenses:")
+    output.append("")
+    output.append(sep)
+    output.append(header)
+    output.append(sep)
+    for name, lic, com in rows:
+        output.append(f"  {name:<{col1}}  {lic:<{col2}}  {com:<{col3}}")
+    output.append(sep)
+    output.append("")
+    output.append("Users are responsible for complying with respective model licenses.")
 
     return "\n".join(output)
 

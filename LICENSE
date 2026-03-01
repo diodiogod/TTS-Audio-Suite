@@ -24,24 +24,27 @@ SOFTWARE.
 
 <!-- MODEL_LICENSES_START -->
 
-## Third-Party Model Licenses
+Third-Party Model Licenses
+──────────────────────────
 
-The project code is MIT. The bundled/downloaded model weights carry their own licenses:
+The project code is MIT. Model weights carry their own licenses:
 
-| Engine | License | Commercial Use |
-|--------|---------|----------------|
-| F5-TTS | CC-BY-NC-4.0 | ❌ No |
-| ChatterBox | MIT | ✅ Yes |
-| ChatterBox 23L | MIT | ✅ Yes |
-| VibeVoice | MIT (research-only per model card) | ❌ No |
-| Higgs Audio 2 | Boson Higgs Audio 2 Community License | ⚠️ Conditional |
-| IndexTTS-2 | bilibili Model Use License | ⚠️ Conditional |
-| CosyVoice3 | Apache-2.0 | ✅ Yes |
-| Qwen3-TTS | Apache-2.0 | ✅ Yes |
-| Step Audio EditX | Apache-2.0 (code); depends on CosyVoice checkpoints - verify before commercial use | ⚠️ Conditional |
-| Echo-TTS | CC-BY-NC-SA-4.0 | ❌ No |
-| RVC | MIT (framework); community models vary | ⚠️ Varies |
+  ────────────────  ─────────────────────────────────────────  ──────────────
+  Engine            License                                    Commercial Use
+  ────────────────  ─────────────────────────────────────────  ──────────────
+  F5-TTS            CC-BY-NC-4.0                               No            
+  ChatterBox        MIT                                        Yes           
+  ChatterBox 23L    MIT                                        Yes           
+  VibeVoice         MIT (research-only per model card)         No            
+  Higgs Audio 2     Boson Higgs Audio 2 Community License      Conditional   
+  IndexTTS-2        bilibili Model Use License                 Conditional   
+  CosyVoice3        Apache-2.0                                 Yes           
+  Qwen3-TTS         Apache-2.0                                 Yes           
+  Step Audio EditX  Apache-2.0 (verify before commercial use)  Conditional   
+  Echo-TTS          CC-BY-NC-SA-4.0                            No            
+  RVC               MIT (framework); community models vary     Varies        
+  ────────────────  ─────────────────────────────────────────  ──────────────
 
-Users are responsible for complying with the respective model licenses when using this extension.
+Users are responsible for complying with respective model licenses.
 
 <!-- MODEL_LICENSES_END -->
