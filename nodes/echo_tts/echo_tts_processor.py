@@ -93,6 +93,7 @@ class EchoTTSProcessor:
         chunk_combination_method: str = "auto",
         silence_between_chunks_ms: int = 100,
         enable_audio_cache: bool = True,
+        apply_edit_postprocessing: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Process text and generate Echo-TTS segment records.
@@ -295,7 +296,7 @@ class EchoTTSProcessor:
 
                 self.adapter.complete_block()
 
-            if segment_records and any(seg["edit_tags"] for seg in segment_records):
+            if apply_edit_postprocessing and segment_records and any(seg["edit_tags"] for seg in segment_records):
                 segment_records = apply_edit_post_processing(segment_records, engine_config=base_config)
         finally:
             self.adapter.end_job()

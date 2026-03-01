@@ -245,11 +245,11 @@ class Qwen3TTSSRTProcessor:
         audio_segments = []
         adjustments = []
         any_segment_cached = False
+        all_segments_for_editing = []  # Collect edit-tagged segments for batch processing
 
         # Get character mapping for all unique characters in subtitles
         unique_characters = set()
         for sub in subtitles:
-            # Parse character from subtitle text
             segments = self.character_parser.split_by_character(sub.text, include_language=False)
             for char, _ in segments:
                 if char:
@@ -263,16 +263,11 @@ class Qwen3TTSSRTProcessor:
             print(f"🎭 Character mapping keys: {list(character_mapping.keys())}")
 
         for i, sub in enumerate(subtitles):
-            # Check for interrupt
             self._check_interrupt()
-
-            # Update current subtitle for progress tracking
             self.processor.adapter.set_current_block(i)
 
-            # Get subtitle text
             text = sub.text.strip()
             if not text:
-                # Empty subtitle - create silence
                 target_duration = sub.duration
                 silence = torch.zeros(1, int(target_duration * self.SAMPLE_RATE))
                 audio_segments.append(silence)
@@ -299,23 +294,16 @@ class Qwen3TTSSRTProcessor:
 
             print(f"📖 Subtitle {i+1}/{len(subtitles)}: Processing '{text[:50]}...'")
 
-            # Build character mapping for processor
-            # Priority: connected narrator > character folders
+            # Build simple voice_mapping for process_text
             processor_character_mapping = {}
-
-            # Start with character folder mappings
             for char_name, (char_audio, char_text) in character_mapping.items():
                 processor_character_mapping[char_name] = (char_audio, char_text)
-
-            # Override narrator if connected narrator is available
             if voice_mapping and voice_mapping.get('narrator'):
                 narrator_voice = voice_mapping['narrator']
                 narrator_audio = narrator_voice.get('audio_path')
                 narrator_text = narrator_voice.get('reference_text', '')
                 processor_character_mapping['narrator'] = (narrator_audio, narrator_text)
 
-            # Use processor to handle character switching
-            # Build simple voice_mapping format for process_text
             simple_voice_mapping = {}
             for char_name, (char_audio, char_text) in processor_character_mapping.items():
                 if char_audio:
@@ -324,64 +312,137 @@ class Qwen3TTSSRTProcessor:
                         'reference_text': char_text or ''
                     }
 
+            # Skip edit post-processing so we can batch after all subtitles
             audio_segment_dicts = self.processor.process_text(
                 text=text,
                 voice_mapping=simple_voice_mapping,
                 seed=seed + i,
-                enable_chunking=False,  # SRT handles timing
-                max_chars_per_chunk=400
+                enable_chunking=False,
+                max_chars_per_chunk=400,
+                apply_edit_postprocessing=False,
             )
 
-            # Combine character segments if multiple
-            if len(audio_segment_dicts) > 1:
-                audio = self.processor.combine_audio_segments(
-                    segments=audio_segment_dicts,
-                    method="auto",
-                    silence_ms=100,
-                    text_length=len(text),
-                    return_info=False
-                )
-            else:
-                audio = audio_segment_dicts[0]['waveform']
-
-            # Ensure 2D shape [channels, samples]
-            if audio.dim() == 1:
-                audio = audio.unsqueeze(0)
-            elif audio.dim() == 3:
-                audio = audio.squeeze(0)
-
-            audio_segments.append(audio)
-
-            # Calculate timing adjustment with all required fields
-            natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+            subtitle_has_edit_tags = any(seg.get('edit_tags') for seg in audio_segment_dicts)
             target_start = sub.start_time
             target_end = sub.end_time
             target_duration = target_end - target_start
-            stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
 
-            adjustments.append({
-                'index': i,
-                'segment_index': i,
-                'sequence': sub.sequence,
-                'natural_duration': natural_duration,
-                'target_start': target_start,
-                'target_end': target_end,
-                'target_duration': target_duration,
-                'start_time': target_start,
-                'end_time': target_end,
-                'stretch_factor': stretch_factor,
-                'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
-                'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none',
-                'adjustment': natural_duration - target_duration,
-                'adjusted_start': target_start,  # Will be updated by timing assembly
-                'adjusted_end': target_end,      # Will be updated by timing assembly
-                'adjusted_duration': natural_duration
-            })
+            if subtitle_has_edit_tags:
+                # Tag each segment with subtitle_index + segment_index for batch processing
+                for seg_idx, seg in enumerate(audio_segment_dicts):
+                    w = seg['waveform']
+                    if w.dim() == 1:
+                        w = w.unsqueeze(0)
+                    elif w.dim() == 3:
+                        w = w.squeeze(0)
+                    all_segments_for_editing.append({
+                        **seg,
+                        'waveform': w.cpu(),
+                        'subtitle_index': i,
+                        'segment_index': seg_idx,
+                    })
+                audio_segments.append(None)  # Placeholder
+                adjustments.append({
+                    'index': i, 'segment_index': i, 'sequence': sub.sequence,
+                    'natural_duration': 0.0, 'target_start': target_start,
+                    'target_end': target_end, 'target_duration': target_duration,
+                    'start_time': target_start, 'end_time': target_end,
+                    'stretch_factor': 1.0, 'needs_stretching': False,
+                    'stretch_type': 'none', 'adjustment': 0.0,
+                    'adjusted_start': target_start, 'adjusted_end': target_end,
+                    'adjusted_duration': 0.0,
+                })
+                print(f"✅ Subtitle {i+1}/{len(subtitles)}: queued for batch edit processing")
+            else:
+                # No edit tags - combine and store directly
+                if len(audio_segment_dicts) > 1:
+                    audio = self.processor.combine_audio_segments(
+                        segments=audio_segment_dicts,
+                        method="auto",
+                        silence_ms=100,
+                        text_length=len(text),
+                        return_info=False
+                    )
+                else:
+                    audio = audio_segment_dicts[0]['waveform']
 
-            # Mark subtitle as completed for progress tracking
+                if audio.dim() == 1:
+                    audio = audio.unsqueeze(0)
+                elif audio.dim() == 3:
+                    audio = audio.squeeze(0)
+                audio_segments.append(audio)
+
+                natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+                stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
+                adjustments.append({
+                    'index': i, 'segment_index': i, 'sequence': sub.sequence,
+                    'natural_duration': natural_duration,
+                    'target_start': target_start, 'target_end': target_end,
+                    'target_duration': target_duration,
+                    'start_time': target_start, 'end_time': target_end,
+                    'stretch_factor': stretch_factor,
+                    'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
+                    'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none',
+                    'adjustment': natural_duration - target_duration,
+                    'adjusted_start': target_start, 'adjusted_end': target_end,
+                    'adjusted_duration': natural_duration
+                })
+                print(f"✅ Subtitle {i+1}/{len(subtitles)}: {natural_duration:.2f}s (expected {target_duration:.2f}s)")
+
             self.processor.adapter.complete_block()
 
-            print(f"✅ Subtitle {i+1}/{len(subtitles)}: {natural_duration:.2f}s (expected {target_duration:.2f}s)")
+        # BATCH PROCESS all edit tags at once after all subtitles are generated
+        if all_segments_for_editing:
+            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            print(f"\n🎨 Qwen3-TTS SRT: Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+            processed = apply_edit_post_processing(all_segments_for_editing, self.processor.config)
+
+            # Group processed segments by subtitle_index
+            by_subtitle: Dict[int, List] = {}
+            for seg in processed:
+                sub_idx = seg['subtitle_index']
+                by_subtitle.setdefault(sub_idx, []).append(seg)
+
+            # Combine character segments per subtitle and fill placeholders
+            for sub_idx, segs in by_subtitle.items():
+                segs_sorted = sorted(segs, key=lambda s: s['segment_index'])
+                # Normalize all waveforms to 2D [C, S] before combining
+                for seg in segs_sorted:
+                    w = seg['waveform']
+                    if w.dim() == 3:
+                        w = w.squeeze(0)
+                    elif w.dim() == 1:
+                        w = w.unsqueeze(0)
+                    seg['waveform'] = w
+                if len(segs_sorted) > 1:
+                    audio = self.processor.combine_audio_segments(
+                        segments=segs_sorted,
+                        method="auto",
+                        silence_ms=100,
+                        text_length=len(subtitles[sub_idx].text),
+                        return_info=False
+                    )
+                else:
+                    audio = segs_sorted[0]['waveform']
+
+                if audio.dim() == 1:
+                    audio = audio.unsqueeze(0)
+                elif audio.dim() == 3:
+                    audio = audio.squeeze(0)
+                audio_segments[sub_idx] = audio
+
+                natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+                target_duration = adjustments[sub_idx]['target_duration']
+                stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
+                adjustments[sub_idx].update({
+                    'natural_duration': natural_duration,
+                    'stretch_factor': stretch_factor,
+                    'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
+                    'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none',
+                    'adjustment': natural_duration - target_duration,
+                    'adjusted_duration': natural_duration,
+                })
+                print(f"✅ Subtitle {sub_idx+1}: {natural_duration:.2f}s after edit processing")
 
         return audio_segments, adjustments, any_segment_cached
 

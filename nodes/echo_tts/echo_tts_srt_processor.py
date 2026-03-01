@@ -193,6 +193,7 @@ class EchoTTSSRTProcessor:
         """
         audio_segments: List[torch.Tensor] = []
         adjustments: List[Dict[str, Any]] = []
+        all_segments_for_editing: List[Dict] = []  # Collect edit-tagged segments for batch processing
 
         subtitle_lengths = [max(1, len((sub.text or "").strip())) for sub in subtitles]
         self.processor.adapter.start_job(total_blocks=len(subtitles), block_texts=subtitle_lengths)
@@ -229,68 +230,149 @@ class EchoTTSSRTProcessor:
 
                 print(f"📖 Echo-TTS SRT Subtitle {i+1}/{len(subtitles)}: '{text[:60]}'")
 
-                # Delegate fully to EchoTTSProcessor - handles character switching,
-                # pause tags, edit tags, force_speaker_kv guards, and generation prints.
+                # Delegate to EchoTTSProcessor - skip edit post-processing so we can batch later
                 segment_records = self.processor.process_text(
                     text=text,
                     voice_mapping=voice_mapping,
                     seed=seed + i,
                     enable_chunking=False,  # SRT handles timing, no chunking
                     enable_audio_cache=enable_audio_cache,
+                    apply_edit_postprocessing=False,
                 )
 
-                # Combine character segments into a single audio for this subtitle
-                if len(segment_records) > 1:
-                    audio, _ = self.processor.combine_audio_segments(
-                        segments=segment_records,
-                        method="auto",
-                        silence_ms=0,
-                        original_text=text,
-                        return_info=True,
-                    )
-                elif segment_records:
-                    audio = segment_records[0]["waveform"]
+                subtitle_has_edit_tags = any(seg.get("edit_tags") for seg in segment_records)
+
+                if subtitle_has_edit_tags:
+                    # Tag each segment with subtitle_index + segment_index for batch processing
+                    for seg_idx, seg in enumerate(segment_records):
+                        w = seg["waveform"]
+                        if w.dim() == 1:
+                            w = w.unsqueeze(0)
+                        elif w.dim() == 3:
+                            w = w.squeeze(0)
+                        all_segments_for_editing.append({
+                            **seg,
+                            "waveform": w.cpu(),
+                            "subtitle_index": i,
+                            "segment_index": seg_idx,
+                        })
+                    audio_segments.append(None)  # Placeholder
                 else:
-                    audio = torch.zeros(1, 0)
+                    # No edit tags - combine and store directly
+                    if len(segment_records) > 1:
+                        audio, _ = self.processor.combine_audio_segments(
+                            segments=segment_records,
+                            method="auto",
+                            silence_ms=0,
+                            original_text=text,
+                            return_info=True,
+                        )
+                    elif segment_records:
+                        audio = segment_records[0]["waveform"]
+                    else:
+                        audio = torch.zeros(1, 0)
 
-                # Normalize to 2D [C, S] for timing engine
-                if audio.dim() == 1:
-                    audio = audio.unsqueeze(0)
-                elif audio.dim() == 3:
-                    audio = audio.squeeze(0)
-                audio = audio.cpu()
+                    if audio.dim() == 1:
+                        audio = audio.unsqueeze(0)
+                    elif audio.dim() == 3:
+                        audio = audio.squeeze(0)
+                    audio_segments.append(audio.cpu())
 
-                audio_segments.append(audio)
-
-                natural_duration = audio.shape[-1] / self.SAMPLE_RATE
                 target_start = sub.start_time
                 target_end = sub.end_time
                 target_duration = target_end - target_start
-                stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
-
                 adjustments.append({
                     'index': i,
                     'segment_index': i,
                     'sequence': sub.sequence,
-                    'natural_duration': natural_duration,
+                    'natural_duration': 0.0,  # Will be updated after edit processing or below
                     'target_start': target_start,
                     'target_end': target_end,
                     'target_duration': target_duration,
                     'start_time': target_start,
                     'end_time': target_end,
+                    'stretch_factor': 1.0,
+                    'needs_stretching': False,
+                    'stretch_type': 'none',
+                    'adjustment': 0.0,
+                    'adjusted_start': target_start,
+                    'adjusted_end': target_end,
+                    'adjusted_duration': 0.0,
+                })
+
+                if not subtitle_has_edit_tags:
+                    audio = audio_segments[i]
+                    natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+                    stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
+                    adjustments[i].update({
+                        'natural_duration': natural_duration,
+                        'stretch_factor': stretch_factor,
+                        'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
+                        'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none',
+                        'adjustment': natural_duration - target_duration,
+                        'adjusted_duration': natural_duration,
+                    })
+                    print(f"✅ Echo-TTS Subtitle {i+1}/{len(subtitles)}: {natural_duration:.2f}s (expected {target_duration:.2f}s)")
+                else:
+                    print(f"✅ Echo-TTS Subtitle {i+1}/{len(subtitles)}: queued for batch edit processing")
+
+                self.processor.adapter.complete_block()
+        finally:
+            self.processor.adapter.end_job()
+
+        # BATCH PROCESS all edit tags at once after all subtitles are generated
+        if all_segments_for_editing:
+            from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+            print(f"\n🎨 Echo-TTS SRT: Applying edit post-processing to {len(all_segments_for_editing)} segment(s) from all subtitles...")
+            processed = apply_edit_post_processing(all_segments_for_editing, self.processor.config)
+
+            # Group processed segments by subtitle_index
+            by_subtitle: Dict[int, List[Dict]] = {}
+            for seg in processed:
+                sub_idx = seg["subtitle_index"]
+                by_subtitle.setdefault(sub_idx, []).append(seg)
+
+            # Combine character segments per subtitle and fill placeholders
+            for sub_idx, segs in by_subtitle.items():
+                segs_sorted = sorted(segs, key=lambda s: s["segment_index"])
+                # Normalize all waveforms to 2D [C, S] before combining
+                for seg in segs_sorted:
+                    w = seg["waveform"]
+                    if w.dim() == 3:
+                        w = w.squeeze(0)
+                    elif w.dim() == 1:
+                        w = w.unsqueeze(0)
+                    seg["waveform"] = w
+                if len(segs_sorted) > 1:
+                    audio, _ = self.processor.combine_audio_segments(
+                        segments=segs_sorted,
+                        method="auto",
+                        silence_ms=0,
+                        original_text=subtitles[sub_idx].text,
+                        return_info=True,
+                    )
+                else:
+                    audio = segs_sorted[0]["waveform"]
+
+                if audio.dim() == 1:
+                    audio = audio.unsqueeze(0)
+                elif audio.dim() == 3:
+                    audio = audio.squeeze(0)
+                audio = audio.cpu()
+                audio_segments[sub_idx] = audio
+
+                natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+                target_duration = adjustments[sub_idx]['target_duration']
+                stretch_factor = target_duration / natural_duration if natural_duration > 0 else 1.0
+                adjustments[sub_idx].update({
+                    'natural_duration': natural_duration,
                     'stretch_factor': stretch_factor,
                     'needs_stretching': abs(stretch_factor - 1.0) > 0.05,
                     'stretch_type': 'compress' if stretch_factor < 1.0 else 'expand' if stretch_factor > 1.0 else 'none',
                     'adjustment': natural_duration - target_duration,
-                    'adjusted_start': target_start,
-                    'adjusted_end': target_end,
-                    'adjusted_duration': natural_duration
+                    'adjusted_duration': natural_duration,
                 })
-
-                self.processor.adapter.complete_block()
-                print(f"✅ Echo-TTS Subtitle {i+1}/{len(subtitles)}: {natural_duration:.2f}s (expected {target_duration:.2f}s)")
-        finally:
-            self.processor.adapter.end_job()
+                print(f"✅ Echo-TTS Subtitle {sub_idx+1}: {natural_duration:.2f}s after edit processing")
 
         return audio_segments, adjustments
 
