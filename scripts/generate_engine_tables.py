@@ -97,8 +97,10 @@ def generate_readme_condensed_table(data):
     """Generate condensed table for README.md"""
     engines = data["engines"]
 
+    engine_count = len(engines)
+
     output = []
-    output.append("## Quick Engine Comparison")
+    output.append(f"## Quick Engine Comparison — {engine_count} Engines")
     output.append("")
     output.append("| Engine | Languages | Size | Key Features |")
     output.append("|--------|-----------|------|--------------|")
