@@ -816,7 +816,7 @@ engines:
       native_long_form: { supported: false, notes: "(chunked best-effort)" }
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(~7GB total)" }
-      speed_performance: { supported: "partial", notes: "Slow (diffusion)" }
+      speed_performance: { supported: true, notes: "Fast (diffusion, realtime-capable)" }
 
   - id: rvc
     name: RVC
