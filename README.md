@@ -81,19 +81,19 @@ Control               Official (23-lang)        90min Generation
 │
 │             🎨 Inline Editor Tags Era
 ▼                            |
-v4.12 ──────────────► v4.15 ────────────► v4.16 ──────────┐
-Oct 25                Dez 25              Dez 25           │
-│                     │                   │                │
-Per-Seg Parameter     Step Audio EditX    CosyVoice3       │
-Switching [seed:24]   Inline Edit tags    TTS + VC         │
-                      <laughter:2>                         │
-                                                           ▼
-v4.22 ◄──────────────────── v4.19 ◄──────────────────────-┘
-Mar 26                      Jan 26
-│                           │
-Echo-TTS                    Qwen3-TTS
-DiT Voice Cloning           TTS + ASR
-Reference Audio             VoiceDesign
+v4.12 ──────────────► v4.15 ────────────► v4.16 ───────────────┐
+Oct 25                Dez 25              Dez 25               │
+│                     │                   │                    │
+Per-Seg Parameter     Step Audio EditX    CosyVoice3           │
+Switching [seed:24]   Inline Edit tags    TTS + VC             │
+                      <laughter:2>                             │
+                                                               ▼
+      v4.22 ◄──────────────────── v4.19 ◄──────────────────────┘
+      Mar 26                      Jan 26
+      │                           │
+      Echo-TTS                    Qwen3-TTS
+      English TTS                 TTS + ASR
+                                  VoiceDesign
 ```
 
 <details>
