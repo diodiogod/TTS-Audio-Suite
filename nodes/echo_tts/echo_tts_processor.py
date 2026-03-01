@@ -193,6 +193,11 @@ class EchoTTSProcessor:
                         }
                         print(f"⚠️ Echo-TTS: Auto-disabled force_speaker_kv for short fragment ({len(text_content.strip())} chars)")
 
+                    print(f"🎤 Echo-TTS - Generating for '{seg.character}':")
+                    print("=" * 60)
+                    print(text_content)
+                    print("=" * 60)
+
                     self.adapter.update_config(fragment_config)
                     audio = self.adapter.process_text(
                         text=text_content,
