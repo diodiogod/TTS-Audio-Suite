@@ -596,19 +596,41 @@ class EchoTTSEngineAdapter:
                     **self._filter_kwargs(sample_euler_cfg, sampler_kwargs),
                 )
 
-        with torch.no_grad():
-            result = self._sample_pipeline(
-                model=self.model,
-                fish_ae=self.ae,
-                pca_state=self.pca_state,
-                sample_fn=sample_fn,
-                text_prompt=prompt_text,
-                speaker_audio=ref_audio,
-                rng_seed=seed,
-                pad_to_max_speaker_latent_length=2560,
-                pad_to_max_text_length=768,
-                normalize_text=True,
-            )
+        try:
+            with torch.no_grad():
+                result = self._sample_pipeline(
+                    model=self.model,
+                    fish_ae=self.ae,
+                    pca_state=self.pca_state,
+                    sample_fn=sample_fn,
+                    text_prompt=prompt_text,
+                    speaker_audio=ref_audio,
+                    rng_seed=seed,
+                    pad_to_max_speaker_latent_length=2560,
+                    pad_to_max_text_length=768,
+                    normalize_text=True,
+                )
+        except RuntimeError as e:
+            if "Inference tensors do not track version counter" in str(e):
+                print("⚠️ Echo-TTS: pca_state tensors corrupted after VRAM clear - forcing model reload...")
+                self.model = None
+                self._loaded_key = None
+                self._ensure_model_loaded()
+                with torch.no_grad():
+                    result = self._sample_pipeline(
+                        model=self.model,
+                        fish_ae=self.ae,
+                        pca_state=self.pca_state,
+                        sample_fn=sample_fn,
+                        text_prompt=prompt_text,
+                        speaker_audio=ref_audio,
+                        rng_seed=seed,
+                        pad_to_max_speaker_latent_length=2560,
+                        pad_to_max_text_length=768,
+                        normalize_text=True,
+                    )
+            else:
+                raise
 
         if progress_bar is not None and hasattr(progress_bar, "total") and hasattr(progress_bar, "current"):
             remaining = progress_bar.total - progress_bar.current
