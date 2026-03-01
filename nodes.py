@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "4.21.20"
+VERSION = "4.22.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -128,6 +128,14 @@ try:
 except Exception as e:
     print(f"❌ Qwen3-TTS Engine failed: {e}")
     QWEN3_TTS_ENGINE_AVAILABLE = False
+
+try:
+    echo_tts_engine_module = load_node_module("echo_tts_engine_node", "engines/echo_tts_engine_node.py")
+    EchoTTSEngineNode = echo_tts_engine_module.EchoTTSEngineNode
+    ECHO_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Echo-TTS Engine failed: {e}")
+    ECHO_TTS_ENGINE_AVAILABLE = False
 
 try:
     chatterbox_official_23lang_engine_module = load_node_module("chatterbox_official_23lang_engine_node", "engines/chatterbox_official_23lang_engine_node.py")
@@ -476,6 +484,10 @@ if VIBEVOICE_ENGINE_AVAILABLE:
 if QWEN3_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSEngineNode"] = Qwen3TTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSEngineNode"] = "⚙️ Qwen3-TTS Engine"
+
+if ECHO_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["EchoTTSEngineNode"] = EchoTTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["EchoTTSEngineNode"] = "⚙️ Echo-TTS Engine"
 
 if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode

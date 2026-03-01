@@ -224,3 +224,19 @@ Notes:
 
 - Only selected variants download.
 - Shared tokenizer assets are reused.
+
+## Echo-TTS
+
+```text
+ComfyUI/models/TTS/
+├── echo-tts-base/
+│   ├── pytorch_model.safetensors
+│   └── pca_state.safetensors
+└── fish-s1-dac-min/
+    └── pytorch_model.safetensors
+```
+
+Notes:
+
+- Both components are required and auto-downloaded on first use.
+- License: CC-BY-NC-SA (non-commercial).

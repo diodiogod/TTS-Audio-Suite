@@ -459,6 +459,37 @@ Back to the main narrator voice for the conclusion.""",
                 }
 
                 return engine_instance
+            
+            elif engine_type == "echo_tts":
+                from engines.adapters.echo_tts_adapter import EchoTTSEngineAdapter
+                echo_tts_processor_path = os.path.join(nodes_dir, "echo_tts", "echo_tts_processor.py")
+                echo_tts_processor_spec = importlib.util.spec_from_file_location("echo_tts_processor_module", echo_tts_processor_path)
+                echo_tts_processor_module = importlib.util.module_from_spec(echo_tts_processor_spec)
+                echo_tts_processor_spec.loader.exec_module(echo_tts_processor_module)
+
+                EchoTTSProcessor = echo_tts_processor_module.EchoTTSProcessor
+
+                class EchoTTSWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = EchoTTSEngineAdapter(self.config)
+                        self.processor = EchoTTSProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                engine_instance = EchoTTSWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
 
             elif engine_type == "qwen3_tts":
                 # Create Qwen3-TTS processor instance
@@ -1118,6 +1149,53 @@ Back to the main narrator voice for the conclusion.""",
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 22050)
                 result = (formatted_audio, generation_info)
                 
+            elif engine_type == "echo_tts":
+                # Echo-TTS uses processor pattern - orchestration lives in EchoTTSProcessor
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                # Backward compatibility for older cached wrappers created before processor refactor.
+                if not hasattr(engine_instance, "processor"):
+                    echo_tts_processor_path = os.path.join(nodes_dir, "echo_tts", "echo_tts_processor.py")
+                    echo_tts_processor_spec = importlib.util.spec_from_file_location("echo_tts_processor_module", echo_tts_processor_path)
+                    echo_tts_processor_module = importlib.util.module_from_spec(echo_tts_processor_spec)
+                    echo_tts_processor_spec.loader.exec_module(echo_tts_processor_module)
+                    EchoTTSProcessor = echo_tts_processor_module.EchoTTSProcessor
+                    engine_instance.processor = EchoTTSProcessor(engine_instance.adapter, config)
+                    engine_instance.processor.update_config(config)
+
+                voice_mapping = {'narrator': {'audio': audio_tensor, 'reference_text': reference_text or ''}}
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True
+                )
+
+                total_duration = combined_audio.shape[-1] / 44100.0 if combined_audio.numel() else 0.0
+                parsed_text = re.sub(r'\[s1\]\s*', '', text, flags=re.IGNORECASE)
+                clean_text = re.sub(r'\[.*?\]', '', parsed_text)
+                text_length = len(clean_text)
+
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (Echo-TTS, narrator: {char_display})"
+                base_info += "\n🎭 Character switching and pause tags enabled"
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 44100)
+                result = (formatted_audio, generation_info)
+                
             elif engine_type == "qwen3_tts":
                 # Qwen3-TTS uses processor pattern - call through processor
                 # Extract characters from text first
@@ -1394,6 +1472,9 @@ Back to the main narrator voice for the conclusion.""",
             return (audio_output, unified_info)
                 
         except Exception as e:
+            # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
+            if "Pause tags are not compatible with force_speaker_kv" in str(e):
+                raise
             error_msg = f"❌ TTS Text generation failed: {e}"
             print(error_msg)
             import traceback

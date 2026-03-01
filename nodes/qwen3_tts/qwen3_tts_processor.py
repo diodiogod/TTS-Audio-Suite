@@ -262,7 +262,8 @@ class Qwen3TTSProcessor:
                     voice_mapping: Dict[str, Any],
                     seed: int,
                     enable_chunking: bool = True,
-                    max_chars_per_chunk: int = 400) -> List[Dict]:
+                    max_chars_per_chunk: int = 400,
+                    apply_edit_postprocessing: bool = True) -> List[Dict]:
         """
         Process text and generate audio.
 
@@ -353,7 +354,8 @@ class Qwen3TTSProcessor:
         # Process using character switching mode
         return self._process_character_switching(
             segment_objects, voice_mapping, params,
-            enable_chunking, max_chars_per_chunk
+            enable_chunking, max_chars_per_chunk,
+            apply_edit_postprocessing=apply_edit_postprocessing
         )
 
     def _process_character_switching(self,
@@ -361,7 +363,8 @@ class Qwen3TTSProcessor:
                                     voice_mapping: Dict[str, Any],
                                     params: Dict,
                                     enable_chunking: bool,
-                                    max_chars: int) -> List[Dict]:
+                                    max_chars: int,
+                                    apply_edit_postprocessing: bool = True) -> List[Dict]:
         """
         Process character segments individually with Qwen3-TTS generation.
         Each segment is processed separately to respect character switching and parameter changes.
@@ -430,7 +433,7 @@ class Qwen3TTSProcessor:
             self.adapter.end_job()
 
         # Apply inline edit tags post-processing if any segments have edit_tags
-        if any(seg.get('edit_tags') for seg in audio_segments):
+        if apply_edit_postprocessing and any(seg.get('edit_tags') for seg in audio_segments):
             print(f"🎨 Applying Step Audio EditX inline edit tags post-processing...")
             audio_segments = apply_edit_post_processing(
                 audio_segments,
@@ -482,9 +485,10 @@ class Qwen3TTSProcessor:
 
             for seg_type, content in pause_segments:
                 if seg_type == 'text':
-                    # Process this pause-delimited text segment
-                    self._process_single_text_segment(
-                        character, content, voice_mapping, params, audio_segments
+                    # Process this pause-delimited text segment (with chunking support)
+                    self._process_character_block(
+                        character, content, voice_mapping, params,
+                        enable_chunking, max_chars, audio_segments
                     )
                 elif seg_type == 'pause':
                     # Add silence segment

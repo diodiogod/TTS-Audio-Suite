@@ -347,6 +347,67 @@ class Qwen3TTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class EchoTTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Echo-TTS engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        """Generate Echo-TTS cache key from parameters."""
+        # Round float values to avoid cache misses from tiny precision differences.
+        cfg_scale_text = params.get('cfg_scale_text', 3.0)
+        cfg_scale_speaker = params.get('cfg_scale_speaker', 8.0)
+        cfg_min_t = params.get('cfg_min_t', 0.5)
+        cfg_max_t = params.get('cfg_max_t', 1.0)
+        truncation_factor = params.get('truncation_factor')
+        rescale_k = params.get('rescale_k')
+        rescale_sigma = params.get('rescale_sigma')
+        speaker_kv_scale = params.get('speaker_kv_scale')
+        speaker_kv_min_t = params.get('speaker_kv_min_t')
+
+        if isinstance(cfg_scale_text, (int, float)):
+            cfg_scale_text = round(float(cfg_scale_text), 3)
+        if isinstance(cfg_scale_speaker, (int, float)):
+            cfg_scale_speaker = round(float(cfg_scale_speaker), 3)
+        if isinstance(cfg_min_t, (int, float)):
+            cfg_min_t = round(float(cfg_min_t), 3)
+        if isinstance(cfg_max_t, (int, float)):
+            cfg_max_t = round(float(cfg_max_t), 3)
+        if isinstance(truncation_factor, (int, float)):
+            truncation_factor = round(float(truncation_factor), 3)
+        if isinstance(rescale_k, (int, float)):
+            rescale_k = round(float(rescale_k), 3)
+        if isinstance(rescale_sigma, (int, float)):
+            rescale_sigma = round(float(rescale_sigma), 3)
+        if isinstance(speaker_kv_scale, (int, float)):
+            speaker_kv_scale = round(float(speaker_kv_scale), 3)
+        if isinstance(speaker_kv_min_t, (int, float)):
+            speaker_kv_min_t = round(float(speaker_kv_min_t), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model': params.get('model', 'jordand/echo-tts-base'),
+            'device': params.get('device', 'auto'),
+            'num_steps': params.get('num_steps', 40),
+            'cfg_scale_text': cfg_scale_text,
+            'cfg_scale_speaker': cfg_scale_speaker,
+            'cfg_min_t': cfg_min_t,
+            'cfg_max_t': cfg_max_t,
+            'truncation_factor': truncation_factor,
+            'rescale_k': rescale_k,
+            'rescale_sigma': rescale_sigma,
+            'speaker_kv_scale': speaker_kv_scale,
+            'speaker_kv_max_layers': params.get('speaker_kv_max_layers'),
+            'speaker_kv_min_t': speaker_kv_min_t,
+            'sequence_length': params.get('sequence_length', 640),
+            'seed': params.get('seed', 0),
+            'engine': 'echo_tts'
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -360,7 +421,8 @@ class AudioCache:
             'step_audio_editx': StepAudioEditXCacheKeyGenerator(),
             'index_tts': IndexTTSCacheKeyGenerator(),
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
-            'qwen3_tts': Qwen3TTSCacheKeyGenerator()
+            'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
+            'echo_tts': EchoTTSCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):

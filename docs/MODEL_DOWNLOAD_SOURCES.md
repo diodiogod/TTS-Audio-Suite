@@ -89,6 +89,13 @@ Use this as the canonical list of model repositories/links for offline setup.
 | Step-Audio-EditX | [stepfun-ai/Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX) | ~7GB | ✅ | Main 3B audio editing model |
 | Step-Audio-Tokenizer | [stepfun-ai/Step-Audio-Tokenizer](https://huggingface.co/stepfun-ai/Step-Audio-Tokenizer) | Included | ✅ | Tokenizer bundle used by Step EditX |
 
+## Echo-TTS
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| echo-tts-base (model + PCA state) | [jordand/echo-tts-base](https://huggingface.co/jordand/echo-tts-base) | ~5.3GB | ✅ | pytorch_model.safetensors + pca_state.safetensors |
+| fish-s1-dac-min (audio codec) | [jordand/fish-s1-dac-min](https://huggingface.co/jordand/fish-s1-dac-min) | ~1.8GB | ✅ | pytorch_model.safetensors — audio codec required by Echo-TTS |
+
 ## RVC
 
 | Component | Source | Size | Auto-Download | Notes |
