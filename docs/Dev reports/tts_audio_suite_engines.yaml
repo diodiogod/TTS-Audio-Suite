@@ -807,6 +807,20 @@ engines:
       sv: { supported: false, flag: "🇸🇪", notes: "" }
       sw: { supported: false, flag: "🇰🇪", notes: "" }
 
+    model_sources:
+      - component: "echo-tts-base (model + PCA state)"
+        source_name: "jordand/echo-tts-base"
+        source_url: "https://huggingface.co/jordand/echo-tts-base"
+        size: "~5.3GB"
+        auto_download: true
+        notes: "pytorch_model.safetensors + pca_state.safetensors"
+      - component: "fish-s1-dac-min (audio codec)"
+        source_name: "jordand/fish-s1-dac-min"
+        source_url: "https://huggingface.co/jordand/fish-s1-dac-min"
+        size: "~1.8GB"
+        auto_download: true
+        notes: "pytorch_model.safetensors — audio codec required by Echo-TTS"
+
     features:
       voice_cloning: { supported: true, notes: "" }
       native_multi_speaker: { supported: false, notes: "" }
@@ -1176,6 +1190,22 @@ model_layouts_markdown: |
   ```
   
   Notes:
-  
+
   - Only selected variants download.
   - Shared tokenizer assets are reused.
+
+  ## Echo-TTS
+
+  ```text
+  ComfyUI/models/TTS/
+  ├── echo-tts-base/
+  │   ├── pytorch_model.safetensors
+  │   └── pca_state.safetensors
+  └── fish-s1-dac-min/
+      └── pytorch_model.safetensors
+  ```
+
+  Notes:
+
+  - Both components are required and auto-downloaded on first use.
+  - License: CC-BY-NC-SA (non-commercial).
