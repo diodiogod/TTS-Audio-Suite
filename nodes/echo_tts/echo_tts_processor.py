@@ -245,18 +245,16 @@ class EchoTTSProcessor:
                     if frag_records and any(r["edit_tags"] for r in frag_records):
                         frag_records = apply_edit_post_processing(frag_records, engine_config=base_config)
 
-                    # Interleave audio and silence in original order
+                    # Interleave audio and silence in original order, all on CPU
                     all_parts = []
                     for order_type, order_val in frag_order:
                         if order_type == 'text':
-                            w = frag_records[order_val]["waveform"]
+                            w = frag_records[order_val]["waveform"].cpu()
                             if w.dim() == 1:
                                 w = w.unsqueeze(0)
                             all_parts.append(w)
                         elif order_type == 'pause':
-                            device = all_parts[-1].device if all_parts else None
-                            dtype = all_parts[-1].dtype if all_parts else None
-                            silence = PauseTagProcessor.create_silence_segment(order_val, self.SAMPLE_RATE, device, dtype)
+                            silence = PauseTagProcessor.create_silence_segment(order_val, self.SAMPLE_RATE, torch.device('cpu'), torch.float32)
                             if silence.dim() == 1:
                                 silence = silence.unsqueeze(0)
                             all_parts.append(silence)
