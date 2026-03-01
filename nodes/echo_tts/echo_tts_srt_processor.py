@@ -289,74 +289,130 @@ class EchoTTSSRTProcessor:
 
                     self.processor.update_config(current_config)
 
-                    clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
-                    clean_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
-                        clean_text,
-                        enable_pause_tags=True
-                    )
-                    if pause_segments and any(
+                    has_kv = any(
                         current_config.get(k) is not None for k in (
                             "speaker_kv_scale", "speaker_kv_max_layers", "speaker_kv_min_t"
                         )
-                    ):
-                        raise ValueError(
-                            "Echo-TTS SRT: Pause tags are not compatible with force_speaker_kv settings. "
-                            "Disable force_speaker_kv (speaker_kv_*) or remove pause tags."
-                        )
+                    )
+                    SHORT_FRAGMENT_THRESHOLD = 20
 
-                    pause_mode = pause_segments is not None
+                    # Parse pause tags FIRST so edit tags are extracted per-fragment
+                    has_pauses = PauseTagProcessor.has_pause_tags(segment_text)
+                    if has_pauses:
+                        raw_pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
+                    else:
+                        raw_pause_segments = None
+
+                    pause_mode = raw_pause_segments is not None
                     seed_offset = 0
 
-                    def _tts_generate_func(text_content: str) -> torch.Tensor:
+                    def _generate_fragment(text_content: str) -> torch.Tensor:
                         nonlocal seed_offset
                         self._check_interrupt(i, len(subtitles), current_character)
-                        segment_seed = current_seed + seed_offset
+                        fragment_seed = current_seed + seed_offset
                         seed_offset += 1
-                        # Ensure full config (including speaker_kv_*) is applied for each text segment
-                        self.processor.update_config(current_config)
+
+                        print(f"🎤 Echo-TTS SRT - Generating for '{current_character}':")
+                        print("=" * 60)
+                        print(text_content)
+                        print("=" * 60)
+
+                        fragment_config = current_config
+                        if has_kv and len(text_content.strip()) < SHORT_FRAGMENT_THRESHOLD:
+                            fragment_config = {
+                                **current_config,
+                                "speaker_kv_scale": None,
+                                "speaker_kv_max_layers": None,
+                                "speaker_kv_min_t": None,
+                            }
+                            print(f"⚠️ Echo-TTS: Auto-disabled force_speaker_kv for short fragment ({len(text_content.strip())} chars)")
+
+                        self.processor.update_config(fragment_config)
                         audio = self.processor.process_text(
                             text=text_content,
                             speaker_audio=speaker_audio,
                             reference_text=reference_text or "",
-                            seed=segment_seed,
+                            seed=fragment_seed,
                             enable_chunking=False,
                             enable_audio_cache=enable_audio_cache,
                             return_info=False
                         )
                         if isinstance(audio, tuple):
                             audio = audio[0]
-                        if isinstance(audio, torch.Tensor):
-                            audio_tensor = audio
+                        if not isinstance(audio, torch.Tensor):
+                            audio = torch.tensor(audio, dtype=torch.float32)
+                        if audio.dim() > 1:
+                            audio = audio.squeeze()
+                        return audio
+
+                    if raw_pause_segments:
+                        frag_records = []
+                        frag_order = []
+
+                        for frag_type, frag_content in raw_pause_segments:
+                            if frag_type == 'text':
+                                frag_clean, frag_edit_tags = get_edit_tags_for_segment(frag_content)
+                                frag_clean = frag_clean.strip()
+                                if not frag_clean:
+                                    continue
+                                frag_audio = _generate_fragment(frag_clean)
+                                if frag_audio.dim() == 1:
+                                    frag_audio = frag_audio.unsqueeze(0)
+                                idx = len(frag_records)
+                                frag_records.append({
+                                    "waveform": frag_audio,
+                                    "sample_rate": self.SAMPLE_RATE,
+                                    "text": frag_clean,
+                                    "edit_tags": frag_edit_tags,
+                                })
+                                frag_order.append(('text', idx))
+                            elif frag_type == 'pause':
+                                frag_order.append(('pause', frag_content))
+
+                        if frag_records and any(r["edit_tags"] for r in frag_records):
+                            frag_records = apply_edit_post_processing(frag_records, engine_config=self.config)
+
+                        all_parts = []
+                        for order_type, order_val in frag_order:
+                            if order_type == 'text':
+                                w = frag_records[order_val]["waveform"].cpu()
+                                if w.dim() == 1:
+                                    w = w.unsqueeze(0)
+                                all_parts.append(w)
+                            elif order_type == 'pause':
+                                silence = PauseTagProcessor.create_silence_segment(order_val, self.SAMPLE_RATE, torch.device('cpu'), torch.float32)
+                                if silence.dim() == 1:
+                                    silence = silence.unsqueeze(0)
+                                all_parts.append(silence)
+
+                        if all_parts:
+                            segment_audio = torch.cat(all_parts, dim=-1).squeeze()
                         else:
-                            audio_tensor = torch.tensor(audio, dtype=torch.float32)
-                        if audio_tensor.dim() > 1:
-                            audio_tensor = audio_tensor.squeeze()
-                        return audio_tensor
+                            segment_audio = torch.zeros(0, dtype=torch.float32)
 
-                    if pause_segments:
-                        segment_audio = PauseTagProcessor.generate_audio_with_pauses(
-                            pause_segments,
-                            _tts_generate_func,
-                            sample_rate=self.SAMPLE_RATE
-                        )
-                        if segment_audio.dim() > 1:
-                            segment_audio = segment_audio.squeeze()
+                        segment_audio_list.append(segment_audio)
+                        segment_records.append({
+                            "waveform": segment_audio,
+                            "sample_rate": self.SAMPLE_RATE,
+                            "text": segment_text,
+                            "edit_tags": [],
+                        })
                     else:
-                        segment_audio = _tts_generate_func(clean_text)
-
-                    segment_audio_list.append(segment_audio)
-                    segment_records.append({
-                        "waveform": segment_audio,
-                        "sample_rate": self.SAMPLE_RATE,
-                        "text": clean_text,
-                        "edit_tags": edit_tags
-                    })
+                        clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
+                        segment_audio = _generate_fragment(clean_text)
+                        segment_audio_list.append(segment_audio)
+                        segment_records.append({
+                            "waveform": segment_audio,
+                            "sample_rate": self.SAMPLE_RATE,
+                            "text": clean_text,
+                            "edit_tags": edit_tags,
+                        })
 
                 if segment_records and any(seg["edit_tags"] for seg in segment_records):
                     segment_records = apply_edit_post_processing(segment_records, engine_config=self.config)
                     segment_audio_list = []
                     for seg in segment_records:
-                        wf = seg["waveform"]
+                        wf = seg["waveform"].cpu()
                         # Normalize 3D [B,C,S] -> 2D [C,S] for timing engine compatibility
                         if hasattr(wf, "dim") and wf.dim() == 3:
                             wf = wf.squeeze(0)
