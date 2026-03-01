@@ -158,36 +158,47 @@ class EchoTTSProcessor:
                     else:
                         print(f"⚠️ Echo-TTS: No voice file found for '{seg.character}', using narrator voice")
 
-                clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
-                clean_text, pause_segments = PauseTagProcessor.preprocess_text_with_pause_tags(
-                    clean_text,
-                    enable_pause_tags=True
-                )
-                if pause_segments and any(
+                has_kv = any(
                     current_config.get(k) is not None for k in (
                         "speaker_kv_scale", "speaker_kv_max_layers", "speaker_kv_min_t"
                     )
-                ):
-                    raise ValueError(
-                        "Echo-TTS: Pause tags are not compatible with force_speaker_kv settings. "
-                        "Disable force_speaker_kv (speaker_kv_*) or remove pause tags."
-                    )
+                )
+                SHORT_FRAGMENT_THRESHOLD = 20
 
-                pause_mode = pause_segments is not None
+                # Parse pause tags FIRST so edit tags are extracted per-fragment (not from
+                # the whole segment). This ensures <Laughter> etc only apply to the fragment
+                # they appear in, not the entire combined audio.
+                has_pauses = PauseTagProcessor.has_pause_tags(segment_text)
+                if has_pauses:
+                    raw_pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
+                else:
+                    raw_pause_segments = None
+
+                pause_mode = raw_pause_segments is not None
                 seed_offset = 0
 
-                def _tts_generate_func(text_content: str) -> torch.Tensor:
+                def _generate_fragment(text_content: str) -> torch.Tensor:
                     nonlocal seed_offset
-                    segment_seed = current_seed + seed_offset
+                    fragment_seed = current_seed + seed_offset
                     seed_offset += 1
 
-                    # Ensure full config (including speaker_kv_*) is applied for each text segment.
-                    self.adapter.update_config(current_config)
+                    # Auto-disable force_speaker_kv for short fragments to avoid noisy tails
+                    fragment_config = current_config
+                    if has_kv and len(text_content.strip()) < SHORT_FRAGMENT_THRESHOLD:
+                        fragment_config = {
+                            **current_config,
+                            "speaker_kv_scale": None,
+                            "speaker_kv_max_layers": None,
+                            "speaker_kv_min_t": None,
+                        }
+                        print(f"⚠️ Echo-TTS: Auto-disabled force_speaker_kv for short fragment ({len(text_content.strip())} chars)")
+
+                    self.adapter.update_config(fragment_config)
                     audio = self.adapter.process_text(
                         text=text_content,
                         speaker_audio=speaker_audio,
                         reference_text=current_ref_text,
-                        seed=segment_seed,
+                        seed=fragment_seed,
                         enable_chunking=False if pause_mode else enable_chunking,
                         max_chars_per_chunk=max_chars_per_chunk,
                         chunk_combination_method=chunk_combination_method,
@@ -203,23 +214,74 @@ class EchoTTSProcessor:
                         audio = audio.squeeze()
                     return audio
 
-                if pause_segments:
-                    audio_segment = PauseTagProcessor.generate_audio_with_pauses(
-                        pause_segments,
-                        _tts_generate_func,
-                        sample_rate=self.SAMPLE_RATE
-                    )
-                    if audio_segment.dim() > 1:
-                        audio_segment = audio_segment.squeeze()
-                else:
-                    audio_segment = _tts_generate_func(clean_text)
+                if raw_pause_segments:
+                    # Process each fragment independently so edit tags scope to their fragment.
+                    # Build per-fragment segment records, apply edit post-processing per fragment,
+                    # then combine with silence spliced in original order.
+                    frag_records = []  # {waveform, sample_rate, text, edit_tags}
+                    frag_order = []   # ('text', idx) or ('pause', tensor)
 
-                segment_records.append({
-                    "waveform": audio_segment,
-                    "sample_rate": self.SAMPLE_RATE,
-                    "text": clean_text,
-                    "edit_tags": edit_tags
-                })
+                    for frag_type, frag_content in raw_pause_segments:
+                        if frag_type == 'text':
+                            frag_clean, frag_edit_tags = get_edit_tags_for_segment(frag_content)
+                            frag_clean = frag_clean.strip()
+                            if not frag_clean:
+                                continue
+                            frag_audio = _generate_fragment(frag_clean)
+                            if frag_audio.dim() == 1:
+                                frag_audio = frag_audio.unsqueeze(0)
+                            idx = len(frag_records)
+                            frag_records.append({
+                                "waveform": frag_audio,
+                                "sample_rate": self.SAMPLE_RATE,
+                                "text": frag_clean,
+                                "edit_tags": frag_edit_tags,
+                            })
+                            frag_order.append(('text', idx))
+                        elif frag_type == 'pause':
+                            frag_order.append(('pause', frag_content))
+
+                    # Apply edit post-processing per fragment
+                    if frag_records and any(r["edit_tags"] for r in frag_records):
+                        frag_records = apply_edit_post_processing(frag_records, engine_config=base_config)
+
+                    # Interleave audio and silence in original order
+                    all_parts = []
+                    for order_type, order_val in frag_order:
+                        if order_type == 'text':
+                            w = frag_records[order_val]["waveform"]
+                            if w.dim() == 1:
+                                w = w.unsqueeze(0)
+                            all_parts.append(w)
+                        elif order_type == 'pause':
+                            device = all_parts[-1].device if all_parts else None
+                            dtype = all_parts[-1].dtype if all_parts else None
+                            silence = PauseTagProcessor.create_silence_segment(order_val, self.SAMPLE_RATE, device, dtype)
+                            if silence.dim() == 1:
+                                silence = silence.unsqueeze(0)
+                            all_parts.append(silence)
+
+                    if all_parts:
+                        audio_segment = torch.cat(all_parts, dim=-1).squeeze()
+                    else:
+                        audio_segment = torch.zeros(0, dtype=torch.float32)
+
+                    segment_records.append({
+                        "waveform": audio_segment,
+                        "sample_rate": self.SAMPLE_RATE,
+                        "text": segment_text,
+                        "edit_tags": [],  # already applied per-fragment above
+                    })
+                else:
+                    clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
+                    audio_segment = _generate_fragment(clean_text)
+                    segment_records.append({
+                        "waveform": audio_segment,
+                        "sample_rate": self.SAMPLE_RATE,
+                        "text": clean_text,
+                        "edit_tags": edit_tags,
+                    })
+
                 self.adapter.complete_block()
 
             if segment_records and any(seg["edit_tags"] for seg in segment_records):

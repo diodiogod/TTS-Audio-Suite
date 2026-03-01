@@ -762,6 +762,62 @@ engines:
       vram_efficient: { supported: "partial", notes: "(7GB)" }
       speed_performance: { supported: "partial", notes: "" }
 
+  - id: echo-tts
+    name: Echo-TTS
+    models: "echo-tts-base + fish-s1-dac-min"
+    size: "~5.3GB + ~1.8GB"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+
+    special_features:
+      - "Diffusion-based (~30s best)"
+      - "Force Speaker KV (speaker drift control)"
+      - "Non-commercial (CC-BY-NC-SA)"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: false, flag: "🇨🇳", notes: "" }
+      de: { supported: false, flag: "🇩🇪", notes: "" }
+      es: { supported: false, flag: "🇪🇸", notes: "" }
+      fr: { supported: false, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: false, flag: "🇯🇵", notes: "" }
+      ko: { supported: false, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: false, flag: "🇧🇷", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇦🇪", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: false, notes: "(chunked best-effort)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(~7GB total)" }
+      speed_performance: { supported: "partial", notes: "Slow (diffusion)" }
+
   - id: rvc
     name: RVC
     models: "Community .pth"

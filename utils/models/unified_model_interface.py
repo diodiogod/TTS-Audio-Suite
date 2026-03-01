@@ -1109,7 +1109,15 @@ def register_echo_tts_factory():
                     self.model = self.model.to(target_device)
                 if hasattr(self.ae, "to"):
                     self.ae = self.ae.to(target_device)
-                if hasattr(self.pca_state, "to"):
+                # pca_state is a dict of tensors loaded under inference_mode.
+                # Clone before moving to escape inference-tensor version tracking errors
+                # after ComfyUI "Unload Models" / VRAM clear cycles.
+                if isinstance(self.pca_state, dict):
+                    self.pca_state = {
+                        k: v.clone().to(target_device) if isinstance(v, torch.Tensor) else v
+                        for k, v in self.pca_state.items()
+                    }
+                elif hasattr(self.pca_state, "to"):
                     self.pca_state = self.pca_state.to(target_device)
                 self.device = target_device
                 return self
