@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.0] - 2026-03-01
+
+### Added
+
+- Add Echo-TTS voice cloning engine
+- New Echo-TTS engine: DiT-based voice cloning with reference audio support
+- Best quality at 30 seconds or less per generation; longer text auto-chunked
+- Force Speaker KV option controls speaker identity consistency across chunks
+- Full support for character switching, pause tags, and SRT subtitle timing
+- Auto-downloads models on first use (~7.1GB total into ComfyUI/models/TTS/)
+- Note: Echo-TTS weights are non-commercial (CC-BY-NC-SA license)
+
+### Fixed
+
+- Fix chunking not working when pause tags are present in Echo-TTS and Qwen3-TTS
+- Fix batch inline edit tags not applying correctly in SRT generation mode
 ## [4.21.20] - 2026-02-28
 
 ### Fixed
