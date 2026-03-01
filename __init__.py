@@ -85,9 +85,12 @@ else:
             _spec = importlib.util.spec_from_file_location("numba_compat_module", numba_compat_path)
             _numba_compat = importlib.util.module_from_spec(_spec)
             _spec.loader.exec_module(_numba_compat)
-            _numba_compat.setup_numba_compatibility(quick_startup=False, verbose=False)
+            _numba_compat.setup_numba_compatibility(quick_startup=False, verbose=True)
     except Exception:
-        pass
+        # If the compatibility test itself crashes, that means numba JIT is broken —
+        # disable it and warn the user.
+        os.environ['NUMBA_DISABLE_JIT'] = '1'
+        print("⚠️ TTS Audio Suite: Numba JIT crash detected at startup — disabling JIT (NUMBA_DISABLE_JIT=1)")
 
 # TorchCodec note: Removed torchcodec dependency to eliminate FFmpeg system requirement
 # torchaudio.load() works fine with fallback backends (soundfile, scipy)

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.20] - 2026-02-28
+
+### Fixed
+
+- Fix Qwen3-TTS crash with numba 0.64.0 on certain hardware
+- Fix crash when using voice cloning on systems with numba 0.64.0 and NumPy 2.x
+- Error was silently ignored at startup so the incompatibility was never resolved
+- Startup now correctly detects and disables broken numba JIT compilation automatically
 ## [4.21.19] - 2026-02-28
 
 ### Added
