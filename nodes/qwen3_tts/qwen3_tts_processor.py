@@ -485,9 +485,10 @@ class Qwen3TTSProcessor:
 
             for seg_type, content in pause_segments:
                 if seg_type == 'text':
-                    # Process this pause-delimited text segment
-                    self._process_single_text_segment(
-                        character, content, voice_mapping, params, audio_segments
+                    # Process this pause-delimited text segment (with chunking support)
+                    self._process_character_block(
+                        character, content, voice_mapping, params,
+                        enable_chunking, max_chars, audio_segments
                     )
                 elif seg_type == 'pause':
                     # Add silence segment

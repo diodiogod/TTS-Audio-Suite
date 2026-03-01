@@ -213,10 +213,10 @@ class EchoTTSProcessor:
                         speaker_audio=speaker_audio,
                         reference_text=current_ref_text,
                         seed=fragment_seed,
-                        enable_chunking=False if pause_mode else enable_chunking,
+                        enable_chunking=enable_chunking,
                         max_chars_per_chunk=max_chars_per_chunk,
                         chunk_combination_method=chunk_combination_method,
-                        silence_between_chunks_ms=0 if pause_mode else silence_between_chunks_ms,
+                        silence_between_chunks_ms=silence_between_chunks_ms,
                         enable_audio_cache=enable_audio_cache,
                         return_info=False
                     )

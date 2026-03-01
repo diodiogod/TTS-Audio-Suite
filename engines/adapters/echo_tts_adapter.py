@@ -683,11 +683,18 @@ class EchoTTSEngineAdapter:
         if enable_chunking:
             max_chars = ImprovedChatterBoxChunker.validate_chunking_params(max_chars_per_chunk)
             text_chunks = ImprovedChatterBoxChunker.split_into_chunks(text, max_chars=max_chars)
+            if len(text_chunks) > 1:
+                print(f"📝 Echo-TTS: Chunking text into {len(text_chunks)} chunks (max {max_chars} chars each)")
         else:
             text_chunks = [text]
 
         audio_segments = []
-        for chunk in text_chunks:
+        for chunk_idx, chunk in enumerate(text_chunks):
+            if len(text_chunks) > 1:
+                print(f"🎤 Echo-TTS chunk {chunk_idx + 1}/{len(text_chunks)}:")
+                print("=" * 60)
+                print(chunk)
+                print("=" * 60)
             audio_tensor, _ = self._generate_audio_for_text(
                 chunk,
                 ref_audio,
