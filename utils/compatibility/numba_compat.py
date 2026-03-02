@@ -110,8 +110,14 @@ class NumbaCompatibilityManager:
         """
         setup_start = time.time()
         
-        # Skip testing if JIT already disabled by user/environment
+        # If JIT already disabled by user/environment, still apply numba.config
+        # because numba may already be imported and the env var alone won't take effect.
         if os.environ.get('NUMBA_DISABLE_JIT') == '1':
+            try:
+                import numba
+                numba.config.DISABLE_JIT = True
+            except Exception:
+                pass
             return {
                 'status': 'jit_already_disabled',
                 'message': 'NUMBA_DISABLE_JIT already set by user/environment',
