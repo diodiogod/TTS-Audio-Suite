@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.3] - 2026-03-10
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang Python 3.13 generation failure
+- Fix Official 23-Lang failing after model download on Python 3.13 environments
+- Improve ChatterBox Official 23-Lang reference audio preprocessing compatibility
 ## [4.22.2] - 2026-03-10
 
 ### Fixed

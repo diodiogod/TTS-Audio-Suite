@@ -1,25 +1,15 @@
 from functools import lru_cache
 
-# Smart numba compatibility for melspec processing
-try:
-    from utils.compatibility import setup_numba_compatibility
-    setup_numba_compatibility(quick_startup=True, verbose=False)
-except ImportError:
-    # Fallback for environments without compatibility module
-    import sys
-    import os
-    if sys.version_info >= (3, 13) and os.environ.get('NUMBA_DISABLE_JIT') != '1':
-        os.environ['NUMBA_DISABLE_JIT'] = '1'
-
 from scipy import signal
 import numpy as np
-import librosa
+# Use librosa fallback for Python 3.13 compatibility
+from utils.audio.librosa_fallback import safe_mel_filters, safe_stft
 
 
 @lru_cache()
 def mel_basis(hp):
     assert hp.fmax <= hp.sample_rate // 2
-    return librosa.filters.mel(
+    return safe_mel_filters(
         sr=hp.sample_rate,
         n_fft=hp.n_fft,
         n_mels=hp.num_mels,
@@ -65,7 +55,7 @@ def melspectrogram(wav, hp, pad=True):
 def _stft(y, hp, pad=True):
     # NOTE: after 0.8, pad mode defaults to constant, setting this to reflect for
     #   historical consistency and streaming-version consistency
-    return librosa.stft(
+    return safe_stft(
         y,
         n_fft=hp.n_fft,
         hop_length=hp.hop_size,
