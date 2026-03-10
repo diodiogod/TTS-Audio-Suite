@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.2] - 2026-03-10
+
+### Fixed
+
+- Improve ChatterBox community model compatibility and Russian model handling
+- Fix ChatterBox local community models losing language-specific loading behavior
+- Fix stale ChatterBox model folders not redownloading newly added required files
+- Improve ChatterBox compatibility with community tokenizer variants
+- Remove the broken ChatterBox Russian classic Cyrillic experimental option from the dropdown
 ## [4.22.1] - 2026-03-01
 
 ### Added

@@ -368,7 +368,7 @@ def register_chatterbox_factory():
         # Try provided path first
         if model_path:
             try:
-                return target_class.from_local(model_path, device)
+                return target_class.from_local(model_path, device, language)
             except Exception as e:
                 print(f"⚠️ Failed to load from provided path {model_path}: {e}")
                 # Continue to fallback logic
@@ -377,7 +377,7 @@ def register_chatterbox_factory():
         try:
             local_path = find_local_model_path(language)
             if local_path:
-                return target_class.from_local(local_path, device)
+                return target_class.from_local(local_path, device, language)
         except Exception as e:
             print(f"⚠️ Failed to load local {language} model: {e}")
         
@@ -400,7 +400,7 @@ def register_chatterbox_factory():
                     try:
                         german_local = find_local_model_path("German")
                         if german_local:
-                            return target_class.from_local(german_local, device)
+                            return target_class.from_local(german_local, device, "German")
                     except Exception as local_error:
                         print(f"⚠️ German local model failed: {local_error}")
                         
@@ -419,7 +419,7 @@ def register_chatterbox_factory():
                     # Try English local first
                     english_local = find_local_model_path("English")
                     if english_local:
-                        return target_class.from_local(english_local, device)
+                        return target_class.from_local(english_local, device, "English")
                     else:
                         return target_class.from_pretrained(device, "English")
                 except Exception as english_error:

@@ -382,7 +382,7 @@ class ModelManager:
                         print(f"📁 Loading local English ChatterBox model from: {path}")
                         with warnings.catch_warnings():
                             warnings.simplefilter("ignore")
-                            model = ChatterboxTTS.from_local(path, device)
+                            model = ChatterboxTTS.from_local(path, device, "English")
                         
                         # Cache the loaded model
                         self._model_cache[cache_key] = model
@@ -417,7 +417,7 @@ class ModelManager:
                 print(f"📁 Loading local {language} ChatterBox model from: {local_language_path}")
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    model = ChatterboxTTS.from_local(local_language_path, device)
+                    model = ChatterboxTTS.from_local(local_language_path, device, language)
                 
                 # Cache the loaded model
                 self._model_cache[cache_key] = model
@@ -494,7 +494,7 @@ class ModelManager:
                 english_local_path = self.find_local_language_model("English")
                 if english_local_path:
                     print(f"📁 Loading local English ChatterBox model as fallback from: {english_local_path}")
-                    model = ChatterboxTTS.from_local(english_local_path, device)
+                    model = ChatterboxTTS.from_local(english_local_path, device, "English")
                 else:
                     print(f"📦 Loading English ChatterBox model from HuggingFace as fallback")
                     model = ChatterboxTTS.from_pretrained(device, language="English")

@@ -229,6 +229,9 @@ def is_unified_model(language: str) -> bool:
 
 def get_tokenizer_filename(language: str) -> str:
     """Get the correct tokenizer filename for a language model"""
+    config = CHATTERBOX_MODELS.get(language)
+    if config and config.get("files", {}).get("tokenizer"):
+        return config["files"]["tokenizer"]
     if language == "Japanese":
         return "tokenizer_jp.json"
     elif language == "Korean":
@@ -238,23 +241,31 @@ def get_tokenizer_filename(language: str) -> str:
 
 def get_model_requirements(language: str) -> List[str]:
     """Get list of required files for a ChatterBox model"""
+    config = CHATTERBOX_MODELS.get(language, {})
+    file_overrides = config.get("files", {})
     
     # Handle special Italian unified model
     if language == "Italian":
         return ["chatterbox_italian_final.pt", "config.json"]
     
+    t3_filename = file_overrides.get("t3_cfg", "t3_cfg.safetensors")
+
     # Handle special cases for incomplete models
     if language == "French":
         # French model only has t3_cfg.safetensors, no tokenizer in repo
-        base_requirements = ["t3_cfg.safetensors"]
+        base_requirements = [t3_filename]
     else:
         # Other models have tokenizers
         tokenizer_file = get_tokenizer_filename(language)
-        base_requirements = ["t3_cfg.safetensors", tokenizer_file]
+        base_requirements = [t3_filename, tokenizer_file]
     
     # Complete models need all components
     if not is_model_incomplete(language):
-        base_requirements.extend(["s3gen.safetensors", "ve.safetensors", "conds.pt"])
+        base_requirements.extend([
+            file_overrides.get("s3gen", "s3gen.safetensors"),
+            file_overrides.get("ve", "ve.safetensors"),
+            file_overrides.get("conds", "conds.pt")
+        ])
     
     return base_requirements
 

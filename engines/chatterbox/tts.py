@@ -220,14 +220,49 @@ class ChatterboxTTS:
         from utils.device import resolve_torch_device
         device = resolve_torch_device(device)
 
+        resolved_language = language
+        if resolved_language and resolved_language.startswith("local:"):
+            resolved_language = resolved_language[6:]
+        if not resolved_language and ckpt_dir.name in CHATTERBOX_MODELS:
+            resolved_language = ckpt_dir.name
+
         # Handle Italian unified model (special architecture)
-        if language and is_unified_model(language):
-            return cls._load_unified_model(ckpt_dir, device, language)
-        
+        if resolved_language and is_unified_model(resolved_language):
+            return cls._load_unified_model(ckpt_dir, device, resolved_language)
+
+        # Self-heal stale built-in language folders when upstream files were added later.
+        if resolved_language and ckpt_dir.name == resolved_language:
+            is_complete, missing_files = validate_model_completeness(str(ckpt_dir), resolved_language)
+            if not is_complete:
+                print(f"⚠️ Local {resolved_language} model incomplete, missing: {missing_files}")
+                model_config = get_model_config(resolved_language)
+                if model_config and model_config.get("repo"):
+                    files_to_download = get_model_requirements(resolved_language)
+                    model_format = model_config.get("format", "pt")
+                    if model_format == "mixed":
+                        files_to_download = [
+                            f.replace(".pt", ".safetensors") if f.endswith(".pt") else f
+                            for f in files_to_download
+                        ]
+                    elif model_format == "pt":
+                        files_to_download = [
+                            f.replace(".safetensors", ".pt") if f.endswith(".safetensors") else f
+                            for f in files_to_download
+                        ]
+
+                    print(f"📥 Attempting to repair missing {resolved_language} files in place")
+                    from utils.downloads.unified_downloader import unified_downloader
+                    unified_downloader.download_chatterbox_model(
+                        repo_id=model_config.get("repo", REPO_ID),
+                        model_name=resolved_language,
+                        subdirectory=model_config.get("subdirectory"),
+                        files=files_to_download,
+                    )
+
         # Determine if this is an incomplete model by checking language or directory structure
         is_incomplete_model = False
-        if language:
-            is_incomplete_model = is_model_incomplete(language)
+        if resolved_language:
+            is_incomplete_model = is_model_incomplete(resolved_language)
         else:
             # Check if critical files are missing (indicates incomplete model)
             ve_exists = any((ckpt_dir / f"ve.{ext}").exists() for ext in ["safetensors", "pt"])
@@ -237,6 +272,17 @@ class ChatterboxTTS:
         # Auto-detect model format with fallback support for incomplete models
         def load_model_file(base_name: str, required: bool = True):
             """Load model file with auto-detection of format (.safetensors preferred over .pt)"""
+            if resolved_language:
+                language_config = CHATTERBOX_MODELS.get(resolved_language, {})
+                custom_filename = language_config.get("files", {}).get(base_name)
+                if custom_filename:
+                    custom_path = ckpt_dir / custom_filename
+                    if custom_path.exists():
+                        if custom_path.suffix == ".safetensors":
+                            return load_file(custom_path, device=device)
+                        if custom_path.suffix == ".pt":
+                            return torch.load(custom_path, map_location=device)
+
             safetensors_path = ckpt_dir / f"{base_name}.safetensors"
             pt_path = ckpt_dir / f"{base_name}.pt"
             
@@ -318,6 +364,13 @@ class ChatterboxTTS:
             # Create config with proper settings
             from .models.t3.t3 import T3Config
             config = T3Config()
+
+            # Community finetunes may change the text vocabulary size.
+            # Build the T3 architecture from checkpoint weights instead of assuming 704.
+            if "text_emb.weight" in t3_state:
+                config.text_tokens_dict_size = t3_state["text_emb.weight"].shape[0]
+            elif "text_head.weight" in t3_state:
+                config.text_tokens_dict_size = t3_state["text_head.weight"].shape[0]
             
             # Initialize model with config
             t3 = T3(config)
@@ -342,8 +395,8 @@ class ChatterboxTTS:
             tokenizer_file = None
             
             # First try the language-specific tokenizer based on language parameter
-            if language:
-                expected_tokenizer = get_tokenizer_filename(language)
+            if resolved_language:
+                expected_tokenizer = get_tokenizer_filename(resolved_language)
                 expected_path = ckpt_dir / expected_tokenizer
                 if expected_path.exists():
                     tokenizer_file = str(expected_path)
