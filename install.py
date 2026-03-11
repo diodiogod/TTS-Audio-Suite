@@ -28,6 +28,7 @@ class TTSAudioInstaller:
         self.is_macos = platform.system() == "Darwin"
         self.is_m1_mac = self.is_macos and platform.machine() == "arm64"
         self.pip_cmd = [sys.executable, "-m", "pip"]
+        self.russian_stress_fork_ref = "git+https://github.com/diodiogod/add-stress-to-epub.git@98f53b9"
         
     def log(self, message: str, level: str = "INFO"):
         """Log installation progress with safe visual indicators"""
@@ -1142,6 +1143,72 @@ class TTSAudioInstaller:
         self.log("Text normalization packages failed to install - IndexTTS-2 will use basic text processing", "WARNING")
         self.log("This may affect quality for Chinese text and complex English patterns", "INFO")
 
+    def install_russian_text_stresser_support(self):
+        """Install lightweight Russian stress support for Official 23-Lang."""
+        self.log("Installing Russian stress labeling support for Official 23-Lang", "INFO")
+
+        dependency_specs = [
+            "poetry-core>=2.0.0",
+            "spacy<4",
+            "pymorphy2>=0.9.1",
+            "stressed-cyrillic-tools>=0.1.10",
+        ]
+
+        for spec in dependency_specs:
+            if self.check_package_installed(spec):
+                self.log(f"{spec} already satisfied - skipping", "SUCCESS")
+                continue
+            self.run_pip_command(["install", spec], f"Installing {spec}", ignore_errors=True)
+
+        if self.check_package_installed("russian-text-stresser>=0.1.2"):
+            self.log("Patched russian-text-stresser already satisfied - skipping", "SUCCESS")
+        else:
+            installed = self.run_pip_command(
+                [
+                    "install",
+                    "--force-reinstall",
+                    "--no-deps",
+                    "--no-build-isolation",
+                    "--ignore-requires-python",
+                    self.russian_stress_fork_ref,
+                ],
+                "Installing patched russian-text-stresser from fork",
+                ignore_errors=True,
+            )
+            if not installed:
+                self.log("Patched russian-text-stresser installation failed - Russian stress marks will remain unavailable", "WARNING")
+                return
+
+        env = os.environ.copy()
+        if self.is_windows:
+            env["PYTHONUTF8"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
+
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from russian_text_stresser import russian_dictionary as rd; "
+                        "print('OK' if hasattr(rd, 'DATA_DIR_ENV_VAR') else 'MISSING_PATCH')"
+                    ),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=env,
+                encoding="utf-8" if self.is_windows else None,
+            )
+
+            if result.returncode == 0 and "OK" in (result.stdout or ""):
+                self.log("Russian stress labeling package installed", "SUCCESS")
+            else:
+                error_text = (result.stderr or result.stdout or "").strip()
+                self.log(f"Russian stress labeling package validation failed: {error_text}", "WARNING")
+        except Exception as e:
+            self.log(f"Could not validate russian-text-stresser installation: {e}", "WARNING")
+
     def check_python_environment(self):
         """Check Python environment and warn about potential mismatches"""
         python_path = sys.executable.lower()
@@ -1376,6 +1443,7 @@ def main():
         installer.install_echo_tts()  # Install Echo-TTS with minimal dependency impact
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
         installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
+        installer.install_russian_text_stresser_support()  # Install lightweight Russian stress package for Official 23-Lang
         installer.handle_wandb_issues()  # Fix wandb circular import
         installer.handle_python_313_specific()
         

@@ -8,8 +8,6 @@ downloads them on demand into the organized TTS model cache.
 import importlib
 import logging
 import os
-import subprocess
-import sys
 import threading
 import zipfile
 from pathlib import Path
@@ -18,7 +16,6 @@ from utils.downloads.unified_downloader import unified_downloader
 
 logger = logging.getLogger(__name__)
 
-RUSSIAN_STRESS_FORK_REF = "git+https://github.com/diodiogod/add-stress-to-epub.git@98f53b9"
 RUSSIAN_STRESS_DATA_URL = "https://github.com/Vuizur/add-stress-to-epub/releases/download/v1.0.1/russian_dict.zip"
 RUSSIAN_STRESS_DATA_ENV = "RUSSIAN_TEXT_STRESSER_DATA_DIR"
 
@@ -27,115 +24,12 @@ _setup_lock = threading.Lock()
 _setup_attempted = False
 _setup_failed = False
 
-
-def _purge_stresser_modules():
-    for module_name in list(sys.modules.keys()):
-        if module_name == "russian_text_stresser" or module_name.startswith("russian_text_stresser."):
-            sys.modules.pop(module_name, None)
-
-
-def _check_package_installed(package_spec: str) -> bool:
-    try:
-        import re
-        from importlib.metadata import version
-
-        match = re.match(r"^([a-zA-Z0-9_.\\-]+)([><=!~]+)?(.+)?$", package_spec)
-        if not match:
-            return False
-
-        package_name = match.group(1)
-        operator = match.group(2)
-        required_version = match.group(3)
-
-        installed_version = version(package_name)
-        if not operator or not required_version:
-            return True
-
-        try:
-            from packaging.specifiers import SpecifierSet
-            from packaging.version import Version
-
-            spec = SpecifierSet(f"{operator}{required_version}")
-            return Version(installed_version) in spec
-        except Exception:
-            return True
-    except Exception:
-        return False
-
-
-def _run_pip_install(args, description: str) -> bool:
-    cmd = [sys.executable, "-m", "pip"] + args
-    logger.info("%s", description)
-    print(f"📦 {description}")
-
-    env = os.environ.copy()
-    env["PYTHONUTF8"] = "1"
-    env["PYTHONIOENCODING"] = "utf-8"
-
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env=env,
-            timeout=1800,
-        )
-    except Exception as e:
-        logger.warning("%s failed: %s", description, e)
-        return False
-
-    if result.returncode == 0:
-        return True
-
-    if result.stdout:
-        logger.warning("%s stdout: %s", description, result.stdout.strip())
-    if result.stderr:
-        logger.warning("%s stderr: %s", description, result.stderr.strip())
-    logger.warning("%s failed with exit code %s", description, result.returncode)
-    return False
-
-
-def _fork_supports_external_data_dir() -> bool:
+def _has_russian_stress_runtime() -> bool:
     try:
         module = importlib.import_module("russian_text_stresser.russian_dictionary")
         return hasattr(module, "DATA_DIR_ENV_VAR")
     except Exception:
         return False
-
-
-def _ensure_python_dependencies() -> bool:
-    dependency_specs = [
-        "poetry-core>=2.0.0",
-        "spacy<4",
-        "pymorphy2>=0.9.1",
-        "stressed-cyrillic-tools>=0.1.10",
-    ]
-
-    for spec in dependency_specs:
-        if _check_package_installed(spec):
-            continue
-        if not _run_pip_install(["install", spec], f"Installing Russian stress dependency {spec}"):
-            return False
-
-    if not _fork_supports_external_data_dir():
-        if not _run_pip_install(
-            [
-                "install",
-                "--force-reinstall",
-                "--no-deps",
-                "--no-build-isolation",
-                "--ignore-requires-python",
-                RUSSIAN_STRESS_FORK_REF,
-            ],
-            "Installing patched russian-text-stresser",
-        ):
-            return False
-
-    _purge_stresser_modules()
-    importlib.invalidate_caches()
-    return True
 
 
 def _get_russian_stress_data_dir() -> Path:
@@ -205,9 +99,12 @@ def get_russian_text_stresser():
         _setup_attempted = True
         print("🔤 Preparing Russian stress support for ChatterBox Official 23-Lang")
 
-        if not _ensure_python_dependencies():
+        if not _has_russian_stress_runtime():
             _setup_failed = True
-            logger.warning("Russian stress support setup failed during dependency install")
+            logger.warning(
+                "Russian stress support package is missing or outdated. "
+                "Rerun ComfyUI Manager install or install.py to add the patched dependency."
+            )
             return None
 
         if not _ensure_russian_stress_data():
