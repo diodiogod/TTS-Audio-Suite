@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.4] - 2026-03-10
+
+### Added
+
+- Add lazy Russian stress setup so Official 23-Lang Russian no longer downloads large assets for every user during install
+- Download the Russian stress dictionary on demand into the normal TTS model folder
+
+### Fixed
+
+- Fix ChatterBox Official 23-Lang Russian stress support
+- Improve Russian generation setup on Python 3.13 by installing the patched stress-labeling dependency only when needed
+- Clarify Official 23-Lang safetensors fallback messages so working model folders no longer look broken
 ## [4.22.3] - 2026-03-10
 
 ### Fixed

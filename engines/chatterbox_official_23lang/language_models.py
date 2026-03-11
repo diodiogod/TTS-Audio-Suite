@@ -302,11 +302,19 @@ def validate_model_completeness(model_path: str, model_name: str, model_version:
 
     existing_files = os.listdir(model_path)
     for required_file in required_files:
-        # Check for exact file name
-        if required_file not in existing_files:
-            # Only consider it missing if it's not optional
-            if required_file not in optional_files:
-                missing_files.append(required_file)
+        file_present = required_file in existing_files
+
+        # Official 23-lang loaders accept either .pt or .safetensors for these shared components.
+        if not file_present and required_file in ["s3gen.pt", "ve.pt"]:
+            alt_name = required_file.replace(".pt", ".safetensors")
+            file_present = alt_name in existing_files
+
+        # Community v2 tokenizer variants may provide either expanded tokenizer filename.
+        if not file_present and required_file == "grapheme_mtl_merged_expanded_v1.json":
+            file_present = "tokenizer_vi_expanded.json" in existing_files
+
+        if not file_present and required_file not in optional_files:
+            missing_files.append(required_file)
 
     return len(missing_files) == 0, missing_files
 

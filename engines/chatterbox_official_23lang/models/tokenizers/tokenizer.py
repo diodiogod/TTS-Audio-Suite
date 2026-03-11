@@ -7,6 +7,7 @@ from pathlib import Path
 from unicodedata import category
 from tokenizers import Tokenizer
 from huggingface_hub import hf_hub_download
+from utils.text.russian_stress_support import get_russian_text_stresser
 
 
 # Special tokens
@@ -61,7 +62,6 @@ REPO_ID = "ResembleAI/chatterbox"
 # Global instances for optional dependencies
 _kakasi = None
 _dicta = None
-_russian_stresser = None
 
 
 def is_kanji(c: str) -> bool:
@@ -238,18 +238,12 @@ class ChineseCangjieConverter:
 
 def add_russian_stress(text: str) -> str:
     """Russian text normalization: adds stress marks to Russian text (v2 feature)."""
-    global _russian_stresser
-
     try:
-        if _russian_stresser is None:
-            from russian_text_stresser.text_stresser import RussianTextStresser
-            _russian_stresser = RussianTextStresser()
-
-        return _russian_stresser.stress_text(text)
-
-    except ImportError:
-        logger.warning("russian_text_stresser not available - Russian stress labeling skipped")
-        return text
+        stresser = get_russian_text_stresser()
+        if stresser is None:
+            logger.warning("Russian stress support unavailable - stress labeling skipped")
+            return text
+        return stresser.stress_text(text)
     except Exception as e:
         logger.warning(f"Russian stress labeling failed: {e}")
         return text

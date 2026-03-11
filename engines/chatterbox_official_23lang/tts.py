@@ -244,7 +244,7 @@ class ChatterboxOfficial23LangTTS:
         if model_name:
             is_complete, missing_files = validate_model_completeness(str(ckpt_dir), model_name, model_version)
             if not is_complete:
-                print(f"⚠️ Missing {model_version} files: {missing_files}")
+                print(f"⚠️ Model folder is incomplete for {model_version}: missing {missing_files}")
                 # Continue loading anyway - some files like conds.pt are optional
         
         with warnings.catch_warnings():
@@ -265,8 +265,8 @@ class ChatterboxOfficial23LangTTS:
                 ve_state = torch.load(ve_pt_path, map_location=map_location, weights_only=True)
                 ve.load_state_dict(ve_state)
             elif has_safetensors:
-                # User manually downloaded safetensors - use with compatibility warning
-                print("⚠️ Using ve.safetensors with strict=False for compatibility. Official implementation uses .pt files")
+                # Safetensors fallback is valid even though official releases usually ship .pt here.
+                print("ℹ️ Using ve.safetensors fallback (official releases usually ship ve.pt)")
                 ve_state = load_file(ve_safetensors_path, device=actual_device)
                 ve.load_state_dict(ve_state, strict=False)
             else:
@@ -380,8 +380,8 @@ class ChatterboxOfficial23LangTTS:
                 s3gen_state = torch.load(s3gen_pt_path, map_location=map_location, weights_only=True)
                 s3gen.load_state_dict(s3gen_state)
             elif has_safetensors:
-                # User manually downloaded safetensors - use with compatibility warning
-                print("⚠️ Using s3gen.safetensors with strict=False for compatibility. Official implementation uses .pt files")
+                # Safetensors fallback is valid even though official releases usually ship .pt here.
+                print("ℹ️ Using s3gen.safetensors fallback (official releases usually ship s3gen.pt)")
                 s3gen_state = load_file(s3gen_safetensors_path, device=actual_device)
                 s3gen.load_state_dict(s3gen_state, strict=False)
             else:
