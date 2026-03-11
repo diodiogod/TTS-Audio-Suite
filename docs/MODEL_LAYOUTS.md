@@ -38,20 +38,24 @@ ComfyUI/models/TTS/chatterbox/
 
 ```text
 ComfyUI/models/TTS/chatterbox_official_23lang/
-└── ChatterBox Official 23-Lang/
-    ├── t3_23lang.safetensors
-    ├── t3_mtl23ls_v2.safetensors
-    ├── grapheme_mtl_merged_expanded_v1.json
-    ├── s3gen.pt
-    ├── ve.pt
-    ├── mtl_tokenizer.json
-    └── conds.pt
+├── ChatterBox Official 23-Lang/
+│   ├── t3_23lang.safetensors
+│   ├── t3_mtl23ls_v2.safetensors
+│   ├── grapheme_mtl_merged_expanded_v1.json
+│   ├── s3gen.pt
+│   ├── ve.pt
+│   ├── mtl_tokenizer.json
+│   └── conds.pt
+└── russian_text_stresser/
+    ├── russian_dict.db
+    └── simple_cases.pkl
 ```
 
 Notes:
 
 - v1 and v2 coexist in one directory.
 - Vietnamese (Viterbox) is available as a community finetune option.
+- `russian_text_stresser/` is auxiliary Russian-only data for Official 23-Lang stress labeling and downloads on demand.
 
 ## F5-TTS
 
