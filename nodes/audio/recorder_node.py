@@ -2,59 +2,125 @@ import torch
 import torchaudio
 import numpy as np
 import tempfile
-import os
+import importlib.util
 import threading
 import time
 import queue
 
-# Graceful handling of sounddevice/PortAudio dependency
-try:
-    import sounddevice as sd
-    SOUNDDEVICE_AVAILABLE = True
-except ImportError as e:
-    SOUNDDEVICE_AVAILABLE = False
-    SOUNDDEVICE_ERROR = str(e)
-    print(f"⚠️  ChatterBox Voice Capture: sounddevice not available - {e}")
-    print("📋 To enable voice recording, install PortAudio:")
-    print("   Linux: sudo apt-get install portaudio19-dev")
-    print("   macOS: brew install portaudio") 
-    print("   Windows: Usually bundled with sounddevice")
+# Do not import sounddevice or enumerate devices at startup.
+# On some Windows systems PortAudio can hang indefinitely during import/device probing,
+# which blocks ComfyUI before the server starts.
+SOUNDDEVICE_MODULE_AVAILABLE = importlib.util.find_spec("sounddevice") is not None
+
+
+def _load_sounddevice():
+    """Import sounddevice only when the node is actually used."""
+    if not SOUNDDEVICE_MODULE_AVAILABLE:
+        return None, "sounddevice package not installed"
+
+    try:
+        import sounddevice as sd
+        return sd, None
+    except Exception as e:
+        return None, str(e)
+
+
+def _get_first_input_device(sd):
+    """Return the first available input device as a safe fallback."""
+    devices = sd.query_devices()
+    for i, device in enumerate(devices):
+        if device.get("max_input_channels", 0) > 0:
+            return i, device
+    return None, None
+
+
+def _get_default_input_device(sd):
+    """Resolve PortAudio's default input device explicitly."""
+    try:
+        default_device = getattr(sd.default, "device", None)
+        if isinstance(default_device, (list, tuple)) and len(default_device) > 0:
+            input_index = default_device[0]
+        else:
+            input_index = default_device
+
+        if input_index is not None:
+            input_index = int(input_index)
+            if input_index >= 0:
+                return input_index, sd.query_devices(input_index, "input")
+    except Exception:
+        pass
+
+    try:
+        default_info = sd.query_devices(kind="input")
+        default_name = str(default_info.get("name", "")).strip()
+        if default_name:
+            devices = sd.query_devices()
+            for i, device in enumerate(devices):
+                if device.get("max_input_channels", 0) <= 0:
+                    continue
+                if str(device.get("name", "")).strip() == default_name:
+                    return i, device
+    except Exception:
+        pass
+
+    return _get_first_input_device(sd)
+
+
+def _resolve_input_device(sd, requested_device_name):
+    """Resolve an input device selection at runtime."""
+    requested = (requested_device_name or "").strip()
+    if not requested:
+        device_index, device_info = _get_default_input_device(sd)
+        return device_index, device_info, True
+
+    normalized = requested.lower()
+    if normalized in {"default", "system default", "system default input device", "auto"}:
+        device_index, device_info = _get_default_input_device(sd)
+        return device_index, device_info, True
+
+    legacy_suffix = " - input"
+    if normalized.endswith(legacy_suffix):
+        normalized = normalized[:-len(legacy_suffix)].strip()
+
+    try:
+        devices = sd.query_devices()
+    except Exception as e:
+        print(f"⚠️  Could not enumerate input devices, using system default: {e}")
+        device_index, device_info = _get_default_input_device(sd)
+        return device_index, device_info, True
+
+    for i, device in enumerate(devices):
+        device_name = str(device.get("name", ""))
+        if device.get("max_input_channels", 0) > 0 and normalized in device_name.lower():
+            return i, device, False
+
+    print(f"⚠️  Requested input device '{requested}' not found, using system default.")
+    device_index, device_info = _get_default_input_device(sd)
+    return device_index, device_info, True
 
 class ChatterBoxVoiceCapture:
     @classmethod
     def NAME(cls):
-        if not SOUNDDEVICE_AVAILABLE:
+        if not SOUNDDEVICE_MODULE_AVAILABLE:
             return "🎙️ ChatterBox Voice Capture (diogod) - PortAudio Required"
         return "🎙️ ChatterBox Voice Capture (diogod)"
     
     @classmethod
     def INPUT_TYPES(cls):
-        if not SOUNDDEVICE_AVAILABLE:
+        if not SOUNDDEVICE_MODULE_AVAILABLE:
             return {
                 "required": {
                     "error_message": (["PortAudio library not found. Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)"], {"default": "PortAudio library not found. Install with: sudo apt-get install portaudio19-dev (Linux) or brew install portaudio (macOS)"}),
                 }
             }
-        
-        # Get available audio devices
-        devices = sd.query_devices()
-        device_names = []
-        seen_names = set()  # Track unique names
-        
-        for i, device in enumerate(devices):
-            if device['max_input_channels'] > 0:  # Input devices only
-                device_name = f"{device['name']} - Input"
-                # Only add if we haven't seen this name before
-                if device_name not in seen_names:
-                    device_names.append(device_name)
-                    seen_names.add(device_name)
-        
-        if not device_names:
-            device_names = ["No input devices found"]
-            
+
         return {
             "required": {
-                "voice_device": (device_names, {"default": device_names[0] if device_names else ""}),
+                "voice_device": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "Optional input device name match. Leave empty to use the system default device. Device lookup is deferred until recording so ComfyUI startup does not block on PortAudio."
+                }),
                 "voice_sample_rate": ("INT", {
                     "default": 44100,
                     "min": 8000,
@@ -102,8 +168,9 @@ class ChatterBoxVoiceCapture:
     CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
 
     def capture_voice_audio(self, **kwargs):
-        if not SOUNDDEVICE_AVAILABLE:
-            print(f"❌ ChatterBox Voice Capture error: {SOUNDDEVICE_ERROR}")
+        sd, sounddevice_error = _load_sounddevice()
+        if sd is None:
+            print(f"❌ ChatterBox Voice Capture error: {sounddevice_error}")
             print("📋 Install PortAudio to enable voice recording:")
             print("   Linux: sudo apt-get install portaudio19-dev")
             print("   macOS: brew install portaudio")
@@ -127,15 +194,39 @@ class ChatterBoxVoiceCapture:
         
         # Parse device
         try:
-            device_index = None
-            devices = sd.query_devices()
-            for i, device in enumerate(devices):
-                if device['max_input_channels'] > 0 and voice_device.startswith(device['name']):
-                    device_index = i
-                    break
+            device_index, resolved_device_info, used_default_device = _resolve_input_device(sd, voice_device)
         except Exception as e:
             print(f"⚠️  Device selection error: {e}")
             device_index = None
+            resolved_device_info = None
+            used_default_device = True
+
+        resolved_device_name = ""
+        resolved_default_sample_rate = None
+        if resolved_device_info:
+            resolved_device_name = str(resolved_device_info.get("name", "")).strip()
+            resolved_default_sample_rate = resolved_device_info.get("default_samplerate")
+
+        if used_default_device:
+            if resolved_device_name:
+                print(f"🎙️ Using resolved system default input device: {resolved_device_name}")
+            else:
+                print("🎙️ Using system default input device")
+        elif resolved_device_name:
+            print(f"🎙️ Using selected input device: {resolved_device_name}")
+
+        if used_default_device and resolved_default_sample_rate:
+            try:
+                native_sample_rate = int(round(float(resolved_default_sample_rate)))
+            except Exception:
+                native_sample_rate = None
+
+            if native_sample_rate and native_sample_rate > 0 and native_sample_rate != voice_sample_rate:
+                print(
+                    f"ℹ️ System default input device native sample rate is {native_sample_rate} Hz; "
+                    f"using that instead of requested {voice_sample_rate} Hz"
+                )
+                voice_sample_rate = native_sample_rate
 
         print(f"🔊 Opening voice stream...")
 

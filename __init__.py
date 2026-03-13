@@ -360,6 +360,66 @@ def setup_api_routes():
                 # Fallback list
                 return web.json_response({"languages": ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"], "error": str(e)})
 
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-input-devices")
+        async def get_voice_input_devices_endpoint(request):
+            """Return input devices without risking a main-process PortAudio hang."""
+            try:
+                import json
+                import subprocess
+
+                probe_script = r"""
+import json
+import sounddevice as sd
+
+devices = []
+seen = set()
+for device in sd.query_devices():
+    try:
+        max_input_channels = int(device.get("max_input_channels", 0))
+    except Exception:
+        max_input_channels = 0
+    if max_input_channels <= 0:
+        continue
+
+    name = str(device.get("name", "")).strip()
+    if not name or name in seen:
+        continue
+
+    seen.add(name)
+    devices.append(name)
+
+print(json.dumps({"devices": devices}))
+"""
+
+                result = subprocess.run(
+                    [sys.executable, "-c", probe_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=8,
+                    check=False,
+                )
+
+                if result.returncode != 0:
+                    stderr = (result.stderr or "").strip()
+                    stdout = (result.stdout or "").strip()
+                    error_message = stderr or stdout or f"device probe exited with code {result.returncode}"
+                    return web.json_response({"devices": [], "error": error_message}, status=500)
+
+                payload = json.loads(result.stdout or "{}")
+                devices = payload.get("devices", [])
+                if not isinstance(devices, list):
+                    devices = []
+
+                return web.json_response({"devices": devices})
+            except subprocess.TimeoutExpired:
+                return web.json_response(
+                    {"devices": [], "error": "Timed out while probing audio input devices. Leaving the dropdown on system default avoids startup hangs."},
+                    status=504,
+                )
+            except Exception as e:
+                print(f"⚠️ Error retrieving voice input devices: {e}")
+                return web.json_response({"devices": [], "error": str(e)}, status=500)
+
         @PromptServer.instance.routes.post("/api/tts-audio-suite/settings")
         async def set_inline_tag_settings_endpoint(request):
             """API endpoint to receive settings from frontend for inline edit tags and restore VC"""

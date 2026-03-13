@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.6] - 2026-03-13
+
+### Added
+
+- Restore the Voice Capture record button and proper input device dropdown
+- IndexTTS-2 works in our current Python 3.13 environment, so no engine changes were needed for now
+
+### Changed
+
+- Improve system default microphone selection and logging
+
+### Fixed
+
+- Fix Voice Capture sound initialization and input device handling
+- Fix Voice Capture blocking ComfyUI startup on some Windows audio setups
 ## [4.22.5] - 2026-03-10
 
 ### Added
