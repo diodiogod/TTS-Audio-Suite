@@ -7,10 +7,17 @@ implementations if librosa fails.
 """
 
 import sys
+import os
 import numpy as np
 import torch
 import torchaudio
-import warnings
+
+_logged_fallbacks = set()
+
+
+def _should_bypass_librosa():
+    """Avoid importing librosa first in known-bad compatibility modes."""
+    return sys.version_info >= (3, 13) and os.environ.get("NUMBA_DISABLE_JIT") == "1"
 
 
 def safe_load(file_path, sr=None, mono=True):
@@ -26,11 +33,15 @@ def safe_load(file_path, sr=None, mono=True):
         (audio_array, sample_rate): NumPy array and sample rate
     """
     try:
+        if _should_bypass_librosa():
+            raise RuntimeError("Bypassing librosa due to Python 3.13 + NUMBA_DISABLE_JIT compatibility mode")
+
         # Try librosa first (best quality)
         import librosa
         return librosa.load(file_path, sr=sr, mono=mono)
     except Exception as e:
         # Fallback to torchaudio for Python 3.13 compatibility
+        log_fallback_usage("librosa.load", str(e))
         audio_tensor, sample_rate = torchaudio.load(file_path)
         
         # Convert to mono if requested
@@ -66,11 +77,15 @@ def safe_resample(audio, orig_sr, target_sr, res_type='kaiser_fast'):
         return audio
         
     try:
+        if _should_bypass_librosa():
+            raise RuntimeError("Bypassing librosa due to Python 3.13 + NUMBA_DISABLE_JIT compatibility mode")
+
         # Try librosa first (best quality)
         import librosa
         return librosa.resample(audio, orig_sr=orig_sr, target_sr=target_sr, res_type=res_type)
     except Exception as e:
         # Fallback to torchaudio
+        log_fallback_usage("librosa.resample", str(e))
         audio_tensor = torch.from_numpy(audio).unsqueeze(0) if audio.ndim == 1 else torch.from_numpy(audio)
         resampler = torchaudio.transforms.Resample(orig_sr, target_sr)
         resampled_tensor = resampler(audio_tensor)
@@ -91,11 +106,15 @@ def safe_trim(audio, top_db=30, frame_length=2048, hop_length=512):
         Trimmed audio array
     """
     try:
+        if _should_bypass_librosa():
+            raise RuntimeError("Bypassing librosa due to Python 3.13 + NUMBA_DISABLE_JIT compatibility mode")
+
         # Try librosa first (best quality)
         import librosa
         return librosa.effects.trim(audio, top_db=top_db, frame_length=frame_length, hop_length=hop_length)[0]
     except Exception as e:
         # Fallback to simple energy-based trimming
+        log_fallback_usage("librosa.effects.trim", str(e))
         return _simple_energy_trim(audio, top_db)
 
 
@@ -215,5 +234,12 @@ def get_python313_status():
 
 def log_fallback_usage(function_name, reason="librosa compatibility"):
     """Log when fallback functions are used"""
-    if get_python313_status():
-        print(f"🔄 Using torchaudio fallback for {function_name} ({reason})")
+    if not get_python313_status():
+        return
+
+    key = (function_name, reason)
+    if key in _logged_fallbacks:
+        return
+
+    _logged_fallbacks.add(key)
+    print(f"🔄 Using fallback for {function_name} ({reason})")

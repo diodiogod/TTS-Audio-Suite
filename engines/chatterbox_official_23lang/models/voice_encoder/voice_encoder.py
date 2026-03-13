@@ -16,11 +16,10 @@ project_root = os.path.dirname(engines_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.audio.librosa_fallback import safe_trim
+from utils.audio.librosa_fallback import safe_resample, safe_trim
 
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
-import librosa
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
@@ -275,7 +274,7 @@ class VoiceEncoder(nn.Module):
         """
         if sample_rate != self.hp.sample_rate:
             wavs = [
-                librosa.resample(wav, orig_sr=sample_rate, target_sr=self.hp.sample_rate, res_type="kaiser_fast")
+                safe_resample(wav, orig_sr=sample_rate, target_sr=self.hp.sample_rate, res_type="kaiser_fast")
                 for wav in wavs
             ]
 

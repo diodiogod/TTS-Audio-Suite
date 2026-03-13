@@ -7,18 +7,9 @@ to prevent cache invalidation from temporary file paths.
 
 import hashlib
 import os
-import sys
 from typing import Optional, Dict, Any
 
-# 🔬 NUMBA WORKAROUND: Commented out - testing if still needed with numba 0.61.2+ and librosa 0.11.0+
-# Python 3.13 compatibility: Disable numba JIT for librosa compatibility
-# if sys.version_info >= (3, 13):
-#     os.environ['NUMBA_DISABLE_JIT'] = '1'
-#     try:
-#         import numba
-#         numba.config.DISABLE_JIT = True
-#     except ImportError:
-#         pass
+from utils.audio.librosa_fallback import safe_load
 
 
 def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = None, 
@@ -96,21 +87,15 @@ def generate_stable_audio_component(reference_audio: Optional[Dict[str, Any]] = 
                         waveform = waveform_tensor.numpy().flatten()
                     # print(f"🐛 AUDIO_HASH: Loaded with torchaudio")
                 except:
-                    # Method 3: Fall back to librosa with enhanced numba protection
+                    # Method 3: Fall back to safe librosa-compatible loading
                     try:
-                        # Force disable numba compilation for this specific import
                         import warnings
                         with warnings.catch_warnings():
                             warnings.simplefilter("ignore", UserWarning)  # Suppress torchaudio warnings
+
+                            waveform, sample_rate = safe_load(audio_file_path, sr=None, mono=True)
                             
-                            # Smart numba compatibility for audio loading
-                            from utils.compatibility import setup_numba_compatibility
-                            setup_numba_compatibility(quick_startup=True, verbose=False)
-                            
-                            import librosa
-                            waveform, sample_rate = librosa.load(audio_file_path, sr=None)
-                            
-                        # print(f"🐛 AUDIO_HASH: Loaded with librosa (numba protected)")
+                        # print(f"🐛 AUDIO_HASH: Loaded with safe audio loader")
                     except Exception as librosa_error:
                         # If all methods fail, just hash the file path + modification time for uniqueness
                         file_stat = os.stat(audio_file_path)

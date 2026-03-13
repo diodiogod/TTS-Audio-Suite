@@ -70,14 +70,11 @@ def _apply_transformers_patches_once():
         print(f"⚠️ Warning: Could not apply Transformers patches: {e}")
 
 # Numba/Librosa compatibility check at startup.
-# On Python 3.13+ we preemptively disable JIT (known incompatible).
-# On NumPy 2.x we run the full librosa JIT test (~0.7s) because numba's
-# @guvectorize crashes on some hardware with NumPy 2.x — this must happen
-# before any engine lazy-loads librosa/numba, or the env var is too late.
-# On NumPy 1.x we skip the test entirely (not affected).
-if sys.version_info >= (3, 13):
-    os.environ.setdefault('NUMBA_DISABLE_JIT', '1')
-else:
+# Do NOT force NUMBA_DISABLE_JIT on Python 3.13 anymore:
+# newer stacks (for example numba 0.64 + librosa 0.11) can work normally,
+# and forcing the env var can itself trigger the get_call_template crash.
+# For older Python + NumPy 2.x, keep the existing thorough compatibility test.
+if sys.version_info < (3, 13):
     try:
         import numpy as _np
         if int(_np.__version__.split('.')[0]) >= 2:

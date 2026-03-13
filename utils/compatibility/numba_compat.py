@@ -5,9 +5,45 @@ Fast startup testing with intelligent JIT fallback management
 
 import sys
 import os
-import warnings
 from typing import Optional, Dict, Any
 import time
+from importlib.metadata import PackageNotFoundError, version as package_version
+
+
+def _parse_version_tuple(version_text: str) -> tuple:
+    parts = []
+    for piece in version_text.split("."):
+        digits = ""
+        for char in piece:
+            if char.isdigit():
+                digits += char
+            else:
+                break
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+
+def _get_installed_numba_version() -> Optional[str]:
+    try:
+        return package_version("numba")
+    except PackageNotFoundError:
+        return None
+    except Exception:
+        return None
+
+
+def _is_python313_numba_disable_jit_risky() -> bool:
+    """Known-bad combo: Python 3.13 + numba 0.64+ with NUMBA_DISABLE_JIT."""
+    if sys.version_info < (3, 13):
+        return False
+
+    numba_version = _get_installed_numba_version()
+    if not numba_version:
+        return False
+
+    return _parse_version_tuple(numba_version) >= (0, 64)
 
 class NumbaCompatibilityManager:
     """
@@ -26,10 +62,9 @@ class NumbaCompatibilityManager:
         Returns dict with test results and timing info.
 
         When quick_test=True (default at startup), we skip the actual librosa import
-        to avoid the ~0.7s cost. Instead we rely on Python version heuristics:
-        Python 3.13+ is known to be incompatible with numba JIT, so we preemptively
-        disable it. For older Python, we assume compatibility and defer the real test
-        to when librosa is first used by an engine.
+        to avoid the ~0.7s cost. We do not assume Python 3.13 is incompatible anymore:
+        some newer numba/librosa stacks work correctly, and forcing NUMBA_DISABLE_JIT
+        can itself cause get_call_template failures on Python 3.13 + numba 0.64+.
         """
         start_time = time.time()
         results = {
@@ -38,19 +73,14 @@ class NumbaCompatibilityManager:
             'errors': [],
             'environment_info': {
                 'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-                'is_python_313': sys.version_info >= (3, 13)
+                'is_python_313': sys.version_info >= (3, 13),
+                'numba_version': _get_installed_numba_version(),
             }
         }
 
         # FAST PATH: skip actual librosa import during startup to save ~0.7s.
-        # Python 3.13+ is handled by __init__.py setting NUMBA_DISABLE_JIT=1.
-        # For older Python, assume JIT works (will be caught at first engine use).
+        # We no longer treat Python 3.13 as automatically broken.
         if quick_test:
-            # Python 3.13+ is strictly incompatible with Numba JIT
-            if sys.version_info >= (3, 13):
-                results['jit_compatible'] = False
-                results['errors'].append("Python 3.13+ detected - numba JIT known incompatible (skipped librosa test)")
-
             results['test_duration'] = time.time() - start_time
             self._test_results = results
             return results
@@ -82,6 +112,10 @@ class NumbaCompatibilityManager:
         """Apply numba JIT disabling workaround."""
         if self._jit_disabled:
             return  # Already applied
+
+        if _is_python313_numba_disable_jit_risky():
+            print("⚠️ Skipping NUMBA_DISABLE_JIT workaround on Python 3.13 + numba 0.64+ because it can break librosa imports")
+            return
             
         # Set environment variable
         os.environ['NUMBA_DISABLE_JIT'] = '1'
@@ -113,6 +147,12 @@ class NumbaCompatibilityManager:
         # If JIT already disabled by user/environment, still apply numba.config
         # because numba may already be imported and the env var alone won't take effect.
         if os.environ.get('NUMBA_DISABLE_JIT') == '1':
+            if _is_python313_numba_disable_jit_risky():
+                return {
+                    'status': 'jit_disable_skipped',
+                    'message': '⚠️ Leaving NUMBA_DISABLE_JIT compatibility untouched on Python 3.13 + numba 0.64+ (known risky combo)',
+                    'setup_time': time.time() - setup_start
+                }
             try:
                 import numba
                 numba.config.DISABLE_JIT = True

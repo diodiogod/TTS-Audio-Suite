@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.7] - 2026-03-13
+
+### Added
+
+- Keep audio loading and resampling working without extra startup overhead
+
+### Fixed
+
+- Fix Python 3.13 audio compatibility in IndexTTS-2 and ChatterBox Official 23-Lang
+- Fix Python 3.13 setups that could crash during reference voice processing
+- Improve compatibility with newer numba and librosa environments
 ## [4.22.6] - 2026-03-13
 
 ### Added

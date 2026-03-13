@@ -5,7 +5,7 @@ os.environ['HF_HUB_CACHE'] = './checkpoints/hf_cache'
 import json
 import re
 import time
-import librosa
+import sys
 import torch
 import torchaudio
 from torch.nn.utils.rnn import pad_sequence
@@ -33,6 +33,15 @@ import safetensors
 from transformers import SeamlessM4TFeatureExtractor
 import random
 import torch.nn.functional as F
+
+current_dir = os.path.dirname(__file__)
+index_tts_dir = os.path.dirname(current_dir)
+engines_dir = os.path.dirname(index_tts_dir)
+project_root = os.path.dirname(engines_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from utils.audio.librosa_fallback import safe_load
 
 class IndexTTS2:
     def __init__(
@@ -472,9 +481,9 @@ class IndexTTS2:
 
     def _load_and_cut_audio(self, audio_path, max_audio_length_seconds, verbose=False, sr=None):
         if not sr:
-            audio, sr = librosa.load(audio_path)
+            audio, sr = safe_load(audio_path, sr=None, mono=True)
         else:
-            audio, _ = librosa.load(audio_path, sr=sr)
+            audio, _ = safe_load(audio_path, sr=sr, mono=True)
         audio = torch.tensor(audio).unsqueeze(0)
         max_audio_samples = int(max_audio_length_seconds * sr)
 
