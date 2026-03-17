@@ -268,6 +268,37 @@ class UnifiedModelInterface:
 unified_model_interface = UnifiedModelInterface()
 
 
+def _resolve_torch_dtype(precision: str):
+    precision = (precision or "auto").lower()
+    dtype_map = {
+        "bf16": torch.bfloat16,
+        "bfloat16": torch.bfloat16,
+        "fp16": torch.float16,
+        "float16": torch.float16,
+        "fp32": torch.float32,
+        "float32": torch.float32,
+    }
+    if precision in dtype_map:
+        return dtype_map[precision]
+
+    if torch.cuda.is_available():
+        major, _minor = torch.cuda.get_device_capability()
+        return torch.bfloat16 if major >= 8 else torch.float16
+    return torch.float32
+
+
+def _sanitize_loader_settings(device: str, torch_dtype, attn_implementation: str):
+    resolved_attn = "sdpa" if attn_implementation in ("auto", None, "") else attn_implementation
+
+    if str(device) == "cpu":
+        if torch_dtype == torch.float16:
+            torch_dtype = torch.float32
+        if resolved_attn == "flash_attention_2":
+            resolved_attn = "sdpa"
+
+    return torch_dtype, resolved_attn
+
+
 # Convenience functions for common model operations
 def load_tts_model(engine_name: str, 
                    model_name: str, 
@@ -1404,8 +1435,6 @@ def register_qwen3_asr_factory():
     """Register Qwen3-ASR model factory"""
     def qwen3_asr_factory(config: ModelLoadConfig):
         """Factory for Qwen3-ASR models with ComfyUI integration"""
-        import torch
-
         model_name = config.model_name or "Qwen3-ASR-1.7B"
         model_path = config.model_path or model_name
         device = config.device or "auto"
@@ -1421,22 +1450,11 @@ def register_qwen3_asr_factory():
         downloader = Qwen3ASRDownloader()
         resolved_model_path = downloader.resolve_model_path(model_path)
 
-        dtype_map = {
-            "bf16": torch.bfloat16,
-            "fp16": torch.float16,
-            "fp32": torch.float32,
-        }
-        if precision in dtype_map:
-            torch_dtype = dtype_map[precision]
-        else:
-            if torch.cuda.is_available():
-                major, _minor = torch.cuda.get_device_capability()
-                torch_dtype = torch.bfloat16 if major >= 8 else torch.float16
-            else:
-                torch_dtype = torch.float32
+        torch_dtype = _resolve_torch_dtype(precision)
 
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+        torch_dtype, attn_implementation = _sanitize_loader_settings(device, torch_dtype, attn_implementation)
 
         try:
             from qwen_asr import Qwen3ASRModel
@@ -1479,6 +1497,133 @@ def register_qwen3_asr_factory():
     unified_model_interface.register_model_factory("qwen3_asr", "asr", qwen3_asr_factory)
 
 
+def register_qwen3_aligner_factory():
+    """Register standalone Qwen3 forced aligner factory."""
+
+    def qwen3_aligner_factory(config: ModelLoadConfig):
+        model_name = config.model_name or "Qwen3-ForcedAligner-0.6B"
+        model_path = config.model_path or model_name
+        device = config.device or "auto"
+
+        additional_params = config.additional_params or {}
+        precision = additional_params.get("precision", "auto")
+        attn_implementation = additional_params.get("attn_implementation", "sdpa")
+
+        from engines.qwen3_tts.qwen3_asr_downloader import Qwen3ASRDownloader
+        downloader = Qwen3ASRDownloader()
+        resolved_model_path = downloader.resolve_model_path(model_path)
+
+        torch_dtype = _resolve_torch_dtype(precision)
+
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        torch_dtype, resolved_attn = _sanitize_loader_settings(device, torch_dtype, attn_implementation)
+
+        try:
+            from qwen_asr import Qwen3ForcedAligner
+        except ImportError:
+            try:
+                import sys
+                import os
+                qwen3_asr_impl = os.path.join(os.path.dirname(__file__), "..", "..", "engines", "qwen3_asr", "impl")
+                qwen3_asr_impl = os.path.abspath(qwen3_asr_impl)
+                if qwen3_asr_impl not in sys.path:
+                    sys.path.insert(0, qwen3_asr_impl)
+                from qwen_asr import Qwen3ForcedAligner
+            except Exception as e:
+                raise ImportError(f"Qwen3 forced aligner dependency not available. Error: {e}")
+
+        print(f"🔄 Loading Qwen3 forced aligner: {model_name}")
+        print(f"   Path: {resolved_model_path}")
+        print(f"   Device: {device} | Dtype: {torch_dtype} | Attention: {resolved_attn}")
+
+        aligner = Qwen3ForcedAligner.from_pretrained(
+            resolved_model_path,
+            device_map=device,
+            dtype=torch_dtype,
+            attn_implementation=resolved_attn,
+        )
+        print(f"✅ Qwen3 forced aligner '{model_name}' loaded successfully")
+        return aligner
+
+    unified_model_interface.register_model_factory("qwen3_asr", "aligner", qwen3_aligner_factory)
+
+
+def register_granite_asr_factory():
+    """Register Granite ASR model factory."""
+
+    def granite_asr_factory(config: ModelLoadConfig):
+        from packaging import version
+        import transformers
+        from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+
+        if version.parse(transformers.__version__) < version.parse("4.52.1"):
+            raise RuntimeError(
+                f"Granite ASR requires transformers>=4.52.1, found {transformers.__version__}"
+            )
+
+        model_name = config.model_name or "granite-4.0-1b-speech"
+        model_path = config.model_path or model_name
+        device = config.device or "auto"
+
+        additional_params = config.additional_params or {}
+        precision = additional_params.get("precision", "auto")
+        attn_implementation = additional_params.get("attn_implementation", "auto")
+
+        from engines.granite_asr.granite_asr_downloader import GraniteASRDownloader
+        from engines.granite_asr.runtime import GraniteASRRuntime
+
+        downloader = GraniteASRDownloader()
+        resolved_model_path = downloader.resolve_model_path(model_path)
+
+        torch_dtype = _resolve_torch_dtype(precision)
+
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        torch_dtype, resolved_attn = _sanitize_loader_settings(device, torch_dtype, attn_implementation)
+
+        print(f"🔄 Loading Granite ASR: {model_name}")
+        print(f"   Path: {resolved_model_path}")
+        print(f"   Device: {device} | Dtype: {torch_dtype} | Attention: {resolved_attn}")
+
+        processor = AutoProcessor.from_pretrained(resolved_model_path)
+
+        def _load_granite_model(attn_impl: str):
+            return AutoModelForSpeechSeq2Seq.from_pretrained(
+                resolved_model_path,
+                device_map=device,
+                dtype=torch_dtype,
+                attn_implementation=attn_impl,
+            )
+
+        try:
+            model = _load_granite_model(resolved_attn)
+        except Exception as e:
+            error_text = str(e)
+            needs_eager_fallback = (
+                resolved_attn != "eager"
+                and "Blip2QFormerModel does not support an attention implementation" in error_text
+            )
+            if not needs_eager_fallback:
+                raise
+
+            print(
+                f"⚠️ Granite ASR attention backend '{resolved_attn}' is not supported by the bundled BLIP2 Q-Former in this transformers build."
+            )
+            print("   Falling back to eager attention for Granite ASR.")
+            model = _load_granite_model("eager")
+
+        runtime = GraniteASRRuntime(
+            model=model,
+            processor=processor,
+            device=device,
+        )
+        print(f"✅ Granite ASR model '{model_name}' loaded successfully")
+        return runtime
+
+    unified_model_interface.register_model_factory("granite_asr", "asr", granite_asr_factory)
+
+
 def initialize_all_factories():
     """Initialize all model factories"""
     register_chatterbox_factory()
@@ -1493,6 +1638,8 @@ def initialize_all_factories():
     register_cosyvoice_factory()
     register_qwen3_tts_factory()
     register_qwen3_asr_factory()
+    register_qwen3_aligner_factory()
+    register_granite_asr_factory()
 
 
 # Auto-initialize on import

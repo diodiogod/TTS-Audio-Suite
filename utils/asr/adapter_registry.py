@@ -10,6 +10,7 @@ from typing import Dict, Type
 _ADAPTER_MAP: Dict[str, str] = {
     "qwen3_tts": "engines.adapters.asr_qwen3_adapter.Qwen3ASREngineAdapter",
     "qwen3": "engines.adapters.asr_qwen3_adapter.Qwen3ASREngineAdapter",
+    "granite_asr": "engines.adapters.asr_granite_adapter.GraniteASREngineAdapter",
 }
 
 

@@ -229,6 +229,24 @@ Notes:
 - Only selected variants download.
 - Shared tokenizer assets are reused.
 
+## Granite ASR
+
+```text
+ComfyUI/models/TTS/granite_asr/
+└── granite-4.0-1b-speech/
+    ├── config.json
+    ├── chat_template.jinja
+    ├── model-00001-of-00003.safetensors
+    ├── model-00002-of-00003.safetensors
+    ├── model-00003-of-00003.safetensors
+    └── tokenizer / processor files...
+```
+
+Notes:
+
+- Granite downloads into its own `granite_asr` folder.
+- If Granite word timestamps are enabled, it lazily reuses `Qwen3-ForcedAligner-0.6B` from the Qwen ASR folder instead of duplicating that model.
+
 ## Echo-TTS
 
 ```text

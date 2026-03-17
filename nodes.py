@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "4.22.7"
+VERSION = "4.23.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -128,6 +128,14 @@ try:
 except Exception as e:
     print(f"❌ Qwen3-TTS Engine failed: {e}")
     QWEN3_TTS_ENGINE_AVAILABLE = False
+
+try:
+    granite_asr_engine_module = load_node_module("granite_asr_engine_node", "engines/granite_asr_engine_node.py")
+    GraniteASREngineNode = granite_asr_engine_module.GraniteASREngineNode
+    GRANITE_ASR_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Granite ASR Engine failed: {e}")
+    GRANITE_ASR_ENGINE_AVAILABLE = False
 
 try:
     echo_tts_engine_module = load_node_module("echo_tts_engine_node", "engines/echo_tts_engine_node.py")
@@ -484,6 +492,10 @@ if VIBEVOICE_ENGINE_AVAILABLE:
 if QWEN3_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSEngineNode"] = Qwen3TTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSEngineNode"] = "⚙️ Qwen3-TTS Engine"
+
+if GRANITE_ASR_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["GraniteASREngineNode"] = GraniteASREngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["GraniteASREngineNode"] = "⚙️ Granite ASR Engine"
 
 if ECHO_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["EchoTTSEngineNode"] = EchoTTSEngineNode

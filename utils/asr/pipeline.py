@@ -132,6 +132,20 @@ def format_asr_output(result: ASRResult,
             ratio = evt.get("overlap_ratio", 0.0)
             count = evt.get("count", 0)
             info += f"\n  {phrase[:60]}".ljust(34) + f" | {timing:>11}s | {count}w | {ratio:.0%}"
+    warnings = (result.raw or {}).get("warnings") if result.raw else None
+    if warnings:
+        if isinstance(warnings, str):
+            warnings = [warnings]
+        info += "\nWARNINGS:"
+        for warning in warnings:
+            info += f"\n  - {warning}"
+    notes = (result.raw or {}).get("notes") if result.raw else None
+    if notes:
+        if isinstance(notes, str):
+            notes = [notes]
+        info += "\nNOTES:"
+        for note in notes:
+            info += f"\n  - {note}"
     return {
         "text": result.text or "",
         "timestamps": _format_timestamps(result),

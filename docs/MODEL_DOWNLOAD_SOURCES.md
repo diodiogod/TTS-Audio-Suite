@@ -83,6 +83,13 @@ Use this as the canonical list of model repositories/links for offline setup.
 | Qwen3-ASR-1.7B | [Qwen/Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) | N/A | ✅ | ASR transcribe model |
 | Qwen3-ForcedAligner-0.6B | [Qwen/Qwen3-ForcedAligner-0.6B](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) | N/A | ✅ | Word-level timestamps |
 
+## Granite ASR
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| granite-4.0-1b-speech | [ibm-granite/granite-4.0-1b-speech](https://huggingface.co/ibm-granite/granite-4.0-1b-speech) | ~4.6GB | ✅ | Main Granite ASR / AST model |
+| Qwen3-ForcedAligner-0.6B | [Qwen/Qwen3-ForcedAligner-0.6B](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) | N/A | ✅ | Optional custom word-level timestamps/SRT path; reused from Qwen folder |
+
 ## Step Audio EditX
 
 | Component | Source | Size | Auto-Download | Notes |

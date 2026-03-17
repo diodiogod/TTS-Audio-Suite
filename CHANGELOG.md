@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.23.0] - 2026-03-16
+
+### Added
+
+- Add Granite ASR as a second transcription engine in the unified ASR node
+- Add optional custom timestamps and SRT output for Granite via the reused Qwen aligner
+- Expose ASR translation target and prompt controls on Granite and Qwen engine nodes
+
+### Changed
+
+- Add Granite ASR engine and improve unified ASR workflows
+- Update README and engine comparison docs for the new ASR support
+
+### Fixed
+
+- Fix subtitle overflow so long lines split into new cues instead of losing words
 ## [4.22.7] - 2026-03-13
 
 ### Added

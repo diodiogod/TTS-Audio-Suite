@@ -28,6 +28,7 @@ base_spec.loader.exec_module(base_module)
 BaseTTSNode = base_module.BaseTTSNode
 
 import folder_paths
+from engines.qwen3_asr.prompting import DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
 from utils.models.extra_paths import get_all_tts_model_paths
 
 
@@ -55,6 +56,38 @@ class Qwen3TTSEngineNode(BaseTTSNode):
             "Aiden",
             "Ono_Anna",
             "Sohee"
+        ]
+        asr_translate_languages = [
+            "English",
+            "Chinese",
+            "Cantonese",
+            "Arabic",
+            "German",
+            "French",
+            "Spanish",
+            "Portuguese",
+            "Indonesian",
+            "Italian",
+            "Korean",
+            "Russian",
+            "Thai",
+            "Vietnamese",
+            "Japanese",
+            "Turkish",
+            "Hindi",
+            "Malay",
+            "Dutch",
+            "Swedish",
+            "Danish",
+            "Finnish",
+            "Polish",
+            "Czech",
+            "Filipino",
+            "Persian",
+            "Greek",
+            "Romanian",
+            "Hungarian",
+            "Macedonian",
         ]
 
         return {
@@ -136,6 +169,15 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "default": True,
                     "tooltip": "Enable Qwen3 forced aligner (required for word timestamps + accurate SRT).\nTurn OFF to save VRAM and skip downloading the extra aligner model if you only need text (no timestamps)."
                 }),
+                "asr_translate_target_language": (asr_translate_languages, {
+                    "default": "English",
+                    "tooltip": "Experimental ASR translation target for ✏️ ASR Transcribe when task=translate.\n\nThis is ASR-only and does NOT affect Qwen TTS generation language.\n\nImportant:\n• Qwen translation in this integration is prompt-driven through the ASR wrapper, not a dedicated native target-language API\n• Translation quality currently depends heavily on language pair and backend behavior\n• English is the safest default\n• Non-English targets should be treated as experimental until you validate them on real audio"
+                }),
+                "asr_translate_instruction_override": ("STRING", {
+                    "default": DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE,
+                    "multiline": True,
+                    "tooltip": "Qwen ASR-only experimental translation instruction template for ✏️ ASR Transcribe when task=translate.\n\nThis field shows the actual default instruction used by this integration. Edit it if you want to experiment.\n\nAvailable placeholders:\n• {source_language}: Replaced with the unified ASR source language, or 'the spoken source language' when ASR language is Auto\n• {target_language}: Replaced with this engine node's ASR translation target\n\nImportant:\n• This does NOT affect Qwen TTS generation or the TTS 'instruct' field\n• Qwen translation here is prompt-driven through the ASR wrapper context\n• Results can vary a lot by language pair, and some pairs may not behave reliably at all\n• Weak or malformed custom instructions can produce worse translations or unexpected output"
+                }),
             }
         }
 
@@ -163,6 +205,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         use_cuda_graphs: bool = False,
         compile_mode: str = "reduce-overhead",
         asr_use_forced_aligner: bool = True,
+        asr_translate_target_language: str = "English",
+        asr_translate_instruction_override: str = DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE,
     ) -> tuple:
         """
         Create Qwen3-TTS engine configuration.
@@ -192,6 +236,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
             "use_cuda_graphs": use_cuda_graphs,
             "compile_mode": compile_mode,
             "asr_use_forced_aligner": asr_use_forced_aligner,
+            "asr_translate_target_language": asr_translate_target_language,
+            "asr_translate_instruction_override": str(asr_translate_instruction_override or DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE).strip(),
         }
 
         # Print configuration summary (matching other engines)
@@ -199,6 +245,14 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         print(f"   Model: {model_size} | Language: {language}")
         print(f"   Settings: voice_preset={voice_preset}, temperature={temperature}, top_k={top_k}, top_p={top_p}")
         print(f"   Advanced: repetition_penalty={repetition_penalty}, max_tokens={max_new_tokens}, x_vector_only={x_vector_only_mode}")
+        custom_asr_translate_instruction = (
+            engine_config["asr_translate_instruction_override"] != DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
+        )
+        print(
+            f"   ASR: forced_aligner={asr_use_forced_aligner}, "
+            f"translate_target={asr_translate_target_language}, "
+            f"custom_translate_instruction={custom_asr_translate_instruction}"
+        )
         if use_torch_compile or use_cuda_graphs:
             print(f"   Optimizations: torch.compile={use_torch_compile}, cuda_graphs={use_cuda_graphs}, mode={compile_mode}")
         if instruct:

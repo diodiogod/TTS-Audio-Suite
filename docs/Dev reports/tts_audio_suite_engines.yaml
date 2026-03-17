@@ -714,6 +714,78 @@ engines:
       vram_efficient: { supported: true, notes: "(3-6GB)" }
       speed_performance: { supported: "partial", notes: "" }
 
+  - id: granite-asr
+    name: Granite ASR
+    models: "granite-4.0-1b-speech"
+    size: "~4.6GB"
+    license: "Apache-2.0"
+    commercial: true
+
+    capabilities:
+      tts: false
+      srt: true
+      vc: false
+      asr: true
+
+    special_features:
+      - "ASR (Automatic Speech Recognition)"
+      - "Custom timestamps/SRT via reused Qwen forced aligner"
+      - "Speech translation (experimental)"
+
+    model_sources:
+      - component: "granite-4.0-1b-speech"
+        source_name: "ibm-granite/granite-4.0-1b-speech"
+        source_url: "https://huggingface.co/ibm-granite/granite-4.0-1b-speech"
+        size: "~4.6GB"
+        auto_download: true
+        notes: "Main Granite ASR / AST model"
+      - component: "Qwen3-ForcedAligner-0.6B"
+        source_name: "Qwen/Qwen3-ForcedAligner-0.6B"
+        source_url: "https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B"
+        size: "N/A"
+        auto_download: true
+        notes: "Optional custom word-level timestamps/SRT path; reused from Qwen folder"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: false, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: false, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: false, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "" }
+      pl: { supported: false, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: false, flag: "🇪🇬", notes: "" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: false, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: true, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: false, notes: "" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: true, notes: "(~4.6GB)" }
+      speed_performance: { supported: "partial", notes: "Moderate" }
+
   - id: step-editx
     name: Step Audio EditX
     models: "3B LLM + CosyVoice"
@@ -1224,6 +1296,24 @@ model_layouts_markdown: |
 
   - Only selected variants download.
   - Shared tokenizer assets are reused.
+
+  ## Granite ASR
+
+  ```text
+  ComfyUI/models/TTS/granite_asr/
+  └── granite-4.0-1b-speech/
+      ├── config.json
+      ├── chat_template.jinja
+      ├── model-00001-of-00003.safetensors
+      ├── model-00002-of-00003.safetensors
+      ├── model-00003-of-00003.safetensors
+      └── tokenizer / processor files...
+  ```
+
+  Notes:
+
+  - Granite downloads into its own `granite_asr` folder.
+  - If Granite word timestamps are enabled, it lazily reuses `Qwen3-ForcedAligner-0.6B` from the Qwen ASR folder instead of duplicating that model.
 
   ## Echo-TTS
 

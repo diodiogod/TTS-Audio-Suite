@@ -93,6 +93,13 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         can_corrupt_on_reload=False,
         fallback_languages=[],
     ),
+
+    "granite_asr": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+    ),
 }
 
 

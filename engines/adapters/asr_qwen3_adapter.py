@@ -11,6 +11,7 @@ import comfy.model_management as model_management
 import comfy.utils
 import time
 
+from engines.qwen3_asr.prompting import DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
 from utils.asr.types import ASRRequest, ASRResult, ASRSegment, ASRWord
 
 
@@ -97,6 +98,18 @@ class Qwen3ASREngineAdapter:
             waveform = w.view(-1)
         return waveform
 
+    def _build_translate_context(self, req: ASRRequest, target_language: str, instruction_template: str) -> str:
+        source_language = (
+            req.language
+            if req.language and req.language.lower() != "auto"
+            else "the spoken source language"
+        )
+        context = str(instruction_template or DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE).strip()
+        context = context.replace("{source_language}", source_language)
+        context = context.replace("{language}", source_language)
+        context = context.replace("{target_language}", target_language)
+        return context
+
     def transcribe(self, req: ASRRequest) -> ASRResult:
         model_management.throw_exception_if_processing_interrupted()
 
@@ -104,8 +117,33 @@ class Qwen3ASREngineAdapter:
         waveform = self._prepare_audio(req.audio)
         sample_rate = 16000
 
+        target_language = self.config.get("asr_translate_target_language", "English")
+        translate_instruction_override = str(
+            self.config.get("asr_translate_instruction_override", DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE)
+            or DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
+        ).strip()
+        warnings: List[str] = []
+        notes: List[str] = []
+        translate_mode = req.task == "translate"
         language = None if not req.language or req.language.lower() == "auto" else req.language
-        return_ts = req.timestamps == "word" or req.use_forced_aligner or self.config.get("asr_use_forced_aligner", False)
+        if translate_mode:
+            return_ts = False
+            language = target_language
+            notes.append(
+                f"Qwen translation target is '{target_language}'. In this integration, translation is still prompt-driven, but the target language is also forced through Qwen's assistant prompt path instead of leaving language control empty."
+            )
+            if translate_instruction_override != DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE:
+                notes.append(
+                    "Qwen custom translation instruction override is active on the engine node. This only affects ASR translation mode and can change model behavior significantly."
+                )
+            if req.timestamps == "word" or req.use_forced_aligner or self.config.get("asr_use_forced_aligner", False):
+                warnings.append("Qwen timestamps skipped: translation mode returns text only.")
+        else:
+            return_ts = req.timestamps == "word" or req.use_forced_aligner or self.config.get("asr_use_forced_aligner", False)
+        context = (
+            self._build_translate_context(req, target_language, translate_instruction_override)
+            if translate_mode else ""
+        )
 
         chunk_size = int(req.chunk_size)
         overlap = int(req.overlap)
@@ -148,6 +186,7 @@ class Qwen3ASREngineAdapter:
                 chunk_np = wav_np[start:end]
                 results = model.transcribe(
                     audio=[(chunk_np, sample_rate)],
+                    context=[context],
                     language=language,
                     return_time_stamps=return_ts,
                 )
@@ -208,6 +247,7 @@ class Qwen3ASREngineAdapter:
                     pass
             results = model.transcribe(
                 audio=[(wav_np, sample_rate)],
+                context=[context],
                 language=language,
                 return_time_stamps=return_ts,
             )
@@ -219,5 +259,16 @@ class Qwen3ASREngineAdapter:
                     segments.append(ASRSegment(start=word.start, end=word.end, text=word.text, words=[word]))
 
         text = " ".join([t for t in full_text_parts if t]).strip()
+        output_language = getattr(results[0], "language", None)
+        if translate_mode:
+            output_language = target_language
 
-        return ASRResult(text=text, language=getattr(results[0], "language", None), segments=segments, raw=None)
+        raw = None
+        if warnings or notes:
+            raw = {}
+            if warnings:
+                raw["warnings"] = warnings
+            if notes:
+                raw["notes"] = notes
+
+        return ASRResult(text=text, language=output_language, segments=segments, raw=raw)

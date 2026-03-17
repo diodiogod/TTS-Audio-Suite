@@ -28,26 +28,125 @@ def _format_timestamp(seconds: float) -> str:
 
 
 def _wrap_text(text: str, max_chars_per_line: int, max_lines: int) -> str:
+    del max_lines  # Overflow is handled by cue splitting, not silent truncation.
     words = text.split()
     if not words:
         return text
 
-    lines: List[str] = []
-    current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if len(candidate) <= max_chars_per_line:
-            current = candidate
-            continue
-        if current:
-            lines.append(current)
-        current = word
-        if len(lines) >= max_lines:
-            break
-    if current and len(lines) < max_lines:
-        lines.append(current)
+    line_groups = _group_items_into_lines(words, max_chars_per_line)
+    return "\n".join(" ".join(str(word) for word in line).strip() for line in line_groups)
 
-    return "\n".join(lines[:max_lines])
+
+def _text_of_item(item) -> str:
+    return item.text if hasattr(item, "text") else str(item)
+
+
+def _group_items_into_lines(items, max_chars_per_line: int):
+    lines: List[str] = []
+    current_line = []
+    for item in items:
+        candidate_items = current_line + [item]
+        candidate_text = " ".join(_text_of_item(x) for x in candidate_items).strip()
+        if current_line and len(candidate_text) > max_chars_per_line:
+            lines.append(current_line)
+            current_line = [item]
+            continue
+        current_line = candidate_items
+    if current_line:
+        lines.append(current_line)
+    return lines
+
+
+def _split_segment_for_display(seg: ASRSegment,
+                               max_chars_per_line: int,
+                               max_lines: int,
+                               min_words_per_segment: int = 1,
+                               min_segment_seconds: float = 0.0) -> List[ASRSegment]:
+    if not seg.text or max_lines <= 0:
+        return [seg]
+
+    max_lines_per_cue = max(1, max_lines)
+
+    source_items = seg.words if seg.words else seg.text.split()
+    if not source_items:
+        return [seg]
+
+    line_groups = _group_items_into_lines(source_items, max_chars_per_line)
+
+    if len(line_groups) <= max_lines:
+        return [seg]
+
+    total_items = len(source_items)
+    total_duration = max(0.0, seg.end - seg.start)
+
+    cue_item_groups = []
+    for line_start in range(0, len(line_groups), max_lines_per_cue):
+        cue_lines = line_groups[line_start:line_start + max_lines_per_cue]
+        cue_item_groups.append([item for line in cue_lines for item in line])
+
+    def cue_duration(items) -> float:
+        if not items:
+            return 0.0
+        if seg.words:
+            return max(0.0, items[-1].end - items[0].start)
+        return total_duration * (len(items) / max(1, total_items))
+
+    def cue_is_too_small(items) -> bool:
+        if not items:
+            return True
+        return len(items) < max(1, min_words_per_segment) or cue_duration(items) <= min_segment_seconds
+
+    while len(cue_item_groups) > 1 and cue_is_too_small(cue_item_groups[-1]):
+        prev_items = cue_item_groups[-2]
+        last_items = cue_item_groups[-1]
+        if len(prev_items) <= 1:
+            break
+
+        trial_prev = prev_items[:-1]
+        trial_last = [prev_items[-1]] + last_items
+        if not trial_prev:
+            break
+
+        if len(_group_items_into_lines(trial_prev, max_chars_per_line)) > max_lines_per_cue:
+            break
+        if len(_group_items_into_lines(trial_last, max_chars_per_line)) > max_lines_per_cue:
+            break
+
+        cue_item_groups[-2] = trial_prev
+        cue_item_groups[-1] = trial_last
+
+    split_segments: List[ASRSegment] = []
+    consumed_items = 0
+    for group_index, cue_items in enumerate(cue_item_groups):
+        cue_text = " ".join(_text_of_item(item) for item in cue_items).strip()
+        if not cue_text:
+            consumed_items += len(cue_items)
+            continue
+
+        if seg.words:
+            cue_words = cue_items
+            cue_start = cue_words[0].start
+            cue_end = cue_words[-1].end
+        else:
+            cue_words = []
+            cue_item_count = len(cue_items)
+            cue_start = seg.start + (total_duration * (consumed_items / max(1, total_items)))
+            cue_end = seg.start + (total_duration * ((consumed_items + cue_item_count) / max(1, total_items)))
+            if group_index == len(cue_item_groups) - 1:
+                cue_end = seg.end
+
+        split_segments.append(
+            ASRSegment(
+                start=cue_start,
+                end=cue_end,
+                text=cue_text,
+                speaker=seg.speaker,
+                words=cue_words,
+            )
+        )
+        consumed_items += len(cue_items)
+
+    return split_segments or [seg]
 
 
 def _segments_from_words(words: List[ASRWord],
@@ -593,8 +692,20 @@ def build_srt(segments: List[ASRSegment],
         if nxt.text and nxt.text[:1].isupper() and (nxt.start - cur.end) >= min_gap:
             cur.text = f"{cur.text}."
 
+    display_segments: List[ASRSegment] = []
+    for seg in segments_to_use:
+        display_segments.extend(
+            _split_segment_for_display(
+                seg,
+                max_chars_per_line=max_chars_per_line,
+                max_lines=max_lines,
+                min_words_per_segment=min_words_per_segment,
+                min_segment_seconds=min_segment_seconds,
+            )
+        )
+
     lines: List[str] = []
-    for idx, seg in enumerate(segments_to_use, start=1):
+    for idx, seg in enumerate(display_segments, start=1):
         start_ts = _format_timestamp(seg.start)
         end_ts = _format_timestamp(seg.end)
         text = _wrap_text(seg.text, max_chars_per_line, max_lines)

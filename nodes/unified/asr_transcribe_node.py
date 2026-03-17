@@ -47,8 +47,8 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "engine": (any_typ, {
-                    "tooltip": "ASR-capable engine configuration (use Qwen3 Engine output). This node auto-routes to the correct ASR adapter based on the engine type."
+                "engine": ("TTS_ENGINE", {
+                    "tooltip": "ASR-capable engine configuration (for example Qwen3-TTS Engine or Granite ASR Engine). This node auto-routes to the correct ASR adapter based on the engine type."
                 }),
                 "audio": (any_typ, {
                     "tooltip": "Audio to transcribe. Accepts AUDIO, Character Voices output, or VideoHelper audio."
@@ -88,15 +88,15 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                     "Macedonian"
                 ], {
                     "default": "Auto",
-                    "tooltip": "Language hint for ASR. Auto lets the model detect language. This list matches Qwen3-ASR supported languages."
+                    "tooltip": "Language hint for ASR.\n• Auto: Let the engine handle language itself when possible\n• Explicit language: Better when you know the spoken language and want more predictable results\n\nEngine caveat:\n• Qwen ASR has native Auto language detection\n• Granite currently supports English, French, German, Spanish, Portuguese, and Japanese\n• Granite + forced aligner on Auto uses a truthful heuristic for timestamps: Japanese script -> Japanese mode, otherwise the generic space-delimited aligner path"
                 }),
                 "task": (["transcribe", "translate"], {
                     "default": "transcribe",
-                    "tooltip": "Task mode:\n• transcribe: Same-language transcription\n• translate: Translate speech to English (engine support varies)"
+                    "tooltip": "Task mode:\n• transcribe: Same-language transcription\n• translate: Experimental speech translation to the engine's configured ASR translation target\n\nImportant:\n• Translation support varies a lot by engine and backend\n• In this repo, current ASR translation paths are prompt-driven rather than fully native task APIs\n• Expect uneven quality depending on language pair and model\n• Translation target is configured on the engine node, not here"
                 }),
                 "timestamps": (["none", "word"], {
                     "default": "none",
-                    "tooltip": "Timestamp output:\n• none: Text only\n• word: Word-level timestamps (requires forced aligner support)"
+                    "tooltip": "Timestamp output:\n• none: Text only\n• word: Word-level timings for timestamp-capable ASR paths\n\nGranite note: word timestamps are produced by the separate Qwen forced aligner, not natively by Granite."
                 }),
                 "srt_options": ("ASR_SRT_OPTIONS", {
                     "tooltip": "Advanced SRT construction options (optional)."
@@ -160,6 +160,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             timestamps=timestamps,
             chunk_size=chunk_size,
             overlap=overlap,
+            use_forced_aligner=forced_aligner_enabled,
         )
 
         cache_key = None
@@ -168,12 +169,24 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             engine_cfg = engine.get("config", engine)
             cache_data = {
                 "engine_type": engine.get("engine_type"),
+                "model_name": engine_cfg.get("model_name"),
                 "model_size": engine_cfg.get("model_size"),
                 "device": engine_cfg.get("device"),
                 "dtype": engine_cfg.get("dtype"),
                 "attn": engine_cfg.get("attn_implementation"),
                 "max_new_tokens": engine_cfg.get("max_new_tokens"),
                 "forced_aligner": engine_cfg.get("asr_use_forced_aligner", False),
+                "asr_translate_target_language": engine_cfg.get("asr_translate_target_language"),
+                "asr_translate_instruction_override": engine_cfg.get("asr_translate_instruction_override"),
+                "do_sample": engine_cfg.get("do_sample"),
+                "num_beams": engine_cfg.get("num_beams"),
+                "temperature": engine_cfg.get("temperature"),
+                "top_k": engine_cfg.get("top_k"),
+                "top_p": engine_cfg.get("top_p"),
+                "repetition_penalty": engine_cfg.get("repetition_penalty"),
+                "length_penalty": engine_cfg.get("length_penalty"),
+                "no_repeat_ngram_size": engine_cfg.get("no_repeat_ngram_size"),
+                "early_stopping": engine_cfg.get("early_stopping"),
                 "language": req.language,
                 "task": req.task,
                 "timestamps": req.timestamps,

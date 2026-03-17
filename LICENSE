@@ -38,6 +38,7 @@ The project code is MIT. Model weights carry their own licenses:
   IndexTTS-2        bilibili Model Use License                 Conditional   
   CosyVoice3        Apache-2.0                                 Yes           
   Qwen3-TTS         Apache-2.0                                 Yes           
+  Granite ASR       Apache-2.0                                 Yes           
   Step Audio EditX  Apache-2.0 (verify before commercial use)  Conditional   
   Echo-TTS          CC-BY-NC-SA-4.0                            No            
   RVC               MIT (framework); community models vary     Varies        

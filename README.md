@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.22.7
+# TTS Audio Suite v4.23.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -21,7 +21,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 11 Engines
+## Quick Engine Comparison — 12 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -33,6 +33,7 @@ A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conver
 | **IndexTTS-2** | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
+| **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
@@ -184,7 +185,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
 ## Features
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
-- ✏️ **ASR Transcription** - Qwen3-ASR via the ✏️ ASR Transcribe node (more engines planned)
+- ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -751,7 +752,7 @@ Instruct: 用兴奋的语气说话。
 <summary><h3>🎤 Qwen3-TTS - 4 Model Types with Text-to-Voice Design</h3></summary>
 
 **NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct TTS model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning! A **single engine** automatically selects and downloads the correct model based on your settings — no manual model management needed.
-**NEW**: ✏️ Qwen3-ASR transcription via the Unified ASR Transcribe node (Qwen3 engine)
+**NEW**: ✏️ Unified ASR Transcribe support now includes **Qwen3-ASR** and **Granite ASR**, giving the suite a second ASR engine option with optional custom timestamps/SRT for Granite via the reused Qwen forced aligner.
 
 **Model Types:**
 
@@ -770,7 +771,7 @@ Instruct: 用兴奋的语气说话。
   - **X-Vector mode**: uses only the audio to extract a speaker embedding, no transcript needed — faster but lower quality
   - ⚠️ **Does NOT support style instructions** — instruction field is ignored in this mode
 
-* **🔤 ASR**: Transcription via the ✏️ Unified ASR Transcribe node
+* **🔤 ASR**: Qwen3-TTS Engine can be connected to the ✏️ Unified ASR Transcribe node for transcription
 
 > **⚠️ Style instructions only work with CustomVoice and VoiceDesign.** Voice cloning (Base) ignores the instruction field entirely.
 
@@ -784,7 +785,7 @@ Instruct: 用兴奋的语气说话。
 
 **Unified Features Support:**
 - Works with all project features: character switching, language switching, pause tags, SRT timing, Step Audio EditX post-processing
-- **ASR Transcription**: Qwen3 engine now supports ASR via the ✏️ ASR Transcribe node
+- **ASR Transcription**: The ✏️ ASR Transcribe node now supports both Qwen3-ASR and Granite ASR
 
 **Voice Designer Node:**
 
