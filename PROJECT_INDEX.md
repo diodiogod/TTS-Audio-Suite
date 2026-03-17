@@ -15,7 +15,8 @@
 
 **Key architectural rules:**
 - Chunking happens in the **processor**, not the adapter (`generate_single()` on adapter = raw single call)
-- YAML (`docs/Dev reports/tts_audio_suite_engines.yaml`) is source of truth for all doc tables → run `python3 scripts/generate_engine_tables.py --readme` to regenerate
+- YAML (`docs/Dev reports/tts_audio_suite_engines.yaml`) is source of truth for engine doc tables → run `python3 scripts/generate_engine_tables.py --readme` to regenerate
+- Auxiliary YAML (`docs/Dev reports/tts_audio_suite_aux_models.yaml`) is source of truth for helper/post-process model docs → run `python3 scripts/generate_aux_model_docs.py`
 - All models download to `ComfyUI/models/TTS/<model-name>/`
 - Engine registry: `utils/models/engine_registry.py`
 
@@ -58,10 +59,12 @@
 - `qwen3_tts_optimizations.md` - Qwen3-TTS torch.compile setup
 - `MODEL_DOWNLOAD_SOURCES.md` - All HF repo links (auto-generated)
 - `MODEL_LAYOUTS.md` - Folder structures (auto-generated)
+- `AUX_MODEL_SOURCES.md`, `AUX_MODEL_LAYOUTS.md` - Auxiliary helper-model registries (auto-generated)
 - `ENGINE_COMPARISON.md`, `LANGUAGE_SUPPORT.md`, `FEATURE_COMPARISON.md` - Auto-generated tables
 
 ### Dev Docs (`docs/Dev reports/`)
 - `tts_audio_suite_engines.yaml` - **Source of truth** for all engine metadata
+- `tts_audio_suite_aux_models.yaml` - **Source of truth** for helper/post-process model metadata
 - `BUMP_SCRIPT_INSTRUCTIONS.md` - Version bump process
 - `SRT_IMPLEMENTATION.md` - SRT timing technical details
 
@@ -82,6 +85,7 @@
 ### Shared / Special Nodes
 - `nodes/shared/character_voices_node.py` - Character voice management (NARRATOR_VOICE output)
 - `nodes/text/phoneme_text_normalizer_node.py` - Multilingual text preprocessing
+- `nodes/text/asr_punctuation_truecase_node.py` - Standalone punctuation / truecase cleanup for raw ASR text
 - `nodes/text/tts_tag_editor_node.py` - 🏷️ Multiline TTS Tag Editor: rich text editor with character/language/parameter dropdowns, preset system, syntax highlighting, undo/redo — pairs with `web/string_multiline_tag_editor.js`
 - `nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py` - 🎨 Audio Editor: post-process ANY engine's audio with Step Audio EditX (14 emotions, 32 styles, paralinguistic effects like `<Laughter>`, speed control) — universal, not just for Step Audio EditX engine
 - `nodes/engines/index_tts_emotion_options_node.py` - IndexTTS-2 emotion radar chart

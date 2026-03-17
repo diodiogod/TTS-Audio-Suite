@@ -1,0 +1,81 @@
+# TTS Audio Suite - Auxiliary Model Reference Data
+# Source of truth for helper/post-process model dropdowns that are not engines.
+
+categories:
+  - id: punctuation_truecase
+    name: Punctuation / Truecase
+    node_targets:
+      - "📝 ASR Punctuation / Truecase"
+    description: "Optional punctuation and true-casing post-process models for raw ASR text. Designed mainly for low-punctuation transcripts such as Granite outputs, but usable on any plain text."
+    models:
+      - id: pcs_en
+        name: "English Fullstop + Truecase"
+        dropdown_label: "English Fullstop + Truecase (EN, ~210MB)"
+        repo_id: "1-800-BAD-CODE/punctuation_fullstop_truecase_english"
+        pretrained_name: "pcs_en"
+        model_dir: "punctuation_fullstop_truecase_english"
+        spe_filename: "spe_32k_lc_en.model"
+        model_filename: "punct_cap_seg_en.onnx"
+        config_filename: "config.yaml"
+        size: "~210MB"
+        auto_download: true
+        languages:
+          - "English"
+        notes: "English-only. Best on lowercased, unpunctuated ASR text."
+      - id: pcs_romance
+        name: "Romance Fullstop + Truecase"
+        dropdown_label: "Romance Fullstop + Truecase (ES/FR/IT/PT/CA/GL, ~144MB)"
+        repo_id: "1-800-BAD-CODE/punctuation_fullstop_truecase_romance"
+        pretrained_name: "pcs_romance"
+        model_dir: "punctuation_fullstop_truecase_romance"
+        spe_filename: "sp.model"
+        model_filename: "model.onnx"
+        config_filename: "config.yaml"
+        size: "~144MB"
+        auto_download: true
+        languages:
+          - "Spanish"
+          - "French"
+          - "Italian"
+          - "Portuguese"
+          - "Catalan"
+          - "Galician"
+        notes: "Romance-language punctuation and true-casing model."
+      - id: pcs_47lang
+        name: "47-Language Fullstop + Truecase"
+        dropdown_label: "47-Language Fullstop + Truecase (~1.11GB)"
+        repo_id: "1-800-BAD-CODE/punct_cap_seg_47_language"
+        pretrained_name: "pcs_47lang"
+        model_dir: "punct_cap_seg_47_language"
+        spe_filename: "spe_unigram_64k_lowercase_47lang.model"
+        model_filename: "punct_cap_seg_47lang.onnx"
+        config_filename: "config.yaml"
+        size: "~1.11GB"
+        auto_download: true
+        languages:
+          - "47 languages"
+        notes: "Heavier multilingual fallback with the widest language coverage supported by the punctuators package."
+
+model_layouts_markdown: |
+  # Auxiliary Model Layouts
+
+  Use this document for helper/post-process model folder structures and placement notes.
+  These are not engine weights. They are optional models used by standalone utility nodes.
+
+  For repository/source URLs, use [AUX_MODEL_SOURCES.md](AUX_MODEL_SOURCES.md).
+
+  ## Punctuation / Truecase
+
+  ```text
+  ComfyUI/models/TTS/punctuation/
+  ├── punctuation_fullstop_truecase_english/
+  ├── punctuation_fullstop_truecase_romance/
+  └── punct_cap_seg_47_language/
+  ```
+
+  Notes:
+
+  - Models download lazily on first use by the punctuation node.
+  - These are helper models for text cleanup, not TTS/ASR engines.
+  - The English model is the lightest and is mainly intended for raw English ASR text.
+  - The 47-language model is much heavier and should be treated as the multilingual fallback.

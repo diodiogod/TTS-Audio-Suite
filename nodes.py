@@ -364,6 +364,14 @@ except Exception as e:
     PHONEME_TEXT_NORMALIZER_AVAILABLE = False
 
 try:
+    asr_punctuation_truecase_module = load_node_module("asr_punctuation_truecase_node", "text/asr_punctuation_truecase_node.py")
+    ASRPunctuationTruecaseNode = asr_punctuation_truecase_module.ASRPunctuationTruecaseNode
+    ASR_PUNCTUATION_TRUECASE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ ASR Punctuation / Truecase failed: {e}")
+    ASR_PUNCTUATION_TRUECASE_AVAILABLE = False
+
+try:
     string_multiline_tag_editor_module = load_node_module("string_multiline_tag_editor_node", "text/tts_tag_editor_node.py")
     StringMultilineTagEditor = string_multiline_tag_editor_module.StringMultilineTagEditor
     STRING_MULTILINE_TAG_EDITOR_AVAILABLE = True
@@ -624,6 +632,10 @@ if LOAD_RVC_MODEL_AVAILABLE:
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:
     NODE_CLASS_MAPPINGS["PhonemeTextNormalizer"] = PhonemeTextNormalizer
     NODE_DISPLAY_NAME_MAPPINGS["PhonemeTextNormalizer"] = "📝 Phoneme Text Normalizer"
+
+if ASR_PUNCTUATION_TRUECASE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["ASRPunctuationTruecaseNode"] = ASRPunctuationTruecaseNode
+    NODE_DISPLAY_NAME_MAPPINGS["ASRPunctuationTruecaseNode"] = "📝 ASR Punctuation / Truecase"
 
 if STRING_MULTILINE_TAG_EDITOR_AVAILABLE:
     NODE_CLASS_MAPPINGS["StringMultilineTagEditor"] = StringMultilineTagEditor
