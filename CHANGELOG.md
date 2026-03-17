@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.0] - 2026-03-17
+
+### Added
+
+- Add modular ASR subtitle building and transcript cleanup tools
+- Add the standalone ASR Punctuation / Truecase helper node for low-punctuation transcripts such as Granite outputs
+- Add the new Text to SRT Builder workflow with separate subtitle construction controls and a modular ASR-to-SRT flow
+- Add updated Granite and Qwen3-ASR workflow examples, including the new Unified ✏️ ASR Transcribe + SRT Builder workflow
+
+### Changed
+
+- Improve subtitle readability with smarter cue splitting, better display balancing, and optional cue-end punctuation normalization
+- Improve README documentation and auto-generated model download tables to better reflect the current workflow setup
 ## [4.23.0] - 2026-03-16
 
 ### Added
