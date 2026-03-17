@@ -29,6 +29,73 @@ def run_asr(engine_data: Dict[str, Any], request: ASRRequest) -> ASRResult:
     return adapter.transcribe(request)
 
 
+def append_info_items(info: str, heading: str, items) -> str:
+    if not items:
+        return info
+
+    if isinstance(items, str):
+        items = [items]
+
+    prefix = "" if info else ""
+    if f"\n{heading}:" in info or info.startswith(f"{heading}:"):
+        return info + "".join(f"\n  - {item}" for item in items)
+    return info + f"{prefix}\n{heading}:" + "".join(f"\n  - {item}" for item in items)
+
+
+def _compose_asr_info(result: ASRResult, stats: Dict[str, Any] = None) -> str:
+    stats = stats or {}
+    info_parts = [f"language={result.language or 'unknown'}", f"segments={len(result.segments)}"]
+    if stats.get("deduped", 0) > 0:
+        info_parts.append(f"deduped={stats['deduped']}")
+    info = " | ".join(info_parts)
+
+    if stats.get("total", 0) > 0:
+        match_ratio = stats["matched"] / max(1, stats["total"])
+        if match_ratio < 0.6:
+            print(f"⚠️ ASR punctuation alignment matched {stats['matched']}/{stats['total']} words "
+                  f"({match_ratio:.0%}). SRT punctuation may be imperfect.")
+        align_info = f"punct_align={match_ratio:.0%} ({stats['matched']}/{stats['total']})"
+        if stats.get("missed"):
+            align_info += f" | missed={' '.join(stats['missed'])}"
+        info += f"\n{align_info}"
+
+    if stats.get("punct"):
+        issues = [p for p in stats["punct"] if p.get("fallback")]
+        if issues:
+            info += "\nPUNCTUATION (fallbacks):"
+            for evt in issues:
+                punct = evt.get("punct", "")
+                target = evt.get("attached_to", "")
+                if evt.get("start") is not None:
+                    timing = f"{evt['start']:.2f}-{evt['end']:.2f}"
+                else:
+                    timing = "n/a"
+                info += f"\n  {punct:<2} -> '{target}'".ljust(34) + f" | {timing:>11}s"
+
+    if stats.get("dedupe_events"):
+        info += "\nDEDUPE (removed overlaps):"
+        for evt in stats["dedupe_events"]:
+            phrase = evt.get("phrase", "")
+            timing = f"{evt.get('start', 0.0):.2f}-{evt.get('end', 0.0):.2f}"
+            ratio = evt.get("overlap_ratio", 0.0)
+            count = evt.get("count", 0)
+            info += f"\n  {phrase[:60]}".ljust(34) + f" | {timing:>11}s | {count}w | {ratio:.0%}"
+
+    warnings = (result.raw or {}).get("warnings") if result.raw else None
+    if warnings:
+        info = append_info_items(info, "WARNINGS", warnings)
+
+    notes = (result.raw or {}).get("notes") if result.raw else None
+    if notes:
+        info = append_info_items(info, "NOTES", notes)
+
+    return info
+
+
+def format_asr_info(result: ASRResult) -> str:
+    return _compose_asr_info(result)
+
+
 def format_asr_output(result: ASRResult,
                       srt_mode: str = "smart",
                       max_chars_per_line: int = 42,
@@ -97,55 +164,7 @@ def format_asr_output(result: ASRResult,
         merge_allow_overlong=merge_allow_overlong,
         return_stats=True,
     )
-    align_info = ""
-    if stats.get("total", 0) > 0:
-        match_ratio = stats["matched"] / max(1, stats["total"])
-        if match_ratio < 0.6:
-            print(f"⚠️ ASR punctuation alignment matched {stats['matched']}/{stats['total']} words "
-                  f"({match_ratio:.0%}). SRT punctuation may be imperfect.")
-        align_info = f"punct_align={match_ratio:.0%} ({stats['matched']}/{stats['total']})"
-        if stats.get("missed"):
-            align_info += f" | missed={' '.join(stats['missed'])}"
-    info_parts = [f"language={result.language or 'unknown'}", f"segments={len(result.segments)}"]
-    if stats.get("deduped", 0) > 0:
-        info_parts.append(f"deduped={stats['deduped']}")
-    info = " | ".join(info_parts)
-    if align_info:
-        info += f"\n{align_info}"
-    if stats.get("punct"):
-        issues = [p for p in stats["punct"] if p.get("fallback")]
-        if issues:
-            info += "\nPUNCTUATION (fallbacks):"
-            for evt in issues:
-                punct = evt.get("punct", "")
-                target = evt.get("attached_to", "")
-                if evt.get("start") is not None:
-                    timing = f"{evt['start']:.2f}-{evt['end']:.2f}"
-                else:
-                    timing = "n/a"
-                info += f"\n  {punct:<2} -> '{target}'".ljust(34) + f" | {timing:>11}s"
-    if stats.get("dedupe_events"):
-        info += "\nDEDUPE (removed overlaps):"
-        for evt in stats["dedupe_events"]:
-            phrase = evt.get("phrase", "")
-            timing = f"{evt.get('start', 0.0):.2f}-{evt.get('end', 0.0):.2f}"
-            ratio = evt.get("overlap_ratio", 0.0)
-            count = evt.get("count", 0)
-            info += f"\n  {phrase[:60]}".ljust(34) + f" | {timing:>11}s | {count}w | {ratio:.0%}"
-    warnings = (result.raw or {}).get("warnings") if result.raw else None
-    if warnings:
-        if isinstance(warnings, str):
-            warnings = [warnings]
-        info += "\nWARNINGS:"
-        for warning in warnings:
-            info += f"\n  - {warning}"
-    notes = (result.raw or {}).get("notes") if result.raw else None
-    if notes:
-        if isinstance(notes, str):
-            notes = [notes]
-        info += "\nNOTES:"
-        for note in notes:
-            info += f"\n  - {note}"
+    info = _compose_asr_info(result, stats)
     return {
         "text": result.text or "",
         "timestamps": _format_timestamps(result),

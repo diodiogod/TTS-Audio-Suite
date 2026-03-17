@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 
-// ASR Transcribe Node UI Control
+// SRT Advanced Options UI Control
 // Lock/unlock SRT fields based on preset
 
 const PRESET_VALUES = {
@@ -75,8 +75,8 @@ function lockFields(node, shouldLock) {
     }
 }
 
-function asrPresetHandler(node) {
-    if (node.comfyClass !== "ASRSRTAdvancedOptionsNode") {
+function srtPresetHandler(node) {
+    if (node.comfyClass !== "SRTAdvancedOptionsNode" && node.comfyClass !== "ASRSRTAdvancedOptionsNode") {
         return;
     }
 
@@ -86,8 +86,8 @@ function asrPresetHandler(node) {
     const preset = presetWidget.value;
     const shouldLock = preset !== "Custom";
 
-    if (!node.__asrPresetCache) {
-        node.__asrPresetCache = {};
+    if (!node.__srtPresetCache) {
+        node.__srtPresetCache = {};
     }
 
     if (shouldLock) {
@@ -95,8 +95,8 @@ function asrPresetHandler(node) {
         for (const field of SRT_FIELDS) {
             const w = findWidgetByName(node, field);
             if (!w) continue;
-            if (node.__asrPresetCache[field] === undefined) {
-                node.__asrPresetCache[field] = w.value;
+            if (node.__srtPresetCache[field] === undefined) {
+                node.__srtPresetCache[field] = w.value;
             }
         }
         applyPreset(node, preset);
@@ -105,23 +105,23 @@ function asrPresetHandler(node) {
         for (const field of SRT_FIELDS) {
             const w = findWidgetByName(node, field);
             if (!w) continue;
-            if (node.__asrPresetCache[field] !== undefined) {
-                w.value = node.__asrPresetCache[field];
+            if (node.__srtPresetCache[field] !== undefined) {
+                w.value = node.__srtPresetCache[field];
             }
         }
-        node.__asrPresetCache = {};
+        node.__srtPresetCache = {};
     }
     lockFields(node, shouldLock);
 }
 
 app.registerExtension({
-    name: "tts-audio-suite.asr-srt-preset.widgets",
+    name: "tts-audio-suite.srt-preset.widgets",
     nodeCreated(node) {
-        if (node.comfyClass !== "ASRSRTAdvancedOptionsNode") {
+        if (node.comfyClass !== "SRTAdvancedOptionsNode" && node.comfyClass !== "ASRSRTAdvancedOptionsNode") {
             return;
         }
 
-        asrPresetHandler(node);
+        srtPresetHandler(node);
 
         const presetWidget = findWidgetByName(node, "srt_preset");
         if (!presetWidget) return;
@@ -145,7 +145,7 @@ app.registerExtension({
                 } else {
                     widgetValue = newVal;
                 }
-                asrPresetHandler(node);
+                srtPresetHandler(node);
             }
         });
     }

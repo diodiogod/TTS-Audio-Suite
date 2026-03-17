@@ -447,6 +447,19 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
 
     missed_tokens = []
     punct_events = []
+
+    def try_match(norm_tok: str, replacement: str, credit: int) -> bool:
+        nonlocal word_idx, last_word_idx, matched_word_tokens
+        lookahead = 4
+        for j in range(word_idx, min(len(words), word_idx + lookahead)):
+            if normalize(words[j].text) == norm_tok:
+                words[j].text = replacement
+                last_word_idx = j
+                matched_word_tokens += credit
+                word_idx = j + 1
+                return True
+        return False
+
     for tok in tokens:
         # Word token
         if re.match(r"[A-Za-z0-9]", tok, flags=re.UNICODE):
@@ -456,20 +469,14 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
                 if len(missed_tokens) < 3:
                     missed_tokens.append(tok)
                 break
-            # Align each sub-token with a small lookahead window
+            # Prefer matching the full contraction first (e.g. "I'll" -> "i'll").
+            if "'" in tok and try_match(normalize(tok), tok, len(sub_tokens)):
+                continue
+
+            # Fall back to aligning each contraction part separately when the
+            # timing stream splits them into multiple words.
             for sub in sub_tokens:
-                norm_tok = normalize(sub)
-                matched = False
-                lookahead = 4
-                for j in range(word_idx, min(len(words), word_idx + lookahead)):
-                    if normalize(words[j].text) == norm_tok:
-                        words[j].text = sub
-                        last_word_idx = j
-                        matched_word_tokens += 1
-                        word_idx = j + 1
-                        matched = True
-                        break
-                if not matched and len(missed_tokens) < 3:
+                if not try_match(normalize(sub), sub, 1) and len(missed_tokens) < 3:
                     missed_tokens.append(sub)
         else:
             # punctuation: attach to previous word, or next word if none

@@ -238,12 +238,20 @@ except Exception as e:
     UNIFIED_ASR_AVAILABLE = False
 
 try:
-    asr_srt_options_module = load_node_module("asr_srt_options_node", "asr/asr_srt_options_node.py")
-    ASRSRTAdvancedOptionsNode = asr_srt_options_module.ASRSRTAdvancedOptionsNode
-    ASR_SRT_OPTIONS_AVAILABLE = True
+    srt_advanced_options_module = load_node_module("srt_advanced_options_node", "subtitles/srt_advanced_options_node.py")
+    SRTAdvancedOptionsNode = srt_advanced_options_module.SRTAdvancedOptionsNode
+    SRT_ADVANCED_OPTIONS_AVAILABLE = True
 except Exception as e:
-    print(f"❌ ASR SRT Advanced Options failed: {e}")
-    ASR_SRT_OPTIONS_AVAILABLE = False
+    print(f"❌ SRT Advanced Options failed: {e}")
+    SRT_ADVANCED_OPTIONS_AVAILABLE = False
+
+try:
+    text_to_srt_builder_module = load_node_module("text_to_srt_builder_node", "subtitles/text_to_srt_builder_node.py")
+    TextToSRTBuilderNode = text_to_srt_builder_module.TextToSRTBuilderNode
+    TEXT_TO_SRT_BUILDER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Text to SRT Builder failed: {e}")
+    TEXT_TO_SRT_BUILDER_AVAILABLE = False
 
 # Load support nodes
 try:
@@ -557,9 +565,15 @@ if UNIFIED_ASR_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedASRTranscribeNode"] = UnifiedASRTranscribeNode
     NODE_DISPLAY_NAME_MAPPINGS["UnifiedASRTranscribeNode"] = "✏️ ASR Transcribe"
 
-if ASR_SRT_OPTIONS_AVAILABLE:
-    NODE_CLASS_MAPPINGS["ASRSRTAdvancedOptionsNode"] = ASRSRTAdvancedOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["ASRSRTAdvancedOptionsNode"] = "🔧 ASR SRT Advanced Options"
+if SRT_ADVANCED_OPTIONS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["SRTAdvancedOptionsNode"] = SRTAdvancedOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["SRTAdvancedOptionsNode"] = "🔧 SRT Advanced Options"
+    NODE_CLASS_MAPPINGS["ASRSRTAdvancedOptionsNode"] = SRTAdvancedOptionsNode
+    NODE_DISPLAY_NAME_MAPPINGS["ASRSRTAdvancedOptionsNode"] = "🔧 SRT Advanced Options"
+
+if TEXT_TO_SRT_BUILDER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["TextToSRTBuilderNode"] = TextToSRTBuilderNode
+    NODE_DISPLAY_NAME_MAPPINGS["TextToSRTBuilderNode"] = "📺 Text to SRT Builder"
 
 # Register legacy support nodes
 if VOICE_CAPTURE_AVAILABLE:
