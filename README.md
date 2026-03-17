@@ -186,6 +186,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
+- 📺 **Text to SRT Builder** - New modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`, so transcription, text cleanup, and subtitle construction are now separate stages instead of one monolithic ASR node
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -802,6 +803,35 @@ Description: "A deep, authoritative male voice with clear articulation"
 - **Creative voice design from text descriptions** (VoiceDesign) - **unique to Qwen3-TTS**
 - High-quality voice cloning with reference audio (Base)
 - Content requiring specific vocal characteristics defined by text
+
+</details>
+
+<details>
+<summary><h3>📺 Modular ASR + Text to SRT Builder</h3></summary>
+
+**NEW in v4.23**: ASR subtitle generation is now modular instead of being buried inside the transcriber.
+
+The flow is now:
+
+`✏️ ASR Transcribe` → optional `📝 ASR Punctuation / Truecase` → `📺 Text to SRT Builder`
+
+This matters because the suite can now:
+
+* **Separate transcription from subtitle construction** - The ASR node focuses on transcript + timing data, while the new builder owns subtitle formatting
+* **Reuse timings with edited text** - Clean or post-process transcript text first, then rebuild SRT using the original timings
+* **Use dedicated subtitle controls** - `🔧 SRT Advanced Options` now belongs to the builder stage instead of being mixed into ASR
+* **Support Granite better** - Granite can stay raw for alignment, then go through punctuation/truecase before subtitle construction
+* **Scale to future subtitle tools** - This structure leaves room for later timing transforms, subtitle editing, and text-only SRT generation
+
+**Current intended use:**
+
+* `✏️ ASR Transcribe` for timed transcription with **Qwen3-ASR** or **Granite ASR**
+* `📝 ASR Punctuation / Truecase` mainly for low-punctuation ASR outputs like Granite
+* `📺 Text to SRT Builder` to turn cleaned text + timing data into final SRT
+
+**Workflow example:**
+
+Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unified%20✏️%20ASR%20Transcribe%20+%20SRT%20Builder.json) workflow for both **Granite ASR** and **Qwen3-ASR** examples.
 
 </details>
 
