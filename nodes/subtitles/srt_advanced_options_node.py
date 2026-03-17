@@ -160,6 +160,10 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
                     "default": True,
                     "tooltip": "Allow merges even if the final subtitle exceeds max duration.\nGood for songs and slow speech. Disable for strict timing limits."
                 }),
+                "normalize_cue_end_punctuation": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Optional subtitle-style cleanup.\nWhen enabled, removes trailing commas, periods, semicolons, and colons at the visual end of a subtitle cue.\nIf a cue is cleaned this way, the next cue start is uppercased to keep the subtitle flow visually coherent.\n\nQuestion marks, exclamation points, and ellipses are preserved.\nThis is a style transform, not grammatical truth, so it stays disabled by default."
+                }),
             }
         }
 
@@ -202,6 +206,7 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
         merge_incomplete_keywords: str,
         merge_incomplete_split_next: bool,
         merge_allow_overlong: bool,
+        normalize_cue_end_punctuation: bool,
     ):
         return ({
             "srt_preset": srt_preset,
@@ -236,6 +241,7 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
             "merge_incomplete_keywords": merge_incomplete_keywords,
             "merge_incomplete_split_next": merge_incomplete_split_next,
             "merge_allow_overlong": merge_allow_overlong,
+            "normalize_cue_end_punctuation": normalize_cue_end_punctuation,
         },)
 
 

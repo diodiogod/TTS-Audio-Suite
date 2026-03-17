@@ -127,7 +127,8 @@ def format_asr_output(result: ASRResult,
                       merge_incomplete_max_gap: float = 1.2,
                       merge_incomplete_keywords: str = "what,why,how,where,who,which,when",
                       merge_incomplete_split_next: bool = True,
-                      merge_allow_overlong: bool = False) -> Dict[str, Any]:
+                      merge_allow_overlong: bool = False,
+                      normalize_cue_end_punctuation: bool = False) -> Dict[str, Any]:
     srt, stats = build_srt(
         result.segments,
         mode=srt_mode,
@@ -162,6 +163,7 @@ def format_asr_output(result: ASRResult,
         merge_incomplete_keywords=merge_incomplete_keywords,
         merge_incomplete_split_next=merge_incomplete_split_next,
         merge_allow_overlong=merge_allow_overlong,
+        normalize_cue_end_punctuation=normalize_cue_end_punctuation,
         return_stats=True,
     )
     info = _compose_asr_info(result, stats)

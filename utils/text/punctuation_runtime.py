@@ -115,6 +115,34 @@ def _normalize_infer_output(output, sentence_mode: bool) -> str:
     return str(output).strip()
 
 
+def _looks_already_punctuated(text: str) -> bool:
+    cleaned = " ".join(text.split()).strip()
+    if not cleaned:
+        return False
+
+    words = re.findall(r"\b\w+\b", cleaned, flags=re.UNICODE)
+    if len(words) < 6:
+        return False
+
+    sentence_endings = re.findall(r"[.!?…]+(?:\s+|$)", cleaned)
+    commas = re.findall(r",", cleaned)
+    capitalized_sentence_starts = re.findall(r"(?:(?<=^)|(?<=[.!?…]\s))[A-Z]", cleaned)
+
+    # Strong signal: prose-like sentence punctuation already exists.
+    if len(sentence_endings) >= 2 and len(capitalized_sentence_starts) >= 1:
+        return True
+
+    # Medium signal: enough punctuation density for non-trivial text.
+    if len(words) >= 12 and (len(sentence_endings) >= 2 or (len(sentence_endings) >= 1 and len(commas) >= 2)):
+        return True
+
+    # Another medium signal: multiple comma-separated clauses plus a sentence stop.
+    if len(commas) >= 3 and len(sentence_endings) >= 1:
+        return True
+
+    return False
+
+
 def _split_text(text: str, processing_scope: str) -> Tuple[List[str], str]:
     if processing_scope == "Per Paragraph":
         chunks = [chunk.strip() for chunk in re.split(r"\n\s*\n+", text) if chunk.strip()]
@@ -136,9 +164,15 @@ def restore_punctuation(
     chunks, joiner = _split_text(text, processing_scope)
     sentence_mode = output_mode == "One Sentence Per Line"
     processed_chunks: List[str] = []
+    skipped_chunks = 0
 
     for chunk in chunks:
         prepared = " ".join(chunk.split())
+        if _looks_already_punctuated(prepared):
+            processed_chunks.append(chunk.strip())
+            skipped_chunks += 1
+            continue
+
         if lowercase_input_first:
             prepared = prepared.lower()
 
@@ -152,6 +186,7 @@ def restore_punctuation(
         f"scope={processing_scope.lower().replace(' ', '_')} | "
         f"output={output_mode.lower().replace(' ', '_')} | "
         f"lowercase_input={str(lowercase_input_first).lower()} | "
+        f"skipped_punctuated_chunks={skipped_chunks}/{len(chunks)} | "
         f"path={model_dir}"
     )
     return restored_text, info

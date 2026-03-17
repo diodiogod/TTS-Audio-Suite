@@ -160,6 +160,7 @@ class TextToSRTBuilderNode(BaseChatterBoxNode):
             merge_incomplete_keywords=opts.get("merge_incomplete_keywords", "what,why,how,where,who,which,when"),
             merge_incomplete_split_next=opts.get("merge_incomplete_split_next", True),
             merge_allow_overlong=opts.get("merge_allow_overlong", True),
+            normalize_cue_end_punctuation=opts.get("normalize_cue_end_punctuation", False),
         )
 
         info = append_info_items(

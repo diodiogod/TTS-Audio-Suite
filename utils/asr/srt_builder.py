@@ -2,10 +2,16 @@
 SRT builder for ASR outputs with smart readability defaults.
 """
 
+from functools import lru_cache
 from typing import List, Tuple
 import re
 
 from utils.asr.types import ASRSegment, ASRWord
+
+
+SENTENCE_END_CHARS = {".", "!", "?", "…"}
+SOFT_BREAK_CHARS = {",", ";", ":"}
+DEFAULT_CONNECTOR_ALLOWLIST = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it"
 
 
 def _format_timestamp(seconds: float) -> str:
@@ -37,8 +43,42 @@ def _wrap_text(text: str, max_chars_per_line: int, max_lines: int) -> str:
     return "\n".join(" ".join(str(word) for word in line).strip() for line in line_groups)
 
 
+def _trim_trailing_soft_punctuation(text: str) -> str:
+    return re.sub(r"[.,;:]+$", "", text).rstrip()
+
+
+def _capitalize_segment_start(text: str) -> str:
+    for idx, char in enumerate(text):
+        if char.isalpha():
+            return text[:idx] + char.upper() + text[idx + 1:]
+    return text
+
+
 def _text_of_item(item) -> str:
     return item.text if hasattr(item, "text") else str(item)
+
+
+def _normalize_token(text: str) -> str:
+    return re.sub(r"[^\w]+", "", text, flags=re.UNICODE).lower()
+
+
+def _strip_edge_punctuation(text: str) -> str:
+    return text.strip(".,!?…:;\"'()[]{}")
+
+
+def _ends_sentence(text: str) -> bool:
+    return bool(text) and text[-1:] in SENTENCE_END_CHARS
+
+
+def _ends_soft_break(text: str) -> bool:
+    return bool(text) and text[-1:] in SOFT_BREAK_CHARS
+
+
+def _is_capitalizedish(text: str) -> bool:
+    stripped = _strip_edge_punctuation(text)
+    if not stripped:
+        return False
+    return stripped[0].isupper() or stripped.isupper()
 
 
 def _group_items_into_lines(items, max_chars_per_line: int):
@@ -57,6 +97,231 @@ def _group_items_into_lines(items, max_chars_per_line: int):
     return lines
 
 
+def _items_text(items) -> str:
+    return " ".join(_text_of_item(item) for item in items).strip()
+
+
+def _items_duration(items, total_duration: float = 0.0, total_items: int = 0) -> float:
+    if not items:
+        return 0.0
+    if hasattr(items[0], "start") and hasattr(items[-1], "end"):
+        return max(0.0, items[-1].end - items[0].start)
+    if total_items <= 0:
+        return 0.0
+    return total_duration * (len(items) / max(1, total_items))
+
+
+def _looks_phrase_bridge(left_items, right_items) -> bool:
+    if not left_items or not right_items:
+        return False
+
+    left_last = _strip_edge_punctuation(_text_of_item(left_items[-1]))
+    right_first = _strip_edge_punctuation(_text_of_item(right_items[0]))
+    right_second = _strip_edge_punctuation(_text_of_item(right_items[1])) if len(right_items) > 1 else ""
+
+    if not right_first:
+        return False
+
+    if right_first.isupper() and 1 <= len(right_first) <= 4:
+        return True
+
+    if _is_capitalizedish(left_last) and _is_capitalizedish(right_first):
+        return True
+
+    if _is_capitalizedish(right_first) and right_second and _is_capitalizedish(right_second):
+        return True
+
+    return False
+
+
+def _boundary_score(left_items,
+                    right_items,
+                    *,
+                    target_chars: int,
+                    min_words_per_segment: int,
+                    min_segment_seconds: float,
+                    connector_words,
+                    sentence_bonus: float = 120.0,
+                    soft_break_bonus: float = 60.0,
+                    phrase_bridge_penalty: float = 90.0,
+                    total_duration: float = 0.0,
+                    total_items: int = 0) -> float:
+    if not left_items:
+        return float("-inf")
+
+    left_text = _items_text(left_items)
+    right_text = _items_text(right_items)
+    left_duration = _items_duration(left_items, total_duration=total_duration, total_items=total_items)
+    right_duration = _items_duration(right_items, total_duration=total_duration, total_items=total_items)
+    left_count = len(left_items)
+    right_count = len(right_items)
+
+    score = 0.0
+
+    fill_target = max(8.0, target_chars * 0.72)
+    score -= abs(len(left_text) - fill_target) / 4.0
+
+    if _ends_sentence(left_text):
+        score += sentence_bonus
+    elif _ends_soft_break(left_text):
+        score += soft_break_bonus
+
+    left_tail = _normalize_token(_text_of_item(left_items[-1]))
+    right_head = _normalize_token(_text_of_item(right_items[0])) if right_items else ""
+    if left_tail in connector_words:
+        score -= 95.0
+    if right_head in connector_words:
+        score -= 30.0
+
+    if left_count < max(1, min_words_per_segment):
+        score -= 120.0
+    if right_items and right_count < max(1, min_words_per_segment):
+        score -= 110.0
+
+    if left_duration <= min_segment_seconds:
+        score -= 90.0
+    if right_items and right_duration <= min_segment_seconds:
+        score -= 80.0
+
+    if right_items and not _ends_sentence(left_text) and _looks_phrase_bridge(left_items, right_items):
+        score -= phrase_bridge_penalty
+
+    if right_items:
+        if len(right_text) <= max(10, int(target_chars * 0.4)):
+            score -= 35.0
+        if right_count <= max(2, min_words_per_segment):
+            score -= 50.0
+
+    return score
+
+
+def _choose_best_overflow_split(candidate_items,
+                                *,
+                                max_duration: float,
+                                min_duration: float,
+                                max_chars: int,
+                                max_cps: float,
+                                punctuation_grace_chars: int,
+                                min_words_per_segment: int,
+                                min_segment_seconds: float,
+                                minimum_score: float,
+                                connector_words):
+    if len(candidate_items) < 2:
+        return None
+
+    best_idx = None
+    best_score = float("-inf")
+    total_duration = _items_duration(candidate_items)
+    total_items = len(candidate_items)
+
+    for split_idx in range(1, len(candidate_items)):
+        left_items = candidate_items[:split_idx]
+        right_items = candidate_items[split_idx:]
+        left_text = _items_text(left_items)
+        left_duration = _items_duration(left_items)
+        left_cps = len(left_text) / max(0.001, left_duration)
+        hard_boundary = _ends_sentence(left_text) or _ends_soft_break(left_text)
+
+        score = _boundary_score(
+            left_items,
+            right_items,
+            target_chars=max_chars,
+            min_words_per_segment=min_words_per_segment,
+            min_segment_seconds=min_segment_seconds,
+            connector_words=connector_words,
+            sentence_bonus=140.0,
+            soft_break_bonus=95.0,
+            phrase_bridge_penalty=110.0,
+            total_duration=total_duration,
+            total_items=total_items,
+        )
+
+        allowed_chars = max_chars + (punctuation_grace_chars if _ends_sentence(left_text) else 0)
+        if len(left_text) > allowed_chars:
+            score -= 220.0 + ((len(left_text) - allowed_chars) * 8.0)
+        if left_duration > max_duration:
+            score -= 240.0 + ((left_duration - max_duration) * 60.0)
+        if left_duration >= min_duration and left_cps > max_cps:
+            if hard_boundary:
+                score -= 55.0 + ((left_cps - max_cps) * 8.0)
+            else:
+                score -= 180.0 + ((left_cps - max_cps) * 25.0)
+        if left_duration < min_duration:
+            score -= 35.0 + ((min_duration - left_duration) * 40.0)
+
+        if score > best_score:
+            best_score = score
+            best_idx = split_idx
+
+    if best_idx is None or best_score < minimum_score:
+        return None
+    return best_idx
+
+
+def _choose_display_split_groups(source_items,
+                                 *,
+                                 max_chars_per_line: int,
+                                 max_lines: int,
+                                 min_words_per_segment: int,
+                                 min_segment_seconds: float,
+                                 total_duration: float = 0.0,
+                                 connector_words=None):
+    if not source_items:
+        return []
+
+    connector_words = connector_words or {
+        w.strip().lower() for w in DEFAULT_CONNECTOR_ALLOWLIST.split(",") if w.strip()
+    }
+    total_items = len(source_items)
+    max_chars_total = max_chars_per_line * max(1, max_lines)
+
+    @lru_cache(None)
+    def solve(start_idx: int):
+        if start_idx >= total_items:
+            return 0.0, ()
+
+        best_score = float("-inf")
+        best_cuts = None
+
+        for end_idx in range(start_idx + 1, total_items + 1):
+            left_items = source_items[start_idx:end_idx]
+            if len(_group_items_into_lines(left_items, max_chars_per_line)) > max_lines:
+                break
+
+            right_items = source_items[end_idx:]
+            local_score = _boundary_score(
+                left_items,
+                right_items,
+                target_chars=max_chars_total,
+                min_words_per_segment=min_words_per_segment,
+                min_segment_seconds=min_segment_seconds,
+                connector_words=connector_words,
+                sentence_bonus=110.0,
+                soft_break_bonus=35.0,
+                phrase_bridge_penalty=95.0,
+                total_duration=total_duration,
+                total_items=total_items,
+            )
+            if right_items:
+                local_score -= 22.0
+            next_score, next_cuts = solve(end_idx)
+            total_score = local_score + next_score
+            if total_score > best_score:
+                best_score = total_score
+                best_cuts = (end_idx,) + next_cuts
+
+        return best_score, best_cuts or ()
+
+    _, cuts = solve(0)
+    groups = []
+    start_idx = 0
+    for end_idx in cuts:
+        if end_idx > start_idx:
+            groups.append(source_items[start_idx:end_idx])
+        start_idx = end_idx
+    return groups or [source_items]
+
+
 def _split_segment_for_display(seg: ASRSegment,
                                max_chars_per_line: int,
                                max_lines: int,
@@ -65,55 +330,27 @@ def _split_segment_for_display(seg: ASRSegment,
     if not seg.text or max_lines <= 0:
         return [seg]
 
-    max_lines_per_cue = max(1, max_lines)
-
     source_items = seg.words if seg.words else seg.text.split()
     if not source_items:
         return [seg]
 
-    line_groups = _group_items_into_lines(source_items, max_chars_per_line)
-
-    if len(line_groups) <= max_lines:
+    if len(_group_items_into_lines(source_items, max_chars_per_line)) <= max_lines:
         return [seg]
 
     total_items = len(source_items)
     total_duration = max(0.0, seg.end - seg.start)
-
-    cue_item_groups = []
-    for line_start in range(0, len(line_groups), max_lines_per_cue):
-        cue_lines = line_groups[line_start:line_start + max_lines_per_cue]
-        cue_item_groups.append([item for line in cue_lines for item in line])
-
-    def cue_duration(items) -> float:
-        if not items:
-            return 0.0
-        if seg.words:
-            return max(0.0, items[-1].end - items[0].start)
-        return total_duration * (len(items) / max(1, total_items))
-
-    def cue_is_too_small(items) -> bool:
-        if not items:
-            return True
-        return len(items) < max(1, min_words_per_segment) or cue_duration(items) <= min_segment_seconds
-
-    while len(cue_item_groups) > 1 and cue_is_too_small(cue_item_groups[-1]):
-        prev_items = cue_item_groups[-2]
-        last_items = cue_item_groups[-1]
-        if len(prev_items) <= 1:
-            break
-
-        trial_prev = prev_items[:-1]
-        trial_last = [prev_items[-1]] + last_items
-        if not trial_prev:
-            break
-
-        if len(_group_items_into_lines(trial_prev, max_chars_per_line)) > max_lines_per_cue:
-            break
-        if len(_group_items_into_lines(trial_last, max_chars_per_line)) > max_lines_per_cue:
-            break
-
-        cue_item_groups[-2] = trial_prev
-        cue_item_groups[-1] = trial_last
+    connector_words = {
+        w.strip().lower() for w in DEFAULT_CONNECTOR_ALLOWLIST.split(",") if w.strip()
+    }
+    cue_item_groups = _choose_display_split_groups(
+        source_items,
+        max_chars_per_line=max_chars_per_line,
+        max_lines=max_lines,
+        min_words_per_segment=min_words_per_segment,
+        min_segment_seconds=min_segment_seconds,
+        total_duration=total_duration,
+        connector_words=connector_words,
+    )
 
     split_segments: List[ASRSegment] = []
     consumed_items = 0
@@ -182,14 +419,20 @@ def _segments_from_words(words: List[ASRWord],
     current_words: List[ASRWord] = []
     current_text = ""
     seg_start = words[0].start
+    connector_words = {
+        w.strip().lower() for w in merge_dangling_tail_allowlist.split(",") if w.strip()
+    }
 
-    def flush_segment(end_time: float):
+    def flush_segment(end_time: float, words_override=None, text_override: str = None):
         nonlocal current_words, current_text, seg_start
-        if not current_words:
+        words_to_flush = words_override if words_override is not None else current_words
+        text_to_flush = text_override if text_override is not None else current_text.strip()
+        if not words_to_flush:
             return
-        segments.append(ASRSegment(start=seg_start, end=end_time, text=current_text.strip(), words=current_words))
-        current_words = []
-        current_text = ""
+        segments.append(ASRSegment(start=words_to_flush[0].start, end=end_time, text=text_to_flush, words=words_to_flush))
+        if words_override is None:
+            current_words = []
+            current_text = ""
 
     for idx, word in enumerate(words):
         gap = 0.0
@@ -211,16 +454,51 @@ def _segments_from_words(words: List[ASRWord],
         split_on_chars = len(projected_text) > max_chars
         if split_on_chars and is_sentence_end and punctuation_grace_chars > 0:
             split_on_chars = len(projected_text) > (max_chars + punctuation_grace_chars)
-        split_on_cps = projected_cps > max_cps and projected_duration >= min_duration
+        split_on_cps = (
+            projected_cps > max_cps
+            and projected_duration >= min_duration
+            and len(projected_text) >= int(max_chars * 0.65)
+        )
 
         if split_on_gap and merge_trailing_punct_word:
             if gap <= merge_trailing_punct_max_gap and is_sentence_end:
                 split_on_gap = False
 
         if current_words and (split_on_gap or split_on_duration or split_on_chars or split_on_cps):
-            flush_segment(current_words[-1].end)
-            seg_start = word.start
-            projected_text = word.text
+            soft_pressure_only = split_on_cps and not (split_on_duration or split_on_chars or split_on_gap)
+            if split_on_duration or split_on_chars or split_on_cps:
+                candidate_words = current_words + [word]
+                split_idx = _choose_best_overflow_split(
+                    candidate_words,
+                    max_duration=max_duration,
+                    min_duration=min_duration,
+                    max_chars=max_chars,
+                    max_cps=max_cps,
+                    punctuation_grace_chars=punctuation_grace_chars,
+                    min_words_per_segment=min_words_per_segment,
+                    min_segment_seconds=min_segment_seconds,
+                    minimum_score=25.0 if split_on_cps and not (split_on_duration or split_on_chars) else 0.0,
+                    connector_words=connector_words,
+                )
+                if split_idx is not None and 0 < split_idx < len(candidate_words):
+                    left_words = candidate_words[:split_idx]
+                    right_words = candidate_words[split_idx:]
+                    flush_segment(
+                        left_words[-1].end,
+                        words_override=left_words,
+                        text_override=_items_text(left_words),
+                    )
+                    current_words = right_words
+                    current_text = _items_text(right_words)
+                    seg_start = right_words[0].start
+                    continue
+                if soft_pressure_only:
+                    split_idx = None
+
+            if not soft_pressure_only:
+                flush_segment(current_words[-1].end)
+                seg_start = word.start
+                projected_text = word.text
 
         current_words.append(word)
         current_text = (current_text + " " + word.text).strip() if current_text else word.text
@@ -245,7 +523,8 @@ def _segments_from_words(words: List[ASRWord],
         seg = segments[i]
         word_count = len(seg.text.split())
         duration = seg.end - seg.start
-        if (word_count < min_words_per_segment or duration <= min_segment_seconds) and i + 1 < len(segments):
+        too_short_for_reading = duration < min_duration and not _ends_sentence(seg.text)
+        if (word_count < min_words_per_segment or duration <= min_segment_seconds or too_short_for_reading) and i + 1 < len(segments):
             nxt = segments[i + 1]
             merged_text = f"{seg.text} {nxt.text}".strip()
             merged_seg = ASRSegment(start=seg.start, end=nxt.end, text=merged_text, words=(seg.words + nxt.words))
@@ -615,7 +894,8 @@ def build_srt(segments: List[ASRSegment],
               merge_incomplete_max_gap: float = 1.2,
               merge_incomplete_keywords: str = "what,why,how,where,who,which,when",
               merge_incomplete_split_next: bool = True,
-              merge_allow_overlong: bool = False):
+              merge_allow_overlong: bool = False,
+              normalize_cue_end_punctuation: bool = False):
     if not segments:
         return ("", {"matched": 0, "total": 0}) if return_stats else ""
 
@@ -710,6 +990,17 @@ def build_srt(segments: List[ASRSegment],
                 min_segment_seconds=min_segment_seconds,
             )
         )
+
+    if normalize_cue_end_punctuation:
+        for idx, seg in enumerate(display_segments):
+            if seg.text:
+                trimmed = _trim_trailing_soft_punctuation(seg.text)
+                stripped_soft_punct = trimmed != seg.text
+                seg.text = trimmed
+                if stripped_soft_punct and idx + 1 < len(display_segments):
+                    next_seg = display_segments[idx + 1]
+                    if next_seg.text:
+                        next_seg.text = _capitalize_segment_start(next_seg.text)
 
     lines: List[str] = []
     for idx, seg in enumerate(display_segments, start=1):

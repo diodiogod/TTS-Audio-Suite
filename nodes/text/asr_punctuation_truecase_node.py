@@ -14,7 +14,7 @@ class ASRPunctuationTruecaseNode:
                 "text": ("STRING", {
                     "multiline": True,
                     "default": "this was designed mainly for raw asr outputs like granite but it can clean up any plain text transcript as well",
-                    "tooltip": "Raw text to post-process with punctuation and true-casing.\n\nDesigned mainly for low-punctuation ASR outputs such as Granite transcripts, but it can be used on any plain text transcript.\n\nImportant: this expects plain transcript text, not full SRT files with cue numbers and timestamps.\n\nBest results usually come from lowercased, lightly cleaned ASR text rather than already-punctuated prose."
+                    "tooltip": "Raw text to post-process with punctuation and true-casing.\n\nDesigned mainly for low-punctuation ASR outputs such as Granite transcripts, but it can be used on any plain text transcript.\n\nImportant: this expects plain transcript text, not full SRT files with cue numbers and timestamps.\n\nBest results usually come from lowercased, lightly cleaned ASR text rather than already-punctuated prose.\nIf a paragraph already looks properly punctuated, the node now skips repunctuating that paragraph automatically instead of making it worse."
                 }),
                 "model": (get_punctuation_dropdown_labels(), {
                     "default": get_punctuation_dropdown_labels()[0],
