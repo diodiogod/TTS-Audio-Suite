@@ -1,204 +1,42 @@
 {
   "id": "4a7cdb14-f535-4923-861b-59ba2c7ee043",
   "revision": 0,
-  "last_node_id": 198,
-  "last_link_id": 311,
+  "last_node_id": 205,
+  "last_link_id": 327,
   "nodes": [
     {
-      "id": 121,
-      "type": "PreviewAny",
+      "id": 47,
+      "type": "UnifiedTTSTextNode",
       "pos": [
-        -1540,
-        3370
+        -1040,
+        1080
       ],
       "size": [
-        486.6275634765625,
-        420.8500061035156
+        400,
+        379.5921325683594
       ],
       "flags": {},
-      "order": 37,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 232
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59",
-        "Node name for S&R": "PreviewAny",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        null,
-        null,
-        null
-      ]
-    },
-    {
-      "id": 136,
-      "type": "CharacterVoicesNode",
-      "pos": [
-        -1650,
-        1180
-      ],
-      "size": [
-        232.96051025390625,
-        146.08004760742188
-      ],
-      "flags": {},
-      "order": 19,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "opt_audio_input",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 233
-        }
-      ],
-      "outputs": [
-        {
-          "name": "opt_narrator",
-          "type": "NARRATOR_VOICE",
-          "links": [
-            234
-          ]
-        },
-        {
-          "name": "character_name",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "tts_audio_suite",
-        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
-        "Node name for S&R": "CharacterVoicesNode",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "none",
-        "Type the transcription here"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 139,
-      "type": "LoadAudio",
-      "pos": [
-        -1960,
-        1180
-      ],
-      "size": [
-        270,
-        136
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            233
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.75",
-        "Node name for S&R": "LoadAudio",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "Aerith_original.wav",
-        null,
-        null
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 137,
-      "type": "MarkdownNote",
-      "pos": [
-        -1830,
-        1380
-      ],
-      "size": [
-        340,
-        190
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "# 🎭  **Step Audio EditX Reference Audio Tips**\n\n1- You can connect any audio from a **Load Audio Core** node directly on **🎭 Character Voices** and add the transcription manually to make a **zero-shot voice cloning**\n \n2- Step Audio EditX like F5 NEEDS an Audio AND a Reference Text. Any character from **🎭 Character Voices** should have both required files."
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 133,
-      "type": "UnifiedTTSSRTNode",
-      "pos": [
-        -2000,
-        3240
-      ],
-      "size": [
-        404.7402648925781,
-        545.216796875
-      ],
-      "flags": {},
-      "order": 30,
+      "order": 42,
       "mode": 0,
       "inputs": [
         {
           "name": "TTS_engine",
           "type": "TTS_ENGINE",
-          "link": 230
+          "link": 327
         },
         {
           "name": "opt_narrator",
           "shape": 7,
           "type": "*",
-          "link": null
+          "link": 325
         },
         {
-          "name": "srt_content",
+          "name": "text",
           "type": "STRING",
           "widget": {
-            "name": "srt_content"
+            "name": "text"
           },
-          "link": 242
+          "link": 182
         }
       ],
       "outputs": [
@@ -206,48 +44,39 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            231
+            246
           ]
         },
         {
           "name": "generation_info",
           "type": "STRING",
           "links": [
-            232
+            100
           ]
-        },
-        {
-          "name": "timing_report",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "Adjusted_SRT",
-          "type": "STRING",
-          "links": null
         }
       ],
       "properties": {
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "5e4c39b3d25a437f83dd71cf21b2fad282eda9e1",
-        "Node name for S&R": "UnifiedTTSSRTNode",
+        "Node name for S&R": "UnifiedTTSTextNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
         "ue_properties": {
-          "widget_ue_connectable": {},
+          "widget_ue_connectable": {
+            "text": true
+          },
           "version": "7.4.1",
           "input_ue_unconnectable": {}
         }
       },
       "widgets_values": [
-        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is unified SRT TTS with character switching.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] Hi there! I'm Alice speaking with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] And I'm Bob! The audio matches these exact SRT timings.",
-        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
-        2519695028,
+        "Hello! This is unified TTS with character switching support.\n[Alice] Hi there! I'm Alice speaking with the selected TTS engine.\n[Bob] And I'm Bob! This works with any TTS engine.\nBack to the main narrator voice for the conclusion.",
+        "none",
+        1552347960,
         "fixed",
-        "smart_natural",
         true,
-        0.01,
-        1,
-        0.5,
-        2,
+        400,
+        "crossfade",
+        100,
+        true,
         0
       ],
       "color": "#223",
@@ -265,7 +94,7 @@
         174.5865936279297
       ],
       "flags": {},
-      "order": 49,
+      "order": 50,
       "mode": 0,
       "inputs": [
         {
@@ -276,9 +105,9 @@
       ],
       "outputs": [],
       "properties": {
+        "Node name for S&R": "PreviewAny",
         "cnr_id": "comfy-core",
         "ver": "0.3.57",
-        "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
@@ -290,6 +119,113 @@
         null,
         null
       ]
+    },
+    {
+      "id": 53,
+      "type": "Reroute",
+      "pos": [
+        -2190,
+        3240
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 250
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            230
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 57,
+      "type": "MarkdownNote",
+      "pos": [
+        -2470,
+        3400
+      ],
+      "size": [
+        343.0154724121094,
+        178.18296813964844
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# **FROM v4 and up!**\n\nUnified nodes:\n- 🎤 **TTS Text**: Direct text-to-speech module  \n- 📺 **TTS SRT**: Subtitle-compatible TTS output  \n\nThese nodes are now **engine-agnostic**, meaning you can plug in **Chatterbox**, **F5**, or future engines seamlessly.\n"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 79,
+      "type": "PreviewAudio",
+      "pos": [
+        -1500,
+        3240
+      ],
+      "size": [
+        441.48828125,
+        88
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 231
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "ue_properties": {
+          "version": "7.4.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
     },
     {
       "id": 98,
@@ -337,80 +273,6 @@
       "bgcolor": "#353"
     },
     {
-      "id": 151,
-      "type": "StringMultilineTagEditor",
-      "pos": [
-        -4010,
-        1200
-      ],
-      "size": [
-        900,
-        600
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "links": [
-            243
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
-        "Node name for S&R": "StringMultilineTagEditor",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.4.1"
-        }
-      },
-      "widgets_values": [
-        "On Tuesdays, the pigeons held parliament.<emotion:admiration>\n[Alice] They debated the ethics of breadcrumbs and the metaphysics of flight. <emotion:surprised>\n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.<emotion:confusion>\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind.<emotion:admiration>"
-      ]
-    },
-    {
-      "id": 153,
-      "type": "PreviewAudio",
-      "pos": [
-        -540,
-        1080
-      ],
-      "size": [
-        442.4916687011719,
-        88
-      ],
-      "flags": {},
-      "order": 48,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 246
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.39",
-        "Node name for S&R": "PreviewAudio",
-        "ue_properties": {
-          "version": "7.4.1",
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [],
-      "color": "#2a363b",
-      "bgcolor": "#3f5159"
-    },
-    {
       "id": 99,
       "type": "Reroute",
       "pos": [
@@ -422,7 +284,7 @@
         26
       ],
       "flags": {},
-      "order": 35,
+      "order": 36,
       "mode": 0,
       "inputs": [
         {
@@ -440,418 +302,6 @@
           "type": "STRING",
           "links": [
             182
-          ]
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "color": "#232",
-      "bgcolor": "#353"
-    },
-    {
-      "id": 142,
-      "type": "Reroute",
-      "pos": [
-        -1200,
-        1230
-      ],
-      "size": [
-        75,
-        26
-      ],
-      "flags": {},
-      "order": 22,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 235
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "NARRATOR_VOICE",
-          "links": []
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 47,
-      "type": "UnifiedTTSTextNode",
-      "pos": [
-        -1040,
-        1080
-      ],
-      "size": [
-        400,
-        379.5921325683594
-      ],
-      "flags": {},
-      "order": 41,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "TTS_engine",
-          "type": "TTS_ENGINE",
-          "link": 260
-        },
-        {
-          "name": "opt_narrator",
-          "shape": 7,
-          "type": "*",
-          "link": 261
-        },
-        {
-          "name": "text",
-          "type": "STRING",
-          "widget": {
-            "name": "text"
-          },
-          "link": 182
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            246
-          ]
-        },
-        {
-          "name": "generation_info",
-          "type": "STRING",
-          "links": [
-            100
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "tts_audio_suite",
-        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
-        "Node name for S&R": "UnifiedTTSTextNode",
-        "ue_properties": {
-          "widget_ue_connectable": {
-            "text": true
-          },
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "Hello! This is unified TTS with character switching support.\n[Alice] Hi there! I'm Alice speaking with the selected TTS engine.\n[Bob] And I'm Bob! This works with any TTS engine.\nBack to the main narrator voice for the conclusion.",
-        "none",
-        1552347959,
-        "fixed",
-        true,
-        400,
-        "crossfade",
-        100,
-        true,
-        0
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
-      "id": 141,
-      "type": "Reroute",
-      "pos": [
-        -1200,
-        1180
-      ],
-      "size": [
-        75,
-        26
-      ],
-      "flags": {},
-      "order": 28,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 234
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "NARRATOR_VOICE",
-          "links": [
-            261
-          ]
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 143,
-      "type": "StringMultilineTagEditor",
-      "pos": [
-        -4010,
-        510
-      ],
-      "size": [
-        900,
-        600
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "links": [
-            244
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
-        "Node name for S&R": "StringMultilineTagEditor",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.4.1"
-        }
-      },
-      "widgets_values": [
-        "On Tuesdays, the pigeons held parliament. [pause:3s] They debated the ethics of breadcrumbs and the metaphysics of flight. \nOne particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\nHe once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
-      ]
-    },
-    {
-      "id": 140,
-      "type": "CharacterVoicesNode",
-      "pos": [
-        -1470,
-        1400
-      ],
-      "size": [
-        232.96051025390625,
-        146.08004760742188
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "opt_audio_input",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "opt_narrator",
-          "type": "NARRATOR_VOICE",
-          "links": [
-            235
-          ]
-        },
-        {
-          "name": "character_name",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "tts_audio_suite",
-        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
-        "Node name for S&R": "CharacterVoicesNode",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "voices_examples/David_Attenborough CC3.wav",
-        "Type the transcription here"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 179,
-      "type": "PreviewAny",
-      "pos": [
-        -1510,
-        2440
-      ],
-      "size": [
-        330,
-        310
-      ],
-      "flags": {},
-      "order": 32,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 296
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.57",
-        "Node name for S&R": "PreviewAny",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        null,
-        null,
-        null
-      ]
-    },
-    {
-      "id": 79,
-      "type": "PreviewAudio",
-      "pos": [
-        -1500,
-        3240
-      ],
-      "size": [
-        441.48828125,
-        88
-      ],
-      "flags": {},
-      "order": 36,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 231
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.39",
-        "Node name for S&R": "PreviewAudio",
-        "ue_properties": {
-          "version": "7.4.1",
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [],
-      "color": "#2a363b",
-      "bgcolor": "#3f5159"
-    },
-    {
-      "id": 180,
-      "type": "Reroute",
-      "pos": [
-        -1020,
-        2170
-      ],
-      "size": [
-        124,
-        26
-      ],
-      "flags": {},
-      "order": 25,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 297
-        }
-      ],
-      "outputs": [
-        {
-          "name": "TTS_ENGINE",
-          "type": "TTS_ENGINE",
-          "links": [
-            298
-          ]
-        }
-      ],
-      "properties": {
-        "showOutputText": true,
-        "horizontal": false,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "color": "#222",
-      "bgcolor": "#000"
-    },
-    {
-      "id": 132,
-      "type": "Reroute",
-      "pos": [
-        -2870,
-        910
-      ],
-      "size": [
-        75,
-        26
-      ],
-      "flags": {},
-      "order": 29,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "widget": {
-            "name": "value"
-          },
-          "link": 248
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "STRING",
-          "links": [
-            227
           ]
         }
       ],
@@ -908,6 +358,475 @@
       "bgcolor": "#353"
     },
     {
+      "id": 121,
+      "type": "PreviewAny",
+      "pos": [
+        -1540,
+        3370
+      ],
+      "size": [
+        486.6275634765625,
+        420.8500061035156
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 232
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": 132,
+      "type": "Reroute",
+      "pos": [
+        -2870,
+        910
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 248
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            227
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 133,
+      "type": "UnifiedTTSSRTNode",
+      "pos": [
+        -2000,
+        3240
+      ],
+      "size": [
+        404.7402648925781,
+        545.216796875
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 230
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 242
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            231
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": [
+            232
+          ]
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedTTSSRTNode",
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "5e4c39b3d25a437f83dd71cf21b2fad282eda9e1",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nHello! This is unified SRT TTS with character switching.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] Hi there! I'm Alice speaking with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] And I'm Bob! The audio matches these exact SRT timings.",
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        2519695028,
+        "fixed",
+        "smart_natural",
+        true,
+        0.01,
+        1,
+        0.5,
+        2,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 136,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1650,
+        1180
+      ],
+      "size": [
+        232.96051025390625,
+        186
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 233
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            234
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "none",
+        "Type the transcription here",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 137,
+      "type": "MarkdownNote",
+      "pos": [
+        -1840,
+        1410
+      ],
+      "size": [
+        340,
+        190
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "# 🎭  **Step Audio EditX Reference Audio Tips**\n\n1- You can connect any audio from a **Load Audio Core** node directly on **🎭 Character Voices** and add the transcription manually to make a **zero-shot voice cloning**\n \n2- Step Audio EditX like F5 NEEDS an Audio AND a Reference Text. Any character from **🎭 Character Voices** should have both required files."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 139,
+      "type": "LoadAudio",
+      "pos": [
+        -1960,
+        1180
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            233
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Aerith_original.wav",
+        null,
+        null
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 140,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -1470,
+        1400
+      ],
+      "size": [
+        232.96051025390625,
+        186
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            235
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
+        "cnr_id": "tts_audio_suite",
+        "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "voices_examples/David_Attenborough CC3.wav",
+        "Type the transcription here",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 141,
+      "type": "Reroute",
+      "pos": [
+        -1200,
+        1180
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 234
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 142,
+      "type": "Reroute",
+      "pos": [
+        -1200,
+        1230
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 235
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            325
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 143,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -4010,
+        510
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            244
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringMultilineTagEditor",
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:3s] They debated the ethics of breadcrumbs and the metaphysics of flight. \nOne particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\nHe once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
       "id": 146,
       "type": "StringMultilineTagEditor",
       "pos": [
@@ -919,7 +838,7 @@
         600
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -932,9 +851,9 @@
         }
       ],
       "properties": {
+        "Node name for S&R": "StringMultilineTagEditor",
         "cnr_id": "chatterbox_srt_voice",
         "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
-        "Node name for S&R": "StringMultilineTagEditor",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
@@ -946,18 +865,92 @@
       ]
     },
     {
+      "id": 151,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -4010,
+        1200
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            243
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringMultilineTagEditor",
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament.<emotion:admiration>\n[Alice] They debated the ethics of breadcrumbs and the metaphysics of flight. <emotion:surprised>\n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.<emotion:confusion>\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind.<emotion:admiration>"
+      ]
+    },
+    {
+      "id": 153,
+      "type": "PreviewAudio",
+      "pos": [
+        -540,
+        1080
+      ],
+      "size": [
+        442.4916687011719,
+        88
+      ],
+      "flags": {},
+      "order": 49,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 246
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "ue_properties": {
+          "version": "7.4.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
       "id": 155,
       "type": "Qwen3TTSEngineNode",
       "pos": [
         -2750,
-        1690
+        1630
       ],
       "size": [
         400,
-        472
+        550
       ],
       "flags": {},
-      "order": 6,
+      "order": 18,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -967,16 +960,16 @@
           "links": [
             250,
             251,
-            260,
             297,
-            300
+            300,
+            326
           ]
         }
       ],
       "properties": {
+        "Node name for S&R": "Qwen3TTSEngineNode",
         "cnr_id": "chatterbox_srt_voice",
         "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a",
-        "Node name for S&R": "Qwen3TTSEngineNode",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
@@ -1000,97 +993,12 @@
         true,
         false,
         "default",
-        true
+        true,
+        "English",
+        "Translate the speech from {source_language} into {target_language} text. Return only the translated text."
       ],
       "color": "#222",
       "bgcolor": "#000"
-    },
-    {
-      "id": 182,
-      "type": "MarkdownNote",
-      "pos": [
-        -3410,
-        2280
-      ],
-      "size": [
-        600,
-        830
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "# Qwen3-TTS Engine\n\nAlibaba's Qwen3-TTS is a single engine that **automatically selects and downloads the correct model** based on your settings — no manual model management needed.\n\n---\n\n## 4 Model Types\n\n### 🎭 CustomVoice — Preset Speakers\n\n- 9 built-in multilingual speakers: `Vivian`, `Serena`, `Uncle_Fu`, `Dylan`, `Eric`, `Ryan`, `Aiden`, `Ono_Anna`, `Sohee`\n- Available in **0.6B and 1.7B** sizes\n- Supports **style instructions** (e.g. *\"Speak cheerfully\"*, *\"Sound professional\"*)\n- Character switching with `[CharacterName]` auto-maps to one of the 9 preset speakers\n\n### 🎨 VoiceDesign — Create Voices from Text\n\n- Describe a voice and the model generates it instantly\n- Example: *\"A cheerful young woman with a bright, energetic tone\"*\n- **1.7B only**\n- Supports **style instructions** alongside the voice description\n- Generated voices are disk-cached for reuse across sessions\n\n### 🎤 Base — Zero-Shot Voice Cloning\n\n- Clone any voice from a 3–30s reference audio clip\n- Available in **0.6B and 1.7B** sizes\n- ⚠️ **Does NOT support style instructions** — instruction field is ignored in this mode\n\n**Two cloning modes:**\n\n     **ICL mode** (default, best quality): uses reference audio **+ reference transcript**. The model reads the transcript as in-context learning to better match the voice. Use the 🎭 Character Voices node — it always provides both.\n     **X-Vector mode**: uses only the audio to extract a speaker embedding, no transcript needed. Faster but lower quality.\n\n### 🔤 ASR — Transcription\n\n- Use with the **✏️ Unified ASR Transcribe** node\n- Transcribes audio to text with optional forced alignment\n\n---\n\n## Technical Specs\n\n- 🌍 **10 Languages:** Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian\n- 📏 **2 Model Sizes:** 0.6B and 1.7B (VoiceDesign is 1.7B only)\n- ⚡ **Attention:** `eager`, `flash_attention_2`, `sdpa`, `sage_attn`\n- 🔧 **Generation params:** temperature, top_k, top_p, repetition_penalty\n- ⚡ **torch.compile:** Optional ~1.7x speedup (requires PyTorch 2.10+)\n\n---\n\n## Unified Features\n\nWorks with all TTS Audio Suite features: character switching, language switching, pause tags `[pause:1s]`, SRT timing, and Step Audio EditX post-processing."
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 183,
-      "type": "MarkdownNote",
-      "pos": [
-        -2790,
-        2280
-      ],
-      "size": [
-        360,
-        270
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "\n## ⚠️ Key Limitation: Instructions Only Work on Some Models\n\n| Model | Style Instructions |\n| --- | --- |\n| CustomVoice | ✅ Supported |\n| VoiceDesign | ✅ Supported |\n| Base (cloning) | ❌ Not supported |\n| ASR | ❌ N/A |\n\nIf you need to control speaking style (emotion, tone, pace), use **CustomVoice** or **VoiceDesign**. Voice cloning does not accept instructions.\n\n---\n"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 185,
-      "type": "MarkdownNote",
-      "pos": [
-        -1960,
-        2550
-      ],
-      "size": [
-        420,
-        360
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "## Using a Designed Voice Immediately\n\nAfter generating a voice with the **🎨 Voice Designer** node, you have two options:\n\n---\n\n### Option 1 — Use as Narrator (same run, no refresh needed)\n\nConnect the `NARRATOR_VOICE` output of the Voice Designer node directly to the `narrator_voice` input of your TTS Text/SRT node.\n\nThe designed voice becomes the main narrator voice immediately.\n\n---\n\n### Option 2 — Use as a Named Character with `[tags]`\n\nThe Voice Designer node saves the voice to the character folder under the name you provide. Once saved, you can reference it in your text using character switching tags:\n\n```\n[new_voice_bob] Hello, I am Bob.\n[narrator] And I am the narrator.\n```\n\n**Limitation:** this requires a refresh of the character folder before the new voice is available. If you run the workflow twice, it works automatically on the second run. For same-run usage, see below.\n"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
     },
     {
       "id": 156,
@@ -1104,7 +1012,7 @@
         310
       ],
       "flags": {},
-      "order": 24,
+      "order": 25,
       "mode": 0,
       "inputs": [
         {
@@ -1137,9 +1045,9 @@
         }
       ],
       "properties": {
+        "Node name for S&R": "Qwen3TTSVoiceDesignerNode",
         "cnr_id": "chatterbox_srt_voice",
         "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a",
-        "Node name for S&R": "Qwen3TTSVoiceDesignerNode",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
@@ -1157,35 +1065,6 @@
       "bgcolor": "#335"
     },
     {
-      "id": 186,
-      "type": "MarkdownNote",
-      "pos": [
-        -990,
-        2480
-      ],
-      "size": [
-        660,
-        420
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "\n## Same-Run Character Switching with ♻️ Refresh Voice Cache\n\nTo use a freshly designed voice as a `[character tag]` in the **same workflow run**, use the **♻️ Refresh Voice Cache** node.\n\nThis node refreshes the voice cache mid-run so the new character is available to the TTS node.\n\n### Setup\n\nYou need to ensure two things happen in the right order:\n\n1. Voice Designer runs **first** (saves the voice file)\n2. Cache refreshes\n3. TTS generation runs **after**\n\nTo enforce this execution order, connect **two signals** into the Refresh Voice Cache node:\n\n- **Signal 1:** The TTS Engine output (e.g. from the Qwen3-TTS Engine node) → this is what your TTS node needs anyway\n- **Signal 2:** Any output from the Voice Designer node → this forces the designer to run before the cache refresh\n\nThen connect the output of the Refresh Voice Cache node to your TTS node instead of connecting the engine directly.\n\n### Signal Flow\n\n```\n[Qwen3 Engine] ──────────────────────┐\n                                      ▼\n[Voice Designer] ──► (any output) ► [♻️ Refresh Voice Cache] ──► [TTS Text Node]\n```\n\nThis guarantees: Designer runs → cache updates → TTS generates, all in one run."
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
       "id": 157,
       "type": "RefreshVoiceCacheNode",
       "pos": [
@@ -1197,7 +1076,7 @@
         98
       ],
       "flags": {},
-      "order": 33,
+      "order": 34,
       "mode": 0,
       "inputs": [
         {
@@ -1234,9 +1113,9 @@
         }
       ],
       "properties": {
+        "Node name for S&R": "RefreshVoiceCacheNode",
         "cnr_id": "chatterbox_srt_voice",
         "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a",
-        "Node name for S&R": "RefreshVoiceCacheNode",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
@@ -1261,7 +1140,7 @@
         379.5921325683594
       ],
       "flags": {},
-      "order": 38,
+      "order": 39,
       "mode": 0,
       "inputs": [
         {
@@ -1301,9 +1180,9 @@
         }
       ],
       "properties": {
+        "Node name for S&R": "UnifiedTTSTextNode",
         "cnr_id": "tts_audio_suite",
         "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
-        "Node name for S&R": "UnifiedTTSTextNode",
         "ue_properties": {
           "widget_ue_connectable": {
             "text": true
@@ -1328,6 +1207,42 @@
       "bgcolor": "#335"
     },
     {
+      "id": 159,
+      "type": "PreviewAudio",
+      "pos": [
+        1590,
+        2160
+      ],
+      "size": [
+        442.4916687011719,
+        88
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 256
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "ue_properties": {
+          "version": "7.4.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
       "id": 160,
       "type": "PreviewAny",
       "pos": [
@@ -1339,7 +1254,7 @@
         270
       ],
       "flags": {},
-      "order": 43,
+      "order": 44,
       "mode": 4,
       "inputs": [
         {
@@ -1350,9 +1265,9 @@
       ],
       "outputs": [],
       "properties": {
+        "Node name for S&R": "PreviewAny",
         "cnr_id": "comfy-core",
         "ver": "0.3.57",
-        "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
@@ -1366,6 +1281,80 @@
       ]
     },
     {
+      "id": 161,
+      "type": "PreviewAudio",
+      "pos": [
+        -1500,
+        2300
+      ],
+      "size": [
+        320,
+        88
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 262
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio",
+        "cnr_id": "comfy-core",
+        "ver": "0.11.0",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.5.2"
+        }
+      },
+      "widgets_values": [],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 177,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -150,
+        2310
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            295
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringMultilineTagEditor",
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4.1"
+        }
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament. [pause:2s] \n[orc_girl] They debated the ethics of breadcrumbs and the metaphysics of flight. One particularly philosophical pigeon named Thistle believed gravity was just a suggestion. He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
       "id": 178,
       "type": "CharacterVoicesNode",
       "pos": [
@@ -1374,10 +1363,10 @@
       ],
       "size": [
         232.96051025390625,
-        146.08004760742188
+        186
       ],
       "flags": {},
-      "order": 11,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -1402,9 +1391,9 @@
         }
       ],
       "properties": {
+        "Node name for S&R": "CharacterVoicesNode",
         "cnr_id": "tts_audio_suite",
         "ver": "ee95cad1f155eceb1442723c7f351949b30361e3",
-        "Node name for S&R": "CharacterVoicesNode",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
@@ -1413,115 +1402,38 @@
       },
       "widgets_values": [
         "voices_examples/David_Attenborough CC3.wav",
-        "Type the transcription here"
+        "Type the transcription here",
+        ""
       ],
       "color": "#432",
       "bgcolor": "#653"
     },
     {
-      "id": 53,
-      "type": "Reroute",
-      "pos": [
-        -2190,
-        3240
-      ],
-      "size": [
-        75,
-        26
-      ],
-      "flags": {},
-      "order": 23,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 250
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "TTS_ENGINE",
-          "links": [
-            230
-          ]
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "color": "#222",
-      "bgcolor": "#000"
-    },
-    {
-      "id": 161,
-      "type": "PreviewAudio",
-      "pos": [
-        -1500,
-        2300
-      ],
-      "size": [
-        320,
-        88
-      ],
-      "flags": {},
-      "order": 31,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 262
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.11.0",
-        "Node name for S&R": "PreviewAudio",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        }
-      },
-      "widgets_values": [],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 181,
+      "id": 179,
       "type": "PreviewAny",
       "pos": [
-        -540,
-        2260
+        -1510,
+        2440
       ],
       "size": [
-        300,
-        140
+        330,
+        310
       ],
       "flags": {},
-      "order": 39,
+      "order": 33,
       "mode": 4,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 299
+          "link": 296
         }
       ],
       "outputs": [],
       "properties": {
+        "Node name for S&R": "PreviewAny",
         "cnr_id": "comfy-core",
         "ver": "0.3.57",
-        "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
@@ -1535,256 +1447,98 @@
       ]
     },
     {
-      "id": 159,
-      "type": "PreviewAudio",
+      "id": 180,
+      "type": "Reroute",
       "pos": [
-        1590,
-        2160
+        -1020,
+        2170
       ],
       "size": [
-        442.4916687011719,
-        88
+        124,
+        26
       ],
       "flags": {},
-      "order": 42,
-      "mode": 4,
+      "order": 26,
+      "mode": 0,
       "inputs": [
         {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 256
+          "name": "",
+          "type": "*",
+          "link": 297
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "TTS_ENGINE",
+          "type": "TTS_ENGINE",
+          "links": [
+            298
+          ]
+        }
+      ],
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.39",
-        "Node name for S&R": "PreviewAudio",
+        "showOutputText": true,
+        "horizontal": false,
         "ue_properties": {
-          "version": "7.4.1",
           "widget_ue_connectable": {},
+          "version": "7.4.1",
           "input_ue_unconnectable": {}
         }
       },
-      "widgets_values": [],
-      "color": "#2a363b",
-      "bgcolor": "#3f5159"
+      "color": "#222",
+      "bgcolor": "#000"
     },
     {
-      "id": 193,
+      "id": 181,
       "type": "PreviewAny",
       "pos": [
-        -770,
-        4910
+        -540,
+        2260
       ],
       "size": [
-        500,
-        200
+        300,
+        140
       ],
       "flags": {},
-      "order": 46,
+      "order": 40,
       "mode": 4,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 306
+          "link": 299
         }
       ],
       "outputs": [],
       "properties": {
+        "Node name for S&R": "PreviewAny",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59",
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [
-        null,
-        null,
-        false
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 192,
-      "type": "PreviewAny",
-      "pos": [
-        -770,
-        4430
-      ],
-      "size": [
-        500,
-        430
-      ],
-      "flags": {},
-      "order": 45,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 305
         }
-      ],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59",
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [
-        null,
-        null,
-        false
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 191,
-      "type": "PreviewAny",
-      "pos": [
-        -770,
-        4160
-      ],
-      "size": [
-        500,
-        220
-      ],
-      "flags": {},
-      "order": 44,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 304
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59",
-        "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [
         null,
         null,
         null
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
+      ]
     },
     {
-      "id": 187,
-      "type": "UnifiedASRTranscribeNode",
-      "pos": [
-        -1180,
-        4340
-      ],
-      "size": [
-        270,
-        238
-      ],
-      "flags": {},
-      "order": 40,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "engine",
-          "type": "*",
-          "link": 311
-        },
-        {
-          "name": "audio",
-          "type": "*",
-          "link": 309
-        },
-        {
-          "name": "srt_options",
-          "shape": 7,
-          "type": "ASR_SRT_OPTIONS",
-          "link": 303
-        }
-      ],
-      "outputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "links": [
-            304
-          ]
-        },
-        {
-          "name": "srt",
-          "type": "STRING",
-          "links": [
-            305
-          ]
-        },
-        {
-          "name": "timestamps",
-          "type": "STRING",
-          "links": [
-            306
-          ]
-        },
-        {
-          "name": "info",
-          "type": "STRING",
-          "links": [
-            307
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a",
-        "Node name for S&R": "UnifiedASRTranscribeNode"
-      },
-      "widgets_values": [
-        "Auto",
-        "transcribe",
-        "none",
-        30,
-        2,
-        true
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
-      "id": 195,
+      "id": 182,
       "type": "MarkdownNote",
       "pos": [
-        -1990,
-        4150
+        -3410,
+        2280
       ],
       "size": [
-        330,
-        90
+        600,
+        830
       ],
       "flags": {},
-      "order": 12,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1796,94 +1550,24 @@
         }
       },
       "widgets_values": [
-        "    1 - Load any audio\n    2 - If you NEED SRT or timmings, you NEED to have \"asr_use_force_aligner\" option in the Qwen2 Engine."
+        "# Qwen3-TTS Engine\n\nAlibaba's Qwen3-TTS is a single engine that **automatically selects and downloads the correct model** based on your settings — no manual model management needed.\n\n---\n\n## 4 Model Types\n\n### 🎭 CustomVoice — Preset Speakers\n\n- 9 built-in multilingual speakers: `Vivian`, `Serena`, `Uncle_Fu`, `Dylan`, `Eric`, `Ryan`, `Aiden`, `Ono_Anna`, `Sohee`\n- Available in **0.6B and 1.7B** sizes\n- Supports **style instructions** (e.g. *\"Speak cheerfully\"*, *\"Sound professional\"*)\n- Character switching with `[CharacterName]` auto-maps to one of the 9 preset speakers\n\n### 🎨 VoiceDesign — Create Voices from Text\n\n- Describe a voice and the model generates it instantly\n- Example: *\"A cheerful young woman with a bright, energetic tone\"*\n- **1.7B only**\n- Supports **style instructions** alongside the voice description\n- Generated voices are disk-cached for reuse across sessions\n\n### 🎤 Base — Zero-Shot Voice Cloning\n\n- Clone any voice from a 3–30s reference audio clip\n- Available in **0.6B and 1.7B** sizes\n- ⚠️ **Does NOT support style instructions** — instruction field is ignored in this mode\n\n**Two cloning modes:**\n\n     **ICL mode** (default, best quality): uses reference audio **+ reference transcript**. The model reads the transcript as in-context learning to better match the voice. Use the 🎭 Character Voices node — it always provides both.\n     **X-Vector mode**: uses only the audio to extract a speaker embedding, no transcript needed. Faster but lower quality.\n\n### 🔤 ASR — Transcription\n\n- Use with the **✏️ Unified ASR Transcribe** node\n- Transcribes audio to text with optional forced alignment\n\n---\n\n## Technical Specs\n\n- 🌍 **10 Languages:** Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian\n- 📏 **2 Model Sizes:** 0.6B and 1.7B (VoiceDesign is 1.7B only)\n- ⚡ **Attention:** `eager`, `flash_attention_2`, `sdpa`, `sage_attn`\n- 🔧 **Generation params:** temperature, top_k, top_p, repetition_penalty\n- ⚡ **torch.compile:** Optional ~1.7x speedup (requires PyTorch 2.10+)\n\n---\n\n## Unified Features\n\nWorks with all TTS Audio Suite features: character switching, language switching, pause tags `[pause:1s]`, SRT timing, and Step Audio EditX post-processing."
       ],
       "color": "#432",
       "bgcolor": "#653"
     },
     {
-      "id": 190,
-      "type": "ASRSRTAdvancedOptionsNode",
-      "pos": [
-        -1650,
-        4380
-      ],
-      "size": [
-        410.55078125,
-        802
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "asr_srt_options",
-          "type": "ASR_SRT_OPTIONS",
-          "links": [
-            303
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a",
-        "Node name for S&R": "ASRSRTAdvancedOptionsNode"
-      },
-      "widgets_values": [
-        "Mobile",
-        "smart",
-        32,
-        2,
-        5,
-        1,
-        0.6,
-        17,
-        true,
-        1500,
-        2,
-        0.6,
-        12,
-        2,
-        0.4,
-        true,
-        1,
-        true,
-        2,
-        2,
-        true,
-        3,
-        3,
-        "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
-        true,
-        2,
-        1.5,
-        true,
-        1.2,
-        "what,why,how,where,who,which,when",
-        true,
-        true
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
-      "id": 196,
+      "id": 183,
       "type": "MarkdownNote",
       "pos": [
-        -2020,
-        4780
+        -2790,
+        2280
       ],
       "size": [
         360,
-        250
+        270
       ],
       "flags": {},
-      "order": 14,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1895,36 +1579,7 @@
         }
       },
       "widgets_values": [
-        "## 🔧 ASR SRT Advanced Options\n\nI know this is overwhelming. Most of these are highly experimental. But it will help a lot in making your SRT output look better. \n\nYou don't need to change anything if you don't want to. It's all optional. The SRT output will use all of these by default in one way or another. \n\nWhat you can do here is that you can tinker with each value and adjust it as you like. \n\nMost of these are post-processing, meaning you won't need to regenerate to test them. Just click run, and it will use the cache previous run apply it immediately. "
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 57,
-      "type": "MarkdownNote",
-      "pos": [
-        -2470,
-        3400
-      ],
-      "size": [
-        343.0154724121094,
-        178.18296813964844
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "# **FROM v4 and up!**\n\nUnified nodes:\n- 🎤 **TTS Text**: Direct text-to-speech module  \n- 📺 **TTS SRT**: Subtitle-compatible TTS output  \n\nThese nodes are now **engine-agnostic**, meaning you can plug in **Chatterbox**, **F5**, or future engines seamlessly.\n"
+        "\n## ⚠️ Key Limitation: Instructions Only Work on Some Models\n\n| Model | Style Instructions |\n| --- | --- |\n| CustomVoice | ✅ Supported |\n| VoiceDesign | ✅ Supported |\n| Base (cloning) | ❌ Not supported |\n| ASR | ❌ N/A |\n\nIf you need to control speaking style (emotion, tone, pace), use **CustomVoice** or **VoiceDesign**. Voice cloning does not accept instructions.\n\n---\n"
       ],
       "color": "#432",
       "bgcolor": "#653"
@@ -1941,7 +1596,7 @@
         530
       ],
       "flags": {},
-      "order": 16,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1959,156 +1614,62 @@
       "bgcolor": "#653"
     },
     {
-      "id": 194,
-      "type": "PreviewAny",
+      "id": 185,
+      "type": "MarkdownNote",
       "pos": [
-        -1180,
-        4900
+        -1960,
+        2550
       ],
       "size": [
-        300,
-        210
+        420,
+        360
       ],
       "flags": {},
-      "order": 47,
-      "mode": 4,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 307
-        }
-      ],
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
       "outputs": [],
       "properties": {
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59",
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [
-        null,
-        null,
-        false
-      ]
-    },
-    {
-      "id": 177,
-      "type": "StringMultilineTagEditor",
-      "pos": [
-        -150,
-        2310
-      ],
-      "size": [
-        900,
-        510
-      ],
-      "flags": {},
-      "order": 17,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "text",
-          "type": "STRING",
-          "links": [
-            295
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "4a9b74fe7c6e1b194b3fffd33b6acca1a199b55f",
-        "Node name for S&R": "StringMultilineTagEditor",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.4.1"
         }
       },
       "widgets_values": [
-        "On Tuesdays, the pigeons held parliament. [pause:2s] \n[orc_girl] They debated the ethics of breadcrumbs and the metaphysics of flight. One particularly philosophical pigeon named Thistle believed gravity was just a suggestion. He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
-      ]
+        "## Using a Designed Voice Immediately\n\nAfter generating a voice with the **🎨 Voice Designer** node, you have two options:\n\n---\n\n### Option 1 — Use as Narrator (same run, no refresh needed)\n\nConnect the `NARRATOR_VOICE` output of the Voice Designer node directly to the `narrator_voice` input of your TTS Text/SRT node.\n\nThe designed voice becomes the main narrator voice immediately.\n\n---\n\n### Option 2 — Use as a Named Character with `[tags]`\n\nThe Voice Designer node saves the voice to the character folder under the name you provide. Once saved, you can reference it in your text using character switching tags:\n\n```\n[new_voice_bob] Hello, I am Bob.\n[narrator] And I am the narrator.\n```\n\n**Limitation:** this requires a refresh of the character folder before the new voice is available. If you run the workflow twice, it works automatically on the second run. For same-run usage, see below.\n"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
-      "id": 189,
-      "type": "LoadAudio",
+      "id": 186,
+      "type": "MarkdownNote",
       "pos": [
-        -1990,
-        4300
+        -990,
+        2480
       ],
       "size": [
-        270,
-        136
+        660,
+        420
       ],
       "flags": {},
-      "order": 18,
+      "order": 8,
       "mode": 0,
       "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            308
-          ]
-        }
-      ],
+      "outputs": [],
       "properties": {
         "ue_properties": {
           "widget_ue_connectable": {},
+          "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.11.0",
-        "Node name for S&R": "LoadAudio"
+        }
       },
       "widgets_values": [
-        "02 Creep.mp3",
-        null,
-        ""
+        "\n## Same-Run Character Switching with ♻️ Refresh Voice Cache\n\nTo use a freshly designed voice as a `[character tag]` in the **same workflow run**, use the **♻️ Refresh Voice Cache** node.\n\nThis node refreshes the voice cache mid-run so the new character is available to the TTS node.\n\n### Setup\n\nYou need to ensure two things happen in the right order:\n\n1. Voice Designer runs **first** (saves the voice file)\n2. Cache refreshes\n3. TTS generation runs **after**\n\nTo enforce this execution order, connect **two signals** into the Refresh Voice Cache node:\n\n- **Signal 1:** The TTS Engine output (e.g. from the Qwen3-TTS Engine node) → this is what your TTS node needs anyway\n- **Signal 2:** Any output from the Voice Designer node → this forces the designer to run before the cache refresh\n\nThen connect the output of the Refresh Voice Cache node to your TTS node instead of connecting the engine directly.\n\n### Signal Flow\n\n```\n[Qwen3 Engine] ──────────────────────┐\n                                      ▼\n[Voice Designer] ──► (any output) ► [♻️ Refresh Voice Cache] ──► [TTS Text Node]\n```\n\nThis guarantees: Designer runs → cache updates → TTS generates, all in one run."
       ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 197,
-      "type": "Reroute",
-      "pos": [
-        -1330,
-        4300
-      ],
-      "size": [
-        75,
-        26
-      ],
-      "flags": {},
-      "order": 27,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "",
-          "type": "*",
-          "link": 308
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "AUDIO",
-          "links": [
-            309
-          ]
-        }
-      ],
-      "properties": {
-        "showOutputText": false,
-        "horizontal": false
-      }
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 188,
@@ -2122,7 +1683,7 @@
         26
       ],
       "flags": {},
-      "order": 26,
+      "order": 27,
       "mode": 0,
       "inputs": [
         {
@@ -2153,10 +1714,335 @@
       "bgcolor": "#000"
     },
     {
+      "id": 189,
+      "type": "LoadAudio",
+      "pos": [
+        -1990,
+        4300
+      ],
+      "size": [
+        270,
+        136
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            308
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.11.0"
+      },
+      "widgets_values": [
+        "02 Creep.mp3",
+        null,
+        null
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 190,
+      "type": "ASRSRTAdvancedOptionsNode",
+      "pos": [
+        -570,
+        4570
+      ],
+      "size": [
+        410.55078125,
+        826
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "srt_options",
+          "type": "SRT_OPTIONS",
+          "links": [
+            318
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ASRSRTAdvancedOptionsNode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a"
+      },
+      "widgets_values": [
+        "Broadcast",
+        "smart",
+        42,
+        2,
+        6,
+        1,
+        0.6,
+        17,
+        true,
+        1500,
+        2,
+        0.6,
+        12,
+        2,
+        0.4,
+        true,
+        1,
+        true,
+        2,
+        2,
+        true,
+        3,
+        3,
+        "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+        true,
+        2,
+        1.5,
+        true,
+        1.2,
+        "what,why,how,where,who,which,when",
+        true,
+        true,
+        false
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 191,
+      "type": "PreviewAny",
+      "pos": [
+        -1120,
+        4440
+      ],
+      "size": [
+        500,
+        220
+      ],
+      "flags": {},
+      "order": 45,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 314
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 192,
+      "type": "PreviewAny",
+      "pos": [
+        -1120,
+        4710
+      ],
+      "size": [
+        500,
+        430
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 315
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 193,
+      "type": "PreviewAny",
+      "pos": [
+        -1120,
+        5190
+      ],
+      "size": [
+        500,
+        200
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 316
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 195,
+      "type": "MarkdownNote",
+      "pos": [
+        -1990,
+        4150
+      ],
+      "size": [
+        330,
+        90
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "    1 - Load any audio\n    2 - If you NEED SRT or timmings, you NEED to have \"asr_use_force_aligner\" option in the Qwen2 Engine."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 196,
+      "type": "MarkdownNote",
+      "pos": [
+        -140,
+        4800
+      ],
+      "size": [
+        360,
+        250
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "## 🔧 ASR SRT Advanced Options\n\nI know this is overwhelming. Most of these are highly experimental. But it will help a lot in making your SRT output look better. \n\nYou don't need to change anything if you don't want to. It's all optional. The SRT output will use all of these by default in one way or another. \n\nWhat you can do here is that you can tinker with each value and adjust it as you like. \n\nMost of these are post-processing, meaning you won't need to regenerate to test them. Just click run, and it will use the cache previous run apply it immediately. "
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 197,
+      "type": "Reroute",
+      "pos": [
+        -1680,
+        4300
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 308
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "AUDIO",
+          "links": [
+            313
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
       "id": 198,
       "type": "Reroute",
       "pos": [
-        -1320,
+        -1670,
         3980
       ],
       "size": [
@@ -2164,7 +2050,7 @@
         26
       ],
       "flags": {},
-      "order": 34,
+      "order": 35,
       "mode": 0,
       "inputs": [
         {
@@ -2178,12 +2064,344 @@
           "name": "",
           "type": "TTS_ENGINE",
           "links": [
-            311
+            312
           ]
         }
       ],
       "properties": {
         "showOutputText": false,
+        "horizontal": false,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 199,
+      "type": "UnifiedASRTranscribeNode",
+      "pos": [
+        -1530,
+        4350
+      ],
+      "size": [
+        270,
+        218
+      ],
+      "flags": {},
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "engine",
+          "type": "TTS_ENGINE",
+          "link": 312
+        },
+        {
+          "name": "audio",
+          "type": "*",
+          "link": 313
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            314,
+            320
+          ]
+        },
+        {
+          "name": "timing_data",
+          "type": "TIMING_DATA",
+          "links": [
+            315,
+            317
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": [
+            316
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedASRTranscribeNode"
+      },
+      "widgets_values": [
+        "Auto",
+        "transcribe",
+        "none",
+        30,
+        2,
+        true
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 200,
+      "type": "TextToSRTBuilderNode",
+      "pos": [
+        -90,
+        4370
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "timing_data",
+          "type": "TIMING_DATA",
+          "link": 317
+        },
+        {
+          "name": "srt_options",
+          "shape": 7,
+          "type": "SRT_OPTIONS",
+          "link": 318
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 321
+        }
+      ],
+      "outputs": [
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            322
+          ]
+        },
+        {
+          "name": "timestamps",
+          "type": "STRING",
+          "links": [
+            323
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": [
+            324
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "TextToSRTBuilderNode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 201,
+      "type": "Reroute",
+      "pos": [
+        -290,
+        4350
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "widget": {
+            "name": "value"
+          },
+          "link": 320
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            321
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 202,
+      "type": "PreviewAny",
+      "pos": [
+        400,
+        4370
+      ],
+      "size": [
+        500,
+        400
+      ],
+      "flags": {},
+      "order": 52,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 322
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 203,
+      "type": "PreviewAny",
+      "pos": [
+        400,
+        4810
+      ],
+      "size": [
+        500,
+        220
+      ],
+      "flags": {},
+      "order": 53,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 323
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 204,
+      "type": "PreviewAny",
+      "pos": [
+        400,
+        5070
+      ],
+      "size": [
+        500,
+        220
+      ],
+      "flags": {},
+      "order": 54,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 324
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 205,
+      "type": "Reroute",
+      "pos": [
+        -1280,
+        1630
+      ],
+      "size": [
+        124,
+        26
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 326
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_ENGINE",
+          "type": "TTS_ENGINE",
+          "links": [
+            327
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": true,
         "horizontal": false,
         "ue_properties": {
           "widget_ue_connectable": {},
@@ -2357,22 +2575,6 @@
       "TTS_ENGINE"
     ],
     [
-      260,
-      155,
-      0,
-      47,
-      0,
-      "TTS_ENGINE"
-    ],
-    [
-      261,
-      141,
-      0,
-      47,
-      1,
-      "NARRATOR_VOICE"
-    ],
-    [
       262,
       156,
       1,
@@ -2437,59 +2639,11 @@
       "TTS_ENGINE"
     ],
     [
-      303,
-      190,
-      0,
-      187,
-      2,
-      "ASR_SRT_OPTIONS"
-    ],
-    [
-      304,
-      187,
-      0,
-      191,
-      0,
-      "STRING"
-    ],
-    [
-      305,
-      187,
-      1,
-      192,
-      0,
-      "STRING"
-    ],
-    [
-      306,
-      187,
-      2,
-      193,
-      0,
-      "STRING"
-    ],
-    [
-      307,
-      187,
-      3,
-      194,
-      0,
-      "STRING"
-    ],
-    [
       308,
       189,
       0,
       197,
       0,
-      "AUDIO"
-    ],
-    [
-      309,
-      197,
-      0,
-      187,
-      1,
       "AUDIO"
     ],
     [
@@ -2501,10 +2655,122 @@
       "TTS_ENGINE"
     ],
     [
-      311,
+      312,
       198,
       0,
-      187,
+      199,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      313,
+      197,
+      0,
+      199,
+      1,
+      "AUDIO"
+    ],
+    [
+      314,
+      199,
+      0,
+      191,
+      0,
+      "STRING"
+    ],
+    [
+      315,
+      199,
+      1,
+      192,
+      0,
+      "TIMING_DATA"
+    ],
+    [
+      316,
+      199,
+      2,
+      193,
+      0,
+      "STRING"
+    ],
+    [
+      317,
+      199,
+      1,
+      200,
+      0,
+      "TIMING_DATA"
+    ],
+    [
+      318,
+      190,
+      0,
+      200,
+      1,
+      "SRT_OPTIONS"
+    ],
+    [
+      320,
+      199,
+      0,
+      201,
+      0,
+      "STRING"
+    ],
+    [
+      321,
+      201,
+      0,
+      200,
+      2,
+      "STRING"
+    ],
+    [
+      322,
+      200,
+      0,
+      202,
+      0,
+      "STRING"
+    ],
+    [
+      323,
+      200,
+      1,
+      203,
+      0,
+      "STRING"
+    ],
+    [
+      324,
+      200,
+      2,
+      204,
+      0,
+      "STRING"
+    ],
+    [
+      325,
+      142,
+      0,
+      47,
+      1,
+      "NARRATOR_VOICE"
+    ],
+    [
+      326,
+      155,
+      0,
+      205,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      327,
+      205,
+      0,
+      47,
       0,
       "TTS_ENGINE"
     ]
@@ -2620,8 +2886,8 @@
       "bounding": [
         -2030,
         4070,
-        1810,
-        1120
+        3120,
+        1440
       ],
       "color": "#A88",
       "font_size": 24,
@@ -2631,13 +2897,13 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.1610510000000034,
+      "scale": 0.6115909044841719,
       "offset": [
-        8000.12728064384,
-        1183.2383089588352
+        1884.846264843364,
+        -704.5592295064926
       ]
     },
-    "frontendVersion": "1.37.11",
+    "frontendVersion": "1.38.13",
     "ue_links": [],
     "links_added_by_ue": [],
     "VHS_latentpreview": true,
