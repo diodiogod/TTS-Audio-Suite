@@ -202,6 +202,26 @@ def generate_model_download_sources(data):
     return "\n".join(output)
 
 
+def generate_readme_model_download_table(data):
+    """Generate README auto-download summary table from YAML source."""
+    rows = data.get("readme_model_download_table", [])
+
+    output = []
+    output.append("| Engine | Primary model path | Auto-download | Notes |")
+    output.append("|---|---|---|---|")
+
+    for row in rows:
+        engine = row.get("engine", "-")
+        path = row.get("primary_model_path", "-")
+        auto_download = row.get("auto_download", "N/A")
+        notes = row.get("notes", "")
+        output.append(f"| {engine} | `{path}` | {auto_download} | {notes} |")
+
+    output.append("")
+    output.append("*Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*")
+    return "\n".join(output)
+
+
 def generate_model_layouts(data):
     """Generate model layout documentation from YAML source."""
     model_layouts_markdown = data.get("model_layouts_markdown", "")
@@ -411,6 +431,33 @@ def inject_into_readme(condensed_table):
     return True  # Written
 
 
+def inject_section_into_readme(section_body, start_marker, end_marker):
+    """Inject generated content into README.md between custom markers."""
+    readme_path = Path(__file__).parent.parent / "README.md"
+
+    with open(readme_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    if start_marker not in content or end_marker not in content:
+        print("⚠️  Markers not found in README.md")
+        print(f"   Please add these markers where you want the table:")
+        print(f"   {start_marker}")
+        print(f"   {end_marker}")
+        return None
+
+    pattern = f"{re.escape(start_marker)}.*?{re.escape(end_marker)}"
+    replacement = f"{start_marker}\n\n{section_body}\n\n{end_marker}"
+    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+
+    if new_content == content:
+        return False
+
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    return True
+
+
 def write_if_changed(file_path, new_content):
     """Write file only if content changed. Returns True if written."""
     # Check if file exists and compare content
@@ -488,17 +535,25 @@ def main():
     # Generate and inject condensed README table
     print("\nGenerating condensed README table...")
     condensed = generate_readme_condensed_table(data)
+    print("Generating README model auto-download table...")
+    readme_model_table = generate_readme_model_download_table(data)
 
     # Check if --readme flag is passed
     if "--readme" in sys.argv:
         print("Injecting into README.md...")
-        result = inject_into_readme(condensed)
-        if result is True:
-            print("✅ README.md updated successfully!")
-        elif result is False:
-            print("⏭️  Skipped README.md (unchanged)")
-        else:  # None = error
+        condensed_result = inject_into_readme(condensed)
+        model_table_result = inject_section_into_readme(
+            readme_model_table,
+            "<!-- README_MODEL_DOWNLOAD_TABLE_START -->",
+            "<!-- README_MODEL_DOWNLOAD_TABLE_END -->",
+        )
+
+        if condensed_result is None or model_table_result is None:
             print("❌ README.md injection failed (markers not found)")
+        elif condensed_result is True or model_table_result is True:
+            print("✅ README.md updated successfully!")
+        else:
+            print("⏭️  Skipped README.md (unchanged)")
     else:
         print("ℹ️  Condensed table generated (use --readme flag to inject into README.md)")
         print("\nPreview:")

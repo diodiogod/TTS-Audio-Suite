@@ -1238,6 +1238,8 @@ For offline/manual setup:
 - **All model source links (single source of truth):** [docs/MODEL_DOWNLOAD_SOURCES.md](docs/MODEL_DOWNLOAD_SOURCES.md)
 - **All folder trees and placement notes:** [docs/MODEL_LAYOUTS.md](docs/MODEL_LAYOUTS.md)
 
+<!-- README_MODEL_DOWNLOAD_TABLE_START -->
+
 | Engine | Primary model path | Auto-download | Notes |
 |---|---|---|---|
 | ChatterBox | `ComfyUI/models/TTS/chatterbox/` | ✅ | Legacy `ComfyUI/models/chatterbox/` still works |
@@ -1250,7 +1252,12 @@ For offline/manual setup:
 | Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
+| Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Main Granite model; optional Qwen forced aligner reused lazily for timestamps/SRT |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
+
+*Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
+
+<!-- README_MODEL_DOWNLOAD_TABLE_END -->
 
 ### 5. Restart ComfyUI
 
