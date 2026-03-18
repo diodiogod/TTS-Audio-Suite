@@ -268,20 +268,29 @@ class ChatterboxOfficial23LangSRTProcessor:
                             f"  • Remove Vietnamese language tags from your SRT file"
                         )
 
-                # Check if we have character switching, language switching, or parameter changes
+                # Check if we have character switching, language switching, parameter changes,
+                # or multiple parsed text segments (for multiline subtitles).
                 characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                 languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
                 has_parameter_changes = len(set(str(params) for _, _, _, params in character_segments_with_lang)) > 1
+                has_multiple_segments_in_subtitle = len(character_segments_with_lang) > 1
 
                 has_multiple_characters_in_subtitle = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
                 has_multiple_languages_in_subtitle = len(languages) > 1
 
-                if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle or has_parameter_changes:
+                if (
+                    has_multiple_characters_in_subtitle
+                    or has_multiple_languages_in_subtitle
+                    or has_parameter_changes
+                    or has_multiple_segments_in_subtitle
+                ):
                     # Complex subtitle - group by dominant language or mark as multilingual
                     primary_lang = languages[0] if languages else 'en'
                     if has_parameter_changes:
                         # Parameter changes require segment-by-segment processing
                         subtitle_type = 'parameter_switching'
+                    elif has_multiple_segments_in_subtitle and not has_multiple_characters_in_subtitle and not has_multiple_languages_in_subtitle:
+                        subtitle_type = 'multisegment'
                     elif has_multiple_characters_in_subtitle:
                         # Character switching takes priority (may also have multiple languages)
                         subtitle_type = 'multicharacter'
@@ -395,10 +404,15 @@ class ChatterboxOfficial23LangSRTProcessor:
                         else:
                             segment_audio = torch.zeros(int(expected_duration * self.sample_rate))
 
-                    elif subtitle_type == 'multicharacter':
-                        # Multi-character in same segment - process each character with their voice
-                        characters = list(set(char for char, _, _, _ in character_segments_with_lang))
-                        print(f"🎭 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
+                    elif subtitle_type in ('multicharacter', 'multisegment', 'multilingual'):
+                        # Segment-by-segment processing for explicit character switching, multilingual subtitles,
+                        # or multiline subtitles split into multiple parsed segments.
+                        if subtitle_type == 'multilingual':
+                            languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
+                            print(f"🌍 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
+                        elif subtitle_type != 'multisegment':
+                            characters = list(set(char for char, _, _, _ in character_segments_with_lang))
+                            print(f"🎭 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
 
                         segment_audio_parts = []
                         subtitle_has_edit_tags = False  # Track if ANY segment has edit tags
@@ -430,8 +444,9 @@ class ChatterboxOfficial23LangSRTProcessor:
                             # Extract edit tags FIRST
                             text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(text)
 
-                            # Narrator should use user's default language, not character alias language
-                            actual_lang = current_language if char == "narrator" else seg_lang
+                            # Use the parsed segment language. Plain narrator text already resolves to the
+                            # node default language; explicit tags like [pt:] preserve the switch here.
+                            actual_lang = seg_lang
 
                             # Check for pause tags - if present AND edit tags present, split by pause FIRST
                             from utils.text.pause_processor import PauseTagProcessor
@@ -576,164 +591,6 @@ class ChatterboxOfficial23LangSRTProcessor:
                             else:
                                 segment_audio = torch.zeros(int(expected_duration * self.sample_rate))
 
-                    elif subtitle_type == 'multilingual':
-                        # Multi-language in same segment - use multilingual engine for proper handling
-                        languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
-                        print(f"🌍 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
-
-                        # For now, treat multilingual as simple (use first language) - complex multilingual needs special handling
-                        # Extract first segment's parameters if any
-                        first_params = None
-                        for _, _, _, seg_params in character_segments_with_lang:
-                            if seg_params:
-                                first_params = seg_params
-                                break
-
-                        seg_exag = current_exaggeration
-                        seg_temp = current_temperature
-                        seg_cfg = current_cfg_weight
-                        seg_seed_val = seed
-
-                        if first_params:
-                            segment_config = apply_segment_parameters(
-                                {'exaggeration': current_exaggeration, 'temperature': current_temperature, 'cfg_weight': current_cfg_weight, 'seed': seed},
-                                first_params,
-                                "chatterbox_official_23lang"
-                            )
-                            seg_exag = segment_config.get('exaggeration', current_exaggeration)
-                            seg_temp = segment_config.get('temperature', current_temperature)
-                            seg_cfg = segment_config.get('cfg_weight', current_cfg_weight)
-                            seg_seed_val = segment_config.get('seed', seed)
-
-                        # Extract edit tags from multilingual text
-                        text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(subtitle.text)
-
-                        # Check for pause tags - if present AND edit tags present, split by pause FIRST
-                        from utils.text.pause_processor import PauseTagProcessor
-                        has_pause_tags = PauseTagProcessor.has_pause_tags(text_clean)
-
-                        if has_pause_tags and edit_tags:
-                            # Split by pause tags to preserve pauses during edit processing
-                            pause_segments, _ = PauseTagProcessor.parse_pause_tags(text_clean)
-                            segment_audio_parts = []
-
-                            for pause_seg_type, pause_content in pause_segments:
-                                if pause_seg_type == 'text':
-                                    # Generate audio for this text segment (no pause tags)
-                                    text_segment_audio, _ = self.tts_node.generate_speech(
-                                        text=pause_content,
-                                        language=current_language,
-                                        device=current_device,
-                                        model_version=current_model_version,
-                                        exaggeration=seg_exag,
-                                        temperature=seg_temp,
-                                        cfg_weight=seg_cfg,
-                                        repetition_penalty=current_repetition_penalty,
-                                        min_p=current_min_p,
-                                        top_p=current_top_p,
-                                        seed=seg_seed_val,
-                                        reference_audio=None,
-                                        audio_prompt_path=voice_refs.get('narrator', ""),
-                                        enable_audio_cache=True,
-                                        character="narrator",
-                                        batch_size=self.config.get("batch_size", 0)
-                                    )
-
-                                    # Extract waveform
-                                    if isinstance(text_segment_audio, dict) and "waveform" in text_segment_audio:
-                                        text_segment_audio = text_segment_audio["waveform"]
-
-                                    # Ensure proper tensor format
-                                    if text_segment_audio.dim() == 3:
-                                        text_segment_audio = text_segment_audio.squeeze(0).squeeze(0)
-                                    elif text_segment_audio.dim() == 2:
-                                        text_segment_audio = text_segment_audio.squeeze(0)
-
-                                    # Normalize for edit processor
-                                    segment_audio_normalized = text_segment_audio.squeeze().cpu()
-                                    if segment_audio_normalized.dim() == 2:
-                                        segment_audio_normalized = segment_audio_normalized.squeeze(0)
-
-                                    # Store for batch editing
-                                    all_segments_for_editing.append({
-                                        'waveform': segment_audio_normalized,
-                                        'sample_rate': self.sample_rate,
-                                        'character': 'narrator',
-                                        'text': pause_content,
-                                        'original_text': pause_content,
-                                        'edit_tags': edit_tags,
-                                        'subtitle_index': i,
-                                        'segment_index': 0
-                                    })
-                                    segment_audio_parts.append(None)  # Placeholder
-
-                                elif pause_seg_type == 'pause':
-                                    # Create silence segment
-                                    silence = PauseTagProcessor.create_silence_segment(
-                                        pause_content, self.sample_rate
-                                    )
-                                    segment_audio_parts.append(silence)
-
-                            # Store reconstruction info
-                            subtitle_character_segments[i] = {
-                                'parts': segment_audio_parts,
-                                'expected_duration': expected_duration,
-                                'start': segment_start,
-                                'end': segment_end,
-                                'sequence': subtitle.sequence
-                            }
-                            segment_audio = None  # Placeholder - will be reconstructed after batch processing
-
-                        else:
-                            # No pause tags OR no edit tags - process normally
-                            segment_audio, _ = self.tts_node.generate_speech(
-                                text=text_clean,
-                                language=current_language,  # Narrator uses user's default language
-                                device=current_device,
-                                model_version=current_model_version,
-                                exaggeration=seg_exag,
-                                temperature=seg_temp,
-                                cfg_weight=seg_cfg,
-                                repetition_penalty=current_repetition_penalty,
-                                min_p=current_min_p,
-                                top_p=current_top_p,
-                                seed=seg_seed_val,
-                                reference_audio=None,
-                                audio_prompt_path=voice_refs.get('narrator', ""),
-                                enable_audio_cache=True,
-                                character="narrator",
-                                batch_size=self.config.get("batch_size", 0)
-                            )
-
-                            # Extract waveform from ComfyUI format
-                            if isinstance(segment_audio, dict) and "waveform" in segment_audio:
-                                segment_audio = segment_audio["waveform"]
-
-                            # Ensure proper tensor format
-                            if segment_audio.dim() == 3:
-                                segment_audio = segment_audio.squeeze(0).squeeze(0)
-                            elif segment_audio.dim() == 2:
-                                segment_audio = segment_audio.squeeze(0)
-
-                            # Handle edit tags for multilingual path
-                            if edit_tags:
-                                # Normalize audio before storing for editing
-                                segment_audio_normalized = segment_audio.squeeze().cpu()
-                                if segment_audio_normalized.dim() == 2:
-                                    segment_audio_normalized = segment_audio_normalized.squeeze(0)
-
-                                all_segments_for_editing.append({
-                                    'waveform': segment_audio_normalized,
-                                    'sample_rate': self.sample_rate,
-                                    'character': 'narrator',
-                                    'text': text_clean,
-                                    'original_text': text_clean,
-                                    'edit_tags': edit_tags,
-                                    'subtitle_index': i,
-                                    'segment_index': 0  # Multilingual path has only one segment
-                                })
-                                segment_audio = None  # Placeholder - will be replaced after batch processing
-
                     else:  # subtitle_type == 'simple'
                         # Single character mode - model already loaded for this language group (lines 1229-1260)
                         single_char, single_text, single_lang, single_params = character_segments_with_lang[0]
@@ -762,8 +619,9 @@ class ChatterboxOfficial23LangSRTProcessor:
                         # Extract edit tags from text
                         text_clean, edit_tags, has_conflicts = extract_edit_tags_for_chatterbox(single_text)
 
-                        # Narrator should use user's default language, not alias language
-                        actual_lang = current_language if single_char == "narrator" else single_lang
+                        # Use the parsed segment language. Plain narrator text already resolves to the
+                        # node default language; explicit tags like [pt:] preserve the switch here.
+                        actual_lang = single_lang
 
                         # Check for pause tags - if present AND edit tags present, split by pause FIRST
                         from utils.text.pause_processor import PauseTagProcessor

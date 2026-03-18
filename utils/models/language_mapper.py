@@ -16,6 +16,7 @@ LANGUAGE_ALIASES = {
     'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'uk': 'en', 'america': 'en', 'britain': 'en',
     
     # Brazilian Portuguese (separate from European Portuguese)
+    'pt': 'pt',  # Generic Portuguese (used by ChatterBox Official 23-Lang)
     'pt-br': 'pt-br', 'ptbr': 'pt-br', 'brazilian': 'pt-br', 'brasilian': 'pt-br',
     'brazil': 'pt-br', 'brasil': 'pt-br', 'br': 'pt-br', 'português brasileiro': 'pt-br',
 

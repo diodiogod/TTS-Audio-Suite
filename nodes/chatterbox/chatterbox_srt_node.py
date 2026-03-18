@@ -718,16 +718,23 @@ The audio will match these exact timings.""",
                 # This ensures Alice stays as Alice for voice lookup, not converted to narrator
                 character_segments_with_lang = [(seg.original_character or seg.character, seg.text, seg.language, seg.parameters if seg.parameters else {}) for seg in segment_objects]
 
-                # Check if we have character switching, language switching, or parameter changes
+                # Check if we have character switching, language switching, parameter changes,
+                # or multiple parsed text segments (for multiline subtitles).
                 characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                 languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
                 # Check if parameters differ across segments (indicates parameter switching)
                 has_parameter_changes = len(set(str(params) for _, _, _, params in character_segments_with_lang)) > 1
+                has_multiple_segments_in_subtitle = len(character_segments_with_lang) > 1
 
                 has_multiple_characters_in_subtitle = len(characters) > 1 or (len(characters) == 1 and characters[0] != "narrator")
                 has_multiple_languages_in_subtitle = len(languages) > 1
 
-                if has_multiple_characters_in_subtitle or has_multiple_languages_in_subtitle or has_parameter_changes:
+                if (
+                    has_multiple_characters_in_subtitle
+                    or has_multiple_languages_in_subtitle
+                    or has_parameter_changes
+                    or has_multiple_segments_in_subtitle
+                ):
                     # Complex subtitle - group by dominant language or mark as multilingual
                     primary_lang = languages[0] if languages else 'en'
                     if has_parameter_changes:
@@ -735,6 +742,8 @@ The audio will match these exact timings.""",
                         subtitle_type = 'parameter_switching'
                     elif has_multiple_languages_in_subtitle:
                         subtitle_type = 'multilingual'
+                    elif has_multiple_segments_in_subtitle:
+                        subtitle_type = 'multisegment'
                     else:
                         subtitle_type = 'multicharacter'
                     all_subtitle_segments.append((i, subtitle, subtitle_type, primary_lang, character_segments_with_lang))
@@ -763,7 +772,7 @@ The audio will match these exact timings.""",
                 srt_segments_data = []
                 for lang_code, lang_subtitles in subtitle_language_groups.items():
                     for i, subtitle, subtitle_type, character_segments_with_lang in lang_subtitles:
-                        if subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
+                        if subtitle_type in ('multilingual', 'multicharacter', 'multisegment'):
                             # Handle complex subtitles with character switching
                             # Need to get original character info before alias resolution
                             detailed_segments = character_parser.parse_text_segments(subtitle.text)
@@ -1330,7 +1339,7 @@ The audio will match these exact timings.""",
 
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)
 
-                elif subtitle_type == 'multilingual' or subtitle_type == 'multicharacter':
+                elif subtitle_type in ('multilingual', 'multicharacter', 'multisegment'):
                     # Use modular multilingual engine for character/language switching
                     characters = list(set(char for char, _, _, _ in character_segments_with_lang))
                     languages = list(set(lang for _, _, lang, _ in character_segments_with_lang))
