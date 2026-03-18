@@ -44,15 +44,87 @@ export function attachAllEventHandlers(
 
     // Editor input - add to history with smart debouncing
     let historyDebounceTimer = null;
-    let lastHistoryText = "";
+    let lastHistoryText = state.history[state.historyIndex]?.text ?? getPlainText();
 
     const flushHistory = () => {
         const plainText = getPlainText();
-        if (plainText !== lastHistoryText) {
+        const currentHistoryText = state.history[state.historyIndex]?.text;
+
+        if (plainText !== lastHistoryText && plainText !== currentHistoryText) {
             const caretPos = getCaretPos();
             state.addToHistory(plainText, caretPos);
-            lastHistoryText = plainText;
         }
+
+        lastHistoryText = plainText;
+    };
+
+    const flushPendingHistory = () => {
+        if (historyDebounceTimer !== null) {
+            clearTimeout(historyDebounceTimer);
+            historyDebounceTimer = null;
+        }
+
+        flushHistory();
+        historyStatus.textContent = state.getHistoryStatus();
+    };
+
+    const getClampedCaretPos = (targetText, preferredPos, fallbackPos = 0) => {
+        const basePos = preferredPos ?? fallbackPos ?? 0;
+        return Math.max(0, Math.min(basePos, targetText.length));
+    };
+
+    const mapCaretPosBetweenTexts = (fromText, toText, caretPos, fallbackPos = 0) => {
+        const safeCaretPos = getClampedCaretPos(fromText, caretPos, fallbackPos);
+
+        if (fromText === toText) {
+            return getClampedCaretPos(toText, safeCaretPos, fallbackPos);
+        }
+
+        const maxPrefix = Math.min(fromText.length, toText.length);
+        let prefixLength = 0;
+        while (prefixLength < maxPrefix && fromText[prefixLength] === toText[prefixLength]) {
+            prefixLength++;
+        }
+
+        let fromSuffixIndex = fromText.length;
+        let toSuffixIndex = toText.length;
+        while (
+            fromSuffixIndex > prefixLength &&
+            toSuffixIndex > prefixLength &&
+            fromText[fromSuffixIndex - 1] === toText[toSuffixIndex - 1]
+        ) {
+            fromSuffixIndex--;
+            toSuffixIndex--;
+        }
+
+        const suffixLength = fromText.length - fromSuffixIndex;
+        const fromChangeEnd = fromText.length - suffixLength;
+        const toChangeEnd = toText.length - suffixLength;
+
+        if (safeCaretPos <= prefixLength) {
+            return safeCaretPos;
+        }
+
+        if (safeCaretPos >= fromChangeEnd) {
+            const suffixOffset = safeCaretPos - fromChangeEnd;
+            return getClampedCaretPos(toText, toChangeEnd + suffixOffset, fallbackPos);
+        }
+
+        const changedRegionOffset = safeCaretPos - prefixLength;
+        return getClampedCaretPos(toText, prefixLength + changedRegionOffset, fallbackPos);
+    };
+
+    const restoreEditorHistoryEntry = (entry, preferredCaretPos = null) => {
+        const restoredCaretPos = getClampedCaretPos(entry.text, preferredCaretPos, entry.caretPos);
+        setEditorText(entry.text);
+        lastHistoryText = entry.text;
+        setTimeout(() => {
+            editor.focus();
+            setCaretPos(restoredCaretPos);
+        }, 0);
+        state.saveToLocalStorage(storageKey);
+        widget.callback?.(widget.value);
+        historyStatus.textContent = state.getHistoryStatus();
     };
 
     editor.addEventListener("input", (e) => {
@@ -98,23 +170,36 @@ export function attachAllEventHandlers(
         }, 0);
     }); // Bubble phase - paste completes first, then we stop it from bubbling to ComfyUI
 
+    const rememberCaretPosition = () => {
+        const caretPos = getCaretPos();
+        state.lastCursorPosition = caretPos;
+
+        if (state.historyIndex >= 0 && state.history[state.historyIndex]) {
+            state.history[state.historyIndex].caretPos = caretPos;
+        }
+    };
+
+    editor.addEventListener("mouseup", rememberCaretPosition);
+    editor.addEventListener("keyup", rememberCaretPosition);
+    editor.addEventListener("focus", rememberCaretPosition);
+
     // Undo/Redo buttons
     undoBtn.addEventListener("click", () => {
-        const entry = state.undo();
-        setEditorText(entry.text);
-        setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
-        state.saveToLocalStorage(storageKey);
-        widget.callback?.(widget.value);
-        historyStatus.textContent = state.getHistoryStatus();
+        flushPendingHistory();
+        const currentText = getPlainText();
+        const currentCaretPos = getCaretPos();
+        const targetEntry = state.undo();
+        const mappedCaretPos = mapCaretPosBetweenTexts(currentText, targetEntry.text, currentCaretPos, targetEntry.caretPos);
+        restoreEditorHistoryEntry(targetEntry, mappedCaretPos);
     });
 
     redoBtn.addEventListener("click", () => {
-        const entry = state.redo();
-        setEditorText(entry.text);
-        setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
-        state.saveToLocalStorage(storageKey);
-        widget.callback?.(widget.value);
-        historyStatus.textContent = state.getHistoryStatus();
+        flushPendingHistory();
+        const currentText = getPlainText();
+        const currentCaretPos = getCaretPos();
+        const targetEntry = state.redo();
+        const mappedCaretPos = mapCaretPosBetweenTexts(currentText, targetEntry.text, currentCaretPos, targetEntry.caretPos);
+        restoreEditorHistoryEntry(targetEntry, mappedCaretPos);
     });
 
     // Keyboard shortcuts for undo/redo and tag/preset insertion
@@ -154,12 +239,12 @@ export function attachAllEventHandlers(
         // Alt+Z: Undo, Alt+Shift+Z: Redo (also allow with shift)
         if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "z" || e.key === "Z")) {
             e.preventDefault();
-            let entry = e.shiftKey ? state.redo() : state.undo();
-            setEditorText(entry.text);
-            setTimeout(() => setCaretPos(entry.caretPos || 0), 0);
-            state.saveToLocalStorage(storageKey);
-            widget.callback?.(widget.value);
-            historyStatus.textContent = state.getHistoryStatus();
+            flushPendingHistory();
+            const currentText = getPlainText();
+            const currentCaretPos = getCaretPos();
+            const targetEntry = e.shiftKey ? state.redo() : state.undo();
+            const mappedCaretPos = mapCaretPosBetweenTexts(currentText, targetEntry.text, currentCaretPos, targetEntry.caretPos);
+            restoreEditorHistoryEntry(targetEntry, mappedCaretPos);
         }
     });
 
@@ -682,7 +767,10 @@ export function attachAllEventHandlers(
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
 
-            setTimeout(() => setCaretPos(result.newCaretPos), 0);
+            setTimeout(() => {
+                editor.focus();
+                setCaretPos(result.newCaretPos);
+            }, 0);
             showNotification(`✓ Updated inline tag`, 1500);
         } else {
             // Create new tag
@@ -698,7 +786,10 @@ export function attachAllEventHandlers(
             widget.callback?.(widget.value);
             historyStatus.textContent = state.getHistoryStatus();
 
-            setTimeout(() => setCaretPos(caretPos + newTag.length), 0);
+            setTimeout(() => {
+                editor.focus();
+                setCaretPos(caretPos + newTag.length);
+            }, 0);
             showNotification(`✓ Inserted: ${newTag}`, 1500);
         }
     };

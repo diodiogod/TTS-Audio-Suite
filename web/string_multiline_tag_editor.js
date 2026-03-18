@@ -174,50 +174,68 @@ function addStringMultilineTagEditorWidget(node) {
     // Initialize with text
     editor.textContent = state.text;
 
+    const INTERNAL_MARKER_PATTERN = /(?:\x00)?(?:NUM_START|NUM_END|SRT_START|SRT_END|TAG_START|TAG_END|EDIT_START|EDIT_END|COMMA_START|COMMA_END|PERIOD_START|PERIOD_END|PUNCT_START|PUNCT_END|SPACE_START|SPACE_END)(?:\x00)?/g;
+
+    const stripInternalMarkers = (text) => text.replace(INTERNAL_MARKER_PATTERN, "");
+
+    const selectionIsInsideEditor = (selection) => {
+        if (!selection || selection.rangeCount === 0) {
+            return false;
+        }
+
+        const range = selection.getRangeAt(0);
+        return editor.contains(range.commonAncestorContainer);
+    };
+
+    const getNodePlainText = (node) => {
+        if (!node) {
+            return "";
+        }
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || "";
+        }
+
+        if (node.nodeName === "BR") {
+            return "\n";
+        }
+
+        let text = "";
+        node.childNodes.forEach(child => {
+            text += getNodePlainText(child);
+        });
+        return text;
+    };
+
     // Helper to get plain text (strip HTML for state management)
     const getPlainText = () => {
-        const clone = editor.cloneNode(true);
-        // Remove all spans, keeping just the text
-        const spans = clone.querySelectorAll('span');
-        spans.forEach(span => {
-            while (span.firstChild) {
-                span.parentNode.insertBefore(span.firstChild, span);
-            }
-            span.parentNode.removeChild(span);
-        });
-        return clone.textContent;
+        return stripInternalMarkers(getNodePlainText(editor));
     };
 
     // Save caret position before update
     const getCaretPos = () => {
         const selection = window.getSelection();
-        if (selection.rangeCount === 0) return 0;
+        if (!selectionIsInsideEditor(selection)) {
+            return state.lastCursorPosition || 0;
+        }
 
         const range = selection.getRangeAt(0);
         const preRange = range.cloneRange();
         preRange.selectNodeContents(editor);
         preRange.setEnd(range.endContainer, range.endOffset);
 
-        // Count plain text characters (without HTML spans)
-        const tempDiv = document.createElement('div');
-        tempDiv.appendChild(preRange.cloneContents());
-
-        // Remove all span elements for counting
-        const spans = tempDiv.querySelectorAll('span');
-        spans.forEach(span => {
-            while (span.firstChild) {
-                span.parentNode.insertBefore(span.firstChild, span);
-            }
-            span.parentNode.removeChild(span);
-        });
-
-        return tempDiv.textContent.length;
+        const fragment = preRange.cloneContents();
+        const caretPos = stripInternalMarkers(getNodePlainText(fragment)).length;
+        state.lastCursorPosition = caretPos;
+        return caretPos;
     };
 
     // Restore caret position after update
     const setCaretPos = (pos) => {
         const selection = window.getSelection();
         const range = document.createRange();
+        const plainTextLength = getPlainText().length;
+        const targetPos = Math.max(0, Math.min(pos, plainTextLength));
         let charCount = 0;
         let nodeStack = [editor];
         let node;
@@ -226,8 +244,17 @@ function addStringMultilineTagEditorWidget(node) {
         while (!foundStart && (node = nodeStack.pop())) {
             if (node.nodeType === Node.TEXT_NODE) {
                 const nextCharCount = charCount + node.length;
-                if (pos <= nextCharCount) {
-                    range.setStart(node, pos - charCount);
+                if (targetPos <= nextCharCount) {
+                    range.setStart(node, targetPos - charCount);
+                    foundStart = true;
+                }
+                charCount = nextCharCount;
+            } else if (node.nodeName === "BR") {
+                const nextCharCount = charCount + 1;
+                if (targetPos <= nextCharCount) {
+                    const parentNode = node.parentNode;
+                    const nodeIndex = Array.prototype.indexOf.call(parentNode.childNodes, node);
+                    range.setStart(parentNode, nodeIndex + 1);
                     foundStart = true;
                 }
                 charCount = nextCharCount;
@@ -239,10 +266,17 @@ function addStringMultilineTagEditorWidget(node) {
             }
         }
 
+        if (!foundStart) {
+            range.selectNodeContents(editor);
+            range.collapse(false);
+            foundStart = true;
+        }
+
         if (foundStart) {
             range.collapse(true);
             selection.removeAllRanges();
             selection.addRange(range);
+            state.lastCursorPosition = targetPos;
         }
     };
 
@@ -272,7 +306,7 @@ function addStringMultilineTagEditorWidget(node) {
 
         // Highlight inline edit tags (angle brackets) - magenta
         html = html.replace(
-            /(<[^>]+>)/g,
+            /(<[^<>\r\n]+>)/g,
             '\x00EDIT_START\x00$1\x00EDIT_END\x00'
         );
 
