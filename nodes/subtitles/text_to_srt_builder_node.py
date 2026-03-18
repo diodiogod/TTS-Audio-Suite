@@ -25,6 +25,7 @@ BaseChatterBoxNode = base_module.BaseChatterBoxNode
 
 from utils.asr.pipeline import format_asr_output, append_info_items
 from utils.asr.synthetic_timing import estimate_asr_result_from_text
+from utils.asr.tagged_text import apply_pause_offsets_to_segments, parse_tagged_text
 from utils.asr.types import ASRResult, ASRSegment, ASRWord
 
 
@@ -63,7 +64,7 @@ def _coerce_asr_result(timing_data: Any, text: str) -> ASRResult:
         return ASRResult(
             text=text,
             language=timing_data.language,
-            segments=timing_data.segments,
+            segments=[_coerce_segment(segment) for segment in (timing_data.segments or [])],
             raw=timing_data.raw,
         )
 
@@ -162,6 +163,8 @@ class TextToSRTBuilderNode(BaseChatterBoxNode):
                 raise ValueError(
                     "timing_data contains no timed segments. Run ✏️ ASR Transcribe with timestamps=word first."
                 )
+            tagged_profile = parse_tagged_text(text_value)
+            apply_pause_offsets_to_segments(result.segments, tagged_profile)
 
         formatted = format_asr_output(
             result,

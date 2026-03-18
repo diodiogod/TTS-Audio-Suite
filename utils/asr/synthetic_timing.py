@@ -6,6 +6,7 @@ import re
 from typing import List
 
 from utils.asr.srt_builder import segments_from_words
+from utils.asr.tagged_text import apply_pause_offsets_to_words, parse_tagged_text
 from utils.asr.types import ASRResult, ASRSegment, ASRWord
 
 
@@ -169,6 +170,9 @@ def estimate_asr_result_from_text(
     if not cleaned:
         raise ValueError("Cannot estimate subtitle timings from empty text.")
 
+    tagged_profile = parse_tagged_text(cleaned)
+    spoken_text = tagged_profile.spoken_text if tagged_profile.has_control_tags else cleaned
+
     target_chars = max(
         12,
         min(
@@ -177,7 +181,7 @@ def estimate_asr_result_from_text(
         ),
     )
 
-    paragraphs = [paragraph for paragraph in re.split(r"\n\s*\n+", cleaned) if paragraph.strip()]
+    paragraphs = [paragraph for paragraph in re.split(r"\n\s*\n+", spoken_text) if paragraph.strip()]
     all_words: List[ASRWord] = []
     timeline = 0.0
 
@@ -203,6 +207,8 @@ def estimate_asr_result_from_text(
 
     if not all_words:
         raise ValueError("Could not estimate subtitle timings from the provided text.")
+
+    apply_pause_offsets_to_words(all_words, tagged_profile)
 
     segments: List[ASRSegment] = segments_from_words(
         all_words,
