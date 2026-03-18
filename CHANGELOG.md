@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.1] - 2026-03-17
+
+### Changed
+
+- Improve Multiline TTS Tag Editor undo, caret, and inline tag stability
+- Improve Multiline TTS Tag Editor keyboard undo and redo behavior so shortcuts now match the toolbar buttons
+
+### Fixed
+
+- Fix Multiline TTS Tag Editor caret jumps after undo, redo, toolbar inserts, and click repositioning in multiline subtitle content
+- Fix Multiline TTS Tag Editor inline tag deletion and broken tag editing from showing leaked EDIT_START or EDIT_END text in the editor
+- Fix Multiline TTS Tag Editor Ctrl or Cmd undo shortcuts so they edit text locally instead of undoing moved ComfyUI nodes
 ## [4.24.0] - 2026-03-17
 
 ### Added
