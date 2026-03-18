@@ -4,6 +4,7 @@
  */
 
 import { app } from "/scripts/app.js";
+import { ChangeTracker } from "/scripts/changeTracker.js";
 import { EditorState } from "./editor-state.js";
 import { TagUtilities } from "./tag-utilities.js";
 import { SyntaxHighlighter } from "./syntax-highlighter.js";
@@ -18,6 +19,40 @@ import { buildInlineEditSection } from "./widget-inline-edit-section.js";
 
 // Counter to ensure unique storage keys even when node.id is -1
 let widgetCounter = 0;
+
+const CHANGE_TRACKER_PATCH_FLAG = "__ttsTagEditorUndoRedoPatched";
+
+const isTagEditorFocused = () => {
+    const activeElement = document.activeElement;
+    return activeElement instanceof HTMLElement &&
+        activeElement.classList.contains("comfy-multiline-input") &&
+        !!activeElement.closest(".string-multiline-tag-editor-main");
+};
+
+const patchChangeTrackerUndoRedo = () => {
+    const prototype = ChangeTracker?.prototype;
+    if (!prototype || prototype[CHANGE_TRACKER_PATCH_FLAG] || typeof prototype.undoRedo !== "function") {
+        return;
+    }
+
+    const originalUndoRedo = prototype.undoRedo;
+    prototype.undoRedo = async function (event) {
+        if (isTagEditorFocused()) {
+            return false;
+        }
+
+        return await originalUndoRedo.call(this, event);
+    };
+
+    Object.defineProperty(prototype, CHANGE_TRACKER_PATCH_FLAG, {
+        value: true,
+        configurable: false,
+        enumerable: false,
+        writable: false
+    });
+};
+
+patchChangeTrackerUndoRedo();
 
 // Create the widget
 function addStringMultilineTagEditorWidget(node) {

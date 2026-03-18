@@ -183,23 +183,22 @@ export function attachAllEventHandlers(
     editor.addEventListener("keyup", rememberCaretPosition);
     editor.addEventListener("focus", rememberCaretPosition);
 
-    // Undo/Redo buttons
-    undoBtn.addEventListener("click", () => {
+    const applyHistoryStep = (direction) => {
         flushPendingHistory();
         const currentText = getPlainText();
         const currentCaretPos = getCaretPos();
-        const targetEntry = state.undo();
+        const targetEntry = direction === "redo" ? state.redo() : state.undo();
         const mappedCaretPos = mapCaretPosBetweenTexts(currentText, targetEntry.text, currentCaretPos, targetEntry.caretPos);
         restoreEditorHistoryEntry(targetEntry, mappedCaretPos);
+    };
+
+    // Undo/Redo buttons
+    undoBtn.addEventListener("click", () => {
+        applyHistoryStep("undo");
     });
 
     redoBtn.addEventListener("click", () => {
-        flushPendingHistory();
-        const currentText = getPlainText();
-        const currentCaretPos = getCaretPos();
-        const targetEntry = state.redo();
-        const mappedCaretPos = mapCaretPosBetweenTexts(currentText, targetEntry.text, currentCaretPos, targetEntry.caretPos);
-        restoreEditorHistoryEntry(targetEntry, mappedCaretPos);
+        applyHistoryStep("redo");
     });
 
     // Keyboard shortcuts for undo/redo and tag/preset insertion
@@ -236,15 +235,26 @@ export function attachAllEventHandlers(
                 presetButtons.preset_3?.load?.click?.();
             }
         }
+        const isPrimaryModifier = (e.ctrlKey || e.metaKey) && !e.altKey;
+        if (isPrimaryModifier) {
+            const isUndo = (e.key === "z" || e.key === "Z") && !e.shiftKey;
+            const isRedo = (e.key === "y" || e.key === "Y") || ((e.key === "z" || e.key === "Z") && e.shiftKey);
+
+            if (isUndo || isRedo) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                applyHistoryStep(isRedo ? "redo" : "undo");
+                return;
+            }
+        }
+
         // Alt+Z: Undo, Alt+Shift+Z: Redo (also allow with shift)
         if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "z" || e.key === "Z")) {
             e.preventDefault();
-            flushPendingHistory();
-            const currentText = getPlainText();
-            const currentCaretPos = getCaretPos();
-            const targetEntry = e.shiftKey ? state.redo() : state.undo();
-            const mappedCaretPos = mapCaretPosBetweenTexts(currentText, targetEntry.text, currentCaretPos, targetEntry.caretPos);
-            restoreEditorHistoryEntry(targetEntry, mappedCaretPos);
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            applyHistoryStep(e.shiftKey ? "redo" : "undo");
         }
     });
 
