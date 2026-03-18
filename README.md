@@ -821,7 +821,7 @@ This matters because the suite can now:
 * **Reuse timings with edited text** - Clean or post-process transcript text first, then rebuild SRT using the original timings
 * **Use dedicated subtitle controls** - `🔧 SRT Advanced Options` now belongs to the builder stage instead of being mixed into ASR
 * **Support Granite better** - Granite can stay raw for alignment, then go through punctuation/truecase before subtitle construction
-* **Scale to future subtitle tools** - This structure leaves room for later timing transforms, subtitle editing, and text-only SRT generation
+* **Support text-only SRT generation** - Leave `timing_data` disconnected and the builder estimates subtitle timings from plain text using the SRT options
 
 **Current intended use:**
 

@@ -86,7 +86,7 @@
 - `nodes/shared/character_voices_node.py` - Character voice management (NARRATOR_VOICE output)
 - `nodes/text/phoneme_text_normalizer_node.py` - Multilingual text preprocessing
 - `nodes/text/asr_punctuation_truecase_node.py` - Standalone punctuation / truecase cleanup for raw ASR text
-- `nodes/subtitles/text_to_srt_builder_node.py` - Build SRT from transcript text plus timing data
+- `nodes/subtitles/text_to_srt_builder_node.py` - Build SRT from transcript text plus timing data, or estimate timings from plain text
 - `nodes/subtitles/srt_advanced_options_node.py` - Subtitle readability / segmentation policy options
 - `nodes/text/tts_tag_editor_node.py` - 🏷️ Multiline TTS Tag Editor: rich text editor with character/language/parameter dropdowns, preset system, syntax highlighting, undo/redo — pairs with `web/string_multiline_tag_editor.js`
 - `nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py` - 🎨 Audio Editor: post-process ANY engine's audio with Step Audio EditX (14 emotions, 32 styles, paralinguistic effects like `<Laughter>`, speed control) — universal, not just for Step Audio EditX engine

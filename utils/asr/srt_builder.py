@@ -700,6 +700,10 @@ def _segments_from_words(words: List[ASRWord],
     return merged
 
 
+def segments_from_words(words: List[ASRWord], **kwargs) -> List[ASRSegment]:
+    return _segments_from_words(words, **kwargs)
+
+
 def _apply_punctuation(words: List[ASRWord], full_text: str):
     if not words or not full_text:
         return words, 0, 0, []
