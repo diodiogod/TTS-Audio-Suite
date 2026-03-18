@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.24.1
+# TTS Audio Suite v4.24.2
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -18,6 +18,8 @@
 </div>
 
 A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conversion, and Audio Editing capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, Step Audio EditX, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
+
+Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebuild subtitles from edited transcripts, or estimate fresh SRT timing from plain text using the same advanced readability rules, while preserving project control tags for downstream TTS.
 
 <!-- ENGINE_COMPARISON_START -->
 
@@ -186,7 +188,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
 
 - 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
-- 📺 **Text to SRT Builder** - New modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`, so transcription, text cleanup, and subtitle construction are now separate stages instead of one monolithic ASR node
+- 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -821,7 +823,9 @@ This matters because the suite can now:
 * **Reuse timings with edited text** - Clean or post-process transcript text first, then rebuild SRT using the original timings
 * **Use dedicated subtitle controls** - `🔧 SRT Advanced Options` now belongs to the builder stage instead of being mixed into ASR
 * **Support Granite better** - Granite can stay raw for alignment, then go through punctuation/truecase before subtitle construction
-* **Support text-only SRT generation** - Leave `timing_data` disconnected and the builder estimates subtitle timings from plain text using the SRT options
+* **Support text-only SRT generation** - Leave `timing_data` disconnected and the builder estimates subtitle timings from plain text using the same SRT options that later shape the final cues
+* **Preserve project control tags** - Character, language, parameter, pause, and inline edit tags are preserved instead of being broken by subtitle heuristics
+* **Keep tag-heavy SRT usable for TTS** - Control tags do not count toward readability metrics, pause tags still affect timing, and active speaker state is re-emitted on wrapped subtitle lines/cues so TTS does not fall back to narrator
 
 **Current intended use:**
 

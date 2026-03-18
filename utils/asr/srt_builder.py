@@ -13,6 +13,7 @@ from utils.asr.tagged_text import TaggedTextProfile, parse_tagged_text
 SENTENCE_END_CHARS = {".", "!", "?", "…"}
 SOFT_BREAK_CHARS = {",", ";", ":"}
 DEFAULT_CONNECTOR_ALLOWLIST = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it"
+ALIGNMENT_TOKEN_RE = re.compile(r"[^\W_]+(?:[-'][^\W_]+)*|[^\w\s]", flags=re.UNICODE)
 
 
 def _format_timestamp(seconds: float) -> str:
@@ -780,10 +781,12 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
         return words, 0, 0, []
 
     # Tokenize text into words and punctuation
-    # Split into word/punct tokens (keeps apostrophes for contractions)
-    tokens = re.findall(r"[^\W_]+(?:'[^\W_]+)?|[^\w\s]", full_text, flags=re.UNICODE)
+    # Keep apostrophes and hyphens inside compounds so they do not get
+    # mis-attached as free punctuation during alignment.
+    tokens = ALIGNMENT_TOKEN_RE.findall(full_text)
     word_idx = 0
     last_word_idx = -1
+    skipped_word_indices = set()
 
     def normalize(w: str) -> str:
         return re.sub(r"[^\w]+", "", w, flags=re.UNICODE).lower()
@@ -796,6 +799,11 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
                 return [parts[0], parts[1]]
         return [token]
 
+    def expand_compound(token: str) -> List[str]:
+        if "-" in token:
+            return [part for part in token.split("-") if part]
+        return [token]
+
     total_word_tokens = 0
     matched_word_tokens = 0
 
@@ -806,6 +814,8 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
         nonlocal word_idx, last_word_idx, matched_word_tokens
         lookahead = 4
         for j in range(word_idx, min(len(words), word_idx + lookahead)):
+            if j in skipped_word_indices:
+                continue
             if normalize(words[j].text) == norm_tok:
                 words[j].text = replacement
                 last_word_idx = j
@@ -814,22 +824,69 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
                 return True
         return False
 
+    def try_match_compound(token: str, parts: List[str], credit: int) -> bool:
+        nonlocal word_idx, last_word_idx, matched_word_tokens
+        if len(parts) <= 1:
+            return False
+
+        lookahead = max(4, len(parts) + 2)
+        for j in range(word_idx, min(len(words), word_idx + lookahead)):
+            if j in skipped_word_indices:
+                continue
+
+            matched_indices: List[int] = []
+            cursor = j
+            for part in parts:
+                while cursor < len(words) and cursor in skipped_word_indices:
+                    cursor += 1
+                if cursor >= len(words) or normalize(words[cursor].text) != normalize(part):
+                    matched_indices = []
+                    break
+                matched_indices.append(cursor)
+                cursor += 1
+
+            if not matched_indices:
+                continue
+
+            first_idx = matched_indices[0]
+            last_idx = matched_indices[-1]
+            words[first_idx].text = token
+            words[first_idx].end = words[last_idx].end
+            for idx in matched_indices[1:]:
+                skipped_word_indices.add(idx)
+            last_word_idx = first_idx
+            matched_word_tokens += credit
+            word_idx = last_idx + 1
+            return True
+        return False
+
     for tok in tokens:
         # Word token
         if re.match(r"[^\W_]", tok, flags=re.UNICODE):
-            sub_tokens = expand_contraction(tok)
-            total_word_tokens += len(sub_tokens)
+            compound_parts = expand_compound(tok)
+            apostrophe_parts = expand_contraction(tok)
+            total_word_tokens += len(compound_parts if "-" in tok else apostrophe_parts)
             if word_idx >= len(words):
                 if len(missed_tokens) < 3:
                     missed_tokens.append(tok)
                 break
+
+            if "-" in tok:
+                if try_match(normalize(tok), tok, len(compound_parts)):
+                    continue
+                if try_match_compound(tok, compound_parts, len(compound_parts)):
+                    continue
+                if len(missed_tokens) < 3:
+                    missed_tokens.append(tok)
+                continue
+
             # Prefer matching the full contraction first (e.g. "I'll" -> "i'll").
-            if "'" in tok and try_match(normalize(tok), tok, len(sub_tokens)):
+            if "'" in tok and try_match(normalize(tok), tok, len(apostrophe_parts)):
                 continue
 
             # Fall back to aligning each contraction part separately when the
             # timing stream splits them into multiple words.
-            for sub in sub_tokens:
+            for sub in apostrophe_parts:
                 if not try_match(normalize(sub), sub, 1) and len(missed_tokens) < 3:
                     missed_tokens.append(sub)
         else:
@@ -867,6 +924,9 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
                     "end": None,
                     "fallback": True,
                 })
+
+    if skipped_word_indices:
+        words = [word for idx, word in enumerate(words) if idx not in skipped_word_indices]
 
     return words, matched_word_tokens, total_word_tokens, missed_tokens, punct_events
 
