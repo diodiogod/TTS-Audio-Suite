@@ -5,6 +5,7 @@ Supports both synchronous and asynchronous background checking.
 """
 
 import importlib
+import importlib.util
 import sys
 import threading
 import time
@@ -46,29 +47,37 @@ class DependencyChecker:
     }
     
     @staticmethod
-    def check_dependency(module_name: str) -> bool:
-        """Check if a dependency is available."""
+    def check_dependency(module_name: str, package_name: Optional[str] = None) -> bool:
+        """Check if a dependency is installed without eagerly importing it."""
+        try:
+            if importlib.util.find_spec(module_name) is not None:
+                return True
+        except (ImportError, ModuleNotFoundError, ValueError, AttributeError):
+            pass
+
+        distribution_names = []
+        if package_name:
+            distribution_names.append(package_name)
+        if module_name not in distribution_names:
+            distribution_names.append(module_name)
+
+        try:
+            from importlib.metadata import PackageNotFoundError, version
+
+            for dist_name in distribution_names:
+                try:
+                    version(dist_name)
+                    return True
+                except PackageNotFoundError:
+                    continue
+        except Exception:
+            pass
+
+        # Last-resort import check for odd packages that hide their module spec.
         try:
             importlib.import_module(module_name)
             return True
-        except ImportError:
-            # Check if package is installed even if import fails (handles --no-deps packages)
-            if module_name == 'torchcrepe':
-                # torchcrepe is installed with --no-deps and may have import issues
-                # But the package files are present, so we check via importlib.metadata
-                try:
-                    from importlib.metadata import version
-                    version('torchcrepe')  # If this succeeds, the package is installed
-                    return True
-                except:
-                    return False
-            return False
-        except (AttributeError, ValueError) as e:
-            # Handle problematic packages like faiss with circular import issues
-            if 'faiss' in module_name and ('circular import' in str(e) or 'Float32' in str(e)):
-                # faiss has circular import issues in some environments (Docker, etc.)
-                # If we get AttributeError about Float32, faiss is installed but has import issues
-                return True
+        except Exception:
             return False
     
     @staticmethod
@@ -76,7 +85,7 @@ class DependencyChecker:
         """Check core dependencies that are always needed."""
         missing = []
         for module_name, package_name in DependencyChecker.CORE_DEPENDENCIES:
-            if not DependencyChecker.check_dependency(module_name):
+            if not DependencyChecker.check_dependency(module_name, package_name):
                 missing.append((module_name, package_name))
         return missing
     
@@ -88,7 +97,7 @@ class DependencyChecker:
         
         missing = []
         for module_name, package_name in DependencyChecker.ENGINE_DEPENDENCIES[engine]:
-            if not DependencyChecker.check_dependency(module_name):
+            if not DependencyChecker.check_dependency(module_name, package_name):
                 missing.append((module_name, package_name))
         return missing
     

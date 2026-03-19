@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.4] - 2026-03-19
+
+### Added
+
+- Reduce misleading startup warnings during background checks
+
+### Fixed
+
+- Fix background dependency checker false warnings
+- Fix TTS Audio Suite reporting some installed packages as missing
+- Improve dependency detection for heavy libraries like diffusers
 ## [4.24.3] - 2026-03-18
 
 ### Changed
