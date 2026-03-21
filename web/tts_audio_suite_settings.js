@@ -4,8 +4,15 @@ const SETTING_CATEGORY = "TTS Audio Suite";
 const SETTING_SECTION_STEP_EDITX = "Step Audio EditX (Inline Tags)";
 const SETTING_SECTION_RESTORE_VC = "Voice Restoration (<restore> Tags)";
 
+function logTiming(label, start, extra = "") {
+    const elapsed = (performance.now() - start).toFixed(1);
+    const suffix = extra ? ` | ${extra}` : "";
+    console.log(`⏱️ [startup-debug] ${label}: ${elapsed}ms${suffix}`);
+}
+
 // Shared function to send settings to backend
 async function sendSettingsToBackend() {
+    const start = performance.now();
     try {
         const precision = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Precision", "auto");
         const device = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Device", "auto");
@@ -33,8 +40,10 @@ async function sendSettingsToBackend() {
             const result = await response.json();
             console.log("TTS Audio Suite: Backend confirmed settings:", result);
         }
+        logTiming("web/settings sendSettingsToBackend", start, `status=${response.status}`);
     } catch (error) {
         console.error("TTS Audio Suite: Error sending settings to backend:", error);
+        logTiming("web/settings sendSettingsToBackend", start, `error=${error?.name || "unknown"}`);
     }
 }
 
@@ -97,6 +106,7 @@ app.registerExtension({
         }
     ],
     async setup() {
+        const setupStart = performance.now();
         // Send settings on initial load (with delay to ensure settings are loaded)
         setTimeout(() => {
             sendSettingsToBackend();
@@ -115,6 +125,7 @@ app.registerExtension({
         };
 
         console.log("TTS Audio Suite: Settings registered and synced with backend");
+        logTiming("web/settings setup", setupStart);
     }
 })
 

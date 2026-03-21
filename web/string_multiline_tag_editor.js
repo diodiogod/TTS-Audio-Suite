@@ -22,6 +22,12 @@ let widgetCounter = 0;
 
 const CHANGE_TRACKER_PATCH_FLAG = "__ttsTagEditorUndoRedoPatched";
 
+function logTiming(label, start, extra = "") {
+    const elapsed = (performance.now() - start).toFixed(1);
+    const suffix = extra ? ` | ${extra}` : "";
+    console.log(`⏱️ [startup-debug] ${label}: ${elapsed}ms${suffix}`);
+}
+
 const isTagEditorFocused = () => {
     const activeElement = document.activeElement;
     return activeElement instanceof HTMLElement &&
@@ -56,6 +62,7 @@ patchChangeTrackerUndoRedo();
 
 // Create the widget
 function addStringMultilineTagEditorWidget(node) {
+    const start = performance.now();
     // Use widget counter as fallback when node.id is -1 (not yet assigned)
     const uniqueId = node.id !== -1 ? node.id : `widget_${widgetCounter++}`;
     const storageKey = `string_multiline_tag_editor_${uniqueId}`;
@@ -724,6 +731,8 @@ function addStringMultilineTagEditorWidget(node) {
     // Initialize history display
     historyStatus.textContent = state.getHistoryStatus();
 
+    logTiming("web/tag-editor addWidget", start, `node=${node.id}`);
+
     return widget;
 }
 
@@ -735,6 +744,7 @@ app.registerExtension({
             // Override onNodeCreated to create our custom widget
             const originalOnNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
+                const start = performance.now();
                 // Call original to set up the node
                 if (originalOnNodeCreated) {
                     originalOnNodeCreated.call(this);
@@ -745,6 +755,7 @@ app.registerExtension({
 
                 // Create our custom widget (becomes the FIRST widget now)
                 addStringMultilineTagEditorWidget(this);
+                logTiming("web/tag-editor onNodeCreated", start, `node=${this.id}`);
             };
         }
     }

@@ -15,6 +15,7 @@ Unified architecture supporting ChatterBox, F5-TTS, and future engines like RVC:
 import importlib.util
 import os
 import sys
+import time
 
 # Note: PyTorch inductor patches removed - not needed for PyTorch 2.10+ with triton-windows 3.6+
 # Qwen3-TTS torch.compile optimizations require:
@@ -311,6 +312,13 @@ __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 # Define web directory for JavaScript files (settings UI)
 WEB_DIRECTORY = "./web"
 
+
+def _debug_timing_log(label: str, start_time: float, extra: str = ""):
+    """Print consistent startup timing diagnostics for debug branches."""
+    elapsed = time.perf_counter() - start_time
+    suffix = f" | {extra}" if extra else ""
+    print(f"⏱️ [startup-debug] {label}: {elapsed:.3f}s{suffix}")
+
 # Register API endpoint for widget data
 def setup_api_routes():
     """Setup API routes for widget communication"""
@@ -322,6 +330,7 @@ def setup_api_routes():
         @PromptServer.instance.routes.get("/api/tts-audio-suite/available-characters")
         async def get_available_characters_endpoint(request):
             """API endpoint to get available TTS character voices including aliases"""
+            start_time = time.perf_counter()
             try:
                 # Load voice discovery directly by file path to avoid package import issues
                 voice_discovery_path = os.path.join(os.path.dirname(__file__), "utils", "voice", "discovery.py")
@@ -334,14 +343,17 @@ def setup_api_routes():
                 aliases = list(voice_discovery_module.voice_discovery._character_aliases.keys()) if hasattr(voice_discovery_module.voice_discovery, '_character_aliases') else []
                 # Combine and deduplicate
                 all_chars = sorted(set(characters + aliases))
+                _debug_timing_log("/available-characters", start_time, f"count={len(all_chars)}")
                 return web.json_response({"characters": all_chars})
             except Exception as e:
                 print(f"⚠️ Error retrieving available characters: {e}")
+                _debug_timing_log("/available-characters", start_time, f"error={type(e).__name__}")
                 return web.json_response({"characters": [], "error": str(e)})
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/available-languages")
         async def get_available_languages_endpoint(request):
             """API endpoint to get available language codes from the canonical language mapper"""
+            start_time = time.perf_counter()
             try:
                 # Load language_mapper directly by file path to avoid package import issues
                 language_mapper_path = os.path.join(os.path.dirname(__file__), "utils", "models", "language_mapper.py")
@@ -351,15 +363,18 @@ def setup_api_routes():
 
                 # Get all unique canonical language codes (the values in LANGUAGE_ALIASES)
                 languages = sorted(set(language_mapper_module.LANGUAGE_ALIASES.values()))
+                _debug_timing_log("/available-languages", start_time, f"count={len(languages)}")
                 return web.json_response({"languages": languages})
             except Exception as e:
                 print(f"⚠️ Error retrieving available languages: {e}")
+                _debug_timing_log("/available-languages", start_time, f"error={type(e).__name__}")
                 # Fallback list
                 return web.json_response({"languages": ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"], "error": str(e)})
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-input-devices")
         async def get_voice_input_devices_endpoint(request):
             """Return input devices without risking a main-process PortAudio hang."""
+            start_time = time.perf_counter()
             try:
                 import json
                 import subprocess
@@ -407,19 +422,23 @@ print(json.dumps({"devices": devices}))
                 if not isinstance(devices, list):
                     devices = []
 
+                _debug_timing_log("/voice-input-devices", start_time, f"count={len(devices)}")
                 return web.json_response({"devices": devices})
             except subprocess.TimeoutExpired:
+                _debug_timing_log("/voice-input-devices", start_time, "timeout")
                 return web.json_response(
                     {"devices": [], "error": "Timed out while probing audio input devices. Leaving the dropdown on system default avoids startup hangs."},
                     status=504,
                 )
             except Exception as e:
                 print(f"⚠️ Error retrieving voice input devices: {e}")
+                _debug_timing_log("/voice-input-devices", start_time, f"error={type(e).__name__}")
                 return web.json_response({"devices": [], "error": str(e)}, status=500)
 
         @PromptServer.instance.routes.post("/api/tts-audio-suite/settings")
         async def set_inline_tag_settings_endpoint(request):
             """API endpoint to receive settings from frontend for inline edit tags and restore VC"""
+            start_time = time.perf_counter()
             print("🔧 Settings endpoint called")  # Immediate print to verify endpoint is reached
             try:
                 data = await request.json()
@@ -434,21 +453,27 @@ print(json.dumps({"devices": devices}))
                 # that will be used during workflow execution
                 # CRITICAL: Must use the same module instance, not create a new one via importlib!
                 try:
+                    import_start = time.perf_counter()
                     from utils.audio import edit_post_processor as edit_post_processor_module
+                    _debug_timing_log("/settings import edit_post_processor", import_start, "import_mode=normal")
                 except ImportError:
                     # Fallback: Load directly by file path if normal import fails
                     edit_post_processor_path = os.path.join(os.path.dirname(__file__), "utils", "audio", "edit_post_processor.py")
                     spec = importlib.util.spec_from_file_location("utils.audio.edit_post_processor", edit_post_processor_path)
                     edit_post_processor_module = importlib.util.module_from_spec(spec)
                     sys.modules["utils.audio.edit_post_processor"] = edit_post_processor_module  # Register in sys.modules!
+                    import_start = time.perf_counter()
                     spec.loader.exec_module(edit_post_processor_module)
+                    _debug_timing_log("/settings import edit_post_processor", import_start, "import_mode=fallback")
 
                 # Store in global settings that edit_post_processor can access
                 edit_post_processor_module.set_inline_tag_settings(precision=precision, device=device, vc_engine=vc_engine, cosyvoice_variant=cosyvoice_variant)
 
+                _debug_timing_log("/settings", start_time, "status=success")
                 return web.json_response({"status": "success", "precision": precision, "device": device, "vc_engine": vc_engine, "cosyvoice_variant": cosyvoice_variant})
             except Exception as e:
                 print(f"⚠️ Error setting inline tag settings: {e}")
+                _debug_timing_log("/settings", start_time, f"error={type(e).__name__}")
                 return web.json_response({"status": "error", "error": str(e)})
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-preview")

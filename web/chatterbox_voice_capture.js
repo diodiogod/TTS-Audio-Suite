@@ -6,6 +6,12 @@ const VOICE_CAPTURE_CLASSES = new Set(["ChatterBoxVoiceCaptureDiogod", "ChatterB
 const DEFAULT_DEVICE_LABEL = "System Default Input Device";
 const LOADING_DEVICE_LABEL = "Loading input devices...";
 
+function logTiming(label, start, extra = "") {
+    const elapsed = (performance.now() - start).toFixed(1);
+    const suffix = extra ? ` | ${extra}` : "";
+    console.log(`⏱️ [startup-debug] ${label}: ${elapsed}ms${suffix}`);
+}
+
 function isVoiceCaptureNode(nodeOrData) {
     const comfyClass = nodeOrData?.comfyClass || nodeOrData?.name;
     return VOICE_CAPTURE_CLASSES.has(comfyClass);
@@ -111,6 +117,7 @@ function applyDeviceList(node, devices, errorMessage = "") {
 }
 
 async function refreshInputDevices(node, { auto = false } = {}) {
+    const start = performance.now();
     const comboWidget = node.__ttsVoiceDeviceComboWidget;
     const refreshWidget = node.__ttsVoiceDeviceRefreshWidget;
     if (!comboWidget || !refreshWidget) {
@@ -136,11 +143,13 @@ async function refreshInputDevices(node, { auto = false } = {}) {
             throw new Error(result.error || `HTTP ${response.status}`);
         }
         applyDeviceList(node, devices);
+        logTiming("web/voice-capture refreshInputDevices", start, `status=${response.status} count=${devices.length}`);
     } catch (error) {
         comboWidget.options.values = [previousLabel || DEFAULT_DEVICE_LABEL];
         comboWidget.value = previousLabel || DEFAULT_DEVICE_LABEL;
         refreshWidget.name = "Refresh Input Devices (retry)";
         console.warn("ChatterBox Voice Capture: unable to load input devices.", error);
+        logTiming("web/voice-capture refreshInputDevices", start, `error=${error?.name || "unknown"}`);
         app.graph.setDirtyCanvas(true);
     } finally {
         node.__ttsVoiceDeviceRefreshInFlight = false;
@@ -156,6 +165,7 @@ app.registerExtension({
 
         const onNodeCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function() {
+            const start = performance.now();
             const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
 
             this.setSize([420, 340]);
@@ -167,6 +177,8 @@ app.registerExtension({
                 ensureDeviceWidgets(this);
                 app.graph.setDirtyCanvas(true);
             }, 100);
+
+            logTiming("web/voice-capture onNodeCreated", start, `node=${this.id}`);
 
             return result;
         };

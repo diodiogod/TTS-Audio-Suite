@@ -4,6 +4,12 @@ import { AudioAnalyzerInterface } from "./audio_analyzer_core.js";
 // Simple execution tracking
 let audioAnalyzerNodes = new Map();
 
+function logTiming(label, start, extra = "") {
+    const elapsed = (performance.now() - start).toFixed(1);
+    const suffix = extra ? ` | ${extra}` : "";
+    console.log(`⏱️ [startup-debug] ${label}: ${elapsed}ms${suffix}`);
+}
+
 // Hook into ComfyUI's global execution completion
 if (window.app && window.app.ui && window.app.ui.queue) {
     const originalProcessComplete = window.app.ui.queue.processComplete || function() {};
@@ -70,6 +76,7 @@ app.registerExtension({
     name: "chatterbox.audio_analyzer",
 
     async setup() {
+        const start = performance.now();
         // Patch graphToPrompt to inject node ID right before prompt is sent to backend
         const onGraphToPrompt = app.graphToPrompt;
         app.graphToPrompt = async function() {
@@ -88,13 +95,14 @@ app.registerExtension({
             }
             return prompt;
         };
-        // console.log("🌊 Audio Wave Analyzer: Patched graphToPrompt to inject node IDs.");  // Debug: patch confirmation
+        logTiming("web/audio-analyzer setup", start);
     },
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name === "ChatterBoxAudioAnalyzer") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function() {
+                const start = performance.now();
                 const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
                 this.setSize([800, 600]);
@@ -109,6 +117,8 @@ app.registerExtension({
                 } catch (error) {
                     console.error('❌ Audio Wave Analyzer: Failed to create interface:', error);
                 }
+
+                logTiming("web/audio-analyzer onNodeCreated", start, `node=${this.id}`);
                 
                 return result;
             };
