@@ -177,10 +177,11 @@ class VibeVoiceEngineNode(BaseTTSNode):
 
                                 if has_config and has_model:
                                     model_name = item
-                                    if model_name in VIBEVOICE_MODELS:
-                                        local_model = f"local:{model_name}"
-                                        if local_model not in found_local_models:
-                                            found_local_models.add(local_model)
+
+                                    # Always accept local models
+                                    local_model = f"local:{model_name}"
+                                    if local_model not in found_local_models:
+                                        found_local_models.add(local_model)
                     except Exception:
                         pass
         except Exception:

@@ -252,11 +252,22 @@ class VibeVoiceDownloader:
         clean_model_name = model_name.replace("local:", "") if model_name.startswith("local:") else model_name
         standalone_path = self._find_standalone_model(clean_model_name)
         if standalone_path:
-            print(f"📁 Using standalone VibeVoice model: {standalone_path}")
+            print(f"Using standalone VibeVoice model: {standalone_path}")
             return standalone_path
 
         if clean_model_name not in VIBEVOICE_MODELS:
-            print(f"❌ Unknown VibeVoice model: {clean_model_name}")
+            print(f"Treating '{clean_model_name}' as custom local model")
+
+            # Search for matching folder in TTS paths
+            for base_tts_path in self.tts_model_paths:
+                for vibevoice_folder_name in ["vibevoice", "VibeVoice"]:
+                    model_dir = os.path.join(base_tts_path, vibevoice_folder_name, clean_model_name)
+
+                    if os.path.exists(model_dir) and self._has_vibevoice_files(model_dir):
+                        print(f"Using custom local VibeVoice model: {model_dir}")
+                        return model_dir
+
+            print(f"Custom model folder not found: {clean_model_name}")
             return None
 
         model_info = VIBEVOICE_MODELS[clean_model_name]
@@ -378,9 +389,10 @@ class VibeVoiceDownloader:
         if not os.path.exists(tokenizer_path):
             model_info = VIBEVOICE_MODELS.get(model_name)
             if not model_info:
-                return
+                tokenizer_repo = "Qwen/Qwen2.5-1.5B"
+            else:
+                tokenizer_repo = model_info.get("tokenizer_repo")
             
-            tokenizer_repo = model_info.get("tokenizer_repo")
             if not tokenizer_repo:
                 return
             

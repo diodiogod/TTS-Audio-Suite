@@ -362,8 +362,8 @@ class VibeVoiceEngine:
             processor_path = os.path.dirname(model_path) if is_standalone else model_path
             self.processor = self._load_processor_with_unified_tokenizer(processor_path, model_name)
             
-            # Move to device if needed (only if not using quantization which handles device_map)
-            if not quant_config and device != "cpu":
+            # 🔧 Only move if NOT already placed by device_map
+            if not quant_config and device != "cpu" and not hasattr(self.model, 'hf_device_map'):
                 self.model = self.model.to(device)
                 
             # Ensure all model parameters are on the same device (fix for speech_bias_factor issue)
