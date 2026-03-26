@@ -170,6 +170,13 @@ class ComfyUIModelWrapper:
 
         return handler.partially_unload(self, device, memory_to_free)
     
+    def model_mmap_residency(self, free = False) -> tuple[int, int]:
+        """
+        Some interface implementations have been added, but the specific implementation details are not yet available.
+        The main purpose is to ensure that the module can function properly first.
+        """
+        return (0, 0)
+    
     def model_unload(self, memory_to_free: Optional[int] = None, unpatch_weights: bool = True) -> bool:
         """
         Fully unload the model from GPU memory.
