@@ -71,7 +71,6 @@ class ComfyUIModelWrapper:
         self.model = model
         self.model_info = model_info
         self.load_device = model_info.load_device
-        self.current_device = model_info.device
         self._memory_size = model_info.memory_size
         self._cache_key = cache_key  # Store cache key for ensure_device calls
         
@@ -79,6 +78,9 @@ class ComfyUIModelWrapper:
         # Convert device to torch.device object for ComfyUI compatibility
         from utils.device import resolve_torch_device
         device_name = resolve_torch_device(model_info.device)
+
+        # Track the resolved device string/object so ComfyUI comparisons are consistent.
+        self.current_device = device_name
 
         # ComfyUI expects torch.device objects, not strings
         if isinstance(device_name, str):
@@ -92,7 +94,6 @@ class ComfyUIModelWrapper:
         self.offload_device = 'cpu'  # TTS models offload to CPU
         
         # ComfyUI compatibility attributes for diffusion models (TTS models don't need them)
-        self.model_patches_models = []  # Empty list for TTS models
         self.parent = None              # TTS models don't have parent models
         
         # Additional ComfyUI LoadedModel compatibility attributes  
@@ -103,7 +104,6 @@ class ComfyUIModelWrapper:
         self._patcher_finalizer = None
         
         # ComfyUI model patcher attributes (required for load_models_gpu)
-        self.model_patches_to = {}  # Patch mapping for diffusion models (empty for TTS)
         self.model_options = {}     # Model loading options
         self.model_keys = set()     # Model state dict keys
         
@@ -129,9 +129,67 @@ class ComfyUIModelWrapper:
         """Return the total model size in bytes (alias for model_size for ComfyUI compatibility)"""
         return self._memory_size
 
+    def get_ram_usage(self) -> int:
+        """Mirror ComfyUI's ModelPatcher RAM accounting contract."""
+        return self.model_size()
+
     def model_offloaded_memory(self) -> int:
         """Return the amount of memory that would be freed if offloaded"""
         return self.model_size() - self.loaded_size()
+
+    def model_mmap_residency(self, free: bool = False) -> tuple[int, int]:
+        """
+        Report mmap-backed residency for ComfyUI 0.18+ memory management.
+
+        Most TTS/VC models are not mmap-backed, so the safe fallback is:
+        - resident mmap memory: 0
+        - total model memory: full model size
+        """
+        wrapped = self._model_ref() if self._model_ref else self.model
+        if wrapped is not None:
+            method = getattr(wrapped, "model_mmap_residency", None)
+            if callable(method):
+                return method(free=free)
+        return 0, self.model_size()
+
+    def pinned_memory_size(self) -> int:
+        """Return pinned host memory used by the model, if the wrapped model tracks it."""
+        wrapped = self._model_ref() if self._model_ref else self.model
+        if wrapped is not None:
+            method = getattr(wrapped, "pinned_memory_size", None)
+            if callable(method):
+                return method()
+        return 0
+
+    def lowvram_patch_counter(self) -> int:
+        """TTS wrappers do not use ComfyUI low-VRAM patching, so default to zero."""
+        wrapped = self._model_ref() if self._model_ref else self.model
+        if wrapped is not None:
+            method = getattr(wrapped, "lowvram_patch_counter", None)
+            if callable(method):
+                return method()
+        return 0
+
+    def model_dtype(self):
+        """Expose the active dtype through the same interface as ComfyUI's model patchers."""
+        return self.dtype
+
+    def model_patches_models(self):
+        """TTS wrappers do not chain patcher models, so return an empty iterable."""
+        return ()
+
+    def model_patches_to(self, target) -> None:
+        """
+        ComfyUI calls this on model patchers before loading.
+        TTS wrappers have no patch tensors, but tracking the requested device/dtype
+        keeps the wrapper contract aligned with newer ComfyUI versions.
+        """
+        if isinstance(target, torch.dtype):
+            self.dtype = target
+        elif isinstance(target, torch.device):
+            self.device = target
+            self.load_device = target
+            self.current_device = target
 
     def partially_unload_ram(self, ram_to_unload: int) -> int:
         """
@@ -143,9 +201,20 @@ class ComfyUIModelWrapper:
         except Exception:
             return 0
 
-    def current_loaded_device(self) -> str:
-        """Return the current device the model is loaded on"""
-        return self.current_device
+    def current_loaded_device(self) -> torch.device:
+        """Return the current device using ComfyUI's expected torch.device type."""
+        device = self.current_device
+        if isinstance(device, torch.device):
+            return device
+
+        from utils.device import resolve_torch_device
+
+        resolved = resolve_torch_device(device)
+        if resolved == "offload":
+            resolved = "cpu"
+        if resolved == "cuda":
+            return torch.device("cuda", torch.cuda.current_device() if torch.cuda.is_available() else 0)
+        return torch.device(resolved)
     
     def partially_unload(self, device: str, memory_to_free: int) -> int:
         """
@@ -388,7 +457,7 @@ class ComfyUIModelWrapper:
         print(f"🔄 TTS Model partially_load requested: {self.model_info.engine} {self.model_info.model_type} to {device}")
         
         # For TTS models, we either fully load or fully unload
-        if device != 'cpu' and not self._is_loaded_on_gpu:
+        if str(device) != 'cpu' and not self._is_loaded_on_gpu:
             self.model_load(device)
             return self._memory_size
         
