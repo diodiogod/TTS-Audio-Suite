@@ -380,6 +380,7 @@ export function buildInlineEditSection(state, storageKey) {
     restoreLabel.style.marginBottom = "5px";
     restoreLabel.style.fontSize = "11px";
     restoreLabel.style.color = "#ffcc33";
+    restoreLabel.title = "Restore runs after all other inline edits. It uses voice conversion to pull the final result back toward either the original clean voice or a chosen earlier edit step.";
 
     const restorePassLabel = document.createElement("div");
     const restorePassValue = state.lastRestorePasses || "1";
@@ -387,6 +388,7 @@ export function buildInlineEditSection(state, storageKey) {
     restorePassLabel.style.fontSize = "9px";
     restorePassLabel.style.marginBottom = "2px";
     restorePassLabel.style.color = "#999";
+    restorePassLabel.title = "How many restoration passes to run. More passes push harder toward the chosen reference voice.";
 
     const restorePassSlider = document.createElement("input");
     restorePassSlider.type = "range";
@@ -395,6 +397,7 @@ export function buildInlineEditSection(state, storageKey) {
     restorePassSlider.value = restorePassValue;
     restorePassSlider.style.width = "100%";
     restorePassSlider.style.marginBottom = "4px";
+    restorePassSlider.title = "Choose 1 to 5 restoration passes. Example: <restore:2> runs 2 passes using the original clean voice as reference.";
 
     restorePassSlider.addEventListener("input", () => {
         restorePassLabel.textContent = `VC Passes: ${restorePassSlider.value}`;
@@ -407,6 +410,7 @@ export function buildInlineEditSection(state, storageKey) {
     restoreRefLabel.style.fontSize = "9px";
     restoreRefLabel.style.marginBottom = "2px";
     restoreRefLabel.style.color = "#999";
+    restoreRefLabel.title = "Optional edit-step reference. This is not a restore pass number. Example: in <restore:1@2>, the @2 points to edit step 2 from earlier inline edits.";
 
     const restoreRefInput = document.createElement("input");
     restoreRefInput.type = "number";
@@ -421,6 +425,7 @@ export function buildInlineEditSection(state, storageKey) {
     restoreRefInput.style.color = "#eee";
     restoreRefInput.style.border = "1px solid #444";
     restoreRefInput.style.marginBottom = "4px";
+    restoreRefInput.title = "Leave empty to use the original clean pre-edit audio. Enter an edit step number to use that earlier edited snapshot as the reference voice.";
 
     restoreRefInput.addEventListener("change", () => {
         state.lastRestoreRefIter = restoreRefInput.value;
@@ -429,7 +434,7 @@ export function buildInlineEditSection(state, storageKey) {
 
     const addRestoreBtn = document.createElement("button");
     addRestoreBtn.textContent = "Add Restore";
-    addRestoreBtn.title = "Insert voice restoration tag at cursor";
+    addRestoreBtn.title = "Insert a restore tag at the cursor. Examples: <restore>, <restore:2>, <restore:1@2>.";
     addRestoreBtn.style.width = "100%";
     addRestoreBtn.style.padding = "4px";
     addRestoreBtn.style.cursor = "pointer";

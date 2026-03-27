@@ -129,22 +129,69 @@ function addStringMultilineTagEditorWidget(node) {
         }, duration);
     };
 
+    const updateRangeFill = (input) => {
+        if (!(input instanceof HTMLInputElement) || input.type !== "range") {
+            return;
+        }
+
+        const min = Number(input.min || 0);
+        const max = Number(input.max || 100);
+        const value = Number(input.value || min);
+        const ratio = max > min ? ((value - min) / (max - min)) * 100 : 0;
+        input.style.background = `linear-gradient(90deg, rgba(0, 225, 174, 0.88) 0%, rgba(0, 225, 174, 0.88) ${ratio}%, rgba(53, 53, 52, 0.9) ${ratio}%, rgba(53, 53, 52, 0.9) 100%)`;
+    };
+
     const topBar = document.createElement("div");
     topBar.className = "string-multiline-tag-editor-topbar";
 
     const topBarNav = document.createElement("div");
     topBarNav.className = "string-multiline-tag-editor-nav";
-    topBarNav.innerHTML = `
-        <span class="is-active">Editor</span>
-        <span>History</span>
-        <span>Presets</span>
-        <span>Library</span>
-    `;
+
+    const topNavItems = new Map();
+    [
+        ["editor", "Editor"],
+        ["history", "History"],
+        ["presets", "Presets"],
+        ["library", "Library"]
+    ].forEach(([viewKey, label]) => {
+        const item = document.createElement("span");
+        item.textContent = label;
+        item.dataset.view = viewKey;
+        if (viewKey === "editor") {
+            item.classList.add("is-active");
+        }
+        topBarNav.appendChild(item);
+        topNavItems.set(viewKey, item);
+    });
 
     topBar.appendChild(topBarNav);
 
+    const contentStage = document.createElement("div");
+    contentStage.className = "string-multiline-tag-editor-stage";
+
     const shellBody = document.createElement("div");
     shellBody.className = "string-multiline-tag-editor-shell";
+
+    const auxiliaryView = document.createElement("div");
+    auxiliaryView.className = "string-multiline-tag-editor-aux-view";
+
+    const auxiliaryHeader = document.createElement("div");
+    auxiliaryHeader.className = "string-multiline-tag-editor-aux-header";
+
+    const auxiliaryTitle = document.createElement("h3");
+    auxiliaryTitle.className = "string-multiline-tag-editor-aux-title";
+
+    const auxiliaryDescription = document.createElement("p");
+    auxiliaryDescription.className = "string-multiline-tag-editor-aux-description";
+
+    auxiliaryHeader.appendChild(auxiliaryTitle);
+    auxiliaryHeader.appendChild(auxiliaryDescription);
+
+    const auxiliaryContent = document.createElement("div");
+    auxiliaryContent.className = "string-multiline-tag-editor-aux-content";
+
+    auxiliaryView.appendChild(auxiliaryHeader);
+    auxiliaryView.appendChild(auxiliaryContent);
 
     // Create sidebar with resizable width and UI scaling
     const sidebar = document.createElement("div");
@@ -512,13 +559,13 @@ function addStringMultilineTagEditorWidget(node) {
 
         // Replace placeholders with spans
         html = html
-            .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff5555; font-weight: bold;">$1</span>')
-            .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #ffaa00; font-weight: bold;">$1</span>')
-            .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #00ffff; font-weight: bold;">$1</span>')
-            .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #ff66ff; font-weight: bold;">$1</span>')
-            .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #66ff66; font-weight: bold;">$1</span>')
-            .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #ffcc33; font-weight: bold;">$1</span>')
-            .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #ff9999;">$1</span>')
+            .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff6f61; font-weight: bold;">$1</span>')
+            .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #f0b35a; font-weight: bold;">$1</span>')
+            .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #38d7ae; font-weight: 700;">$1</span>')
+            .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #a6d700; font-weight: 700;">$1</span>')
+            .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #7bd6a7; font-weight: bold;">$1</span>')
+            .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #e3be69; font-weight: bold;">$1</span>')
+            .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #f0a1a1;">$1</span>')
             .replace(/\x00SPACE_START\x00(.*?)\x00SPACE_END\x00/g, '<span style="background: #2a2a2a; color: #eee;">$1</span>');
 
         // Update only if changed to avoid flicker
@@ -644,8 +691,10 @@ function addStringMultilineTagEditorWidget(node) {
     textareaWrapper.appendChild(editorSurface);
     shellBody.appendChild(sidebar);
     shellBody.appendChild(textareaWrapper);
+    contentStage.appendChild(shellBody);
+    contentStage.appendChild(auxiliaryView);
     editorContainer.appendChild(topBar);
-    editorContainer.appendChild(shellBody);
+    editorContainer.appendChild(contentStage);
 
     // Initial highlight
     updateHighlights();
@@ -878,6 +927,409 @@ function addStringMultilineTagEditorWidget(node) {
         restorePassSlider, restoreRefInput, addRestoreBtn
     );
 
+    const summarizeText = (text, maxLength = 180) => {
+        const compact = (text || "").replace(/\s+/g, " ").trim();
+        if (!compact) {
+            return "Empty";
+        }
+        return compact.length > maxLength ? `${compact.slice(0, maxLength)}...` : compact;
+    };
+
+    const renderAuxiliaryEmptyState = (title, description) => {
+        const emptyState = document.createElement("div");
+        emptyState.className = "string-multiline-tag-editor-empty-state";
+
+        const emptyTitle = document.createElement("strong");
+        emptyTitle.textContent = title;
+
+        const emptyDescription = document.createElement("span");
+        emptyDescription.textContent = description;
+
+        emptyState.appendChild(emptyTitle);
+        emptyState.appendChild(emptyDescription);
+        auxiliaryContent.replaceChildren(emptyState);
+    };
+
+    const restoreHistoryEntryAt = (entryIndex) => {
+        const entry = state.history[entryIndex];
+        if (!entry) {
+            return;
+        }
+
+        state.historyIndex = entryIndex;
+        setEditorText(entry.text);
+        state.saveToLocalStorage(storageKey);
+        widget.callback?.(widget.value);
+        historyStatus.textContent = state.getHistoryStatus();
+
+        setTimeout(() => {
+            setCaretPos(entry.caretPos || 0);
+            editor.focus();
+        }, 0);
+    };
+
+    const insertSnippetAtCursor = (snippet, label = "Snippet") => {
+        const text = getPlainText();
+        const currentCaretPos = getCaretPos();
+        const before = text.substring(0, currentCaretPos);
+        const after = text.substring(currentCaretPos);
+        const prefix = before && !/[\s\n]$/.test(before) ? "\n" : "";
+        const suffix = after && !/^[\s\n]/.test(after) ? "\n" : "";
+        const newText = `${before}${prefix}${snippet}${suffix}${after}`;
+        const newCaretPos = before.length + prefix.length + snippet.length;
+
+        setEditorText(newText);
+        setTimeout(() => {
+            setCaretPos(newCaretPos);
+            state.addToHistory(newText, newCaretPos);
+            state.saveToLocalStorage(storageKey);
+            editor.focus();
+        }, 0);
+        widget.callback?.(widget.value);
+        historyStatus.textContent = state.getHistoryStatus();
+        showNotification(`✅ ${label} inserted`);
+    };
+
+    const renderHistoryView = () => {
+        auxiliaryTitle.textContent = "History";
+        auxiliaryDescription.textContent = "Restore previous snapshots from the editor timeline.";
+
+        const historyLayout = document.createElement("div");
+        historyLayout.className = "string-multiline-tag-editor-aux-list";
+
+        const historyToolbar = document.createElement("div");
+        historyToolbar.className = "string-multiline-tag-editor-aux-toolbar";
+
+        const clearHistoryBtn = document.createElement("button");
+        clearHistoryBtn.className = "string-multiline-tag-editor-aux-btn";
+        clearHistoryBtn.textContent = "Clear History";
+        clearHistoryBtn.addEventListener("click", () => {
+            const currentText = getPlainText();
+            const currentCaretPos = getCaretPos();
+            state.history = [{ text: currentText, caretPos: currentCaretPos }];
+            state.historyIndex = 0;
+            state.saveToLocalStorage(storageKey);
+            historyStatus.textContent = state.getHistoryStatus();
+            showNotification("✅ History cleared");
+            renderHistoryView();
+        });
+
+        historyToolbar.appendChild(clearHistoryBtn);
+        historyLayout.appendChild(historyToolbar);
+
+        if (!state.history.length) {
+            const emptyState = document.createElement("div");
+            emptyState.className = "string-multiline-tag-editor-empty-state";
+            const emptyTitle = document.createElement("strong");
+            emptyTitle.textContent = "No history yet";
+            const emptyDescription = document.createElement("span");
+            emptyDescription.textContent = "Start editing text and snapshots will show up here.";
+            emptyState.appendChild(emptyTitle);
+            emptyState.appendChild(emptyDescription);
+            historyLayout.appendChild(emptyState);
+            auxiliaryContent.replaceChildren(historyLayout);
+            return;
+        }
+
+        const historyList = document.createElement("div");
+        historyList.className = "string-multiline-tag-editor-aux-list";
+
+        for (let index = state.history.length - 1; index >= 0; index--) {
+            const entry = state.history[index];
+            const card = document.createElement("div");
+            card.className = "string-multiline-tag-editor-aux-card";
+            if (index === state.historyIndex) {
+                card.classList.add("is-active");
+            }
+
+            const cardTop = document.createElement("div");
+            cardTop.className = "string-multiline-tag-editor-aux-card-top";
+
+            const title = document.createElement("div");
+            title.className = "string-multiline-tag-editor-aux-card-title";
+            title.textContent = `Step ${index + 1}`;
+
+            const meta = document.createElement("div");
+            meta.className = "string-multiline-tag-editor-aux-card-meta";
+            meta.textContent = index === state.historyIndex ? "Current" : `${entry.text.length} chars`;
+
+            cardTop.appendChild(title);
+            cardTop.appendChild(meta);
+
+            const preview = document.createElement("pre");
+            preview.className = "string-multiline-tag-editor-aux-preview";
+            preview.textContent = summarizeText(entry.text, 240);
+
+            const actions = document.createElement("div");
+            actions.className = "string-multiline-tag-editor-aux-actions";
+
+            const restoreBtn = document.createElement("button");
+            restoreBtn.className = "string-multiline-tag-editor-aux-btn is-primary";
+            restoreBtn.textContent = "Restore";
+            restoreBtn.addEventListener("click", () => {
+                restoreHistoryEntryAt(index);
+                activateTopView("editor");
+            });
+
+            actions.appendChild(restoreBtn);
+            card.appendChild(cardTop);
+            card.appendChild(preview);
+            card.appendChild(actions);
+            historyList.appendChild(card);
+        }
+
+        historyLayout.appendChild(historyList);
+        auxiliaryContent.replaceChildren(historyLayout);
+    };
+
+    const renderPresetsView = () => {
+        auxiliaryTitle.textContent = "Presets";
+        auxiliaryDescription.textContent = "Manage reusable quick slots for tags, characters, and selected snippets.";
+
+        const presetGrid = document.createElement("div");
+        presetGrid.className = "string-multiline-tag-editor-aux-grid";
+
+        for (let i = 1; i <= 3; i++) {
+            const presetKey = `preset_${i}`;
+            const preset = state.presets[presetKey];
+            const card = document.createElement("div");
+            card.className = "string-multiline-tag-editor-aux-card";
+
+            const cardTop = document.createElement("div");
+            cardTop.className = "string-multiline-tag-editor-aux-card-top";
+
+            const title = document.createElement("div");
+            title.className = "string-multiline-tag-editor-aux-card-title";
+            title.textContent = `P${i}`;
+
+            const meta = document.createElement("div");
+            meta.className = "string-multiline-tag-editor-aux-card-meta";
+            meta.textContent = preset ? (preset.isComplexTag ? "Saved snippet" : "Character preset") : "Empty slot";
+
+            cardTop.appendChild(title);
+            cardTop.appendChild(meta);
+
+            const preview = document.createElement("pre");
+            preview.className = "string-multiline-tag-editor-aux-preview";
+            preview.textContent = preset ? preset.tag : "No preset saved in this slot yet.";
+
+            const note = document.createElement("div");
+            note.className = "string-multiline-tag-editor-aux-note";
+            if (preset?.parameters?.language) {
+                note.textContent = `Language: ${preset.parameters.language.toUpperCase()}`;
+            } else if (preset) {
+                note.textContent = "Uses the saved tag/snippet exactly as stored.";
+            } else {
+                note.textContent = "Save current character settings or selected editor text.";
+            }
+
+            const actions = document.createElement("div");
+            actions.className = "string-multiline-tag-editor-aux-actions";
+
+            const saveBtn = document.createElement("button");
+            saveBtn.className = "string-multiline-tag-editor-aux-btn";
+            saveBtn.textContent = "Save";
+            saveBtn.addEventListener("click", () => {
+                presetButtons[presetKey]?.save?.click?.();
+                setTimeout(() => renderPresetsView(), 0);
+            });
+
+            const loadBtn = document.createElement("button");
+            loadBtn.className = "string-multiline-tag-editor-aux-btn is-primary";
+            loadBtn.textContent = "Insert";
+            loadBtn.addEventListener("click", () => {
+                presetButtons[presetKey]?.load?.click?.();
+                setTimeout(() => activateTopView("editor"), 0);
+            });
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "string-multiline-tag-editor-aux-btn";
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener("click", () => {
+                presetButtons[presetKey]?.del?.click?.();
+                setTimeout(() => renderPresetsView(), 0);
+            });
+
+            actions.appendChild(saveBtn);
+            actions.appendChild(loadBtn);
+            actions.appendChild(deleteBtn);
+
+            card.appendChild(cardTop);
+            card.appendChild(preview);
+            card.appendChild(note);
+            card.appendChild(actions);
+            presetGrid.appendChild(card);
+        }
+
+        auxiliaryContent.replaceChildren(presetGrid);
+    };
+
+    const renderLibraryView = () => {
+        auxiliaryTitle.textContent = "Library";
+        auxiliaryDescription.textContent = "Consult the tag guides directly in the editor: character switching, per-segment parameters, and inline edit workflow notes.";
+
+        const libraryGroups = [
+            {
+                title: "Character Switching Guide",
+                intro: "Use square-bracket tags to swap speakers and optionally language without leaving the same text field.",
+                rows: [
+                    { syntax: "[Alice]", purpose: "Switch active speaker", notes: "Uses the named character for following text until another speaker tag appears." },
+                    { syntax: "[en:Alice]", purpose: "Set language and speaker together", notes: "Useful when one segment needs a different language voice or pronunciation context." },
+                    { syntax: "[pause:1s]", purpose: "Insert silence", notes: "Duration can use values like 500ms, 1s, 2.5s." }
+                ],
+                bullets: [
+                    "Character names are case-insensitive and unknown characters fall back safely.",
+                    "Language-aware switching uses `[lang:character]` and works alongside narrator text.",
+                    "Voice files are matched from filenames, not folder names."
+                ]
+            },
+            {
+                title: "Parameter Switching Guide",
+                intro: "Override generation behavior per segment without changing node-level defaults.",
+                rows: [
+                    { syntax: "[Alice|seed:42]", purpose: "Fix or vary randomness per segment", notes: "Keeps a stable seed for that section only." },
+                    { syntax: "[Alice|temperature:0.7]", purpose: "Adjust expressive variation", notes: "Higher values are looser; lower values are more controlled." },
+                    { syntax: "[en:Alice|seed:42|temperature:0.7]", purpose: "Combine language plus multiple overrides", notes: "Stack parameters with `|` after the speaker or language+speaker prefix." }
+                ],
+                bullets: [
+                    "Order is flexible: `[seed:42|Alice]` and `[Alice|seed:42]` are both valid.",
+                    "Supported parameters vary by engine, unsupported ones are ignored with warnings.",
+                    "Useful aliases include `temp`, `cfg_weight`, `exag`, `topk`, and `topp`."
+                ]
+            },
+            {
+                title: "Inline Edit Tags Guide",
+                intro: "These tags are for convenience when you want segment-level Step Audio EditX processing without building separate TTS -> Edit chains.",
+                rows: [
+                    { syntax: "<Laughter> / <Laughter:2>", purpose: "Insert laughter", notes: "Paralinguistic insertion. Position matters because the sound is inserted where the tag appears." },
+                    { syntax: "<Breathing>", purpose: "Insert breathing", notes: "Useful for pauses, fatigue, or realism between spoken phrases." },
+                    { syntax: "<Sigh>", purpose: "Insert sigh", notes: "Good for resignation, frustration, or relief beats." },
+                    { syntax: "<Uhm>", purpose: "Insert hesitation", notes: "Adds an 'uhm' hesitation sound at the tag position." },
+                    { syntax: "<Surprise-oh> / <Surprise-ah> / <Surprise-wa>", purpose: "Insert surprise reactions", notes: "Three surprise variants for different expressive tones." },
+                    { syntax: "<Confirmation-en>", purpose: "Insert confirmation sound", notes: "Short confirming reaction inserted inline." },
+                    { syntax: "<Question-ei>", purpose: "Insert questioning sound", notes: "Useful before or around uncertain dialogue." },
+                    { syntax: "<Dissatisfaction-hnn>", purpose: "Insert dissatisfied reaction", notes: "Adds a disapproving or displeased 'hnn' sound." },
+                    { syntax: "<emotion:VALUE> / <emotion:VALUE:ITERATIONS>", purpose: "Apply whole-segment emotion", notes: "Available values: happy, sad, angry, excited, calm, fearful, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration." },
+                    { syntax: "<style:VALUE> / <style:VALUE:ITERATIONS>", purpose: "Apply whole-segment style", notes: "Available values include whisper, serious, child, older, pure, sister, sweet, exaggerated, ethereal, warm, comfort, authority, chat, radio, soulful, gentle, story, vivid, program, news, advertising, roar, murmur, shout, deeply, loudly, arrogant, friendly." },
+                    { syntax: "<speed:faster> / <speed:slower> / <speed:more_faster> / <speed:more_slower>", purpose: "Adjust whole-segment speed", notes: "Speed tags affect the full segment, not a point insertion." },
+                    { syntax: "<restore>", purpose: "Basic voice restoration", notes: "Runs 1 voice-conversion restore pass using the original pre-edit audio as the reference." },
+                    { syntax: "<restore:2>", purpose: "Stronger restoration", notes: "Runs 2 restore passes using the original clean pre-edit audio as the reference." },
+                    { syntax: "<restore:1@2>", purpose: "Restore from an intermediate edit-step reference", notes: "`N@M` means: run N restore passes using edit-step M as the reference audio, not restore pass M. Example timeline: `<style:whisper:2> <Laughter:3> <restore:1@2>` means whisper creates edit steps 1-2, laughter creates edit steps 3-5, then restore runs last using edit step 2 as reference so it keeps the whisper character but removes later degradation." },
+                    { syntax: "<A|B|C> or <A><B><C>", purpose: "Combine multiple inline tags", notes: "Both pipe-separated and separate-tag forms work. Processing order is emotion/style/speed first, paralinguistics second, restore last." }
+                ],
+                bullets: [
+                    "Use inline tags for convenience and selective segment editing. Use the separate Audio Editor node for maximum manual control.",
+                    "Processing order is emotion/style/speed first, then paralinguistic insertion, then restore last.",
+                    "Position matters for paralinguistic tags like `<Laughter>` and `<Breathing>`, but not for whole-segment tags like emotion, style, speed, and restore.",
+                    "`<restore>` and `<restore:N>` use the original clean pre-edit audio as reference. `<restore:N@M>` switches the reference to edit step M, not restore pass M.",
+                    "Example: `<style:whisper:2> <Laughter:3> <restore:1@2>` means restore runs after everything else, but it aims back at the audio from whisper step 2 so you keep the whisper feel and drop the later laughter damage.",
+                    "If you want stronger laughter or reaction effects, include supporting spoken text too, not just the tag."
+                ]
+            }
+        ];
+
+        const libraryLayout = document.createElement("div");
+        libraryLayout.className = "string-multiline-tag-editor-library";
+
+        libraryGroups.forEach(group => {
+            const section = document.createElement("section");
+            section.className = "string-multiline-tag-editor-library-section";
+
+            const title = document.createElement("h4");
+            title.className = "string-multiline-tag-editor-library-title";
+            title.textContent = group.title;
+
+            const intro = document.createElement("p");
+            intro.className = "string-multiline-tag-editor-library-intro";
+            intro.textContent = group.intro;
+
+            const bulletList = document.createElement("div");
+            bulletList.className = "string-multiline-tag-editor-guide-list";
+            group.bullets.forEach(text => {
+                const bullet = document.createElement("div");
+                bullet.className = "string-multiline-tag-editor-guide-item";
+                bullet.textContent = text;
+                bulletList.appendChild(bullet);
+            });
+
+            const table = document.createElement("div");
+            table.className = "string-multiline-tag-editor-reference-table";
+
+            const header = document.createElement("div");
+            header.className = "string-multiline-tag-editor-reference-row is-header";
+            ["Syntax", "Purpose", "Notes"].forEach(text => {
+                const cell = document.createElement("div");
+                cell.textContent = text;
+                header.appendChild(cell);
+            });
+            table.appendChild(header);
+
+            group.rows.forEach(row => {
+                const rowEl = document.createElement("div");
+                rowEl.className = "string-multiline-tag-editor-reference-row";
+
+                const syntax = document.createElement("code");
+                syntax.className = "string-multiline-tag-editor-reference-syntax";
+                syntax.textContent = row.syntax;
+
+                const purpose = document.createElement("div");
+                purpose.textContent = row.purpose;
+
+                const notes = document.createElement("div");
+                notes.textContent = row.notes;
+
+                rowEl.appendChild(syntax);
+                rowEl.appendChild(purpose);
+                rowEl.appendChild(notes);
+                table.appendChild(rowEl);
+            });
+
+            section.appendChild(title);
+            section.appendChild(intro);
+            section.appendChild(bulletList);
+            section.appendChild(table);
+            libraryLayout.appendChild(section);
+        });
+
+        auxiliaryContent.replaceChildren(libraryLayout);
+    };
+
+    const activateTopView = (viewKey) => {
+        topNavItems.forEach((item, key) => {
+            item.classList.toggle("is-active", key === viewKey);
+        });
+
+        state.activeTopView = viewKey;
+        state.saveToLocalStorage(storageKey);
+
+        const isEditorView = viewKey === "editor";
+        shellBody.style.display = isEditorView ? "flex" : "none";
+        auxiliaryView.style.display = isEditorView ? "none" : "flex";
+        resizeDivider.style.display = isEditorView ? "block" : "none";
+
+        if (isEditorView) {
+            requestAnimationFrame(updateSidebarScrollbar);
+            return;
+        }
+
+        if (viewKey === "history") {
+            renderHistoryView();
+        } else if (viewKey === "presets") {
+            renderPresetsView();
+        } else if (viewKey === "library") {
+            renderLibraryView();
+        }
+    };
+
+    topNavItems.forEach((item, key) => {
+        item.addEventListener("click", () => activateTopView(key));
+    });
+
+    sidebar.querySelectorAll('input[type="range"]').forEach(input => {
+        updateRangeFill(input);
+        input.addEventListener("input", () => updateRangeFill(input));
+    });
+
     // Store state when node is removed
     widget.onRemove = () => {
         state.saveToLocalStorage(storageKey);
@@ -885,6 +1337,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Initialize history display
     historyStatus.textContent = state.getHistoryStatus();
+    activateTopView(state.activeTopView || "editor");
 
     editor.addEventListener("scroll", () => {
         lineGutterContent.style.transform = `translateY(${-editor.scrollTop}px)`;
