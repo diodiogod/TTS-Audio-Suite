@@ -19,19 +19,15 @@ export function buildTabSystem(state, storageKey) {
     tabHeaders.style.flexShrink = "0";
 
     const charParamTab = document.createElement("div");
-    charParamTab.textContent = "Character/Parameters";
+    charParamTab.textContent = "Character";
     charParamTab.style.flex = "1";
     charParamTab.style.padding = "8px 10px 6px 10px";
     charParamTab.style.textAlign = "center";
     charParamTab.style.cursor = "pointer";
     charParamTab.style.fontSize = "11px";
     charParamTab.style.fontWeight = "bold";
-    charParamTab.style.background = "linear-gradient(to bottom, #3a3a3a 0%, #2e2e2e 100%)";
-    charParamTab.style.borderRight = "1px solid #1a1a1a";
-    charParamTab.style.borderTop = "2px solid #555";
-    charParamTab.style.borderLeft = "1px solid #555";
-    charParamTab.style.borderBottom = "none";
-    charParamTab.style.clipPath = "polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)";
+    charParamTab.style.background = "rgba(53, 53, 52, 0.72)";
+    charParamTab.style.border = "1px solid transparent";
     charParamTab.style.transition = "all 0.2s ease";
     charParamTab.style.position = "relative";
     charParamTab.style.marginRight = "2px";
@@ -48,11 +44,8 @@ export function buildTabSystem(state, storageKey) {
     inlineEditTab.style.cursor = "pointer";
     inlineEditTab.style.fontSize = "11px";
     inlineEditTab.style.fontWeight = "bold";
-    inlineEditTab.style.background = "linear-gradient(to bottom, #2a2a2a 0%, #222 100%)";
-    inlineEditTab.style.borderTop = "2px solid #444";
-    inlineEditTab.style.borderRight = "1px solid #555";
-    inlineEditTab.style.borderBottom = "none";
-    inlineEditTab.style.clipPath = "polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)";
+    inlineEditTab.style.background = "rgba(53, 53, 52, 0.52)";
+    inlineEditTab.style.border = "1px solid transparent";
     inlineEditTab.style.transition = "all 0.2s ease";
     inlineEditTab.style.position = "relative";
     inlineEditTab.style.whiteSpace = "nowrap";
@@ -67,17 +60,17 @@ export function buildTabSystem(state, storageKey) {
     const charParamContent = document.createElement("div");
     charParamContent.style.display = "flex";
     charParamContent.style.flexDirection = "column";
-    charParamContent.style.overflowY = "auto";
+    charParamContent.style.overflowY = "visible";
     charParamContent.style.overflowX = "hidden";
-    charParamContent.style.flex = "1";
+    charParamContent.style.flex = "0 0 auto";
     charParamContent.dataset.content = "char-param";
 
     const inlineEditContent = document.createElement("div");
     inlineEditContent.style.display = "none";
     inlineEditContent.style.flexDirection = "column";
-    inlineEditContent.style.overflowY = "auto";
+    inlineEditContent.style.overflowY = "visible";
     inlineEditContent.style.overflowX = "hidden";
-    inlineEditContent.style.flex = "1";
+    inlineEditContent.style.flex = "0 0 auto";
     inlineEditContent.dataset.content = "inline-edit";
 
     // Tab switching logic
@@ -85,28 +78,28 @@ export function buildTabSystem(state, storageKey) {
         // Update tab headers
         if (tabName === "char-param") {
             // Active tab
-            charParamTab.style.background = "linear-gradient(to bottom, #4a4a4a 0%, #3a3a3a 100%)";
-            charParamTab.style.borderTop = "2px solid #0af";
-            charParamTab.style.color = "#fff";
+            charParamTab.style.background = "linear-gradient(135deg, rgba(0, 225, 174, 0.24) 0%, rgba(0, 56, 41, 0.82) 100%)";
+            charParamTab.style.border = "1px solid rgba(0, 225, 174, 0.24)";
+            charParamTab.style.color = "#00e1ae";
             charParamTab.style.zIndex = "10";
             // Inactive tab
-            inlineEditTab.style.background = "linear-gradient(to bottom, #2a2a2a 0%, #222 100%)";
-            inlineEditTab.style.borderTop = "2px solid #444";
-            inlineEditTab.style.color = "#999";
+            inlineEditTab.style.background = "rgba(53, 53, 52, 0.52)";
+            inlineEditTab.style.border = "1px solid transparent";
+            inlineEditTab.style.color = "#8e8e8e";
             inlineEditTab.style.zIndex = "5";
             // Content
             charParamContent.style.display = "flex";
             inlineEditContent.style.display = "none";
         } else if (tabName === "inline-edit") {
             // Inactive tab
-            charParamTab.style.background = "linear-gradient(to bottom, #2a2a2a 0%, #222 100%)";
-            charParamTab.style.borderTop = "2px solid #444";
-            charParamTab.style.color = "#999";
+            charParamTab.style.background = "rgba(53, 53, 52, 0.52)";
+            charParamTab.style.border = "1px solid transparent";
+            charParamTab.style.color = "#8e8e8e";
             charParamTab.style.zIndex = "5";
             // Active tab
-            inlineEditTab.style.background = "linear-gradient(to bottom, #4a4a4a 0%, #3a3a3a 100%)";
-            inlineEditTab.style.borderTop = "2px solid #0af";
-            inlineEditTab.style.color = "#fff";
+            inlineEditTab.style.background = "linear-gradient(135deg, rgba(0, 225, 174, 0.24) 0%, rgba(0, 56, 41, 0.82) 100%)";
+            inlineEditTab.style.border = "1px solid rgba(0, 225, 174, 0.24)";
+            inlineEditTab.style.color = "#00e1ae";
             inlineEditTab.style.zIndex = "10";
             // Content
             charParamContent.style.display = "none";

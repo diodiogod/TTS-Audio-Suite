@@ -21,6 +21,19 @@ import { buildInlineEditSection } from "./widget-inline-edit-section.js";
 let widgetCounter = 0;
 
 const CHANGE_TRACKER_PATCH_FLAG = "__ttsTagEditorUndoRedoPatched";
+const TAG_EDITOR_STYLESHEET_ID = "tts-tag-editor-styles";
+
+const ensureTagEditorStylesheet = () => {
+    if (document.getElementById(TAG_EDITOR_STYLESHEET_ID)) {
+        return;
+    }
+
+    const link = document.createElement("link");
+    link.id = TAG_EDITOR_STYLESHEET_ID;
+    link.rel = "stylesheet";
+    link.href = new URL("./string_multiline_tag_editor.css", import.meta.url).href;
+    document.head.appendChild(link);
+};
 
 const isTagEditorFocused = () => {
     const activeElement = document.activeElement;
@@ -53,6 +66,7 @@ const patchChangeTrackerUndoRedo = () => {
 };
 
 patchChangeTrackerUndoRedo();
+ensureTagEditorStylesheet();
 
 // Create the widget
 function addStringMultilineTagEditorWidget(node) {
@@ -78,10 +92,8 @@ function addStringMultilineTagEditorWidget(node) {
     editorContainer.style.gap = "0";
     editorContainer.style.width = "100%";
     editorContainer.style.height = "100%";
-    editorContainer.style.background = "#1a1a1a";
-    editorContainer.style.borderRadius = "4px";
     editorContainer.style.overflow = "hidden";
-    editorContainer.style.flexDirection = "row";
+    editorContainer.style.flexDirection = "column";
     editorContainer.style.position = "relative";
 
     // Create notification toast at bottom
@@ -117,6 +129,23 @@ function addStringMultilineTagEditorWidget(node) {
         }, duration);
     };
 
+    const topBar = document.createElement("div");
+    topBar.className = "string-multiline-tag-editor-topbar";
+
+    const topBarNav = document.createElement("div");
+    topBarNav.className = "string-multiline-tag-editor-nav";
+    topBarNav.innerHTML = `
+        <span class="is-active">Editor</span>
+        <span>History</span>
+        <span>Presets</span>
+        <span>Library</span>
+    `;
+
+    topBar.appendChild(topBarNav);
+
+    const shellBody = document.createElement("div");
+    shellBody.className = "string-multiline-tag-editor-shell";
+
     // Create sidebar with resizable width and UI scaling
     const sidebar = document.createElement("div");
     sidebar.className = "string-multiline-tag-editor-sidebar";
@@ -126,14 +155,60 @@ function addStringMultilineTagEditorWidget(node) {
     sidebar.style.height = "100%";
     sidebar.style.background = "#222";
     sidebar.style.borderRight = "1px solid #444";
-    sidebar.style.padding = "10px";
-    sidebar.style.overflowY = "auto";
-    sidebar.style.overflowX = "hidden";
+    sidebar.style.padding = "0";
+    sidebar.style.overflow = "hidden";
     sidebar.style.fontSize = (11 * state.uiScale) + "px";
     sidebar.style.flexShrink = "0";
     sidebar.style.display = "flex";
     sidebar.style.flexDirection = "column";
     sidebar.style.position = "relative";
+
+    const sidebarScrollContent = document.createElement("div");
+    sidebarScrollContent.className = "string-multiline-tag-editor-sidebar-scroll-content";
+    sidebarScrollContent.style.flex = "1 1 auto";
+    sidebarScrollContent.style.minHeight = "0";
+    sidebarScrollContent.style.padding = "10px";
+    sidebarScrollContent.style.overflowY = "auto";
+    sidebarScrollContent.style.overflowX = "hidden";
+    sidebarScrollContent.style.display = "flex";
+    sidebarScrollContent.style.flexDirection = "column";
+
+    const sidebarScrollbar = document.createElement("div");
+    sidebarScrollbar.className = "string-multiline-tag-editor-sidebar-scrollbar";
+
+    const sidebarScrollbarThumb = document.createElement("div");
+    sidebarScrollbarThumb.className = "string-multiline-tag-editor-sidebar-scrollbar-thumb";
+    sidebarScrollbar.appendChild(sidebarScrollbarThumb);
+
+    const updateSidebarScrollbar = () => {
+        const visibleHeight = sidebarScrollContent.clientHeight;
+        const scrollHeight = sidebarScrollContent.scrollHeight;
+        const maxScrollTop = Math.max(0, scrollHeight - visibleHeight);
+        const hasOverflow = maxScrollTop > 1;
+        const topOffset = sidebarScrollContent.offsetTop + 6;
+        const bottomOffset = Math.max(6, sidebar.clientHeight - (sidebarScrollContent.offsetTop + visibleHeight) + 6);
+
+        sidebarScrollbar.style.top = `${topOffset}px`;
+        sidebarScrollbar.style.bottom = `${bottomOffset}px`;
+
+        sidebarScrollbar.style.opacity = hasOverflow ? "" : "0";
+        sidebarScrollbar.style.pointerEvents = hasOverflow ? "auto" : "none";
+
+        if (!hasOverflow) {
+            sidebarScrollbarThumb.style.transform = "translateY(0)";
+            sidebarScrollbarThumb.style.height = "0";
+            return;
+        }
+
+        const trackHeight = visibleHeight - 8;
+        const thumbHeight = Math.max(20, (visibleHeight / scrollHeight) * trackHeight);
+        const availableTravel = Math.max(0, trackHeight - thumbHeight);
+        const progress = maxScrollTop > 0 ? sidebarScrollContent.scrollTop / maxScrollTop : 0;
+        const thumbOffset = progress * availableTravel;
+
+        sidebarScrollbarThumb.style.height = `${thumbHeight}px`;
+        sidebarScrollbarThumb.style.transform = `translateY(${thumbOffset}px)`;
+    };
 
     // Function to update sidebar width and persist
     const setSidebarWidth = (newWidth) => {
@@ -145,6 +220,7 @@ function addStringMultilineTagEditorWidget(node) {
             resizeDivider.style.left = (newWidth - 3) + "px"; // 3px left + 3px right of border
         }
         state.saveToLocalStorage(storageKey);
+        updateSidebarScrollbar();
     };
 
     // Function to update UI scale
@@ -154,7 +230,7 @@ function addStringMultilineTagEditorWidget(node) {
         sidebar.style.fontSize = (11 * factor) + "px";
 
         // Update all button and input sizes
-        const buttons = sidebar.querySelectorAll("button, input[type='text'], input[type='number'], select");
+        const buttons = sidebarScrollContent.querySelectorAll("button, input[type='text'], input[type='number'], select");
         buttons.forEach(btn => {
             const baseFontSize = 10;
             btn.style.fontSize = (baseFontSize * factor) + "px";
@@ -162,10 +238,12 @@ function addStringMultilineTagEditorWidget(node) {
         });
 
         state.saveToLocalStorage(storageKey);
+        updateSidebarScrollbar();
     };
 
     // Create editor wrapper for contenteditable
     const textareaWrapper = document.createElement("div");
+    textareaWrapper.className = "string-multiline-tag-editor-workspace";
     textareaWrapper.style.flex = "1 1 auto";
     textareaWrapper.style.display = "flex";
     textareaWrapper.style.flexDirection = "column";
@@ -198,12 +276,81 @@ function addStringMultilineTagEditorWidget(node) {
     editor.style.caretColor = "#eee";
     editor.spellcheck = false;
 
+    const editorStatusBar = document.createElement("div");
+    editorStatusBar.className = "string-multiline-tag-editor-statusbar";
+
+    const editorStatusChips = document.createElement("div");
+    editorStatusChips.className = "string-multiline-tag-editor-chips";
+
+    const charactersChip = document.createElement("span");
+    charactersChip.className = "string-multiline-tag-editor-chip is-secondary";
+    const inlineEditsChip = document.createElement("span");
+    inlineEditsChip.className = "string-multiline-tag-editor-chip is-tertiary";
+    editorStatusChips.appendChild(charactersChip);
+    editorStatusChips.appendChild(inlineEditsChip);
+
+    const editorStatusStats = document.createElement("div");
+    editorStatusStats.className = "string-multiline-tag-editor-stats";
+
+    editorStatusBar.appendChild(editorStatusChips);
+    editorStatusBar.appendChild(editorStatusStats);
+
+    const editorSurface = document.createElement("div");
+    editorSurface.className = "string-multiline-tag-editor-surface";
+
+    const lineGutter = document.createElement("div");
+    lineGutter.className = "string-multiline-tag-editor-gutter";
+
+    const lineGutterContent = document.createElement("div");
+    lineGutterContent.className = "string-multiline-tag-editor-gutter-content";
+    lineGutter.appendChild(lineGutterContent);
+
+    const updateEditorMetrics = () => {
+        const plainText = getPlainText();
+        const characterTags = (plainText.match(/\[[^\]|]+(?:\|[^\]]+)?\]/g) || [])
+            .map(tag => tag.slice(1, -1).split("|")[0])
+            .filter(firstPart => firstPart && !firstPart.includes(":"));
+        const uniqueCharacters = new Set(characterTags);
+        const inlineEditCount = (plainText.match(/<[^<>\r\n]+>/g) || []).length;
+        const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+        const lineCount = plainText === "" ? 1 : plainText.split("\n").length;
+
+        charactersChip.textContent = `Characters: ${uniqueCharacters.size}`;
+        inlineEditsChip.textContent = `Inline Tags: ${inlineEditCount}`;
+        const computedEditorStyle = window.getComputedStyle(editor);
+        const lineHeight = parseFloat(computedEditorStyle.lineHeight) || (state.fontSize * 1.4);
+        const visualRowCount = Math.max(lineCount, Math.ceil(editor.scrollHeight / lineHeight));
+        editorStatusStats.textContent = `${lineCount} lines | ${wordCount} words | ${plainText.length} chars`;
+        lineGutterContent.style.fontSize = `${state.fontSize}px`;
+        lineGutterContent.style.lineHeight = `${lineHeight}px`;
+        const gutterDigits = String(visualRowCount).length;
+        lineGutter.style.flexBasis = `${Math.max(24, Math.ceil(gutterDigits * state.fontSize * 0.72) + 14)}px`;
+        lineGutter.style.minWidth = lineGutter.style.flexBasis;
+
+        const gutterFragment = document.createDocumentFragment();
+        for (let row = 0; row < visualRowCount; row++) {
+            const lineNumber = document.createElement("span");
+            lineNumber.textContent = String(row + 1);
+            gutterFragment.appendChild(lineNumber);
+        }
+
+        lineGutterContent.replaceChildren(gutterFragment);
+    };
+
     // Function to update font size and persist it
     const setFontSize = (newSize) => {
         newSize = Math.max(2, Math.min(120, newSize)); // Clamp between 2px and 120px
         state.fontSize = newSize;
         editor.style.fontSize = newSize + "px";
         state.saveToLocalStorage(storageKey);
+        updateEditorMetrics();
+    };
+
+    const setFontFamily = (newFamily) => {
+        editor.style.fontFamily = newFamily;
+        state.fontFamily = newFamily;
+        state.saveToLocalStorage(storageKey);
+        updateEditorMetrics();
     };
 
     // Initialize with text
@@ -379,6 +526,7 @@ function addStringMultilineTagEditorWidget(node) {
             editor.innerHTML = html;
             setCaretPos(caretPos);
         }
+        updateEditorMetrics();
     };
 
     // Update on input
@@ -391,9 +539,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Create font selector floating box (above editor)
     const fontBox = document.createElement("div");
-    fontBox.style.background = "#2a2a2a";
-    fontBox.style.border = "1px solid #444";
-    fontBox.style.borderBottom = "1px solid #333";
+    fontBox.className = "string-multiline-tag-editor-toolbar";
     fontBox.style.padding = "8px 10px";
     fontBox.style.display = "flex";
     fontBox.style.gap = "12px";
@@ -402,19 +548,14 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Font family dropdown
     const fontFamilyLabel = document.createElement("div");
-    fontFamilyLabel.textContent = "Font:";
-    fontFamilyLabel.style.fontWeight = "bold";
-    fontFamilyLabel.style.fontSize = "10px";
-    fontFamilyLabel.style.color = "#bbb";
+    fontFamilyLabel.textContent = "Font";
+    fontFamilyLabel.className = "string-multiline-tag-editor-toolbar-label";
     fontFamilyLabel.style.minWidth = "35px";
 
     const fontFamilySelect = document.createElement("select");
     fontFamilySelect.style.padding = "4px 6px";
     fontFamilySelect.style.fontSize = "10px";
-    fontFamilySelect.style.background = "#1a1a1a";
-    fontFamilySelect.style.color = "#eee";
-    fontFamilySelect.style.border = "1px solid #555";
-    fontFamilySelect.style.borderRadius = "2px";
+    fontFamilySelect.className = "string-multiline-tag-editor-toolbar-select";
     fontFamilySelect.style.cursor = "pointer";
     fontFamilySelect.style.flex = "1";
 
@@ -452,10 +593,8 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Font size control
     const fontSizeLabel = document.createElement("div");
-    fontSizeLabel.textContent = "Size:";
-    fontSizeLabel.style.fontWeight = "bold";
-    fontSizeLabel.style.fontSize = "10px";
-    fontSizeLabel.style.color = "#bbb";
+    fontSizeLabel.textContent = "Size";
+    fontSizeLabel.className = "string-multiline-tag-editor-toolbar-label";
     fontSizeLabel.style.minWidth = "35px";
 
     const fontSizeInput = document.createElement("input");
@@ -465,39 +604,28 @@ function addStringMultilineTagEditorWidget(node) {
     fontSizeInput.value = state.fontSize;
     fontSizeInput.style.padding = "4px 6px";
     fontSizeInput.style.fontSize = "10px";
-    fontSizeInput.style.background = "#1a1a1a";
-    fontSizeInput.style.color = "#eee";
-    fontSizeInput.style.border = "1px solid #555";
-    fontSizeInput.style.borderRadius = "2px";
+    fontSizeInput.className = "string-multiline-tag-editor-toolbar-input";
     fontSizeInput.style.width = "50px";
-
-    const fontSizeDisplay = document.createElement("div");
-    fontSizeDisplay.textContent = state.fontSize + "px";
-    fontSizeDisplay.style.fontSize = "10px";
-    fontSizeDisplay.style.color = "#999";
-    fontSizeDisplay.style.minWidth = "30px";
-    fontSizeDisplay.style.textAlign = "right";
 
     // Assemble font box
     fontBox.appendChild(fontFamilyLabel);
     fontBox.appendChild(fontFamilySelect);
     fontBox.appendChild(fontSizeLabel);
     fontBox.appendChild(fontSizeInput);
-    fontBox.appendChild(fontSizeDisplay);
 
     // Set initial font family selection
     fontFamilySelect.value = state.fontFamily;
 
-    // Add font box to textareaWrapper (above editor)
-    textareaWrapper.appendChild(fontBox);
-    textareaWrapper.appendChild(editor);
+    const topActions = document.createElement("div");
+    topActions.className = "string-multiline-tag-editor-top-actions";
 
     // Create floating invisible divider on top of everything for resizing
     const resizeDivider = document.createElement("div");
     resizeDivider.style.position = "absolute";
-    resizeDivider.style.top = "0";
+    resizeDivider.style.top = "56px";
     resizeDivider.style.width = "6px"; // Invisible grabable area (3px left, 3px right of border)
-    resizeDivider.style.height = "100%";
+    resizeDivider.style.bottom = "0";
+    resizeDivider.style.height = "auto";
     resizeDivider.style.cursor = "col-resize";
     resizeDivider.style.zIndex = "1000"; // On top of everything
     resizeDivider.style.userSelect = "none";
@@ -510,8 +638,14 @@ function addStringMultilineTagEditorWidget(node) {
     };
     updateDividerPosition();
 
-    editorContainer.appendChild(sidebar);
-    editorContainer.appendChild(textareaWrapper);
+    editorSurface.appendChild(editor);
+    editorSurface.prepend(lineGutter);
+    textareaWrapper.appendChild(editorStatusBar);
+    textareaWrapper.appendChild(editorSurface);
+    shellBody.appendChild(sidebar);
+    shellBody.appendChild(textareaWrapper);
+    editorContainer.appendChild(topBar);
+    editorContainer.appendChild(shellBody);
 
     // Initial highlight
     updateHighlights();
@@ -648,28 +782,36 @@ function addStringMultilineTagEditorWidget(node) {
     // Build sidebar sections using extracted modules
     const historyData = buildHistorySection(state, storageKey);
     const { historySection, undoBtn, redoBtn, historyStatus } = historyData;
+    historySection.classList.add("string-multiline-tag-editor-history");
 
     const charData = buildCharacterSection(state, storageKey);
     const { charSection, charSelect, charInput, addCharBtn } = charData;
+    charSection.classList.add("string-multiline-tag-editor-panel-section");
 
     const langData = buildLanguageSection(state, storageKey);
     const { langSection, langSelect, addLangBtn } = langData;
+    langSection.classList.add("string-multiline-tag-editor-panel-section");
 
     // Parameter controls - dynamic parameter selector
     // Build parameter section
     const paramData = buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor);
     const { paramSection, paramTypeSelect, paramInputWrapper, addParamBtn, createParamInput, getCurrentParamInput, setCurrentParamInput } = paramData;
     let currentParamInput = paramData.getCurrentParamInput();
+    paramSection.classList.add("string-multiline-tag-editor-panel-section");
 
     // Preset controls
     // Build preset section
     const presetData = buildPresetSection(state, storageKey);
     const { presetSection, presetButtons, presetTitles, updatePresetGlows } = presetData;
+    presetSection.classList.add("string-multiline-tag-editor-panel-section");
 
     // Validation controls
     // Build validation section
     const validData = buildValidationSection();
     const { validSection, formatBtn, validateBtn } = validData;
+    validSection.classList.add("string-multiline-tag-editor-validation");
+    formatBtn.classList.add("string-multiline-tag-editor-footer-btn");
+    validateBtn.classList.add("string-multiline-tag-editor-footer-btn", "is-primary");
 
     // Build inline edit section
     const inlineEditData = buildInlineEditSection(state, storageKey);
@@ -681,24 +823,44 @@ function addStringMultilineTagEditorWidget(node) {
         speedSelect, speedIterSlider, addSpeedBtn,
         restorePassSlider, restoreRefInput, addRestoreBtn
     } = inlineEditData;
+    inlineEditSection.classList.add("string-multiline-tag-editor-inline-section");
 
     // Build tab system
     const tabData = buildTabSystem(state, storageKey);
     const { tabContainer, charParamContent, inlineEditContent, switchTab } = tabData;
+    tabContainer.classList.add("string-multiline-tag-editor-tab-system");
+    charParamContent.classList.add("string-multiline-tag-editor-tab-content");
+    inlineEditContent.classList.add("string-multiline-tag-editor-tab-content");
 
     // Assemble Character/Parameters tab
     charParamContent.appendChild(charSection);
     charParamContent.appendChild(langSection);
     charParamContent.appendChild(paramSection);
     charParamContent.appendChild(presetSection);
-    charParamContent.appendChild(validSection);
 
     // Assemble Inline Edit tab
     inlineEditContent.appendChild(inlineEditSection);
 
+    // Assemble header and shell
+    topActions.appendChild(formatBtn);
+    topActions.appendChild(validateBtn);
+    topBar.appendChild(topActions);
+    topBar.appendChild(fontBox);
+    topBar.appendChild(historySection);
+
+    const sidebarHeader = document.createElement("div");
+    sidebarHeader.className = "string-multiline-tag-editor-sidebar-header";
+    const tabHeaderStrip = tabContainer.firstElementChild;
+    if (tabHeaderStrip) {
+        sidebarHeader.appendChild(tabHeaderStrip);
+    }
+
     // Assemble sidebar
-    sidebar.appendChild(historySection);
-    sidebar.appendChild(tabContainer);
+    sidebar.appendChild(sidebarHeader);
+    sidebarScrollContent.appendChild(charParamContent);
+    sidebarScrollContent.appendChild(inlineEditContent);
+    sidebar.appendChild(sidebarScrollContent);
+    sidebar.appendChild(sidebarScrollbar);
 
     // ==================== ATTACH EVENT HANDLERS ====================
     // Consolidates all addEventListener calls into a single module function
@@ -706,7 +868,7 @@ function addStringMultilineTagEditorWidget(node) {
         editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
-        formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
+        formatBtn, validateBtn, fontFamilySelect, fontSizeInput, null, setFontSize, setFontFamily,
         showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale,
         // Inline edit controls
         paraSelect, paraIterSlider, addParaBtn,
@@ -723,6 +885,24 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Initialize history display
     historyStatus.textContent = state.getHistoryStatus();
+
+    editor.addEventListener("scroll", () => {
+        lineGutterContent.style.transform = `translateY(${-editor.scrollTop}px)`;
+    });
+    sidebarScrollContent.addEventListener("scroll", updateSidebarScrollbar);
+
+    if (typeof ResizeObserver !== "undefined") {
+        const resizeObserver = new ResizeObserver(() => {
+            updateEditorMetrics();
+            updateSidebarScrollbar();
+        });
+        resizeObserver.observe(editorSurface);
+        resizeObserver.observe(editor);
+        resizeObserver.observe(sidebar);
+        resizeObserver.observe(sidebarScrollContent);
+    }
+
+    requestAnimationFrame(updateSidebarScrollbar);
 
     return widget;
 }

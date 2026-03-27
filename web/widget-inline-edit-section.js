@@ -9,9 +9,9 @@ export function buildInlineEditSection(state, storageKey) {
     container.style.display = "flex";
     container.style.flexDirection = "column";
     container.style.gap = "8px";
-    container.style.overflowY = "auto";
-    container.style.flex = "1";
-    container.style.paddingRight = "5px";
+    container.style.overflowY = "visible";
+    container.style.flex = "0 0 auto";
+    container.style.paddingRight = "0";
 
     // ==================== PARALINGUISTIC TAGS ====================
     const paraSection = document.createElement("div");

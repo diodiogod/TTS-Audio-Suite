@@ -11,7 +11,7 @@ export function attachAllEventHandlers(
     editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
     undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
-    formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize,
+    formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize, setFontFamily,
     showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale,
     // Inline edit controls
     paraSelect, paraIterSlider, addParaBtn,
@@ -267,15 +267,15 @@ export function attachAllEventHandlers(
             newSize = Math.max(2, Math.min(120, newSize));
             setFontSize(newSize);
             fontSizeInput.value = newSize;
-            fontSizeDisplay.textContent = newSize + "px";
+            if (fontSizeDisplay) {
+                fontSizeDisplay.textContent = newSize + "px";
+            }
         }
     });
 
     // Font family selector change
     fontFamilySelect.addEventListener("change", () => {
-        editor.style.fontFamily = fontFamilySelect.value;
-        state.fontFamily = fontFamilySelect.value;
-        state.saveToLocalStorage(storageKey);
+        setFontFamily(fontFamilySelect.value);
     });
 
     // Font size input change
@@ -291,7 +291,9 @@ export function attachAllEventHandlers(
         let newSize = parseInt(fontSizeInput.value) || state.fontSize;
         newSize = Math.max(2, Math.min(120, newSize));
         editor.style.fontSize = newSize + "px";
-        fontSizeDisplay.textContent = newSize + "px";
+        if (fontSizeDisplay) {
+            fontSizeDisplay.textContent = newSize + "px";
+        }
     });
 
     // Character select dropdown
