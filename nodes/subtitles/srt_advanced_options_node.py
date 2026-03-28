@@ -22,6 +22,13 @@ base_spec.loader.exec_module(base_module)
 
 BaseChatterBoxNode = base_module.BaseChatterBoxNode
 
+from utils.asr.srt_heuristic_profiles import (
+    DEFAULT_HEURISTIC_PROFILE_LABEL,
+    ENGLISH_DANGLING_TAIL_ALLOWLIST,
+    ENGLISH_INCOMPLETE_KEYWORDS,
+    HEURISTIC_PROFILE_OPTIONS,
+)
+
 
 class SRTAdvancedOptionsNode(BaseChatterBoxNode):
     @classmethod
@@ -32,13 +39,21 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "srt_preset": (["Custom", "Netflix-Standard", "Broadcast", "Fast speech", "Mobile"], {
+                "srt_preset": (["Custom", "Netflix-Standard", "Broadcast", "Fast speech", "Mobile", "TTS-Ready"], {
                     "default": "Broadcast",
-                    "tooltip": "Readability preset for subtitle building.\nCustom = you control the raw knobs below.\n\nExamples:\n• Broadcast: conservative timing, safe desktop readability\n• Netflix-Standard: similar readability with longer max duration\n• Fast speech: denser subtitles for rapid speech\n• Mobile: shorter lines for smaller screens"
+                    "tooltip": "Readability preset for subtitle building.\nCustom = you control the raw knobs below.\n\nExamples:\n• Broadcast: conservative timing, safe desktop readability\n• Netflix-Standard: similar readability with longer max duration\n• Fast speech: denser subtitles for rapid speech\n• Mobile: shorter lines for smaller screens\n• TTS-Ready: single-line cues that stop by meaning instead of display wrapping"
                 }),
                 "srt_mode": (["smart", "engine_segments", "words"], {
                     "default": "smart",
                     "tooltip": "How subtitle cues are built:\n• smart: rebuild from word timings for readability\n• engine_segments: trust incoming segments as-is\n• words: one word per cue (debug/alignment only)\n\nUse smart unless you have a reason not to."
+                }),
+                "tts_ready_mode": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Build cues for downstream TTS instead of on-screen subtitles.\nThis disables multi-line display wrapping pressure, keeps each cue on one line, and prefers semantic stopping points over character-count stops."
+                }),
+                "heuristic_language_profile": (HEURISTIC_PROFILE_OPTIONS, {
+                    "default": DEFAULT_HEURISTIC_PROFILE_LABEL,
+                    "tooltip": "Language profile for heuristic defaults.\nPick a language to auto-populate connector and incomplete-sentence lists.\nAuto resolves from ASR timing language when available. Custom means you fully manage the text lists yourself."
                 }),
                 "srt_max_chars_per_line": ("INT", {
                     "default": 42, "min": 10, "max": 10000, "step": 1,
@@ -125,7 +140,7 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
                     "tooltip": "Maximum pause allowed when merging a dangling tail.\nHigher = more aggressive merging."
                 }),
                 "merge_dangling_tail_allowlist": ("STRING", {
-                    "default": "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+                    "default": ENGLISH_DANGLING_TAIL_ALLOWLIST,
                     "tooltip": "Comma-separated connector words treated as dangling tails.\nExample: a, the, to, of, and, I'm"
                 }),
                 "merge_leading_short_no_punct": ("BOOLEAN", {
@@ -149,7 +164,7 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
                     "tooltip": "Maximum pause allowed when merging an incomplete sentence.\nHigher = more aggressive merging."
                 }),
                 "merge_incomplete_keywords": ("STRING", {
-                    "default": "what,why,how,where,who,which,when",
+                    "default": ENGLISH_INCOMPLETE_KEYWORDS,
                     "tooltip": "Comma-separated keywords that suggest the previous subtitle is incomplete.\nExample: what, why, how, where"
                 }),
                 "merge_incomplete_split_next": ("BOOLEAN", {
@@ -176,6 +191,8 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
         self,
         srt_preset: str,
         srt_mode: str,
+        tts_ready_mode: bool,
+        heuristic_language_profile: str,
         srt_max_chars_per_line: int,
         srt_max_lines: int,
         srt_max_duration: float,
@@ -211,6 +228,8 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
         return ({
             "srt_preset": srt_preset,
             "srt_mode": srt_mode,
+            "tts_ready_mode": tts_ready_mode,
+            "heuristic_language_profile": heuristic_language_profile,
             "srt_max_chars_per_line": srt_max_chars_per_line,
             "srt_max_lines": srt_max_lines,
             "srt_max_duration": srt_max_duration,
@@ -244,16 +263,10 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
             "normalize_cue_end_punctuation": normalize_cue_end_punctuation,
         },)
 
-
-ASRSRTAdvancedOptionsNode = SRTAdvancedOptionsNode
-
-
 NODE_CLASS_MAPPINGS = {
     "SRTAdvancedOptionsNode": SRTAdvancedOptionsNode,
-    "ASRSRTAdvancedOptionsNode": ASRSRTAdvancedOptionsNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "SRTAdvancedOptionsNode": "🔧 SRT Advanced Options",
-    "ASRSRTAdvancedOptionsNode": "🔧 SRT Advanced Options",
 }

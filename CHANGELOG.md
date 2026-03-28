@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.8] - 2026-03-28
+
+### Added
+
+- Add reusable ASR timing JSON output so timings can be saved and reused without rerunning Qwen3 ASR
+
+### Changed
+
+- Improve Text to SRT Builder TTS-ready subtitle generation
+- Add TTS-ready subtitle mode for longer single-line cues that stop at better semantic boundaries
+- Add Portuguese (Brazil) heuristic defaults for cleaner subtitle chunking
+
+### Fixed
+
+- Fix awkward subtitle splits on connectors like de, da, do, na, and para
+
+### Removed
+
+- Remove the duplicate SRT Advanced Options node variant
 ## [4.24.7] - 2026-03-27
 
 ### Fixed

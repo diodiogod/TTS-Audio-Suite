@@ -7,13 +7,19 @@ from typing import Dict, List, Optional, Tuple
 import re
 
 from utils.asr.types import ASRSegment, ASRWord
+from utils.asr.srt_heuristic_profiles import (
+    ENGLISH_DANGLING_TAIL_ALLOWLIST,
+    ENGLISH_INCOMPLETE_KEYWORDS,
+)
 from utils.asr.tagged_text import TaggedTextProfile, parse_tagged_text
 
 
 SENTENCE_END_CHARS = {".", "!", "?", "…"}
 SOFT_BREAK_CHARS = {",", ";", ":"}
-DEFAULT_CONNECTOR_ALLOWLIST = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it"
+DEFAULT_CONNECTOR_ALLOWLIST = ENGLISH_DANGLING_TAIL_ALLOWLIST
+DEFAULT_INCOMPLETE_KEYWORDS = ENGLISH_INCOMPLETE_KEYWORDS
 ALIGNMENT_TOKEN_RE = re.compile(r"[^\W_]+(?:[-'][^\W_]+)*|[^\w\s]", flags=re.UNICODE)
+PHRASE_TOKEN_RE = re.compile(r"[^\W_]+(?:[-'][^\W_]+)*", flags=re.UNICODE)
 
 
 def _format_timestamp(seconds: float) -> str:
@@ -62,6 +68,56 @@ def _text_of_item(item) -> str:
 
 def _normalize_token(text: str) -> str:
     return re.sub(r"[^\w]+", "", text, flags=re.UNICODE).lower()
+
+
+def _tokenize_phrase_text(text: str) -> List[str]:
+    return [token.lower() for token in PHRASE_TOKEN_RE.findall(text or "")]
+
+
+def _parse_phrase_csv(text: str) -> List[Tuple[str, ...]]:
+    phrases: List[Tuple[str, ...]] = []
+    for item in (text or "").split(","):
+        tokens = tuple(_tokenize_phrase_text(item))
+        if tokens:
+            phrases.append(tokens)
+    return phrases
+
+
+def _last_clause_text(text: str) -> str:
+    clauses = re.split(r"[.!?…]\s*", text or "")
+    return clauses[-1].strip() if clauses else (text or "").strip()
+
+
+def _tail_matches_phrase(text: str, phrases: List[Tuple[str, ...]]) -> bool:
+    tokens = _tokenize_phrase_text(text)
+    if not tokens:
+        return False
+
+    for phrase in phrases:
+        phrase_len = len(phrase)
+        if phrase_len <= len(tokens) and tuple(tokens[-phrase_len:]) == phrase:
+            return True
+    return False
+
+
+def _clause_starts_with_phrase(text: str, phrases: List[Tuple[str, ...]]) -> bool:
+    tokens = _tokenize_phrase_text(text)
+    if not tokens:
+        return False
+
+    for phrase in phrases:
+        phrase_len = len(phrase)
+        if phrase_len <= len(tokens) and tuple(tokens[:phrase_len]) == phrase:
+            return True
+    return False
+
+
+def _looks_incomplete_tail(text: str, phrases: List[Tuple[str, ...]], *, max_clause_tokens: int = 8) -> bool:
+    clause = _last_clause_text(text)
+    clause_tokens = _tokenize_phrase_text(clause)
+    if not clause_tokens or len(clause_tokens) > max_clause_tokens:
+        return False
+    return _clause_starts_with_phrase(clause, phrases)
 
 
 def _strip_edge_punctuation(text: str) -> str:
@@ -206,6 +262,10 @@ def _looks_phrase_bridge(left_items, right_items) -> bool:
     return False
 
 
+def _tts_ready_duration_slack(max_duration: float) -> float:
+    return max(0.45, min(1.5, max_duration * 0.12))
+
+
 def _boundary_score(left_items,
                     right_items,
                     *,
@@ -273,11 +333,14 @@ def _choose_best_overflow_split(candidate_items,
                                 min_duration: float,
                                 max_chars: int,
                                 max_cps: float,
+                                tts_ready_mode: bool,
+                                tts_duration_slack: float,
                                 punctuation_grace_chars: int,
                                 min_words_per_segment: int,
                                 min_segment_seconds: float,
                                 minimum_score: float,
-                                connector_words):
+                                connector_words,
+                                connector_phrases):
     if len(candidate_items) < 2:
         return None
 
@@ -293,6 +356,7 @@ def _choose_best_overflow_split(candidate_items,
         left_duration = _items_duration(left_items)
         left_cps = len(left_text) / max(0.001, left_duration)
         hard_boundary = _ends_sentence(left_text) or _ends_soft_break(left_text)
+        left_tail_is_connector = _tail_matches_phrase(left_text, connector_phrases)
 
         score = _boundary_score(
             left_items,
@@ -309,17 +373,23 @@ def _choose_best_overflow_split(candidate_items,
         )
 
         allowed_chars = max_chars + (punctuation_grace_chars if _ends_sentence(left_text) else 0)
-        if len(left_text) > allowed_chars:
+        if not tts_ready_mode and len(left_text) > allowed_chars:
             score -= 220.0 + ((len(left_text) - allowed_chars) * 8.0)
-        if left_duration > max_duration:
-            score -= 240.0 + ((left_duration - max_duration) * 60.0)
-        if left_duration >= min_duration and left_cps > max_cps:
+        allowed_duration = max_duration + (tts_duration_slack if tts_ready_mode else 0.0)
+        if left_duration > allowed_duration:
+            if tts_ready_mode:
+                score -= 140.0 + ((left_duration - allowed_duration) * 35.0)
+            else:
+                score -= 240.0 + ((left_duration - allowed_duration) * 60.0)
+        if not tts_ready_mode and left_duration >= min_duration and left_cps > max_cps:
             if hard_boundary:
                 score -= 55.0 + ((left_cps - max_cps) * 8.0)
             else:
                 score -= 180.0 + ((left_cps - max_cps) * 25.0)
         if left_duration < min_duration:
             score -= 35.0 + ((min_duration - left_duration) * 40.0)
+        if tts_ready_mode and left_tail_is_connector:
+            score -= 260.0
 
         if score > best_score:
             best_score = score
@@ -398,7 +468,8 @@ def _split_segment_for_display(seg: ASRSegment,
                                max_chars_per_line: int,
                                max_lines: int,
                                min_words_per_segment: int = 1,
-                               min_segment_seconds: float = 0.0) -> List[ASRSegment]:
+                               min_segment_seconds: float = 0.0,
+                               connector_words=None) -> List[ASRSegment]:
     if not seg.text or max_lines <= 0:
         return [seg]
 
@@ -411,7 +482,7 @@ def _split_segment_for_display(seg: ASRSegment,
 
     total_items = len(source_items)
     total_duration = max(0.0, seg.end - seg.start)
-    connector_words = {
+    connector_words = connector_words or {
         w.strip().lower() for w in DEFAULT_CONNECTOR_ALLOWLIST.split(",") if w.strip()
     }
     cue_item_groups = _choose_display_split_groups(
@@ -464,6 +535,7 @@ def _segments_from_words(words: List[ASRWord],
                          min_duration: float,
                          max_chars: int,
                          max_cps: float,
+                         tts_ready_mode: bool = False,
                          punctuation_grace_chars: int = 12,
                          min_words_per_segment: int = 2,
                          min_segment_seconds: float = 0.4,
@@ -475,13 +547,13 @@ def _segments_from_words(words: List[ASRWord],
                          merge_dangling_tail: bool = True,
                          merge_dangling_tail_max_words: int = 3,
                          merge_dangling_tail_max_gap: float = 3.0,
-                         merge_dangling_tail_allowlist: str = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+                         merge_dangling_tail_allowlist: str = DEFAULT_CONNECTOR_ALLOWLIST,
                          merge_leading_short_no_punct: bool = True,
                          merge_leading_short_no_punct_max_words: int = 2,
                          merge_leading_short_no_punct_max_gap: float = 1.5,
                          merge_incomplete_sentence: bool = True,
                          merge_incomplete_max_gap: float = 1.2,
-                         merge_incomplete_keywords: str = "what,why,how,where,who,which,when",
+                         merge_incomplete_keywords: str = DEFAULT_INCOMPLETE_KEYWORDS,
                          merge_incomplete_split_next: bool = True,
                          merge_allow_overlong: bool = False) -> List[ASRSegment]:
     segments: List[ASRSegment] = []
@@ -491,9 +563,10 @@ def _segments_from_words(words: List[ASRWord],
     current_words: List[ASRWord] = []
     current_text = ""
     seg_start = words[0].start
-    connector_words = {
-        w.strip().lower() for w in merge_dangling_tail_allowlist.split(",") if w.strip()
-    }
+    connector_phrases = _parse_phrase_csv(merge_dangling_tail_allowlist)
+    connector_words = {phrase[-1] for phrase in connector_phrases if phrase}
+    incomplete_phrases = _parse_phrase_csv(merge_incomplete_keywords)
+    tts_duration_slack = _tts_ready_duration_slack(max_duration) if tts_ready_mode else 0.0
 
     def flush_segment(end_time: float, words_override=None, text_override: str = None):
         nonlocal current_words, current_text, seg_start
@@ -522,11 +595,13 @@ def _segments_from_words(words: List[ASRWord],
         is_sentence_end = last_char_projected in [".", "!", "?", "…"]
 
         split_on_gap = gap >= min_gap
-        split_on_duration = projected_duration > max_duration
-        split_on_chars = len(projected_text) > max_chars
+        split_on_duration = projected_duration > (max_duration + tts_duration_slack)
+        split_on_chars = (not tts_ready_mode) and len(projected_text) > max_chars
         if split_on_chars and is_sentence_end and punctuation_grace_chars > 0:
             split_on_chars = len(projected_text) > (max_chars + punctuation_grace_chars)
         split_on_cps = (
+            not tts_ready_mode
+            and
             projected_cps > max_cps
             and projected_duration >= min_duration
             and len(projected_text) >= int(max_chars * 0.65)
@@ -534,6 +609,10 @@ def _segments_from_words(words: List[ASRWord],
 
         if split_on_gap and merge_trailing_punct_word:
             if gap <= merge_trailing_punct_max_gap and is_sentence_end:
+                split_on_gap = False
+
+        if split_on_gap and tts_ready_mode and gap <= merge_dangling_tail_max_gap and current_text:
+            if _tail_matches_phrase(_last_clause_text(current_text), connector_phrases):
                 split_on_gap = False
 
         if current_words and (split_on_gap or split_on_duration or split_on_chars or split_on_cps):
@@ -546,11 +625,14 @@ def _segments_from_words(words: List[ASRWord],
                     min_duration=min_duration,
                     max_chars=max_chars,
                     max_cps=max_cps,
+                    tts_ready_mode=tts_ready_mode,
+                    tts_duration_slack=tts_duration_slack,
                     punctuation_grace_chars=punctuation_grace_chars,
                     min_words_per_segment=min_words_per_segment,
                     min_segment_seconds=min_segment_seconds,
                     minimum_score=25.0 if split_on_cps and not (split_on_duration or split_on_chars) else 0.0,
                     connector_words=connector_words,
+                    connector_phrases=connector_phrases,
                 )
                 if split_idx is not None and 0 < split_idx < len(candidate_words):
                     left_words = candidate_words[:split_idx]
@@ -582,7 +664,11 @@ def _segments_from_words(words: List[ASRWord],
                 if (word.end - seg_start) >= min_duration:
                     flush_segment(word.end)
             elif last_char in [",", ";", ":"]:
-                if (word.end - seg_start) >= min_duration and len(current_text) >= int(max_chars * 0.5):
+                if (
+                    not tts_ready_mode
+                    and (word.end - seg_start) >= min_duration
+                    and len(current_text) >= int(max_chars * 0.5)
+                ):
                     flush_segment(word.end)
 
     if current_words:
@@ -606,10 +692,12 @@ def _segments_from_words(words: List[ASRWord],
         merged.append(seg)
         i += 1
 
-    max_merge_duration = max_duration * 1.2
+    if tts_ready_mode:
+        max_merge_duration = max_duration if not merge_allow_overlong else max(max_duration * 1.6, max_duration + 4.0)
+    else:
+        max_merge_duration = max_duration if not merge_allow_overlong else max_duration * 1.2
+
     def can_merge_by_duration(start: float, end: float) -> bool:
-        if merge_allow_overlong:
-            return True
         return (end - start) <= max_merge_duration
 
     # Merge a very short leading phrase into the previous segment if it follows punctuation
@@ -654,20 +742,20 @@ def _segments_from_words(words: List[ASRWord],
         merged = stitched
 
     if merge_dangling_tail and len(merged) > 1:
-        allow = {w.strip().lower() for w in merge_dangling_tail_allowlist.split(",") if w.strip()}
         stitched: List[ASRSegment] = [merged[0]]
         for seg in merged[1:]:
             prev = stitched[-1]
             gap = seg.start - prev.end
             if gap <= merge_dangling_tail_max_gap and prev.text:
                 # Only look at the last clause after sentence-ending punctuation
-                clauses = re.split(r"[.!?…]\s*", prev.text)
-                last_clause = clauses[-1].strip() if clauses else prev.text.strip()
+                last_clause = _last_clause_text(prev.text)
                 clause_words = last_clause.split()
-                tail = clause_words[-1].strip(".,!?…:;").lower() if clause_words else ""
                 next_has_sentence_end = bool(seg.text and re.search(r"[.!?…]", seg.text))
-                if tail in allow and next_has_sentence_end:
-                    if len(clause_words) <= max(1, merge_dangling_tail_max_words):
+                if _tail_matches_phrase(last_clause, connector_phrases) and next_has_sentence_end:
+                    tail_clause_limit = max(1, merge_dangling_tail_max_words)
+                    if tts_ready_mode:
+                        tail_clause_limit = max(tail_clause_limit, 12)
+                    if len(clause_words) <= tail_clause_limit:
                         # Prefer merging only the first sentence from next segment
                         split_idx = -1
                         for i, w in enumerate(seg.words):
@@ -680,7 +768,7 @@ def _segments_from_words(words: List[ASRWord],
                             head_text = " ".join([w.text for w in head_words]).strip()
                             tail_text = " ".join([w.text for w in tail_words]).strip()
                             combined = f"{prev.text} {head_text}".strip()
-                            if len(combined) <= (max_chars + punctuation_grace_chars) and can_merge_by_duration(prev.start, head_words[-1].end):
+                            if (tts_ready_mode or len(combined) <= (max_chars + punctuation_grace_chars)) and can_merge_by_duration(prev.start, head_words[-1].end):
                                 stitched[-1] = ASRSegment(
                                     start=prev.start,
                                     end=head_words[-1].end,
@@ -708,17 +796,15 @@ def _segments_from_words(words: List[ASRWord],
         merged = stitched
 
     if merge_incomplete_sentence and len(merged) > 1:
-        keywords = {w.strip().lower() for w in merge_incomplete_keywords.split(",") if w.strip()}
         stitched: List[ASRSegment] = [merged[0]]
         for seg in merged[1:]:
             prev = stitched[-1]
             gap = seg.start - prev.end
             if gap <= merge_incomplete_max_gap:
                 if prev.text and prev.text[-1:] not in [".", "!", "?", "…"]:
-                    prev_lower = prev.text.lower()
-                    if any(k in prev_lower.split() for k in keywords):
+                    if _looks_incomplete_tail(prev.text, incomplete_phrases):
                         combined = f"{prev.text} {seg.text}".strip()
-                        if len(combined) <= (max_chars + punctuation_grace_chars) and can_merge_by_duration(prev.start, seg.end):
+                        if (tts_ready_mode or len(combined) <= (max_chars + punctuation_grace_chars)) and can_merge_by_duration(prev.start, seg.end):
                             stitched[-1] = ASRSegment(
                                 start=prev.start,
                                 end=seg.end,
@@ -730,15 +816,13 @@ def _segments_from_words(words: List[ASRWord],
         merged = stitched
 
     if merge_incomplete_split_next and len(merged) > 1:
-        keywords = {w.strip().lower() for w in merge_incomplete_keywords.split(",") if w.strip()}
         stitched: List[ASRSegment] = [merged[0]]
         for seg in merged[1:]:
             prev = stitched[-1]
             gap = seg.start - prev.end
             if gap <= merge_incomplete_max_gap:
                 if prev.text and prev.text[-1:] not in [".", "!", "?", "…"]:
-                    prev_lower = prev.text.lower()
-                    if any(k in prev_lower.split() for k in keywords):
+                    if _looks_incomplete_tail(prev.text, incomplete_phrases):
                         # Split next segment at first sentence-ending punctuation
                         split_idx = -1
                         for i, w in enumerate(seg.words):
@@ -751,7 +835,7 @@ def _segments_from_words(words: List[ASRWord],
                             head_text = " ".join([w.text for w in head_words]).strip()
                             tail_text = " ".join([w.text for w in tail_words]).strip()
                             combined = f"{prev.text} {head_text}".strip()
-                            if len(combined) <= (max_chars + punctuation_grace_chars) and can_merge_by_duration(prev.start, head_words[-1].end):
+                            if (tts_ready_mode or len(combined) <= (max_chars + punctuation_grace_chars)) and can_merge_by_duration(prev.start, head_words[-1].end):
                                 stitched[-1] = ASRSegment(
                                     start=prev.start,
                                     end=head_words[-1].end,
@@ -1005,6 +1089,7 @@ def build_srt(segments: List[ASRSegment],
               min_duration: float = 1.0,
               min_gap: float = 0.6,
               max_cps: float = 20.0,
+              tts_ready_mode: bool = False,
               return_stats: bool = False,
               dedupe_overlaps: bool = True,
               dedupe_window_ms: int = 1500,
@@ -1021,13 +1106,13 @@ def build_srt(segments: List[ASRSegment],
               merge_dangling_tail: bool = True,
               merge_dangling_tail_max_words: int = 3,
               merge_dangling_tail_max_gap: float = 3.0,
-              merge_dangling_tail_allowlist: str = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+              merge_dangling_tail_allowlist: str = DEFAULT_CONNECTOR_ALLOWLIST,
               merge_leading_short_no_punct: bool = True,
               merge_leading_short_no_punct_max_words: int = 2,
               merge_leading_short_no_punct_max_gap: float = 1.5,
               merge_incomplete_sentence: bool = True,
               merge_incomplete_max_gap: float = 1.2,
-              merge_incomplete_keywords: str = "what,why,how,where,who,which,when",
+              merge_incomplete_keywords: str = DEFAULT_INCOMPLETE_KEYWORDS,
               merge_incomplete_split_next: bool = True,
               merge_allow_overlong: bool = False,
               normalize_cue_end_punctuation: bool = False):
@@ -1074,6 +1159,7 @@ def build_srt(segments: List[ASRSegment],
                 min_duration=min_duration,
                 max_chars=max_chars_per_line * max_lines,
                 max_cps=max_cps,
+                tts_ready_mode=tts_ready_mode,
                 punctuation_grace_chars=punctuation_grace_chars,
                 min_words_per_segment=min_words_per_segment,
                 min_segment_seconds=min_segment_seconds,
@@ -1119,17 +1205,23 @@ def build_srt(segments: List[ASRSegment],
             if cur.words:
                 cur.words[-1].text = f"{cur.words[-1].text}."
 
-    display_segments: List[ASRSegment] = []
-    for seg in segments_to_use:
-        display_segments.extend(
-            _split_segment_for_display(
-                seg,
-                max_chars_per_line=max_chars_per_line,
-                max_lines=max_lines,
-                min_words_per_segment=min_words_per_segment,
-                min_segment_seconds=min_segment_seconds,
+    connector_words = {phrase[-1] for phrase in _parse_phrase_csv(merge_dangling_tail_allowlist) if phrase}
+
+    if tts_ready_mode:
+        display_segments = list(segments_to_use)
+    else:
+        display_segments: List[ASRSegment] = []
+        for seg in segments_to_use:
+            display_segments.extend(
+                _split_segment_for_display(
+                    seg,
+                    max_chars_per_line=max_chars_per_line,
+                    max_lines=max_lines,
+                    min_words_per_segment=min_words_per_segment,
+                    min_segment_seconds=min_segment_seconds,
+                    connector_words=connector_words,
+                )
             )
-        )
 
     if normalize_cue_end_punctuation:
         for idx, seg in enumerate(display_segments):
@@ -1159,14 +1251,14 @@ def build_srt(segments: List[ASRSegment],
         if tagged_word_index_map and seg.words:
             text = _render_tagged_segment(
                 seg,
-                max_chars_per_line=max_chars_per_line,
-                max_lines=max_lines,
+                max_chars_per_line=1000000 if tts_ready_mode else max_chars_per_line,
+                max_lines=1 if tts_ready_mode else max_lines,
                 tagged_profile=tagged_profile,
                 word_index_map=tagged_word_index_map,
                 global_last_word_idx=len(tagged_word_index_map) - 1,
             )
         else:
-            text = _wrap_text(seg.text, max_chars_per_line, max_lines)
+            text = " ".join(seg.text.split()) if tts_ready_mode else _wrap_text(seg.text, max_chars_per_line, max_lines)
         if not text:
             continue
         lines.append(str(idx))

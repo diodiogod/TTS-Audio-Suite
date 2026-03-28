@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.24.7
+# TTS Audio Suite v4.24.8
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -823,7 +823,7 @@ This matters because the suite can now:
 * **Reuse timings with edited text** - Clean or post-process transcript text first, then rebuild SRT using the original timings
 * **Use dedicated subtitle controls** - `🔧 SRT Advanced Options` now belongs to the builder stage instead of being mixed into ASR
 * **Support Granite better** - Granite can stay raw for alignment, then go through punctuation/truecase before subtitle construction
-* **Support text-only SRT generation** - Leave `timing_data` disconnected and the builder estimates subtitle timings from plain text using the same SRT options that later shape the final cues
+* **Support text-only SRT generation** - Leave `asr_timing_data` disconnected and the builder estimates subtitle timings from plain text using the same SRT options that later shape the final cues
 * **Preserve project control tags** - Character, language, parameter, pause, and inline edit tags are preserved instead of being broken by subtitle heuristics
 * **Keep tag-heavy SRT usable for TTS** - Control tags do not count toward readability metrics, pause tags still affect timing, and active speaker state is re-emitted on wrapped subtitle lines/cues so TTS does not fall back to narrator
 
@@ -831,7 +831,7 @@ This matters because the suite can now:
 
 * `✏️ ASR Transcribe` for timed transcription with **Qwen3-ASR** or **Granite ASR**
 * `📝 ASR Punctuation / Truecase` mainly for low-punctuation ASR outputs like Granite
-* `📺 Text to SRT Builder` to turn cleaned text + timing data into final SRT
+* `📺 Text to SRT Builder` to turn cleaned text + ASR timing data into final SRT
 
 **Workflow example:**
 

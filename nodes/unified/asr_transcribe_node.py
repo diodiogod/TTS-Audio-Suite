@@ -23,7 +23,7 @@ base_spec.loader.exec_module(base_module)
 
 BaseChatterBoxNode = base_module.BaseChatterBoxNode
 
-from utils.asr.types import ASRRequest
+from utils.asr.types import ASRRequest, asr_result_to_json
 from utils.asr.pipeline import run_asr, format_asr_info, append_info_items
 from utils.audio.audio_hash import generate_stable_audio_component
 
@@ -96,7 +96,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 }),
                 "timestamps": (["none", "word"], {
                     "default": "none",
-                    "tooltip": "Timing detail for the timing_data output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are produced by the separate Qwen forced aligner, not natively by Granite."
+                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are produced by the separate Qwen forced aligner, not natively by Granite."
                 }),
                 "chunk_size": ("INT", {
                     "default": 30, "min": 0, "max": 600, "step": 1,
@@ -113,8 +113,8 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             }
         }
 
-    RETURN_TYPES = ("STRING", "TIMING_DATA", "STRING")
-    RETURN_NAMES = ("text", "timing_data", "info")
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("text", "asr_timing_data", "info")
     FUNCTION = "transcribe"
     CATEGORY = "TTS Audio Suite/✏️ ASR"
 
@@ -212,7 +212,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             info = append_info_items(
                 info,
                 "NOTES",
-                "timing_data has no word timings because timestamps=none.",
+                "asr_timing_data has no word timings because timestamps=none.",
             )
         elif timestamps == "word" and not forced_aligner_enabled:
             info = append_info_items(
@@ -221,7 +221,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 "If you need high-quality subtitle timing from ASR output, enable the Qwen3 Forced Aligner when supported by the engine.",
             )
 
-        return (result.text or "", result, info)
+        return (result.text or "", asr_result_to_json(result), info)
 
 
 NODE_CLASS_MAPPINGS = {

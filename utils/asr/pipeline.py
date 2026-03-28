@@ -4,6 +4,10 @@ Unified ASR pipeline: adapter selection + result normalization.
 
 from typing import Dict, Any
 
+from utils.asr.srt_heuristic_profiles import (
+    ENGLISH_DANGLING_TAIL_ALLOWLIST,
+    ENGLISH_INCOMPLETE_KEYWORDS,
+)
 from utils.asr.types import ASRRequest, ASRResult, ASRSegment, ASRWord
 from utils.asr.srt_builder import build_srt
 from utils.asr.adapter_registry import get_asr_adapter_class
@@ -104,6 +108,7 @@ def format_asr_output(result: ASRResult,
                       min_duration: float = 1.0,
                       min_gap: float = 0.6,
                       max_cps: float = 20.0,
+                      tts_ready_mode: bool = False,
                       dedupe_overlaps: bool = True,
                       dedupe_window_ms: int = 1500,
                       dedupe_min_words: int = 2,
@@ -119,13 +124,13 @@ def format_asr_output(result: ASRResult,
                       merge_dangling_tail: bool = True,
                       merge_dangling_tail_max_words: int = 3,
                       merge_dangling_tail_max_gap: float = 3.0,
-                      merge_dangling_tail_allowlist: str = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+                      merge_dangling_tail_allowlist: str = ENGLISH_DANGLING_TAIL_ALLOWLIST,
                       merge_leading_short_no_punct: bool = True,
                       merge_leading_short_no_punct_max_words: int = 2,
                       merge_leading_short_no_punct_max_gap: float = 1.5,
                       merge_incomplete_sentence: bool = True,
                       merge_incomplete_max_gap: float = 1.2,
-                      merge_incomplete_keywords: str = "what,why,how,where,who,which,when",
+                      merge_incomplete_keywords: str = ENGLISH_INCOMPLETE_KEYWORDS,
                       merge_incomplete_split_next: bool = True,
                       merge_allow_overlong: bool = False,
                       normalize_cue_end_punctuation: bool = False) -> Dict[str, Any]:
@@ -139,6 +144,7 @@ def format_asr_output(result: ASRResult,
         min_duration=min_duration,
         min_gap=min_gap,
         max_cps=max_cps,
+        tts_ready_mode=tts_ready_mode,
         dedupe_overlaps=dedupe_overlaps,
         dedupe_window_ms=dedupe_window_ms,
         dedupe_min_words=dedupe_min_words,

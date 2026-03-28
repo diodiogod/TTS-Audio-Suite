@@ -5,6 +5,10 @@ Synthetic ASR timing estimation for text-only subtitle generation.
 import re
 from typing import List
 
+from utils.asr.srt_heuristic_profiles import (
+    ENGLISH_DANGLING_TAIL_ALLOWLIST,
+    ENGLISH_INCOMPLETE_KEYWORDS,
+)
 from utils.asr.srt_builder import segments_from_words
 from utils.asr.tagged_text import apply_pause_offsets_to_words, parse_tagged_text
 from utils.asr.types import ASRResult, ASRSegment, ASRWord
@@ -97,6 +101,78 @@ def _split_paragraph(paragraph: str, max_chars: int) -> List[str]:
     return [chunk for chunk in chunks if chunk]
 
 
+def _split_sentence_tts_ready(sentence: str, target_chars: int) -> List[str]:
+    sentence = sentence.strip()
+    if not sentence:
+        return []
+
+    soft_limit = max(24, target_chars)
+    hard_limit = max(soft_limit + 18, int(soft_limit * 1.35))
+    if len(sentence) <= hard_limit:
+        return [sentence]
+
+    parts = [part.strip() for part in CLAUSE_SPLIT_RE.split(sentence) if part.strip()]
+    if len(parts) <= 1:
+        return _split_overlong_part(sentence, hard_limit)
+
+    chunks: List[str] = []
+    current = ""
+    for part in parts:
+        candidate = f"{current} {part}".strip() if current else part
+        if current and len(candidate) > hard_limit:
+            chunks.append(current)
+            current = part
+            continue
+        current = candidate
+
+    if current:
+        chunks.append(current)
+    return [chunk for chunk in chunks if chunk]
+
+
+def _split_paragraph_tts_ready(paragraph: str, target_chars: int) -> List[str]:
+    paragraph = _normalize_whitespace(paragraph)
+    if not paragraph:
+        return []
+
+    sentences = [sentence.strip() for sentence in SENTENCE_SPLIT_RE.split(paragraph) if sentence.strip()]
+    if not sentences:
+        return _split_sentence_tts_ready(paragraph, target_chars)
+
+    soft_limit = max(24, target_chars)
+    hard_limit = max(soft_limit + 18, int(soft_limit * 1.35))
+    chunks: List[str] = []
+    current = ""
+
+    for sentence in sentences:
+        for part in _split_sentence_tts_ready(sentence, target_chars):
+            if not current:
+                current = part
+                continue
+
+            candidate = f"{current} {part}".strip()
+            if len(candidate) <= soft_limit:
+                current = candidate
+                continue
+
+            if _ends_sentence_like(current) and len(candidate) <= hard_limit:
+                current = candidate
+                continue
+
+            chunks.append(current)
+            current = part
+
+    if current:
+        chunks.append(current)
+
+    return [chunk for chunk in chunks if chunk]
+
+
+def _ends_sentence_like(text: str) -> bool:
+    text = text.rstrip()
+    return bool(text) and text[-1:] in SENTENCE_END_CHARS
+
+
 def _word_weight(word: str) -> float:
     alnum = re.sub(r"[^\w]+", "", word, flags=re.UNICODE)
     return float(max(1, len(alnum)))
@@ -145,6 +221,7 @@ def estimate_asr_result_from_text(
     min_duration: float = 1.0,
     min_gap: float = 0.6,
     max_cps: float = 20.0,
+    tts_ready_mode: bool = False,
     punctuation_grace_chars: int = 12,
     min_words_per_segment: int = 2,
     min_segment_seconds: float = 0.4,
@@ -156,13 +233,13 @@ def estimate_asr_result_from_text(
     merge_dangling_tail: bool = True,
     merge_dangling_tail_max_words: int = 3,
     merge_dangling_tail_max_gap: float = 3.0,
-    merge_dangling_tail_allowlist: str = "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+    merge_dangling_tail_allowlist: str = ENGLISH_DANGLING_TAIL_ALLOWLIST,
     merge_leading_short_no_punct: bool = True,
     merge_leading_short_no_punct_max_words: int = 2,
     merge_leading_short_no_punct_max_gap: float = 1.5,
     merge_incomplete_sentence: bool = True,
     merge_incomplete_max_gap: float = 1.2,
-    merge_incomplete_keywords: str = "what,why,how,where,who,which,when",
+    merge_incomplete_keywords: str = ENGLISH_INCOMPLETE_KEYWORDS,
     merge_incomplete_split_next: bool = True,
     merge_allow_overlong: bool = False,
 ) -> ASRResult:
@@ -173,20 +250,23 @@ def estimate_asr_result_from_text(
     tagged_profile = parse_tagged_text(cleaned)
     spoken_text = tagged_profile.spoken_text if tagged_profile.has_control_tags else cleaned
 
-    target_chars = max(
-        12,
-        min(
-            max(12, max_chars_per_line * max(1, max_lines)),
-            max(12, int(max(max_cps, 0.1) * max(max_duration, 0.2))),
-        ),
-    )
+    if tts_ready_mode:
+        target_chars = max(24, int(max(max_cps, 0.1) * max(max_duration, 0.2)))
+    else:
+        target_chars = max(
+            12,
+            min(
+                max(12, max_chars_per_line * max(1, max_lines)),
+                max(12, int(max(max_cps, 0.1) * max(max_duration, 0.2))),
+            ),
+        )
 
     paragraphs = [paragraph for paragraph in re.split(r"\n\s*\n+", spoken_text) if paragraph.strip()]
     all_words: List[ASRWord] = []
     timeline = 0.0
 
     for paragraph_index, paragraph in enumerate(paragraphs):
-        cues = _split_paragraph(paragraph, target_chars)
+        cues = _split_paragraph_tts_ready(paragraph, target_chars) if tts_ready_mode else _split_paragraph(paragraph, target_chars)
         for cue_index, cue_text in enumerate(cues):
             cue_duration = len(cue_text) / max(max_cps, 0.1)
             cue_duration = min(max_duration, max(min_duration, cue_duration))
@@ -217,6 +297,7 @@ def estimate_asr_result_from_text(
         min_duration=min_duration,
         max_chars=max_chars_per_line * max(1, max_lines),
         max_cps=max_cps,
+        tts_ready_mode=tts_ready_mode,
         punctuation_grace_chars=punctuation_grace_chars,
         min_words_per_segment=min_words_per_segment,
         min_segment_seconds=min_segment_seconds,
@@ -244,7 +325,7 @@ def estimate_asr_result_from_text(
         segments=segments,
         raw={
             "notes": [
-                "Timings were estimated from plain text because timing_data was not connected.",
+                "Timings were estimated from plain text because asr_timing_data was not connected.",
                 "Estimated timings and cue boundaries were guided by the current SRT advanced options.",
                 "Estimated timings are approximate and should be reviewed before final use.",
             ]

@@ -1756,7 +1756,7 @@
     },
     {
       "id": 190,
-      "type": "ASRSRTAdvancedOptionsNode",
+      "type": "SRTAdvancedOptionsNode",
       "pos": [
         -570,
         4570
@@ -1779,7 +1779,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "ASRSRTAdvancedOptionsNode",
+        "Node name for S&R": "SRTAdvancedOptionsNode",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {}
@@ -2116,8 +2116,8 @@
           ]
         },
         {
-          "name": "timing_data",
-          "type": "TIMING_DATA",
+          "name": "asr_timing_data",
+          "type": "STRING",
           "links": [
             315,
             317
@@ -2161,8 +2161,8 @@
       "mode": 0,
       "inputs": [
         {
-          "name": "timing_data",
-          "type": "TIMING_DATA",
+          "name": "asr_timing_data",
+          "type": "STRING",
           "link": 317
         },
         {
@@ -2684,7 +2684,7 @@
       1,
       192,
       0,
-      "TIMING_DATA"
+      "STRING"
     ],
     [
       316,
@@ -2700,7 +2700,7 @@
       1,
       200,
       0,
-      "TIMING_DATA"
+      "STRING"
     ],
     [
       318,

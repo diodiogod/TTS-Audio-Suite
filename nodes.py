@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "4.24.7"
+VERSION = "4.24.8"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -568,8 +568,6 @@ if UNIFIED_ASR_AVAILABLE:
 if SRT_ADVANCED_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["SRTAdvancedOptionsNode"] = SRTAdvancedOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["SRTAdvancedOptionsNode"] = "🔧 SRT Advanced Options"
-    NODE_CLASS_MAPPINGS["ASRSRTAdvancedOptionsNode"] = SRTAdvancedOptionsNode
-    NODE_DISPLAY_NAME_MAPPINGS["ASRSRTAdvancedOptionsNode"] = "🔧 SRT Advanced Options"
 
 if TEXT_TO_SRT_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["TextToSRTBuilderNode"] = TextToSRTBuilderNode

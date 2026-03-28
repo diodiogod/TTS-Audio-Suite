@@ -1,8 +1,8 @@
 {
   "id": "4a7cdb14-f535-4923-861b-59ba2c7ee043",
   "revision": 0,
-  "last_node_id": 214,
-  "last_link_id": 348,
+  "last_node_id": 216,
+  "last_link_id": 356,
   "nodes": [
     {
       "id": 155,
@@ -16,7 +16,7 @@
         550
       ],
       "flags": {},
-      "order": 6,
+      "order": 0,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -114,7 +114,7 @@
         136
       ],
       "flags": {},
-      "order": 4,
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -142,77 +142,6 @@
       ],
       "color": "#323",
       "bgcolor": "#535"
-    },
-    {
-      "id": 190,
-      "type": "ASRSRTAdvancedOptionsNode",
-      "pos": [
-        990,
-        2010
-      ],
-      "size": [
-        410.55078125,
-        826
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "srt_options",
-          "type": "SRT_OPTIONS",
-          "links": [
-            318
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ASRSRTAdvancedOptionsNode",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "chatterbox_srt_voice",
-        "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a"
-      },
-      "widgets_values": [
-        "Broadcast",
-        "smart",
-        42,
-        2,
-        6,
-        1,
-        0.6,
-        17,
-        true,
-        1500,
-        2,
-        0.6,
-        12,
-        2,
-        0.4,
-        true,
-        1,
-        true,
-        2,
-        2,
-        true,
-        3,
-        3,
-        "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
-        true,
-        2,
-        1.5,
-        true,
-        1.2,
-        "what,why,how,where,who,which,when",
-        true,
-        true,
-        false
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
     },
     {
       "id": 191,
@@ -346,7 +275,7 @@
         90
       ],
       "flags": {},
-      "order": 1,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -375,7 +304,7 @@
         250
       ],
       "flags": {},
-      "order": 0,
+      "order": 3,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -470,11 +399,11 @@
           ]
         },
         {
-          "name": "timing_data",
-          "type": "TIMING_DATA",
+          "name": "asr_timing_data",
+          "type": "STRING",
           "links": [
             315,
-            317
+            350
           ]
         },
         {
@@ -500,73 +429,6 @@
       "bgcolor": "#335"
     },
     {
-      "id": 200,
-      "type": "TextToSRTBuilderNode",
-      "pos": [
-        1470,
-        1830
-      ],
-      "size": [
-        400,
-        200
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "timing_data",
-          "type": "TIMING_DATA",
-          "link": 317
-        },
-        {
-          "name": "srt_options",
-          "shape": 7,
-          "type": "SRT_OPTIONS",
-          "link": 318
-        },
-        {
-          "name": "text",
-          "type": "STRING",
-          "widget": {
-            "name": "text"
-          },
-          "link": 344
-        }
-      ],
-      "outputs": [
-        {
-          "name": "srt",
-          "type": "STRING",
-          "links": [
-            322
-          ]
-        },
-        {
-          "name": "timestamps",
-          "type": "STRING",
-          "links": [
-            323
-          ]
-        },
-        {
-          "name": "info",
-          "type": "STRING",
-          "links": [
-            324
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "TextToSRTBuilderNode"
-      },
-      "widgets_values": [
-        ""
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
       "id": 202,
       "type": "PreviewAny",
       "pos": [
@@ -584,7 +446,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 322
+          "link": 354
         }
       ],
       "outputs": [],
@@ -624,7 +486,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 323
+          "link": 355
         }
       ],
       "outputs": [],
@@ -664,7 +526,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 324
+          "link": 356
         }
       ],
       "outputs": [],
@@ -698,7 +560,7 @@
         472
       ],
       "flags": {},
-      "order": 7,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -765,7 +627,7 @@
           "type": "STRING",
           "links": [
             340,
-            344
+            353
           ]
         },
         {
@@ -917,7 +779,7 @@
         160
       ],
       "flags": {},
-      "order": 3,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -988,7 +850,7 @@
         88
       ],
       "flags": {},
-      "order": 5,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1003,6 +865,141 @@
       ],
       "color": "#222",
       "bgcolor": "#000"
+    },
+    {
+      "id": 215,
+      "type": "TextToSRTBuilderNode",
+      "pos": [
+        1470,
+        1830
+      ],
+      "size": [
+        400,
+        190
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "asr_timing_data",
+          "shape": 7,
+          "type": "STRING",
+          "link": 350
+        },
+        {
+          "name": "srt_options",
+          "shape": 7,
+          "type": "SRT_OPTIONS",
+          "link": 352
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 353
+        }
+      ],
+      "outputs": [
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            354
+          ]
+        },
+        {
+          "name": "timestamps",
+          "type": "STRING",
+          "links": [
+            355
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": [
+            356
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "TextToSRTBuilderNode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 216,
+      "type": "SRTAdvancedOptionsNode",
+      "pos": [
+        990,
+        2050
+      ],
+      "size": [
+        410.55078125,
+        874
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "srt_options",
+          "type": "SRT_OPTIONS",
+          "links": [
+            352
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SRTAdvancedOptionsNode"
+      },
+      "widgets_values": [
+        "Broadcast",
+        "smart",
+        false,
+        "Auto",
+        42,
+        2,
+        6,
+        1,
+        0.6,
+        17,
+        true,
+        1500,
+        2,
+        0.6,
+        12,
+        2,
+        0.4,
+        true,
+        1,
+        true,
+        2,
+        2,
+        true,
+        3,
+        3,
+        "a,an,the,to,of,and,or,im,i'm,you,you're,we,they,he,she,it",
+        true,
+        2,
+        1.5,
+        true,
+        1.2,
+        "what,why,how,where,who,which,when",
+        true,
+        true,
+        false
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     }
   ],
   "links": [
@@ -1035,46 +1032,6 @@
       199,
       2,
       193,
-      0,
-      "STRING"
-    ],
-    [
-      317,
-      199,
-      1,
-      200,
-      0,
-      "TIMING_DATA"
-    ],
-    [
-      318,
-      190,
-      0,
-      200,
-      1,
-      "SRT_OPTIONS"
-    ],
-    [
-      322,
-      200,
-      0,
-      202,
-      0,
-      "STRING"
-    ],
-    [
-      323,
-      200,
-      1,
-      203,
-      0,
-      "STRING"
-    ],
-    [
-      324,
-      200,
-      2,
-      204,
       0,
       "STRING"
     ],
@@ -1119,14 +1076,6 @@
       "STRING"
     ],
     [
-      344,
-      208,
-      0,
-      200,
-      2,
-      "STRING"
-    ],
-    [
       346,
       213,
       0,
@@ -1149,6 +1098,54 @@
       188,
       0,
       "TTS_ENGINE"
+    ],
+    [
+      350,
+      199,
+      1,
+      215,
+      0,
+      "STRING"
+    ],
+    [
+      352,
+      216,
+      0,
+      215,
+      1,
+      "SRT_OPTIONS"
+    ],
+    [
+      353,
+      208,
+      0,
+      215,
+      2,
+      "STRING"
+    ],
+    [
+      354,
+      215,
+      0,
+      202,
+      0,
+      "STRING"
+    ],
+    [
+      355,
+      215,
+      1,
+      203,
+      0,
+      "STRING"
+    ],
+    [
+      356,
+      215,
+      2,
+      204,
+      0,
+      "STRING"
     ]
   ],
   "groups": [
@@ -1221,10 +1218,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.17715610000000387,
+      "scale": 0.8140274938684195,
       "offset": [
-        4047.385482066371,
-        -381.9227406218662
+        2764.772360686241,
+        -1374.553045047558
       ]
     },
     "frontendVersion": "1.38.13",
