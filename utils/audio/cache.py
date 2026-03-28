@@ -347,6 +347,27 @@ class Qwen3TTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class MiniMaxTTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for MiniMax Cloud TTS engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        """Generate MiniMax TTS cache key from parameters."""
+        speed = params.get('speed', 1.0)
+        if isinstance(speed, (int, float)):
+            speed = round(float(speed), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'voice_id': params.get('voice_id', 'English_Graceful_Lady'),
+            'model': params.get('model', 'speech-2.8-hd'),
+            'speed': speed,
+            'engine': 'minimax_tts'
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class EchoTTSCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for Echo-TTS engine."""
 
@@ -422,7 +443,8 @@ class AudioCache:
             'index_tts': IndexTTSCacheKeyGenerator(),
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
-            'echo_tts': EchoTTSCacheKeyGenerator()
+            'echo_tts': EchoTTSCacheKeyGenerator(),
+            'minimax_tts': MiniMaxTTSCacheKeyGenerator()
         }
     
     def register_cache_key_generator(self, engine_type: str, generator: CacheKeyGenerator):
@@ -497,6 +519,8 @@ class AudioCache:
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050
+        elif engine_type == 'minimax_tts':
+            sample_rate = 32000
         else:
             sample_rate = 44100
         return num_samples / sample_rate

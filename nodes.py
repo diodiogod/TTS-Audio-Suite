@@ -169,6 +169,14 @@ except Exception as e:
     print(f"❌ CosyVoice3 Engine failed: {e}")
     COSYVOICE_ENGINE_AVAILABLE = False
 
+try:
+    minimax_tts_engine_module = load_node_module("minimax_tts_engine_node", "engines/minimax_tts_engine_node.py")
+    MiniMaxTTSEngineNode = minimax_tts_engine_module.MiniMaxTTSEngineNode
+    MINIMAX_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MiniMax Cloud TTS Engine failed: {e}")
+    MINIMAX_TTS_ENGINE_AVAILABLE = False
+
 # IndexTTS-2 Emotion Options Node
 try:
     index_tts_emotion_options_module = load_node_module("index_tts_emotion_options_node", "engines/index_tts_emotion_options_node.py")
@@ -532,6 +540,10 @@ if INDEX_TTS_ENGINE_AVAILABLE:
 if COSYVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["CosyVoiceEngineNode"] = CosyVoiceEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["CosyVoiceEngineNode"] = "⚙️ CosyVoice3 Engine"
+
+if MINIMAX_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MiniMaxTTSEngineNode"] = MiniMaxTTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["MiniMaxTTSEngineNode"] = "⚙️ MiniMax Cloud TTS Engine"
 
 if INDEX_TTS_EMOTION_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEmotionOptionsNode"] = IndexTTSEmotionOptionsNode

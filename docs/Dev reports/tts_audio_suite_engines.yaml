@@ -1380,3 +1380,11 @@ model_layouts_markdown: |
 
   - Both components are required and auto-downloaded on first use.
   - License: CC-BY-NC-SA (non-commercial).
+
+  ## MiniMax Cloud TTS
+
+  No local model downloads required — audio is generated via the MiniMax T2A v2 cloud API.
+
+  Requirements:
+  - A valid `MINIMAX_API_KEY` environment variable (get one at https://platform.minimaxi.com/)
+  - Internet connectivity for API calls

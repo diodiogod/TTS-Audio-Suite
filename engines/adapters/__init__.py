@@ -40,8 +40,18 @@ except ImportError as e:
         def __init__(self, *args, **kwargs):
             raise ImportError(f"Echo-TTS adapter not available: {e}")
 
+try:
+    from .minimax_tts_adapter import MiniMaxTTSAdapter
+    MINIMAX_TTS_ADAPTER_AVAILABLE = True
+except ImportError as e:
+    MINIMAX_TTS_ADAPTER_AVAILABLE = False
+    class MiniMaxTTSAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"MiniMax TTS adapter not available: {e}")
+
 __all__ = [
     'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter', 'EchoTTSEngineAdapter',
+    'MiniMaxTTSAdapter',
     'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE',
-    'ECHO_TTS_ADAPTER_AVAILABLE'
+    'ECHO_TTS_ADAPTER_AVAILABLE', 'MINIMAX_TTS_ADAPTER_AVAILABLE'
 ]

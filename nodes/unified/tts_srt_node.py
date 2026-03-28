@@ -668,9 +668,29 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
 
+            elif engine_type == "minimax_tts":
+                from engines.adapters.minimax_tts_adapter import MiniMaxTTSAdapter
+
+                class MiniMaxTTSSRTWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = MiniMaxTTSAdapter(self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+
+                engine_instance = MiniMaxTTSSRTWrapper(config)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
-                
+
         except Exception as e:
             print(f"❌ Failed to create engine SRT node instance: {e}")
             return None
@@ -1132,10 +1152,105 @@ Hello! This is unified SRT TTS with character switching.
                     timing_params=timing_params
                 )
 
+            elif engine_type == "minimax_tts":
+                # MiniMax Cloud TTS - SRT processing with timing
+                from utils.system.import_manager import import_manager
+                from utils.timing.assembly import AudioAssemblyEngine
+                from utils.timing.engine import TimingEngine
+                from utils.timing.overlap_detection import SRTOverlapHandler
+                from utils.audio.processing import AudioProcessingUtils
+
+                success, modules, _ = import_manager.import_srt_modules()
+                if not success:
+                    raise RuntimeError("SRT modules are not available")
+
+                SRTParser = modules.get("SRTParser")
+                if SRTParser is None:
+                    raise RuntimeError("SRT parser not available")
+
+                srt_parser = SRTParser()
+                subtitles = srt_parser.parse_srt_content(srt_content, allow_overlaps=True)
+                has_overlaps = SRTOverlapHandler.detect_overlaps(subtitles)
+                current_timing_mode, mode_switched = SRTOverlapHandler.handle_smart_natural_fallback(
+                    timing_mode, has_overlaps, "MiniMax Cloud TTS SRT"
+                )
+
+                adapter = engine_instance.adapter
+                sample_rate = adapter.SAMPLE_RATE
+
+                audio_segments = []
+                for subtitle in subtitles:
+                    audio_tensor_seg, sr = adapter.generate_single(
+                        subtitle.text, enable_audio_cache=True
+                    )
+                    sample_rate = sr
+                    audio_segments.append(audio_tensor_seg.cpu())
+
+                adjustments = None
+                processed_segments = None
+
+                timing_params_dict = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+                fade_duration = float(timing_params_dict.get("fade_for_StretchToFit", 0.01))
+
+                if current_timing_mode == "concatenate":
+                    timing_engine = TimingEngine(sample_rate)
+                    adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
+                elif current_timing_mode == "smart_natural":
+                    timing_engine = TimingEngine(sample_rate)
+                    tolerance = float(timing_params_dict.get("timing_tolerance", 2.0))
+                    max_sr = float(timing_params_dict.get("max_stretch_ratio", 1.0))
+                    min_sr = float(timing_params_dict.get("min_stretch_ratio", 0.5))
+                    adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+                        audio_segments, subtitles, tolerance, max_sr, min_sr, torch.device("cpu"),
+                    )
+
+                assembler = AudioAssemblyEngine(sample_rate=sample_rate)
+                final_audio = assembler.assemble_by_timing_mode(
+                    audio_segments=audio_segments,
+                    subtitles=subtitles,
+                    timing_mode=current_timing_mode,
+                    device="cpu",
+                    adjustments=adjustments,
+                    processed_segments=processed_segments,
+                    fade_duration=fade_duration,
+                )
+
+                if final_audio.dim() == 1:
+                    final_audio = final_audio.unsqueeze(0).unsqueeze(0)
+                elif final_audio.dim() == 2:
+                    final_audio = final_audio.unsqueeze(0)
+
+                audio_output = {"waveform": final_audio, "sample_rate": sample_rate}
+
+                timing_info = srt_parser.get_timing_info(subtitles)
+                mode_info = current_timing_mode
+                if mode_switched:
+                    mode_info = f"{current_timing_mode} (switched from {timing_mode} due to overlaps)"
+
+                timing_report = (
+                    f"MiniMax Cloud TTS SRT timing\n"
+                    f"Subtitles: {timing_info.get('subtitle_count', 0)}\n"
+                    f"Total duration: {timing_info.get('total_duration', 0):.2f}s\n"
+                    f"Mode: {mode_info}"
+                )
+
+                total_duration = final_audio.shape[-1] / float(sample_rate)
+                voice_id = config.get("voice_id", "English_Graceful_Lady")
+                model_name = config.get("model", "speech-2.8-hd")
+                generation_info = (
+                    f"Generated {total_duration:.1f}s MiniMax Cloud TTS SRT audio "
+                    f"(model: {model_name}, voice: {voice_id}) using {mode_info} mode"
+                )
+
+                result = (audio_output, generation_info, timing_report, srt_content)
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
-            
-            # The original SRT nodes return (audio, generation_info, timing_report, adjusted_srt)
             audio_output, generation_info, timing_report, adjusted_srt = result
             
             # Ensure audio tensor is moved to CPU and has correct dtype

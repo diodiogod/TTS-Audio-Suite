@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 12 Engines
+## Quick Engine Comparison — 13 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -38,6 +38,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
+| **MiniMax Cloud TTS** | 🌐 Multilingual | Cloud API | No GPU needed, 12 built-in voices, HD & Turbo models |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
@@ -186,7 +187,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, **Echo-TTS**, and **MiniMax Cloud TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
 - 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
@@ -856,6 +857,41 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 3. First run auto-downloads the model (~7.1GB total) into `ComfyUI/models/TTS/echo-tts-base/`
 
 📖 **See [Model folder layouts](docs/MODEL_LAYOUTS.md#echo-tts) for detailed setup paths**
+
+</details>
+
+<details>
+<summary><h3>☁️ MiniMax Cloud TTS</h3></summary>
+
+Cloud-based text-to-speech via the MiniMax T2A v2 API — no GPU or local models required.
+
+* **☁️ Cloud API** — No model downloads, no GPU needed. Audio generated via MiniMax servers
+* **🎙️ 12 Built-in Voices** — English and multilingual voices (Graceful Lady, Deep Voice Man, Cute Boy, etc.)
+* **🔊 Two Models** — `speech-2.8-hd` (high quality) and `speech-2.8-turbo` (low latency)
+* **⚡ Speed Control** — Adjustable speech speed from 0.5x to 2.0x
+* **🔑 API Key Required** — Set `MINIMAX_API_KEY` environment variable ([get one here](https://platform.minimaxi.com/))
+
+**Usage:**
+1. Set `MINIMAX_API_KEY` environment variable
+2. Add `⚙️ MiniMax Cloud TTS Engine` node
+3. Select voice and model
+4. Connect to `🎤 TTS Text` or `📺 TTS SRT`
+
+**Available Voices:**
+| Voice ID | Description |
+|----------|-------------|
+| English_Graceful_Lady | Graceful Lady (English) |
+| English_Insightful_Speaker | Insightful Speaker (English) |
+| English_radiant_girl | Radiant Girl (English) |
+| English_Persuasive_Man | Persuasive Man (English) |
+| English_Lucky_Robot | Lucky Robot (English) |
+| Wise_Woman | Wise Woman |
+| cute_boy | Cute Boy |
+| lovely_girl | Lovely Girl |
+| Friendly_Person | Friendly Person |
+| Inspirational_girl | Inspirational Girl |
+| Deep_Voice_Man | Deep Voice Man |
+| sweet_girl | Sweet Girl |
 
 </details>
 

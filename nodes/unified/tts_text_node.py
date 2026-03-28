@@ -606,9 +606,32 @@ Back to the main narrator voice for the conclusion.""",
                 }
                 return engine_instance
 
+            elif engine_type == "minimax_tts":
+                from engines.adapters.minimax_tts_adapter import MiniMaxTTSAdapter
+
+                class MiniMaxTTSWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = MiniMaxTTSAdapter(self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+
+                engine_instance = MiniMaxTTSWrapper(config)
+
+                # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
-                
+
         except Exception as e:
             print(f"❌ Failed to create engine node instance: {e}")
             return None
@@ -1447,6 +1470,37 @@ Back to the main narrator voice for the conclusion.""",
                     character=char_display,
                     seed=seed
                 )
+
+            elif engine_type == "minimax_tts":
+                # MiniMax Cloud TTS - no reference audio needed (uses built-in voices)
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                audio_result, chunk_info = engine_instance.adapter.process_text(
+                    text=text,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache,
+                    return_info=True,
+                )
+
+                sample_rate = engine_instance.adapter.SAMPLE_RATE
+                total_duration = audio_result.shape[-1] / float(sample_rate) if audio_result.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                voice_id = config.get("voice_id", "English_Graceful_Lady")
+                model_name = config.get("model", "speech-2.8-hd")
+                base_info = (
+                    f"Generated {total_duration:.1f}s audio from {text_length} characters "
+                    f"(MiniMax Cloud TTS, model: {model_name}, voice: {voice_id})"
+                )
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, sample_rate)
+                result = (formatted_audio, generation_info)
 
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
