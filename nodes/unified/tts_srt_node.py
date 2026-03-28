@@ -602,6 +602,11 @@ Hello! This is unified SRT TTS with character switching.
                             audio_tensor = audio_tensor.unsqueeze(0)
                         return {"waveform": audio_tensor, "sample_rate": sample_rate}
 
+                    def check_interrupt(self):
+                        """Check for interrupt signal."""
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("CosyVoice3 SRT processing interrupted by user")
+
                 engine_instance = CosyVoiceSRTWrapper(config)
                 # Cache the instance with timestamp
                 import time
@@ -682,6 +687,10 @@ Hello! This is unified SRT TTS with character switching.
             Tuple of (audio_path, audio_tensor, reference_text, character_name)
         """
         try:
+            # ComfyUI and switch nodes may wrap optional values in a single-item list/tuple.
+            while isinstance(opt_narrator, (list, tuple)) and len(opt_narrator) == 1:
+                opt_narrator = opt_narrator[0]
+
             # Priority 1: opt_narrator input
             # Check if opt_narrator is connected AND has valid content
             valid_opt_narrator = False
@@ -1061,12 +1070,14 @@ Hello! This is unified SRT TTS with character switching.
                             audio_tensor['waveform'],
                             audio_tensor.get('sample_rate', 22050)
                         ) if isinstance(audio_tensor, dict) and 'waveform' in audio_tensor else audio_tensor,
-                        'reference_text': reference_text if reference_text else ""
+                        'reference_text': reference_text if reference_text else "",
+                        'character_name': character_name if character_name else "narrator",
                     }
                 elif audio_path:
                     voice_mapping['narrator'] = {
                         'audio_path': audio_path,
-                        'reference_text': reference_text if reference_text else ""
+                        'reference_text': reference_text if reference_text else "",
+                        'character_name': character_name if character_name else "narrator",
                     }
 
                 # Prepare timing parameters

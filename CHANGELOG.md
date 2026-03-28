@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.7] - 2026-03-27
+
+### Fixed
+
+- Fix CosyVoice3 narrator voice selection and interruption
+- Fix CosyVoice3 SRT and text generation using the wrong narrator reference in some workflows
+- Fix CosyVoice3 stop button handling during subtitle generation
+- Fix Qwen3-ASR stop button handling during long transcriptions
+- Improve connected Character Voices compatibility with unified narrator inputs
 ## [4.24.6] - 2026-03-27
 
 ### Added

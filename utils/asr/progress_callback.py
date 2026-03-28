@@ -4,6 +4,7 @@ Token-level progress tracking with it/s and ETA.
 """
 
 import time
+import comfy.model_management as model_management
 
 
 class ASRProgressStreamer:
@@ -16,6 +17,9 @@ class ASRProgressStreamer:
         self.last_update = 0.0
 
     def put(self, value):
+        if model_management.interrupt_processing:
+            raise InterruptedError("Qwen3-ASR generation interrupted by user")
+
         # value is a batch of token ids; count tokens
         try:
             new_tokens = len(value)

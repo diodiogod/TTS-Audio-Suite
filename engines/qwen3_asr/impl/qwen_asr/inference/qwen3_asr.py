@@ -23,7 +23,8 @@ from qwen_asr.core.transformers_backend import (
     Qwen3ASRForConditionalGeneration,
     Qwen3ASRProcessor,
 )
-from transformers import AutoConfig, AutoModel, AutoProcessor
+from transformers import AutoConfig, AutoModel, AutoProcessor, StoppingCriteria, StoppingCriteriaList
+import comfy.model_management as model_management
 
 AutoConfig.register("qwen3_asr", Qwen3ASRConfig)
 AutoModel.register(Qwen3ASRConfig, Qwen3ASRForConditionalGeneration)
@@ -52,6 +53,18 @@ try:
     ModelRegistry.register_model("Qwen3ASRForConditionalGeneration", Qwen3ASRForConditionalGeneration)
 except:
     pass
+
+
+class _InterruptStoppingCriteria(StoppingCriteria):
+    # PATCH (TTS Audio Suite): enforce ComfyUI interrupt handling inside
+    # transformers generate() because streamer callbacks alone do not stop
+    # Qwen3-ASR reliably during long decode steps.
+    """Stop transformers generation immediately when ComfyUI interrupt is requested."""
+
+    def __call__(self, input_ids, scores, **kwargs):
+        if model_management.interrupt_processing:
+            raise InterruptedError("Qwen3-ASR generation interrupted by user")
+        return False
 
 
 @dataclass
@@ -534,7 +547,8 @@ class Qwen3ASRModel:
             text_ids = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
-                streamer=streamer
+                streamer=streamer,
+                stopping_criteria=StoppingCriteriaList([_InterruptStoppingCriteria()]),
             )
 
             decoded = self.processor.batch_decode(

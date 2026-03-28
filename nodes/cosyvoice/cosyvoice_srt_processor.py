@@ -292,7 +292,13 @@ class CosyVoiceSRTProcessor:
                 narrator_voice = voice_mapping['narrator']
                 narrator_audio = narrator_voice.get('audio_path')
                 narrator_text = narrator_voice.get('reference_text', '')
+                narrator_character_name = (narrator_voice.get('character_name') or '').strip().lower()
                 processor_character_mapping['narrator'] = (narrator_audio, narrator_text)
+                if narrator_character_name and narrator_character_name != 'narrator':
+                    processor_character_mapping[narrator_character_name] = (narrator_audio, narrator_text)
+                    print(
+                        f"🎭 Connected narrator voice is character '{narrator_character_name}'"
+                    )
 
             # Use processor to handle character switching and multi-line segments
             audio, _ = self.processor.process_text(

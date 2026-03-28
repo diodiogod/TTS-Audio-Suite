@@ -625,6 +625,10 @@ Back to the main narrator voice for the conclusion.""",
             Tuple of (audio_path, audio_tensor, reference_text, character_name)
         """
         try:
+            # ComfyUI and switch nodes may wrap optional values in a single-item list/tuple.
+            while isinstance(opt_narrator, (list, tuple)) and len(opt_narrator) == 1:
+                opt_narrator = opt_narrator[0]
+
             # Priority 1: opt_narrator input
             # Check if opt_narrator is connected AND has valid content
             valid_opt_narrator = False

@@ -164,9 +164,14 @@ class CosyVoiceProcessor:
 
         # Get speaker audio path
         speaker_audio_path = None
+        speaker_audio_reference_text = None
         if speaker_audio:
             if isinstance(speaker_audio, dict):
                 speaker_audio_path = speaker_audio.get('audio_path') or speaker_audio.get('waveform_path')
+                speaker_audio_reference_text = (
+                    speaker_audio.get('reference_text')
+                    or speaker_audio.get('prompt_text')
+                )
             elif isinstance(speaker_audio, str):
                 speaker_audio_path = speaker_audio
 
@@ -312,7 +317,7 @@ class CosyVoiceProcessor:
             # Determine speaker audio for this segment
             # Priority: connected opt_narrator > character-specific voices > character mapping narrator fallback
             current_speaker_audio = speaker_audio_path
-            current_reference_text = self.reference_text
+            current_reference_text = speaker_audio_reference_text if speaker_audio_reference_text is not None else self.reference_text
 
             # For non-narrator characters: always use character mapping
             # For narrator: use connected audio if available, otherwise use character mapping

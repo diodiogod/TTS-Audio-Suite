@@ -28,6 +28,7 @@ import tempfile
 import folder_paths
 import numpy as np
 from typing import Optional, List, Dict, Any, Generator
+import comfy.model_management as model_management
 
 from utils.models.unified_model_interface import unified_model_interface
 from utils.models.factory_config import ModelLoadConfig
@@ -59,6 +60,12 @@ class CosyVoiceEngine:
     
     # Generation modes
     MODES = ["zero_shot", "instruct", "cross_lingual"]
+
+    @staticmethod
+    def _check_interrupt():
+        """Raise immediately when ComfyUI interrupt was requested."""
+        if model_management.interrupt_processing:
+            raise InterruptedError("CosyVoice3 generation interrupted by user")
     
     def __init__(self, model_dir: str = "Fun-CosyVoice3-0.5B-RL", device: str = "auto",
                  use_fp16: bool = False, load_trt: bool = False, load_vllm: bool = False):
@@ -293,6 +300,7 @@ class CosyVoiceEngine:
             speed=speed,
             text_frontend=text_frontend
         )):
+            self._check_interrupt()
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
 
@@ -385,6 +393,7 @@ class CosyVoiceEngine:
             speed=speed,
             text_frontend=text_frontend
         )):
+            self._check_interrupt()
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
 
@@ -471,6 +480,7 @@ class CosyVoiceEngine:
             speed=speed,
             text_frontend=text_frontend
         )):
+            self._check_interrupt()
             audio_chunk = output['tts_speech']
             audio_chunks.append(audio_chunk)
 
@@ -609,6 +619,7 @@ class CosyVoiceEngine:
             stream=stream,
             speed=speed
         ):
+            self._check_interrupt()
             audio_chunks.append(output['tts_speech'])
 
         # Concatenate all chunks
