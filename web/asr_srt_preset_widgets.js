@@ -65,6 +65,70 @@ const HEURISTIC_PROFILE_VALUES = {
         merge_dangling_tail_allowlist: "o,a,os,as,um,uma,uns,umas,de,do,da,dos,das,e,ou,mas,se,que,como,quando,onde,quem,para,pra,por,com,sem,em,no,na,nos,nas,ao,aos,pelo,pela,pelos,pelas",
         merge_incomplete_keywords: "o que,por que,porque,como,onde,quem,qual,quais,quando",
     },
+    "Spanish": {
+        merge_dangling_tail_allowlist: "el,la,los,las,un,una,unos,unas,de,del,y,o,pero,si,que,como,cuando,donde,quien,para,por,con,sin,en,al,a,lo",
+        merge_incomplete_keywords: "lo que,por qué,por que,porque,como,cómo,donde,dónde,quien,quién,cual,cuál,cuales,cuáles,cuando,cuándo",
+    },
+    "French": {
+        merge_dangling_tail_allowlist: "le,la,les,un,une,des,de,du,et,ou,mais,si,que,comme,quand,qui,pour,par,avec,sans,en,dans,sur,au,aux,à",
+        merge_incomplete_keywords: "ce que,pourquoi,comment,où,qui,quel,quelle,quels,quelles,quand",
+    },
+    "Italian": {
+        merge_dangling_tail_allowlist: "il,lo,la,i,gli,le,un,una,di,del,della,e,o,ma,se,che,come,quando,dove,chi,per,con,senza,in,su,a,da",
+        merge_incomplete_keywords: "che cosa,perché,perche,come,dove,chi,quale,quali,quando",
+    },
+    "German": {
+        merge_dangling_tail_allowlist: "der,die,das,ein,eine,und,oder,aber,wenn,dass,wie,wann,wo,wer,für,mit,ohne,in,an,auf,zu,von,aus,bei,nach",
+        merge_incomplete_keywords: "was,warum,wieso,wie,wo,wer,welche,welcher,welches,wann",
+    },
+    "Dutch": {
+        merge_dangling_tail_allowlist: "de,het,een,en,of,maar,als,dat,hoe,wanneer,waar,wie,voor,met,zonder,in,op,aan,van,bij,naar,uit",
+        merge_incomplete_keywords: "wat,waarom,hoe,waar,wie,welke,wanneer",
+    },
+    "Russian": {
+        merge_dangling_tail_allowlist: "и,а,но,да,или,что,чтобы,как,если,то,в,во,на,за,к,ко,от,до,из,у,о,об,обо,с,со,по,для,без,при",
+        merge_incomplete_keywords: "что,как,почему,зачем,где,когда,кто,какой,какая,какие,который",
+    },
+    "Romanian": {
+        merge_dangling_tail_allowlist: "și,sau,dar,dacă,că,cum,când,unde,cine,ce,pentru,cu,fără,în,pe,la,de,din,un,o,niște",
+        merge_incomplete_keywords: "ce,de ce,cum,unde,cine,care,când",
+    },
+    "Indonesian": {
+        merge_dangling_tail_allowlist: "dan,atau,tapi,kalau,yang,karena,bahwa,seperti,ketika,di,ke,dari,untuk,dengan,tanpa,pada,dalam,seorang,sebuah,itu,ini",
+        merge_incomplete_keywords: "apa,kenapa,mengapa,bagaimana,di mana,siapa,yang mana,kapan",
+    },
+    "Malay": {
+        merge_dangling_tail_allowlist: "dan,atau,tetapi,kalau,yang,kerana,bahawa,seperti,apabila,di,ke,dari,untuk,dengan,tanpa,pada,dalam,seorang,sebuah,itu,ini",
+        merge_incomplete_keywords: "apa,kenapa,mengapa,bagaimana,di mana,siapa,yang mana,bila",
+    },
+    "Turkish": {
+        merge_dangling_tail_allowlist: "ve,veya,ama,eğer,ki,çünkü,gibi,için,ile,olmadan,da,de,bu,şu,o,bir",
+        merge_incomplete_keywords: "ne,neden,niye,nasıl,nerede,kim,hangi,ne zaman",
+    },
+    "Polish": {
+        merge_dangling_tail_allowlist: "i,lub,ale,że,żeby,jak,kiedy,gdzie,kto,co,dla,z,bez,w,na,do,od,po,przy,o,u",
+        merge_incomplete_keywords: "co,dlaczego,jak,gdzie,kto,który,która,które,kiedy",
+    },
+    "Czech": {
+        merge_dangling_tail_allowlist: "a,nebo,ale,že,aby,jak,když,kde,kdo,co,pro,s,bez,v,na,do,od,po,u,o",
+        merge_incomplete_keywords: "co,proč,jak,kde,kdo,který,která,které,kdy",
+    },
+    "Swedish": {
+        merge_dangling_tail_allowlist: "och,eller,men,om,att,som,när,var,vem,för,med,utan,i,på,till,från,av,en,ett,den,det",
+        merge_incomplete_keywords: "vad,varför,hur,var,vem,vilken,vilka,när",
+    },
+    "Danish": {
+        merge_dangling_tail_allowlist: "og,eller,men,hvis,at,som,når,hvor,hvem,for,med,uden,i,på,til,fra,af,en,et,den,det",
+        merge_incomplete_keywords: "hvad,hvorfor,hvordan,hvor,hvem,hvilken,hvilke,hvornår",
+    },
+    "Finnish": {
+        merge_dangling_tail_allowlist: "ja,tai,mutta,jos,että,kuten,kun,missä,kuka,mikä,sekä,eli",
+        merge_incomplete_keywords: "mikä,miksi,miten,missä,kuka,kumpi,milloin",
+    },
+    "Greek": {
+        merge_dangling_tail_allowlist: "και,ή,αλλά,αν,ότι,πως,όπως,όταν,όπου,ποιος,για,με,χωρίς,σε,από,προς,στο,στη,στον,στην,το,τη,τον,την,ένα,μια",
+        merge_incomplete_keywords: "τι,γιατί,πώς,πού,ποιος,ποια,ποιο,ποιοι,πότε",
+    },
 };
 
 const SRT_FIELDS = [

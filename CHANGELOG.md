@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.9] - 2026-03-28
+
+### Added
+
+- Expand SRT Advanced Options language profile coverage
+- Add heuristic defaults for Spanish, French, Italian, German, Dutch, Russian, Romanian, Indonesian, Malay, Turkish, Polish, Czech, Swedish, Danish, Finnish, and Greek
+
+### Changed
+
+- Improve Auto language matching so more ASR languages pick a sensible profile automatically
+- Update the SRT Advanced Options dropdown to prefill the new language-specific defaults
 ## [4.24.8] - 2026-03-28
 
 ### Added
