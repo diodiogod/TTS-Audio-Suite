@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.10] - 2026-03-28
+
+### Added
+
+- Add support for nested local layouts such as VibeVoice7b-low-vram/4bit
+
+### Changed
+
+- Improve VibeVoice quantized model loading stability
+
+### Fixed
+
+- Fix VibeVoice local custom model support
+- Fix local community and quantized VibeVoice folders not appearing in the model list
+- Fix VibeVoice startup import failures that could block generation until restart
 ## [4.24.9] - 2026-03-28
 
 ### Added
