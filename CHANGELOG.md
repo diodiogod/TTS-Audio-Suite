@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.11] - 2026-03-29
+
+### Fixed
+
+- Fix Character Voices reload issues and CosyVoice model switching
+- Fix Character Voices failing to restore saved voices correctly after reopening workflows
+- Fix Character Voices preview player staying unavailable until reselecting the voice
+- Fix TTS generation still using the previous CosyVoice model after switching between 0.5B and 0.5B RL variants
 ## [4.24.10] - 2026-03-28
 
 ### Added
