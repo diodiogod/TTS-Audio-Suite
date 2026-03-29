@@ -202,10 +202,15 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "index_tts":
                 stable_params['low_vram'] = config.get('low_vram', False)
 
-            # For CosyVoice, include mode and speed in cache key
+            # For CosyVoice, include actual model identity and load options in cache key.
+            # Both 0.5B variants share the same folder, so using only the resolved path or
+            # generic "model" field is insufficient. Switching base <-> RL must force a
+            # fresh processor/adapter instance or the old variant will keep being reused.
             if engine_type == "cosyvoice":
-                stable_params['mode'] = config.get('mode', 'zero_shot')
+                stable_params['model_path'] = config.get('model_path', 'Fun-CosyVoice3-0.5B-RL')
                 stable_params['use_fp16'] = config.get('use_fp16', True)
+                stable_params['load_trt'] = config.get('load_trt', False)
+                stable_params['load_vllm'] = config.get('load_vllm', False)
 
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             

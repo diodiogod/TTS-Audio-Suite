@@ -202,6 +202,15 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['use_cuda_graphs'] = config.get('use_cuda_graphs', False)
                 stable_params['compile_mode'] = config.get('compile_mode', 'default')
 
+            # For CosyVoice, include actual model identity and load options in cache key.
+            # RL and base variants share one folder but use different llm files, so
+            # model_path selection must invalidate the cached engine instance.
+            if engine_type == "cosyvoice":
+                stable_params['model_path'] = config.get('model_path', 'Fun-CosyVoice3-0.5B-RL')
+                stable_params['use_fp16'] = config.get('use_fp16', True)
+                stable_params['load_trt'] = config.get('load_trt', False)
+                stable_params['load_vllm'] = config.get('load_vllm', False)
+
             cache_key = f"{engine_type}_{hashlib.md5(str(sorted(stable_params.items())).encode()).hexdigest()[:8]}"
             
             # Check if we have a cached instance with the same stable configuration
