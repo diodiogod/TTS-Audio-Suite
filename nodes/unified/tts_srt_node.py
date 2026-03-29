@@ -700,7 +700,11 @@ Hello! This is unified SRT TTS with character switching.
                 if isinstance(opt_narrator, (list, tuple)) and len(opt_narrator) == 0:
                     valid_opt_narrator = False
                 # Check for specific dictionary content
-                elif isinstance(opt_narrator, dict) and ("audio" in opt_narrator or "waveform" in opt_narrator):
+                elif isinstance(opt_narrator, dict) and (
+                    "audio" in opt_narrator or
+                    "waveform" in opt_narrator or
+                    opt_narrator.get("audio_path")
+                ):
                     valid_opt_narrator = True
                 else:
                     # Some other non-empty input? Assume valid for now unless it breaks

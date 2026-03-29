@@ -117,20 +117,24 @@ Leave empty to use text from selected character's files."""
                 audio_path, folder_reference_text = load_voice_reference(voice_name)
                 
                 if audio_path and os.path.exists(audio_path):
-                    # Load audio tensor from file with automatic fallback support
+                    # Load audio tensor when possible, but do not fail the node if local
+                    # decoding is unavailable. Several engines can work directly from the
+                    # file path, and the browser preview already proved the file itself is
+                    # valid. Hard-failing here breaks restored workflows for no reason.
+                    audio_tensor = None
                     try:
                         from utils.audio.processing import AudioProcessingUtils
                         waveform, sample_rate = AudioProcessingUtils.safe_load_audio(audio_path)
-                    except Exception as e:
-                        print(f"❌ Character Voices: Failed to load audio file: {audio_path}")
-                        return None, ""
 
-                    # Audio is automatically normalized by safe_load_audio() to [-1, 1] range
-                    # Convert to mono if stereo
-                    if waveform.shape[0] > 1:
-                        waveform = torch.mean(waveform, dim=0, keepdim=True)
-                    
-                    audio_tensor = {"waveform": waveform, "sample_rate": sample_rate}
+                        # Audio is automatically normalized by safe_load_audio() to [-1, 1] range
+                        # Convert to mono if stereo
+                        if waveform.shape[0] > 1:
+                            waveform = torch.mean(waveform, dim=0, keepdim=True)
+
+                        audio_tensor = {"waveform": waveform, "sample_rate": sample_rate}
+                    except Exception as e:
+                        print(f"⚠️ Character Voices: Failed to decode audio tensor, using file path only: {audio_path} ({e})")
+
                     character_name = os.path.splitext(os.path.basename(voice_name))[0]
                     voice_source = "folder"
 
@@ -158,7 +162,7 @@ Leave empty to use text from selected character's files."""
             }
             
             # Add validation info
-            has_audio = audio_tensor is not None
+            has_audio = audio_tensor is not None or bool(narrator_voice_data.get("audio_path"))
             has_text = bool(reference_text.strip())
             
             if has_audio and has_text:

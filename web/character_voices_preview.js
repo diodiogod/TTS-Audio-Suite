@@ -95,6 +95,43 @@ function clearDomPlayer(node) {
     updatePlayButtonLabel(node);
 }
 
+function syncPreviewToSelectedVoice(node, voiceWidget) {
+    const selectedVoice = voiceWidget?.value;
+    stopVoicePreview(node);
+    if (selectedVoice && selectedVoice !== "none") {
+        loadVoiceIntoDomPlayer(node, selectedVoice);
+    } else {
+        clearDomPlayer(node);
+    }
+}
+
+function restoreVoiceWidgetValueFromConfig(node, voiceWidget, info) {
+    if (!info || !Array.isArray(info.widgets_values) || !node.widgets) {
+        return false;
+    }
+
+    const widgetIndex = node.widgets.findIndex((w) => w === voiceWidget);
+    if (widgetIndex < 0 || widgetIndex >= info.widgets_values.length) {
+        return false;
+    }
+
+    const savedValue = info.widgets_values[widgetIndex];
+    if (!savedValue || savedValue === "none") {
+        return false;
+    }
+
+    voiceWidget.value = savedValue;
+    return true;
+}
+
+function schedulePreviewSync(node, voiceWidget, delays = [0, 30, 120]) {
+    for (const delay of delays) {
+        setTimeout(() => {
+            syncPreviewToSelectedVoice(node, voiceWidget);
+        }, delay);
+    }
+}
+
 function playVoicePreview(node, voiceName) {
     const state = ensurePreviewState(node);
 
@@ -245,13 +282,7 @@ function setupCharacterVoicesPreview(node) {
     // Stop currently playing preview whenever dropdown value changes.
     const originalCallback = voiceWidget.callback;
     voiceWidget.callback = function () {
-        stopVoicePreview(node);
-        const selectedVoice = voiceWidget.value;
-        if (selectedVoice && selectedVoice !== "none") {
-            loadVoiceIntoDomPlayer(node, selectedVoice);
-        } else {
-            clearDomPlayer(node);
-        }
+        syncPreviewToSelectedVoice(node, voiceWidget);
         if (originalCallback) {
             return originalCallback.apply(this, arguments);
         }
@@ -261,6 +292,17 @@ function setupCharacterVoicesPreview(node) {
     if (voiceWidget.value && voiceWidget.value !== "none") {
         loadVoiceIntoDomPlayer(node, voiceWidget.value);
     }
+
+    // Workflow reload restores widget values after node creation. Without this,
+    // the audio player can still point at an empty/default source until the user
+    // manually changes the dropdown once.
+    const originalOnConfigure = node.onConfigure?.bind(node);
+    node.onConfigure = function (info) {
+        const result = originalOnConfigure ? originalOnConfigure(info) : undefined;
+        restoreVoiceWidgetValueFromConfig(node, voiceWidget, info);
+        schedulePreviewSync(node, voiceWidget);
+        return result;
+    };
 
     // Stop on node removal.
     const originalOnRemoved = node.onRemoved;

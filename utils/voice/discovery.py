@@ -243,9 +243,17 @@ class VoiceDiscovery:
         Returns:
             Dict with 'audio_path', 'text_path', 'text_content', 'source_folder'
         """
-        if voice_key == "none" or not self._cache_valid:
+        if voice_key == "none":
             return None
-            
+
+        # Workflow restore can call voice resolution before any UI-driven
+        # dropdown population has warmed the voice cache in this module instance.
+        # Make voice lookup self-sufficient instead of depending on prior
+        # get_available_voices() calls.
+        self._ensure_initialized()
+        if not self._cache_valid:
+            self._refresh_cache()
+
         return self._cache.get(voice_key)
     
     def load_voice_reference(self, voice_key: str) -> Tuple[Optional[str], Optional[str]]:
@@ -260,11 +268,17 @@ class VoiceDiscovery:
         """
         if voice_key == "none":
             return None, None
-            
+
         voice_info = self.get_voice_info(voice_key)
         if not voice_info:
+            # Retry once with a forced rescan so restored workflows do not fail
+            # just because discovery state was still cold or stale at startup.
+            self._refresh_cache()
+            voice_info = self._cache.get(voice_key)
+
+        if not voice_info:
             return None, None
-            
+
         return voice_info['audio_path'], voice_info['text_content']
     
     def _refresh_cache(self):
