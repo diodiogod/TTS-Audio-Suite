@@ -669,7 +669,7 @@ def register_vibevoice_factory():
         except ImportError as e:
             print(f"⚠️ Unified Interface: accelerate not available: {e}")
 
-        from engines.vibevoice_engine.vibevoice_engine import VibeVoiceEngine
+        from engines.vibevoice_engine import VibeVoiceEngine
 
         # Extract parameters
         model_name = config.model_name or "vibevoice-1.5B"
