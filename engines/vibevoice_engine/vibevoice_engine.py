@@ -43,6 +43,14 @@ from utils.models.unified_model_interface import load_tts_model
 # Setup logging
 logger = logging.getLogger("VibeVoice")
 
+# The unified loader sometimes imports this module directly, bypassing
+# engines.vibevoice_engine.__init__ where these compatibility shims normally run.
+try:
+    from .transformers_compatibility import apply_all_compatibility_patches
+    apply_all_compatibility_patches()
+except Exception as e:
+    logger.warning(f"Could not apply VibeVoice transformers compatibility patches: {e}")
+
 # Check transformers version for dtype parameter compatibility
 _transformers_version = version.parse(transformers.__version__)
 _DTYPE_ARG_SUPPORTED = _transformers_version >= version.parse("4.56.0")
@@ -92,6 +100,43 @@ class VibeVoiceEngine:
         
         # Track if package is available
         self._package_available = None
+
+    def _align_quantized_aux_buffers(self) -> None:
+        """
+        Move small registered inner-model buffers to the main model device after
+        bitsandbytes/device_map loading.
+
+        VibeVoice exposes `speech_bias_factor`/`speech_scaling_factor` through
+        read-only wrapper properties on the inference class, so assigning to
+        `self.model.speech_bias_factor` fails even though the real buffers are
+        writable on `self.model.model`.
+        """
+        if self.model is None:
+            return
+
+        inner_model = getattr(self.model, "model", None)
+        if inner_model is None:
+            return
+
+        try:
+            main_device = next(self.model.parameters()).device
+        except StopIteration:
+            return
+
+        moved_buffers = []
+        for buffer_name in ("speech_bias_factor", "speech_scaling_factor"):
+            if buffer_name not in getattr(inner_model, "_buffers", {}):
+                continue
+
+            buffer = inner_model._buffers.get(buffer_name)
+            if not isinstance(buffer, torch.Tensor) or buffer.device == main_device:
+                continue
+
+            inner_model._buffers[buffer_name] = buffer.to(main_device)
+            moved_buffers.append(buffer_name)
+
+        if moved_buffers:
+            print(f"   🔧 Aligned VibeVoice buffers to {main_device}: {', '.join(moved_buffers)}")
 
     def to(self, device):
         """
@@ -362,17 +407,14 @@ class VibeVoiceEngine:
             processor_path = os.path.dirname(model_path) if is_standalone else model_path
             self.processor = self._load_processor_with_unified_tokenizer(processor_path, model_name)
             
-            # Move to device if needed (only if not using quantization which handles device_map)
-            if not quant_config and device != "cpu":
+            # 🔧 Only move if NOT already placed by device_map
+            if not quant_config and device != "cpu" and not hasattr(self.model, 'hf_device_map'):
                 self.model = self.model.to(device)
                 
-            # Ensure all model parameters are on the same device (fix for speech_bias_factor issue)
-            if quant_config and hasattr(self.model, 'speech_bias_factor'):
+            # Align inner-model buffers after quantized/device_map loading.
+            if quant_config:
                 try:
-                    # Find the device of the main model components
-                    main_device = next(self.model.parameters()).device
-                    if hasattr(self.model.speech_bias_factor, 'to'):
-                        self.model.speech_bias_factor = self.model.speech_bias_factor.to(main_device)
+                    self._align_quantized_aux_buffers()
                 except Exception as device_fix_error:
                     print(f"⚠️ Device placement fix attempt failed (non-critical): {device_fix_error}")
             

@@ -142,7 +142,10 @@ class VibeVoiceEngineNode(BaseTTSNode):
         Reconstructs the discovery logic using file reading only."""
         # Import full model registry from downloader
         try:
-            from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
+            from engines.vibevoice_engine.vibevoice_downloader import (
+                VIBEVOICE_MODELS,
+                discover_local_vibevoice_models,
+            )
         except ImportError:
             # Fallback if import fails
             VIBEVOICE_MODELS = {
@@ -151,6 +154,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
                 "vibevoice-hindi-1.5B": {"repo": "tarun7r/vibevoice-hindi-1.5B"},
                 "vibevoice-hindi-7B": {"repo": "tarun7r/vibevoice-hindi-7b"}
             }
+            discover_local_vibevoice_models = None
 
         available = list(VIBEVOICE_MODELS.keys())
         found_local_models = set()
@@ -158,31 +162,9 @@ class VibeVoiceEngineNode(BaseTTSNode):
         try:
             from utils.models.extra_paths import get_all_tts_model_paths
 
-            # Search in all configured TTS paths
-            for base_tts_path in get_all_tts_model_paths('TTS'):
-                # Try both case variations
-                for vibevoice_folder in ["vibevoice", "VibeVoice"]:
-                    vibevoice_base_dir = os.path.join(base_tts_path, vibevoice_folder)
-                    if not os.path.exists(vibevoice_base_dir):
-                        continue
-
-                    try:
-                        for item in os.listdir(vibevoice_base_dir):
-                            item_path = os.path.join(vibevoice_base_dir, item)
-                            if os.path.isdir(item_path):
-                                # Check for VibeVoice model files (config.json + safetensors)
-                                files = os.listdir(item_path)
-                                has_config = "config.json" in files
-                                has_model = any(f.endswith(('.safetensors', '.pt')) for f in files)
-
-                                if has_config and has_model:
-                                    model_name = item
-                                    if model_name in VIBEVOICE_MODELS:
-                                        local_model = f"local:{model_name}"
-                                        if local_model not in found_local_models:
-                                            found_local_models.add(local_model)
-                    except Exception:
-                        pass
+            if discover_local_vibevoice_models:
+                for model_name in sorted(discover_local_vibevoice_models(get_all_tts_model_paths('TTS'))):
+                    found_local_models.add(f"local:{model_name}")
         except Exception:
             pass
 
