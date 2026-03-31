@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.12] - 2026-03-30
+
+### Added
+
+- Add SageAttention support for KugelAudio attention handling
+
+### Changed
+
+- Improve KugelAudio logging consistency with normal VibeVoice
+
+### Fixed
+
+- Fix VibeVoice KugelAudio engine settings being ignored
+- Fix KugelAudio 4-bit quantization not applying
+- Fix KugelAudio inference steps, top-p, and attention mode controls not working
 ## [4.24.11] - 2026-03-29
 
 ### Fixed

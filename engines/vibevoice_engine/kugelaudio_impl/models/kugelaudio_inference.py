@@ -352,6 +352,7 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
         max_new_tokens: int = 2048,
         do_sample: bool = False,
         temperature: float = 1.0,
+        top_p: float = 1.0,
         show_progress: bool = True,
         apply_watermark: bool = True,
         **kwargs,
@@ -375,6 +376,7 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
             max_new_tokens: Maximum tokens to generate
             do_sample: Whether to sample or use greedy decoding
             temperature: Sampling temperature
+            top_p: Nucleus sampling threshold
             show_progress: Whether to show progress bar
             apply_watermark: Whether to apply watermark
 
@@ -496,7 +498,18 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
 
             # Sample or greedy decode
             if do_sample and temperature > 0:
-                probs = torch.softmax(logits / temperature, dim=-1)
+                scaled_logits = logits / temperature
+                if top_p is not None and 0 < top_p < 1.0:
+                    sorted_logits, sorted_indices = torch.sort(scaled_logits, descending=True, dim=-1)
+                    cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+                    sorted_indices_to_remove = cumulative_probs > top_p
+                    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+                    sorted_indices_to_remove[..., 0] = False
+                    logits_to_remove = torch.zeros_like(sorted_indices_to_remove, dtype=torch.bool)
+                    logits_to_remove.scatter_(1, sorted_indices, sorted_indices_to_remove)
+                    scaled_logits = scaled_logits.masked_fill(logits_to_remove, float("-inf"))
+
+                probs = torch.softmax(scaled_logits, dim=-1)
                 next_tokens = torch.multinomial(probs, num_samples=1).squeeze(-1)
             else:
                 next_tokens = torch.argmax(logits, dim=-1)

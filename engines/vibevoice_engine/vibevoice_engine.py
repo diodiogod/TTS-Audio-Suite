@@ -936,9 +936,15 @@ class VibeVoiceEngine:
             # KugelAudio specific generation logic
             if getattr(self, 'is_kugelaudio', False):
                 return self._generate_kugelaudio(
-                    text, voice_samples, cfg_scale, seed, 
-                    use_sampling, temperature, top_p, 
-                    max_new_tokens
+                    text,
+                    voice_samples,
+                    cfg_scale,
+                    seed,
+                    use_sampling,
+                    temperature,
+                    top_p,
+                    inference_steps,
+                    max_new_tokens,
                 )
             
             # Prepare inputs using processor
@@ -1091,11 +1097,26 @@ class VibeVoiceEngine:
         # Generate with multi-speaker text
         return self.generate_speech(formatted_text, speaker_voices, **kwargs)
     
-    def _generate_kugelaudio(self, text, voice_samples, cfg_scale, seed, 
-                            use_sampling, temperature, top_p, max_new_tokens):
+    def _generate_kugelaudio(
+        self,
+        text,
+        voice_samples,
+        cfg_scale,
+        seed,
+        use_sampling,
+        temperature,
+        top_p,
+        inference_steps,
+        max_new_tokens,
+    ):
         """Handle generation specifically for KugelAudio"""
         try:
             device = next(self.model.parameters()).device
+
+            # Keep KugelAudio aligned with the VibeVoice UI instead of silently
+            # using the model config default (20 diffusion steps).
+            if hasattr(self.model, "set_ddpm_inference_steps"):
+                self.model.set_ddpm_inference_steps(num_steps=inference_steps)
             
             # Prepare voice_prompt from voice samples (raw audio)
             voice_prompt_audio = None
@@ -1123,6 +1144,7 @@ class VibeVoiceEngine:
                     gen_args.update({
                         "do_sample": True,
                         "temperature": temperature,
+                        "top_p": top_p,
                     })
                 else:
                      gen_args["do_sample"] = False
@@ -1179,22 +1201,93 @@ class VibeVoiceEngine:
             from .kugelaudio_impl import KugelAudioForConditionalGenerationInference, KugelAudioProcessor
              
             print(f"🔄 Loading KugelAudio model '{model_name}' on {device}...")
+
+            # Resolve device before building HF loading kwargs so quantization lands
+            # on the intended target instead of relying on a stale string value.
+            from utils.device import resolve_torch_device
+            device = resolve_torch_device(device)
             
             # Use bfloat16 if available (matching standard VibeVoice)
             dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+
+            model_kwargs = {
+                "torch_dtype": dtype,
+                "low_cpu_mem_usage": True,
+                "device_map": device if device != "auto" else "auto",
+            }
+
+            final_attention_mode = attention_mode
+            if attention_mode == "auto":
+                if SAGE_ATTENTION_AVAILABLE and SAGE_ATTENTION_FUNCTION is not None:
+                    final_attention_mode = "sage"
+                    print("   🚀 Auto-selected SageAttention (GPU-optimized mixed-precision)")
+                else:
+                    try:
+                        import flash_attn  # noqa: F401
+                        final_attention_mode = "flash_attention_2"
+                        print("   ✨ Auto-selected flash_attention_2")
+                    except ImportError:
+                        final_attention_mode = "sdpa"
+                        print("   ⚡ Auto-selected sdpa (flash_attention_2 not available)")
+            elif attention_mode == "sage":
+                final_attention_mode = "sage"
+                print("   🎯 Using SageAttention")
+            else:
+                print(f"   🧠 Using {attention_mode} attention")
+
+            # SageAttention is applied by patching the model after load, so the HF
+            # loader itself should stay on SDPA.
+            attn_implementation_for_load = "sdpa" if final_attention_mode == "sage" else final_attention_mode
+
+            if attn_implementation_for_load != "auto":
+                model_kwargs["attn_implementation"] = attn_implementation_for_load
+
+            if quantize_llm_4bit:
+                if str(device) == "cpu":
+                    raise RuntimeError("KugelAudio 4-bit quantization requires CUDA; CPU quantization is not supported.")
+
+                from transformers import BitsAndBytesConfig
+
+                bnb_compute_dtype = dtype
+                if final_attention_mode == "sage":
+                    bnb_compute_dtype = torch.float32
+                print(f"   📊 Using {final_attention_mode} with 4-bit: using {bnb_compute_dtype} compute dtype")
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_compute_dtype=bnb_compute_dtype,
+                )
+                model_kwargs["device_map"] = {"": 0} if str(device) == "cuda" else device
+                print("   🗜️ 4-bit LLM quantization enabled for KugelAudio")
             
             # Load model
-            # Note: KugelAudio implementation handles its own loading logic
             self.model = KugelAudioForConditionalGenerationInference.from_pretrained(
                 model_path,
-                torch_dtype=dtype,
-                low_cpu_mem_usage=True,
-                device_map=device if device != "auto" else "auto"
+                **model_kwargs,
             )
             
             # Load processor
             self.processor = KugelAudioProcessor.from_pretrained(model_path)
             
+            if final_attention_mode == "sage":
+                if SAGE_ATTENTION_AVAILABLE and set_sage_attention:
+                    print(f"   🎯 Applying SageAttention patch to model...")
+                    try:
+                        set_sage_attention(self.model)
+                        print(f"   ✅ SageAttention successfully applied")
+                    except Exception as sage_error:
+                        print(f"   ⚠️ Failed to apply SageAttention: {sage_error}")
+                        print("   📌 Falling back to SDPA")
+                        final_attention_mode = "sdpa"
+                else:
+                    print("   ⚠️ SageAttention not available, using SDPA")
+                    final_attention_mode = "sdpa"
+            else:
+                if restore_original_attention:
+                    print("   🔄 Restoring original attention (cleaning SageAttention patches)")
+                    restore_original_attention(self.model)
+
             self.model.eval()
             
             # Store configuration
@@ -1203,10 +1296,12 @@ class VibeVoiceEngine:
             self._original_device = device
             self.current_model_name = model_name
             self._current_config = (model_name, device, attention_mode, quantize_llm_4bit)
-            self._quantize_llm_4bit = False # KugelAudio specific quantization not implemented here yet
-            
+            self._quantize_llm_4bit = quantize_llm_4bit
+            self.attention_mode = final_attention_mode
+
             print(f"✅ KugelAudio model '{model_name}' loaded successfully")
-            
+            print(f"   Device: {device}, Attention: {final_attention_mode}")
+
         except Exception as e:
             logger.error(f"Failed to load KugelAudio model: {e}")
             raise RuntimeError(f"KugelAudio loading failed: {e}")

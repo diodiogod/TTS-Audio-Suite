@@ -211,20 +211,14 @@ def restore_original_attention(model):
     Args:
         model: The VibeVoice model to restore
     """
-    try:
-        from transformers.models.qwen2.modeling_qwen2 import Qwen2Attention
-    except ImportError:
-        logger.error("Qwen2Attention not found in transformers library")
-        return
-
     restored_count = 0
     for module in model.modules():
-        if isinstance(module, Qwen2Attention) and hasattr(module, '_original_forward'):
+        if hasattr(module, '_original_forward'):
             module.forward = module._original_forward
             delattr(module, '_original_forward')
             restored_count += 1
 
     if restored_count > 0:
-        logger.info(f"Restored original attention for {restored_count} Qwen2Attention layers")
+        logger.info(f"Restored original attention for {restored_count} patched layers")
     else:
-        logger.warning("No patched Qwen2Attention layers found to restore")
+        logger.warning("No patched attention layers found to restore")
