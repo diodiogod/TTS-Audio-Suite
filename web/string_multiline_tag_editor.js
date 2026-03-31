@@ -15,6 +15,7 @@ import { buildPresetSection } from "./widget-preset-system.js";
 import { attachAllEventHandlers } from "./widget-event-handlers.js";
 import { buildTabSystem } from "./widget-tabs.js";
 import { buildInlineEditSection } from "./widget-inline-edit-section.js";
+import { SRTTimingDragController, buildSRTTimingMarkup } from "./string_multiline_tag_editor_timing_drag.js";
 
 
 // Counter to ensure unique storage keys even when node.id is -1
@@ -406,6 +407,7 @@ function addStringMultilineTagEditorWidget(node) {
     const INTERNAL_MARKER_PATTERN = /(?:\x00)?(?:NUM_START|NUM_END|SRT_START|SRT_END|TAG_START|TAG_END|EDIT_START|EDIT_END|COMMA_START|COMMA_END|PERIOD_START|PERIOD_END|PUNCT_START|PUNCT_END|SPACE_START|SPACE_END)(?:\x00)?/g;
 
     const stripInternalMarkers = (text) => text.replace(INTERNAL_MARKER_PATTERN, "");
+    let timingDragController = null;
 
     const selectionIsInsideEditor = (selection) => {
         if (!selection || selection.rangeCount === 0) {
@@ -514,6 +516,7 @@ function addStringMultilineTagEditorWidget(node) {
         const plainText = getPlainText();
         const caretPos = getCaretPos();
         let html = plainText;
+        let timingHandleIndex = 0;
 
         // Highlight SRT sequence numbers - bright red
         html = html.replace(
@@ -560,7 +563,7 @@ function addStringMultilineTagEditorWidget(node) {
         // Replace placeholders with spans
         html = html
             .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff6f61; font-weight: bold;">$1</span>')
-            .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, '<span style="color: #f0b35a; font-weight: bold;">$1</span>')
+            .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, (_, timingText) => buildSRTTimingMarkup(stripInternalMarkers(timingText).replace(/&gt;/g, ">"), timingHandleIndex++))
             .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #38d7ae; font-weight: 700;">$1</span>')
             .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #a6d700; font-weight: 700;">$1</span>')
             .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #7bd6a7; font-weight: bold;">$1</span>')
@@ -573,6 +576,7 @@ function addStringMultilineTagEditorWidget(node) {
             editor.innerHTML = html;
             setCaretPos(caretPos);
         }
+        timingDragController?.syncActiveHandle();
         updateEditorMetrics();
     };
 
@@ -913,6 +917,20 @@ function addStringMultilineTagEditorWidget(node) {
 
     // ==================== ATTACH EVENT HANDLERS ====================
     // Consolidates all addEventListener calls into a single module function
+    timingDragController = new SRTTimingDragController({
+        rootElement: editorContainer,
+        editor,
+        getPlainText,
+        setEditorText,
+        getCaretPos,
+        setCaretPos,
+        state,
+        storageKey,
+        widget,
+        historyStatus,
+        showNotification
+    });
+
     attachAllEventHandlers(
         editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
@@ -1332,6 +1350,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Store state when node is removed
     widget.onRemove = () => {
+        timingDragController?.dispose();
         state.saveToLocalStorage(storageKey);
     };
 

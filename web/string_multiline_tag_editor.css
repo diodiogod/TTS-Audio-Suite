@@ -689,6 +689,47 @@
     overflow-x: hidden !important;
 }
 
+.string-multiline-tag-editor-srt-timing {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 2px;
+}
+
+.string-multiline-tag-editor-srt-timing.is-active {
+    background: transparent;
+    box-shadow: none;
+}
+
+.string-multiline-tag-editor-srt-timing-part {
+    color: #f0b35a;
+    font-weight: 700;
+    cursor: ew-resize;
+    user-select: none;
+}
+
+.string-multiline-tag-editor-srt-timing-part.is-start,
+.string-multiline-tag-editor-srt-timing-part.is-end {
+    padding: 0 1px;
+}
+
+.string-multiline-tag-editor-srt-timing-part.is-range {
+    color: rgba(240, 179, 90, 0.72);
+}
+
+.string-multiline-tag-editor-srt-timing-part:hover,
+.string-multiline-tag-editor-srt-timing-part.is-active {
+    color: #ffd08a;
+    text-shadow: 0 0 10px rgba(240, 179, 90, 0.18);
+}
+
+.string-multiline-tag-editor-main.is-dragging-srt .string-multiline-tag-editor-srt-timing-part {
+    cursor: ew-resize !important;
+}
+
+.string-multiline-tag-editor-main.is-dragging-srt .comfy-multiline-input {
+    user-select: none;
+}
+
 .string-multiline-tag-editor-top-actions {
     display: flex;
     align-items: center;
