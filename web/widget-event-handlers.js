@@ -8,7 +8,7 @@ import { TagUtilities } from "./tag-utilities.js";
 import { isLanguageCode } from "./language-constants.js";
 
 export function attachAllEventHandlers(
-    editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
+    editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, getSelectionRange,
     undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize, setFontFamily,
@@ -127,6 +127,24 @@ export function attachAllEventHandlers(
         historyStatus.textContent = state.getHistoryStatus();
     };
 
+    const commitEditorTextChange = (newText, newCaretPos, { focusEditor = true } = {}) => {
+        setEditorText(newText);
+        state.text = newText;
+        state.addToHistory(newText, newCaretPos);
+        state.saveToLocalStorage(storageKey);
+        lastHistoryText = newText;
+        widget.value = newText;
+        widget.callback?.(newText);
+        historyStatus.textContent = state.getHistoryStatus();
+
+        setTimeout(() => {
+            if (focusEditor) {
+                editor.focus();
+            }
+            setCaretPos(newCaretPos);
+        }, 0);
+    };
+
     editor.addEventListener("input", (e) => {
         const plainText = getPlainText();
         // Update state.text immediately so it's current when saved to localStorage
@@ -149,26 +167,62 @@ export function attachAllEventHandlers(
         // Allow copy to work, but prevent ComfyUI from receiving the event
         // Critical for ComfyUI v0.3.75+ which intercepts clipboard events
         e.stopPropagation();
+
+        const selection = getSelectionRange();
+        if (!selection?.text || !e.clipboardData) {
+            return;
+        }
+
+        e.preventDefault();
+        e.clipboardData.setData("text/plain", selection.text);
     });
 
     editor.addEventListener("cut", (e) => {
         // Allow cut to work, but prevent ComfyUI from receiving the event
         e.stopPropagation();
-        setTimeout(() => {
-            flushHistory();
-            historyStatus.textContent = state.getHistoryStatus();
-        }, 0);
+
+        const selection = getSelectionRange();
+        if (!selection?.text || !e.clipboardData) {
+            setTimeout(() => {
+                flushHistory();
+                historyStatus.textContent = state.getHistoryStatus();
+            }, 0);
+            return;
+        }
+
+        e.preventDefault();
+        e.clipboardData.setData("text/plain", selection.text);
+
+        const plainText = getPlainText();
+        const newText = plainText.substring(0, selection.start) + plainText.substring(selection.end);
+        commitEditorTextChange(newText, selection.start);
     });
 
     editor.addEventListener("paste", (e) => {
         // Stop propagation AFTER paste completes to prevent ComfyUI from pasting nodes
-        // Don't use preventDefault() or stopImmediatePropagation() - let paste work normally
         e.stopPropagation();
-        setTimeout(() => {
-            flushHistory();
-            historyStatus.textContent = state.getHistoryStatus();
-        }, 0);
-    }); // Bubble phase - paste completes first, then we stop it from bubbling to ComfyUI
+
+        if (!e.clipboardData) {
+            return;
+        }
+
+        const pastedText = e.clipboardData.getData("text/plain");
+        if (typeof pastedText !== "string") {
+            return;
+        }
+
+        e.preventDefault();
+
+        const selection = getSelectionRange();
+        const plainText = getPlainText();
+        const insertStart = selection ? selection.start : getCaretPos();
+        const insertEnd = selection ? selection.end : insertStart;
+        const normalizedText = pastedText.replace(/\r\n?/g, "\n");
+        const newText = plainText.substring(0, insertStart) + normalizedText + plainText.substring(insertEnd);
+        const newCaretPos = insertStart + normalizedText.length;
+
+        commitEditorTextChange(newText, newCaretPos);
+    });
 
     const rememberCaretPosition = () => {
         const caretPos = getCaretPos();
@@ -307,17 +361,12 @@ export function attachAllEventHandlers(
 
     // Helper to get selected text and its position
     const getSelection = () => {
-        const sel = window.getSelection();
-        if (sel.toString().length === 0) return null;
+        const selection = getSelectionRange();
+        if (!selection?.text) {
+            return null;
+        }
 
-        const range = sel.getRangeAt(0);
-        const preRange = range.cloneRange();
-        preRange.selectNodeContents(editor);
-        preRange.setEnd(range.startContainer, range.startOffset);
-        const start = preRange.toString().length;
-        const end = start + range.toString().length;
-
-        return { start, end, text: range.toString() };
+        return selection;
     };
 
     // Add character button
@@ -524,11 +573,11 @@ export function attachAllEventHandlers(
 
         buttons.save.addEventListener("click", () => {
             // First check if user selected text in editor (like [de:Alice|seed:42|temp:0.8])
-            const selection = window.getSelection();
+            const selection = getSelectionRange();
             let selectedText = "";
 
-            if (selection.toString().length > 0) {
-                selectedText = selection.toString();
+            if (selection?.text?.length > 0) {
+                selectedText = selection.text;
                 // Store the selected text as the preset
                 state.presets[presetKey] = {
                     tag: selectedText,

@@ -659,6 +659,27 @@ function addStringMultilineTagEditorWidget(node) {
         return caretPos;
     };
 
+    const getSelectionRange = () => {
+        const selection = window.getSelection();
+        if (!selectionIsInsideEditor(selection) || selection.rangeCount === 0 || selection.isCollapsed) {
+            return null;
+        }
+
+        const range = selection.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(editor);
+        preRange.setEnd(range.startContainer, range.startOffset);
+
+        const start = stripInternalMarkers(getNodePlainText(preRange.cloneContents())).length;
+        const selectedText = stripInternalMarkers(getNodePlainText(range.cloneContents()));
+
+        return {
+            start,
+            end: start + selectedText.length,
+            text: selectedText
+        };
+    };
+
     // Restore caret position after update
     const setCaretPos = (pos) => {
         const selection = window.getSelection();
@@ -1221,7 +1242,7 @@ function addStringMultilineTagEditorWidget(node) {
     });
 
     attachAllEventHandlers(
-        editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
+        editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, getSelectionRange,
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, null, setFontSize, setFontFamily,
