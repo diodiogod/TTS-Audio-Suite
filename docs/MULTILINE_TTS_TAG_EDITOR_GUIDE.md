@@ -4,9 +4,9 @@ This guide covers the practical user-facing workflow for the `🏷️ Multiline 
 
 For related topics, also see:
 
-- `docs/CHARACTER_SWITCHING_GUIDE.md`
-- `docs/PARAMETER_SWITCHING_GUIDE.md`
-- `docs/INLINE_EDIT_TAGS_USER_GUIDE.md`
+- [Character Switching Guide](CHARACTER_SWITCHING_GUIDE.md)
+- [Parameter Switching Guide](PARAMETER_SWITCHING_GUIDE.md)
+- [Inline Edit Tags User Guide](INLINE_EDIT_TAGS_USER_GUIDE.md)
 
 ## What This Editor Is For
 
