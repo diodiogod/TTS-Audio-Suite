@@ -353,6 +353,120 @@ function addStringMultilineTagEditorWidget(node) {
     lineGutterContent.className = "string-multiline-tag-editor-gutter-content";
     lineGutter.appendChild(lineGutterContent);
 
+    const editorScrollbar = document.createElement("div");
+    editorScrollbar.className = "string-multiline-tag-editor-editor-scrollbar";
+
+    const editorScrollbarThumb = document.createElement("div");
+    editorScrollbarThumb.className = "string-multiline-tag-editor-editor-scrollbar-thumb";
+    editorScrollbar.appendChild(editorScrollbarThumb);
+    let editorScrollbarDragState = null;
+    let renderedLogicalLineHtmlParts = [""];
+    const EDITOR_LOGICAL_LINE_CLASS = "string-multiline-tag-editor-editor-line";
+
+    const isEditorLogicalLineElement = (node) => (
+        node instanceof HTMLElement &&
+        node.classList.contains(EDITOR_LOGICAL_LINE_CLASS)
+    );
+
+    const getRenderedLogicalLineElements = () => (
+        Array.from(editor.children).filter((child) => isEditorLogicalLineElement(child))
+    );
+
+    const getRenderedLogicalLineHeights = (lineCount, lineHeight) => {
+        const renderedLineElements = getRenderedLogicalLineElements();
+        if (!renderedLineElements.length) {
+            return Array.from({ length: lineCount }, () => lineHeight);
+        }
+
+        return Array.from({ length: lineCount }, (_, row) => (
+            Math.max(lineHeight, renderedLineElements[row]?.getBoundingClientRect().height || lineHeight)
+        ));
+    };
+
+    const updateEditorScrollbar = () => {
+        const visibleHeight = editor.clientHeight;
+        const scrollHeight = editor.scrollHeight;
+        const maxScrollTop = Math.max(0, scrollHeight - visibleHeight);
+        const hasOverflow = maxScrollTop > 1;
+
+        editorScrollbar.style.opacity = hasOverflow ? "" : "0";
+        editorScrollbar.style.pointerEvents = hasOverflow ? "auto" : "none";
+
+        if (!hasOverflow) {
+            editorScrollbarThumb.style.transform = "translateY(0)";
+            editorScrollbarThumb.style.height = "0";
+            return;
+        }
+
+        const trackHeight = Math.max(0, editorScrollbar.clientHeight);
+        const thumbHeight = Math.max(20, (visibleHeight / scrollHeight) * trackHeight);
+        const availableTravel = Math.max(0, trackHeight - thumbHeight);
+        const progress = maxScrollTop > 0 ? editor.scrollTop / maxScrollTop : 0;
+        const thumbOffset = progress * availableTravel;
+
+        editorScrollbarThumb.style.height = `${thumbHeight}px`;
+        editorScrollbarThumb.style.transform = `translateY(${thumbOffset}px)`;
+    };
+
+    const stopEditorScrollbarDrag = () => {
+        if (!editorScrollbarDragState) {
+            return;
+        }
+
+        window.removeEventListener("pointermove", handleEditorScrollbarPointerMove, true);
+        window.removeEventListener("pointerup", stopEditorScrollbarDrag, true);
+        window.removeEventListener("pointercancel", stopEditorScrollbarDrag, true);
+        editorSurface.classList.remove("is-dragging-scrollbar");
+        editorScrollbarDragState = null;
+    };
+
+    const handleEditorScrollbarPointerMove = (event) => {
+        if (!editorScrollbarDragState) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const deltaY = event.clientY - editorScrollbarDragState.startY;
+        const scrollDelta = editorScrollbarDragState.availableTravel > 0
+            ? (deltaY / editorScrollbarDragState.availableTravel) * editorScrollbarDragState.maxScrollTop
+            : 0;
+        editor.scrollTop = Math.max(0, Math.min(
+            editorScrollbarDragState.startScrollTop + scrollDelta,
+            editorScrollbarDragState.maxScrollTop
+        ));
+        updateEditorScrollbar();
+    };
+
+    editorScrollbarThumb.addEventListener("pointerdown", (event) => {
+        const visibleHeight = editor.clientHeight;
+        const scrollHeight = editor.scrollHeight;
+        const maxScrollTop = Math.max(0, scrollHeight - visibleHeight);
+        if (event.button !== 0 || maxScrollTop <= 0) {
+            return;
+        }
+
+        const trackHeight = Math.max(0, editorScrollbar.clientHeight);
+        const thumbHeight = editorScrollbarThumb.getBoundingClientRect().height;
+        const availableTravel = Math.max(0, trackHeight - thumbHeight);
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        editorScrollbarDragState = {
+            startY: event.clientY,
+            startScrollTop: editor.scrollTop,
+            maxScrollTop,
+            availableTravel
+        };
+
+        editorSurface.classList.add("is-dragging-scrollbar");
+        window.addEventListener("pointermove", handleEditorScrollbarPointerMove, true);
+        window.addEventListener("pointerup", stopEditorScrollbarDrag, true);
+        window.addEventListener("pointercancel", stopEditorScrollbarDrag, true);
+    });
+
     const updateEditorMetrics = () => {
         const plainText = getPlainText();
         const characterTags = (plainText.match(/\[[^\]|]+(?:\|[^\]]+)?\]/g) || [])
@@ -367,22 +481,32 @@ function addStringMultilineTagEditorWidget(node) {
         inlineEditsChip.textContent = `Inline Tags: ${inlineEditCount}`;
         const computedEditorStyle = window.getComputedStyle(editor);
         const lineHeight = parseFloat(computedEditorStyle.lineHeight) || (state.fontSize * 1.4);
-        const visualRowCount = Math.max(lineCount, Math.ceil(editor.scrollHeight / lineHeight));
+        const paddingTop = parseFloat(computedEditorStyle.paddingTop || "0");
+        const paddingBottom = parseFloat(computedEditorStyle.paddingBottom || "0");
         editorStatusStats.textContent = `${lineCount} lines | ${wordCount} words | ${plainText.length} chars`;
         lineGutterContent.style.fontSize = `${state.fontSize}px`;
+        lineGutterContent.style.fontFamily = computedEditorStyle.fontFamily;
         lineGutterContent.style.lineHeight = `${lineHeight}px`;
-        const gutterDigits = String(visualRowCount).length;
+        lineGutterContent.style.paddingTop = `${paddingTop}px`;
+        lineGutterContent.style.paddingBottom = `${paddingBottom}px`;
+        const gutterDigits = String(lineCount).length;
         lineGutter.style.flexBasis = `${Math.max(24, Math.ceil(gutterDigits * state.fontSize * 0.72) + 14)}px`;
         lineGutter.style.minWidth = lineGutter.style.flexBasis;
 
+        const logicalLineHeights = getRenderedLogicalLineHeights(lineCount, lineHeight);
+        const contentHeight = logicalLineHeights.reduce((sum, height) => sum + height, 0);
+        lineGutterContent.style.height = `${Math.max(editor.scrollHeight, paddingTop + contentHeight + paddingBottom)}px`;
         const gutterFragment = document.createDocumentFragment();
-        for (let row = 0; row < visualRowCount; row++) {
+        for (let row = 0; row < lineCount; row++) {
             const lineNumber = document.createElement("span");
             lineNumber.textContent = String(row + 1);
+            lineNumber.style.height = `${logicalLineHeights[row] ?? lineHeight}px`;
+            lineNumber.style.lineHeight = `${lineHeight}px`;
             gutterFragment.appendChild(lineNumber);
         }
 
         lineGutterContent.replaceChildren(gutterFragment);
+        updateEditorScrollbar();
     };
 
     // Function to update font size and persist it
@@ -428,12 +552,20 @@ function addStringMultilineTagEditorWidget(node) {
         }
 
         if (node.nodeName === "BR") {
+            const parentNode = node.parentNode;
+            if (isEditorLogicalLineElement(parentNode) && parentNode.childNodes.length === 1) {
+                return "";
+            }
             return "\n";
         }
 
         let text = "";
-        node.childNodes.forEach(child => {
+        const childNodes = Array.from(node.childNodes);
+        childNodes.forEach((child, index) => {
             text += getNodePlainText(child);
+            if (isEditorLogicalLineElement(child) && index < childNodes.length - 1) {
+                text += "\n";
+            }
         });
         return text;
     };
@@ -467,11 +599,79 @@ function addStringMultilineTagEditorWidget(node) {
         const range = document.createRange();
         const plainTextLength = getPlainText().length;
         const targetPos = Math.max(0, Math.min(pos, plainTextLength));
+        let foundStart = false;
+
+        const setCaretPosWithinNode = (rootNode, localTargetPos) => {
+            if (localTargetPos <= 0) {
+                range.setStart(rootNode, 0);
+                return true;
+            }
+
+            let charCount = 0;
+            let nodeStack = [rootNode];
+            let node;
+
+            while ((node = nodeStack.pop())) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const nextCharCount = charCount + node.length;
+                    if (localTargetPos <= nextCharCount) {
+                        range.setStart(node, localTargetPos - charCount);
+                        return true;
+                    }
+                    charCount = nextCharCount;
+                } else if (node.nodeName === "BR") {
+                    const parentNode = node.parentNode;
+                    const isPlaceholderBreak = isEditorLogicalLineElement(parentNode) && parentNode.childNodes.length === 1;
+                    if (isPlaceholderBreak) {
+                        continue;
+                    }
+
+                    const nextCharCount = charCount + 1;
+                    if (localTargetPos <= nextCharCount) {
+                        range.setStartAfter(node);
+                        return true;
+                    }
+                    charCount = nextCharCount;
+                } else {
+                    let i = node.childNodes.length;
+                    while (i--) {
+                        nodeStack.push(node.childNodes[i]);
+                    }
+                }
+            }
+
+            range.selectNodeContents(rootNode);
+            range.collapse(false);
+            return true;
+        };
+
+        const renderedLogicalLineElements = getRenderedLogicalLineElements();
+        if (renderedLogicalLineElements.length) {
+            let remainingPos = targetPos;
+            for (let lineIndex = 0; lineIndex < renderedLogicalLineElements.length; lineIndex++) {
+                const lineElement = renderedLogicalLineElements[lineIndex];
+                const lineTextLength = stripInternalMarkers(getNodePlainText(lineElement)).length;
+
+                if (remainingPos <= lineTextLength) {
+                    foundStart = setCaretPosWithinNode(lineElement, remainingPos);
+                    break;
+                }
+
+                remainingPos -= lineTextLength;
+
+                if (lineIndex < renderedLogicalLineElements.length - 1) {
+                    if (remainingPos === 1) {
+                        foundStart = setCaretPosWithinNode(renderedLogicalLineElements[lineIndex + 1], 0);
+                        break;
+                    }
+                    remainingPos -= 1;
+                }
+            }
+        }
+
         let charCount = 0;
         let nodeStack = [editor];
         let node;
-        let foundStart = false;
-
         while (!foundStart && (node = nodeStack.pop())) {
             if (node.nodeType === Node.TEXT_NODE) {
                 const nextCharCount = charCount + node.length;
@@ -483,9 +683,7 @@ function addStringMultilineTagEditorWidget(node) {
             } else if (node.nodeName === "BR") {
                 const nextCharCount = charCount + 1;
                 if (targetPos <= nextCharCount) {
-                    const parentNode = node.parentNode;
-                    const nodeIndex = Array.prototype.indexOf.call(parentNode.childNodes, node);
-                    range.setStart(parentNode, nodeIndex + 1);
+                    range.setStartAfter(node);
                     foundStart = true;
                 }
                 charCount = nextCharCount;
@@ -570,6 +768,11 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #e3be69; font-weight: bold;">$1</span>')
             .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #f0a1a1;">$1</span>')
             .replace(/\x00SPACE_START\x00(.*?)\x00SPACE_END\x00/g, '<span style="background: #2a2a2a; color: #eee;">$1</span>');
+
+        renderedLogicalLineHtmlParts = html.split("\n");
+        html = renderedLogicalLineHtmlParts.map((lineHtml, index) => (
+            `<div class="${EDITOR_LOGICAL_LINE_CLASS}" data-line-index="${index}">${lineHtml && lineHtml.length ? lineHtml : "<br>"}</div>`
+        )).join("");
 
         // Update only if changed to avoid flicker
         if (editor.innerHTML !== html) {
@@ -691,6 +894,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     editorSurface.appendChild(editor);
     editorSurface.prepend(lineGutter);
+    editorSurface.appendChild(editorScrollbar);
     textareaWrapper.appendChild(editorStatusBar);
     textareaWrapper.appendChild(editorSurface);
     shellBody.appendChild(sidebar);
@@ -1350,6 +1554,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Store state when node is removed
     widget.onRemove = () => {
+        stopEditorScrollbarDrag();
         timingDragController?.dispose();
         state.saveToLocalStorage(storageKey);
     };
@@ -1360,6 +1565,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     editor.addEventListener("scroll", () => {
         lineGutterContent.style.transform = `translateY(${-editor.scrollTop}px)`;
+        updateEditorScrollbar();
     });
     sidebarScrollContent.addEventListener("scroll", updateSidebarScrollbar);
 
@@ -1375,6 +1581,7 @@ function addStringMultilineTagEditorWidget(node) {
     }
 
     requestAnimationFrame(updateSidebarScrollbar);
+    requestAnimationFrame(updateEditorScrollbar);
 
     return widget;
 }

@@ -654,6 +654,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: row;
+    position: relative;
 }
 
 .string-multiline-tag-editor-gutter {
@@ -670,12 +671,16 @@
 }
 
 .string-multiline-tag-editor-gutter-content {
-    padding: 18px 4px 18px 0;
+    padding: 0 4px 0 0;
     text-align: right;
 }
 
 .string-multiline-tag-editor-gutter-content span {
     display: block;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    text-align: right;
 }
 
 .string-multiline-tag-editor-surface .comfy-multiline-input {
@@ -687,6 +692,18 @@
     min-height: 0;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.string-multiline-tag-editor-editor-line {
+    display: block;
+    margin: 0;
+    padding: 0;
+    min-height: 1.4em;
+    white-space: inherit;
+    word-wrap: inherit;
+    overflow-wrap: inherit;
 }
 
 .string-multiline-tag-editor-srt-timing {
@@ -757,33 +774,68 @@
 }
 
 .string-multiline-tag-editor-surface .comfy-multiline-input::-webkit-scrollbar {
-    width: 3px;
-    height: 3px;
+    width: 0 !important;
+    height: 0 !important;
+    display: none;
 }
 
-.string-multiline-tag-editor-surface .comfy-multiline-input::-webkit-scrollbar-thumb {
-    background: transparent;
+.string-multiline-tag-editor-editor-scrollbar {
+    position: absolute;
+    top: 6px;
+    right: 0;
+    bottom: 6px;
+    width: 10px;
     border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease;
+    z-index: 3;
+    display: flex;
+    justify-content: flex-end;
 }
 
-.string-multiline-tag-editor-surface .comfy-multiline-input::-webkit-scrollbar-track {
+.string-multiline-tag-editor-editor-scrollbar-thumb {
+    position: relative;
+    width: 10px;
+    min-height: 20px;
+    border-radius: inherit;
+    background: transparent;
+    cursor: grab;
+    pointer-events: auto;
+}
+
+.string-multiline-tag-editor-editor-scrollbar-thumb::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 3px;
+    width: 3px;
+    border-radius: inherit;
+    background: rgba(0, 225, 174, 0.48);
+    transition: background 0.16s ease, opacity 0.16s ease;
+}
+
+.string-multiline-tag-editor-surface:hover .string-multiline-tag-editor-editor-scrollbar,
+.string-multiline-tag-editor-surface:focus-within .string-multiline-tag-editor-editor-scrollbar,
+.string-multiline-tag-editor-surface.is-dragging-scrollbar .string-multiline-tag-editor-editor-scrollbar {
+    opacity: 1;
+}
+
+.string-multiline-tag-editor-surface:hover .string-multiline-tag-editor-editor-scrollbar-thumb,
+.string-multiline-tag-editor-surface:focus-within .string-multiline-tag-editor-editor-scrollbar-thumb,
+.string-multiline-tag-editor-surface.is-dragging-scrollbar .string-multiline-tag-editor-editor-scrollbar-thumb {
     background: transparent;
 }
 
-.string-multiline-tag-editor-surface .comfy-multiline-input:hover,
-.string-multiline-tag-editor-surface .comfy-multiline-input:focus {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 225, 174, 0.72) transparent;
+.string-multiline-tag-editor-surface:hover .string-multiline-tag-editor-editor-scrollbar-thumb::before,
+.string-multiline-tag-editor-surface:focus-within .string-multiline-tag-editor-editor-scrollbar-thumb::before,
+.string-multiline-tag-editor-surface.is-dragging-scrollbar .string-multiline-tag-editor-editor-scrollbar-thumb::before {
+    background: rgba(0, 225, 174, 0.62);
 }
 
-.string-multiline-tag-editor-surface .comfy-multiline-input:hover::-webkit-scrollbar-thumb,
-.string-multiline-tag-editor-surface .comfy-multiline-input:focus::-webkit-scrollbar-thumb {
-    background: rgba(0, 225, 174, 0.48);
-}
-
-.string-multiline-tag-editor-surface .comfy-multiline-input:hover::-webkit-scrollbar-thumb:hover,
-.string-multiline-tag-editor-surface .comfy-multiline-input:focus::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 225, 174, 0.82);
+.string-multiline-tag-editor-surface.is-dragging-scrollbar .string-multiline-tag-editor-editor-scrollbar-thumb {
+    cursor: grabbing;
 }
 
 @media (max-width: 860px) {
