@@ -532,6 +532,70 @@ function addStringMultilineTagEditorWidget(node) {
     const INTERNAL_MARKER_PATTERN = /(?:\x00)?(?:NUM_START(?:_\d+)?|NUM_END|SRT_START|SRT_END|TAG_START|TAG_END|EDIT_START|EDIT_END|COMMA_START|COMMA_END|PERIOD_START|PERIOD_END|PUNCT_START|PUNCT_END|SPACE_START|SPACE_END)(?:\x00)?/g;
 
     const stripInternalMarkers = (text) => text.replace(INTERNAL_MARKER_PATTERN, "");
+    const stripResidualMarkerArtifacts = (text) => stripInternalMarkers(text).replace(/\x00/g, "");
+    const highlightResidualSquareBracketTags = (html) => {
+        if (!html.includes("[")) {
+            return html;
+        }
+
+        const tempRoot = document.createElement("div");
+        tempRoot.innerHTML = html;
+
+        const textNodes = [];
+        const walker = document.createTreeWalker(tempRoot, NodeFilter.SHOW_TEXT);
+        let currentNode;
+        while ((currentNode = walker.nextNode())) {
+            textNodes.push(currentNode);
+        }
+
+        const rawTagPattern = /\[[^\]\r\n]+\]/g;
+        textNodes.forEach((textNode) => {
+            const textContent = textNode.textContent || "";
+            if (!textContent.includes("[")) {
+                return;
+            }
+
+            const parentElement = textNode.parentElement;
+            if (
+                !parentElement ||
+                parentElement.closest(".string-multiline-tag-editor-srt-timing, .string-multiline-tag-editor-srt-number") ||
+                (parentElement.tagName === "SPAN" && parentElement.getAttribute("style"))
+            ) {
+                return;
+            }
+
+            rawTagPattern.lastIndex = 0;
+            if (!rawTagPattern.test(textContent)) {
+                return;
+            }
+
+            rawTagPattern.lastIndex = 0;
+            const fragment = document.createDocumentFragment();
+            let lastIndex = 0;
+            let match;
+
+            while ((match = rawTagPattern.exec(textContent)) !== null) {
+                if (match.index > lastIndex) {
+                    fragment.appendChild(document.createTextNode(textContent.slice(lastIndex, match.index)));
+                }
+
+                const tagSpan = document.createElement("span");
+                tagSpan.style.color = "#38d7ae";
+                tagSpan.style.fontWeight = "700";
+                tagSpan.textContent = match[0];
+                fragment.appendChild(tagSpan);
+                lastIndex = match.index + match[0].length;
+            }
+
+            if (lastIndex < textContent.length) {
+                fragment.appendChild(document.createTextNode(textContent.slice(lastIndex)));
+            }
+
+            textNode.replaceWith(fragment);
+        });
+
+        return tempRoot.innerHTML;
+    };
     let timingDragController = null;
     let cueEditController = null;
 
@@ -771,6 +835,11 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #e3be69; font-weight: bold;">$1</span>')
             .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #f0a1a1;">$1</span>')
             .replace(/\x00SPACE_START\x00(.*?)\x00SPACE_END\x00/g, '<span style="background: #2a2a2a; color: #eee;">$1</span>');
+
+        // Safety net: if any placeholder token survives the replacement chain,
+        // strip it before the editor HTML is rendered.
+        html = stripResidualMarkerArtifacts(html);
+        html = highlightResidualSquareBracketTags(html);
 
         renderedLogicalLineHtmlParts = html.split("\n");
         html = renderedLogicalLineHtmlParts.map((lineHtml, index) => (
