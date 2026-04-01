@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.13] - 2026-03-31
+
+### Added
+
+- Add draggable subtitle timing controls directly in the SRT editor
+- Keep adjacent subtitle gaps stable while adjusting linked timings
+- Keep the editor scrollbar from shifting text when focus changes
+
+### Changed
+
+- Improve Multiline TTS Tag Editor SRT timing editing and line alignment
+
+### Fixed
+
+- Fix line numbers drifting out of sync when long lines wrap
 ## [4.24.12] - 2026-03-30
 
 ### Added
