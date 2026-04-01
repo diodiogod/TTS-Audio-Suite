@@ -193,7 +193,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
-- 🏷️ **Multiline TTS Tag Editor & Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using a new multiline string editor node that makes building complex tags easier and more visual, with character/language/parameter dropdowns for quick selection, preset management, and tag validation → **[📖 Complete Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
+- 🏷️ **Multiline TTS Tag Editor & Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using a new multiline string editor node that makes building complex tags easier and more visual, with character/language/parameter dropdowns for quick selection, preset management, tag validation, and SRT-aware editing tools → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
 - 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
 - 📝 **Multilingual Text Processing** - Universal Phoneme Text Normalizer with IPA phonemization, Unicode decomposition, and character mapping for improved pronunciation quality across languages (Experimental)
 - 😤 **Emotion Control** - ChatterBox exaggeration parameter for expressive speech + IndexTTS-2 advanced emotion control with dynamic text analysis, character tags, and 8-emotion vectors → **[📖 IndexTTS-2 Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
@@ -934,7 +934,7 @@ This enables dynamic control over individual audio segments without modifying no
 - **VibeVoice**: seed, temperature, cfg, top_p, top_k, inference_steps
 - **IndexTTS-2**: seed, temperature, cfg, top_p, top_k, emotion_alpha
 
-**📖 [Complete Per-Segment Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)**
+**📖 Guides:** [Per-Segment Parameter Switching](docs/PARAMETER_SWITCHING_GUIDE.md) | [Multiline TTS Tag Editor](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)
 
 Perfect for:
 

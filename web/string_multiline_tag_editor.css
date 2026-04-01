@@ -706,6 +706,17 @@
     overflow-wrap: inherit;
 }
 
+.string-multiline-tag-editor-srt-number {
+    color: #ff6f61;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.string-multiline-tag-editor-srt-number:hover {
+    color: #ff8e83;
+    text-shadow: 0 0 10px rgba(255, 111, 97, 0.16);
+}
+
 .string-multiline-tag-editor-srt-timing {
     display: inline-flex;
     align-items: center;

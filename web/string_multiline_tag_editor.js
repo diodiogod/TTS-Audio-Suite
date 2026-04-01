@@ -16,6 +16,7 @@ import { attachAllEventHandlers } from "./widget-event-handlers.js";
 import { buildTabSystem } from "./widget-tabs.js";
 import { buildInlineEditSection } from "./widget-inline-edit-section.js";
 import { SRTTimingDragController, buildSRTTimingMarkup } from "./string_multiline_tag_editor_timing_drag.js";
+import { SRTCueEditController, buildSRTCueNumberMarkup } from "./string_multiline_tag_editor_srt_cue_ops.js";
 
 
 // Counter to ensure unique storage keys even when node.id is -1
@@ -528,10 +529,11 @@ function addStringMultilineTagEditorWidget(node) {
     // Initialize with text
     editor.textContent = state.text;
 
-    const INTERNAL_MARKER_PATTERN = /(?:\x00)?(?:NUM_START|NUM_END|SRT_START|SRT_END|TAG_START|TAG_END|EDIT_START|EDIT_END|COMMA_START|COMMA_END|PERIOD_START|PERIOD_END|PUNCT_START|PUNCT_END|SPACE_START|SPACE_END)(?:\x00)?/g;
+    const INTERNAL_MARKER_PATTERN = /(?:\x00)?(?:NUM_START(?:_\d+)?|NUM_END|SRT_START|SRT_END|TAG_START|TAG_END|EDIT_START|EDIT_END|COMMA_START|COMMA_END|PERIOD_START|PERIOD_END|PUNCT_START|PUNCT_END|SPACE_START|SPACE_END)(?:\x00)?/g;
 
     const stripInternalMarkers = (text) => text.replace(INTERNAL_MARKER_PATTERN, "");
     let timingDragController = null;
+    let cueEditController = null;
 
     const selectionIsInsideEditor = (selection) => {
         if (!selection || selection.rangeCount === 0) {
@@ -714,12 +716,13 @@ function addStringMultilineTagEditorWidget(node) {
         const plainText = getPlainText();
         const caretPos = getCaretPos();
         let html = plainText;
+        let cueNumberIndex = 0;
         let timingHandleIndex = 0;
 
         // Highlight SRT sequence numbers - bright red
         html = html.replace(
             /^(\d+)\s*\n(\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3})/gm,
-            '\x00NUM_START\x00$1\x00NUM_END\x00\n$2'
+            (_, cueNumber, timingLine) => `\x00NUM_START_${cueNumberIndex++}\x00${cueNumber}\x00NUM_END\x00\n${timingLine}`
         );
 
         // Highlight SRT timings - bright orange
@@ -760,7 +763,7 @@ function addStringMultilineTagEditorWidget(node) {
 
         // Replace placeholders with spans
         html = html
-            .replace(/\x00NUM_START\x00(.*?)\x00NUM_END\x00/g, '<span style="color: #ff6f61; font-weight: bold;">$1</span>')
+            .replace(/\x00NUM_START_(\d+)\x00(.*?)\x00NUM_END\x00/g, (_, cueIndex, cueNumber) => buildSRTCueNumberMarkup(cueNumber, Number(cueIndex)))
             .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, (_, timingText) => buildSRTTimingMarkup(stripInternalMarkers(timingText).replace(/&gt;/g, ">"), timingHandleIndex++))
             .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #38d7ae; font-weight: 700;">$1</span>')
             .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #a6d700; font-weight: 700;">$1</span>')
@@ -1135,6 +1138,19 @@ function addStringMultilineTagEditorWidget(node) {
         showNotification
     });
 
+    cueEditController = new SRTCueEditController({
+        editor,
+        getPlainText,
+        setEditorText,
+        getCaretPos,
+        setCaretPos,
+        state,
+        storageKey,
+        widget,
+        historyStatus,
+        showNotification
+    });
+
     attachAllEventHandlers(
         editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos,
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
@@ -1388,7 +1404,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const renderLibraryView = () => {
         auxiliaryTitle.textContent = "Library";
-        auxiliaryDescription.textContent = "Consult the tag guides directly in the editor: character switching, per-segment parameters, and inline edit workflow notes.";
+        auxiliaryDescription.textContent = "Consult the tag guides directly in the editor: character switching, per-segment parameters, inline edit workflow notes, and the SRT editing cheat sheet.";
 
         const libraryGroups = [
             {
@@ -1446,6 +1462,25 @@ function addStringMultilineTagEditorWidget(node) {
                     "`<restore>` and `<restore:N>` use the original clean pre-edit audio as reference. `<restore:N@M>` switches the reference to edit step M, not restore pass M.",
                     "Example: `<style:whisper:2> <Laughter:3> <restore:1@2>` means restore runs after everything else, but it aims back at the audio from whisper step 2 so you keep the whisper feel and drop the later laughter damage.",
                     "If you want stronger laughter or reaction effects, include supporting spoken text too, not just the tag."
+                ]
+            },
+            {
+                title: "SRT Editing Guide",
+                intro: "Use these subtitle-specific actions when the editor is showing SRT content and you need to retime, merge, or split cues directly inside the node.",
+                rows: [
+                    { syntax: "Drag start time", purpose: "Retiming cue start", notes: "Drag the left timestamp horizontally to move only the cue start." },
+                    { syntax: "Drag end time", purpose: "Retiming cue end", notes: "Drag the right timestamp horizontally to move only the cue end." },
+                    { syntax: "Drag -->", purpose: "Move whole cue", notes: "Drag the arrow segment to move the full subtitle without changing its duration." },
+                    { syntax: "Shift + drag start/end", purpose: "Keep adjacent gap stable", notes: "Moves the neighboring cue boundary by the same delta so the existing gap remains intact." },
+                    { syntax: "Alt + click cue number", purpose: "Merge with next cue", notes: "Keeps the current cue start, uses the next cue end, joins the text, and renumbers later cues." },
+                    { syntax: "Alt + Shift + click cue number", purpose: "Merge with previous cue", notes: "Merges the selected cue backward into the previous one and keeps timing across the full combined span." },
+                    { syntax: "Ctrl + Shift + Enter", purpose: "Split cue at caret", notes: "Splits subtitle text at the caret and estimates the new boundary time from the text proportion on both sides." }
+                ],
+                bullets: [
+                    "Merge is useful when short subtitle chunks sound too abrupt and you want a larger TTS segment.",
+                    "Split uses text proportion plus punctuation bias as a first-pass timing estimate, so review the result if the pacing is critical.",
+                    "Cue numbers are now action targets for merge, while timing lines remain action targets for retiming.",
+                    "For the full guide, see `docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md`."
                 ]
             }
         ];
@@ -1556,6 +1591,7 @@ function addStringMultilineTagEditorWidget(node) {
     widget.onRemove = () => {
         stopEditorScrollbarDrag();
         timingDragController?.dispose();
+        cueEditController?.dispose();
         state.saveToLocalStorage(storageKey);
     };
 
