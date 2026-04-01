@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.15] - 2026-04-01
+
+### Changed
+
+- Improve reliability when repeated pause tags appear across SRT cues
+
+### Fixed
+
+- Fix Multiline TTS Tag Editor tag highlighting with repeated subtitle tags
+- Fix some subtitle tags not highlighting correctly after editor updates
+- Fix internal marker artifacts leaking into the editor view
 ## [4.24.14] - 2026-03-31
 
 ### Added
