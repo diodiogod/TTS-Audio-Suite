@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.14] - 2026-03-31
+
+### Added
+
+- Add merge controls for combining neighboring subtitle cues in the editor
+- Add split-at-caret support for breaking one subtitle into two timed cues
+- Add a dedicated Multiline TTS Tag Editor guide with SRT workflow notes
+
+### Changed
+
+- Improve Multiline TTS Tag Editor SRT editing and documentation
+- Improve in-editor and README documentation so the editor features are easier to discover
 ## [4.24.13] - 2026-03-31
 
 ### Added
