@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.17] - 2026-04-01
+
+### Added
+
+- Add Library guide tabs for character tags, parameter tags, inline tags, and SRT editing
+
+### Changed
+
+- Improve Multiline TTS Tag Editor gutter spacing and Library browsing
+- Improve gutter spacing so line numbers use less wasted horizontal space
+- Improve guide readability by showing one reference section at a time inside the editor
 ## [4.24.16] - 2026-04-01
 
 ### Added
