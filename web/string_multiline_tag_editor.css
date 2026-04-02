@@ -657,37 +657,22 @@
     position: relative;
 }
 
-.string-multiline-tag-editor-gutter {
-    flex: 0 0 24px;
-    min-width: 24px;
-    overflow: hidden;
-    background: rgba(14, 14, 14, 0.52);
-    border-right: 1px solid rgba(67, 71, 74, 0.14);
-    color: var(--tts-text-faint);
-    font-family: "JetBrains Mono", monospace;
-    font-size: inherit;
-    line-height: inherit;
-    user-select: none;
-}
-
-.string-multiline-tag-editor-gutter-content {
-    padding: 0 4px 0 0;
-    text-align: right;
-}
-
-.string-multiline-tag-editor-gutter-content span {
-    display: block;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    text-align: right;
-}
-
 .string-multiline-tag-editor-surface .comfy-multiline-input {
+    --tts-editor-padding-x: 18px;
+    --tts-editor-gutter-width: 24px;
+    --tts-editor-gutter-gap: 12px;
     background: transparent !important;
+    background-image: linear-gradient(
+        90deg,
+        rgba(14, 14, 14, 0.52) 0,
+        rgba(14, 14, 14, 0.52) calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 6px),
+        rgba(67, 71, 74, 0.14) calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 6px),
+        rgba(67, 71, 74, 0.14) calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 7px),
+        transparent calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 7px)
+    ) !important;
     color: var(--tts-text) !important;
     font-family: inherit;
-    padding: 18px !important;
+    padding: 18px 18px 18px calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + var(--tts-editor-gutter-gap)) !important;
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto !important;
@@ -698,12 +683,29 @@
 
 .string-multiline-tag-editor-editor-line {
     display: block;
+    position: relative;
     margin: 0;
     padding: 0;
     min-height: 1.4em;
     white-space: inherit;
     word-wrap: inherit;
     overflow-wrap: inherit;
+}
+
+.string-multiline-tag-editor-editor-line::before {
+    content: attr(data-line-number);
+    position: absolute;
+    top: 0;
+    right: calc(100% + var(--tts-editor-gutter-gap));
+    width: var(--tts-editor-gutter-width);
+    color: var(--tts-text-faint);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.94em;
+    line-height: inherit;
+    text-align: right;
+    opacity: 0.82;
+    pointer-events: none;
+    user-select: none;
 }
 
 .string-multiline-tag-editor-srt-number {

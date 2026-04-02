@@ -347,13 +347,6 @@ function addStringMultilineTagEditorWidget(node) {
     const editorSurface = document.createElement("div");
     editorSurface.className = "string-multiline-tag-editor-surface";
 
-    const lineGutter = document.createElement("div");
-    lineGutter.className = "string-multiline-tag-editor-gutter";
-
-    const lineGutterContent = document.createElement("div");
-    lineGutterContent.className = "string-multiline-tag-editor-gutter-content";
-    lineGutter.appendChild(lineGutterContent);
-
     const editorScrollbar = document.createElement("div");
     editorScrollbar.className = "string-multiline-tag-editor-editor-scrollbar";
 
@@ -372,17 +365,6 @@ function addStringMultilineTagEditorWidget(node) {
     const getRenderedLogicalLineElements = () => (
         Array.from(editor.children).filter((child) => isEditorLogicalLineElement(child))
     );
-
-    const getRenderedLogicalLineHeights = (lineCount, lineHeight) => {
-        const renderedLineElements = getRenderedLogicalLineElements();
-        if (!renderedLineElements.length) {
-            return Array.from({ length: lineCount }, () => lineHeight);
-        }
-
-        return Array.from({ length: lineCount }, (_, row) => (
-            Math.max(lineHeight, renderedLineElements[row]?.getBoundingClientRect().height || lineHeight)
-        ));
-    };
 
     const updateEditorScrollbar = () => {
         const visibleHeight = editor.clientHeight;
@@ -477,36 +459,13 @@ function addStringMultilineTagEditorWidget(node) {
         const inlineEditCount = (plainText.match(/<[^<>\r\n]+>/g) || []).length;
         const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
         const lineCount = plainText === "" ? 1 : plainText.split("\n").length;
+        const gutterDigits = String(lineCount).length;
+        const gutterWidth = `${Math.max(24, Math.ceil(gutterDigits * state.fontSize * 0.72) + 14)}px`;
 
         charactersChip.textContent = `Characters: ${uniqueCharacters.size}`;
         inlineEditsChip.textContent = `Inline Tags: ${inlineEditCount}`;
-        const computedEditorStyle = window.getComputedStyle(editor);
-        const lineHeight = parseFloat(computedEditorStyle.lineHeight) || (state.fontSize * 1.4);
-        const paddingTop = parseFloat(computedEditorStyle.paddingTop || "0");
-        const paddingBottom = parseFloat(computedEditorStyle.paddingBottom || "0");
         editorStatusStats.textContent = `${lineCount} lines | ${wordCount} words | ${plainText.length} chars`;
-        lineGutterContent.style.fontSize = `${state.fontSize}px`;
-        lineGutterContent.style.fontFamily = computedEditorStyle.fontFamily;
-        lineGutterContent.style.lineHeight = `${lineHeight}px`;
-        lineGutterContent.style.paddingTop = `${paddingTop}px`;
-        lineGutterContent.style.paddingBottom = `${paddingBottom}px`;
-        const gutterDigits = String(lineCount).length;
-        lineGutter.style.flexBasis = `${Math.max(24, Math.ceil(gutterDigits * state.fontSize * 0.72) + 14)}px`;
-        lineGutter.style.minWidth = lineGutter.style.flexBasis;
-
-        const logicalLineHeights = getRenderedLogicalLineHeights(lineCount, lineHeight);
-        const contentHeight = logicalLineHeights.reduce((sum, height) => sum + height, 0);
-        lineGutterContent.style.height = `${Math.max(editor.scrollHeight, paddingTop + contentHeight + paddingBottom)}px`;
-        const gutterFragment = document.createDocumentFragment();
-        for (let row = 0; row < lineCount; row++) {
-            const lineNumber = document.createElement("span");
-            lineNumber.textContent = String(row + 1);
-            lineNumber.style.height = `${logicalLineHeights[row] ?? lineHeight}px`;
-            lineNumber.style.lineHeight = `${lineHeight}px`;
-            gutterFragment.appendChild(lineNumber);
-        }
-
-        lineGutterContent.replaceChildren(gutterFragment);
+        editor.style.setProperty("--tts-editor-gutter-width", gutterWidth);
         updateEditorScrollbar();
     };
 
@@ -864,7 +823,7 @@ function addStringMultilineTagEditorWidget(node) {
 
         renderedLogicalLineHtmlParts = html.split("\n");
         html = renderedLogicalLineHtmlParts.map((lineHtml, index) => (
-            `<div class="${EDITOR_LOGICAL_LINE_CLASS}" data-line-index="${index}">${lineHtml && lineHtml.length ? lineHtml : "<br>"}</div>`
+            `<div class="${EDITOR_LOGICAL_LINE_CLASS}" data-line-index="${index}" data-line-number="${index + 1}">${lineHtml && lineHtml.length ? lineHtml : "<br>"}</div>`
         )).join("");
 
         // Update only if changed to avoid flicker
@@ -986,7 +945,6 @@ function addStringMultilineTagEditorWidget(node) {
     updateDividerPosition();
 
     editorSurface.appendChild(editor);
-    editorSurface.prepend(lineGutter);
     editorSurface.appendChild(editorScrollbar);
     textareaWrapper.appendChild(editorStatusBar);
     textareaWrapper.appendChild(editorSurface);
@@ -1690,7 +1648,6 @@ function addStringMultilineTagEditorWidget(node) {
     activateTopView(state.activeTopView || "editor");
 
     editor.addEventListener("scroll", () => {
-        lineGutterContent.style.transform = `translateY(${-editor.scrollTop}px)`;
         updateEditorScrollbar();
     });
     sidebarScrollContent.addEventListener("scroll", updateSidebarScrollbar);
