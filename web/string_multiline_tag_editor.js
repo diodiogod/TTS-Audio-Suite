@@ -460,7 +460,7 @@ function addStringMultilineTagEditorWidget(node) {
         const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
         const lineCount = plainText === "" ? 1 : plainText.split("\n").length;
         const gutterDigits = String(lineCount).length;
-        const gutterWidth = `${Math.max(24, Math.ceil(gutterDigits * state.fontSize * 0.72) + 14)}px`;
+        const gutterWidth = `calc(${Math.max(2, gutterDigits)}ch + 2px)`;
 
         charactersChip.textContent = `Characters: ${uniqueCharacters.size}`;
         inlineEditsChip.textContent = `Inline Tags: ${inlineEditCount}`;
@@ -1450,12 +1450,16 @@ function addStringMultilineTagEditorWidget(node) {
         auxiliaryContent.replaceChildren(presetGrid);
     };
 
+    let activeLibraryGroupKey = "character-switching";
+
     const renderLibraryView = () => {
         auxiliaryTitle.textContent = "Library";
         auxiliaryDescription.textContent = "Consult the tag guides directly in the editor: character switching, per-segment parameters, inline edit workflow notes, and the SRT editing cheat sheet.";
 
         const libraryGroups = [
             {
+                key: "character-switching",
+                tabLabel: "Characters",
                 title: "Character Switching Guide",
                 intro: "Use square-bracket tags to swap speakers and optionally language without leaving the same text field.",
                 rows: [
@@ -1470,6 +1474,8 @@ function addStringMultilineTagEditorWidget(node) {
                 ]
             },
             {
+                key: "parameter-switching",
+                tabLabel: "Parameters",
                 title: "Parameter Switching Guide",
                 intro: "Override generation behavior per segment without changing node-level defaults.",
                 rows: [
@@ -1484,6 +1490,8 @@ function addStringMultilineTagEditorWidget(node) {
                 ]
             },
             {
+                key: "inline-tags",
+                tabLabel: "Inline Tags",
                 title: "Inline Edit Tags Guide",
                 intro: "These tags are for convenience when you want segment-level Step Audio EditX processing without building separate TTS -> Edit chains.",
                 rows: [
@@ -1513,6 +1521,8 @@ function addStringMultilineTagEditorWidget(node) {
                 ]
             },
             {
+                key: "srt-editing",
+                tabLabel: "SRT",
                 title: "SRT Editing Guide",
                 intro: "Use these subtitle-specific actions when the editor is showing SRT content and you need to retime, merge, or split cues directly inside the node.",
                 rows: [
@@ -1535,8 +1545,13 @@ function addStringMultilineTagEditorWidget(node) {
 
         const libraryLayout = document.createElement("div");
         libraryLayout.className = "string-multiline-tag-editor-library";
+        const libraryTabs = document.createElement("div");
+        libraryTabs.className = "string-multiline-tag-editor-library-tabs";
+        const libraryPanel = document.createElement("div");
+        libraryPanel.className = "string-multiline-tag-editor-library-panel";
+        const libraryTabButtons = new Map();
 
-        libraryGroups.forEach(group => {
+        const renderLibraryGroup = (group) => {
             const section = document.createElement("section");
             section.className = "string-multiline-tag-editor-library-section";
 
@@ -1593,8 +1608,39 @@ function addStringMultilineTagEditorWidget(node) {
             section.appendChild(intro);
             section.appendChild(bulletList);
             section.appendChild(table);
-            libraryLayout.appendChild(section);
+            libraryPanel.replaceChildren(section);
+        };
+
+        const activateLibraryGroup = (groupKey) => {
+            const nextGroup = libraryGroups.find(group => group.key === groupKey) || libraryGroups[0];
+            activeLibraryGroupKey = nextGroup.key;
+
+            libraryTabButtons.forEach((button, key) => {
+                button.classList.toggle("is-active", key === nextGroup.key);
+            });
+
+            renderLibraryGroup(nextGroup);
+        };
+
+        libraryGroups.forEach(group => {
+            const tabButton = document.createElement("button");
+            tabButton.type = "button";
+            tabButton.className = "string-multiline-tag-editor-library-tab";
+            tabButton.textContent = group.tabLabel;
+            tabButton.addEventListener("click", () => {
+                activateLibraryGroup(group.key);
+            });
+            libraryTabButtons.set(group.key, tabButton);
+            libraryTabs.appendChild(tabButton);
         });
+
+        libraryLayout.appendChild(libraryTabs);
+        libraryLayout.appendChild(libraryPanel);
+
+        const initialLibraryGroup = libraryGroups.some(group => group.key === activeLibraryGroupKey)
+            ? activeLibraryGroupKey
+            : libraryGroups[0].key;
+        activateLibraryGroup(initialLibraryGroup);
 
         auxiliaryContent.replaceChildren(libraryLayout);
     };

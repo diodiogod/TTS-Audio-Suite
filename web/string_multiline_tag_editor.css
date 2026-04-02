@@ -226,6 +226,44 @@
     gap: 12px;
 }
 
+.string-multiline-tag-editor-library-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.string-multiline-tag-editor-library-tab {
+    padding: 7px 10px;
+    background: rgba(20, 20, 20, 0.72);
+    color: var(--tts-text-faint);
+    border: 1px solid rgba(67, 71, 74, 0.18);
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.string-multiline-tag-editor-library-tab:hover {
+    color: var(--tts-text);
+    border-color: rgba(0, 225, 174, 0.18);
+}
+
+.string-multiline-tag-editor-library-tab.is-active {
+    color: #04291f;
+    background: linear-gradient(135deg, rgba(0, 225, 174, 0.92) 0%, rgba(0, 187, 146, 0.94) 100%);
+    border-color: rgba(0, 225, 174, 0.2);
+    box-shadow: 0 0 0 1px rgba(0, 225, 174, 0.08);
+}
+
+.string-multiline-tag-editor-library-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .string-multiline-tag-editor-aux-toolbar {
     display: flex;
     justify-content: flex-end;
@@ -658,21 +696,22 @@
 }
 
 .string-multiline-tag-editor-surface .comfy-multiline-input {
-    --tts-editor-padding-x: 18px;
-    --tts-editor-gutter-width: 24px;
-    --tts-editor-gutter-gap: 12px;
+    --tts-editor-padding-left: 8px;
+    --tts-editor-padding-right: 18px;
+    --tts-editor-gutter-width: calc(2ch + 2px);
+    --tts-editor-gutter-gap: 5px;
     background: transparent !important;
     background-image: linear-gradient(
         90deg,
         rgba(14, 14, 14, 0.52) 0,
-        rgba(14, 14, 14, 0.52) calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 6px),
-        rgba(67, 71, 74, 0.14) calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 6px),
-        rgba(67, 71, 74, 0.14) calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 7px),
-        transparent calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + 7px)
+        rgba(14, 14, 14, 0.52) calc(var(--tts-editor-padding-left) + var(--tts-editor-gutter-width) + 2px),
+        rgba(67, 71, 74, 0.14) calc(var(--tts-editor-padding-left) + var(--tts-editor-gutter-width) + 2px),
+        rgba(67, 71, 74, 0.14) calc(var(--tts-editor-padding-left) + var(--tts-editor-gutter-width) + 3px),
+        transparent calc(var(--tts-editor-padding-left) + var(--tts-editor-gutter-width) + 3px)
     ) !important;
     color: var(--tts-text) !important;
     font-family: inherit;
-    padding: 18px 18px 18px calc(var(--tts-editor-padding-x) + var(--tts-editor-gutter-width) + var(--tts-editor-gutter-gap)) !important;
+    padding: 18px var(--tts-editor-padding-right) 18px calc(var(--tts-editor-padding-left) + var(--tts-editor-gutter-width) + var(--tts-editor-gutter-gap)) !important;
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto !important;
@@ -701,6 +740,7 @@
     color: var(--tts-text-faint);
     font-family: "JetBrains Mono", monospace;
     font-size: 0.94em;
+    font-variant-numeric: tabular-nums;
     line-height: inherit;
     text-align: right;
     opacity: 0.82;
