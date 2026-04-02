@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.16] - 2026-04-01
+
+### Added
+
+- Keep gutter numbers aligned while scrolling and resizing long SRT files
+
+### Changed
+
+- Improve editor stability by using the rendered text rows instead of separate gutter measurements
+
+### Fixed
+
+- Fix Multiline TTS Tag Editor gutter alignment for wrapped subtitles
+- Fix line numbers drifting out of sync on wrapped subtitle text
 ## [4.24.15] - 2026-04-01
 
 ### Changed
