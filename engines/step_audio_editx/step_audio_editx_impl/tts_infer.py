@@ -8,8 +8,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 from datetime import datetime
 import torchaudio
-import librosa
 import soundfile as sf
+# TTS Audio Suite patch: route audio loading through the shared librosa fallback layer.
+from utils.audio.librosa_fallback import safe_load
 
 # Project imports
 from tokenizer import StepAudioTokenizer
@@ -101,7 +102,7 @@ class StepAudioEditX:
                     audio_numpy = output_audio
 
                 # Load original audio for comparison
-                input_audio_data_numpy, input_sample_rate = librosa.load(prompt_audio_input)
+                input_audio_data_numpy, input_sample_rate = safe_load(prompt_audio_input, sr=22050, mono=True)
 
                 # Create message for history
                 cur_assistant_msg = {
@@ -175,7 +176,7 @@ class StepAudioEditX:
 
                 # Load original audio for comparison
                 if len(state["history_audio"]) == 0:
-                    input_audio_data_numpy, input_sample_rate = librosa.load(prompt_audio_input)
+                    input_audio_data_numpy, input_sample_rate = safe_load(prompt_audio_input, sr=22050, mono=True)
                 else:
                     input_sample_rate, input_audio_data_numpy, _ = state["history_audio"][-1]
 

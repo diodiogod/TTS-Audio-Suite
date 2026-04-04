@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.19] - 2026-04-03
+
+### Fixed
+
+- Address Step Audio EditX Mac compatibility issue
+- Fix Step Audio EditX audio loading on fragile Mac and Python environments
+- Preserve existing Step Audio EditX audio preprocessing behavior while applying the compatibility fallback
+- Improve compatibility when EditX crashes with get_call_template errors before inference starts
 ## [4.24.18] - 2026-04-03
 
 ### Added

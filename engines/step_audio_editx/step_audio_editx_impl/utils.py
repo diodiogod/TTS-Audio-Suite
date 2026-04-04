@@ -1,7 +1,6 @@
 import io
 import base64
 
-import librosa
 import numpy as np
 import math
 import os
@@ -9,6 +8,9 @@ import threading
 import torch
 import torchaudio
 import tempfile
+
+# TTS Audio Suite patch: use the repo's librosa fallback helpers for broken numba/librosa stacks.
+from utils.audio.librosa_fallback import safe_trim
 
 
 def encode_wav(wav, sr, rep_format="wav"):
@@ -20,11 +22,36 @@ def encode_wav(wav, sr, rep_format="wav"):
 
 
 def trim_silence(audio, sr, keep_left_time=0.05, keep_right_time=0.22, hop_size=240):
-    _, index = librosa.effects.trim(audio, top_db=20, frame_length=512, hop_length=128)
-    num_frames = int(math.ceil((index[1] - index[0]) / hop_size))  # 300
-
     left_sil_samples = int(keep_left_time * sr)
     right_sil_samples = int(keep_right_time * sr)
+
+    try:
+        import librosa
+
+        _, index = librosa.effects.trim(audio, top_db=20, frame_length=512, hop_length=128)
+        num_frames = int(math.ceil((index[1] - index[0]) / hop_size))  # 300
+    except Exception:
+        # TTS Audio Suite patch: direct librosa trim can crash with get_call_template errors.
+        trimmed_audio = safe_trim(audio, top_db=20, frame_length=512, hop_length=128)
+        num_frames = int(math.ceil(len(trimmed_audio) / hop_size)) if len(trimmed_audio) > 0 else int(math.ceil(len(audio) / hop_size))
+        trim_wav = trimmed_audio if len(trimmed_audio) > 0 else audio
+        trim_wav = np.pad(
+            trim_wav,
+            (left_sil_samples, right_sil_samples),
+            mode="constant",
+            constant_values=0.0,
+        )
+        out_len = int(num_frames * hop_size + (keep_left_time + keep_right_time) * sr)
+        if out_len < len(trim_wav):
+            return trim_wav[:out_len]
+        if out_len > len(trim_wav):
+            return np.pad(
+                trim_wav,
+                (0, out_len - len(trim_wav)),
+                mode="constant",
+                constant_values=0.0,
+            )
+        return trim_wav
 
     wav_len = len(audio)
     start_idx = index[0] - left_sil_samples

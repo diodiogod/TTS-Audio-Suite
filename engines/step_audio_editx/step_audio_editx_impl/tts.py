@@ -6,13 +6,14 @@ import re
 import logging
 import numpy as np
 import torch
-import librosa
 import soundfile as sf
 import time
 from typing import Tuple, Optional
 from http import HTTPStatus
 
 import torchaudio
+# TTS Audio Suite patch: route audio loading through the shared librosa fallback layer.
+from utils.audio.librosa_fallback import safe_load
 
 # Add step_audio_editx_impl to sys.path so internal modules can import each other
 _impl_dir = os.path.dirname(os.path.abspath(__file__))
@@ -493,7 +494,9 @@ class StepAudioTTS:
             Tuple[numpy.ndarray, int]: Audio data and sample rate
         """
         try:
-            audio_data, sample_rate = librosa.load(audio_path)
+            # TTS Audio Suite patch: avoid raw librosa.load here because fragile numba/librosa
+            # environments can fail before EditX even starts inference.
+            audio_data, sample_rate = safe_load(audio_path, sr=22050, mono=True)
             logger.debug(f"Audio file processed successfully: {audio_path}")
             return audio_data, sample_rate
         except Exception as e:
