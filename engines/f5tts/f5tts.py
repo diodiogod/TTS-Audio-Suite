@@ -639,6 +639,16 @@ class ChatterBoxF5TTS:
                     
                     model_filename = f"model_{step}.{ext}"
                     vocab_filename = "vocab.txt"
+                    bundled_vocab_path = os.path.normpath(
+                        os.path.join(
+                            os.path.dirname(__file__),
+                            "..",
+                            "f5_tts",
+                            "infer",
+                            "examples",
+                            "vocab.txt",
+                        )
+                    )
                     
                     # Check if model exists locally first
                     local_model_path = os.path.join(folder_paths.models_dir, "TTS", "F5-TTS", self.model_name, model_filename)
@@ -695,6 +705,7 @@ class ChatterBoxF5TTS:
                             print(f"⚠️ Failed to download to organized directory, using HF cache: {e}")
                             self.f5tts_model = F5TTS(
                                 model=self.model_name,
+                                vocab_file=bundled_vocab_path if os.path.exists(bundled_vocab_path) else "",
                                 device=self.device
                             )
                             model_file = None
@@ -711,12 +722,8 @@ class ChatterBoxF5TTS:
                         
                         # Handle missing vocab file by providing explicit path to default vocab
                         if not vocab_file:
-                            # Use the bundled vocab file from our F5-TTS installation
-                            current_dir = os.path.dirname(__file__)
-                            default_vocab = os.path.join(current_dir, "..", "f5_tts", "infer", "examples", "vocab.txt")
-                            default_vocab = os.path.normpath(default_vocab)
-                            if os.path.exists(default_vocab):
-                                vocab_file = default_vocab
+                            if os.path.exists(bundled_vocab_path):
+                                vocab_file = bundled_vocab_path
                             else:
                                 vocab_file = ""  # Fall back to empty string
                         

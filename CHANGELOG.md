@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.24.20] - 2026-04-03
+
+### Changed
+
+- Improve F5-TTS fallback loading when automatic model download does not complete cleanly
+
+### Fixed
+
+- Address F5-TTS model loading issue
+- Fix F5-TTS failing to load bundled vocab files on some Windows custom-node installs
+- Prevent broken fallback paths that could stop F5-TTS Speech Editor workflows from starting
 ## [4.24.19] - 2026-04-03
 
 ### Fixed

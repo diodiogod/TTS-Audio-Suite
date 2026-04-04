@@ -74,6 +74,16 @@ fix_duration = None
 # -----------------------------------------
 
 
+def _get_default_vocab_path():
+    # TTS Audio Suite patch: avoid importlib.resources here because vendored custom-node
+    # installs have resolved this to broken infer/infer/examples paths on Windows.
+    default_vocab = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples", "vocab.txt")
+    if os.path.exists(default_vocab):
+        return default_vocab
+
+    return str(files(__package__ or "f5_tts").joinpath("examples/vocab.txt"))
+
+
 # chunk text into smaller pieces
 
 
@@ -251,7 +261,7 @@ def load_model(
     device=device,
 ):
     if vocab_file == "":
-        vocab_file = str(files(__package__ or "f5_tts").joinpath("examples/vocab.txt"))
+        vocab_file = _get_default_vocab_path()
     tokenizer = "custom"
 
     # print("\nvocab : ", vocab_file)
