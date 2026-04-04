@@ -330,7 +330,7 @@ engines:
 
   - id: vibevoice
     name: VibeVoice
-    models: "1.5B, 7B, KugelAudio-0 (7B), Hindi-1.5B/7B"
+    models: "1.5B, 7B, KugelAudio-0 (7B), kugel-2 (7B), Hindi-1.5B/7B"
     size: "5.4GB / 18GB"
     license: "MIT (research-only per model card)"
     commercial: false
@@ -344,7 +344,7 @@ engines:
     special_features:
       - "90-min long-form"
       - "Native 4-speaker (Base models)"
-      - "Multilingual (KugelAudio)"
+      - "Multilingual (KugelAudio variants)"
       - "4-bit quantization"
 
     model_sources:
@@ -360,6 +360,18 @@ engines:
         size: "~18GB"
         auto_download: true
         notes: "Community mirror used by downloader"
+      - component: "kugelaudio-0-open"
+        source_name: "kugelaudio/kugelaudio-0-open"
+        source_url: "https://huggingface.co/kugelaudio/kugelaudio-0-open"
+        size: "~18GB"
+        auto_download: true
+        notes: "KugelAudio multilingual 7B variant"
+      - component: "kugel-2"
+        source_name: "kugelaudio/kugel-2"
+        source_url: "https://huggingface.co/kugelaudio/kugel-2"
+        size: "~18.7GB"
+        auto_download: true
+        notes: "KugelAudio v2 merged 7B variant"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }

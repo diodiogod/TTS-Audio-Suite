@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.24.17
+# TTS Audio Suite v4.24.18
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -323,7 +323,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 
 **Technical Features:**
 
-- **Model Support**: Microsoft vibevoice-1.5B/7B (official models for English/Chinese) + vibevoice-hindi-1.5B/7B (community Hindi finetunes) + **KugelAudio-0-Open (multilingual 7B variant)**
+- **Model Support**: Microsoft vibevoice-1.5B/7B (official models for English/Chinese) + vibevoice-hindi-1.5B/7B (community Hindi finetunes) + **KugelAudio-0-Open** and **kugel-2** (Kugel 7B variants)
 - **Language Detection**: VibeVoice/KugelAudio automatically detect language from input text and reference audio - **no language parameters are used**
 - **Intelligent Caching**: Advanced caching system with mode-aware invalidation for instant regeneration
 - **Memory Optimization**: Configurable chunking system balances quality with memory usage

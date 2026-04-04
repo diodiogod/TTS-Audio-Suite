@@ -34,7 +34,11 @@ if project_root not in sys.path:
 from utils.audio.processing import AudioProcessingUtils
 from utils.audio.cache import CacheKeyGenerator, get_audio_cache
 from utils.text.chunking import ImprovedChatterBoxChunker
-from .vibevoice_downloader import VibeVoiceDownloader, VIBEVOICE_MODELS
+from .vibevoice_downloader import (
+    VibeVoiceDownloader,
+    VIBEVOICE_MODELS,
+    is_kugelaudio_variant_name,
+)
 import folder_paths
 
 # Import unified model interface for ComfyUI integration
@@ -1178,7 +1182,7 @@ class VibeVoiceEngine:
 
     def _is_kugelaudio_model(self, model_name: str, model_path: str) -> bool:
         """Detect if current model is KugelAudio"""
-        if "kugelaudio" in model_name.lower():
+        if is_kugelaudio_variant_name(model_name):
             return True
         
         # Check config.json if directory exists

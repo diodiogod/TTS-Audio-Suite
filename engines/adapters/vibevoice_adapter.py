@@ -18,7 +18,10 @@ if parent_dir not in sys.path:
 from utils.models.language_mapper import get_model_for_language
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.character_parser import character_parser
-from engines.vibevoice_engine.vibevoice_downloader import VIBEVOICE_MODELS
+from engines.vibevoice_engine.vibevoice_downloader import (
+    VIBEVOICE_MODELS,
+    is_kugelaudio_variant_name,
+)
 from utils.models.manager import model_manager
 
 
@@ -99,8 +102,8 @@ class VibeVoiceEngineAdapter:
         # VibeVoice models support both English and Chinese
         supported_languages = ['en', 'zh', 'zh-cn', 'chinese', 'english']
         
-        # KugelAudio supports 23 languages, skip language validation
-        if "kugelaudio" in default_model.lower():
+        # Kugel variants are multilingual, so skip base VibeVoice language gating.
+        if is_kugelaudio_variant_name(default_model):
             return default_model
         
         if lang_code.lower() in supported_languages:
@@ -771,14 +774,20 @@ class VibeVoiceEngineAdapter:
 
         # Process pause tags - returns list of ('text', content) or ('pause', duration)
         pause_segments, _ = PauseTagProcessor.parse_pause_tags(text)
+        print(f"🎵 VibeVoice: Parsed {len(pause_segments)} pause-aware segments")
 
         # Generate segment dicts for each pause-separated piece
         segment_dicts = []
 
-        for seg_type, seg_content in pause_segments:
+        for idx, (seg_type, seg_content) in enumerate(pause_segments, start=1):
             if seg_type == 'text':
                 # Extract edit tags from this text segment
                 clean_text, edit_tags = get_edit_tags_for_segment(seg_content)
+                preview = clean_text.replace('\n', ' ')[:120]
+                if len(clean_text) > 120:
+                    preview += "..."
+                print(f"   🎤 Segment {idx}/{len(pause_segments)}: generating text ({len(clean_text)} chars)")
+                print(f"      {preview}")
 
                 # Generate TTS for this text piece
                 result = self.generate_segment(clean_text, voice_ref, params, character)
@@ -802,6 +811,7 @@ class VibeVoiceEngineAdapter:
             else:  # seg_type == 'pause'
                 # Create silence segment
                 duration_seconds = seg_content
+                print(f"   ⏸️ Segment {idx}/{len(pause_segments)}: inserting {duration_seconds:.2f}s silence")
                 silence = PauseTagProcessor.create_silence_segment(
                     duration_seconds, 24000, device=torch.device('cpu')
                 )

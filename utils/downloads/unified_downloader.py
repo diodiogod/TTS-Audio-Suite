@@ -188,6 +188,8 @@ class UnifiedDownloader:
         for file_info in files:
             remote_path = file_info['remote']  # e.g., "F5TTS_v1_Base/model_1250000.safetensors"
             local_filename = file_info['local']  # e.g., "model_1250000.safetensors"
+            source_repo_id = file_info.get('alt_repo', repo_id)
+            source_remote_path = file_info.get('alt_remote', remote_path)
             
             target_path = os.path.join(model_dir, local_filename)
             
@@ -199,10 +201,14 @@ class UnifiedDownloader:
 
             # Try HF CLI first (more reliable), fall back to direct HTTP
             # HF CLI handles network issues better than requests library
-            if not self.download_from_hf_cli(repo_id, remote_path, model_dir):
+            if not self.download_from_hf_cli(source_repo_id, source_remote_path, model_dir):
                 # HF CLI failed, try direct HTTP download as fallback
-                url = f"https://huggingface.co/{repo_id}/resolve/main/{remote_path}"
-                if not self.download_file(url, target_path, f"{model_name}/{local_filename}"):
+                url = f"https://huggingface.co/{source_repo_id}/resolve/main/{source_remote_path}"
+                if not self.download_file(
+                    url,
+                    target_path,
+                    f"{model_name}/{local_filename} from {source_repo_id}",
+                ):
                     failed_files.append(local_filename)
                     # Only fail completely if critical files are missing
                     if local_filename in critical_files:

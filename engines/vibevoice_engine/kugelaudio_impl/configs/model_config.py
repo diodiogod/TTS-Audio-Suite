@@ -9,6 +9,34 @@ from transformers.utils import logging
 logger = logging.get_logger(__name__)
 
 
+def _normalize_export_config_dict(config_dict: Optional[dict]) -> Optional[dict]:
+    """Normalize newer Hugging Face export keys to the layout transformers 4.x expects.
+
+    `kugel-2` was exported with transformers 5.x style keys such as `dtype` and
+    `rope_parameters`. Our runtime is still pinned to transformers 4.x, so we
+    translate the fields here before instantiating the nested configs.
+    """
+    if not isinstance(config_dict, dict):
+        return config_dict
+
+    normalized = dict(config_dict)
+
+    if "dtype" in normalized and "torch_dtype" not in normalized:
+        normalized["torch_dtype"] = normalized["dtype"]
+
+    rope_parameters = normalized.pop("rope_parameters", None)
+    if isinstance(rope_parameters, dict):
+        rope_theta = rope_parameters.get("rope_theta")
+        if rope_theta is not None and "rope_theta" not in normalized:
+            normalized["rope_theta"] = rope_theta
+
+        rope_scaling = {k: v for k, v in rope_parameters.items() if k != "rope_theta"}
+        if rope_scaling and "rope_scaling" not in normalized:
+            normalized["rope_scaling"] = rope_scaling
+
+    return normalized
+
+
 class KugelAudioAcousticTokenizerConfig(PretrainedConfig):
     """Configuration for the acoustic tokenizer.
 
@@ -226,6 +254,8 @@ class KugelAudioConfig(PretrainedConfig):
         diffusion_head_config=None,
         **kwargs,
     ):
+        kwargs = _normalize_export_config_dict(kwargs)
+
         # Disable auto attention implementation selection
         kwargs["_attn_implementation_autoset"] = False
 
@@ -233,6 +263,7 @@ class KugelAudioConfig(PretrainedConfig):
         if acoustic_tokenizer_config is None:
             self.acoustic_tokenizer_config = self.sub_configs["acoustic_tokenizer_config"]()
         elif isinstance(acoustic_tokenizer_config, dict):
+            acoustic_tokenizer_config = _normalize_export_config_dict(acoustic_tokenizer_config)
             acoustic_tokenizer_config["model_type"] = "kugelaudio_acoustic_tokenizer"
             self.acoustic_tokenizer_config = self.sub_configs["acoustic_tokenizer_config"](
                 **acoustic_tokenizer_config
@@ -244,6 +275,7 @@ class KugelAudioConfig(PretrainedConfig):
         if semantic_tokenizer_config is None:
             self.semantic_tokenizer_config = self.sub_configs["semantic_tokenizer_config"]()
         elif isinstance(semantic_tokenizer_config, dict):
+            semantic_tokenizer_config = _normalize_export_config_dict(semantic_tokenizer_config)
             semantic_tokenizer_config["model_type"] = "kugelaudio_semantic_tokenizer"
             self.semantic_tokenizer_config = self.sub_configs["semantic_tokenizer_config"](
                 **semantic_tokenizer_config
@@ -255,6 +287,7 @@ class KugelAudioConfig(PretrainedConfig):
         if decoder_config is None:
             self.decoder_config = self.sub_configs["decoder_config"]()
         elif isinstance(decoder_config, dict):
+            decoder_config = _normalize_export_config_dict(decoder_config)
             if decoder_config.get("model_type", "") == "qwen2":
                 self.decoder_config = Qwen2Config(**decoder_config)
             else:
@@ -268,6 +301,7 @@ class KugelAudioConfig(PretrainedConfig):
         if diffusion_head_config is None:
             self.diffusion_head_config = self.sub_configs["diffusion_head_config"]()
         elif isinstance(diffusion_head_config, dict):
+            diffusion_head_config = _normalize_export_config_dict(diffusion_head_config)
             diffusion_head_config["model_type"] = "kugelaudio_diffusion_head"
             self.diffusion_head_config = self.sub_configs["diffusion_head_config"](
                 **diffusion_head_config

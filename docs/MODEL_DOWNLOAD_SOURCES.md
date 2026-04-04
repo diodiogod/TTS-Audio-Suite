@@ -49,6 +49,8 @@ Use this as the canonical list of model repositories/links for offline setup.
 |---|---|---|---|---|
 | vibevoice-1.5B | [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) | ~5.4GB | ✅ | Microsoft official model |
 | vibevoice-7B | [aoi-ot/VibeVoice-Large](https://huggingface.co/aoi-ot/VibeVoice-Large) | ~18GB | ✅ | Community mirror used by downloader |
+| kugelaudio-0-open | [kugelaudio/kugelaudio-0-open](https://huggingface.co/kugelaudio/kugelaudio-0-open) | ~18GB | ✅ | KugelAudio multilingual 7B variant |
+| kugel-2 | [kugelaudio/kugel-2](https://huggingface.co/kugelaudio/kugel-2) | ~18.7GB | ✅ | KugelAudio v2 merged 7B variant |
 
 ## Higgs Audio 2
 

@@ -4,6 +4,7 @@ Uses unified downloader to avoid HuggingFace cache duplication
 """
 
 import os
+import re
 import sys
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -130,8 +131,30 @@ VIBEVOICE_MODELS = {
             {"remote": "generation_config.json", "local": "generation_config.json"},
             {"remote": "voices/voices.json", "local": "voices/voices.json"},
         ]
+    },
+    "kugel-2": {
+        "repo": "kugelaudio/kugel-2",
+        "description": "Kugel-2 - KugelAudio v2 merged 7B VibeVoice variant",
+        "size": "18.7GB",
+        "tokenizer_repo": "Qwen/Qwen2.5-7B",
+        "files": [
+            # The repo currently publishes a merged checkpoint plus a stale shard
+            # index. Download the merged weights directly and ignore the index.
+            {"remote": "model.safetensors", "local": "model.safetensors"},
+            {"remote": "config.json", "local": "config.json"},
+            {"remote": "generation_config.json", "local": "generation_config.json"},
+        ]
     }
 }
+
+_KUGELAUDIO_VARIANT_RE = re.compile(r"(^|[/:])kugel(?:audio)?(?:[-_]|$)")
+
+
+def is_kugelaudio_variant_name(model_name: Optional[str]) -> bool:
+    """Return True for KugelAudio model IDs, built-ins, and local aliases."""
+    if not model_name:
+        return False
+    return bool(_KUGELAUDIO_VARIANT_RE.search(model_name.lower()))
 
 
 def has_vibevoice_model_files(model_path: str, files: Optional[List[str]] = None) -> bool:
