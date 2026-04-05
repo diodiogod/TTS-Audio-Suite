@@ -2,7 +2,7 @@
 Import bridge package for the bundled RVC training runtime.
 
 This package exists so Windows multiprocessing ``spawn`` can import
-``tts_audio_suite_rvc_reference.training_cli`` in child processes.
+``engines.rvc.training.runtime_shim.training_cli`` in child processes.
 We intentionally expose the bundled runtime tree as this package's
 search path without executing unrelated custom-node code.
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 REFERENCE_ROOT = (
-    Path(__file__).resolve().parents[1] / "engines" / "rvc" / "training" / "bundled_runtime"
+    Path(__file__).resolve().parents[1] / "bundled_runtime"
 )
 BRIDGE_ROOT = Path(__file__).resolve().parent
 

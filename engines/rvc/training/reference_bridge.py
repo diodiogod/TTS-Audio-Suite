@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 
-_REFERENCE_PACKAGE_NAME = "tts_audio_suite_rvc_reference"
+_REFERENCE_PACKAGE_NAME = "engines.rvc.training.runtime_shim"
 _REFERENCE_ROOT = (
     Path(__file__).resolve().parents[3] / "engines" / "rvc" / "training" / "bundled_runtime"
 )
