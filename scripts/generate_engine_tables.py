@@ -58,7 +58,7 @@ def generate_engine_comparison(data):
     output.append("## Engine Comparison")
     output.append("")
     output.append("| Engine             | Models                                    | Size         | TTS | SRT | VC  | ASR | Training | License                  | Special Features                                                                         | Languages                                                                                |")
-    output.append("| ------------------ | ----------------------------------------- | ------------ | --- | --- | --- | --- | -------- | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
+    output.append("| ------------------ | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
 
     for e in engines:
         # Extract flags from languages
@@ -312,8 +312,26 @@ def generate_feature_comparison(data):
     output.append(header)
     output.append(separator)
 
+    capability_rows = [
+        ("**TTS**", "tts"),
+        ("**SRT**", "srt"),
+        ("**Voice Conversion**", "vc"),
+        ("**ASR (Transcribe)**", "asr"),
+        ("**Training**", "training"),
+    ]
+    duplicated_feature_keys = {"voice_conversion", "asr_transcribe"}
+
+    for display_name, capability_key in capability_rows:
+        row = [display_name.ljust(28)]
+        for e in engines:
+            cell = format_support(e["capabilities"].get(capability_key, False))
+            row.append(cell)
+        output.append("| " + " | ".join(row) + " |")
+
     # Build rows for each feature
     for feat_key, feat_info in feat_meta.items():
+        if feat_key in duplicated_feature_keys:
+            continue
         row = [feat_info["display"].ljust(28)]
 
         for e in engines:
