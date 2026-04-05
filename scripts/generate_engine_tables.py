@@ -57,8 +57,8 @@ def generate_engine_comparison(data):
     output.append("")
     output.append("## Engine Comparison")
     output.append("")
-    output.append("| Engine             | Models                                    | Size         | TTS | SRT | VC  | ASR | License                  | Special Features                                                                         | Languages                                                                                |")
-    output.append("| ------------------ | ----------------------------------------- | ------------ | --- | --- | --- | --- | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
+    output.append("| Engine             | Models                                    | Size         | TTS | SRT | VC  | ASR | Training | License                  | Special Features                                                                         | Languages                                                                                |")
+    output.append("| ------------------ | ----------------------------------------- | ------------ | --- | --- | --- | --- | -------- | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
 
     for e in engines:
         # Extract flags from languages
@@ -84,6 +84,7 @@ def generate_engine_comparison(data):
             format_support(e["capabilities"]["srt"]),
             format_support(e["capabilities"]["vc"]),
             format_support(e["capabilities"]["asr"]),
+            format_support(e["capabilities"].get("training", False)),
             e.get("license", "Unknown").ljust(24),
             features.ljust(88),
             flags.ljust(88)

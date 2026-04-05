@@ -14,6 +14,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      training: false
 
     special_features:
       - "Targeted Word/Speech Editing"
@@ -127,6 +128,7 @@ engines:
       srt: true
       vc: true
       asr: false
+      training: false
 
     special_features:
       - "Expressiveness slider"
@@ -257,6 +259,7 @@ engines:
       srt: true
       vc: true
       asr: false
+      training: false
 
     special_features:
       - "24 languages in single model"
@@ -340,6 +343,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      training: false
 
     special_features:
       - "90-min long-form"
@@ -425,6 +429,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      training: false
 
     special_features:
       - "3 multi-speaker"
@@ -496,6 +501,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      training: false
 
     special_features:
       - "Emotion Control: 8 vectors"
@@ -573,6 +579,7 @@ engines:
       srt: true
       vc: true
       asr: false
+      training: false
 
     special_features:
       - "Paralinguistic tags"
@@ -637,6 +644,7 @@ engines:
       srt: true
       vc: false
       asr: true
+      training: false
 
     special_features:
       - "Voice design"
@@ -738,6 +746,7 @@ engines:
       srt: true
       vc: false
       asr: true
+      training: false
 
     special_features:
       - "ASR (Automatic Speech Recognition)"
@@ -810,6 +819,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      training: false
 
     special_features:
       - "Second Pass Speech Editing Node: 14 emotions"
@@ -882,6 +892,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      training: false
 
     special_features:
       - "Diffusion-based (~30s best)"
@@ -953,9 +964,11 @@ engines:
       srt: false
       vc: true
       asr: false
+      training: true
 
     special_features:
       - "Real-time VC"
+      - "Integrated training workflow"
       - "Pitch shift (±14)"
       - "6 HuBERT models"
       - "Language-independent"
@@ -985,6 +998,12 @@ engines:
         size: "~55MB"
         auto_download: true
         notes: "Pitch extraction model"
+      - component: "pretrained_v2 (f0 G/D pairs)"
+        source_name: "lj1995/VoiceConversionWebUI"
+        source_url: "https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/pretrained_v2"
+        size: "~300MB total"
+        auto_download: true
+        notes: "Training init checkpoints for 32k/40k/48k RVC runs; downloaded on first training use"
 
     languages:
       en: { supported: true, flag: "🇺🇸", notes: "" }
@@ -1284,6 +1303,13 @@ model_layouts_markdown: |
   ├── content-vec-best.safetensors
   ├── rmvpe.pt
   ├── hubert/
+  ├── pretrained_v2/
+  │   ├── f0G32k.pth
+  │   ├── f0D32k.pth
+  │   ├── f0G40k.pth
+  │   ├── f0D40k.pth
+  │   ├── f0G48k.pth
+  │   └── f0D48k.pth
   └── .index/
   ```
   
@@ -1297,6 +1323,8 @@ model_layouts_markdown: |
   
   - Base models auto-download.
   - Character `.pth` models can be auto-downloaded defaults or user-provided.
+  - `pretrained_v2/` is used by the integrated RVC trainer and auto-downloads on first training run.
+  - Training datasets, logs, progress snapshots, and resumable checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/rvc/`, not inside the custom node repo.
   - UVR models are downloaded under `ComfyUI/models/TTS/UVR/` (or legacy `ComfyUI/models/UVR/`).
   
   ## IndexTTS-2

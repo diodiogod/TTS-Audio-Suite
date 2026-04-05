@@ -1,0 +1,878 @@
+{
+  "id": "9780251c-36ff-449f-95e7-b18b08ab266c",
+  "revision": 0,
+  "last_node_id": 28,
+  "last_link_id": 28,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "RVCDatasetPrepNode",
+      "pos": [
+        940,
+        6150
+      ],
+      "size": [
+        280,
+        338
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 22
+        },
+        {
+          "label": "opt_audio1",
+          "name": "opt_audio1",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 1
+        },
+        {
+          "label": "opt_audio2",
+          "name": "opt_audio2",
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "training_dataset",
+          "type": "TRAINING_DATASET",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "dataset_info",
+          "type": "STRING",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "RVCDatasetPrepNode"
+      },
+      "widgets_values": [
+        "MyVoice_v01_100e",
+        "",
+        "40k",
+        4,
+        3,
+        0.3,
+        0.95,
+        0,
+        true,
+        "",
+        ""
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoadAudio",
+      "pos": [
+        410,
+        6450
+      ],
+      "size": [
+        400,
+        136
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.12.3",
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "compactaudio.MP3",
+        null,
+        null
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 4,
+      "type": "PreviewAny",
+      "pos": [
+        1290,
+        6340
+      ],
+      "size": [
+        370,
+        140
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.12.3",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": 5,
+      "type": "UnifiedModelTrainingNode",
+      "pos": [
+        2040,
+        6090
+      ],
+      "size": [
+        550,
+        850
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 23
+        },
+        {
+          "name": "training_dataset",
+          "type": "TRAINING_DATASET",
+          "link": 4
+        },
+        {
+          "name": "training_config",
+          "shape": 7,
+          "type": "TRAINING_CONFIG",
+          "link": 15
+        },
+        {
+          "name": "continue_from",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "training_artifacts",
+          "type": "TRAINING_ARTIFACTS",
+          "links": [
+            24
+          ]
+        },
+        {
+          "name": "training_info",
+          "type": "STRING",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "UnifiedModelTrainingNode"
+      },
+      "widgets_values": [
+        "",
+        false,
+        false
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 8,
+      "type": "PreviewAny",
+      "pos": [
+        2630,
+        6510
+      ],
+      "size": [
+        370,
+        210
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.12.3",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": 10,
+      "type": "LoadRVCModelNode",
+      "pos": [
+        3370,
+        6590
+      ],
+      "size": [
+        380,
+        150
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "training_artifacts",
+          "shape": 7,
+          "type": "TRAINING_ARTIFACTS",
+          "link": 24
+        }
+      ],
+      "outputs": [
+        {
+          "name": "rvc_model",
+          "type": "RVC_MODEL",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "model_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "LoadRVCModelNode"
+      },
+      "widgets_values": [
+        "Claire.pth",
+        "auto",
+        "added_IVF985_Flat_nprobe_1_Fuji_v2.index",
+        true
+      ]
+    },
+    {
+      "id": 11,
+      "type": "UnifiedVoiceChangerNode",
+      "pos": [
+        3940,
+        6550
+      ],
+      "size": [
+        283.189453125,
+        146
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 28
+        },
+        {
+          "name": "source_audio",
+          "type": "*",
+          "link": 13
+        },
+        {
+          "name": "narrator_target",
+          "type": "*",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "converted_audio",
+          "type": "AUDIO",
+          "links": [
+            14
+          ]
+        },
+        {
+          "name": "conversion_info",
+          "type": "STRING",
+          "links": [
+            25
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "UnifiedVoiceChangerNode"
+      },
+      "widgets_values": [
+        1,
+        30,
+        "smart"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 12,
+      "type": "LoadAudio",
+      "pos": [
+        3290,
+        6380
+      ],
+      "size": [
+        450,
+        136
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            13
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.12.3",
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "Tony.mp3",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 13,
+      "type": "PreviewAudio",
+      "pos": [
+        4290,
+        6550
+      ],
+      "size": [
+        490,
+        88
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.12.3",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 16,
+      "type": "RVCTrainingConfigNode",
+      "pos": [
+        1680,
+        6210
+      ],
+      "size": [
+        301.408203125,
+        726
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "training_config",
+          "type": "TRAINING_CONFIG",
+          "links": [
+            15
+          ]
+        },
+        {
+          "name": "config_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "RVCTrainingConfigNode"
+      },
+      "widgets_values": [
+        100,
+        4,
+        0.0001,
+        "",
+        0,
+        true,
+        10,
+        true,
+        true,
+        false,
+        true,
+        false,
+        30,
+        1,
+        "auto",
+        "auto",
+        1,
+        45,
+        1,
+        2,
+        0,
+        0,
+        0,
+        0,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "id": 22,
+      "type": "MarkdownNote",
+      "pos": [
+        380,
+        6640
+      ],
+      "size": [
+        460,
+        480
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        " # Dataset Prep\n\n  Use `📦 RVC Dataset Prep` to turn raw voice recordings into a training-ready RVC dataset.\n\n  ## Accepted inputs\n\n  You can provide data in any of these ways:\n\n  - A manual `dataset_source` path\n  - Uploaded `.zip`, audio files, or a whole folder\n  - Multiple connected audio noodles like `opt_audio1`, `opt_audio2`, `opt_audio3`, etc.\n\n  If `opt_audio` inputs are connected, they are included as dataset audio too, so you do not need to rely only on filesystem paths.\n\n  ## What the node does\n\n  The prep node is not just copying files. It will also:\n\n  - Slice longer recordings into shorter training clips\n  - Run HuBERT feature extraction\n  - Run F0 / pitch extraction\n  - Build the final RVC training file list\n  - Reuse cached prep results when settings and source audio have not changed\n\n  ## Practical tips\n  - Recommended dataset length: `8-15 minutes` of clean single-speaker audio for a first real model. `3-5 minutes` is enough for a smoke test, while `15-30 minutes` can help if the recordings stay clean and consistent.\n  - Use clean single-speaker audio only\n  - Avoid music, reverb, overlapping voices, or noisy recordings\n  - You do **not** need to manually pre-cut clips in most cases\n  - Longer recordings are fine; the prep node handles segmentation for you"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 23,
+      "type": "MarkdownNote",
+      "pos": [
+        1200,
+        6570
+      ],
+      "size": [
+        460,
+        680
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# RVC Training\n\n  ## 🎛️ RVC Training Config\n\n  Use this node to control how the RVC model is trained.\n\n  For most users, the advanced loss and balancing settings should stay at their defaults unless you already understand what they do.\n\n  ## 🎓 Model Training\n\n  This is the unified training entry point.\n\n  It receives:\n\n  - the `TTS_ENGINE`\n  - the prepared dataset\n  - the training config\n\n  Then it routes the training job to the correct backend.\n\n  Right now, that means **RVC training**, but this same node is meant to support future trainable engines too.\n\n  ## Resume vs Continue From\n\n  These are **not** the same thing.\n\n  ### `resume`\n\n  Use `resume` when you want to continue the **same training job** from real saved training checkpoints.\n\n  This is for:\n\n  - interrupted runs\n  - continuing from the latest saved checkpoint of the same job\n\n  ### `continue_from`\n\n  Use `continue_from` when you want to start a **new training run** using an already trained model as initialization.\n\n  This can come from:\n\n  - previous `TRAINING_ARTIFACTS`\n  - `🎭 Load RVC Character Model`\n\n  ## Important\n\n  Do **not** use `resume` and `continue_from` together."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 24,
+      "type": "RVCEngineNode",
+      "pos": [
+        530,
+        6080
+      ],
+      "size": [
+        287.029296875,
+        202
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "rvc_pitch_options",
+          "shape": 7,
+          "type": "RVC_PITCH_OPTIONS",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            22,
+            23
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "RVCEngineNode"
+      },
+      "widgets_values": [
+        0,
+        0.75,
+        0.25,
+        0.25,
+        "auto: Automatically select best available model",
+        0,
+        "auto"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 25,
+      "type": "PreviewAny",
+      "pos": [
+        4290,
+        6720
+      ],
+      "size": [
+        370,
+        210
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 25
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.12.3",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": 26,
+      "type": "RVCPitchOptionsNode",
+      "pos": [
+        3090,
+        6120
+      ],
+      "size": [
+        314.097265625,
+        178
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "rvc_pitch_options",
+          "type": "RVC_PITCH_OPTIONS",
+          "links": [
+            27
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "RVCPitchOptionsNode"
+      },
+      "widgets_values": [
+        "mangio-crepe",
+        160,
+        3,
+        false,
+        true,
+        1
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 27,
+      "type": "RVCEngineNode",
+      "pos": [
+        3450,
+        6120
+      ],
+      "size": [
+        287.029296875,
+        202
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "rvc_pitch_options",
+          "shape": 7,
+          "type": "RVC_PITCH_OPTIONS",
+          "link": 27
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            28
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "8ee1845ecbd22b6eb941061b9f1f11c74b9e6f10",
+        "Node name for S&R": "RVCEngineNode"
+      },
+      "widgets_values": [
+        0,
+        0.75,
+        0.25,
+        0.25,
+        "auto: Automatically select best available model",
+        0,
+        "auto"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 28,
+      "type": "MarkdownNote",
+      "pos": [
+        1630,
+        5830
+      ],
+      "size": [
+        330,
+        88
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# RVC Training\n\n"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      1,
+      1,
+      "AUDIO"
+    ],
+    [
+      3,
+      1,
+      1,
+      4,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      1,
+      0,
+      5,
+      1,
+      "TRAINING_DATASET"
+    ],
+    [
+      8,
+      5,
+      1,
+      8,
+      0,
+      "STRING"
+    ],
+    [
+      11,
+      10,
+      0,
+      11,
+      2,
+      "RVC_MODEL"
+    ],
+    [
+      13,
+      12,
+      0,
+      11,
+      1,
+      "AUDIO"
+    ],
+    [
+      14,
+      11,
+      0,
+      13,
+      0,
+      "AUDIO"
+    ],
+    [
+      15,
+      16,
+      0,
+      5,
+      2,
+      "TRAINING_CONFIG"
+    ],
+    [
+      22,
+      24,
+      0,
+      1,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      23,
+      24,
+      0,
+      5,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      24,
+      5,
+      0,
+      10,
+      0,
+      "TRAINING_ARTIFACTS"
+    ],
+    [
+      25,
+      11,
+      1,
+      25,
+      0,
+      "STRING"
+    ],
+    [
+      27,
+      26,
+      0,
+      27,
+      0,
+      "RVC_PITCH_OPTIONS"
+    ],
+    [
+      28,
+      27,
+      0,
+      11,
+      0,
+      "TTS_ENGINE"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Training",
+      "bounding": [
+        370,
+        6010,
+        2680,
+        1253.6
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "Using Trained model for VC",
+      "bounding": [
+        3080,
+        6020,
+        1710,
+        923.6
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "workflowRendererVersion": "LG",
+    "ds": {
+      "scale": 0.4240976183724867,
+      "offset": [
+        60.34380465930502,
+        -5407.916920533787
+      ]
+    },
+    "frontendVersion": "1.38.13"
+  },
+  "version": 0.4
+}

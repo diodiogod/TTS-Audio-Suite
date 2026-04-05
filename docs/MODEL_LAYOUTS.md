@@ -154,6 +154,13 @@ ComfyUI/models/TTS/RVC/
 ├── content-vec-best.safetensors
 ├── rmvpe.pt
 ├── hubert/
+├── pretrained_v2/
+│   ├── f0G32k.pth
+│   ├── f0D32k.pth
+│   ├── f0G40k.pth
+│   ├── f0D40k.pth
+│   ├── f0G48k.pth
+│   └── f0D48k.pth
 └── .index/
 ```
 
@@ -167,6 +174,8 @@ Notes:
 
 - Base models auto-download.
 - Character `.pth` models can be auto-downloaded defaults or user-provided.
+- `pretrained_v2/` is used by the integrated RVC trainer and auto-downloads on first training run.
+- Training datasets, logs, progress snapshots, and resumable checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/rvc/`, not inside the custom node repo.
 - UVR models are downloaded under `ComfyUI/models/TTS/UVR/` (or legacy `ComfyUI/models/UVR/`).
 
 ## IndexTTS-2

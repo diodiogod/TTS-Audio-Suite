@@ -17,7 +17,7 @@
   <img src="images/AllNodesShowcase.jpg" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
-A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conversion, and Audio Editing capabilities through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, Step Audio EditX, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
+A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conversion, Audio Editing, and now integrated RVC model training through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, Step Audio EditX, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
 
 Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebuild subtitles from edited transcripts, or estimate fresh SRT timing from plain text using the same advanced readability rules, while preserving project control tags for downstream TTS.
 
@@ -38,7 +38,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
-| **RVC** | 🌐 Any | 100-300MB | Real-time VC, Pitch shift (±14) |
+| **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
 
@@ -112,6 +112,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
   - [🌍 Language Switching with Bracket Syntax](#-language-switching-with-bracket-syntax)
   - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
   - [🎵 RVC Voice Conversion Integration](#-rvc-voice-conversion-integration)
+  - [🎓 RVC Model Training](#-rvc-model-training)
   - [⏸️ Pause Tags System](#️-pause-tags-system)
   - [🌍 Multi-language ChatterBox Community Models](#-multi-language-chatterbox-community-models)
   - [🌐 Chatterbox Multilingual TTS (Official 23-Lang)](#-chatterbox-multilingual-tts-official-23-lang)
@@ -191,6 +192,7 @@ Switching [seed:24]   Inline Edit tags    TTS + VC             │
 - 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
+- 🎓 **Integrated Model Training** - Unified `🎓 Model Training` pipeline with `📦 RVC Dataset Prep`, `🎛️ RVC Training Config`, resumable checkpoints, interrupt-save safety, and a live dashboard for RVC voice model training
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
 - 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
 - 🏷️ **Multiline TTS Tag Editor & Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using a new multiline string editor node that makes building complex tags easier and more visual, with character/language/parameter dropdowns for quick selection, preset management, tag validation, and SRT-aware editing tools → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
@@ -451,6 +453,40 @@ Hello! Welcome to our multilingual show.
 2. Connect to 🔄 Voice Changer, select "RVC" engine
 3. Process with iterative refinement for progressive quality improvement
 4. Results cached for instant experimentation with different pass counts
+
+</details>
+
+<details>
+<summary><h3>🎓 RVC Model Training</h3></summary>
+
+**NEW**: Integrated RVC training inside the suite, using the same unified node style as the rest of the project instead of a detached external workflow.
+
+* **Unified Entry Point**: `🎓 Model Training` accepts `TTS_ENGINE` and routes by engine type
+* **RVC Dataset Pipeline**: `📦 RVC Dataset Prep` handles dataset path/zip/folder upload or direct audio input, slicing, HuBERT features, F0 extraction, and reusable prep caches
+* **RVC Training Config**: `🎛️ RVC Training Config` exposes practical training controls with tooltip guidance instead of raw upstream garbage
+* **Live Dashboard**: Compact in-node dashboard for epoch progress, ETA, speed, recent loss trend, and training health checks
+* **Resume + Continue**: Supports exact resume from saved training checkpoints and warm-start `continue_from` for training further from a finished RVC model/artifact
+* **Safe Interrupts**: ComfyUI interrupt now saves resumable state at a safe boundary when possible
+* **Auto-Downloads**: Required HuBERT, RMVPE, and `pretrained_v2` RVC training init checkpoints are auto-managed
+
+**Current scope:**
+
+1. RVC is the only engine with training support right now.
+2. The architecture is unified on purpose so Qwen or other future engines can plug into the same training entry point later.
+
+**Typical flow:**
+
+1. Build `⚙️ RVC Engine`
+2. Prepare data with `📦 RVC Dataset Prep`
+3. Set parameters with `🎛️ RVC Training Config`
+4. Train with `🎓 Model Training`
+5. Load the resulting model with `🎭 Load RVC Character Model`
+
+**Important notes:**
+
+- Training job logs, resumable checkpoints, and progress files go under `ComfyUI/output/tts_audio_suite_training/rvc/`
+- Final trained `.pth` models and `.index` files go under `ComfyUI/models/TTS/RVC/`
+- `save_best_model` is only a low-loss inference candidate, not a magical quality oracle. You still need to listen.
 
 </details>
 
@@ -1439,6 +1475,7 @@ Your support helps maintain and improve this project for the entire community!
 | ---------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
 | **Unified 📺 TTS SRT**       | Universal SRT processing with all TTS engines | • ChatterBox/F5-TTS/Higgs Audio 2<br>• Multiple timing modes<br>• Multi-character switching<br>• Overlap SRT support | ✅ **New in v4.5**      | [📁 JSON](example_workflows/Unified%20📺%20TTS%20SRT.json)                                  |
 | **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion                                            | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
+| **RVC 🎓 Model Training** | Unified RVC training workflow | • Dataset prep + upload flow<br>• RVC training config<br>• Unified training node<br>• Live training dashboard | ✅ **New in v4.25** | [📁 JSON](example_workflows/RVC%20🎓%20Model%20Training.json) |
 | **Unified ✏️ ASR Transcribe + SRT Builder** | Modular ASR + subtitle workflow | • Granite ASR + Qwen3 ASR examples<br>• Separate transcription and SRT building<br>• Works with the new Text to SRT Builder flow | ✅ **New in v4.23** | [📁 JSON](example_workflows/Unified%20✏️%20ASR%20Transcribe%20+%20SRT%20Builder.json) |
 
 ### Specific Workflows

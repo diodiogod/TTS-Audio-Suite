@@ -114,5 +114,6 @@ Use this as the canonical list of model repositories/links for offline setup.
 | RVC index pack (.index) | [SayanoAI/RVC-Studio (.index folder)](https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main/RVC/.index) | Varies | ✅ | Optional FAISS indexes for improved voice similarity |
 | content-vec-best.safetensors | [lengyue233/content-vec-best](https://huggingface.co/lengyue233/content-vec-best) | ~300MB | ✅ | Voice feature model |
 | rmvpe.pt | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | ~55MB | ✅ | Pitch extraction model |
+| pretrained_v2 (f0 G/D pairs) | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/pretrained_v2) | ~300MB total | ✅ | Training init checkpoints for 32k/40k/48k RVC runs; downloaded on first training use |
 
 *Generated from [tts_audio_suite_engines.yaml](Dev%20reports/tts_audio_suite_engines.yaml).*
