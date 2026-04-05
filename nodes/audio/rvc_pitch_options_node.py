@@ -70,7 +70,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "max": 512,
                     "step": 16,
                     "display": "slider",
-                    "tooltip": "Crepe hop length (only for Crepe-based methods). Lower=more accurate but slower"
+                    "tooltip": "Only used by Crepe and Mangio-Crepe methods. Lower values track pitch changes more closely but cost more time and memory."
                 }),
                 
                 # Processing Options
@@ -80,32 +80,24 @@ class RVCPitchOptionsNode(BaseTTSNode):
                     "max": 7,
                     "step": 1,
                     "display": "slider",
-                    "tooltip": "Median filter radius for noise reduction. 0=no filtering, higher=more smoothing"
-                }),
-                "pitch_guidance": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.1,
-                    "max": 2.0,
-                    "step": 0.1,
-                    "display": "slider",
-                    "tooltip": "Pitch guidance strength. Higher=more pitch influence, lower=more timbre focus"
+                    "tooltip": "Only meaningful for Harvest smoothing in this backend. 0 means no extra smoothing; higher values smooth more but can flatten detail."
                 }),
                 "f0_autotune": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Apply automatic pitch correction/tuning to the extracted pitch"
+                    "tooltip": "Snap the extracted pitch contour toward the nearest musical note after pitch detection. Can help singing or stylized output, but often sounds artificial on normal speech."
                 }),
                 
                 # Performance Settings
                 "use_cache": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Cache pitch extraction results for faster repeated processing"
+                    "tooltip": "Reuse cached loaded RVC/HuBERT models where possible for repeated processing. Usually worth leaving on."
                 }),
                 "batch_size": ("INT", {
                     "default": 1,
                     "min": 1,
-                    "max": 8,
+                    "max": 32,
                     "step": 1,
-                    "tooltip": "Processing batch size. Higher=faster but uses more memory"
+                    "tooltip": "Crepe-family pitch batch size hint. Higher can be faster but uses more memory. Ignored by non-Crepe methods."
                 })
             }
         }
@@ -127,7 +119,7 @@ class RVCPitchOptionsNode(BaseTTSNode):
     
     Key Features:
     • Multiple pitch extraction algorithms (RMVPE, Crepe, PM, Harvest, etc.)
-    • Advanced processing options (filtering, guidance, autotune)
+    • Advanced processing options (filtering, autotune, cache, batching)
     • Performance optimization (caching, batch processing, resampling)
     • Method-specific parameters (Crepe hop length, etc.)
     
@@ -144,10 +136,10 @@ class RVCPitchOptionsNode(BaseTTSNode):
         pitch_detection="rmvpe",
         crepe_hop_length=160,
         filter_radius=3,
-        pitch_guidance=1.0,
         f0_autotune=False,
         use_cache=True,
-        batch_size=1
+        batch_size=1,
+        **kwargs
     ):
         """
         Create RVC pitch extraction options configuration.
@@ -165,7 +157,6 @@ class RVCPitchOptionsNode(BaseTTSNode):
                 # Advanced parameters
                 'crepe_hop_length': max(16, min(512, int(crepe_hop_length))),
                 'filter_radius': max(0, min(7, int(filter_radius))),
-                'pitch_guidance': max(0.1, min(2.0, float(pitch_guidance))),
                 
                 # Performance settings
                 'use_cache': bool(use_cache),
@@ -190,7 +181,6 @@ class RVCPitchOptionsNode(BaseTTSNode):
                 'f0_autotune': False,
                 'crepe_hop_length': 160,
                 'filter_radius': 3,
-                'pitch_guidance': 1.0,
                 'use_cache': True,
                 'batch_size': 1,
                 'error': str(e)

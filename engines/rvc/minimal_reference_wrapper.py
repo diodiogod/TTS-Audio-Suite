@@ -299,6 +299,12 @@ class MinimalRVCWrapper:
                      index_rate: float = 0.75,
                      protect: float = 0.33,
                      rms_mix_rate: float = 0.25,
+                     resample_sr: int = 0,
+                     f0_autotune: bool = False,
+                     crepe_hop_length: int = 160,
+                     filter_radius: int = 3,
+                     use_cache: bool = True,
+                     batch_size: int = 1,
                      **kwargs) -> Optional[Tuple[np.ndarray, int]]:
         """
         Perform voice conversion using direct reference calls
@@ -419,7 +425,7 @@ class MinimalRVCWrapper:
 
             # Load RVC model (with caching to prevent VRAM spikes)
             cache_key = f"{model_path}:{index_path}"
-            if cache_key in self._model_cache:
+            if use_cache and cache_key in self._model_cache:
                 print(f"♻️ Using cached RVC model: {os.path.basename(model_path)}")
                 model_data = self._model_cache[cache_key]
 
@@ -447,8 +453,9 @@ class MinimalRVCWrapper:
                     print("❌ Failed to load RVC model")
                     return None
 
-                self._model_cache[cache_key] = model_data
-                print(f"💾 Cached RVC model for reuse")
+                if use_cache:
+                    self._model_cache[cache_key] = model_data
+                    print(f"💾 Cached RVC model for reuse")
 
                 # CRITICAL: Register with ComfyUI model management so Clear VRAM button can see it
                 self._register_rvc_model_with_comfyui(model_data, model_path)
@@ -460,7 +467,7 @@ class MinimalRVCWrapper:
                 print("❌ Hubert model not found")
                 return None
 
-            if hubert_path in self._hubert_cache:
+            if use_cache and hubert_path in self._hubert_cache:
                 print(f"♻️ Using cached Hubert model")
                 hubert_model = self._hubert_cache[hubert_path]
 
@@ -485,8 +492,9 @@ class MinimalRVCWrapper:
                     print("❌ Failed to load Hubert model")
                     return None
 
-                self._hubert_cache[hubert_path] = hubert_model
-                print(f"💾 Cached Hubert model for reuse")
+                if use_cache:
+                    self._hubert_cache[hubert_path] = hubert_model
+                    print(f"💾 Cached Hubert model for reuse")
 
                 # CRITICAL: Register with ComfyUI model management so Clear VRAM button can see it
                 self._register_hubert_model_with_comfyui(hubert_model, hubert_path)
@@ -520,8 +528,13 @@ class MinimalRVCWrapper:
                 f0_method=f0_method,
                 file_index=model_data["file_index"],
                 index_rate=index_rate,
+                filter_radius=filter_radius,
+                resample_sr=resample_sr,
                 protect=protect,
                 rms_mix_rate=rms_mix_rate,
+                crepe_hop_length=crepe_hop_length,
+                f0_autotune=f0_autotune,
+                batch_size=batch_size,
                 **kwargs
             )
 

@@ -140,7 +140,7 @@ class VC(FeatureExtractor):
 
     def pipeline(self, model, net_g, sid, audio, times, f0_up_key, f0_method, merge_type,
             file_index, index_rate, if_f0, filter_radius, tgt_sr, resample_sr, rms_mix_rate,
-            version, protect, crepe_hop_length, f0_autotune, rmvpe_onnx, f0_file=None, f0_min=50, f0_max=1600):
+            version, protect, crepe_hop_length, f0_autotune, batch_size, rmvpe_onnx, f0_file=None, f0_min=50, f0_max=1600):
         
         
         index, big_npy = self.load_index(file_index)
@@ -178,8 +178,19 @@ class VC(FeatureExtractor):
 
         if if_f0:
             pitch, pitchf = self.get_f0(
-                audio_pad, f0_up_key, f0_method, merge_type,
-                filter_radius, crepe_hop_length, f0_autotune, rmvpe_onnx, inp_f0, f0_min, f0_max)
+                audio_pad,
+                f0_up_key,
+                f0_method,
+                merge_type=merge_type,
+                filter_radius=filter_radius,
+                crepe_hop_length=crepe_hop_length,
+                f0_autotune=f0_autotune,
+                batch_size=batch_size,
+                rmvpe_onnx=rmvpe_onnx,
+                inp_f0=inp_f0,
+                f0_min=f0_min,
+                f0_max=f0_max,
+            )
             p_len = min(pitch.shape[0], pitchf.shape[0])
             pitch = pitch[:p_len].astype(np.int64 if self.device != 'mps' else np.float32)
             pitchf = pitchf[:p_len].astype(np.float32)
@@ -301,6 +312,7 @@ def vc_single(
     protect=0.33,
     crepe_hop_length=160,
     f0_autotune=False,
+    batch_size=1,
     is_onnx=False,
     config=config,
     hubert_path=None,
@@ -368,7 +380,7 @@ def vc_single(
             rms_mix_rate,
             version,
             protect,
-            crepe_hop_length, f0_autotune, is_onnx,
+            crepe_hop_length, f0_autotune, batch_size, is_onnx,
             f0_file=f0_file,
         )
         

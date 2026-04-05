@@ -210,10 +210,11 @@ def remix_audio(input_audio,target_sr=None,norm=False,to_int16=False,resample=Fa
 
     return audio, target_sr
 
-def load_input_audio(fname,sr=None,**kwargs):
+def load_input_audio(fname,sr=None, verbose=True, **kwargs):
     if sr is None: sr=44100
     audio, sr = load_audio(fname, sr, **kwargs)
-    print(f"loading sound {fname=} {audio.shape=} {audio.max()=} {audio.min()=} {audio.dtype=} {sr=}")
+    if verbose:
+        print(f"loading sound {fname=} {audio.shape=} {audio.max()=} {audio.min()=} {audio.dtype=} {sr=}")
     return audio, sr
    
 def save_input_audio(fname,input_audio,sr=None,to_int16=False,to_stereo=False,max_volume=.99):

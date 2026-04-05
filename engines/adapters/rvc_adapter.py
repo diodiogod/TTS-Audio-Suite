@@ -96,6 +96,9 @@ class RVCEngineAdapter:
         f0_autotune: bool = False,
         resample_sr: int = 0,
         crepe_hop_length: int = 160,
+        filter_radius: int = 3,
+        use_cache: bool = True,
+        batch_size: int = 1,
         **kwargs
     ) -> Tuple[np.ndarray, int]:
         """
@@ -112,6 +115,9 @@ class RVCEngineAdapter:
             f0_autotune: Enable autotune
             resample_sr: Resample rate (0 for no resampling)
             crepe_hop_length: Crepe hop length (16-512)
+            filter_radius: Harvest smoothing radius
+            use_cache: Reuse cached loaded models where possible
+            batch_size: Crepe-family pitch batch size hint
             **kwargs: Additional parameters
             
         Returns:
@@ -161,6 +167,9 @@ class RVCEngineAdapter:
                     resample_sr=resample_sr,
                     f0_autotune=f0_autotune,
                     crepe_hop_length=crepe_hop_length,
+                    filter_radius=filter_radius,
+                    use_cache=use_cache,
+                    batch_size=batch_size,
                     **kwargs  # Pass through hubert_path and other engine parameters
                 )
                 
@@ -293,7 +302,10 @@ class RVCEngineAdapter:
             'f0_method': 'rmvpe',
             'f0_autotune': False,
             'resample_sr': 0,
-            'crepe_hop_length': 160
+            'crepe_hop_length': 160,
+            'filter_radius': 3,
+            'use_cache': True,
+            'batch_size': 1,
         }
     
     def validate_parameters(self, **params) -> Dict[str, Any]:
@@ -333,6 +345,15 @@ class RVCEngineAdapter:
         
         if 'crepe_hop_length' in params:
             validated['crepe_hop_length'] = max(16, min(512, int(params['crepe_hop_length'])))
+
+        if 'filter_radius' in params:
+            validated['filter_radius'] = max(0, min(7, int(params['filter_radius'])))
+
+        if 'use_cache' in params:
+            validated['use_cache'] = bool(params['use_cache'])
+
+        if 'batch_size' in params:
+            validated['batch_size'] = max(1, min(32, int(params['batch_size'])))
         
         return validated
     

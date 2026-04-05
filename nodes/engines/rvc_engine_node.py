@@ -218,7 +218,10 @@ Models will auto-download if not present. Choose language-specific models for be
             hubert_path = ensure_hubert_model(hubert_key)
             
             if hubert_path:
-                print(f"✅ HuBERT model ready: {hubert_key}")
+                if hubert_key == "auto":
+                    print(f"✅ HuBERT model ready: auto -> {os.path.basename(hubert_path)}")
+                else:
+                    print(f"✅ HuBERT model ready: {hubert_key}")
             else:
                 print(f"⚠️ Could not load HuBERT model {hubert_key}, RVC may use fallback")
             

@@ -4,6 +4,7 @@ Adapted from reference implementation for TTS Suite integration
 """
 
 import os
+import re
 import sys
 import importlib.util
 from typing import Dict, Any, Optional
@@ -59,9 +60,16 @@ class LoadRVCModelNode(BaseTTSNode):
                 })
             },
             "optional": {
+                "index_mode": (["auto", "none", "custom"], {
+                    "default": "auto",
+                    "tooltip": "How to choose the FAISS index. Auto finds the most likely matching index for the selected model, None disables index usage, and Custom enables manual index selection."
+                }),
                 "index_file": (rvc_indexes, {
                     "default": "",
-                    "tooltip": "FAISS index file (.index) - Optional enhancement for better voice similarity. Leave empty if you don't have one."
+                    "tooltip": "Custom FAISS index file (.index). Only used when index mode is Custom."
+                }),
+                "training_artifacts": ("TRAINING_ARTIFACTS", {
+                    "tooltip": "Optional output from the unified training node. When connected, the trained RVC model paths are used directly."
                 }),
                 "auto_download": ("BOOLEAN", {
                     "default": True,
@@ -100,7 +108,7 @@ class LoadRVCModelNode(BaseTTSNode):
     • FAISS index improves voice similarity but increases processing time
     """
     
-    def load_rvc_model(self, model, index_file="", auto_download=True):
+    def load_rvc_model(self, model, index_mode="auto", index_file="", training_artifacts=None, auto_download=True):
         """
         Load RVC model and optional index file.
         
@@ -113,37 +121,49 @@ class LoadRVCModelNode(BaseTTSNode):
             Tuple of (rvc_model_dict, model_info)
         """
         try:
+            artifact_model_path = None
+            artifact_index_path = None
+            if isinstance(training_artifacts, dict):
+                artifact_engine = str(training_artifacts.get("engine_type", "") or "").strip().lower()
+                artifact_model = training_artifacts.get("rvc_model")
+                if artifact_engine == "rvc" and isinstance(artifact_model, dict):
+                    candidate_model_path = artifact_model.get("model_path")
+                    candidate_index_path = artifact_model.get("index_path")
+                    if candidate_model_path and os.path.exists(candidate_model_path):
+                        artifact_model_path = candidate_model_path
+                        if candidate_index_path and os.path.exists(candidate_index_path):
+                            artifact_index_path = candidate_index_path
+
             print(f"🎵 Loading RVC Model: {model}")
-            
-            # Get model path
-            model_path = self._get_model_path(model, auto_download)
+
+            model_path = artifact_model_path or self._get_model_path(model, auto_download)
             if not model_path or not os.path.exists(model_path):
                 raise ValueError(f"RVC model not found: {model}")
-            
-            # Get index path if specified
-            index_path = None
-            if index_file:
-                index_path = self._get_index_path(index_file, auto_download)
-                if index_path and not os.path.exists(index_path):
-                    print(f"⚠️ Index file not found: {index_file}, continuing without index")
-                    index_path = None
-            
-            # Create RVC model configuration
+
+            index_path, resolved_index_mode, resolved_index_label = self._resolve_index_selection(
+                model_path=model_path,
+                index_mode=index_mode,
+                index_file=index_file,
+                artifact_index_path=artifact_index_path,
+                auto_download=auto_download,
+            )
+
+            model_name = os.path.basename(model_path)
             rvc_model = {
                 "model_path": model_path,
                 "index_path": index_path,
-                "model_name": os.path.basename(model),
-                "index_name": os.path.basename(index_file) if index_file else None,
+                "model_name": model_name,
+                "index_name": os.path.basename(index_path) if index_path else None,
+                "index_mode": resolved_index_mode,
                 "type": "rvc_model"
             }
-            
-            # Create model info
+
             model_info = (
-                f"RVC Model: {os.path.basename(model)} | "
-                f"Index: {os.path.basename(index_file) if index_file else 'None'} | "
+                f"RVC Model: {model_name} | "
+                f"Index ({resolved_index_mode}): {resolved_index_label} | "
                 f"Path: {model_path}"
             )
-            
+
             print(f"✅ RVC model loaded successfully")
             return rvc_model, model_info
             
@@ -159,6 +179,145 @@ class LoadRVCModelNode(BaseTTSNode):
             }
             error_info = f"RVC Model Load Error: {str(e)}"
             return empty_model, error_info
+
+    @staticmethod
+    def _tokenize_name(value: str):
+        return [token for token in re.split(r"[^a-z0-9]+", str(value or "").lower()) if token]
+
+    @classmethod
+    def _iter_local_rvc_index_paths(cls):
+        seen = set()
+        search_dirs = []
+
+        try:
+            from utils.models.extra_paths import get_all_tts_model_paths
+
+            for base_path in get_all_tts_model_paths('TTS'):
+                search_dirs.extend([
+                    os.path.join(base_path, "RVC", ".index"),
+                    os.path.join(base_path, "RVC"),
+                ])
+        except Exception:
+            pass
+
+        if folder_paths:
+            models_dir = folder_paths.models_dir
+            search_dirs.extend([
+                os.path.join(models_dir, "TTS", "RVC", ".index"),
+                os.path.join(models_dir, "TTS", "RVC"),
+                os.path.join(models_dir, "RVC", ".index"),
+                os.path.join(models_dir, "RVC"),
+            ])
+
+        for search_dir in search_dirs:
+            normalized_dir = os.path.normpath(search_dir)
+            if normalized_dir in seen or not os.path.isdir(search_dir):
+                continue
+            seen.add(normalized_dir)
+            for file in os.listdir(search_dir):
+                if file.endswith(".index"):
+                    yield os.path.join(search_dir, file)
+
+    @classmethod
+    def _score_index_candidate(cls, model_path: str, index_path: str):
+        model_stem = os.path.splitext(os.path.basename(model_path))[0].lower()
+        index_stem = os.path.splitext(os.path.basename(index_path))[0].lower()
+
+        score = 0
+        if index_stem == model_stem:
+            score += 120
+        if index_stem.startswith(model_stem):
+            score += 80
+        elif model_stem in index_stem:
+            score += 50
+
+        model_tokens = set(cls._tokenize_name(model_stem))
+        index_tokens = set(cls._tokenize_name(index_stem))
+        shared_tokens = model_tokens & index_tokens
+        score += len(shared_tokens) * 12
+
+        for sample_rate_hint in ("32k", "40k", "48k"):
+            if sample_rate_hint in model_tokens and sample_rate_hint in index_tokens:
+                score += 18
+
+        model_dir = os.path.dirname(model_path)
+        index_dir = os.path.dirname(index_path)
+        if index_dir == os.path.join(model_dir, ".index"):
+            score += 24
+        elif index_dir == model_dir:
+            score += 16
+
+        return score
+
+    @classmethod
+    def _auto_detect_index_path(cls, model_path: str):
+        candidate_paths = []
+        model_dir = os.path.dirname(model_path)
+        candidate_paths.extend([
+            os.path.join(model_dir, ".index"),
+            model_dir,
+        ])
+
+        seen_paths = set()
+        local_candidates = []
+        for search_dir in candidate_paths:
+            normalized_dir = os.path.normpath(search_dir)
+            if normalized_dir in seen_paths or not os.path.isdir(search_dir):
+                continue
+            seen_paths.add(normalized_dir)
+            for file in os.listdir(search_dir):
+                if file.endswith(".index"):
+                    local_candidates.append(os.path.join(search_dir, file))
+
+        for index_path in cls._iter_local_rvc_index_paths():
+            normalized_path = os.path.normpath(index_path)
+            if normalized_path in seen_paths:
+                continue
+            seen_paths.add(normalized_path)
+            local_candidates.append(index_path)
+
+        scored_candidates = [
+            (cls._score_index_candidate(model_path, index_path), index_path)
+            for index_path in local_candidates
+        ]
+        scored_candidates = [
+            (score, index_path)
+            for score, index_path in scored_candidates
+            if score > 0
+        ]
+        if not scored_candidates:
+            return None
+
+        scored_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        best_score, best_path = scored_candidates[0]
+        if best_score < 20:
+            return None
+        return best_path
+
+    def _resolve_index_selection(self, model_path, index_mode, index_file, artifact_index_path=None, auto_download=True):
+        mode = str(index_mode or "auto").strip().lower()
+        if mode not in {"auto", "none", "custom"}:
+            mode = "auto"
+
+        if mode == "none":
+            return None, "none", "None"
+
+        if mode == "custom":
+            if not index_file:
+                return None, "custom", "None"
+            index_path = self._get_index_path(index_file, auto_download)
+            if index_path and os.path.exists(index_path):
+                return index_path, "custom", os.path.basename(index_path)
+            print(f"⚠️ Custom index not found: {index_file}, continuing without index")
+            return None, "custom", "None"
+
+        if artifact_index_path and os.path.exists(artifact_index_path):
+            return artifact_index_path, "auto", os.path.basename(artifact_index_path)
+
+        auto_index_path = self._auto_detect_index_path(model_path)
+        if auto_index_path and os.path.exists(auto_index_path):
+            return auto_index_path, "auto", os.path.basename(auto_index_path)
+        return None, "auto", "None"
     
     @classmethod
     def _get_available_rvc_models(cls):

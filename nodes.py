@@ -238,6 +238,14 @@ except Exception as e:
     UNIFIED_ASR_AVAILABLE = False
 
 try:
+    unified_training_module = load_node_module("unified_model_training_node", "unified/model_training_node.py")
+    UnifiedModelTrainingNode = unified_training_module.UnifiedModelTrainingNode
+    UNIFIED_TRAINING_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Unified Model Training failed: {e}")
+    UNIFIED_TRAINING_AVAILABLE = False
+
+try:
     srt_advanced_options_module = load_node_module("srt_advanced_options_node", "subtitles/srt_advanced_options_node.py")
     SRTAdvancedOptionsNode = srt_advanced_options_module.SRTAdvancedOptionsNode
     SRT_ADVANCED_OPTIONS_AVAILABLE = True
@@ -362,6 +370,22 @@ try:
 except Exception as e:
     print(f"❌ Load RVC Character Model failed: {e}")
     LOAD_RVC_MODEL_AVAILABLE = False
+
+try:
+    rvc_dataset_prep_module = load_node_module("rvc_dataset_prep_node", "training/rvc_dataset_prep_node.py")
+    RVCDatasetPrepNode = rvc_dataset_prep_module.RVCDatasetPrepNode
+    RVC_DATASET_PREP_AVAILABLE = True
+except Exception as e:
+    print(f"❌ RVC Dataset Prep failed: {e}")
+    RVC_DATASET_PREP_AVAILABLE = False
+
+try:
+    rvc_training_config_module = load_node_module("rvc_training_config_node", "training/rvc_training_config_node.py")
+    RVCTrainingConfigNode = rvc_training_config_module.RVCTrainingConfigNode
+    RVC_TRAINING_CONFIG_AVAILABLE = True
+except Exception as e:
+    print(f"❌ RVC Training Config failed: {e}")
+    RVC_TRAINING_CONFIG_AVAILABLE = False
 
 try:
     phoneme_text_normalizer_module = load_node_module("phoneme_text_normalizer_node", "text/phoneme_text_normalizer_node.py")
@@ -565,6 +589,10 @@ if UNIFIED_ASR_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedASRTranscribeNode"] = UnifiedASRTranscribeNode
     NODE_DISPLAY_NAME_MAPPINGS["UnifiedASRTranscribeNode"] = "✏️ ASR Transcribe"
 
+if UNIFIED_TRAINING_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedModelTrainingNode"] = UnifiedModelTrainingNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedModelTrainingNode"] = "🎓 Model Training"
+
 if SRT_ADVANCED_OPTIONS_AVAILABLE:
     NODE_CLASS_MAPPINGS["SRTAdvancedOptionsNode"] = SRTAdvancedOptionsNode
     NODE_DISPLAY_NAME_MAPPINGS["SRTAdvancedOptionsNode"] = "🔧 SRT Advanced Options"
@@ -639,6 +667,14 @@ if VOICE_FIXER_AVAILABLE:
 if LOAD_RVC_MODEL_AVAILABLE:
     NODE_CLASS_MAPPINGS["LoadRVCModelNode"] = LoadRVCModelNode
     NODE_DISPLAY_NAME_MAPPINGS["LoadRVCModelNode"] = "🎭 Load RVC Character Model"
+
+if RVC_DATASET_PREP_AVAILABLE:
+    NODE_CLASS_MAPPINGS["RVCDatasetPrepNode"] = RVCDatasetPrepNode
+    NODE_DISPLAY_NAME_MAPPINGS["RVCDatasetPrepNode"] = "📦 RVC Dataset Prep"
+
+if RVC_TRAINING_CONFIG_AVAILABLE:
+    NODE_CLASS_MAPPINGS["RVCTrainingConfigNode"] = RVCTrainingConfigNode
+    NODE_DISPLAY_NAME_MAPPINGS["RVCTrainingConfigNode"] = "🎛️ RVC Training Config"
 
 # Register text processing nodes
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:

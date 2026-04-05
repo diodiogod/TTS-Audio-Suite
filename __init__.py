@@ -484,6 +484,21 @@ print(json.dumps({"devices": devices}))
             except Exception as e:
                 print(f"⚠️ Error serving voice preview audio: {e}")
                 return web.json_response({"error": str(e)}, status=500)
+
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/training-progress")
+        async def get_training_progress_endpoint(request):
+            """Return live training progress snapshots for one or all tracked training nodes."""
+            try:
+                from engines.training.progress_registry import get_training_progress_snapshot
+
+                node_id = request.query.get("node_id")
+                snapshot = get_training_progress_snapshot(node_id=node_id)
+                response = web.json_response({"nodes": snapshot})
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+                return response
+            except Exception as e:
+                print(f"⚠️ Error retrieving training progress: {e}")
+                return web.json_response({"nodes": {}, "error": str(e)}, status=500)
     except Exception as e:
         print(f"⚠️ Could not setup API routes: {e}")
 

@@ -189,8 +189,12 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     rms_mix_rate=config.get('rms_mix_rate', 0.25),
                     protect=config.get('protect', 0.25),
                     f0_method=config.get('f0_method', 'rmvpe'),
+                    f0_autotune=config.get('f0_autotune', False),
+                    filter_radius=config.get('filter_radius', 3),
                     resample_sr=config.get('resample_sr', 0),
-                    crepe_hop_length=160,
+                    crepe_hop_length=config.get('crepe_hop_length', 160),
+                    use_cache=config.get('use_cache', True),
+                    batch_size=config.get('batch_size', 1),
                     hubert_path=config.get('hubert_path'),
                 )
 
@@ -327,8 +331,12 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     rms_mix_rate=config.get('rms_mix_rate', 0.25),
                     protect=config.get('protect', 0.25),
                     f0_method=config.get('f0_method', 'rmvpe'),
+                    f0_autotune=config.get('f0_autotune', False),
+                    filter_radius=config.get('filter_radius', 3),
                     resample_sr=config.get('resample_sr', 0),
-                    crepe_hop_length=160,
+                    crepe_hop_length=config.get('crepe_hop_length', 160),
+                    use_cache=config.get('use_cache', True),
+                    batch_size=config.get('batch_size', 1),
                     hubert_path=config.get('hubert_path'),  # Pass user's HuBERT model selection
                 )
                 
@@ -1135,7 +1143,6 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             # RVC Pitch Extraction Options parameters
             'crepe_hop_length': config.get('crepe_hop_length', 160),
             'filter_radius': config.get('filter_radius', 3),
-            'pitch_guidance': config.get('pitch_guidance', 1.0),
             'f0_autotune': config.get('f0_autotune', False),
             'model_info': str(sorted(model_info.items()))
         }

@@ -5,7 +5,7 @@ Defines what each TTS engine can do and any special handling requirements.
 Allows generic code to handle engine-specific needs without hardcoded if/else checks.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Callable, Dict, Any
 
 
@@ -26,8 +26,10 @@ class EngineCapabilities:
                     Each language has its own model weights
         can_corrupt_on_reload: Model can become corrupted if reloaded (needs recovery)
         recovery_handler: Function to call if model corruption detected
-        requires_special_init: Engine needs special initialization
-        fallback_languages: Languages to try if primary loading fails
+    requires_special_init: Engine needs special initialization
+    fallback_languages: Languages to try if primary loading fails
+    supports_training: Engine has a training backend in the suite
+    training_modes: Supported training mode identifiers
     """
 
     supports_voice_conversion: bool = False
@@ -36,6 +38,8 @@ class EngineCapabilities:
     recovery_handler: Optional[Callable] = None
     requires_special_init: bool = False
     fallback_languages: list = None
+    supports_training: bool = False
+    training_modes: list = field(default_factory=list)
 
     def __post_init__(self):
         if self.fallback_languages is None:
@@ -78,6 +82,8 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         multilingual_model_switching=False,  # Single model
         can_corrupt_on_reload=False,
         fallback_languages=[],
+        supports_training=True,
+        training_modes=["voice_model"],
     ),
 
     "vibevoice": EngineCapabilities(
@@ -133,8 +139,9 @@ def engine_supports_feature(engine_name: str, feature: str) -> bool:
 
     feature_map = {
         "voice_conversion": caps.supports_voice_conversion,
-        "multilingual": caps.supports_multilingual,
+        "multilingual": caps.multilingual_model_switching,
         "corruption_recovery": caps.can_corrupt_on_reload,
+        "training": caps.supports_training,
     }
 
     return feature_map.get(feature, False)
@@ -168,3 +175,13 @@ def get_recovery_handler(engine_name: str) -> Optional[Callable]:
     if caps and caps.can_corrupt_on_reload:
         return caps.recovery_handler
     return None
+
+
+def engine_supports_training(engine_name: str) -> bool:
+    caps = get_engine_capabilities(engine_name)
+    return bool(caps and caps.supports_training)
+
+
+def get_training_modes(engine_name: str) -> list:
+    caps = get_engine_capabilities(engine_name)
+    return caps.training_modes if caps else []

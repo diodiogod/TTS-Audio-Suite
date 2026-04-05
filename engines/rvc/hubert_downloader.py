@@ -10,6 +10,35 @@ from typing import Optional
 import hashlib
 from tqdm import tqdm
 
+
+def _get_hubert_search_roots(models_dir: str) -> list[str]:
+    roots = []
+
+    try:
+        from utils.models.extra_paths import get_all_tts_model_paths
+
+        for tts_root in get_all_tts_model_paths("TTS"):
+            roots.append(os.path.join(tts_root, "hubert"))
+    except Exception:
+        pass
+
+    roots.extend(
+        [
+            os.path.join(models_dir, "TTS", "hubert"),
+            os.path.join(models_dir, "hubert"),
+        ]
+    )
+
+    deduped = []
+    seen = set()
+    for root in roots:
+        normalized = os.path.normpath(root)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(root)
+    return deduped
+
 def download_hubert_model(model_key: str, models_dir: str, progress_callback=None) -> Optional[str]:
     """
     Download a HuBERT model if not already present.
@@ -437,9 +466,8 @@ def find_best_available_hubert(models_dir: str) -> Optional[str]:
         Path to the best available HuBERT model
     """
     from .hubert_models import HUBERT_MODELS
-    
-    hubert_dir = os.path.join(models_dir, "hubert")
-    
+    hubert_roots = _get_hubert_search_roots(models_dir)
+
     # Priority order for auto-selection
     priority_order = [
         'content-vec-best',
@@ -454,21 +482,36 @@ def find_best_available_hubert(models_dir: str) -> Optional[str]:
         if model_key in HUBERT_MODELS:
             info = HUBERT_MODELS[model_key]
             if info.get('filename'):
-                model_path = os.path.join(hubert_dir, info['filename'])
-                if os.path.exists(model_path):
-                    print(f"✅ Auto-selected HuBERT model: {info['description']}")
+                candidate_paths = []
+                if info.get('is_transformers') and info.get('model_dir'):
+                    candidate_paths.extend(
+                        os.path.join(root, info['model_dir'], info['filename'])
+                        for root in hubert_roots
+                    )
+                candidate_paths.extend(
+                    os.path.join(root, info['filename'])
+                    for root in hubert_roots
+                )
+                candidate_paths.append(os.path.join(models_dir, info['filename']))
+
+                for model_path in candidate_paths:
+                    if os.path.exists(model_path):
+                        print(f"✅ Auto-selected HuBERT model: {info['description']}")
+                        return model_path
+
+    # Check for any .pt or .safetensors files in known hubert directories
+    for hubert_dir in hubert_roots:
+        if not os.path.exists(hubert_dir):
+            continue
+        for current_root, _, files in os.walk(hubert_dir):
+            for file in files:
+                if file.endswith(('.pt', '.safetensors', '.bin')):
+                    model_path = os.path.join(current_root, file)
+                    print(f"✅ Found HuBERT model: {file}")
                     return model_path
-    
-    # Check for any .pt or .safetensors files in hubert directory
-    if os.path.exists(hubert_dir):
-        for file in os.listdir(hubert_dir):
-            if file.endswith(('.pt', '.safetensors', '.bin')):
-                model_path = os.path.join(hubert_dir, file)
-                print(f"✅ Found HuBERT model: {file}")
-                return model_path
-    
+
     # Try to download content-vec-best as fallback
-    print("📥 No HuBERT model found, downloading recommended model...")
+    print("📥 No local HuBERT model found, downloading recommended model...")
     return download_hubert_model('content-vec-best', models_dir)
 
 def ensure_hubert_model(model_key: str = "auto") -> Optional[str]:
