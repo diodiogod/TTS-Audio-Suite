@@ -91,12 +91,19 @@ Per-Seg Parameter     Step Audio EditX    CosyVoice3           │
 Switching [seed:24]   Inline Edit tags    TTS + VC             │
                       <laughter:2>                             │
                                                                ▼
-      v4.22 ◄──────────────────── v4.19 ◄──────────────────────┘
-      Mar 26                      Jan 26
-      │                           │
-      Echo-TTS                    Qwen3-TTS
-      English TTS                 TTS + ASR
-                                  VoiceDesign
+v4.24◄─────────────── v4.22 ◄──────────────── v4.19 ◄──────────┘
+Mar 26                Mar 26                Jan 26
+│                     │                     │
+Text to SRT           Echo-TTS              Qwen3-TTS
+Builder               English TTS           TTS + ASR
+|                                           VoiceDesign
+|─── 🎓 Training Support Era
+▼              
+v4.25 ──────────────────────────► 
+Apr 26                
+│ 
+RVC    
+Model Training 
 ```
 
 <details>
