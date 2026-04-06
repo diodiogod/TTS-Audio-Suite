@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.2] - 2026-04-06
+
+### Fixed
+
+- Fix ONNX Runtime installer preserving GPU acceleration
+- Fix TTS Audio Suite reinstalling CPU ONNX Runtime over existing GPU setups
+- Improve Python 3.13 OpenSeeFace dependency handling without replacing working ONNX installs
+- Better compatibility with shared ComfyUI environments when other nodes use onnxruntime-gpu
 ## [4.25.1] - 2026-04-05
 
 ### Added

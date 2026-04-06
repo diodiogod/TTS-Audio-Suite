@@ -522,6 +522,13 @@ class TTSAudioInstaller:
         except Exception:
             return False
 
+    def has_onnxruntime_provider(self):
+        """Return True when either CPU or GPU ONNX Runtime is already installed."""
+        return (
+            self.check_package_installed("onnxruntime-gpu>=1.19.0")
+            or self.check_package_installed("onnxruntime>=1.17.0")
+        )
+
     def install_macos_specific_packages(self):
         """Install packages with Mac-specific requirements"""
         if not self.is_macos:
@@ -871,6 +878,13 @@ class TTSAudioInstaller:
     def install_onnxruntime_with_gpu_support(self):
         """Install ONNX Runtime with GPU acceleration if CUDA is available"""
         self.log("Installing ONNX Runtime (OpenSeeFace, Step Audio EditX)", "INFO")
+
+        if self.has_onnxruntime_provider():
+            if self.check_package_installed("onnxruntime-gpu>=1.19.0"):
+                self.log("Existing onnxruntime-gpu detected - keeping GPU runtime", "SUCCESS")
+            else:
+                self.log("Existing onnxruntime detected - skipping install", "SUCCESS")
+            return
 
         cuda_version = self.detect_cuda_version()
 
@@ -1292,9 +1306,16 @@ class TTSAudioInstaller:
         self.log("OpenSeeFace will be used automatically for mouth movement analysis", "INFO")
         self.log("Note: OpenSeeFace is experimental and may be less accurate than MediaPipe", "WARNING")
         
-        # Ensure onnxruntime is available for OpenSeeFace (with --no-deps to avoid conflicts)
+        # OpenSeeFace only needs an ONNX Runtime provider. Do not replace a working GPU install.
+        if self.has_onnxruntime_provider():
+            if self.check_package_installed("onnxruntime-gpu>=1.19.0"):
+                self.log("Python 3.13: onnxruntime-gpu already available - skipping CPU reinstall", "SUCCESS")
+            else:
+                self.log("Python 3.13: onnxruntime already available - skipping reinstall", "SUCCESS")
+            return
+
         self.run_pip_command(
-            ["install", "onnxruntime", "--no-deps", "--force-reinstall"], 
+            ["install", "onnxruntime", "--no-deps"],
             "Installing onnxruntime for OpenSeeFace (Python 3.13)",
             ignore_errors=True
         )
