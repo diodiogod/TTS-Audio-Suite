@@ -536,6 +536,7 @@ def _segments_from_words(words: List[ASRWord],
                          max_chars: int,
                          max_cps: float,
                          tts_ready_mode: bool = False,
+                         tts_ready_paragraph_mode: bool = False,
                          punctuation_grace_chars: int = 12,
                          min_words_per_segment: int = 2,
                          min_segment_seconds: float = 0.4,
@@ -661,7 +662,7 @@ def _segments_from_words(words: List[ASRWord],
         if current_text:
             last_char = current_text[-1:]
             if last_char in [".", "!", "?", "…"]:
-                if (word.end - seg_start) >= min_duration:
+                if (word.end - seg_start) >= min_duration and not tts_ready_paragraph_mode:
                     flush_segment(word.end)
             elif last_char in [",", ";", ":"]:
                 if (
@@ -1090,6 +1091,7 @@ def build_srt(segments: List[ASRSegment],
               min_gap: float = 0.6,
               max_cps: float = 20.0,
               tts_ready_mode: bool = False,
+              tts_ready_paragraph_mode: bool = False,
               return_stats: bool = False,
               dedupe_overlaps: bool = True,
               dedupe_window_ms: int = 1500,
@@ -1160,6 +1162,7 @@ def build_srt(segments: List[ASRSegment],
                 max_chars=max_chars_per_line * max_lines,
                 max_cps=max_cps,
                 tts_ready_mode=tts_ready_mode,
+                tts_ready_paragraph_mode=tts_ready_paragraph_mode,
                 punctuation_grace_chars=punctuation_grace_chars,
                 min_words_per_segment=min_words_per_segment,
                 min_segment_seconds=min_segment_seconds,

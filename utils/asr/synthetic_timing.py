@@ -130,10 +130,45 @@ def _split_sentence_tts_ready(sentence: str, target_chars: int) -> List[str]:
     return [chunk for chunk in chunks if chunk]
 
 
-def _split_paragraph_tts_ready(paragraph: str, target_chars: int) -> List[str]:
+def _split_paragraph_tts_ready(paragraph: str, target_chars: int, keep_paragraphs: bool = False) -> List[str]:
     paragraph = _normalize_whitespace(paragraph)
     if not paragraph:
         return []
+
+    if keep_paragraphs:
+        soft_limit = max(24, target_chars)
+        hard_limit = max(soft_limit + 18, int(soft_limit * 1.35))
+        if len(paragraph) <= hard_limit:
+            return [paragraph]
+
+        sentences = [sentence.strip() for sentence in SENTENCE_SPLIT_RE.split(paragraph) if sentence.strip()]
+        if not sentences:
+            return _split_overlong_part(paragraph, hard_limit)
+
+        chunks: List[str] = []
+        current = ""
+        for sentence in sentences:
+            sentence_parts = [sentence]
+            if len(sentence) > hard_limit:
+                sentence_parts = _split_sentence_tts_ready(sentence, target_chars)
+
+            for part in sentence_parts:
+                if not current:
+                    current = part
+                    continue
+
+                candidate = f"{current} {part}".strip()
+                if len(candidate) <= hard_limit or _ends_sentence_like(current):
+                    current = candidate
+                    continue
+
+                chunks.append(current)
+                current = part
+
+        if current:
+            chunks.append(current)
+
+        return [chunk for chunk in chunks if chunk]
 
     sentences = [sentence.strip() for sentence in SENTENCE_SPLIT_RE.split(paragraph) if sentence.strip()]
     if not sentences:
@@ -166,6 +201,16 @@ def _split_paragraph_tts_ready(paragraph: str, target_chars: int) -> List[str]:
         chunks.append(current)
 
     return [chunk for chunk in chunks if chunk]
+
+
+def _split_paragraphs(spoken_text: str, keep_paragraphs: bool) -> List[str]:
+    if not spoken_text.strip():
+        return []
+
+    paragraphs = [paragraph for paragraph in re.split(r"\n\s*\n+", spoken_text) if paragraph.strip()]
+    if keep_paragraphs and len(paragraphs) <= 1:
+        paragraphs = [paragraph for paragraph in re.split(r"\n+", spoken_text) if paragraph.strip()]
+    return paragraphs
 
 
 def _ends_sentence_like(text: str) -> bool:
@@ -222,6 +267,7 @@ def estimate_asr_result_from_text(
     min_gap: float = 0.6,
     max_cps: float = 20.0,
     tts_ready_mode: bool = False,
+    tts_ready_paragraph_mode: bool = False,
     punctuation_grace_chars: int = 12,
     min_words_per_segment: int = 2,
     min_segment_seconds: float = 0.4,
@@ -261,12 +307,16 @@ def estimate_asr_result_from_text(
             ),
         )
 
-    paragraphs = [paragraph for paragraph in re.split(r"\n\s*\n+", spoken_text) if paragraph.strip()]
+    paragraphs = _split_paragraphs(spoken_text, keep_paragraphs=tts_ready_paragraph_mode)
     all_words: List[ASRWord] = []
     timeline = 0.0
 
     for paragraph_index, paragraph in enumerate(paragraphs):
-        cues = _split_paragraph_tts_ready(paragraph, target_chars) if tts_ready_mode else _split_paragraph(paragraph, target_chars)
+        cues = _split_paragraph_tts_ready(
+            paragraph,
+            target_chars,
+            keep_paragraphs=tts_ready_paragraph_mode,
+        ) if tts_ready_mode else _split_paragraph(paragraph, target_chars)
         for cue_index, cue_text in enumerate(cues):
             cue_duration = len(cue_text) / max(max_cps, 0.1)
             cue_duration = min(max_duration, max(min_duration, cue_duration))
@@ -298,6 +348,7 @@ def estimate_asr_result_from_text(
         max_chars=max_chars_per_line * max(1, max_lines),
         max_cps=max_cps,
         tts_ready_mode=tts_ready_mode,
+        tts_ready_paragraph_mode=tts_ready_paragraph_mode,
         punctuation_grace_chars=punctuation_grace_chars,
         min_words_per_segment=min_words_per_segment,
         min_segment_seconds=min_segment_seconds,

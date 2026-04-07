@@ -1,8 +1,25 @@
 import { app } from "../../scripts/app.js";
+import { setupSrtAdvancedOptionsPanel } from "./asr_srt_advanced_options_panel_compact.js";
 
 // SRT Advanced Options UI Control
-// Presets lock core timing fields.
-// Heuristic language profiles seed editable text fields and restore custom values.
+// Presets seed recommended values and switch to Custom when the user diverges.
+// Heuristic language profiles seed editable text fields and preserve manual overrides.
+
+const SRT_FIELDS = [
+    "srt_max_chars_per_line",
+    "srt_max_lines",
+    "srt_max_duration",
+    "srt_min_duration",
+    "srt_min_gap",
+    "srt_max_cps",
+    "tts_ready_mode",
+    "tts_ready_paragraph_mode",
+];
+
+const HEURISTIC_FIELDS = [
+    "merge_dangling_tail_allowlist",
+    "merge_incomplete_keywords",
+];
 
 const PRESET_VALUES = {
     "Netflix-Standard": {
@@ -13,6 +30,7 @@ const PRESET_VALUES = {
         srt_min_gap: 0.2,
         srt_max_cps: 17.0,
         tts_ready_mode: false,
+        tts_ready_paragraph_mode: false,
     },
     "Broadcast": {
         srt_max_chars_per_line: 42,
@@ -22,6 +40,7 @@ const PRESET_VALUES = {
         srt_min_gap: 0.6,
         srt_max_cps: 17.0,
         tts_ready_mode: false,
+        tts_ready_paragraph_mode: false,
     },
     "Fast speech": {
         srt_max_chars_per_line: 42,
@@ -31,6 +50,7 @@ const PRESET_VALUES = {
         srt_min_gap: 0.4,
         srt_max_cps: 20.0,
         tts_ready_mode: false,
+        tts_ready_paragraph_mode: false,
     },
     "Mobile": {
         srt_max_chars_per_line: 32,
@@ -40,6 +60,7 @@ const PRESET_VALUES = {
         srt_min_gap: 0.6,
         srt_max_cps: 17.0,
         tts_ready_mode: false,
+        tts_ready_paragraph_mode: false,
     },
     "TTS-Ready": {
         srt_max_chars_per_line: 240,
@@ -49,6 +70,17 @@ const PRESET_VALUES = {
         srt_min_gap: 0.8,
         srt_max_cps: 17.0,
         tts_ready_mode: true,
+        tts_ready_paragraph_mode: false,
+    },
+    "TTS-Ready (Paragraphs)": {
+        srt_max_chars_per_line: 320,
+        srt_max_lines: 1,
+        srt_max_duration: 24.0,
+        srt_min_duration: 1.2,
+        srt_min_gap: 1.0,
+        srt_max_cps: 15.0,
+        tts_ready_mode: true,
+        tts_ready_paragraph_mode: true,
     },
 };
 
@@ -131,25 +163,6 @@ const HEURISTIC_PROFILE_VALUES = {
     },
 };
 
-const SRT_FIELDS = [
-    "srt_max_chars_per_line",
-    "srt_max_lines",
-    "srt_max_duration",
-    "srt_min_duration",
-    "srt_min_gap",
-    "srt_max_cps",
-    "tts_ready_mode",
-];
-
-const HEURISTIC_FIELDS = [
-    "merge_dangling_tail_allowlist",
-    "merge_incomplete_keywords",
-];
-
-const TTS_READY_DISABLED_FIELDS = [
-    "srt_max_lines",
-];
-
 function isSrtOptionsNode(node) {
     return node.comfyClass === "SRTAdvancedOptionsNode";
 }
@@ -159,7 +172,18 @@ function findWidgetByName(node, name) {
 }
 
 function bindWidgetValueHandler(widget, onChange) {
-    if (!widget || widget.__ttsAudioSuiteValueBound) {
+    if (!widget) {
+        return;
+    }
+
+    if (!widget.__ttsAudioSuiteValueHandlers) {
+        widget.__ttsAudioSuiteValueHandlers = [];
+    }
+    if (!widget.__ttsAudioSuiteValueHandlers.includes(onChange)) {
+        widget.__ttsAudioSuiteValueHandlers.push(onChange);
+    }
+
+    if (widget.__ttsAudioSuiteValueBound) {
         return;
     }
 
@@ -182,33 +206,18 @@ function bindWidgetValueHandler(widget, onChange) {
             } else {
                 widgetValue = newVal;
             }
-            onChange(newVal);
+
+            for (const handler of widget.__ttsAudioSuiteValueHandlers || []) {
+                try {
+                    handler(newVal);
+                } catch (error) {
+                    console.warn("SRT Advanced Options widget handler failed:", error);
+                }
+            }
         }
     });
 
     widget.__ttsAudioSuiteValueBound = true;
-}
-
-function captureFieldValues(node, fieldNames) {
-    const snapshot = {};
-    for (const field of fieldNames) {
-        const widget = findWidgetByName(node, field);
-        if (!widget) {
-            continue;
-        }
-        snapshot[field] = widget.value;
-    }
-    return snapshot;
-}
-
-function restoreFieldValues(node, fieldNames, snapshot) {
-    for (const field of fieldNames) {
-        const widget = findWidgetByName(node, field);
-        if (!widget || snapshot[field] === undefined) {
-            continue;
-        }
-        widget.value = snapshot[field];
-    }
 }
 
 function applyPreset(node, preset) {
@@ -223,7 +232,7 @@ function applyPreset(node, preset) {
 
     node.__applyingSrtPreset = true;
     try {
-        for (const field of SRT_FIELDS) {
+        for (const field of Object.keys(values)) {
             const widget = findWidgetByName(node, field);
             if (!widget || values[field] === undefined) {
                 continue;
@@ -235,33 +244,71 @@ function applyPreset(node, preset) {
     }
 }
 
-function lockFields(node, shouldLock) {
-    for (const field of SRT_FIELDS) {
-        const widget = findWidgetByName(node, field);
-        if (!widget) {
-            continue;
-        }
-        widget.disabled = shouldLock;
+function applyPresetState(node) {
+    if (!isSrtOptionsNode(node)) {
+        return;
+    }
+
+    const presetWidget = findWidgetByName(node, "srt_preset");
+    if (!presetWidget) {
+        return;
+    }
+
+    const preset = presetWidget.value;
+    if (preset && preset !== "Custom") {
+        applyPreset(node, preset);
     }
 }
 
 function applyTtsReadyFieldState(node) {
+    if (node.__applyingSrtPreset) {
+        return;
+    }
+
     const ttsReadyWidget = findWidgetByName(node, "tts_ready_mode");
     const isTtsReady = Boolean(ttsReadyWidget && ttsReadyWidget.value);
 
-    for (const field of TTS_READY_DISABLED_FIELDS) {
-        const widget = findWidgetByName(node, field);
-        if (!widget) {
-            continue;
-        }
-        widget.disabled = isTtsReady;
+    const paragraphWidget = findWidgetByName(node, "tts_ready_paragraph_mode");
+    const maxLinesWidget = findWidgetByName(node, "srt_max_lines");
+
+    if (paragraphWidget) {
+        paragraphWidget.disabled = !isTtsReady;
     }
 
-    const presetWidget = findWidgetByName(node, "srt_preset");
-    const presetLocked = Boolean(presetWidget && presetWidget.value !== "Custom");
-    if (presetLocked) {
-        lockFields(node, true);
+    if (maxLinesWidget) {
+        maxLinesWidget.disabled = isTtsReady;
     }
+
+    if (isTtsReady) {
+        if (maxLinesWidget && maxLinesWidget.value !== 1) {
+            node.__applyingTtsReadyNormalization = true;
+            try {
+                maxLinesWidget.value = 1;
+            } finally {
+                node.__applyingTtsReadyNormalization = false;
+            }
+        }
+    }
+}
+
+function matchesPresetValues(node, preset) {
+    const values = PRESET_VALUES[preset];
+    if (!values) {
+        return false;
+    }
+
+    for (const field of Object.keys(values)) {
+        const widget = findWidgetByName(node, field);
+        if (!widget) {
+            return false;
+        }
+
+        if (widget.value !== values[field]) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function srtPresetHandler(node) {
@@ -274,31 +321,25 @@ function srtPresetHandler(node) {
         return;
     }
 
-    const preset = presetWidget.value;
-    const shouldLock = preset !== "Custom";
-
-    if (!node.__srtPresetCache) {
-        node.__srtPresetCache = {};
-    }
-
-    if (shouldLock) {
-        for (const field of SRT_FIELDS) {
-            const widget = findWidgetByName(node, field);
-            if (!widget) {
-                continue;
-            }
-            if (node.__srtPresetCache[field] === undefined) {
-                node.__srtPresetCache[field] = widget.value;
-            }
-        }
-        applyPreset(node, preset);
-    } else {
-        restoreFieldValues(node, SRT_FIELDS, node.__srtPresetCache);
-        node.__srtPresetCache = {};
-    }
-
-    lockFields(node, shouldLock);
+    applyPresetState(node);
     applyTtsReadyFieldState(node);
+}
+
+function srtFieldEdited(node) {
+    if (!isSrtOptionsNode(node) || node.__applyingSrtPreset || node.__applyingTtsReadyNormalization) {
+        return;
+    }
+
+    const presetWidget = findWidgetByName(node, "srt_preset");
+    if (!presetWidget || presetWidget.value === "Custom") {
+        return;
+    }
+
+    if (matchesPresetValues(node, presetWidget.value)) {
+        return;
+    }
+
+    presetWidget.value = "Custom";
 }
 
 function applyHeuristicProfile(node, profile) {
@@ -333,17 +374,8 @@ function heuristicProfileHandler(node) {
 
     const profile = profileWidget.value;
 
-    if (!node.__heuristicProfileCache) {
-        node.__heuristicProfileCache = {};
-    }
-
     if (profile !== "Custom") {
-        if (Object.keys(node.__heuristicProfileCache).length === 0) {
-            node.__heuristicProfileCache = captureFieldValues(node, HEURISTIC_FIELDS);
-        }
         applyHeuristicProfile(node, profile);
-    } else if (Object.keys(node.__heuristicProfileCache).length > 0) {
-        restoreFieldValues(node, HEURISTIC_FIELDS, node.__heuristicProfileCache);
     }
 }
 
@@ -357,7 +389,6 @@ function heuristicFieldEdited(node) {
         return;
     }
 
-    node.__heuristicProfileCache = captureFieldValues(node, HEURISTIC_FIELDS);
     profileWidget.value = "Custom";
 }
 
@@ -368,7 +399,7 @@ app.registerExtension({
             return;
         }
 
-        srtPresetHandler(node);
+        applyPresetState(node);
         heuristicProfileHandler(node);
         applyTtsReadyFieldState(node);
 
@@ -376,8 +407,14 @@ app.registerExtension({
         bindWidgetValueHandler(findWidgetByName(node, "heuristic_language_profile"), () => heuristicProfileHandler(node));
         bindWidgetValueHandler(findWidgetByName(node, "tts_ready_mode"), () => applyTtsReadyFieldState(node));
 
+        for (const field of SRT_FIELDS) {
+            bindWidgetValueHandler(findWidgetByName(node, field), () => srtFieldEdited(node));
+        }
+
         for (const field of HEURISTIC_FIELDS) {
             bindWidgetValueHandler(findWidgetByName(node, field), () => heuristicFieldEdited(node));
         }
+
+        setupSrtAdvancedOptionsPanel(node);
     }
 });
