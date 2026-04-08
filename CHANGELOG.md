@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.5] - 2026-04-08
+
+### Added
+
+- Add find and replace tools directly inside the editor
+- Add replace all, match options, and keyboard shortcuts for faster text editing
+- Add collapsible left panel control while keeping sidebar resizing available
+
+### Changed
+
+- Improve Multiline TTS Tag Editor editing workflow
+- Improve left panel toggle behavior and visual polish during resize
 ## [4.25.4] - 2026-04-08
 
 ### Added
