@@ -1,8 +1,8 @@
 {
   "id": "4a7cdb14-f535-4923-861b-59ba2c7ee043",
   "revision": 0,
-  "last_node_id": 216,
-  "last_link_id": 356,
+  "last_node_id": 217,
+  "last_link_id": 357,
   "nodes": [
     {
       "id": 155,
@@ -29,9 +29,9 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "Qwen3TTSEngineNode",
         "cnr_id": "chatterbox_srt_voice",
         "ver": "0068acb849b91ff7bdcfa00998207e772599ff1a",
+        "Node name for S&R": "Qwen3TTSEngineNode",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},
@@ -127,13 +127,13 @@
         }
       ],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.11.0",
         "Node name for S&R": "LoadAudio",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.11.0"
+        }
       },
       "widgets_values": [
         "Tony.wav",
@@ -166,14 +166,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -206,14 +206,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -246,14 +246,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -300,11 +300,11 @@
         2240
       ],
       "size": [
-        360,
-        250
+        370,
+        280
       ],
       "flags": {},
-      "order": 3,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -316,7 +316,7 @@
         }
       },
       "widgets_values": [
-        "## 🔧 ASR SRT Advanced Options\n\nI know this is overwhelming. Most of these are highly experimental. But it will help a lot in making your SRT output look better. \n\nYou don't need to change anything if you don't want to. It's all optional. The SRT output will use all of these by default in one way or another. \n\nWhat you can do here is that you can tinker with each value and adjust it as you like. \n\nMost of these are post-processing, meaning you won't need to regenerate to test them. Just click run, and it will use the cache previous run apply it immediately. "
+        "## 🔧 ASR SRT Advanced Options\n\nI know this is overwhelming. Most of these are highly experimental. But it will help a lot in making your SRT output look better. \n\nYou don't need to change anything if you don't want to. It's all optional. The SRT output will use all of these by default in one way or another. \n\nWhat you can do here is that you can tinker with each value and adjust it as you like. \n\nMost of these are post-processing, meaning you won't need to regenerate to test them. Just click run, and it will use the cache previous run apply it immediately. \n\n## If you are creating an SRT to feed a TTS model later, I HIGHLY recommend to use a TTS-Ready profile"
       ],
       "color": "#432",
       "bgcolor": "#653"
@@ -415,6 +415,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "3f0f0d42c5703f770dca3736c2d8380e3290b2d7",
         "Node name for S&R": "UnifiedASRTranscribeNode"
       },
       "widgets_values": [
@@ -451,14 +453,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -491,14 +493,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -531,14 +533,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -560,7 +562,7 @@
         472
       ],
       "flags": {},
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -573,6 +575,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "3f0f0d42c5703f770dca3736c2d8380e3290b2d7",
         "Node name for S&R": "GraniteASREngineNode"
       },
       "widgets_values": [
@@ -639,6 +643,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "3f0f0d42c5703f770dca3736c2d8380e3290b2d7",
         "Node name for S&R": "ASRPunctuationTruecaseNode"
       },
       "widgets_values": [
@@ -672,14 +678,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -712,14 +718,14 @@
       ],
       "outputs": [],
       "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
         "Node name for S&R": "PreviewAny",
         "ue_properties": {
           "widget_ue_connectable": {},
           "version": "7.4.1",
           "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59"
+        }
       },
       "widgets_values": [
         null,
@@ -779,7 +785,7 @@
         160
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -850,7 +856,7 @@
         88
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -891,7 +897,7 @@
           "name": "srt_options",
           "shape": 7,
           "type": "SRT_OPTIONS",
-          "link": 352
+          "link": 357
         },
         {
           "name": "text",
@@ -926,6 +932,8 @@
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "3f0f0d42c5703f770dca3736c2d8380e3290b2d7",
         "Node name for S&R": "TextToSRTBuilderNode"
       },
       "widgets_values": [
@@ -935,15 +943,15 @@
       "bgcolor": "#335"
     },
     {
-      "id": 216,
+      "id": 217,
       "type": "SRTAdvancedOptionsNode",
       "pos": [
         990,
         2050
       ],
       "size": [
-        410.55078125,
-        874
+        420,
+        903
       ],
       "flags": {},
       "order": 7,
@@ -954,24 +962,27 @@
           "name": "srt_options",
           "type": "SRT_OPTIONS",
           "links": [
-            352
+            357
           ]
         }
       ],
       "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "3f0f0d42c5703f770dca3736c2d8380e3290b2d7",
         "Node name for S&R": "SRTAdvancedOptionsNode"
       },
       "widgets_values": [
-        "Broadcast",
+        "TTS-Ready (Paragraphs)",
         "smart",
-        false,
+        true,
+        true,
         "Auto",
-        42,
-        2,
-        6,
+        320,
         1,
-        0.6,
-        17,
+        24,
+        1.2,
+        1,
+        15,
         true,
         1500,
         2,
@@ -996,10 +1007,9 @@
         "what,why,how,where,who,which,when",
         true,
         true,
-        false
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
+        false,
+        ""
+      ]
     }
   ],
   "links": [
@@ -1108,14 +1118,6 @@
       "STRING"
     ],
     [
-      352,
-      216,
-      0,
-      215,
-      1,
-      "SRT_OPTIONS"
-    ],
-    [
       353,
       208,
       0,
@@ -1146,6 +1148,14 @@
       204,
       0,
       "STRING"
+    ],
+    [
+      357,
+      217,
+      0,
+      215,
+      1,
+      "SRT_OPTIONS"
     ]
   ],
   "groups": [
@@ -1218,10 +1228,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.8140274938684195,
+      "scale": 0.16105100000000497,
       "offset": [
-        2764.772360686241,
-        -1374.553045047558
+        2841.8593174782964,
+        -40.85992048145344
       ]
     },
     "frontendVersion": "1.38.13",
