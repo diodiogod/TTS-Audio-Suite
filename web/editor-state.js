@@ -41,6 +41,12 @@ SRT example:
         this.sidebarWidth = 220;
         this.uiScale = 1.0;
         this.lastWorkflowValue = ""; // Track the last workflow value we loaded to detect file changes
+        this.findReplaceOpen = false;
+        this.findReplaceMode = "find";
+        this.findMatchCase = false;
+        this.findWholeWord = false;
+        this.findRegex = false;
+        this.findSelectionOnly = false;
     }
 
     addToHistory(text, caretPos = 0) {

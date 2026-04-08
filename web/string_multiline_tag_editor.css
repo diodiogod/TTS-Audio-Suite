@@ -157,6 +157,7 @@
     flex: 1 1 auto;
     min-height: 0;
     background: linear-gradient(180deg, rgba(28, 27, 27, 0.95) 0%, rgba(14, 14, 14, 0.88) 100%);
+    position: relative;
 }
 
 .string-multiline-tag-editor-stage {
@@ -466,6 +467,70 @@
     background: var(--tts-surface) !important;
     border-right: 1px solid var(--tts-outline) !important;
     box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
+    transition: width 0.18s ease, min-width 0.18s ease, max-width 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.string-multiline-tag-editor-sidebar.is-collapsed {
+    border-right-color: rgba(67, 71, 74, 0.08) !important;
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.01);
+}
+
+.string-multiline-tag-editor-sidebar.is-collapsed .string-multiline-tag-editor-sidebar-header,
+.string-multiline-tag-editor-sidebar.is-collapsed .string-multiline-tag-editor-sidebar-scroll-content,
+.string-multiline-tag-editor-sidebar.is-collapsed .string-multiline-tag-editor-sidebar-scrollbar {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.string-multiline-tag-editor-sidebar-toggle {
+    position: absolute;
+    top: calc(56px + (100% - 56px) / 2);
+    transform: translate(-50%, -50%);
+    width: 13px;
+    height: 64px;
+    padding: 0;
+    border: 1px solid rgba(67, 71, 74, 0.22);
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    clip-path: polygon(0 0, 100% 8%, 100% 92%, 0 100%);
+    background:
+        linear-gradient(180deg, rgba(28, 28, 28, 0.94) 0%, rgba(16, 16, 16, 0.98) 100%);
+    color: rgba(229, 226, 225, 0.58);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1100;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, width 0.16s ease;
+}
+
+.string-multiline-tag-editor-sidebar-toggle:hover {
+    color: var(--tts-primary);
+    border-color: rgba(0, 225, 174, 0.24);
+    background: linear-gradient(180deg, rgba(32, 32, 32, 0.96) 0%, rgba(14, 14, 14, 0.98) 100%);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.string-multiline-tag-editor-sidebar-toggle:focus {
+    outline: none;
+    color: var(--tts-primary);
+    border-color: rgba(0, 225, 174, 0.3);
+    box-shadow: 0 0 0 1px rgba(0, 225, 174, 0.12), 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.string-multiline-tag-editor-sidebar-toggle.is-collapsed {
+    width: 15px;
+    color: rgba(0, 225, 174, 0.82);
+}
+
+.string-multiline-tag-editor-main.is-resizing-sidebar .string-multiline-tag-editor-sidebar,
+.string-multiline-tag-editor-main.is-resizing-sidebar .string-multiline-tag-editor-sidebar-toggle {
+    transition: none !important;
+}
+
+.string-multiline-tag-editor-sidebar-toggle.is-hidden {
+    display: none;
 }
 
 .string-multiline-tag-editor-sidebar-scroll-content {
@@ -663,6 +728,24 @@
     border: 1px solid transparent;
 }
 
+.string-multiline-tag-editor-chip-button {
+    background: rgba(53, 53, 52, 0.64);
+    color: var(--tts-text-dim);
+    cursor: pointer;
+    transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+
+.string-multiline-tag-editor-chip-button:hover {
+    color: var(--tts-text);
+    border-color: rgba(0, 225, 174, 0.18);
+}
+
+.string-multiline-tag-editor-chip-button:focus {
+    outline: none;
+    border-color: rgba(0, 225, 174, 0.3);
+    box-shadow: 0 0 0 1px rgba(0, 225, 174, 0.12);
+}
+
 .string-multiline-tag-editor-chip.is-secondary {
     color: #38d7ae;
     background: rgba(0, 56, 41, 0.32);
@@ -680,6 +763,137 @@
     font-family: "JetBrains Mono", monospace;
     font-size: 10px;
     text-align: right;
+}
+
+.string-multiline-tag-editor-findbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: rgba(14, 14, 14, 0.78);
+    border: 1px solid rgba(67, 71, 74, 0.18);
+    border-radius: 3px;
+    position: relative;
+    padding-right: 44px;
+}
+
+.string-multiline-tag-editor-findbar.is-hidden,
+.string-multiline-tag-editor-findbar-group.is-hidden {
+    display: none;
+}
+
+.string-multiline-tag-editor-findbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.string-multiline-tag-editor-findbar-feedback {
+    display: flex;
+    align-items: center;
+    flex: 1 1 180px;
+    min-width: 140px;
+}
+
+.string-multiline-tag-editor-findbar-input {
+    min-width: 0;
+    height: 30px;
+    padding: 6px 10px;
+    background: rgba(53, 53, 52, 0.8);
+    color: var(--tts-text);
+    border: 1px solid rgba(67, 71, 74, 0.3);
+    border-radius: 2px;
+    font-size: 11px;
+}
+
+.string-multiline-tag-editor-findbar-input.has-error {
+    border-color: rgba(255, 111, 97, 0.58);
+    box-shadow: 0 0 0 1px rgba(255, 111, 97, 0.12);
+}
+
+.string-multiline-tag-editor-findbar-input:focus {
+    outline: none;
+    border-color: rgba(0, 225, 174, 0.42);
+    box-shadow: 0 0 0 1px rgba(0, 225, 174, 0.12);
+}
+
+.string-multiline-tag-editor-findbar-btn {
+    height: 30px;
+    padding: 0 10px;
+    background: rgba(53, 53, 52, 0.68);
+    color: var(--tts-text-dim);
+    border: 1px solid rgba(67, 71, 74, 0.24);
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.string-multiline-tag-editor-findbar-btn.is-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    color: var(--tts-text-faint);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1;
+    text-transform: none;
+    box-shadow: none;
+}
+
+.string-multiline-tag-editor-findbar-btn.is-close:hover {
+    background: transparent;
+    color: var(--tts-text);
+    border: none;
+}
+
+.string-multiline-tag-editor-findbar-btn.is-close:focus {
+    outline: none;
+    background: transparent;
+    color: var(--tts-primary);
+    border: none;
+    box-shadow: none;
+}
+
+.string-multiline-tag-editor-findbar-btn:hover:not(:disabled) {
+    color: var(--tts-text);
+    border-color: rgba(0, 225, 174, 0.22);
+}
+
+.string-multiline-tag-editor-findbar-btn.is-toggle.is-active {
+    color: #04291f;
+    background: linear-gradient(135deg, rgba(0, 225, 174, 0.92) 0%, rgba(0, 187, 146, 0.94) 100%);
+    border-color: rgba(0, 225, 174, 0.26);
+}
+
+.string-multiline-tag-editor-findbar-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.string-multiline-tag-editor-findbar-count {
+    min-width: 44px;
+    color: var(--tts-text-faint);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    text-align: center;
+}
+
+.string-multiline-tag-editor-findbar-error {
+    color: #ff8e83;
+    font-size: 10px;
+    line-height: 1.4;
 }
 
 .string-multiline-tag-editor-surface {
@@ -746,6 +960,17 @@
     opacity: 0.82;
     pointer-events: none;
     user-select: none;
+}
+
+.string-multiline-tag-editor-find-match {
+    background: rgba(205, 189, 255, 0.22);
+    border-radius: 2px;
+    box-shadow: inset 0 0 0 1px rgba(205, 189, 255, 0.12);
+}
+
+.string-multiline-tag-editor-find-match.is-active {
+    background: rgba(0, 225, 174, 0.28);
+    box-shadow: inset 0 0 0 1px rgba(0, 225, 174, 0.28), 0 0 0 1px rgba(0, 225, 174, 0.12);
 }
 
 .string-multiline-tag-editor-srt-number {
@@ -891,9 +1116,13 @@
     cursor: grabbing;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 560px) {
     .string-multiline-tag-editor-shell {
         flex-direction: column;
+    }
+
+    .string-multiline-tag-editor-sidebar-toggle {
+        display: none;
     }
 
     .string-multiline-tag-editor-sidebar {
@@ -903,5 +1132,26 @@
         height: auto !important;
         border-right: none !important;
         border-bottom: 1px solid var(--tts-outline) !important;
+    }
+
+    .string-multiline-tag-editor-sidebar.is-collapsed .string-multiline-tag-editor-sidebar-header,
+    .string-multiline-tag-editor-sidebar.is-collapsed .string-multiline-tag-editor-sidebar-scroll-content,
+    .string-multiline-tag-editor-sidebar.is-collapsed .string-multiline-tag-editor-sidebar-scrollbar {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .string-multiline-tag-editor-findbar {
+        align-items: stretch;
+    }
+
+    .string-multiline-tag-editor-findbar-group,
+    .string-multiline-tag-editor-findbar-feedback {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .string-multiline-tag-editor-findbar-input {
+        flex: 1 1 180px;
     }
 }

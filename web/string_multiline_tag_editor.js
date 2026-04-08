@@ -17,6 +17,7 @@ import { buildTabSystem } from "./widget-tabs.js";
 import { buildInlineEditSection } from "./widget-inline-edit-section.js";
 import { SRTTimingDragController, buildSRTTimingMarkup } from "./string_multiline_tag_editor_timing_drag.js";
 import { SRTCueEditController, buildSRTCueNumberMarkup } from "./string_multiline_tag_editor_srt_cue_ops.js";
+import { findTextMatches, replaceMatches } from "./string_multiline_tag_editor_find_replace.js";
 
 
 // Counter to ensure unique storage keys even when node.id is -1
@@ -24,6 +25,10 @@ let widgetCounter = 0;
 
 const CHANGE_TRACKER_PATCH_FLAG = "__ttsTagEditorUndoRedoPatched";
 const TAG_EDITOR_STYLESHEET_ID = "tts-tag-editor-styles";
+const DEFAULT_SIDEBAR_WIDTH = 220;
+const MIN_SIDEBAR_WIDTH = 150;
+const MAX_SIDEBAR_WIDTH = 400;
+const COLLAPSED_SIDEBAR_WIDTH = 20;
 
 const ensureTagEditorStylesheet = () => {
     if (document.getElementById(TAG_EDITOR_STYLESHEET_ID)) {
@@ -195,12 +200,28 @@ function addStringMultilineTagEditorWidget(node) {
     auxiliaryView.appendChild(auxiliaryHeader);
     auxiliaryView.appendChild(auxiliaryContent);
 
+    const getClampedSidebarWidth = (width) => {
+        const numericWidth = Number(width);
+        const safeWidth = Number.isFinite(numericWidth) ? numericWidth : DEFAULT_SIDEBAR_WIDTH;
+        return Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, safeWidth));
+    };
+
+    state.sidebarWidth = getClampedSidebarWidth(state.sidebarWidth);
+    state.sidebarExpanded = state.sidebarExpanded !== false;
+
+    let resizeDivider = null;
+    let sidebarToggle = null;
+
+    const getEffectiveSidebarWidth = () => (
+        state.sidebarExpanded ? state.sidebarWidth : COLLAPSED_SIDEBAR_WIDTH
+    );
+
     // Create sidebar with resizable width and UI scaling
     const sidebar = document.createElement("div");
     sidebar.className = "string-multiline-tag-editor-sidebar";
-    sidebar.style.width = state.sidebarWidth + "px";
-    sidebar.style.minWidth = "150px";
-    sidebar.style.maxWidth = "400px";
+    sidebar.style.width = getEffectiveSidebarWidth() + "px";
+    sidebar.style.minWidth = state.sidebarExpanded ? `${MIN_SIDEBAR_WIDTH}px` : `${COLLAPSED_SIDEBAR_WIDTH}px`;
+    sidebar.style.maxWidth = state.sidebarExpanded ? `${MAX_SIDEBAR_WIDTH}px` : `${COLLAPSED_SIDEBAR_WIDTH}px`;
     sidebar.style.height = "100%";
     sidebar.style.background = "#222";
     sidebar.style.borderRight = "1px solid #444";
@@ -230,6 +251,14 @@ function addStringMultilineTagEditorWidget(node) {
     sidebarScrollbar.appendChild(sidebarScrollbarThumb);
 
     const updateSidebarScrollbar = () => {
+        if (!state.sidebarExpanded) {
+            sidebarScrollbar.style.opacity = "0";
+            sidebarScrollbar.style.pointerEvents = "none";
+            sidebarScrollbarThumb.style.transform = "translateY(0)";
+            sidebarScrollbarThumb.style.height = "0";
+            return;
+        }
+
         const visibleHeight = sidebarScrollContent.clientHeight;
         const scrollHeight = sidebarScrollContent.scrollHeight;
         const maxScrollTop = Math.max(0, scrollHeight - visibleHeight);
@@ -259,17 +288,60 @@ function addStringMultilineTagEditorWidget(node) {
         sidebarScrollbarThumb.style.transform = `translateY(${thumbOffset}px)`;
     };
 
+    const syncSidebarLayout = ({ persist = true } = {}) => {
+        const effectiveWidth = getEffectiveSidebarWidth();
+        const isExpanded = state.sidebarExpanded;
+        const isEditorView = (state.activeTopView || "editor") === "editor";
+
+        sidebar.classList.toggle("is-collapsed", !isExpanded);
+        sidebar.style.width = `${effectiveWidth}px`;
+        sidebar.style.minWidth = isExpanded ? `${MIN_SIDEBAR_WIDTH}px` : `${COLLAPSED_SIDEBAR_WIDTH}px`;
+        sidebar.style.maxWidth = isExpanded ? `${MAX_SIDEBAR_WIDTH}px` : `${COLLAPSED_SIDEBAR_WIDTH}px`;
+
+        if (resizeDivider) {
+            resizeDivider.style.left = (effectiveWidth - 3) + "px";
+            resizeDivider.style.display = isExpanded && isEditorView ? "block" : "none";
+        }
+
+        if (sidebarToggle) {
+            sidebarToggle.classList.toggle("is-hidden", !isEditorView);
+            sidebarToggle.classList.toggle("is-collapsed", !isExpanded);
+            sidebarToggle.textContent = isExpanded ? "‹" : "›";
+            sidebarToggle.style.left = `${effectiveWidth - 1}px`;
+            const sidebarToggleLabel = isExpanded ? "Collapse left panel" : "Expand left panel";
+            sidebarToggle.title = sidebarToggleLabel;
+            sidebarToggle.setAttribute("aria-label", sidebarToggleLabel);
+        }
+
+        updateSidebarScrollbar();
+
+        if (persist) {
+            state.saveToLocalStorage(storageKey);
+        }
+    };
+
+    const setSidebarExpanded = (expanded, { persist = true } = {}) => {
+        state.sidebarExpanded = !!expanded;
+        syncSidebarLayout({ persist });
+
+        if (state.sidebarExpanded) {
+            requestAnimationFrame(updateSidebarScrollbar);
+        }
+    };
+
+    const setSidebarResizeActive = (isActive) => {
+        editorContainer.classList.toggle("is-resizing-sidebar", !!isActive);
+    };
+
     // Function to update sidebar width and persist
     const setSidebarWidth = (newWidth) => {
-        newWidth = Math.max(150, Math.min(400, newWidth)); // Clamp between 150px and 400px
-        state.sidebarWidth = newWidth;
-        sidebar.style.width = newWidth + "px";
-        // Update divider position to match new sidebar width
-        if (resizeDivider) {
-            resizeDivider.style.left = (newWidth - 3) + "px"; // 3px left + 3px right of border
+        state.sidebarWidth = getClampedSidebarWidth(newWidth);
+
+        if (state.sidebarExpanded) {
+            syncSidebarLayout({ persist: false });
         }
+
         state.saveToLocalStorage(storageKey);
-        updateSidebarScrollbar();
     };
 
     // Function to update UI scale
@@ -335,14 +407,96 @@ function addStringMultilineTagEditorWidget(node) {
     charactersChip.className = "string-multiline-tag-editor-chip is-secondary";
     const inlineEditsChip = document.createElement("span");
     inlineEditsChip.className = "string-multiline-tag-editor-chip is-tertiary";
+    const findChipBtn = document.createElement("button");
+    findChipBtn.type = "button";
+    findChipBtn.className = "string-multiline-tag-editor-chip string-multiline-tag-editor-chip-button";
+    findChipBtn.title = "Find / Replace";
+    findChipBtn.textContent = "Find/Replace";
     editorStatusChips.appendChild(charactersChip);
     editorStatusChips.appendChild(inlineEditsChip);
+    editorStatusChips.appendChild(findChipBtn);
 
     const editorStatusStats = document.createElement("div");
     editorStatusStats.className = "string-multiline-tag-editor-stats";
 
     editorStatusBar.appendChild(editorStatusChips);
     editorStatusBar.appendChild(editorStatusStats);
+
+    const findReplaceBar = document.createElement("div");
+    findReplaceBar.className = "string-multiline-tag-editor-findbar";
+    if (!state.findReplaceOpen) {
+        findReplaceBar.classList.add("is-hidden");
+    }
+
+    const createFindReplaceInput = (placeholder) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = placeholder;
+        input.className = "string-multiline-tag-editor-findbar-input";
+        input.spellcheck = false;
+        return input;
+    };
+
+    const createFindReplaceButton = (label, title, className = "") => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.title = title;
+        button.className = `string-multiline-tag-editor-findbar-btn${className ? ` ${className}` : ""}`;
+        return button;
+    };
+
+    const createFindReplaceToggle = (label, title) => {
+        const button = createFindReplaceButton(label, title, "is-toggle");
+        return button;
+    };
+
+    const findInput = createFindReplaceInput("Find");
+    const replaceInput = createFindReplaceInput("Replace");
+    const findCount = document.createElement("span");
+    findCount.className = "string-multiline-tag-editor-findbar-count";
+    const findError = document.createElement("span");
+    findError.className = "string-multiline-tag-editor-findbar-error";
+
+    const prevMatchBtn = createFindReplaceButton("Prev", "Previous match");
+    const nextMatchBtn = createFindReplaceButton("Next", "Next match");
+    const replaceBtn = createFindReplaceButton("Replace", "Replace active match");
+    const replaceAllBtn = createFindReplaceButton("Replace All", "Replace all matches");
+    const matchCaseBtn = createFindReplaceToggle("Aa", "Match case");
+    const wholeWordBtn = createFindReplaceToggle("W", "Whole word");
+    const regexBtn = createFindReplaceToggle(".*", "Regex");
+    const selectionOnlyBtn = createFindReplaceToggle("Selection", "Search only inside current selection");
+    const closeFindBtn = createFindReplaceButton("×", "Close find and replace", "is-close");
+
+    const replaceGroup = document.createElement("div");
+    replaceGroup.className = "string-multiline-tag-editor-findbar-group";
+    replaceGroup.appendChild(replaceInput);
+    replaceGroup.appendChild(replaceBtn);
+    replaceGroup.appendChild(replaceAllBtn);
+
+    const optionsGroup = document.createElement("div");
+    optionsGroup.className = "string-multiline-tag-editor-findbar-group";
+    optionsGroup.appendChild(matchCaseBtn);
+    optionsGroup.appendChild(wholeWordBtn);
+    optionsGroup.appendChild(regexBtn);
+    optionsGroup.appendChild(selectionOnlyBtn);
+
+    const navGroup = document.createElement("div");
+    navGroup.className = "string-multiline-tag-editor-findbar-group";
+    navGroup.appendChild(findInput);
+    navGroup.appendChild(findCount);
+    navGroup.appendChild(prevMatchBtn);
+    navGroup.appendChild(nextMatchBtn);
+
+    const feedbackGroup = document.createElement("div");
+    feedbackGroup.className = "string-multiline-tag-editor-findbar-feedback";
+    feedbackGroup.appendChild(findError);
+
+    findReplaceBar.appendChild(navGroup);
+    findReplaceBar.appendChild(replaceGroup);
+    findReplaceBar.appendChild(optionsGroup);
+    findReplaceBar.appendChild(feedbackGroup);
+    findReplaceBar.appendChild(closeFindBtn);
 
     const editorSurface = document.createElement("div");
     editorSurface.className = "string-multiline-tag-editor-surface";
@@ -639,98 +793,26 @@ function addStringMultilineTagEditorWidget(node) {
         };
     };
 
-    // Restore caret position after update
-    const setCaretPos = (pos) => {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        const plainTextLength = getPlainText().length;
-        const targetPos = Math.max(0, Math.min(pos, plainTextLength));
-        let foundStart = false;
-
-        const setCaretPosWithinNode = (rootNode, localTargetPos) => {
-            if (localTargetPos <= 0) {
-                range.setStart(rootNode, 0);
-                return true;
-            }
-
-            let charCount = 0;
-            let nodeStack = [rootNode];
-            let node;
-
-            while ((node = nodeStack.pop())) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    const nextCharCount = charCount + node.length;
-                    if (localTargetPos <= nextCharCount) {
-                        range.setStart(node, localTargetPos - charCount);
-                        return true;
-                    }
-                    charCount = nextCharCount;
-                } else if (node.nodeName === "BR") {
-                    const parentNode = node.parentNode;
-                    const isPlaceholderBreak = isEditorLogicalLineElement(parentNode) && parentNode.childNodes.length === 1;
-                    if (isPlaceholderBreak) {
-                        continue;
-                    }
-
-                    const nextCharCount = charCount + 1;
-                    if (localTargetPos <= nextCharCount) {
-                        range.setStartAfter(node);
-                        return true;
-                    }
-                    charCount = nextCharCount;
-                } else {
-                    let i = node.childNodes.length;
-                    while (i--) {
-                        nodeStack.push(node.childNodes[i]);
-                    }
-                }
-            }
-
-            range.selectNodeContents(rootNode);
-            range.collapse(false);
-            return true;
-        };
-
-        const renderedLogicalLineElements = getRenderedLogicalLineElements();
-        if (renderedLogicalLineElements.length) {
-            let remainingPos = targetPos;
-            for (let lineIndex = 0; lineIndex < renderedLogicalLineElements.length; lineIndex++) {
-                const lineElement = renderedLogicalLineElements[lineIndex];
-                const lineTextLength = stripInternalMarkers(getNodePlainText(lineElement)).length;
-
-                if (remainingPos <= lineTextLength) {
-                    foundStart = setCaretPosWithinNode(lineElement, remainingPos);
-                    break;
-                }
-
-                remainingPos -= lineTextLength;
-
-                if (lineIndex < renderedLogicalLineElements.length - 1) {
-                    if (remainingPos === 1) {
-                        foundStart = setCaretPosWithinNode(renderedLogicalLineElements[lineIndex + 1], 0);
-                        break;
-                    }
-                    remainingPos -= 1;
-                }
-            }
-        }
-
+    const resolveGenericTextPoint = (rootNode, targetPos) => {
         let charCount = 0;
-        let nodeStack = [editor];
+        let nodeStack = [rootNode];
         let node;
-        while (!foundStart && (node = nodeStack.pop())) {
+        let lastTextNode = null;
+
+        while ((node = nodeStack.pop())) {
             if (node.nodeType === Node.TEXT_NODE) {
+                lastTextNode = node;
                 const nextCharCount = charCount + node.length;
                 if (targetPos <= nextCharCount) {
-                    range.setStart(node, targetPos - charCount);
-                    foundStart = true;
+                    return { node, offset: targetPos - charCount };
                 }
                 charCount = nextCharCount;
             } else if (node.nodeName === "BR") {
                 const nextCharCount = charCount + 1;
                 if (targetPos <= nextCharCount) {
-                    range.setStartAfter(node);
-                    foundStart = true;
+                    const parentNode = node.parentNode || rootNode;
+                    const childIndex = Array.prototype.indexOf.call(parentNode.childNodes, node);
+                    return { node: parentNode, offset: childIndex + 1 };
                 }
                 charCount = nextCharCount;
             } else {
@@ -741,24 +823,390 @@ function addStringMultilineTagEditorWidget(node) {
             }
         }
 
-        if (!foundStart) {
-            range.selectNodeContents(editor);
-            range.collapse(false);
-            foundStart = true;
+        if (lastTextNode) {
+            return { node: lastTextNode, offset: lastTextNode.length };
         }
 
-        if (foundStart) {
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            state.lastCursorPosition = targetPos;
+        return { node: rootNode, offset: rootNode.childNodes.length };
+    };
+
+    const resolvePointWithinNode = (rootNode, localTargetPos) => {
+        if (localTargetPos <= 0) {
+            return { node: rootNode, offset: 0 };
         }
+
+        let charCount = 0;
+        let nodeStack = [rootNode];
+        let node;
+        let lastTextNode = null;
+
+        while ((node = nodeStack.pop())) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                lastTextNode = node;
+                const nextCharCount = charCount + node.length;
+                if (localTargetPos <= nextCharCount) {
+                    return { node, offset: localTargetPos - charCount };
+                }
+                charCount = nextCharCount;
+            } else if (node.nodeName === "BR") {
+                const parentNode = node.parentNode;
+                const isPlaceholderBreak = isEditorLogicalLineElement(parentNode) && parentNode.childNodes.length === 1;
+                if (isPlaceholderBreak) {
+                    continue;
+                }
+
+                const nextCharCount = charCount + 1;
+                if (localTargetPos <= nextCharCount) {
+                    return { node: parentNode || rootNode, offset: parentNode ? Array.prototype.indexOf.call(parentNode.childNodes, node) + 1 : 0 };
+                }
+                charCount = nextCharCount;
+            } else {
+                let i = node.childNodes.length;
+                while (i--) {
+                    nodeStack.push(node.childNodes[i]);
+                }
+            }
+        }
+
+        if (lastTextNode) {
+            return { node: lastTextNode, offset: lastTextNode.length };
+        }
+
+        return { node: rootNode, offset: rootNode.childNodes.length };
+    };
+
+    const resolveEditorPoint = (pos) => {
+        const plainTextLength = getPlainText().length;
+        const targetPos = Math.max(0, Math.min(pos, plainTextLength));
+        const renderedLogicalLineElements = getRenderedLogicalLineElements();
+
+        if (renderedLogicalLineElements.length) {
+            let remainingPos = targetPos;
+            for (let lineIndex = 0; lineIndex < renderedLogicalLineElements.length; lineIndex++) {
+                const lineElement = renderedLogicalLineElements[lineIndex];
+                const lineTextLength = stripInternalMarkers(getNodePlainText(lineElement)).length;
+
+                if (remainingPos <= lineTextLength) {
+                    return resolvePointWithinNode(lineElement, remainingPos);
+                }
+
+                remainingPos -= lineTextLength;
+
+                if (lineIndex < renderedLogicalLineElements.length - 1) {
+                    if (remainingPos === 1) {
+                        return resolvePointWithinNode(renderedLogicalLineElements[lineIndex + 1], 0);
+                    }
+                    remainingPos -= 1;
+                }
+            }
+        }
+
+        return resolveGenericTextPoint(editor, targetPos);
+    };
+
+    const setSelection = (startPos, endPos, { focusEditor = true } = {}) => {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        const startPoint = resolveEditorPoint(startPos);
+        const endPoint = resolveEditorPoint(endPos);
+
+        if (!startPoint || !endPoint) {
+            return;
+        }
+
+        range.setStart(startPoint.node, startPoint.offset);
+        range.setEnd(endPoint.node, endPoint.offset);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        state.lastCursorPosition = Math.max(0, Math.min(endPos, getPlainText().length));
+        if (focusEditor) {
+            editor.focus();
+        }
+    };
+
+    // Restore caret position after update
+    const setCaretPos = (pos) => {
+        setSelection(pos, pos, { focusEditor: false });
+    };
+
+    let findMatches = [];
+    let activeFindMatchIndex = -1;
+    let findCompiledQuery = null;
+    let findErrorText = "";
+
+    const getFindOptions = () => ({
+        matchCase: !!state.findMatchCase,
+        wholeWord: !!state.findWholeWord,
+        regex: !!state.findRegex,
+        selectionOnly: !!state.findSelectionOnly
+    });
+
+    const getEffectiveSelectionScope = () => {
+        if (!state.findSelectionOnly) {
+            return null;
+        }
+        const selection = getSelectionRange();
+        if (!selection || selection.start === selection.end) {
+            return null;
+        }
+        return selection;
+    };
+
+    const getDefaultFindMatchIndex = (matches, caretPos) => {
+        if (!matches.length) {
+            return -1;
+        }
+        const containingIndex = matches.findIndex((match) => caretPos >= match.start && caretPos <= match.end);
+        if (containingIndex !== -1) {
+            return containingIndex;
+        }
+        const nextIndex = matches.findIndex((match) => match.start >= caretPos);
+        return nextIndex !== -1 ? nextIndex : 0;
+    };
+
+    const syncFindReplaceResults = ({ preserveActive = false } = {}) => {
+        const plainText = getPlainText();
+        const selectionScope = getEffectiveSelectionScope();
+        if (state.findSelectionOnly && !selectionScope) {
+            findMatches = [];
+            findCompiledQuery = null;
+            findErrorText = "Selection mode needs an active text selection.";
+            activeFindMatchIndex = -1;
+            updateHighlights();
+            return;
+        }
+        const result = findTextMatches(plainText, findInput.value, getFindOptions(), selectionScope);
+        findMatches = result.matches;
+        findCompiledQuery = result.compiled;
+        findErrorText = result.error || "";
+
+        if (!preserveActive || activeFindMatchIndex >= findMatches.length || activeFindMatchIndex < 0) {
+            activeFindMatchIndex = getDefaultFindMatchIndex(findMatches, getCaretPos());
+        }
+
+        if (!findMatches.length) {
+            activeFindMatchIndex = -1;
+        }
+
+        updateHighlights();
+    };
+
+    const updateFindReplaceUiState = () => {
+        findReplaceBar.classList.toggle("is-hidden", !state.findReplaceOpen);
+        matchCaseBtn.classList.toggle("is-active", !!state.findMatchCase);
+        wholeWordBtn.classList.toggle("is-active", !!state.findWholeWord);
+        regexBtn.classList.toggle("is-active", !!state.findRegex);
+        selectionOnlyBtn.classList.toggle("is-active", !!state.findSelectionOnly);
+        findInput.classList.toggle("has-error", !!findErrorText);
+        findError.textContent = findErrorText || "";
+        const activeLabel = activeFindMatchIndex >= 0 ? activeFindMatchIndex + 1 : 0;
+        findCount.textContent = `${activeLabel}/${findMatches.length}`;
+        const hasMatches = findMatches.length > 0 && !findErrorText;
+        prevMatchBtn.disabled = !hasMatches;
+        nextMatchBtn.disabled = !hasMatches;
+        replaceBtn.disabled = !hasMatches;
+        replaceAllBtn.disabled = !hasMatches;
+    };
+
+    const persistFindUiState = () => {
+        state.saveToLocalStorage(storageKey);
+        updateFindReplaceUiState();
+    };
+
+    const openFindReplace = (mode = "find") => {
+        state.findReplaceOpen = true;
+        state.findReplaceMode = mode === "replace" ? "replace" : "find";
+        const selection = getSelectionRange();
+        if (!findInput.value && selection?.text && !selection.text.includes("\n")) {
+            findInput.value = selection.text;
+        }
+        syncFindReplaceResults();
+        persistFindUiState();
+        setTimeout(() => {
+            if (mode === "replace") {
+                replaceInput.focus();
+                replaceInput.select();
+            } else {
+                findInput.focus();
+                findInput.select();
+            }
+        }, 0);
+    };
+
+    const closeFindReplace = () => {
+        state.findReplaceOpen = false;
+        findErrorText = "";
+        findMatches = [];
+        activeFindMatchIndex = -1;
+        persistFindUiState();
+        updateHighlights();
+        setTimeout(() => {
+            editor.focus();
+        }, 0);
+    };
+
+    const focusFindMatchAtIndex = (index) => {
+        if (!findMatches.length) {
+            updateFindReplaceUiState();
+            return;
+        }
+
+        const normalizedIndex = ((index % findMatches.length) + findMatches.length) % findMatches.length;
+        activeFindMatchIndex = normalizedIndex;
+        const match = findMatches[normalizedIndex];
+        updateFindReplaceUiState();
+        updateHighlights();
+        setTimeout(() => {
+            setSelection(match.start, match.end);
+            const activeHighlight = editor.querySelector(".string-multiline-tag-editor-find-match.is-active");
+            activeHighlight?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }, 0);
+    };
+
+    const focusNextFindMatch = () => {
+        if (!findMatches.length) {
+            syncFindReplaceResults();
+            return;
+        }
+        focusFindMatchAtIndex(activeFindMatchIndex + 1);
+    };
+
+    const focusPreviousFindMatch = () => {
+        if (!findMatches.length) {
+            syncFindReplaceResults();
+            return;
+        }
+        focusFindMatchAtIndex(activeFindMatchIndex - 1);
+    };
+
+    const commitEditorTextChange = (newText, newSelectionStart, newSelectionEnd = newSelectionStart, { focusEditor = true } = {}) => {
+        setEditorText(newText);
+        state.text = newText;
+        state.addToHistory(newText, newSelectionEnd);
+        state.saveToLocalStorage(storageKey);
+        widget.value = newText;
+        widget.callback?.(newText);
+        historyStatus.textContent = state.getHistoryStatus();
+        syncFindReplaceResults();
+
+        setTimeout(() => {
+            if (newSelectionStart === newSelectionEnd) {
+                if (focusEditor) {
+                    editor.focus();
+                }
+                setCaretPos(newSelectionStart);
+            } else {
+                setSelection(newSelectionStart, newSelectionEnd, { focusEditor });
+            }
+        }, 0);
+    };
+
+    const replaceCurrentFindMatch = () => {
+        if (activeFindMatchIndex < 0 || !findMatches[activeFindMatchIndex] || findErrorText) {
+            return;
+        }
+
+        const currentText = getPlainText();
+        const currentMatch = findMatches[activeFindMatchIndex];
+        const replacementResult = replaceMatches(currentText, [currentMatch], replaceInput.value, findCompiledQuery, getFindOptions());
+        const replacementTextLength = replacementResult.text.length - (currentText.length - (currentMatch.end - currentMatch.start));
+        const nextSelectionStart = currentMatch.start;
+        const nextSelectionEnd = currentMatch.start + replacementTextLength;
+        commitEditorTextChange(replacementResult.text, nextSelectionStart, nextSelectionEnd);
+    };
+
+    const replaceAllFindMatches = () => {
+        if (!findMatches.length || findErrorText) {
+            return;
+        }
+
+        const currentText = getPlainText();
+        const replacementResult = replaceMatches(currentText, findMatches, replaceInput.value, findCompiledQuery, getFindOptions());
+        commitEditorTextChange(replacementResult.text, 0, 0);
+        showNotification(`✓ Replaced ${replacementResult.replacements} match${replacementResult.replacements === 1 ? "" : "es"}`, 1800);
+    };
+
+    const getLineMatchRanges = (lineIndex, lines) => {
+        if (!findMatches.length) {
+            return [];
+        }
+
+        let lineStart = 0;
+        for (let index = 0; index < lineIndex; index++) {
+            lineStart += lines[index].length + 1;
+        }
+        const lineEnd = lineStart + lines[lineIndex].length;
+
+        return findMatches
+            .map((match, matchIndex) => ({
+                start: Math.max(0, match.start - lineStart),
+                end: Math.min(lines[lineIndex].length, match.end - lineStart),
+                isActive: matchIndex === activeFindMatchIndex,
+                intersects: match.start < lineEnd && match.end > lineStart
+            }))
+            .filter((match) => match.intersects && match.end > match.start);
+    };
+
+    const resolveLineDomPoint = (root, targetOffset) => {
+        let charCount = 0;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let node;
+        let lastTextNode = null;
+
+        while ((node = walker.nextNode())) {
+            lastTextNode = node;
+            const nextCharCount = charCount + node.textContent.length;
+            if (targetOffset <= nextCharCount) {
+                return { node, offset: targetOffset - charCount };
+            }
+            charCount = nextCharCount;
+        }
+
+        if (lastTextNode) {
+            return { node: lastTextNode, offset: lastTextNode.textContent.length };
+        }
+
+        return null;
+    };
+
+    const applyFindHighlightsToLineHtml = (lineHtml, ranges) => {
+        if (!ranges.length || !lineHtml || lineHtml === "<br>") {
+            return lineHtml;
+        }
+
+        const tempRoot = document.createElement("div");
+        tempRoot.innerHTML = lineHtml;
+        const sortedRanges = [...ranges].sort((a, b) => b.start - a.start);
+
+        sortedRanges.forEach((rangeInfo) => {
+            const startPoint = resolveLineDomPoint(tempRoot, rangeInfo.start);
+            const endPoint = resolveLineDomPoint(tempRoot, rangeInfo.end);
+            if (!startPoint || !endPoint) {
+                return;
+            }
+
+            const domRange = document.createRange();
+            domRange.setStart(startPoint.node, startPoint.offset);
+            domRange.setEnd(endPoint.node, endPoint.offset);
+
+            const wrapper = document.createElement("span");
+            wrapper.className = `string-multiline-tag-editor-find-match${rangeInfo.isActive ? " is-active" : ""}`;
+            const fragment = domRange.extractContents();
+            wrapper.appendChild(fragment);
+            domRange.insertNode(wrapper);
+        });
+
+        return tempRoot.innerHTML;
     };
 
     // Function to highlight syntax in contenteditable
     const updateHighlights = () => {
         const plainText = getPlainText();
         const caretPos = getCaretPos();
+        const selectionBeforeRender = getSelectionRange();
+        const activeElement = document.activeElement;
+        const shouldRestoreEditorSelection = activeElement !== findInput && activeElement !== replaceInput;
         let html = plainText;
         let cueNumberIndex = 0;
         let timingHandleIndex = 0;
@@ -821,7 +1269,14 @@ function addStringMultilineTagEditorWidget(node) {
         html = stripResidualMarkerArtifacts(html);
         html = highlightResidualSquareBracketTags(html);
 
+        const plainLines = plainText.split("\n");
         renderedLogicalLineHtmlParts = html.split("\n");
+        renderedLogicalLineHtmlParts = renderedLogicalLineHtmlParts.map((lineHtml, index) => (
+            applyFindHighlightsToLineHtml(
+                lineHtml && lineHtml.length ? lineHtml : "<br>",
+                getLineMatchRanges(index, plainLines)
+            )
+        ));
         html = renderedLogicalLineHtmlParts.map((lineHtml, index) => (
             `<div class="${EDITOR_LOGICAL_LINE_CLASS}" data-line-index="${index}" data-line-number="${index + 1}">${lineHtml && lineHtml.length ? lineHtml : "<br>"}</div>`
         )).join("");
@@ -829,10 +1284,17 @@ function addStringMultilineTagEditorWidget(node) {
         // Update only if changed to avoid flicker
         if (editor.innerHTML !== html) {
             editor.innerHTML = html;
-            setCaretPos(caretPos);
+            if (!shouldRestoreEditorSelection) {
+                // Keep focus in the find/replace inputs while still refreshing match markup.
+            } else if (selectionBeforeRender && selectionBeforeRender.start !== selectionBeforeRender.end) {
+                setSelection(selectionBeforeRender.start, selectionBeforeRender.end, { focusEditor: false });
+            } else {
+                setCaretPos(caretPos);
+            }
         }
         timingDragController?.syncActiveHandle();
         updateEditorMetrics();
+        updateFindReplaceUiState();
     };
 
     // Update on input
@@ -926,27 +1388,29 @@ function addStringMultilineTagEditorWidget(node) {
     topActions.className = "string-multiline-tag-editor-top-actions";
 
     // Create floating invisible divider on top of everything for resizing
-    const resizeDivider = document.createElement("div");
+    resizeDivider = document.createElement("div");
     resizeDivider.style.position = "absolute";
     resizeDivider.style.top = "56px";
     resizeDivider.style.width = "6px"; // Invisible grabable area (3px left, 3px right of border)
     resizeDivider.style.bottom = "0";
     resizeDivider.style.height = "auto";
     resizeDivider.style.cursor = "col-resize";
-    resizeDivider.style.zIndex = "1000"; // On top of everything
+    resizeDivider.style.zIndex = "900"; // Stays above content but below the collapse tab
     resizeDivider.style.userSelect = "none";
     resizeDivider.style.background = "transparent"; // Invisible
     editorContainer.appendChild(resizeDivider);
 
-    // Update divider position when sidebar width changes (centered on border)
-    const updateDividerPosition = () => {
-        resizeDivider.style.left = (state.sidebarWidth - 3) + "px"; // 3px left + 3px right of border
-    };
-    updateDividerPosition();
+    sidebarToggle = document.createElement("button");
+    sidebarToggle.type = "button";
+    sidebarToggle.className = "string-multiline-tag-editor-sidebar-toggle";
+    sidebarToggle.addEventListener("click", () => {
+        setSidebarExpanded(!state.sidebarExpanded);
+    });
 
     editorSurface.appendChild(editor);
     editorSurface.appendChild(editorScrollbar);
     textareaWrapper.appendChild(editorStatusBar);
+    textareaWrapper.appendChild(findReplaceBar);
     textareaWrapper.appendChild(editorSurface);
     shellBody.appendChild(sidebar);
     shellBody.appendChild(textareaWrapper);
@@ -954,6 +1418,8 @@ function addStringMultilineTagEditorWidget(node) {
     contentStage.appendChild(auxiliaryView);
     editorContainer.appendChild(topBar);
     editorContainer.appendChild(contentStage);
+    editorContainer.appendChild(sidebarToggle);
+    syncSidebarLayout({ persist: false });
 
     // Initial highlight
     updateHighlights();
@@ -1204,14 +1670,82 @@ function addStringMultilineTagEditorWidget(node) {
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, null, setFontSize, setFontFamily,
-        showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale,
+        showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
         // Inline edit controls
         paraSelect, paraIterSlider, addParaBtn,
         emotionSelect, emotionIterSlider, addEmotionBtn,
         styleSelect, styleIterSlider, addStyleBtn,
         speedSelect, speedIterSlider, addSpeedBtn,
-        restorePassSlider, restoreRefInput, addRestoreBtn
+        restorePassSlider, restoreRefInput, addRestoreBtn,
+        openFindReplace, focusNextFindMatch, focusPreviousFindMatch
     );
+
+    const stopFindBarShortcutLeak = (event) => {
+        event.stopPropagation();
+        if ((event.ctrlKey || event.metaKey) && (event.key === "f" || event.key === "F" || event.key === "h" || event.key === "H")) {
+            event.preventDefault();
+        }
+    };
+
+    [findInput, replaceInput].forEach((input) => {
+        input.addEventListener("keydown", (event) => {
+            stopFindBarShortcutLeak(event);
+
+            if (event.key === "Escape") {
+                event.preventDefault();
+                closeFindReplace();
+                return;
+            }
+
+            if (event.key === "Enter") {
+                event.preventDefault();
+                if (input === replaceInput && !event.shiftKey) {
+                    replaceCurrentFindMatch();
+                    return;
+                }
+
+                if (event.shiftKey) {
+                    focusPreviousFindMatch();
+                } else {
+                    focusNextFindMatch();
+                }
+            }
+        }, true);
+
+        input.addEventListener("input", () => {
+            syncFindReplaceResults();
+        });
+    });
+
+    findInput.addEventListener("focus", () => {
+        state.findReplaceMode = "find";
+        state.saveToLocalStorage(storageKey);
+    });
+
+    replaceInput.addEventListener("focus", () => {
+        state.findReplaceMode = "replace";
+        state.saveToLocalStorage(storageKey);
+    });
+
+    closeFindBtn.addEventListener("click", closeFindReplace);
+    findChipBtn.addEventListener("click", () => openFindReplace("find"));
+    prevMatchBtn.addEventListener("click", focusPreviousFindMatch);
+    nextMatchBtn.addEventListener("click", focusNextFindMatch);
+    replaceBtn.addEventListener("click", replaceCurrentFindMatch);
+    replaceAllBtn.addEventListener("click", replaceAllFindMatches);
+
+    const toggleFindOption = (key) => {
+        state[key] = !state[key];
+        state.saveToLocalStorage(storageKey);
+        syncFindReplaceResults();
+    };
+
+    matchCaseBtn.addEventListener("click", () => toggleFindOption("findMatchCase"));
+    wholeWordBtn.addEventListener("click", () => toggleFindOption("findWholeWord"));
+    regexBtn.addEventListener("click", () => toggleFindOption("findRegex"));
+    selectionOnlyBtn.addEventListener("click", () => toggleFindOption("findSelectionOnly"));
+
+    syncFindReplaceResults();
 
     const summarizeText = (text, maxLength = 180) => {
         const compact = (text || "").replace(/\s+/g, " ").trim();
@@ -1656,10 +2190,12 @@ function addStringMultilineTagEditorWidget(node) {
         const isEditorView = viewKey === "editor";
         shellBody.style.display = isEditorView ? "flex" : "none";
         auxiliaryView.style.display = isEditorView ? "none" : "flex";
-        resizeDivider.style.display = isEditorView ? "block" : "none";
+        syncSidebarLayout({ persist: false });
 
         if (isEditorView) {
-            requestAnimationFrame(updateSidebarScrollbar);
+            if (state.sidebarExpanded) {
+                requestAnimationFrame(updateSidebarScrollbar);
+            }
             return;
         }
 

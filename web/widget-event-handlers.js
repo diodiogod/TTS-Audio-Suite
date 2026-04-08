@@ -12,13 +12,14 @@ export function attachAllEventHandlers(
     undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize, setFontFamily,
-    showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale,
+    showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
     // Inline edit controls
     paraSelect, paraIterSlider, addParaBtn,
     emotionSelect, emotionIterSlider, addEmotionBtn,
     styleSelect, styleIterSlider, addStyleBtn,
     speedSelect, speedIterSlider, addSpeedBtn,
-    restorePassSlider, restoreRefInput, addRestoreBtn
+    restorePassSlider, restoreRefInput, addRestoreBtn,
+    openFindReplace, focusNextFindMatch, focusPreviousFindMatch
 ) {
     // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
     editor.addEventListener("keydown", (e) => {
@@ -291,6 +292,22 @@ export function attachAllEventHandlers(
         }
         const isPrimaryModifier = (e.ctrlKey || e.metaKey) && !e.altKey;
         if (isPrimaryModifier) {
+            if (e.key === "f" || e.key === "F") {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                openFindReplace("find");
+                return;
+            }
+
+            if (e.key === "h" || e.key === "H") {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                openFindReplace("replace");
+                return;
+            }
+
             const isUndo = (e.key === "z" || e.key === "Z") && !e.shiftKey;
             const isRedo = (e.key === "y" || e.key === "Y") || ((e.key === "z" || e.key === "Z") && e.shiftKey);
 
@@ -309,6 +326,18 @@ export function attachAllEventHandlers(
             e.stopPropagation();
             e.stopImmediatePropagation();
             applyHistoryStep(e.shiftKey ? "redo" : "undo");
+            return;
+        }
+
+        if (e.key === "F3") {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            if (e.shiftKey) {
+                focusPreviousFindMatch();
+            } else {
+                focusNextFindMatch();
+            }
         }
     });
 
@@ -669,6 +698,7 @@ export function attachAllEventHandlers(
     resizeDivider.addEventListener("mousedown", (e) => {
         const currentTime = Date.now();
         if (currentTime - lastClickTime < 300 && Math.abs(e.clientX - lastClickX) < 5) {
+            setSidebarResizeActive(false);
             setSidebarWidth(220);
             setUIScale(1.0);
             setFontSize(14);
@@ -682,6 +712,7 @@ export function attachAllEventHandlers(
         initialMouseX = e.clientX;
         initialSidebarWidth = state.sidebarWidth;
         isResizing = true;
+        setSidebarResizeActive(true);
         e.preventDefault();
     });
 
@@ -693,6 +724,9 @@ export function attachAllEventHandlers(
     });
 
     document.addEventListener("mouseup", () => {
+        if (isResizing) {
+            setSidebarResizeActive(false);
+        }
         isResizing = false;
     });
 
