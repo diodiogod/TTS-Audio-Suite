@@ -7,10 +7,10 @@ const SETTING_SECTION_RESTORE_VC = "Voice Restoration (<restore> Tags)";
 // Shared function to send settings to backend
 async function sendSettingsToBackend() {
     try {
-        const precision = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Precision", "auto");
-        const device = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Device", "auto");
-        const vcEngine = app.ui.settings.getSettingValue("TTSAudioSuite.RestoreTags.VCEngine", "chatterbox_23lang");
-        const cosyvoiceVariant = app.ui.settings.getSettingValue("TTSAudioSuite.RestoreTags.CosyVoiceVariant", "RL");
+        const precision = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Precision");
+        const device = app.ui.settings.getSettingValue("TTSAudioSuite.InlineEditTags.Device");
+        const vcEngine = app.ui.settings.getSettingValue("TTSAudioSuite.RestoreTags.VCEngine");
+        const cosyvoiceVariant = app.ui.settings.getSettingValue("TTSAudioSuite.RestoreTags.CosyVoiceVariant");
 
         console.log(`TTS Audio Suite: Sending settings to backend - precision=${precision}, device=${device}, vcEngine=${vcEngine}, cosyvoiceVariant=${cosyvoiceVariant}`);
 
@@ -45,7 +45,7 @@ app.registerExtension({
             id: "TTSAudioSuite.InlineEditTags.Precision",
             name: "Model Precision for Inline Edit Tags",
             type: "combo",
-            defaultValue: "auto",
+            default: "auto",
             options: ["auto", "fp32", "fp16", "bf16", "int8", "int4"],
             category: [SETTING_CATEGORY, SETTING_SECTION_STEP_EDITX, "Model Precision"],
             tooltip:
@@ -58,7 +58,7 @@ app.registerExtension({
             id: "TTSAudioSuite.InlineEditTags.Device",
             name: "Device for Inline Edit Tags",
             type: "combo",
-            defaultValue: "auto",
+            default: "auto",
             options: ["auto", "cuda", "cpu", "xpu"],
             category: [SETTING_CATEGORY, SETTING_SECTION_STEP_EDITX, "Device"],
             tooltip:
@@ -71,7 +71,7 @@ app.registerExtension({
             id: "TTSAudioSuite.RestoreTags.VCEngine",
             name: "Voice Conversion Engine for <restore> Tags",
             type: "combo",
-            defaultValue: "chatterbox_23lang",
+            default: "chatterbox_23lang",
             options: ["chatterbox_23lang", "chatterbox", "cosyvoice"],
             category: [SETTING_CATEGORY, SETTING_SECTION_RESTORE_VC, "VC Engine"],
             tooltip:
@@ -85,7 +85,7 @@ app.registerExtension({
             id: "TTSAudioSuite.RestoreTags.CosyVoiceVariant",
             name: "CosyVoice Model Variant for <restore> Tags",
             type: "combo",
-            defaultValue: "RL",
+            default: "RL",
             options: ["RL", "standard"],
             category: [SETTING_CATEGORY, SETTING_SECTION_RESTORE_VC, "CosyVoice Variant"],
             tooltip:

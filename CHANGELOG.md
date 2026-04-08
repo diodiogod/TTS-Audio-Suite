@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.4] - 2026-04-08
+
+### Added
+
+- Keep inline edit tag and voice restoration settings working as before
+- Reduce noisy console spam from deprecated settings API usage
+
+### Fixed
+
+- Fix TTS Audio Suite settings deprecation warnings
+- Fix ComfyUI settings warnings shown in the browser console
 ## [4.25.3] - 2026-04-08
 
 ### Added
