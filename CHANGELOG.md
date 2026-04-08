@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.3] - 2026-04-08
+
+### Added
+
+- Redesign SRT Advanced Options interface
+- Clarify subtitle mode and language-profile behavior directly in the UI
+
+### Changed
+
+- Add a cleaner compact layout for subtitle policy controls
+- Improve preset editing with visible modified states and smarter locking
 ## [4.25.2] - 2026-04-06
 
 ### Fixed
