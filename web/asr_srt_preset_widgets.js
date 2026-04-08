@@ -171,6 +171,40 @@ function findWidgetByName(node, name) {
     return node.widgets ? node.widgets.find((w) => w.name === name) : null;
 }
 
+function setWidgetValue(widget, value) {
+    if (!widget) {
+        return;
+    }
+    widget.value = value;
+    widget.callback?.(widget.value);
+}
+
+function normalizeComparableValue(widget, value) {
+    if (typeof value === "boolean") {
+        return Boolean(value);
+    }
+    if (typeof value === "number") {
+        return Number(value);
+    }
+    if (typeof widget?.value === "boolean") {
+        return Boolean(value);
+    }
+    if (typeof widget?.value === "number") {
+        const numeric = Number(value);
+        return Number.isNaN(numeric) ? value : numeric;
+    }
+    return value;
+}
+
+function widgetValueMatches(widget, expectedValue) {
+    const actual = normalizeComparableValue(widget, widget?.value);
+    const expected = normalizeComparableValue(widget, expectedValue);
+    if (typeof actual === "number" && typeof expected === "number") {
+        return Math.abs(actual - expected) < 1e-9;
+    }
+    return actual === expected;
+}
+
 function bindWidgetValueHandler(widget, onChange) {
     if (!widget) {
         return;
@@ -187,35 +221,18 @@ function bindWidgetValueHandler(widget, onChange) {
         return;
     }
 
-    let widgetValue = widget.value;
-    let originalDescriptor = Object.getOwnPropertyDescriptor(widget, "value") ||
-        Object.getOwnPropertyDescriptor(Object.getPrototypeOf(widget), "value");
-    if (!originalDescriptor) {
-        originalDescriptor = Object.getOwnPropertyDescriptor(widget.constructor.prototype, "value");
-    }
-
-    Object.defineProperty(widget, "value", {
-        get() {
-            return originalDescriptor && originalDescriptor.get
-                ? originalDescriptor.get.call(widget)
-                : widgetValue;
-        },
-        set(newVal) {
-            if (originalDescriptor && originalDescriptor.set) {
-                originalDescriptor.set.call(widget, newVal);
-            } else {
-                widgetValue = newVal;
-            }
-
-            for (const handler of widget.__ttsAudioSuiteValueHandlers || []) {
-                try {
-                    handler(newVal);
-                } catch (error) {
-                    console.warn("SRT Advanced Options widget handler failed:", error);
-                }
+    const originalCallback = widget.callback;
+    widget.callback = function (...args) {
+        const result = originalCallback ? originalCallback.apply(this, args) : undefined;
+        for (const handler of widget.__ttsAudioSuiteValueHandlers || []) {
+            try {
+                handler(widget.value);
+            } catch (error) {
+                console.warn("SRT Advanced Options widget handler failed:", error);
             }
         }
-    });
+        return result;
+    };
 
     widget.__ttsAudioSuiteValueBound = true;
 }
@@ -230,6 +247,7 @@ function applyPreset(node, preset) {
         return;
     }
 
+    node.__srtLastPresetBaseline = preset;
     node.__applyingSrtPreset = true;
     try {
         for (const field of Object.keys(values)) {
@@ -237,7 +255,7 @@ function applyPreset(node, preset) {
             if (!widget || values[field] === undefined) {
                 continue;
             }
-            widget.value = values[field];
+            setWidgetValue(widget, values[field]);
         }
     } finally {
         node.__applyingSrtPreset = false;
@@ -283,7 +301,7 @@ function applyTtsReadyFieldState(node) {
         if (maxLinesWidget && maxLinesWidget.value !== 1) {
             node.__applyingTtsReadyNormalization = true;
             try {
-                maxLinesWidget.value = 1;
+                setWidgetValue(maxLinesWidget, 1);
             } finally {
                 node.__applyingTtsReadyNormalization = false;
             }
@@ -303,7 +321,7 @@ function matchesPresetValues(node, preset) {
             return false;
         }
 
-        if (widget.value !== values[field]) {
+        if (!widgetValueMatches(widget, values[field])) {
             return false;
         }
     }
@@ -339,7 +357,8 @@ function srtFieldEdited(node) {
         return;
     }
 
-    presetWidget.value = "Custom";
+    node.__srtLastPresetBaseline = presetWidget.value;
+    setWidgetValue(presetWidget, "Custom");
 }
 
 function applyHeuristicProfile(node, profile) {
@@ -355,7 +374,7 @@ function applyHeuristicProfile(node, profile) {
             if (!widget || values[field] === undefined) {
                 continue;
             }
-            widget.value = values[field];
+            setWidgetValue(widget, values[field]);
         }
     } finally {
         node.__applyingHeuristicProfile = false;
@@ -383,13 +402,6 @@ function heuristicFieldEdited(node) {
     if (!isSrtOptionsNode(node) || node.__applyingHeuristicProfile) {
         return;
     }
-
-    const profileWidget = findWidgetByName(node, "heuristic_language_profile");
-    if (!profileWidget || profileWidget.value === "Custom") {
-        return;
-    }
-
-    profileWidget.value = "Custom";
 }
 
 app.registerExtension({
@@ -399,11 +411,25 @@ app.registerExtension({
             return;
         }
 
+        const presetWidget = findWidgetByName(node, "srt_preset");
+        node.__srtLastPresetBaseline = presetWidget && presetWidget.value !== "Custom" ? presetWidget.value : null;
+
+        const profileWidget = findWidgetByName(node, "heuristic_language_profile");
+        if (profileWidget && profileWidget.value === "Custom") {
+            setWidgetValue(profileWidget, "Auto");
+        }
+
         applyPresetState(node);
         heuristicProfileHandler(node);
         applyTtsReadyFieldState(node);
 
-        bindWidgetValueHandler(findWidgetByName(node, "srt_preset"), () => srtPresetHandler(node));
+        bindWidgetValueHandler(findWidgetByName(node, "srt_preset"), () => {
+            const currentPreset = findWidgetByName(node, "srt_preset")?.value;
+            if (currentPreset && currentPreset !== "Custom") {
+                node.__srtLastPresetBaseline = currentPreset;
+            }
+            srtPresetHandler(node);
+        });
         bindWidgetValueHandler(findWidgetByName(node, "heuristic_language_profile"), () => heuristicProfileHandler(node));
         bindWidgetValueHandler(findWidgetByName(node, "tts_ready_mode"), () => applyTtsReadyFieldState(node));
 

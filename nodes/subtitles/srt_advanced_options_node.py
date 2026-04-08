@@ -45,7 +45,7 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
                 }),
                 "srt_mode": (["smart", "engine_segments", "words"], {
                     "default": "smart",
-                    "tooltip": "How subtitle cues are built:\n• smart: rebuild from word timings for readability\n• engine_segments: trust incoming segments as-is\n• words: one word per cue (debug/alignment only)\n\nUse smart unless you have a reason not to."
+                    "tooltip": "How subtitle cues are grouped before final display wrapping:\n• smart: rebuild cues from timed words using this node's gap, duration, CPS, and merge rules. Best default for final subtitles.\n• engine_segments: keep the incoming ASR/engine segments as the base chunks, then only split later for display if needed. Use this when the source segments are already good.\n• words: one timed word per cue. This is mainly for debugging alignment or inspecting bad timing data.\n\nUse smart for almost everything."
                 }),
                 "tts_ready_mode": ("BOOLEAN", {
                     "default": False,
@@ -57,7 +57,7 @@ class SRTAdvancedOptionsNode(BaseChatterBoxNode):
                 }),
                 "heuristic_language_profile": (HEURISTIC_PROFILE_OPTIONS, {
                     "default": DEFAULT_HEURISTIC_PROFILE_LABEL,
-                    "tooltip": "Language profile for heuristic defaults.\nPick a language to auto-populate connector and incomplete-sentence lists.\nAuto resolves from ASR timing language when available. Custom means you fully manage the text lists yourself."
+                    "tooltip": "Language profile for heuristic defaults.\nPick a language to seed the connector and incomplete-sentence lists.\nAuto uses the ASR timing language when one is available, then falls back to English.\nThis is only a seed. You can still edit the text fields manually after selection."
                 }),
                 "srt_max_chars_per_line": ("INT", {
                     "default": 42, "min": 10, "max": 10000, "step": 1,

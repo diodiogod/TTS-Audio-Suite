@@ -3,8 +3,9 @@ import { app } from "../../scripts/app.js";
 const PANEL_MIN_WIDTH = 420;
 const PANEL_MIN_HEIGHT = 320;
 const PANEL_WIDGET_MIN_HEIGHT = 220;
-const PANEL_HORIZONTAL_PADDING = 16;
-const PANEL_VERTICAL_PADDING = 44;
+const PANEL_HORIZONTAL_PADDING = 4;
+const PANEL_VERTICAL_PADDING = 28;
+const PANEL_DOM_WIDGET_HEIGHT = 8;
 
 const VISUAL_PRESET_VALUES = {
     "Netflix-Standard": {
@@ -167,12 +168,11 @@ const FIELD_DEFS = {
             "Danish",
             "Finnish",
             "Greek",
-            "Custom",
         ],
     },
     tts_ready_mode: { label: "TTS-Ready Mode", kind: "toggle" },
     tts_ready_paragraph_mode: { label: "Paragraph Mode", kind: "toggle" },
-    srt_max_lines: { label: "srt_max_lines", kind: "locked-number", min: 1, max: 3, step: 1 },
+    srt_max_lines: { label: "srt_max_lines", kind: "adaptive-number", min: 1, max: 3, step: 1 },
     srt_max_chars_per_line: { label: "srt_max_chars_per_line", kind: "slider", integer: true, min: 10, max: 10000, uiMax: 400, step: 1 },
     srt_max_duration: { label: "srt_max_duration", kind: "slider", integer: false, min: 0.2, max: 9999.0, uiMax: 40.0, step: 0.1 },
     srt_min_duration: { label: "srt_min_duration", kind: "slider", integer: false, min: 0.0, max: 9999.0, uiMax: 10.0, step: 0.1 },
@@ -205,8 +205,182 @@ const FIELD_DEFS = {
     normalize_cue_end_punctuation: { label: "normalize_cue_end_punctuation", kind: "toggle" },
 };
 
+const TOOLTIP_TEXT = {
+    srt_preset: `Readability preset for subtitle building.
+Choose a preset to seed the knobs below with recommended values, then edit them as needed.
+If you change a preset-derived knob, the UI will switch to Custom automatically.
+
+Examples:
+• Broadcast: conservative timing, safe desktop readability
+• Netflix-Standard: similar readability with longer max duration
+• Fast speech: denser subtitles for rapid speech
+• Mobile: shorter lines for smaller screens
+• TTS-Ready: single-line cues that stop by meaning instead of display wrapping
+• TTS-Ready (Paragraphs): same TTS-ready behavior, but tuned for longer paragraph-sized cues`,
+    srt_mode: `How subtitle cues are grouped before final display wrapping:
+• smart: rebuild cues from timed words using this node's gap, duration, CPS, and merge rules. Best default for final subtitles.
+• engine_segments: keep the incoming ASR/engine segments as the base chunks, then only split later for display if needed. Use this when the source segments are already good.
+• words: one timed word per cue. This is mainly for debugging alignment or inspecting bad timing data.
+
+Use smart for almost everything.`,
+    tts_ready_mode: `Build cues for downstream TTS instead of on-screen subtitles.
+This disables multi-line display wrapping pressure, keeps each cue on one line, and prefers semantic stopping points over character-count stops.`,
+    tts_ready_paragraph_mode: `Only used when TTS-ready is enabled.
+Prefer one cue per paragraph and only split if a paragraph is genuinely too long for clean TTS playback.`,
+    heuristic_language_profile: `Language profile for heuristic defaults.
+Pick a language to seed the dangling-tail and incomplete-sentence lists.
+Auto uses the ASR timing language when one is available, then falls back to English.
+This is a seed only. You can still edit the text fields manually after selection.`,
+    srt_max_chars_per_line: `Maximum characters per subtitle line.
+Lower = shorter lines, more splits.
+Typical values: 32 mobile, 42 desktop/broadcast.`,
+    srt_max_lines: `Maximum lines per subtitle cue.
+2 is the normal default. 3 is denser but harder to read.`,
+    srt_max_duration: `Maximum on-screen duration for a subtitle cue in seconds.
+Higher = fewer splits; too high feels laggy.`,
+    srt_min_duration: `Minimum on-screen duration in seconds.
+Higher = fewer flash cues; lower = tighter sync.`,
+    srt_min_gap: `Pause length that forces a new subtitle cue.
+Higher = more merging across short pauses.`,
+    srt_max_cps: `Maximum reading speed in characters per second.
+Lower = easier reading, more splits.
+Higher = denser subtitles.`,
+    dedupe_overlaps: `Remove overlapping duplicate phrases from bad word timing data.
+Useful for alignment glitches.
+Can also remove real repetitions like choruses.`,
+    dedupe_window_ms: `Time window used to detect overlapping duplicates in milliseconds.
+Higher = more aggressive dedupe.`,
+    dedupe_min_words: `Minimum matching word count before a repeated phrase is considered a duplicate.
+Higher = safer.`,
+    dedupe_overlap_ratio: `Required timing overlap ratio before duplicate text is removed.
+Higher = stricter dedupe.`,
+    punctuation_grace_chars: `Allow a sentence-ending punctuation mark to exceed the max line length by this many chars.
+Helps avoid ugly breaks right before punctuation.`,
+    min_words_per_segment: `Merge very tiny subtitle segments into neighbors.
+Higher = fewer one-word cues.`,
+    min_segment_seconds: `Merge subtitle cues shorter than this duration.
+Higher = fewer micro-cues.`,
+    merge_trailing_punct_word: `Keep a trailing word with punctuation attached to the previous subtitle when possible.
+Fixes splits like "beautiful / world."`,
+    merge_trailing_punct_max_gap: `Maximum pause allowed when bridging that trailing punctuation word.
+Higher = more aggressive bridging.`,
+    merge_leading_short_phrase: `Merge a very short phrase into the previous cue when it follows punctuation.
+Fixes splits like "I'm a / riddle."`,
+    merge_leading_short_max_words: `Maximum word count for that short leading phrase.
+Higher = more aggressive merging.`,
+    merge_leading_short_max_gap: `Maximum pause allowed when merging a short leading phrase.
+Higher = more merging across pauses.`,
+    merge_dangling_tail: `Merge a short dangling ending into the next subtitle when it ends on a connector word.
+Useful for incomplete fragments.`,
+    merge_dangling_tail_max_words: `Maximum words allowed in that dangling ending.
+Higher = more aggressive merging.`,
+    merge_dangling_tail_max_gap: `Maximum pause allowed when merging a dangling tail.
+Higher = more aggressive merging.`,
+    merge_dangling_tail_allowlist: `Comma-separated connector words treated as dangling tails.
+Example: a, the, to, of, and, I'm`,
+    merge_leading_short_no_punct: `Merge a very short follow-up into the previous subtitle even without punctuation.
+Useful for awkward mid-thought splits.`,
+    merge_leading_short_no_punct_max_words: `Maximum words in that short follow-up.
+Higher = more aggressive merging.`,
+    merge_leading_short_no_punct_max_gap: `Maximum pause allowed when merging that follow-up.
+Higher = more aggressive merging.`,
+    merge_incomplete_sentence: `Merge short continuations when the previous subtitle clearly looks incomplete.
+Useful for broken questions and sentence fragments.`,
+    merge_incomplete_max_gap: `Maximum pause allowed when merging an incomplete sentence.
+Higher = more aggressive merging.`,
+    merge_incomplete_keywords: `Comma-separated keywords that suggest the previous subtitle is incomplete.
+Example: what, why, how, where`,
+    merge_incomplete_split_next: `If the next subtitle contains multiple sentences, split it and only merge the first sentence.
+Helps keep merged subtitles readable.`,
+    merge_allow_overlong: `Allow merges even if the final subtitle exceeds max duration.
+Good for songs and slow speech. Disable for strict timing limits.`,
+    normalize_cue_end_punctuation: `Optional subtitle-style cleanup.
+When enabled, removes trailing commas, periods, semicolons, and colons at the visual end of a subtitle cue.
+If a cue is cleaned this way, the next cue start is uppercased to keep the subtitle flow visually coherent.
+
+Question marks, exclamation points, and ellipses are preserved.
+This is a style transform, not grammatical truth, so it stays disabled by default.`,
+};
+
 function findWidgetByName(node, name) {
     return node.widgets ? node.widgets.find((widget) => widget.name === name) : null;
+}
+
+function setWidgetValue(widget, value) {
+    if (!widget) {
+        return;
+    }
+    widget.value = value;
+    widget.callback?.(widget.value);
+}
+
+function setWidgetHeightSafe(widget, height) {
+    if (!widget) {
+        return;
+    }
+    try {
+        widget.height = height;
+    } catch {
+        // Some ComfyUI builds expose BaseWidget.height as getter-only.
+    }
+    try {
+        widget.computedHeight = height;
+    } catch {
+        // Ignore readonly implementations.
+    }
+}
+
+function getWidgetTooltip(widget) {
+    const candidates = [
+        widget?.options?.tooltip,
+        widget?.tooltip,
+        TOOLTIP_TEXT[widget?.name],
+    ];
+    for (const candidate of candidates) {
+        const text = String(candidate ?? "").trim();
+        if (text) {
+            return text;
+        }
+    }
+    return "";
+}
+
+function createModifiedTag(labelText = "modified") {
+    const mod = createEl("div", "srt-mod-tag");
+    mod.appendChild(createEl("span", "", labelText));
+    mod.appendChild(createEl("div", "dot"));
+    return mod;
+}
+
+function applyTooltip(targets, tooltip) {
+    if (!tooltip) {
+        return;
+    }
+    for (const target of targets) {
+        if (target) {
+            target.title = tooltip;
+        }
+    }
+}
+
+function openSelectDropdown(select) {
+    if (!select || select.disabled) {
+        return;
+    }
+    if (typeof select.showPicker === "function") {
+        try {
+            select.showPicker();
+            return;
+        } catch {
+            // Fallback below.
+        }
+    }
+    select.focus();
+    try {
+        select.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+    } catch {
+        select.click?.();
+    }
 }
 
 function isSrtOptionsNode(node) {
@@ -245,40 +419,54 @@ function bindWidgetValueHandler(widget, onChange) {
         return;
     }
 
-    let widgetValue = widget.value;
-    let originalDescriptor = Object.getOwnPropertyDescriptor(widget, "value") ||
-        Object.getOwnPropertyDescriptor(Object.getPrototypeOf(widget), "value");
-    if (!originalDescriptor) {
-        originalDescriptor = Object.getOwnPropertyDescriptor(widget.constructor.prototype, "value");
-    }
-
-    Object.defineProperty(widget, "value", {
-        get() {
-            return originalDescriptor && originalDescriptor.get
-                ? originalDescriptor.get.call(widget)
-                : widgetValue;
-        },
-        set(newVal) {
-            if (originalDescriptor && originalDescriptor.set) {
-                originalDescriptor.set.call(widget, newVal);
-            } else {
-                widgetValue = newVal;
-            }
-            for (const handler of widget.__ttsAudioSuiteValueHandlers || []) {
-                try {
-                    handler(newVal);
-                } catch (error) {
-                    console.warn("SRT panel handler error:", error);
-                }
+    const originalCallback = widget.callback;
+    widget.callback = function (...args) {
+        const result = originalCallback ? originalCallback.apply(this, args) : undefined;
+        for (const handler of widget.__ttsAudioSuiteValueHandlers || []) {
+            try {
+                handler(widget.value);
+            } catch (error) {
+                console.warn("SRT panel handler error:", error);
             }
         }
-    });
+        return result;
+    };
 
     widget.__ttsAudioSuiteValueBound = true;
 }
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
+}
+
+function normalizeFieldValue(fieldName, rawValue) {
+    const def = FIELD_DEFS[fieldName];
+    if (!def) {
+        return rawValue;
+    }
+    if (def.kind === "toggle") {
+        return Boolean(rawValue);
+    }
+    if (def.kind === "slider" || def.kind === "locked-number") {
+        const numeric = Number(rawValue);
+        if (Number.isNaN(numeric)) {
+            return null;
+        }
+        return def.integer ? Math.round(numeric) : numeric;
+    }
+    return rawValue == null ? "" : String(rawValue);
+}
+
+function fieldValuesMatch(fieldName, actualValue, expectedValue) {
+    const actual = normalizeFieldValue(fieldName, actualValue);
+    const expected = normalizeFieldValue(fieldName, expectedValue);
+    if (actual === null || expected === null) {
+        return actual === expected;
+    }
+    if (typeof actual === "number" && typeof expected === "number") {
+        return Math.abs(actual - expected) < 1e-9;
+    }
+    return actual === expected;
 }
 
 function parseNumeric(raw, def) {
@@ -317,6 +505,19 @@ function getWidgetNumericValue(widget, def) {
     return Number(def.min);
 }
 
+function applyWheelStep(widget, def, event) {
+    if (!widget || widget.disabled) {
+        return false;
+    }
+    event.preventDefault();
+    const current = getWidgetNumericValue(widget, def);
+    const delta = event.deltaY < 0 ? Number(def.step) : -Number(def.step);
+    const next = clamp(current + delta, Number(def.min), Number(def.max));
+    const normalized = def.integer ? Math.round(next) : Number(next.toFixed(6));
+    setWidgetValue(widget, normalized);
+    return true;
+}
+
 function createEl(tag, className, text) {
     const el = document.createElement(tag);
     if (className) {
@@ -341,10 +542,10 @@ function ensureStyles(panel) {
             border: 0;
             border-radius: 0;
             width: 100%;
-            height: 100%;
+            height: auto;
             max-width: none;
             margin: 0;
-            padding: 10px;
+            padding: 6px 2px 0 2px;
             box-shadow: none;
             color: #d1d5db;
             font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -390,15 +591,20 @@ function ensureStyles(panel) {
             white-space: nowrap;
         }
         .srt-core-panel {
-            background-color: #1e1e1e;
-            border: 1px solid #2d2d2d;
-            border-radius: 12px;
-            padding: 14px;
+            background: rgba(27, 29, 31, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 8px 8px 4px 8px;
             box-sizing: border-box;
         }
         .srt-presets {
             margin-bottom: 14px;
             padding: 0 2px;
+        }
+        .srt-presets-top {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
         }
         .srt-label {
             display: block;
@@ -406,6 +612,13 @@ function ensureStyles(panel) {
             color: #9ca3af;
             margin-bottom: 4px;
             margin-left: 2px;
+        }
+        .srt-label.preset-label {
+            font-size: 18px;
+            font-weight: 700;
+            color: #eef2f7;
+            margin-bottom: 8px;
+            letter-spacing: 0.01em;
         }
         .srt-select-row {
             background-color: #262626;
@@ -446,6 +659,10 @@ function ensureStyles(panel) {
             background-color: #262626;
             color: #f3f4f6;
         }
+        .srt-preset-select {
+            font-size: 14px;
+            font-weight: 600;
+        }
         .srt-select-row .caret {
             color: #6b7280;
             font-size: 11px;
@@ -457,6 +674,9 @@ function ensureStyles(panel) {
             border-radius: 8px;
             margin-bottom: 10px;
             overflow: hidden;
+        }
+        .srt-core-panel > .srt-section:last-child {
+            margin-bottom: 0;
         }
         .srt-section.active-blue {
             border: 1px solid #30568c;
@@ -581,6 +801,33 @@ function ensureStyles(panel) {
             white-space: nowrap;
             flex: 0 0 auto;
         }
+        .srt-value-input {
+            background-color: #262626;
+            border: 1px solid #3a3a3a;
+            border-radius: 10px;
+            padding: 2px 10px;
+            font-size: 12px;
+            color: #ffffff;
+            min-width: 56px;
+            width: 56px;
+            text-align: center;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            outline: none;
+            box-sizing: border-box;
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+        .srt-value-input::-webkit-outer-spin-button,
+        .srt-value-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .srt-value-input.dimmed {
+            background-color: #2a2a2a;
+            border-color: #333;
+            color: #666;
+        }
         .srt-value-badge.dimmed {
             background-color: #2a2a2a;
             border-color: #333;
@@ -675,6 +922,19 @@ function ensureStyles(panel) {
             left: 0;
             top: 0;
         }
+        .srt-range-knob {
+            position: absolute;
+            top: 50%;
+            width: 10px;
+            height: 10px;
+            margin-left: -5px;
+            transform: translateY(-50%);
+            border-radius: 50%;
+            background: #a8adb4;
+            box-shadow: 0 0 2px rgba(0,0,0,0.45);
+            pointer-events: none;
+            z-index: 3;
+        }
         input[type=range].srt-range {
             -webkit-appearance: none;
             appearance: none;
@@ -685,6 +945,8 @@ function ensureStyles(panel) {
             transform: translateY(-50%);
             z-index: 2;
             margin: 0;
+            opacity: 0;
+            height: 16px;
         }
         input[type=range].srt-range::-webkit-slider-runnable-track {
             width: 100%;
@@ -694,14 +956,14 @@ function ensureStyles(panel) {
         input[type=range].srt-range::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            height: 10px;
-            width: 10px;
+            height: 16px;
+            width: 16px;
             border-radius: 50%;
-            background: #8e8e8e;
+            background: transparent;
             cursor: pointer;
-            margin-top: -4px;
+            margin-top: -7px;
             border: none;
-            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            box-shadow: none;
         }
         input[type=range].srt-range::-moz-range-track {
             height: 2px;
@@ -709,13 +971,13 @@ function ensureStyles(panel) {
             border: none;
         }
         input[type=range].srt-range::-moz-range-thumb {
-            height: 10px;
-            width: 10px;
+            height: 16px;
+            width: 16px;
             border: none;
             border-radius: 50%;
-            background: #8e8e8e;
+            background: transparent;
             cursor: pointer;
-            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            box-shadow: none;
         }
         .srt-textarea {
             width: 100%;
@@ -769,32 +1031,53 @@ function setSelectOptions(select, options) {
 
 function buildPresetSelect(node) {
     const presetWidget = findWidgetByName(node, "srt_preset");
+    const tooltip = getWidgetTooltip(presetWidget);
     const row = createEl("div", "srt-presets");
+    const top = createEl("div", "srt-presets-top");
+    const chip = createEl("div", "srt-preset-chip", "Preset: Custom");
+    top.appendChild(chip);
+    row.appendChild(top);
 
-    const label = createEl("label", "srt-label", "SRT Preset");
+    const label = createEl("label", "srt-label preset-label", "SRT Preset");
     row.appendChild(label);
 
     const box = createEl("div", "srt-select-row");
     const select = document.createElement("select");
-    select.className = "srt-inline-select";
+    select.className = "srt-inline-select srt-preset-select";
     setSelectOptions(select, ["Custom", ...Object.keys(VISUAL_PRESET_VALUES)]);
     select.value = presetWidget ? presetWidget.value : "Custom";
     select.addEventListener("change", () => {
-        if (presetWidget) {
-            presetWidget.value = select.value;
+        applyVisualPreset(node, select.value);
+        node.__srtPanelRequestRefresh?.();
+        queueMicrotask(() => node.__srtPanelRequestRefresh?.());
+        requestAnimationFrame(() => node.__srtPanelRequestRefresh?.());
+    });
+    box.addEventListener("click", (event) => {
+        if (event.target instanceof Element && event.target.closest("select")) {
+            return;
         }
+        openSelectDropdown(select);
     });
 
     const caret = createEl("span", "caret", "▾");
     box.appendChild(select);
     box.appendChild(caret);
     row.appendChild(box);
+    applyTooltip([row, label, box, select, caret], tooltip);
 
-    return { element: row, select };
+    return { element: row, select, chip };
 }
 
 function isPresetField(fieldName) {
     return Object.prototype.hasOwnProperty.call(VISUAL_PRESET_VALUES["Broadcast"], fieldName);
+}
+
+function getEffectivePresetBaseline(node) {
+    const activePreset = findWidgetByName(node, "srt_preset")?.value;
+    if (activePreset && activePreset !== "Custom") {
+        return activePreset;
+    }
+    return node.__srtLastPresetBaseline || null;
 }
 
 function fieldDiffersFromPreset(node, fieldName, presetName) {
@@ -806,7 +1089,45 @@ function fieldDiffersFromPreset(node, fieldName, presetName) {
     if (!widget) {
         return false;
     }
-    return widget.value !== values[fieldName];
+    return !fieldValuesMatch(fieldName, widget.value, values[fieldName]);
+}
+
+function applyVisualPreset(node, preset) {
+    const presetWidget = findWidgetByName(node, "srt_preset");
+    node.__srtLastPresetBaseline = preset && preset !== "Custom" ? preset : null;
+    setWidgetValue(presetWidget, preset);
+
+    const values = VISUAL_PRESET_VALUES[preset];
+    if (!values) {
+        return;
+    }
+
+    node.__applyingSrtPreset = true;
+    try {
+        for (const [fieldName, value] of Object.entries(values)) {
+            setWidgetValue(findWidgetByName(node, fieldName), value);
+        }
+    } finally {
+        node.__applyingSrtPreset = false;
+    }
+
+    const ttsReady = Boolean(values.tts_ready_mode);
+    const paragraphWidget = findWidgetByName(node, "tts_ready_paragraph_mode");
+    const maxLinesWidget = findWidgetByName(node, "srt_max_lines");
+    if (paragraphWidget) {
+        paragraphWidget.disabled = !ttsReady;
+    }
+    if (maxLinesWidget) {
+        maxLinesWidget.disabled = ttsReady;
+        if (ttsReady) {
+            setWidgetValue(maxLinesWidget, 1);
+        }
+    }
+
+    if (node.__srtCompactPanelUi) {
+        applyPresetVisibility(node, node.__srtCompactPanelUi);
+    }
+    node.__srtPanelRequestRefresh?.();
 }
 
 function createSection(node, ui, sectionDef) {
@@ -855,11 +1176,14 @@ function updateRangeFill(range, fill, def) {
     const max = Number(def.uiMax ?? def.max);
     const value = Number(range.value);
     const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
-    fill.style.width = `${clamp(pct, 0, 100)}%`;
+    const clampedPct = clamp(pct, 0, 100);
+    fill.style.width = `${clampedPct}%`;
+    return clampedPct;
 }
 
 function createSelectRow(node, fieldName, def, ui) {
     const widget = findWidgetByName(node, fieldName);
+    const tooltip = getWidgetTooltip(widget);
     const wrap = createEl("div");
     const row = createEl("div", "srt-input-row");
     const left = createEl("div", "srt-row-left");
@@ -873,9 +1197,13 @@ function createSelectRow(node, fieldName, def, ui) {
     setSelectOptions(select, def.options);
     select.value = widget ? widget.value : (typeof def.options[0] === "string" ? def.options[0] : def.options[0].value);
     select.addEventListener("change", () => {
-        if (widget) {
-            widget.value = select.value;
+        setWidgetValue(widget, select.value);
+    });
+    row.addEventListener("click", (event) => {
+        if (event.target instanceof Element && event.target.closest("select")) {
+            return;
         }
+        openSelectDropdown(select);
     });
     const caret = createEl("span", "srt-row-help", "▾");
     right.appendChild(select);
@@ -889,6 +1217,10 @@ function createSelectRow(node, fieldName, def, ui) {
     if (heuristicPreview) {
         wrap.appendChild(heuristicPreview);
     }
+    applyTooltip([wrap, row, label, select, caret], tooltip);
+    if (heuristicPreview) {
+        applyTooltip([heuristicPreview], tooltip);
+    }
 
     const sync = () => {
         if (!widget) {
@@ -897,15 +1229,11 @@ function createSelectRow(node, fieldName, def, ui) {
         select.value = widget.value;
         row.classList.toggle("dimmed", Boolean(widget.disabled));
         select.disabled = Boolean(widget.disabled);
-        const presetName = findWidgetByName(node, "srt_preset")?.value || "Custom";
-        const showCustom = fieldName === "heuristic_language_profile" && select.value === "Custom";
-        const showModified = !showCustom && presetName !== "Custom" && isPresetField(fieldName) && fieldDiffersFromPreset(node, fieldName, presetName);
+        const presetName = getEffectivePresetBaseline(node);
+        const showModified = Boolean(presetName) && isPresetField(fieldName) && fieldDiffersFromPreset(node, fieldName, presetName);
         right.querySelector(".srt-mod-tag")?.remove();
-        if (showCustom || showModified) {
-            const mod = createEl("div", "srt-mod-tag");
-            mod.appendChild(createEl("span", "", showCustom ? "CUSTOM" : "modified"));
-            mod.appendChild(createEl("div", "dot"));
-            right.prepend(mod);
+        if (showModified) {
+            right.prepend(createModifiedTag());
         }
         if (heuristicPreview) {
             const allowlist = findWidgetByName(node, "merge_dangling_tail_allowlist")?.value;
@@ -920,6 +1248,7 @@ function createSelectRow(node, fieldName, def, ui) {
 
 function createToggleRow(node, fieldName, def, ui) {
     const widget = findWidgetByName(node, fieldName);
+    const tooltip = getWidgetTooltip(widget);
     const row = createEl("div", "srt-input-row");
     const left = createEl("div", "srt-row-left");
     const label = createEl("div", "srt-row-label", def.label);
@@ -927,6 +1256,7 @@ function createToggleRow(node, fieldName, def, ui) {
     row.appendChild(left);
 
     const right = createEl("div", "srt-row-right");
+    const tags = createEl("div");
     const switchLabel = createEl("label", "srt-switch");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -934,13 +1264,12 @@ function createToggleRow(node, fieldName, def, ui) {
     const slider = createEl("span", "srt-switch-slider");
     switchLabel.appendChild(checkbox);
     switchLabel.appendChild(slider);
+    right.appendChild(tags);
     right.appendChild(switchLabel);
     row.appendChild(right);
 
     checkbox.addEventListener("change", () => {
-        if (widget) {
-            widget.value = checkbox.checked;
-        }
+        setWidgetValue(widget, checkbox.checked);
     });
 
     const sync = () => {
@@ -950,14 +1279,22 @@ function createToggleRow(node, fieldName, def, ui) {
         checkbox.checked = Boolean(widget.value);
         checkbox.disabled = Boolean(widget.disabled);
         row.classList.toggle("dimmed", Boolean(widget.disabled));
-        row.title = def.label;
+        const presetName = getEffectivePresetBaseline(node);
+        const showModified = Boolean(presetName) && isPresetField(fieldName) && fieldDiffersFromPreset(node, fieldName, presetName);
+        tags.replaceChildren();
+        if (showModified) {
+            tags.appendChild(createModifiedTag());
+        }
     };
+
+    applyTooltip([row, label, switchLabel, checkbox, slider], tooltip);
 
     return { row, sync };
 }
 
 function createSliderRow(node, fieldName, def) {
     const widget = findWidgetByName(node, fieldName);
+    const tooltip = getWidgetTooltip(widget);
     const row = createEl("div", "srt-range-row");
     const head = createEl("div", "srt-range-head");
     const label = createEl("div", "srt-range-label", def.label);
@@ -966,6 +1303,7 @@ function createSliderRow(node, fieldName, def) {
     head.appendChild(tags);
     const track = createEl("div", "srt-range-track");
     const fill = createEl("div", "srt-range-fill");
+    const knob = createEl("div", "srt-range-knob");
     const main = createEl("div", "srt-range-main");
     const range = document.createElement("input");
     range.type = "range";
@@ -973,13 +1311,37 @@ function createSliderRow(node, fieldName, def) {
     range.min = String(def.min);
     range.max = String(def.uiMax ?? def.max);
     range.step = String(def.step);
-    const valueBadge = createEl("div", "srt-value-badge", formatNumeric(getWidgetNumericValue(widget, def), def));
+    const valueInput = document.createElement("input");
+    valueInput.type = "text";
+    valueInput.className = "srt-value-input";
+    valueInput.inputMode = def.integer ? "numeric" : "decimal";
+    valueInput.value = formatNumeric(getWidgetNumericValue(widget, def), def);
     track.appendChild(fill);
+    track.appendChild(knob);
     track.appendChild(range);
     row.appendChild(head);
     main.appendChild(track);
-    main.appendChild(valueBadge);
+    main.appendChild(valueInput);
     row.appendChild(main);
+    applyTooltip([row, label, range, valueInput, track, fill, knob], tooltip);
+
+    const commitTypedValue = () => {
+        if (!widget) {
+            return;
+        }
+        const numeric = parseNumeric(valueInput.value, def);
+        if (numeric === null) {
+            valueInput.value = formatNumeric(getWidgetNumericValue(widget, def), def);
+            return;
+        }
+        setWidgetValue(widget, def.integer ? Math.round(numeric) : numeric);
+        const widgetNumericValue = getWidgetNumericValue(widget, def);
+        const visibleValue = clamp(widgetNumericValue, Number(def.min), Number(def.uiMax ?? def.max));
+        range.value = String(visibleValue);
+        const pct = updateRangeFill(range, fill, def);
+        knob.style.left = `${pct}%`;
+        valueInput.value = formatNumeric(widgetNumericValue, def);
+    };
 
     range.addEventListener("input", () => {
         if (!widget) {
@@ -989,10 +1351,42 @@ function createSliderRow(node, fieldName, def) {
         if (numeric === null) {
             return;
         }
-        widget.value = def.integer ? Math.round(numeric) : numeric;
-        updateRangeFill(range, fill, def);
-        valueBadge.textContent = formatNumeric(widget.value, def);
+        setWidgetValue(widget, def.integer ? Math.round(numeric) : numeric);
+        const pct = updateRangeFill(range, fill, def);
+        knob.style.left = `${pct}%`;
+        valueInput.value = formatNumeric(widget.value, def);
     });
+
+    valueInput.addEventListener("blur", commitTypedValue);
+    valueInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            commitTypedValue();
+            valueInput.blur();
+        }
+    });
+    const syncNumericUi = () => {
+        const widgetNumericValue = getWidgetNumericValue(widget, def);
+        const visibleValue = clamp(widgetNumericValue, Number(def.min), Number(def.uiMax ?? def.max));
+        range.value = String(visibleValue);
+        const pct = updateRangeFill(range, fill, def);
+        knob.style.left = `${pct}%`;
+        valueInput.value = formatNumeric(widgetNumericValue, def);
+    };
+    valueInput.addEventListener("wheel", (event) => {
+        if (!applyWheelStep(widget, def, event)) {
+            return;
+        }
+        syncNumericUi();
+    }, { passive: false });
+    for (const target of [track, fill, knob, range]) {
+        target.addEventListener("wheel", (event) => {
+            if (!applyWheelStep(widget, def, event)) {
+                return;
+            }
+            syncNumericUi();
+        }, { passive: false });
+    }
 
     const sync = () => {
         if (!widget) {
@@ -1001,28 +1395,30 @@ function createSliderRow(node, fieldName, def) {
         const widgetNumericValue = getWidgetNumericValue(widget, def);
         const visibleValue = clamp(widgetNumericValue, Number(def.min), Number(def.uiMax ?? def.max));
         range.value = String(visibleValue);
-        updateRangeFill(range, fill, def);
-        valueBadge.textContent = formatNumeric(widgetNumericValue, def);
-        const presetName = findWidgetByName(node, "srt_preset")?.value || "Custom";
-        const showModified = presetName !== "Custom" && isPresetField(fieldName) && fieldDiffersFromPreset(node, fieldName, presetName);
+        const pct = updateRangeFill(range, fill, def);
+        knob.style.left = `${pct}%`;
+        if (document.activeElement !== valueInput) {
+            valueInput.value = formatNumeric(widgetNumericValue, def);
+        }
+        const presetName = getEffectivePresetBaseline(node);
+        const showModified = Boolean(presetName) && isPresetField(fieldName) && fieldDiffersFromPreset(node, fieldName, presetName);
         tags.replaceChildren();
         if (showModified) {
-            const mod = createEl("div", "srt-mod-tag");
-            mod.appendChild(createEl("span", "", "modified"));
-            mod.appendChild(createEl("div", "dot"));
-            tags.appendChild(mod);
+            tags.appendChild(createModifiedTag());
         }
         row.classList.toggle("dimmed", Boolean(widget.disabled));
         range.disabled = Boolean(widget.disabled);
-        valueBadge.classList.toggle("dimmed", Boolean(widget.disabled));
+        valueInput.disabled = Boolean(widget.disabled);
+        valueInput.classList.toggle("dimmed", Boolean(widget.disabled));
     };
 
     return { row, sync };
 }
 
-function createLockedNumberRow(node, fieldName, def) {
+function createAdaptiveNumberRow(node, fieldName, def) {
     const widget = findWidgetByName(node, fieldName);
-    const row = createEl("div", "srt-input-row dimmed");
+    const tooltip = getWidgetTooltip(widget);
+    const row = createEl("div", "srt-input-row");
     const left = createEl("div", "srt-row-left");
     const help = createEl("span", "srt-row-help", "ℹ");
     const label = createEl("div", "srt-row-label", def.label);
@@ -1032,13 +1428,49 @@ function createLockedNumberRow(node, fieldName, def) {
 
     const right = createEl("div", "srt-row-right");
     const lock = createEl("span", "srt-lock", "🔒");
-    const badge = createEl("div", "srt-value-badge dimmed", formatNumeric(widget?.value ?? 1, def));
+    const tags = createEl("div");
+    const valueInput = document.createElement("input");
+    valueInput.type = "text";
+    valueInput.className = "srt-value-input";
+    valueInput.inputMode = "numeric";
+    valueInput.value = formatNumeric(widget?.value ?? def.min, def);
+    right.appendChild(tags);
     right.appendChild(lock);
-    right.appendChild(badge);
+    right.appendChild(valueInput);
     row.appendChild(right);
 
     const note = createEl("div", "srt-note", "Locked in TTS-ready mode");
     note.style.display = "none";
+    applyTooltip([row, label, help, valueInput, lock, note], tooltip);
+
+    const commitTypedValue = () => {
+        if (!widget || widget.disabled) {
+            valueInput.value = formatNumeric(widget?.value ?? def.min, def);
+            return;
+        }
+        const numeric = parseNumeric(valueInput.value, def);
+        if (numeric === null) {
+            valueInput.value = formatNumeric(widget?.value ?? def.min, def);
+            return;
+        }
+        setWidgetValue(widget, Math.round(numeric));
+        valueInput.value = formatNumeric(widget.value, def);
+    };
+
+    valueInput.addEventListener("blur", commitTypedValue);
+    valueInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            commitTypedValue();
+            valueInput.blur();
+        }
+    });
+    valueInput.addEventListener("wheel", (event) => {
+        if (!applyWheelStep(widget, def, event)) {
+            return;
+        }
+        valueInput.value = formatNumeric(widget.value, def);
+    }, { passive: false });
 
     const sync = () => {
         if (!widget) {
@@ -1049,11 +1481,22 @@ function createLockedNumberRow(node, fieldName, def) {
         const locked = ttsReady;
         row.classList.toggle("dimmed", locked);
         widget.disabled = locked;
-        badge.textContent = formatNumeric(widget.value, def);
+        lock.style.display = locked ? "" : "none";
+        valueInput.disabled = locked;
+        valueInput.classList.toggle("dimmed", locked);
+        if (document.activeElement !== valueInput || locked) {
+            valueInput.value = formatNumeric(widget.value, def);
+        }
         note.textContent = locked
             ? (paragraphMode ? "Locked in Paragraph Mode" : "Locked in TTS-ready mode")
             : "";
         note.style.display = locked ? "block" : "none";
+        const presetName = getEffectivePresetBaseline(node);
+        const showModified = Boolean(presetName) && isPresetField(fieldName) && fieldDiffersFromPreset(node, fieldName, presetName);
+        tags.replaceChildren();
+        if (showModified) {
+            tags.appendChild(createModifiedTag());
+        }
     };
 
     return { row, sync, note };
@@ -1061,6 +1504,7 @@ function createLockedNumberRow(node, fieldName, def) {
 
 function createTextRow(node, fieldName, def) {
     const widget = findWidgetByName(node, fieldName);
+    const tooltip = getWidgetTooltip(widget);
     const row = createEl("div", "srt-range-row");
     const label = createEl("div", "srt-range-label", def.label);
     const textarea = document.createElement("textarea");
@@ -1068,12 +1512,11 @@ function createTextRow(node, fieldName, def) {
     textarea.rows = def.rows || 2;
     textarea.value = widget?.value || "";
     textarea.addEventListener("input", () => {
-        if (widget) {
-            widget.value = textarea.value;
-        }
+        setWidgetValue(widget, textarea.value);
     });
     row.appendChild(label);
     row.appendChild(textarea);
+    applyTooltip([row, label, textarea], tooltip);
 
     const sync = () => {
         if (!widget) {
@@ -1099,8 +1542,8 @@ function createFieldControl(node, fieldName) {
     if (def.kind === "toggle") {
         return createToggleRow(node, fieldName, def);
     }
-    if (def.kind === "locked-number") {
-        return createLockedNumberRow(node, fieldName, def);
+    if (def.kind === "adaptive-number") {
+        return createAdaptiveNumberRow(node, fieldName, def);
     }
     if (def.kind === "slider") {
         return createSliderRow(node, fieldName, def);
@@ -1175,26 +1618,17 @@ function createPanel(node) {
     const corePanel = createEl("div", "srt-core-panel");
     panel.appendChild(corePanel);
 
-    const header = createEl("header", "srt-header");
-    const title = createEl("div", "srt-header-title");
-    title.appendChild(createEl("span", "icon", "🔧"));
-    title.appendChild(createEl("h1", "", "SRT Advanced Options"));
-    header.appendChild(title);
-
-    const presetChip = createEl("div", "srt-preset-chip", "Preset: Custom");
-    header.appendChild(presetChip);
-    corePanel.appendChild(header);
-
     const presetBlock = buildPresetSelect(node);
     corePanel.appendChild(presetBlock.element);
 
     const ui = {
         panel,
-        presetChip,
+        presetChip: presetBlock.chip,
         presetSelect: presetBlock.select,
         sections: {},
         controls: {},
         onLayoutChanged: null,
+        requestRefresh: null,
         sectionState: {
             core: true,
             tts: true,
@@ -1203,6 +1637,11 @@ function createPanel(node) {
             cleanup: false,
         },
     };
+
+    const heuristicWidget = findWidgetByName(node, "heuristic_language_profile");
+    if (heuristicWidget && heuristicWidget.value === "Custom") {
+        setWidgetValue(heuristicWidget, "Auto");
+    }
 
     for (const sectionDef of SECTION_DEFS) {
         const sectionUi = createSection(node, ui, sectionDef);
@@ -1229,17 +1668,61 @@ function createPanel(node) {
         }
     }
 
+    node.__srtPanelWidgetHeight = Math.max(PANEL_WIDGET_MIN_HEIGHT, (node.size?.[1] || PANEL_MIN_HEIGHT) - PANEL_VERTICAL_PADDING);
     const panelWidget = node.addDOMWidget("srt_advanced_options_panel", "div", panel, {
         serialize: false,
         hideOnZoom: false,
+        getMinHeight() {
+            return PANEL_DOM_WIDGET_HEIGHT;
+        },
+        getHeight() {
+            return PANEL_DOM_WIDGET_HEIGHT;
+        },
     });
-    node.__srtPanelWidgetHeight = Math.max(PANEL_WIDGET_MIN_HEIGHT, (node.size?.[1] || PANEL_MIN_HEIGHT) - PANEL_VERTICAL_PADDING);
-    panelWidget.computeSize = (width) => [Math.max(PANEL_MIN_WIDTH, width || PANEL_MIN_WIDTH), node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT];
-    panelWidget.getHeight = () => node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT;
-    panelWidget.height = node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT;
+    panelWidget.computeSize = (inputWidth) => {
+        const width = Array.isArray(inputWidth) ? inputWidth[0] : inputWidth;
+        return [Math.max(PANEL_MIN_WIDTH, width || PANEL_MIN_WIDTH), PANEL_DOM_WIDGET_HEIGHT];
+    };
+    panelWidget.getHeight = () => PANEL_DOM_WIDGET_HEIGHT;
+    panelWidget.computeLayoutSize = () => ({
+        minWidth: PANEL_MIN_WIDTH,
+        minHeight: PANEL_DOM_WIDGET_HEIGHT,
+    });
+    setWidgetHeightSafe(panelWidget, PANEL_DOM_WIDGET_HEIGHT);
+
+    const spacerWidget = {
+        type: "srt_panel_spacer",
+        name: "srt_panel_spacer",
+        value: "",
+        serialize: false,
+        computedHeight: node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT,
+        height: node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT,
+        computeSize(width) {
+            const safeWidth = Array.isArray(width) ? width[0] : width;
+            return [Math.max(PANEL_MIN_WIDTH, safeWidth || PANEL_MIN_WIDTH), node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT];
+        },
+        getHeight() {
+            return node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT;
+        },
+        draw() {},
+        mouse() {
+            return false;
+        },
+    };
+
+    if (node.widgets) {
+        const panelWidgetIndex = node.widgets.indexOf(panelWidget);
+        if (panelWidgetIndex >= 0) {
+            node.widgets.splice(panelWidgetIndex + 1, 0, spacerWidget);
+        } else {
+            node.widgets.push(spacerWidget);
+        }
+    }
 
     node.__srtCompactPanelUi = ui;
     node.__srtCompactPanelWidget = panelWidget;
+    node.__srtCompactPanelSpacerWidget = spacerWidget;
+
     if (typeof node.setSize === "function") {
         const width = Math.max(node.size?.[0] || PANEL_MIN_WIDTH, PANEL_MIN_WIDTH);
         const height = Math.max(node.size?.[1] || PANEL_MIN_HEIGHT, PANEL_MIN_HEIGHT);
@@ -1247,42 +1730,78 @@ function createPanel(node) {
     }
 
     const syncPanelBounds = (size = node.size) => {
-        const width = Math.max((size?.[0] || PANEL_MIN_WIDTH) - PANEL_HORIZONTAL_PADDING, 260);
-        panel.style.width = `${width}px`;
+        panel.style.width = "100%";
+        panel.style.maxWidth = "100%";
         panel.style.height = "auto";
+        if (panelWidget.element) {
+            panelWidget.element.style.width = "100%";
+            panelWidget.element.style.maxWidth = "100%";
+            panelWidget.element.style.overflow = "visible";
+        }
+    };
+
+    const applyMeasuredHeight = () => {
+        syncPanelBounds(node.size);
+        if (panelWidget.element) {
+            panelWidget.element.style.height = "auto";
+            panelWidget.element.style.minHeight = "0";
+        }
+        const measuredHeight = Math.max(
+            PANEL_WIDGET_MIN_HEIGHT,
+            Math.ceil(Math.max(
+                panel.scrollHeight,
+                corePanel.scrollHeight,
+                panel.getBoundingClientRect().height,
+                corePanel.getBoundingClientRect().height,
+            ) + 8)
+        );
+        node.__srtPanelWidgetHeight = measuredHeight;
+        setWidgetHeightSafe(panelWidget, PANEL_DOM_WIDGET_HEIGHT);
+        setWidgetHeightSafe(spacerWidget, measuredHeight);
+        panel.style.setProperty("--comfy-widget-height", `${measuredHeight}px`);
+        panel.style.setProperty("--comfy-widget-min-height", `${measuredHeight}px`);
+        if (panelWidget.element) {
+            panelWidget.element.style.height = `${measuredHeight}px`;
+            panelWidget.element.style.minHeight = `${measuredHeight}px`;
+            panelWidget.element.style.display = "block";
+            panelWidget.element.style.position = "relative";
+            panelWidget.element.style.boxSizing = "border-box";
+            panelWidget.element.style.width = "100%";
+            panelWidget.element.style.setProperty("--comfy-widget-height", `${measuredHeight}px`);
+            panelWidget.element.style.setProperty("--comfy-widget-min-height", `${measuredHeight}px`);
+        }
+        if (typeof node.computeSize === "function" && typeof node.setSize === "function") {
+            const computed = node.computeSize();
+            const currentWidth = Math.max(node.size?.[0] || PANEL_MIN_WIDTH, PANEL_MIN_WIDTH);
+            node.setSize([
+                currentWidth,
+                Math.max(PANEL_MIN_HEIGHT, computed?.[1] || PANEL_MIN_HEIGHT),
+            ]);
+        }
+        if (node.graph && node.graph.setDirtyCanvas) {
+            node.graph.setDirtyCanvas(true, true);
+        }
     };
 
     const resizeToContent = () => {
-        if (node.__srtPanelSizing) {
+        if (node.__srtPanelSizing || node.__srtPanelRelayoutQueued) {
             return;
         }
-        node.__srtPanelSizing = true;
+        node.__srtPanelRelayoutQueued = true;
         requestAnimationFrame(() => {
             try {
-                syncPanelBounds(node.size);
-                const contentHeight = Math.max(Math.ceil(panel.scrollHeight), PANEL_WIDGET_MIN_HEIGHT);
-                node.__srtPanelWidgetHeight = contentHeight;
-                panelWidget.height = contentHeight;
-                panelWidget.computedHeight = contentHeight;
-                if (panelWidget.element) {
-                    panelWidget.element.style.height = `${contentHeight}px`;
-                    panelWidget.element.style.minHeight = `${contentHeight}px`;
-                    panelWidget.element.style.display = "block";
-                    panelWidget.element.style.position = "relative";
-                    panelWidget.element.style.boxSizing = "border-box";
-                    panelWidget.element.style.width = "100%";
-                }
-                if (typeof node.computeSize === "function" && typeof node.setSize === "function") {
-                    const computedSize = node.computeSize();
-                    const targetWidth = Math.max(computedSize?.[0] || 0, node.size?.[0] || 0, PANEL_MIN_WIDTH);
-                    const targetHeight = Math.max(computedSize?.[1] || 0, PANEL_MIN_HEIGHT, contentHeight + PANEL_VERTICAL_PADDING);
-                    node.setSize([targetWidth, targetHeight]);
-                }
-                if (node.graph && node.graph.setDirtyCanvas) {
-                    node.graph.setDirtyCanvas(true, true);
-                }
+                node.__srtPanelSizing = true;
+                applyMeasuredHeight();
+                requestAnimationFrame(() => {
+                    try {
+                        node.__srtPanelSizing = true;
+                        applyMeasuredHeight();
+                    } finally {
+                        node.__srtPanelSizing = false;
+                    }
+                });
             } finally {
-                node.__srtPanelSizing = false;
+                node.__srtPanelRelayoutQueued = false;
             }
         });
     };
@@ -1292,6 +1811,8 @@ function createPanel(node) {
         resizeToContent();
         setTimeout(resizeToContent, 0);
     };
+    ui.requestRefresh = refresh;
+    node.__srtPanelRequestRefresh = refresh;
     ui.onLayoutChanged = resizeToContent;
 
     const originalOnConfigure = node.onConfigure?.bind(node);
@@ -1308,7 +1829,9 @@ function createPanel(node) {
     node.onResize = function (size) {
         const result = originalOnResize ? originalOnResize(size) : undefined;
         syncPanelBounds(size || this.size);
-        panelWidget.height = node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT;
+        setWidgetHeightSafe(panelWidget, PANEL_DOM_WIDGET_HEIGHT);
+        setWidgetHeightSafe(spacerWidget, node.__srtPanelWidgetHeight || PANEL_WIDGET_MIN_HEIGHT);
+        requestAnimationFrame(() => node.__srtPanelRequestRefresh?.());
         return result;
     };
 
@@ -1316,6 +1839,14 @@ function createPanel(node) {
     node.onRemoved = function () {
         delete node.__srtCompactPanelUi;
         delete node.__srtCompactPanelWidget;
+        delete node.__srtCompactPanelSpacerWidget;
+        delete node.__srtPanelRequestRefresh;
+        if (this.widgets) {
+            const spacerIndex = this.widgets.indexOf(spacerWidget);
+            if (spacerIndex >= 0) {
+                this.widgets.splice(spacerIndex, 1);
+            }
+        }
         if (originalOnRemoved) {
             return originalOnRemoved.apply(this, arguments);
         }
