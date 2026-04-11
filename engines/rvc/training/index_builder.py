@@ -22,7 +22,8 @@ def build_faiss_index(
         from sklearn.cluster import MiniBatchKMeans
     except ImportError as exc:
         raise RuntimeError(
-            "RVC index building requires faiss and scikit-learn"
+            "RVC index building requires a Python faiss package and scikit-learn. "
+            "Install 'faiss-cpu' (or another compatible faiss build), not 'faiss'."
         ) from exc
 
     os.makedirs(index_dir, exist_ok=True)

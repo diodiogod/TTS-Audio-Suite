@@ -726,7 +726,7 @@ class TTSAudioInstaller:
             except subprocess.CalledProcessError:
                 # GPU installation failed - fallback to CPU
                 self.log("faiss-gpu installation failed - falling back to CPU version", "WARNING")
-                self.run_pip_command(["install", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback)")
+                self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback, --no-deps)")
         else:
             # Windows or no CUDA - use reliable CPU version
             if self.is_windows and cuda_version != "cpu":
@@ -737,7 +737,7 @@ class TTSAudioInstaller:
             if self.check_package_installed("faiss-cpu>=1.7.4"):
                 self.log("faiss-cpu already satisfied - skipping", "SUCCESS")
             else:
-                self.run_pip_command(["install", "faiss-cpu>=1.7.4"], "Installing faiss-cpu for RVC voice matching")
+                self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu for RVC voice matching (--no-deps)")
 
     def install_numpy_with_constraints(self):
         """Install numpy with version constraints for compatibility"""

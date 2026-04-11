@@ -351,6 +351,8 @@ def run_rvc_training_job(
     fp16_run = bool(training_config.get("fp16_run", True)) and gpu_ids != ""
     resolved_pretrain_g, resolved_pretrain_d = _resolve_training_pretrained_paths(dataset_info, training_config)
     initial_generator_path = continue_from_model_path or resolved_pretrain_g
+    index_requested = bool(training_config.get("train_index", True))
+    index_build_warning = ""
 
     hparams = train_utils.HParams(**config_data)
     hparams.experiment_dir = dataset_info["dataset_dir"]
@@ -445,7 +447,7 @@ def run_rvc_training_job(
         update_training_job(
             node_id,
             status="running",
-            phase="building_index" if bool(training_config.get("train_index", True)) else "starting",
+            phase="building_index" if index_requested else "starting",
             model_path=model_path,
             config_path=resolved_config_path,
             pretrained_generator=initial_generator_path,
@@ -454,20 +456,30 @@ def run_rvc_training_job(
         )
 
         index_path = None
-        if bool(training_config.get("train_index", True)):
-            index_path = build_faiss_index(
-                dataset_dir=dataset_info["dataset_dir"],
-                sample_rate=sample_rate,
-                model_name=resolved_name,
-                index_dir=os.path.join(folder_paths.models_dir, "TTS", "RVC", ".index"),
-                overwrite=overwrite,
-            )
+        if index_requested:
+            try:
+                index_path = build_faiss_index(
+                    dataset_dir=dataset_info["dataset_dir"],
+                    sample_rate=sample_rate,
+                    model_name=resolved_name,
+                    index_dir=os.path.join(folder_paths.models_dir, "TTS", "RVC", ".index"),
+                    overwrite=overwrite,
+                )
+            except RuntimeError as exc:
+                message = str(exc).lower()
+                if "faiss" not in message or "scikit-learn" not in message:
+                    raise
+                index_build_warning = str(exc)
+                print(f"⚠️ RVC training: {exc} Continuing without index build.")
 
         update_training_job(
             node_id,
             status="running",
             phase="training",
             index_path=index_path,
+            index_requested=index_requested,
+            index_built=bool(index_path),
+            warning=index_build_warning or None,
         )
 
         if resume or not os.path.isfile(model_path):
@@ -490,6 +502,13 @@ def run_rvc_training_job(
             "type": "rvc_model",
         }
 
+        summary = (
+            f"RVC training complete: {resolved_name} | sample rate {sample_rate} | "
+            f"model {model_path}"
+        )
+        if index_requested and not index_path:
+            summary += " | index not built"
+
         artifacts = {
             "type": "training_artifacts",
             "engine_type": "rvc",
@@ -497,14 +516,14 @@ def run_rvc_training_job(
             "artifact_type": "voice_model",
             "model_path": model_path,
             "index_path": index_path,
+            "index_requested": index_requested,
+            "index_built": bool(index_path),
+            "index_warning": index_build_warning or None,
             "log_dir": job_dir,
             "config_path": resolved_config_path,
             "model_name": resolved_name,
             "rvc_model": rvc_model,
-            "summary": (
-                f"RVC training complete: {resolved_name} | sample rate {sample_rate} | "
-                f"model {model_path}"
-            ),
+            "summary": summary,
         }
         finalize_training_job(
             node_id,
@@ -513,6 +532,9 @@ def run_rvc_training_job(
             artifacts=artifacts,
             model_path=model_path,
             index_path=index_path,
+            index_requested=index_requested,
+            index_built=bool(index_path),
+            warning=index_build_warning or None,
         )
         _write_terminal_progress(
             progress_file,
@@ -521,6 +543,9 @@ def run_rvc_training_job(
             artifacts=artifacts,
             model_path=model_path,
             index_path=index_path,
+            index_requested=index_requested,
+            index_built=bool(index_path),
+            warning=index_build_warning or None,
         )
         return artifacts
     except InterruptedError as error:
