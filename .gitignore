@@ -21,6 +21,10 @@ eggs/
 .eggs/
 lib/
 !engines/rvc/impl/lib/
+!engines/rvc/training/bundled_runtime/lib/
+!engines/rvc/training/bundled_runtime/lib/**
+engines/rvc/training/bundled_runtime/lib/**/__pycache__/
+engines/rvc/training/bundled_runtime/lib/**/*.py[cod]
 lib64/
 parts/
 sdist/

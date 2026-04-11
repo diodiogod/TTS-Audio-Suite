@@ -558,9 +558,10 @@ def train_model(hps: "utils.HParams"):
     gpu_devices = hps.gpus.split("-") if hps.gpus else range(n_gpus)
 
     children = {}
+    spawn_ctx = mp.get_context("spawn")
     try:
         for i, device in enumerate(gpu_devices):
-            subproc = mp.Process(
+            subproc = spawn_ctx.Process(
                 target=run,
                 args=(
                     i,
