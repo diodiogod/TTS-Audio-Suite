@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.8] - 2026-04-11
+
+### Added
+
+- Clarify FAISS installation guidance for RVC model training
+
+### Changed
+
+- Improve RVC model training behavior when FAISS index dependencies are unavailable
+
+### Fixed
+
+- Improve RVC model training dependency compatibility
+- Fix RVC model training failing when only the system ffmpeg CLI is installed
+- Avoid RVC installer dependency conflicts when installing faiss-cpu
 ## [4.25.7] - 2026-04-11
 
 ### Added
