@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.9] - 2026-04-11
+
+### Changed
+
+- Improve RVC model training dataset prep reliability
+
+### Fixed
+
+- Fix RVC model training failing silently when RMVPE pitch extraction files are missing
+- Prevent RVC model training from continuing with a broken voiced dataset
+- Improve RVC model training index build diagnostics when FAISS imports still fail
 ## [4.25.8] - 2026-04-11
 
 ### Added
