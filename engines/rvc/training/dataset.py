@@ -27,6 +27,7 @@ from engines.rvc.impl.lib.utils import gc_collect
 from engines.rvc.impl.pitch_extraction import FeatureExtractor
 from utils.audio.audio_hash import generate_stable_audio_component
 from utils.audio.processing import AudioProcessingUtils
+from utils.downloads.model_downloader import download_rmvpe_for_reference
 
 
 MUTE_DATASET_DIR = (
@@ -81,6 +82,27 @@ def _resolve_source_path(dataset_source: str) -> str:
 
     raise FileNotFoundError(f"Dataset source not found: {dataset_source}")
 
+
+
+
+def _ensure_training_f0_dependencies(f0_method: str) -> None:
+    method = str(f0_method or '').strip().lower()
+    if not method:
+        return
+
+    if method in {"rmvpe", "rmvpe+"}:
+        rmvpe_path = download_rmvpe_for_reference()
+        if not rmvpe_path or not os.path.exists(rmvpe_path):
+            raise FileNotFoundError(
+                "RVC dataset prep could not resolve rmvpe.pt for pitch extraction. "
+                "Expected automatic download to models/TTS/RVC/rmvpe.pt."
+            )
+        return
+
+    if method == "rmvpe_onnx":
+        raise FileNotFoundError(
+            "RVC dataset prep with rmvpe_onnx requires rmvpe.onnx, but automatic download is only implemented for rmvpe.pt right now."
+        )
 
 def _iter_audio_files(root: str) -> Iterable[str]:
     allowed = {f".{ext.lower()}" for ext in SUPPORTED_AUDIO}
@@ -535,6 +557,12 @@ def build_training_filelist(dataset_dir: str, sample_rate: str, f0_method: str, 
     if missing_ground_truth:
         raise RuntimeError(f"Missing ground truth wav files: {missing_ground_truth[:5]}")
 
+    if use_f0 and not entries:
+        raise RuntimeError(
+            "RVC dataset prep produced no usable voiced training entries. "
+            "F0 extraction likely failed for all clips; check the selected pitch method and RMVPE model availability."
+        )
+
     # Keep at least two mute samples to match both the Comfy-RVC reference node
     # and the upstream RVC WebUI training filelist behavior.
     mute_count = max(2, int(len(entries) * mute_ratio))
@@ -641,6 +669,9 @@ def prepare_rvc_training_dataset(
             overlap=overlap_seconds,
             max_volume=max_volume,
         )
+
+        if f0_method:
+            _ensure_training_f0_dependencies(f0_method)
 
         hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
         try:
