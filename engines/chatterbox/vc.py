@@ -7,22 +7,13 @@ from huggingface_hub import hf_hub_download
 
 # Use librosa fallback for Python 3.13 compatibility
 from utils.audio.librosa_fallback import safe_load
+from .perth_loader import create_perth_watermarker
 
 # Import folder_paths for model directory detection
 try:
     import folder_paths
 except ImportError:
     folder_paths = None
-
-# Import perth with warnings disabled and graceful fallback
-try:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        import perth
-    PERTH_AVAILABLE = True
-except ImportError:
-    perth = None
-    PERTH_AVAILABLE = False
 
 # Import safetensors for multilanguage model support
 from safetensors.torch import load_file
@@ -87,14 +78,7 @@ class ChatterboxVC:
         if self.enable_watermarking and not self._watermarker_init_attempted:
             self._watermarker_init_attempted = True
             try:
-                if PERTH_AVAILABLE and hasattr(perth, 'PerthImplicitWatermarker'):
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        self.watermarker = perth.PerthImplicitWatermarker()
-                        if self.watermarker is None:
-                            raise ValueError("PerthImplicitWatermarker returned None")
-                else:
-                    raise AttributeError("PerthImplicitWatermarker not available in perth module")
+                self.watermarker = create_perth_watermarker()
             except Exception as e:
                 print(f"❌ Failed to initialize watermarker: {e}")
                 self.watermarker = None

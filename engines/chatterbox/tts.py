@@ -9,6 +9,7 @@ import warnings
 
 # Use librosa fallback for Python 3.13 compatibility
 from utils.audio.librosa_fallback import safe_load, safe_resample
+from .perth_loader import create_perth_watermarker
 # Import safetensors for multilanguage model support
 from safetensors.torch import load_file
 
@@ -17,16 +18,6 @@ try:
     import folder_paths
 except ImportError:
     folder_paths = None
-
-# Import perth with warnings disabled and graceful fallback
-try:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        import perth
-    PERTH_AVAILABLE = True
-except ImportError:
-    perth = None
-    PERTH_AVAILABLE = False
 
 from .models.t3 import T3
 from .models.s3tokenizer import S3_SR, drop_invalid_tokens
@@ -202,11 +193,7 @@ class ChatterboxTTS:
         if self.enable_watermarking and not self._watermarker_init_attempted:
             self._watermarker_init_attempted = True
             try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    self.watermarker = perth.PerthImplicitWatermarker()
-                    if self.watermarker is None:
-                        raise ValueError("PerthImplicitWatermarker returned None")
+                self.watermarker = create_perth_watermarker()
             except Exception as e:
                 print(f"❌ Failed to initialize watermarker: {e}")
                 self.watermarker = None
