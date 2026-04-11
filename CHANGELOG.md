@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.7] - 2026-04-11
+
+### Added
+
+- Restore the example RVC model training workflow in fresh setups
+
+### Fixed
+
+- Fix RVC training startup failures
+- Fix missing bundled RVC training runtime files in clean installs
+- Improve RVC training multiprocessing compatibility on Linux and ROCm systems
 ## [4.25.6] - 2026-04-10
 
 ### Fixed
