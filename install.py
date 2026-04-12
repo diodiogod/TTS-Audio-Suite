@@ -448,6 +448,24 @@ class TTSAudioInstaller:
             
             self.run_pip_command(pytorch_cmd_25, f"Installing PyTorch 2.5+ ({cuda_version} support)")
 
+    def verify_python_import(self, module_name: str) -> bool:
+        """Verify a module imports in the target Python environment."""
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", f"import {module_name}"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                return True
+            error_text = (result.stderr or result.stdout or "unknown import failure").strip()
+            self.log(f"Python import check failed for {module_name}: {error_text}", "WARNING")
+            return False
+        except Exception as e:
+            self.log(f"Python import check failed for {module_name}: {e}", "WARNING")
+            return False
+
     def check_package_installed(self, package_spec):
         """Check if a package meets the version requirement"""
         try:
@@ -721,12 +739,22 @@ class TTSAudioInstaller:
                 
                 # Try GPU installation first with --no-deps to prevent numpy downgrade
                 self.run_pip_command(["install", "--no-deps", faiss_gpu_package], f"Installing {faiss_gpu_package} for GPU acceleration (--no-deps)")
-                self.log("faiss-gpu installed with --no-deps - RVC will use GPU acceleration without downgrading numpy", "SUCCESS")
+                if self.verify_python_import("faiss"):
+                    self.log("faiss-gpu import test passed", "SUCCESS")
+                else:
+                    self.log("faiss-gpu package installed but import failed - falling back to CPU version", "WARNING")
+                    faiss_gpu_name = faiss_gpu_package.split(">=")[0]
+                    self.run_pip_command(["uninstall", "-y", faiss_gpu_name], f"Removing broken {faiss_gpu_name}", ignore_errors=True)
+                    self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback, --no-deps)")
+                    if not self.verify_python_import("faiss"):
+                        self.log("faiss-cpu installed but faiss import still failed", "WARNING")
                 
             except subprocess.CalledProcessError:
                 # GPU installation failed - fallback to CPU
                 self.log("faiss-gpu installation failed - falling back to CPU version", "WARNING")
                 self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback, --no-deps)")
+                if not self.verify_python_import("faiss"):
+                    self.log("faiss-cpu installed but faiss import still failed", "WARNING")
         else:
             # Windows or no CUDA - use reliable CPU version
             if self.is_windows and cuda_version != "cpu":
@@ -738,6 +766,9 @@ class TTSAudioInstaller:
                 self.log("faiss-cpu already satisfied - skipping", "SUCCESS")
             else:
                 self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu for RVC voice matching (--no-deps)")
+
+            if not self.verify_python_import("faiss"):
+                self.log("faiss-cpu is installed but faiss import still failed", "WARNING")
 
     def install_numpy_with_constraints(self):
         """Install numpy with version constraints for compatibility"""
