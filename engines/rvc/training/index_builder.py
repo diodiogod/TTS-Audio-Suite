@@ -27,6 +27,17 @@ def build_faiss_index(
             f"Underlying import error: {exc}"
         ) from exc
 
+    missing_faiss_api = [name for name in ("index_factory", "extract_index_ivf", "write_index") if not hasattr(faiss, name)]
+    if missing_faiss_api:
+        module_file = getattr(faiss, "__file__", None)
+        loader_name = type(getattr(faiss, "__loader__", None)).__name__ if getattr(faiss, "__loader__", None) else None
+        raise RuntimeError(
+            "RVC index building found a broken Python faiss package. "
+            f"Missing required API: {', '.join(missing_faiss_api)}. "
+            f"Imported module file: {module_file!r}, loader: {loader_name!r}. "
+            "This usually means a stale namespace/stub package. Uninstall faiss/faiss-cpu/faiss-gpu, remove any stray site-packages/faiss directory, and reinstall 'faiss-cpu'."
+        )
+
     os.makedirs(index_dir, exist_ok=True)
 
     dataset_key = hashlib.md5(f"{dataset_dir}|{sample_rate}|{model_name}".encode()).hexdigest()[:10]

@@ -547,7 +547,7 @@ def run_rvc_training_job(
                 )
             except RuntimeError as exc:
                 message = str(exc).lower()
-                if "faiss" not in message or "scikit-learn" not in message:
+                if "faiss" not in message and "scikit-learn" not in message:
                     raise
                 index_build_warning = str(exc)
                 print(f"⚠️ RVC training: {exc} Continuing without index build.")

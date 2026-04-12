@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.14] - 2026-04-12
+
+### Changed
+
+- Improve RVC training behavior when FAISS is present but unusable
+
+### Fixed
+
+- Fix RVC training FAISS package repair on Linux
+- Fix RVC index building failing when Python imports a broken stub faiss package with no real APIs
+- Reinstall faiss-cpu more aggressively when the environment contains broken FAISS leftovers
 ## [4.25.13] - 2026-04-12
 
 ### Added

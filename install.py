@@ -466,6 +466,80 @@ class TTSAudioInstaller:
             self.log(f"Python import check failed for {module_name}: {e}", "WARNING")
             return False
 
+    def verify_faiss_installation(self) -> bool:
+        """Verify FAISS imports and exposes the CPU APIs required by RVC index building."""
+        probe = (
+            "import json\n"
+            "import faiss\n"
+            "details = {\n"
+            "    'file': getattr(faiss, '__file__', None),\n"
+            "    'loader': type(getattr(faiss, '__loader__', None)).__name__ if getattr(faiss, '__loader__', None) else None,\n"
+            "    'has_index_factory': hasattr(faiss, 'index_factory'),\n"
+            "    'has_write_index': hasattr(faiss, 'write_index'),\n"
+            "    'has_read_index': hasattr(faiss, 'read_index'),\n"
+            "}\n"
+            "missing = [name for name in ('index_factory', 'write_index', 'read_index') if not hasattr(faiss, name)]\n"
+            "if missing:\n"
+            "    raise RuntimeError(f\"faiss imported but missing required API: {', ' .join(missing)} | details={details}\")\n"
+            "print(json.dumps(details))\n"
+        )
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", probe],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                details = (result.stdout or "").strip()
+                if details:
+                    self.log(f"FAISS verification passed: {details}", "SUCCESS")
+                return True
+            error_text = (result.stderr or result.stdout or "unknown faiss failure").strip()
+            self.log(f"FAISS verification failed: {error_text}", "WARNING")
+            return False
+        except Exception as e:
+            self.log(f"FAISS verification failed: {e}", "WARNING")
+            return False
+
+    def cleanup_stale_faiss_namespace(self) -> None:
+        """Remove clearly broken namespace-only faiss directories left behind by bad installs."""
+        probe = (
+            "import json, shutil, site, sysconfig\n"
+            "from pathlib import Path\n"
+            "roots = set()\n"
+            "for base in list(site.getsitepackages()) + [site.getusersitepackages(), sysconfig.get_paths().get('purelib'), sysconfig.get_paths().get('platlib')]:\n"
+            "    if base:\n"
+            "        roots.add(base)\n"
+            "removed = []\n"
+            "for root in roots:\n"
+            "    candidate = Path(root) / 'faiss'\n"
+            "    if not candidate.is_dir():\n"
+            "        continue\n"
+            "    has_init = (candidate / '__init__.py').exists()\n"
+            "    has_binary = any(candidate.glob('*.so')) or any(candidate.glob('*.pyd')) or any(candidate.glob('*.dll')) or any(candidate.glob('*.dylib'))\n"
+            "    if not has_init and not has_binary:\n"
+            "        shutil.rmtree(candidate, ignore_errors=True)\n"
+            "        removed.append(str(candidate))\n"
+            "print(json.dumps(removed))\n"
+        )
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", probe],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                error_text = (result.stderr or result.stdout or "unknown cleanup failure").strip()
+                self.log(f"FAISS namespace cleanup failed: {error_text}", "WARNING")
+                return
+            removed = (result.stdout or "[]").strip()
+            if removed and removed != "[]":
+                self.log(f"Removed stale namespace-only faiss package directories: {removed}", "WARNING")
+        except Exception as e:
+            self.log(f"FAISS namespace cleanup failed: {e}", "WARNING")
+
     def check_package_installed(self, package_spec):
         """Check if a package meets the version requirement"""
         try:
@@ -720,55 +794,35 @@ class TTSAudioInstaller:
         else:
             self.run_pip_command(["install", "monotonic-alignment-search"], "Installing monotonic-alignment-search", ignore_errors=True)
         
-        # Smart faiss installation: GPU on Linux with CUDA, CPU fallback for Windows/compatibility
-        cuda_version = self.detect_cuda_version()
-        
-        if not self.is_windows and cuda_version != "cpu":
-            # Linux with CUDA - try GPU acceleration
-            self.log("Linux + CUDA detected - attempting faiss-gpu for better RVC performance", "INFO")
-            
-            try:
-                # Determine CUDA version for faiss-gpu package
-                if cuda_version in ["cu121", "cu124"]:  # CUDA 12.x
-                    faiss_gpu_package = "faiss-gpu-cu12>=1.7.4"
-                elif cuda_version == "cu118":  # CUDA 11.x
-                    faiss_gpu_package = "faiss-gpu-cu11>=1.7.4"
-                else:
-                    # Fallback for other CUDA versions
-                    faiss_gpu_package = "faiss-gpu-cu12>=1.7.4"
-                
-                # Try GPU installation first with --no-deps to prevent numpy downgrade
-                self.run_pip_command(["install", "--no-deps", faiss_gpu_package], f"Installing {faiss_gpu_package} for GPU acceleration (--no-deps)")
-                if self.verify_python_import("faiss"):
-                    self.log("faiss-gpu import test passed", "SUCCESS")
-                else:
-                    self.log("faiss-gpu package installed but import failed - falling back to CPU version", "WARNING")
-                    faiss_gpu_name = faiss_gpu_package.split(">=")[0]
-                    self.run_pip_command(["uninstall", "-y", faiss_gpu_name], f"Removing broken {faiss_gpu_name}", ignore_errors=True)
-                    self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback, --no-deps)")
-                    if not self.verify_python_import("faiss"):
-                        self.log("faiss-cpu installed but faiss import still failed", "WARNING")
-                
-            except subprocess.CalledProcessError:
-                # GPU installation failed - fallback to CPU
-                self.log("faiss-gpu installation failed - falling back to CPU version", "WARNING")
-                self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu (fallback, --no-deps)")
-                if not self.verify_python_import("faiss"):
-                    self.log("faiss-cpu installed but faiss import still failed", "WARNING")
-        else:
-            # Windows or no CUDA - use reliable CPU version
-            if self.is_windows and cuda_version != "cpu":
-                self.log("Windows + CUDA detected - faiss-gpu not available on Windows, using CPU version", "INFO")
-            else:
-                self.log("No CUDA detected - using faiss-cpu", "INFO")
+        # RVC index building only uses the CPU FAISS Python API.
+        # If users already have a working FAISS module (including a valid GPU build), keep it.
+        if self.verify_faiss_installation():
+            self.log("Working FAISS API already available - skipping FAISS install", "SUCCESS")
+            return
 
-            if self.check_package_installed("faiss-cpu>=1.7.4"):
-                self.log("faiss-cpu already satisfied - skipping", "SUCCESS")
-            else:
-                self.run_pip_command(["install", "--no-deps", "faiss-cpu>=1.7.4"], "Installing faiss-cpu for RVC voice matching (--no-deps)")
+        self.log(
+            "Installing faiss-cpu for RVC voice matching (GPU FAISS is not required for current RVC index building)",
+            "INFO",
+        )
 
-            if not self.verify_python_import("faiss"):
-                self.log("faiss-cpu is installed but faiss import still failed", "WARNING")
+        # Broken Arch/Linux installs have shown namespace-only 'faiss' stubs and half-installed GPU wheels.
+        self.run_pip_command(
+            ["uninstall", "-y", "faiss", "faiss-cpu", "faiss-gpu", "faiss-gpu-cu11", "faiss-gpu-cu12"],
+            "Removing broken or conflicting FAISS packages",
+            ignore_errors=True,
+        )
+        self.cleanup_stale_faiss_namespace()
+        self.run_pip_command(
+            ["install", "--force-reinstall", "--no-cache-dir", "--no-deps", "faiss-cpu>=1.7.4"],
+            "Installing faiss-cpu for RVC voice matching (--no-deps)",
+        )
+
+        if not self.verify_faiss_installation():
+            self.log(
+                "faiss-cpu installation completed but working FAISS APIs are still unavailable. "
+                "This usually means a stale site-packages/faiss directory or a broken wheel in the environment.",
+                "WARNING",
+            )
 
     def install_numpy_with_constraints(self):
         """Install numpy with version constraints for compatibility"""
