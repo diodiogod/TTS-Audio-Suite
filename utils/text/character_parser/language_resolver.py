@@ -259,6 +259,56 @@ class LanguageResolver:
         # Cache the result
         character_language_cache[cache_key] = resolved_language
         return resolved_language
+
+    def get_language_display_name(self, language_code: str) -> str:
+        """
+        Get a readable display name for a language code.
+
+        This keeps compatibility with older CharacterParser callers that relied
+        on the pre-refactor helper living directly on the parser.
+        """
+        canonical_lang = resolve_language_alias(language_code)
+
+        preferred_names = {
+            "pt-br": "Portuguese",
+            "pt-pt": "Portuguese",
+            "zh-cn": "Chinese",
+            "zh-tw": "Chinese",
+        }
+        if canonical_lang in preferred_names:
+            return preferred_names[canonical_lang]
+
+        preferred_aliases = [
+            "english",
+            "german",
+            "french",
+            "spanish",
+            "italian",
+            "norwegian",
+            "chinese",
+            "japanese",
+            "russian",
+            "portuguese",
+            "dutch",
+            "korean",
+        ]
+        for preferred in preferred_aliases:
+            if LANGUAGE_ALIASES.get(preferred) == canonical_lang:
+                return preferred.title()
+
+        best_alias = None
+        for alias, canonical in LANGUAGE_ALIASES.items():
+            if canonical != canonical_lang:
+                continue
+            if not alias.isalpha() or len(alias) < 4 or alias.isupper():
+                continue
+            if best_alias is None or len(alias) > len(best_alias):
+                best_alias = alias
+
+        if best_alias:
+            return best_alias.title()
+
+        return canonical_lang.upper()
     
     def reset_cache(self):
         """Reset internal caches (called by main parser)."""

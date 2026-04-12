@@ -2,6 +2,20 @@ from transformers.configuration_utils import PretrainedConfig
 from transformers.models.auto import CONFIG_MAPPING
 
 
+def _looks_like_flat_higgs_v2_config(kwargs):
+    return kwargs.get("model_type") == "higgs_audio_v2" or (
+        "text_config" not in kwargs
+        and "vocab_size" in kwargs
+        and "hidden_size" in kwargs
+        and "num_hidden_layers" in kwargs
+    )
+
+
+def _pop_v2_value(kwargs, key, default=None):
+    value = kwargs.pop(key, default)
+    return default if value is None else value
+
+
 class HiggsAudioEncoderConfig(PretrainedConfig):
     """Configuration of the Audio encoder in Higgs-Audio."""
 
@@ -154,6 +168,53 @@ class HiggsAudioConfig(PretrainedConfig):
         audio_eos_token_id=128012,
         **kwargs,
     ):
+        if text_config is None and _looks_like_flat_higgs_v2_config(kwargs):
+            print("🔧 Higgs Audio config: detected flat Hugging Face Higgs v2 schema; applying compatibility shim")
+            rope_parameters = kwargs.pop("rope_parameters", None) or {}
+            rope_scaling = dict(rope_parameters) if rope_parameters else None
+            rope_theta = rope_parameters.get("rope_theta")
+
+            text_config = {
+                "model_type": "llama",
+                "vocab_size": _pop_v2_value(kwargs, "vocab_size", 128256),
+                "hidden_size": _pop_v2_value(kwargs, "hidden_size", 3072),
+                "intermediate_size": _pop_v2_value(kwargs, "intermediate_size", 8192),
+                "num_hidden_layers": _pop_v2_value(kwargs, "num_hidden_layers", 28),
+                "num_attention_heads": _pop_v2_value(kwargs, "num_attention_heads", 24),
+                "num_key_value_heads": _pop_v2_value(kwargs, "num_key_value_heads", 8),
+                "max_position_embeddings": _pop_v2_value(kwargs, "max_position_embeddings", 2048),
+                "attention_bias": _pop_v2_value(kwargs, "attention_bias", False),
+                "mlp_bias": _pop_v2_value(kwargs, "mlp_bias", False),
+                "rms_norm_eps": _pop_v2_value(kwargs, "rms_norm_eps", 1e-5),
+                "bos_token_id": _pop_v2_value(kwargs, "bos_token_id", 1),
+                "eos_token_id": _pop_v2_value(kwargs, "eos_token_id", 128009),
+                "pad_token_id": pad_token_id,
+                "tie_word_embeddings": _pop_v2_value(kwargs, "tie_word_embeddings", False),
+                "_attn_implementation": "eager",
+            }
+            if rope_theta is not None:
+                text_config["rope_theta"] = rope_theta
+            if rope_scaling:
+                text_config["rope_scaling"] = rope_scaling
+
+            # The live HF Higgs v2 config is flat. Translate the V2 keys into
+            # the older composite structure expected by the bundled model code.
+            audio_num_codebooks = _pop_v2_value(kwargs, "num_codebooks", audio_num_codebooks)
+
+            flat_codebook_size = kwargs.pop("codebook_size", None)
+            if flat_codebook_size is not None:
+                # V2 publishes 1026 because it already includes BOS/EOS audio
+                # stream slots. The bundled model adds those two slots itself.
+                audio_codebook_size = max(1, flat_codebook_size - 2)
+
+            audio_stream_bos_id = _pop_v2_value(kwargs, "audio_stream_bos_id", audio_stream_bos_id)
+            audio_stream_eos_id = _pop_v2_value(kwargs, "audio_stream_eos_id", audio_stream_eos_id)
+            audio_out_bos_token_id = _pop_v2_value(kwargs, "audio_bos_token_id", audio_out_bos_token_id)
+            audio_out_token_idx = _pop_v2_value(kwargs, "audio_token_id", audio_out_token_idx)
+            pad_token_id = _pop_v2_value(kwargs, "pad_token_id", pad_token_id)
+        elif text_config is not None or "text_config" in kwargs:
+            print("🔧 Higgs Audio config: detected legacy composite schema")
+
         if isinstance(audio_encoder_config, dict):
             audio_encoder_config["model_type"] = (
                 audio_encoder_config["model_type"] if "model_type" in audio_encoder_config else "higgs_audio_encoder"

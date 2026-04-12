@@ -128,6 +128,12 @@ class CharacterParser(ValidationMixin):
             character, explicit_language, self.character_language_defaults,
             self._character_language_cache, self._logged_characters
         )
+
+    def get_language_display_name(self, language_code: str) -> str:
+        """
+        Backward-compatible wrapper retained for older node code.
+        """
+        return self.language_resolver.get_language_display_name(language_code)
     
     def reset_session_cache(self):
         """Reset caches for a new parsing session to allow fresh logging."""
