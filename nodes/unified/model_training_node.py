@@ -62,7 +62,7 @@ class UnifiedModelTrainingNode(BaseTTSNode):
                 }),
                 "resume": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Exact resume from saved RVC training checkpoints in the same dataset/config job. This only works if real G_*.pth and D_*.pth checkpoints exist."
+                    "tooltip": "Exact resume from saved RVC training checkpoints for the latest compatible RVC job with the same output name, dataset, and sample rate. This only works if real G_*.pth and D_*.pth checkpoints exist."
                 }),
                 "overwrite": ("BOOLEAN", {
                     "default": False,

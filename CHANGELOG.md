@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.11] - 2026-04-12
+
+### Added
+
+- Resume now reuses the latest compatible checkpointed RVC job for the same output name, dataset, and sample rate
+
+### Changed
+
+- Improve resume messaging when no compatible saved checkpoints exist
+
+### Fixed
+
+- Fix RVC training resume after config changes
+- Fix RVC resume failing just because training settings changed between runs
 ## [4.25.10] - 2026-04-12
 
 ### Added

@@ -13,7 +13,7 @@ import sys
 from glob import glob
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import folder_paths
 
@@ -222,7 +222,13 @@ def _prepare_output_paths(
     model_path = os.path.join(models_root, f"{safe_name}_{sample_rate}.pth")
 
     if resume:
-        return job_dir, model_path, safe_name
+        existing_job_dir = _find_resume_job_dir(
+            training_root,
+            safe_name,
+            dataset_info,
+            sample_rate,
+        )
+        return existing_job_dir or job_dir, model_path, safe_name
 
     if overwrite:
         if os.path.isdir(job_dir):
@@ -257,6 +263,79 @@ def _find_resume_checkpoints(job_dir: str) -> Tuple[str, str]:
     generator_checkpoint = generator_candidates[-1] if generator_candidates else ""
     discriminator_checkpoint = discriminator_candidates[-1] if discriminator_candidates else ""
     return generator_checkpoint, discriminator_checkpoint
+
+
+def _normalize_resume_identity_path(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        return os.path.normcase(os.path.abspath(raw))
+    except Exception:
+        return os.path.normcase(raw)
+
+
+def _read_resolved_training_config(job_dir: str) -> Dict[str, Any]:
+    config_path = os.path.join(job_dir, "resolved_training_config.json")
+    if not os.path.isfile(config_path):
+        return {}
+    try:
+        with open(config_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _find_resume_job_dir(
+    training_root: str,
+    safe_name: str,
+    dataset_info: Dict[str, Any],
+    sample_rate: str,
+) -> Optional[str]:
+    if not os.path.isdir(training_root):
+        return None
+
+    prefix = f"{safe_name}_"
+    target_dataset_dir = _normalize_resume_identity_path(dataset_info.get("dataset_dir", ""))
+    target_if_f0 = bool(dataset_info.get("if_f0", True))
+    best_job_dir = None
+    best_checkpoint_mtime = -1.0
+
+    for entry in os.listdir(training_root):
+        if not entry.startswith(prefix):
+            continue
+
+        job_dir = os.path.join(training_root, entry)
+        if not os.path.isdir(job_dir):
+            continue
+
+        config = _read_resolved_training_config(job_dir)
+        dataset_config = config.get("dataset") or {}
+        config_dataset_dir = _normalize_resume_identity_path(dataset_config.get("dataset_dir", ""))
+        config_sample_rate = str(dataset_config.get("sample_rate", "") or "")
+        config_if_f0 = bool(dataset_config.get("if_f0", target_if_f0))
+
+        if config_dataset_dir != target_dataset_dir:
+            continue
+        if config_sample_rate and config_sample_rate != sample_rate:
+            continue
+        if config_if_f0 != target_if_f0:
+            continue
+
+        generator_checkpoint, discriminator_checkpoint = _find_resume_checkpoints(job_dir)
+        if not generator_checkpoint or not discriminator_checkpoint:
+            continue
+
+        checkpoint_mtime = max(
+            os.path.getmtime(generator_checkpoint),
+            os.path.getmtime(discriminator_checkpoint),
+        )
+        if checkpoint_mtime > best_checkpoint_mtime:
+            best_checkpoint_mtime = checkpoint_mtime
+            best_job_dir = job_dir
+
+    return best_job_dir
 
 
 def _resolve_max_checkpoints(training_config: Dict[str, Any]) -> int:
@@ -439,8 +518,9 @@ def run_rvc_training_job(
             generator_checkpoint, discriminator_checkpoint = _find_resume_checkpoints(job_dir)
             if not generator_checkpoint or not discriminator_checkpoint:
                 raise RuntimeError(
-                    "Resume requested, but no saved RVC training checkpoints were found in "
-                    f"'{job_dir}'. Resume needs saved numbered G_*.pth and D_*.pth checkpoints. "
+                    "Resume requested, but no saved RVC training checkpoints were found for a compatible "
+                    f"RVC job (name='{resolved_name}', sample_rate='{sample_rate}', dataset='{dataset_info['dataset_dir']}'). "
+                    "Resume needs saved numbered G_*.pth and D_*.pth checkpoints. "
                     "Set 'save_every_epoch' above 0 for resumable runs, or disable resume."
                 )
 
