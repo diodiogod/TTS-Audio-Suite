@@ -1,12 +1,14 @@
 import asyncio
 import base64
+import json
+import os
 import torch
 import numpy as np
 from io import BytesIO
 from dataclasses import dataclass
 from typing import List, Optional, Union
 from copy import deepcopy
-from transformers import AutoTokenizer, AutoProcessor
+from transformers import AutoTokenizer, AutoProcessor, PreTrainedTokenizerFast
 from transformers.cache_utils import StaticCache, DynamicCache
 from transformers.generation.streamers import BaseStreamer
 from transformers.generation.stopping_criteria import StoppingCriteria
@@ -23,6 +25,56 @@ from ..model.higgs_audio import HiggsAudioModel
 from ..model.higgs_audio.utils import revert_delay_pattern
 from ..data_collator.higgs_audio_collator import HiggsAudioSampleCollator
 from ..audio_processing.higgs_audio_tokenizer import load_higgs_audio_tokenizer
+
+
+def _extract_token_value(token_config):
+    if isinstance(token_config, dict):
+        return token_config.get("content")
+    return token_config
+
+
+def _load_higgs_tokenizer_fast_fallback(tokenizer_name_or_path: str):
+    tokenizer_dir = tokenizer_name_or_path if os.path.isdir(tokenizer_name_or_path) else None
+    if tokenizer_dir is None:
+        raise ValueError(
+            f"Fast tokenizer fallback requires a local tokenizer directory, got: {tokenizer_name_or_path}"
+        )
+
+    tokenizer_json = os.path.join(tokenizer_dir, "tokenizer.json")
+    if not os.path.exists(tokenizer_json):
+        raise FileNotFoundError(f"Missing tokenizer.json for Higgs tokenizer fallback: {tokenizer_json}")
+
+    tokenizer_config = {}
+    tokenizer_config_path = os.path.join(tokenizer_dir, "tokenizer_config.json")
+    if os.path.exists(tokenizer_config_path):
+        with open(tokenizer_config_path, "r", encoding="utf-8") as f:
+            tokenizer_config = json.load(f)
+
+    special_tokens_map = {}
+    special_tokens_map_path = os.path.join(tokenizer_dir, "special_tokens_map.json")
+    if os.path.exists(special_tokens_map_path):
+        with open(special_tokens_map_path, "r", encoding="utf-8") as f:
+            special_tokens_map = json.load(f)
+
+    bos_token = _extract_token_value(special_tokens_map.get("bos_token")) or tokenizer_config.get("bos_token")
+    eos_token = _extract_token_value(special_tokens_map.get("eos_token")) or tokenizer_config.get("eos_token")
+    pad_token = _extract_token_value(special_tokens_map.get("pad_token")) or tokenizer_config.get("pad_token") or eos_token
+    unk_token = _extract_token_value(special_tokens_map.get("unk_token")) or tokenizer_config.get("unk_token")
+
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_file=tokenizer_json,
+        bos_token=bos_token,
+        eos_token=eos_token,
+        pad_token=pad_token,
+        unk_token=unk_token,
+        clean_up_tokenization_spaces=tokenizer_config.get("clean_up_tokenization_spaces", True),
+        model_max_length=tokenizer_config.get("model_max_length", int(1e30)),
+    )
+
+    logger.info(
+        "Loaded Higgs tokenizer via PreTrainedTokenizerFast fallback from local tokenizer.json"
+    )
+    return tokenizer
 
 
 @dataclass
@@ -308,6 +360,14 @@ class HiggsAudioServeEngine:
             logger.info(f"Auto-detection failed ({e}), using LlamaTokenizer explicitly")
             from transformers import LlamaTokenizer
             self.tokenizer = LlamaTokenizer.from_pretrained(tokenizer_name_or_path)
+        except ValueError as e:
+            if "Tokenizer class TokenizersBackend does not exist" not in str(e):
+                raise
+            logger.info(
+                f"AutoTokenizer cannot load upstream Higgs tokenizer metadata ({e}); "
+                f"falling back to local PreTrainedTokenizerFast"
+            )
+            self.tokenizer = _load_higgs_tokenizer_fast_fallback(tokenizer_name_or_path)
 
         # logger.info(f"Initializing Higgs Audio Tokenizer")
         self.audio_tokenizer = load_higgs_audio_tokenizer(audio_tokenizer_name_or_path, device=device)

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.15] - 2026-04-13
+
+### Changed
+
+- Improve Higgs Audio support for newer upstream model releases
+
+### Fixed
+
+- Fix Higgs Audio loading with recent upstream tokenizer updates
+- Fix Higgs Audio tokenizer loading failure after the latest Hugging Face tokenizer metadata change
+- Keep compatibility with older Higgs downloads and existing tokenizer layouts
 ## [4.25.14] - 2026-04-12
 
 ### Changed
