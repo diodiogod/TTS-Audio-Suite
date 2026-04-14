@@ -34,7 +34,14 @@ class UnifiedDownloader:
             print("⚠️ SSL certificate verification is DISABLED")
             print("   Set environment variable TTS_DISABLE_SSL_VERIFY=0 to re-enable")
     
-    def download_from_hf_cli(self, repo_id: str, filename: str, target_dir: str) -> bool:
+    def download_from_hf_cli(
+        self,
+        repo_id: str,
+        filename: str,
+        target_dir: str,
+        revision: Optional[str] = None,
+        force_download: bool = False,
+    ) -> bool:
         """
         Download a single file from HuggingFace using HF CLI (faster than HTTP).
         Uses existing huggingface-hub dependency.
@@ -50,11 +57,17 @@ class UnifiedDownloader:
         target_path = os.path.join(target_dir, filename)
 
         # Check if already exists
-        if os.path.exists(target_path):
+        if os.path.exists(target_path) and not force_download:
             return True
 
         try:
             os.makedirs(target_dir, exist_ok=True)
+
+            if force_download and os.path.exists(target_path):
+                try:
+                    os.remove(target_path)
+                except OSError:
+                    pass
 
             # Set PYTHONIOENCODING to prevent Windows Unicode errors
             env = os.environ.copy()
@@ -62,13 +75,18 @@ class UnifiedDownloader:
 
             # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
             # Show progress bar by not capturing output
+            hf_command = [
+                "hf", "download",
+                repo_id,
+                filename,
+                "--local-dir", target_dir
+            ]
+            if revision:
+                hf_command.extend(["--revision", revision])
+            if force_download:
+                hf_command.append("--force-download")
             result = subprocess.run(
-                [
-                    "hf", "download",
-                    repo_id,
-                    filename,
-                    "--local-dir", target_dir
-                ],
+                hf_command,
                 check=False,
                 env=env,
                 capture_output=False  # Allow progress bar to show
@@ -79,13 +97,18 @@ class UnifiedDownloader:
                 return True
 
             # Try legacy command if new one failed
+            legacy_command = [
+                "huggingface-cli", "download",
+                repo_id,
+                filename,
+                "--local-dir", target_dir
+            ]
+            if revision:
+                legacy_command.extend(["--revision", revision])
+            if force_download:
+                legacy_command.append("--force-download")
             result = subprocess.run(
-                [
-                    "huggingface-cli", "download",
-                    repo_id,
-                    filename,
-                    "--local-dir", target_dir
-                ],
+                legacy_command,
                 check=False,
                 env=env,
                 capture_output=False  # Allow progress bar to show
@@ -100,7 +123,13 @@ class UnifiedDownloader:
             # Silently fail - will use HTTP fallback
             return False
 
-    def download_file(self, url: str, target_path: str, description: str = None) -> bool:
+    def download_file(
+        self,
+        url: str,
+        target_path: str,
+        description: str = None,
+        force_download: bool = False,
+    ) -> bool:
         """
         Download a file directly to target path with progress display.
         
@@ -112,13 +141,19 @@ class UnifiedDownloader:
         Returns:
             True if successful, False otherwise
         """
-        if os.path.exists(target_path):
+        if os.path.exists(target_path) and not force_download:
             print(f"📁 File already exists: {os.path.basename(target_path)}")
             return True
             
         try:
             # Create directory structure
             os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+            if force_download and os.path.exists(target_path):
+                try:
+                    os.remove(target_path)
+                except OSError:
+                    pass
             
             # Download with progress
             desc = description or os.path.basename(target_path)
@@ -160,8 +195,17 @@ class UnifiedDownloader:
             
             return False
     
-    def download_huggingface_model(self, repo_id: str, model_name: str, files: List[Dict[str, str]], 
-                                 engine_type: str, subfolder: str = None) -> Optional[str]:
+    def download_huggingface_model(
+        self,
+        repo_id: str,
+        model_name: str,
+        files: List[Dict[str, str]],
+        engine_type: str,
+        subfolder: str = None,
+        revision: Optional[str] = None,
+        force_download: bool = False,
+        target_dir: Optional[str] = None,
+    ) -> Optional[str]:
         """
         Download HuggingFace model files to organized TTS/ structure.
         
@@ -176,7 +220,9 @@ class UnifiedDownloader:
             Path to model directory if successful, None otherwise
         """
         # Create organized path with optional subfolder
-        if subfolder:
+        if target_dir:
+            model_dir = target_dir
+        elif subfolder:
             model_dir = os.path.join(self.tts_dir, engine_type, model_name, subfolder)
         else:
             model_dir = os.path.join(self.tts_dir, engine_type, model_name)
@@ -190,24 +236,34 @@ class UnifiedDownloader:
             local_filename = file_info['local']  # e.g., "model_1250000.safetensors"
             source_repo_id = file_info.get('alt_repo', repo_id)
             source_remote_path = file_info.get('alt_remote', remote_path)
+            source_revision = file_info.get('revision', revision)
+            source_force_download = file_info.get('force_download', force_download)
             
             target_path = os.path.join(model_dir, local_filename)
             
             # Skip if already exists in TTS folder
-            if os.path.exists(target_path):
+            if os.path.exists(target_path) and not source_force_download:
                 continue
 
             # Note: Don't copy from cache - just download to TTS folder if missing
 
             # Try HF CLI first (more reliable), fall back to direct HTTP
             # HF CLI handles network issues better than requests library
-            if not self.download_from_hf_cli(source_repo_id, source_remote_path, model_dir):
+            if not self.download_from_hf_cli(
+                source_repo_id,
+                source_remote_path,
+                model_dir,
+                revision=source_revision,
+                force_download=source_force_download,
+            ):
                 # HF CLI failed, try direct HTTP download as fallback
-                url = f"https://huggingface.co/{source_repo_id}/resolve/main/{source_remote_path}"
+                url_revision = source_revision or "main"
+                url = f"https://huggingface.co/{source_repo_id}/resolve/{url_revision}/{source_remote_path}"
                 if not self.download_file(
                     url,
                     target_path,
                     f"{model_name}/{local_filename} from {source_repo_id}",
+                    force_download=source_force_download,
                 ):
                     failed_files.append(local_filename)
                     # Only fail completely if critical files are missing

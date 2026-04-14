@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.16] - 2026-04-14
+
+### Added
+
+- Restore the official Higgs Audio 2 download to a known-good v2 snapshot
+
+### Changed
+
+- Improve Higgs Audio loading behavior by reducing repeated managed download log noise
+
+### Fixed
+
+- Fix Higgs Audio 2 download compatibility with current transformers support
+- Fix newer incompatible Higgs metadata already downloaded from Hugging Face
 ## [4.25.15] - 2026-04-13
 
 ### Changed

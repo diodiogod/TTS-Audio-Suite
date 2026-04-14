@@ -44,20 +44,11 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.audio.cache import CacheKeyGenerator, GLOBAL_AUDIO_CACHE, get_audio_cache
 from utils.downloads.unified_downloader import unified_downloader
 from utils.text.chunking import ImprovedChatterBoxChunker
-from .higgs_audio_downloader import HiggsAudioDownloader
+from .higgs_audio_downloader import HiggsAudioDownloader, HIGGS_AUDIO_MODELS
 import folder_paths
 
 # Import unified model interface for ComfyUI integration (replaces _ENGINE_CACHE)
 from utils.models.unified_model_interface import load_tts_model
-
-# Higgs Audio model configurations (matches downloader format)
-HIGGS_AUDIO_MODELS = {
-    "higgs-audio-v2-3B": {
-        "generation_repo": "bosonai/higgs-audio-v2-generation-3B-base",
-        "tokenizer_repo": "bosonai/higgs-audio-v2-tokenizer",
-        "description": "Higgs Audio v2 3B parameter model"
-    }
-}
 
 
 # Convert token-based limits to character-based for unified chunker
@@ -711,6 +702,13 @@ class HiggsAudioEngine:
         if os.path.exists(model_path) and os.path.isdir(model_path):
             if self._verify_model_completeness(model_path):
                 return model_path
+
+        managed_entry = self.downloader._get_managed_generation_entry(model_path)
+        if managed_entry:
+            model_name, config = managed_entry
+            for candidate_dir in self.downloader._get_managed_generation_dirs(model_name, config):
+                if os.path.exists(candidate_dir) and self._verify_model_completeness(candidate_dir):
+                    return candidate_dir
         
         # Check predefined models
         if model_path in HIGGS_AUDIO_MODELS:
@@ -724,12 +722,10 @@ class HiggsAudioEngine:
                 return local_dir
             
             # Download to organized structure first using our downloader
-            print(f"📥 Ensuring model is in TTS structure: {repo_id}")
             downloaded_path = self.downloader.download_model(repo_id)
             
             # If download succeeded and gave us a local path, use it
             if downloaded_path != repo_id and os.path.exists(downloaded_path):
-                print(f"✅ Downloaded to TTS structure: {downloaded_path}")
                 return downloaded_path
             
             # If download failed, raise error instead of fallback to repo ID
@@ -745,12 +741,10 @@ class HiggsAudioEngine:
                 return local_path
             
             # Download to organized structure first
-            print(f"📥 Ensuring model is in TTS structure: {model_path}")
             downloaded_path = self.downloader.download_model(model_path)
             
             # If download succeeded and gave us a local path, use it
             if downloaded_path != model_path and os.path.exists(downloaded_path):
-                print(f"✅ Downloaded to TTS structure: {downloaded_path}")
                 return downloaded_path
             
             # If download failed, raise error instead of fallback to repo ID
@@ -769,6 +763,13 @@ class HiggsAudioEngine:
         if os.path.exists(tokenizer_path) and os.path.isdir(tokenizer_path):
             if self._verify_tokenizer_completeness(tokenizer_path):
                 return tokenizer_path
+
+        managed_entry = self.downloader._get_managed_tokenizer_entry(tokenizer_path)
+        if managed_entry:
+            model_name, config = managed_entry
+            for candidate_dir in self.downloader._get_managed_tokenizer_dirs(model_name, config):
+                if os.path.exists(candidate_dir) and self._verify_tokenizer_completeness(candidate_dir):
+                    return candidate_dir
         
         # Check predefined models
         for model_name, config in HIGGS_AUDIO_MODELS.items():
@@ -790,7 +791,6 @@ class HiggsAudioEngine:
                 return local_path
             
             # Download using unified downloader to follow TTS folder policy
-            print(f"📥 Downloading tokenizer using unified downloader: {tokenizer_path}")
             downloaded_path = self.downloader.download_tokenizer(tokenizer_path)
             if downloaded_path:
                 return downloaded_path
@@ -798,7 +798,6 @@ class HiggsAudioEngine:
                 raise RuntimeError(f"Failed to download tokenizer: {tokenizer_path}")
 
         # Default: try to download using unified downloader
-        print(f"📥 Downloading tokenizer using unified downloader: {tokenizer_path}")
         downloaded_path = self.downloader.download_tokenizer(tokenizer_path)
         if downloaded_path:
             return downloaded_path

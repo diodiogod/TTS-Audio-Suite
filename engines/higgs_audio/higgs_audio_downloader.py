@@ -5,7 +5,8 @@ Downloads Higgs Audio models to organized TTS/HiggsAudio/ structure
 
 import os
 import sys
-from typing import Optional, Dict, List, Tuple
+import json
+from typing import Optional, Dict, List, Tuple, Any
 from pathlib import Path
 
 # Add parent directory for imports
@@ -18,12 +19,28 @@ from utils.downloads.unified_downloader import unified_downloader
 from utils.models.extra_paths import get_all_tts_model_paths
 import folder_paths
 
+# NOTE:
+# Boson changed the live Hugging Face Higgs v2 repos on 2026-04-04 ("trfms-support")
+# to native transformers>=5.3.0 layouts. TTS Audio Suite is still pinned below
+# transformers 5 for cross-engine compatibility, so the official managed Higgs entry
+# intentionally pins the last pre-migration Higgs v2 snapshots below. When repo-wide
+# transformers 5.3+ support lands, revisit these revisions and add an explicit
+# native/latest Higgs path instead of silently changing the default users rely on.
+HIGGS_AUDIO_STABLE_COMPAT_NOTE = (
+    "Pinned pre-2026-04-04 Higgs Audio v2 snapshot compatible with "
+    "TTS Audio Suite transformers<=4.57.3. Revisit when repo-wide "
+    "transformers 5.3+ support exists."
+)
+HIGGS_AUDIO_REVISION_MARKER = ".tts_audio_suite_higgs_snapshot.json"
+
 # Higgs Audio model configurations
 HIGGS_AUDIO_MODELS = {
     "higgs-audio-v2-3B": {
         "generation_repo": "bosonai/higgs-audio-v2-generation-3B-base",
         "tokenizer_repo": "bosonai/higgs-audio-v2-tokenizer",
         "description": "Higgs Audio v2 3B parameter model with audio tokenizer",
+        "stable_generation_revision": "10840182ca4ad5d9d9113b60b9bb3c1ef1ba3f84",
+        "stable_tokenizer_revision": "9d4988fbd4ad07b4cac3a5fa462741a41810dbec",
         "generation_files": [
             {"remote": "config.json", "local": "config.json"},
             {"remote": "model.safetensors.index.json", "local": "model.safetensors.index.json"},
@@ -39,7 +56,23 @@ HIGGS_AUDIO_MODELS = {
         "tokenizer_files": [
             {"remote": "config.json", "local": "config.json"},
             {"remote": "model.pth", "local": "model.pth"},
-        ]
+        ],
+        "generation_metadata_files": [
+            {"remote": "config.json", "local": "config.json"},
+            {"remote": "generation_config.json", "local": "generation_config.json"},
+            {"remote": "tokenizer_config.json", "local": "tokenizer_config.json"},
+        ],
+        "tokenizer_metadata_files": [
+            {"remote": "config.json", "local": "config.json"},
+        ],
+        "generation_new_schema_only_files": [
+            "processor_config.json",
+            "chat_template.jinja",
+            "model.safetensors",
+        ],
+        "tokenizer_new_schema_only_files": [
+            "preprocessor_config.json",
+        ],
     }
 }
 
@@ -61,6 +94,192 @@ class HiggsAudioDownloader:
         # Default TTS directory for downloads (first configured path)
         self.tts_dir = self.tts_model_paths[0] if self.tts_model_paths else os.path.join(self.models_dir, "TTS")
         self.base_path = os.path.join(self.tts_dir, "HiggsAudio")
+
+    def _get_managed_generation_entry(self, model_name_or_path: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+        if model_name_or_path in HIGGS_AUDIO_MODELS:
+            return model_name_or_path, HIGGS_AUDIO_MODELS[model_name_or_path]
+
+        for model_name, config in HIGGS_AUDIO_MODELS.items():
+            if config["generation_repo"] == model_name_or_path:
+                return model_name, config
+
+        return None
+
+    def _get_managed_tokenizer_entry(self, tokenizer_name_or_path: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+        if tokenizer_name_or_path in HIGGS_AUDIO_MODELS:
+            return tokenizer_name_or_path, HIGGS_AUDIO_MODELS[tokenizer_name_or_path]
+
+        for model_name, config in HIGGS_AUDIO_MODELS.items():
+            if config["tokenizer_repo"] == tokenizer_name_or_path:
+                return model_name, config
+
+        return None
+
+    def _get_managed_generation_dirs(self, model_name: str, model_config: Dict[str, Any]) -> List[str]:
+        preferred_dir = os.path.join(self.base_path, model_name, "generation")
+        legacy_repo_dir = os.path.join(self.base_path, model_config["generation_repo"].split("/")[-1])
+        return list(dict.fromkeys([preferred_dir, legacy_repo_dir]))
+
+    def _get_managed_tokenizer_dirs(self, model_name: str, model_config: Dict[str, Any]) -> List[str]:
+        preferred_dir = os.path.join(self.base_path, model_name, "tokenizer")
+        legacy_repo_dir = os.path.join(self.base_path, model_config["tokenizer_repo"].split("/")[-1])
+        return list(dict.fromkeys([preferred_dir, legacy_repo_dir]))
+
+    def _match_managed_generation_dir(self, model_dir: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+        normalized_dir = os.path.abspath(model_dir)
+        for model_name, model_config in HIGGS_AUDIO_MODELS.items():
+            candidate_dirs = [os.path.abspath(path) for path in self._get_managed_generation_dirs(model_name, model_config)]
+            if normalized_dir in candidate_dirs:
+                return model_name, model_config
+        return None
+
+    def _match_managed_tokenizer_dir(self, tokenizer_dir: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+        normalized_dir = os.path.abspath(tokenizer_dir)
+        for model_name, model_config in HIGGS_AUDIO_MODELS.items():
+            candidate_dirs = [os.path.abspath(path) for path in self._get_managed_tokenizer_dirs(model_name, model_config)]
+            if normalized_dir in candidate_dirs:
+                return model_name, model_config
+        return None
+
+    def _get_existing_dir(self, candidate_dirs: List[str]) -> Optional[str]:
+        for candidate_dir in candidate_dirs:
+            if os.path.exists(candidate_dir):
+                return candidate_dir
+        return None
+
+    def _get_complete_dir(self, candidate_dirs: List[str], required_files: List[str]) -> Optional[str]:
+        for candidate_dir in candidate_dirs:
+            if self._check_model_files_exist(candidate_dir, required_files):
+                return candidate_dir
+        return None
+
+    def _load_json_dict(self, path: str) -> Dict[str, Any]:
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _generation_needs_metadata_restore(self, model_dir: str) -> bool:
+        config_data = self._load_json_dict(os.path.join(model_dir, "config.json"))
+        if config_data.get("model_type") == "higgs_audio_v2":
+            return True
+        return os.path.exists(os.path.join(model_dir, "processor_config.json"))
+
+    def _tokenizer_needs_metadata_restore(self, tokenizer_dir: str) -> bool:
+        config_data = self._load_json_dict(os.path.join(tokenizer_dir, "config.json"))
+        if config_data.get("model_type") == "higgs_audio_v2_tokenizer":
+            return True
+        return "acoustic_model_config" in config_data
+
+    def _remove_stale_files(self, target_dir: str, filenames: List[str]) -> None:
+        for filename in filenames:
+            file_path = os.path.join(target_dir, filename)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
+
+    def _write_revision_marker(self, target_dir: str, repo_id: str, revision: str) -> None:
+        marker_path = os.path.join(target_dir, HIGGS_AUDIO_REVISION_MARKER)
+        marker_data = {
+            "repo_id": repo_id,
+            "revision": revision,
+            "managed_by": "TTS Audio Suite",
+            "note": HIGGS_AUDIO_STABLE_COMPAT_NOTE,
+        }
+
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+            with open(marker_path, "w", encoding="utf-8") as handle:
+                json.dump(marker_data, handle, indent=2, sort_keys=True)
+                handle.write("\n")
+        except OSError:
+            pass
+
+    def _restore_managed_generation_metadata_if_needed(
+        self,
+        model_name: str,
+        model_config: Dict[str, Any],
+        model_dir: str,
+    ) -> None:
+        required_files = [f["local"] for f in model_config["generation_files"]]
+        if not self._check_model_files_exist(model_dir, required_files):
+            return
+
+        if not self._generation_needs_metadata_restore(model_dir):
+            self._write_revision_marker(
+                model_dir,
+                model_config["generation_repo"],
+                model_config["stable_generation_revision"],
+            )
+            return
+
+        print(
+            "🔧 Higgs Audio: detected newer upstream generation metadata in managed install; "
+            "restoring pinned pre-transformers-5 snapshot"
+        )
+        restored_dir = self.downloader.download_huggingface_model(
+            repo_id=model_config["generation_repo"],
+            model_name=model_name,
+            files=model_config["generation_metadata_files"],
+            engine_type="HiggsAudio",
+            revision=model_config["stable_generation_revision"],
+            force_download=True,
+            target_dir=model_dir,
+        )
+        if not restored_dir:
+            raise RuntimeError("Failed to restore pinned Higgs Audio generation metadata")
+
+        self._remove_stale_files(model_dir, model_config["generation_new_schema_only_files"])
+        self._write_revision_marker(
+            model_dir,
+            model_config["generation_repo"],
+            model_config["stable_generation_revision"],
+        )
+
+    def _restore_managed_tokenizer_metadata_if_needed(
+        self,
+        model_name: str,
+        model_config: Dict[str, Any],
+        tokenizer_dir: str,
+    ) -> None:
+        required_files = [f["local"] for f in model_config["tokenizer_files"]]
+        if not self._check_model_files_exist(tokenizer_dir, required_files):
+            return
+
+        if not self._tokenizer_needs_metadata_restore(tokenizer_dir):
+            self._write_revision_marker(
+                tokenizer_dir,
+                model_config["tokenizer_repo"],
+                model_config["stable_tokenizer_revision"],
+            )
+            return
+
+        print(
+            "🔧 Higgs Audio: detected newer upstream tokenizer metadata in managed install; "
+            "restoring pinned pre-transformers-5 snapshot"
+        )
+        restored_dir = self.downloader.download_huggingface_model(
+            repo_id=model_config["tokenizer_repo"],
+            model_name=model_name,
+            files=model_config["tokenizer_metadata_files"],
+            engine_type="HiggsAudio",
+            revision=model_config["stable_tokenizer_revision"],
+            force_download=True,
+            target_dir=tokenizer_dir,
+        )
+        if not restored_dir:
+            raise RuntimeError("Failed to restore pinned Higgs Audio tokenizer metadata")
+
+        self._remove_stale_files(tokenizer_dir, model_config["tokenizer_new_schema_only_files"])
+        self._write_revision_marker(
+            tokenizer_dir,
+            model_config["tokenizer_repo"],
+            model_config["stable_tokenizer_revision"],
+        )
     
     def get_available_models(self) -> List[str]:
         """
@@ -122,8 +341,56 @@ class HiggsAudioDownloader:
         """
         # If it's already a local path, return as is
         if os.path.exists(model_name_or_path):
+            managed_local = self._match_managed_generation_dir(model_name_or_path)
+            if managed_local:
+                model_name, model_config = managed_local
+                self._restore_managed_generation_metadata_if_needed(
+                    model_name,
+                    model_config,
+                    model_name_or_path,
+                )
             print(f"📁 Using local generation model: {model_name_or_path}")
             return model_name_or_path
+
+        managed_entry = self._get_managed_generation_entry(model_name_or_path)
+        if managed_entry:
+            model_name, model_config = managed_entry
+            required_files = [f["local"] for f in model_config["generation_files"]]
+            candidate_dirs = self._get_managed_generation_dirs(model_name, model_config)
+            model_dir = (
+                self._get_complete_dir(candidate_dirs, required_files)
+                or self._get_existing_dir(candidate_dirs)
+                or candidate_dirs[0]
+            )
+
+            if self._check_model_files_exist(model_dir, required_files):
+                self._restore_managed_generation_metadata_if_needed(model_name, model_config, model_dir)
+                print(f"📁 Generation model already exists: {model_dir}")
+                return model_dir
+
+            print(
+                f"📥 Downloading pinned Higgs Audio generation model: {model_name} "
+                f"({model_config['stable_generation_revision'][:7]})"
+            )
+            downloaded_dir = self.downloader.download_huggingface_model(
+                repo_id=model_config["generation_repo"],
+                model_name=model_name,
+                files=model_config["generation_files"],
+                engine_type="HiggsAudio",
+                subfolder="generation",
+                revision=model_config["stable_generation_revision"],
+                target_dir=model_dir,
+            )
+            if downloaded_dir:
+                self._write_revision_marker(
+                    downloaded_dir,
+                    model_config["generation_repo"],
+                    model_config["stable_generation_revision"],
+                )
+                print(f"✅ Generation model downloaded: {downloaded_dir}")
+                return downloaded_dir
+
+            raise RuntimeError(f"Failed to download generation model: {model_name}")
         
         # Handle local: prefix - search in all configured TTS paths
         if model_name_or_path.startswith("local:"):
@@ -134,45 +401,17 @@ class HiggsAudioDownloader:
                 for higgs_folder_name in ["HiggsAudio", "higgs_audio", "higgsaudio"]:
                     local_path = os.path.join(base_tts_path, higgs_folder_name, local_name, "generation")
                     if os.path.exists(local_path):
+                        if local_name in HIGGS_AUDIO_MODELS:
+                            self._restore_managed_generation_metadata_if_needed(
+                                local_name,
+                                HIGGS_AUDIO_MODELS[local_name],
+                                local_path,
+                            )
                         print(f"📁 Using local generation model: {local_path}")
                         return local_path
 
             # If not found, raise error
             raise FileNotFoundError(f"Local model not found: {local_name}")
-        
-        # Handle predefined models
-        if model_name_or_path in HIGGS_AUDIO_MODELS:
-            model_config = HIGGS_AUDIO_MODELS[model_name_or_path]
-            repo_id = model_config["generation_repo"]
-            files = model_config["generation_files"]
-            
-            # Check if already downloaded to organized structure
-            model_dir = os.path.join(self.base_path, model_name_or_path, "generation")
-            if self._check_model_files_exist(model_dir, [f["local"] for f in files]):
-                print(f"📁 Generation model already exists: {model_dir}")
-                return model_dir
-            
-            # Check HuggingFace cache for predefined models
-            cache_path = self._find_in_huggingface_cache(repo_id)
-            if cache_path:
-                print(f"💾 Using HuggingFace cache for generation model: {cache_path}")
-                return cache_path
-            
-            # Download model
-            print(f"📥 Downloading Higgs Audio generation model: {model_name_or_path}")
-            downloaded_dir = self.downloader.download_huggingface_model(
-                repo_id=repo_id,
-                model_name=model_name_or_path,
-                files=files,
-                engine_type="HiggsAudio",
-                subfolder="generation"
-            )
-            
-            if downloaded_dir:
-                print(f"✅ Generation model downloaded: {downloaded_dir}")
-                return downloaded_dir
-            else:
-                raise RuntimeError(f"Failed to download generation model: {model_name_or_path}")
         
         # Handle direct HuggingFace repo IDs
         print(f"🔍 Checking for Higgs Audio model: {model_name_or_path}")
@@ -272,8 +511,56 @@ class HiggsAudioDownloader:
         """
         # If it's already a local path, return as is
         if os.path.exists(tokenizer_name_or_path):
+            managed_local = self._match_managed_tokenizer_dir(tokenizer_name_or_path)
+            if managed_local:
+                model_name, model_config = managed_local
+                self._restore_managed_tokenizer_metadata_if_needed(
+                    model_name,
+                    model_config,
+                    tokenizer_name_or_path,
+                )
             print(f"📁 Using local tokenizer model: {tokenizer_name_or_path}")
             return tokenizer_name_or_path
+
+        managed_entry = self._get_managed_tokenizer_entry(tokenizer_name_or_path)
+        if managed_entry:
+            model_name, model_config = managed_entry
+            required_files = [f["local"] for f in model_config["tokenizer_files"]]
+            candidate_dirs = self._get_managed_tokenizer_dirs(model_name, model_config)
+            tokenizer_dir = (
+                self._get_complete_dir(candidate_dirs, required_files)
+                or self._get_existing_dir(candidate_dirs)
+                or candidate_dirs[0]
+            )
+
+            if self._check_model_files_exist(tokenizer_dir, required_files):
+                self._restore_managed_tokenizer_metadata_if_needed(model_name, model_config, tokenizer_dir)
+                print(f"📁 Tokenizer model already exists: {tokenizer_dir}")
+                return tokenizer_dir
+
+            print(
+                f"📥 Downloading pinned Higgs Audio tokenizer model: {model_name} "
+                f"({model_config['stable_tokenizer_revision'][:7]})"
+            )
+            downloaded_dir = self.downloader.download_huggingface_model(
+                repo_id=model_config["tokenizer_repo"],
+                model_name=model_name,
+                files=model_config["tokenizer_files"],
+                engine_type="HiggsAudio",
+                subfolder="tokenizer",
+                revision=model_config["stable_tokenizer_revision"],
+                target_dir=tokenizer_dir,
+            )
+            if downloaded_dir:
+                self._write_revision_marker(
+                    downloaded_dir,
+                    model_config["tokenizer_repo"],
+                    model_config["stable_tokenizer_revision"],
+                )
+                print(f"✅ Tokenizer model downloaded: {downloaded_dir}")
+                return downloaded_dir
+
+            raise RuntimeError(f"Failed to download tokenizer model: {model_name}")
         
         # Handle local: prefix - search in all configured TTS paths
         if tokenizer_name_or_path.startswith("local:"):
@@ -284,51 +571,17 @@ class HiggsAudioDownloader:
                 for higgs_folder_name in ["HiggsAudio", "higgs_audio", "higgsaudio"]:
                     local_path = os.path.join(base_tts_path, higgs_folder_name, local_name, "tokenizer")
                     if os.path.exists(local_path):
+                        if local_name in HIGGS_AUDIO_MODELS:
+                            self._restore_managed_tokenizer_metadata_if_needed(
+                                local_name,
+                                HIGGS_AUDIO_MODELS[local_name],
+                                local_path,
+                            )
                         print(f"📁 Using local tokenizer model: {local_path}")
                         return local_path
 
             # If not found, raise error
             raise FileNotFoundError(f"Local tokenizer not found: {local_name}")
-        
-        # Handle predefined models
-        model_name = None
-        for name, config in HIGGS_AUDIO_MODELS.items():
-            if config["tokenizer_repo"] == tokenizer_name_or_path:
-                model_name = name
-                break
-        
-        if model_name and model_name in HIGGS_AUDIO_MODELS:
-            model_config = HIGGS_AUDIO_MODELS[model_name]
-            repo_id = model_config["tokenizer_repo"]
-            files = model_config["tokenizer_files"]
-            
-            # Check if already downloaded to organized structure
-            tokenizer_dir = os.path.join(self.base_path, model_name, "tokenizer")
-            if self._check_model_files_exist(tokenizer_dir, [f["local"] for f in files]):
-                print(f"📁 Tokenizer model already exists: {tokenizer_dir}")
-                return tokenizer_dir
-            
-            # Check HuggingFace cache for predefined models
-            cache_path = self._find_in_huggingface_cache(repo_id)
-            if cache_path:
-                print(f"💾 Using HuggingFace cache for tokenizer model: {cache_path}")
-                return cache_path
-            
-            # Download tokenizer
-            print(f"📥 Downloading Higgs Audio tokenizer model: {model_name}")
-            downloaded_dir = self.downloader.download_huggingface_model(
-                repo_id=repo_id,
-                model_name=model_name,
-                files=files,
-                engine_type="HiggsAudio",
-                subfolder="tokenizer"
-            )
-            
-            if downloaded_dir:
-                print(f"✅ Tokenizer model downloaded: {downloaded_dir}")
-                return downloaded_dir
-            else:
-                raise RuntimeError(f"Failed to download tokenizer model: {model_name}")
         
         # Handle direct HuggingFace repo IDs
         print(f"🔍 Checking for Higgs Audio tokenizer: {tokenizer_name_or_path}")
