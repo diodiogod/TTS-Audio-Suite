@@ -149,21 +149,14 @@ class IndexTTSEngine:
                 "low_vram": self.low_vram
             }
         )
-        
+
         # Load via unified interface with progress indication
         print("🔄 IndexTTS-2: Initializing engine (first run may take 2-3 minutes to load models)...")
-        print("   Loading: QwenEmotion → GPT → Semantic Codec → S2Mel → CampPlus → BigVGAN...")
+        print("   Loading core models (GPT, semantic codec, S2Mel, CampPlus, BigVGAN)...")
         self._tts_engine = unified_model_interface.load_model(self._model_config)
-        
+
         print(f"✅ IndexTTS-2 engine loaded via unified interface on {self.device}")
-        print("⚡ Next generations will be much faster (models cached in VRAM)")
-        
-        # Performance warning for non-Python 3.13 environments
-        import sys
-        if sys.version_info[:2] != (3, 13):
-            print("⚠️ Performance warning: IndexTTS-2 tested on Python 3.13 performs smoothly")
-            print("⚠️ Our Python 3.12 tests showed HIGH VRAM spikes during generation")
-    
+
     def generate(
         self,
         text: str,

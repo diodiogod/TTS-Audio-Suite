@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.17] - 2026-04-14
+
+### Changed
+
+- Improve IndexTTS-2 startup logs by removing stale Python 3.12 VRAM warnings and extra QwenEmotion debug output
+- Update IndexTTS-2 QwenEmotion loading to avoid deprecated dtype warnings
+
+### Fixed
+
+- Fix IndexTTS-2 silent failures and noisy startup warnings
+- Fix IndexTTS-2 accidentally enabling torch.compile from legacy workflow values
+- Fix IndexTTS-2 runs returning silent audio instead of a real error when generation fails
+- Improve IndexTTS-2 error message when torch.compile is enabled without Triton on CUDA
 ## [4.25.16] - 2026-04-14
 
 ### Added

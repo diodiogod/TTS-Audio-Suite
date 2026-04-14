@@ -58,6 +58,11 @@ class IndexTTS2:
             use_deepspeed (bool): whether to use DeepSpeed or not.
             use_torch_compile (bool): whether to use torch.compile for optimization or not.
         """
+        use_fp16 = self._coerce_bool_flag(use_fp16)
+        use_deepspeed = self._coerce_bool_flag(use_deepspeed)
+        use_torch_compile = self._coerce_bool_flag(use_torch_compile)
+        low_vram = self._coerce_bool_flag(low_vram)
+
         if device is not None:
             self.device = device
             self.use_fp16 = False if device == "cpu" else use_fp16
@@ -123,6 +128,8 @@ class IndexTTS2:
         if low_vram and use_torch_compile:
             print("⚠️ Low VRAM mode: Disabling torch.compile (incompatible with device switching)")
             use_torch_compile = False
+        if use_torch_compile:
+            self._validate_torch_compile_support()
         self.use_torch_compile = use_torch_compile
         self.low_vram = low_vram
         
@@ -145,11 +152,6 @@ class IndexTTS2:
             if self.qwen_emo_path is None:
                 self.qwen_emo_path = os.path.join(self.model_dir, "qwen0.6bemo4-merge")
 
-            # Debug: Show exactly where we're looking for QwenEmotion
-            print(f"🔍 DEBUG: Looking for QwenEmotion model at: {self.qwen_emo_path}")
-            print(f"🔍 DEBUG: Path exists: {os.path.exists(self.qwen_emo_path)}")
-            print(f"🔍 DEBUG: Is directory: {os.path.isdir(self.qwen_emo_path) if os.path.exists(self.qwen_emo_path) else 'N/A'}")
-
             if self.qwen_emo_path and os.path.exists(self.qwen_emo_path) and os.path.isdir(self.qwen_emo_path):
                 # Check if required QwenEmotion files exist
                 normalized_path = os.path.normpath(self.qwen_emo_path)
@@ -157,18 +159,17 @@ class IndexTTS2:
                 missing_files = [f for f in required_files if not os.path.exists(os.path.join(normalized_path, f))]
                 
                 if missing_files:
-                    print(f"⚠️ QwenEmotion model directory incomplete - missing files: {missing_files}")
-                    print(f"ℹ️ Available files: {os.listdir(normalized_path) if os.path.exists(normalized_path) else 'N/A'}")
-                    print(f"ℹ️ Falling back to audio emotion only")
+                    print(f"⚠️ QwenEmotion model incomplete - missing files: {missing_files}")
+                    print("ℹ️ Falling back to audio emotion only")
                 else:
                     self.qwen_emo = QwenEmotion(normalized_path)
-                    print(f"✅ QwenEmotion model loaded - text emotion support enabled")
+                    print("✅ QwenEmotion loaded - text emotion support enabled")
             else:
-                print(f"ℹ️ QwenEmotion model not available - audio emotion only")
+                print("ℹ️ QwenEmotion not available - audio emotion only")
         except Exception as e:
             self.qwen_emo = None
             print(f"⚠️ Failed to load QwenEmotion model: {e}")
-            print(f"ℹ️ Falling back to audio emotion only")
+            print("ℹ️ Falling back to audio emotion only")
 
         print("🔄 IndexTTS-2: Loading GPT model...")
         self.gpt = UnifiedVoice(**self.cfg.gpt)
@@ -369,6 +370,30 @@ class IndexTTS2:
         # 进度引用显示（可选）
         self.gr_progress = None
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
+
+    @staticmethod
+    def _coerce_bool_flag(value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "on"}:
+                return True
+            if normalized in {"false", "0", "no", "off", ""}:
+                return False
+        return bool(value)
+
+    def _validate_torch_compile_support(self):
+        """Fail fast for explicit torch.compile requests on CUDA without Triton."""
+        if not isinstance(self.device, str) or not self.device.startswith("cuda"):
+            return
+        try:
+            import triton  # noqa: F401
+        except Exception as e:
+            raise RuntimeError(
+                "IndexTTS-2 `use_torch_compile=True` requires a working Triton install on CUDA. "
+                "Install `triton` on Linux or `triton-windows` on Windows, or disable `use_torch_compile`."
+            ) from e
 
     def _move_matrices(self, device):
         """Move emotion and speaker matrices to target device."""
@@ -1006,11 +1031,20 @@ class QwenEmotion:
         self.model_dir = model_dir
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
         import torch
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_dir,
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
+        load_kwargs = {"device_map": "auto"}
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_dir,
+                dtype=torch.float16,
+                **load_kwargs
+            )
+        except TypeError:
+            # Older transformers releases still expect torch_dtype.
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_dir,
+                torch_dtype=torch.float16,
+                **load_kwargs
+            )
         # Disable KV-cache to avoid incompatibilities with certain transformers versions
         if hasattr(self.model, 'generation_config'):
             try:

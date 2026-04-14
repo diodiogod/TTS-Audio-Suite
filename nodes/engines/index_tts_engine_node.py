@@ -38,6 +38,19 @@ class AnyType(str):
 any_typ = AnyType("*")
 
 
+def _coerce_bool_flag(value) -> bool:
+    """Normalize legacy string booleans from older workflows/optional inputs."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off", ""}:
+            return False
+    return bool(value)
+
+
 class IndexTTSEngineNode(BaseTTSNode):
     """
     IndexTTS-2 TTS Engine configuration node.
@@ -150,7 +163,7 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
                 # New Optimization Parameters (Added for backward compatibility with existing workflows)
                 "use_torch_compile": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable torch.compile optimization for S2Mel mel-spectrogram generation stage. Provides 1.5-2x speedup. Requires compatible PyTorch version."
+                    "tooltip": "Enable torch.compile optimization for S2Mel mel-spectrogram generation stage. Provides 1.5-2x speedup. Requires a compatible PyTorch version and Triton on CUDA systems (triton-windows on Windows)."
                 }),
                 "use_accel": ("BOOLEAN", {
                     "default": False,
@@ -235,9 +248,9 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
         use_deepspeed: bool,
         use_cuda_kernel: str = "auto",
         emotion_control = None,
-        use_torch_compile: str = "false",
-        use_accel: str = "false",
-        stream_return: str = "false",
+        use_torch_compile: bool = False,
+        use_accel: bool = False,
+        stream_return: bool = False,
         more_segment_before: int = 0,
         low_vram: bool = False,
     ):
@@ -297,8 +310,12 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
             elif use_cuda_kernel == "false":
                 cuda_kernel_option = False
             # "auto" stays as None for auto-detection
-            
-            # Parameters are now boolean toggles (no conversion needed)
+
+            # Normalize legacy string values from saved workflows / omitted optional inputs.
+            use_torch_compile = _coerce_bool_flag(use_torch_compile)
+            use_accel = _coerce_bool_flag(use_accel)
+            stream_return = _coerce_bool_flag(stream_return)
+            low_vram = _coerce_bool_flag(low_vram)
 
             # Create configuration dictionary
             config = {

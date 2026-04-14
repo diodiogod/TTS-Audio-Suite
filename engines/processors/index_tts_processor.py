@@ -567,12 +567,7 @@ class IndexTTSProcessor:
             print(f"❌ IndexTTS-2 processor error: {e}")
             import traceback
             traceback.print_exc()
-            
-            # Return silence on error
-            silence = torch.zeros(1, self.sample_rate)  # 1 second of silence
-            if return_info:
-                return silence, {"method_used": "error", "total_chunks": 1, "chunk_timings": [{"start": 0.0, "end": 1.0, "text": "Error"}]}
-            return silence
+            raise RuntimeError(f"IndexTTS-2 generation failed: {e}") from e
     
     def combine_audio_segments(self,
                               segments: List[torch.Tensor],
