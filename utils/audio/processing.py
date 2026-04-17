@@ -21,8 +21,11 @@ class AudioProcessingUtils:
         """
         Load audio file with automatic fallback support.
 
-        Tries torchaudio.load() first, falls back to scipy.wavfile if needed.
-        This ensures compatibility without torchcodec dependency.
+        Load order:
+        1. torchaudio.load() for normal environments
+        2. soundfile for common compressed formats without torchcodec
+        3. librosa/audioread fallback for environments where torchaudio is broken
+        4. scipy.io.wavfile as a last resort for plain WAV only
 
         IMPORTANT: Normalizes int16 audio to float [-1, 1] range.
         PyTorch 2.9 changed torchaudio.load() to return raw int16 values instead
@@ -37,22 +40,48 @@ class AudioProcessingUtils:
         Raises:
             Exception: If all loading methods fail
         """
+        load_errors = []
+
         try:
             # Try torchaudio first (supports multiple formats)
             waveform, sr = torchaudio.load(audio_path)
-        except Exception:
-            # Fallback to scipy for WAV files (handles TorchCodec DLL errors on PyTorch 2.9)
+        except Exception as e:
+            load_errors.append(f"torchaudio: {e}")
+
             try:
-                from scipy.io import wavfile as scipy_wavfile
-                sample_rate, waveform_np = scipy_wavfile.read(audio_path)
-                waveform = torch.from_numpy(waveform_np).float()
-                if waveform.ndim == 1:
-                    waveform = waveform.unsqueeze(0)
-                else:
-                    waveform = waveform.T
-                sr = sample_rate
-            except Exception as e:
-                raise RuntimeError(f"Failed to load audio file {audio_path}: {e}")
+                import soundfile as sf
+
+                waveform_np, sample_rate = sf.read(audio_path, always_2d=True, dtype="float32")
+                waveform = torch.from_numpy(waveform_np).transpose(0, 1)
+                sr = int(sample_rate)
+            except Exception as soundfile_error:
+                load_errors.append(f"soundfile: {soundfile_error}")
+
+                try:
+                    from utils.audio.librosa_fallback import safe_load as librosa_safe_load
+
+                    waveform_np, sample_rate = librosa_safe_load(audio_path, sr=None, mono=False)
+                    waveform = torch.from_numpy(np.asarray(waveform_np, dtype=np.float32))
+                    if waveform.ndim == 1:
+                        waveform = waveform.unsqueeze(0)
+                    sr = int(sample_rate)
+                except Exception as librosa_error:
+                    load_errors.append(f"librosa/audioread: {librosa_error}")
+
+                    try:
+                        # WAV-only fallback for environments where every richer decoder is broken.
+                        from scipy.io import wavfile as scipy_wavfile
+                        sample_rate, waveform_np = scipy_wavfile.read(audio_path)
+                        waveform = torch.from_numpy(waveform_np).float()
+                        if waveform.ndim == 1:
+                            waveform = waveform.unsqueeze(0)
+                        else:
+                            waveform = waveform.T
+                        sr = int(sample_rate)
+                    except Exception as scipy_error:
+                        load_errors.append(f"scipy.wavfile: {scipy_error}")
+                        joined_errors = " | ".join(load_errors)
+                        raise RuntimeError(f"Failed to load audio file {audio_path}: {joined_errors}")
 
         # CRITICAL: Normalize int16 range to float [-1, 1]
         # PyTorch 2.9 torchaudio.load() returns raw int16 values (±32767)

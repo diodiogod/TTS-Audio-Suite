@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.25.18] - 2026-04-17
+
+### Added
+
+- Add safer loading fallback for OGG and other compressed voice reference files
+
+### Fixed
+
+- Fix Echo-TTS voice references from Character Voices and OGG files
+- Fix Echo-TTS using Character Voices and dropdown voices when only the file path is available
+- Improve compatibility when direct audio decoding is unavailable in some Windows environments
 ## [4.25.17] - 2026-04-14
 
 ### Changed
