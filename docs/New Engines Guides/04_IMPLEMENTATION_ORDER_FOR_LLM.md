@@ -40,7 +40,7 @@ Use Qwen3-TTS for:
 - Pause tags.
 - Segment parameters.
 - Cache integration.
-- SRT processor structure.
+- SRT processor structure that reuses the main TTS processor for generation.
 - Interrupt handling.
 - Progress feedback.
 - Unified model loading.
@@ -70,7 +70,7 @@ Follow this order:
 5. Register the unified model factory.
 6. Build the adapter.
 7. Build the main processor.
-8. For TTS engines, build the SRT processor too. Build VC, ASR, or special processors only if scoped.
+8. For TTS engines, build the SRT processor too. The SRT processor should call the main TTS processor/generation path for each subtitle instead of duplicating generation logic. Build VC, ASR, or special processors only if scoped.
 9. Add the engine configuration node UI.
 10. Wire node and adapter registration.
 11. Add segment parameter support if the engine has native parameters.
@@ -95,6 +95,25 @@ Do not put hundreds of lines of engine-specific orchestration into:
 Engine-specific orchestration belongs in processors and adapters.
 
 For TTS engines, SRT support is mandatory. It is the suite's subtitle-driven TTS flow, not a native capability the model has to expose.
+
+## SRT Reuses TTS Generation
+
+Follow the Qwen3-TTS pattern: the SRT processor is the timing/orchestration layer, not a second implementation of the engine.
+
+The SRT processor should:
+
+- Import or instantiate the engine's main TTS processor.
+- Parse SRT subtitles and loop through subtitle entries.
+- Build the subtitle-specific voice mapping and seed/parameter context.
+- Call the main TTS processor, usually `processor.process_text(...)`, for each subtitle's text.
+- Reuse the same adapter, cache keys, character handling, pause tags, parameter switching, progress hooks, and model lifecycle used by normal TTS Text generation.
+- Assemble subtitle audio with the suite timing systems, such as `AudioAssemblyEngine`, after generation.
+
+The SRT processor should not:
+
+- Call the raw model directly through a separate generation path.
+- Reimplement character switching, pause tags, parameter switching, cache, or reference-audio handling differently from the TTS processor.
+- Add separate fake SRT-only parameters that do not exist in the normal TTS path or the suite timing layer.
 
 ## Registration Areas To Check
 
