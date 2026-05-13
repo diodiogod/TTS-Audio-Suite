@@ -686,6 +686,9 @@ class TTSAudioInstaller:
             # Basic utilities (safe)
             "requests",
             "dacite",
+            "safetensors>=0.6.2",       # Required by MOSS-TTS HF checkpoints
+            "orjson>=3.11.0",           # Required by MOSS-TTS remote code
+            "tiktoken>=0.12.0",         # Required by MOSS-TTS tokenizer
             # NOTE: opencv-python and pillow installed via install_problematic_packages() with --no-deps
             # to prevent forced numpy/pillow downgrades
 

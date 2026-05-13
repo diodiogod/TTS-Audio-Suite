@@ -22,7 +22,7 @@
 
 ## Engines
 
-12 engines follow the pattern above:
+13 engines follow the pattern above:
 
 | Engine | Adapter | Processor | SRT Processor | Engine Node |
 |--------|---------|-----------|---------------|-------------|
@@ -35,12 +35,13 @@
 | Step Audio EditX | `step_audio_editx_adapter.py` | `nodes/step_audio_editx/step_audio_editx_processor.py` | `step_audio_editx_srt_processor.py` | `step_audio_editx_engine_node.py` |
 | CosyVoice3 | `cosyvoice_adapter.py` | `engines/processors/cosyvoice_processor.py` | `nodes/cosyvoice/cosyvoice_srt_processor.py` | `cosyvoice_engine_node.py` |
 | Qwen3-TTS | `qwen3_tts_adapter.py` | `nodes/qwen3_tts/qwen3_tts_processor.py` | same folder | `qwen3_tts_engine_node.py` |
+| MOSS-TTS | `moss_tts_adapter.py` | `nodes/moss_tts/moss_tts_processor.py` | `moss_tts_srt_processor.py` | `moss_tts_engine_node.py` |
 | Granite ASR | `asr_granite_adapter.py` | — | — | `granite_asr_engine_node.py` |
 | Echo-TTS | `echo_tts_adapter.py` | `nodes/echo_tts/echo_tts_processor.py` | `echo_tts_srt_processor.py` | `echo_tts_engine_node.py` |
 | RVC | — | `engines/rvc/` | — | `rvc_engine_node.py` |
 
 **Engine implementations live in:**
-- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/granite_asr/`, `engines/rvc/`
+- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/granite_asr/`, `engines/rvc/`
 
 ## Documentation Files
 

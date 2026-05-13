@@ -952,6 +952,86 @@ engines:
       vram_efficient: { supported: "partial", notes: "(~7GB total)" }
       speed_performance: { supported: true, notes: "Fast (diffusion, realtime-capable)" }
 
+  - id: moss-tts
+    name: MOSS-TTS
+    models: "Local 1.7B, Delay 8B"
+    size: "~8.5GB tokenizer + ~6.1GB/17GB model"
+    license: "Apache-2.0"
+    commercial: true
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    special_features:
+      - "Zero-shot voice cloning"
+      - "20-language generation"
+      - "Duration token hint"
+      - "Local/Delay variants"
+
+    model_sources:
+      - component: "MOSS-TTS-Local-Transformer"
+        source_name: "OpenMOSS-Team/MOSS-TTS-Local-Transformer"
+        source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-TTS-Local-Transformer"
+        size: "~6.1GB"
+        auto_download: true
+        notes: "Official 1.7B local-transformer model"
+      - component: "MOSS-TTS"
+        source_name: "OpenMOSS-Team/MOSS-TTS"
+        source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-TTS"
+        size: "~17GB"
+        auto_download: true
+        notes: "Official 8B delay model"
+      - component: "MOSS-Audio-Tokenizer"
+        source_name: "OpenMOSS-Team/MOSS-Audio-Tokenizer"
+        source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer"
+        size: "~8.5GB"
+        auto_download: true
+        notes: "Shared official codec required by MOSS-TTS"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇧🇷", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇪🇬", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: "partial", notes: "(Delay model stability; suite chunks long text)" }
+      community_finetunes: { supported: true, notes: "(official LoRA examples)" }
+      vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
+      speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
+
   - id: rvc
     name: RVC
     models: "Community .pth"
@@ -1093,6 +1173,7 @@ table_notes:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
+    - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
     - "**RVC**: Language-independent (work as post-processors VC with any TTS output)"
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
 
@@ -1137,6 +1218,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/qwen3_tts/"
     auto_download: "✅"
     notes: "Per-variant download + shared tokenizer"
+  - engine: "MOSS-TTS"
+    primary_model_path: "ComfyUI/models/TTS/moss_tts/"
+    auto_download: "✅"
+    notes: "Local/Delay model plus shared MOSS-Audio-Tokenizer codec"
   - engine: "Granite ASR"
     primary_model_path: "ComfyUI/models/TTS/granite_asr/"
     auto_download: "✅"
@@ -1386,6 +1471,21 @@ model_layouts_markdown: |
 
   - Only selected variants download.
   - Shared tokenizer assets are reused.
+
+  ## MOSS-TTS
+
+  ```text
+  ComfyUI/models/TTS/moss_tts/
+  ├── MOSS-TTS-Local-Transformer/
+  ├── MOSS-TTS/
+  └── MOSS-Audio-Tokenizer/
+  ```
+
+  Notes:
+
+  - `MOSS-Audio-Tokenizer` is required by both official TTS variants.
+  - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
+  - `MOSS-TTS` is the official 8B delay model and is much larger.
 
   ## Granite ASR
 

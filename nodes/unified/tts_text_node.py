@@ -198,6 +198,13 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['use_cuda_graphs'] = config.get('use_cuda_graphs', False)
                 stable_params['compile_mode'] = config.get('compile_mode', 'default')
 
+            # For MOSS-TTS, include model identity and load-time options.
+            if engine_type == "moss_tts":
+                stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
+                stable_params['codec_model'] = config.get('codec_model', 'MOSS-Audio-Tokenizer')
+
             # For IndexTTS-2, include low_vram in cache key since it requires model reload
             if engine_type == "index_tts":
                 stable_params['low_vram'] = config.get('low_vram', False)
@@ -508,6 +515,23 @@ Back to the main narrator voice for the conclusion.""",
                 engine_instance = Qwen3TTSProcessor(self, config)
 
                 # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
+            elif engine_type == "moss_tts":
+                moss_processor_path = os.path.join(nodes_dir, "moss_tts", "moss_tts_processor.py")
+                moss_processor_spec = importlib.util.spec_from_file_location("moss_tts_processor_module", moss_processor_path)
+                moss_processor_module = importlib.util.module_from_spec(moss_processor_spec)
+                moss_processor_spec.loader.exec_module(moss_processor_module)
+
+                MossTTSProcessor = moss_processor_module.MossTTSProcessor
+                engine_instance = MossTTSProcessor(self, config)
+
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
@@ -1215,7 +1239,47 @@ Back to the main narrator voice for the conclusion.""",
 
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 44100)
                 result = (formatted_audio, generation_info)
-                
+
+            elif engine_type == "moss_tts":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                voice_mapping = engine_instance.build_voice_mapping(
+                    text=text,
+                    narrator_audio=audio_tensor,
+                    reference_text=reference_text or "",
+                    narrator_audio_path=audio_path,
+                )
+
+                audio_segments = engine_instance.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                )
+
+                audio_result, chunk_info = engine_instance.combine_audio_segments(
+                    segments=audio_segments,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    text_length=len(text),
+                    return_info=True,
+                )
+
+                total_duration = audio_result.shape[-1] / 24000.0 if audio_result.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+                model_variant = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
+                base_info = (
+                    f"Generated {total_duration:.1f}s audio from {text_length} characters "
+                    f"(MOSS-TTS {model_variant}, narrator: {char_display})"
+                )
+                base_info += "\n🎭 Character switching, pause tags, and official duration-token hint supported"
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 24000)
+                result = (formatted_audio, generation_info)
+
             elif engine_type == "qwen3_tts":
                 # Qwen3-TTS uses processor pattern - call through processor
                 # Extract characters from text first

@@ -238,6 +238,21 @@ Notes:
 - Only selected variants download.
 - Shared tokenizer assets are reused.
 
+## MOSS-TTS
+
+```text
+ComfyUI/models/TTS/moss_tts/
+├── MOSS-TTS-Local-Transformer/
+├── MOSS-TTS/
+└── MOSS-Audio-Tokenizer/
+```
+
+Notes:
+
+- `MOSS-Audio-Tokenizer` is required by both official TTS variants.
+- `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
+- `MOSS-TTS` is the official 8B delay model and is much larger.
+
 ## Granite ASR
 
 ```text

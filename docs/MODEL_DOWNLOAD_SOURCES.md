@@ -106,6 +106,14 @@ Use this as the canonical list of model repositories/links for offline setup.
 | echo-tts-base (model + PCA state) | [jordand/echo-tts-base](https://huggingface.co/jordand/echo-tts-base) | ~5.3GB | ✅ | pytorch_model.safetensors + pca_state.safetensors |
 | fish-s1-dac-min (audio codec) | [jordand/fish-s1-dac-min](https://huggingface.co/jordand/fish-s1-dac-min) | ~1.8GB | ✅ | pytorch_model.safetensors — audio codec required by Echo-TTS |
 
+## MOSS-TTS
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| MOSS-TTS-Local-Transformer | [OpenMOSS-Team/MOSS-TTS-Local-Transformer](https://huggingface.co/OpenMOSS-Team/MOSS-TTS-Local-Transformer) | ~6.1GB | ✅ | Official 1.7B local-transformer model |
+| MOSS-TTS | [OpenMOSS-Team/MOSS-TTS](https://huggingface.co/OpenMOSS-Team/MOSS-TTS) | ~17GB | ✅ | Official 8B delay model |
+| MOSS-Audio-Tokenizer | [OpenMOSS-Team/MOSS-Audio-Tokenizer](https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer) | ~8.5GB | ✅ | Shared official codec required by MOSS-TTS |
+
 ## RVC
 
 | Component | Source | Size | Auto-Download | Notes |

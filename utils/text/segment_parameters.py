@@ -44,6 +44,19 @@ PARAMETER_ALIASES = {
     'top_k': 'top_k',
     'topk': 'top_k',
     'topp': 'top_p',
+    'audio_temp': 'audio_temperature',
+    'audio_temperature': 'audio_temperature',
+    'audio_top_p': 'audio_top_p',
+    'audio_top_k': 'audio_top_k',
+    'rep_penalty': 'repetition_penalty',
+    'repetition_penalty': 'repetition_penalty',
+    'audio_rep_penalty': 'audio_repetition_penalty',
+    'audio_repetition_penalty': 'audio_repetition_penalty',
+    'tokens': 'duration_tokens',
+    'duration_tokens': 'duration_tokens',
+    'max_new_tokens': 'max_new_tokens',
+    'n_vq': 'n_vq_for_inference',
+    'n_vq_for_inference': 'n_vq_for_inference',
     'inference_steps': 'inference_steps',
     'steps': 'inference_steps',
     'emotion_alpha': 'emotion_alpha',
@@ -55,11 +68,11 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'echo_tts'
+        'echo_tts', 'moss_tts'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts'
+        'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts'
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang'
@@ -107,10 +120,34 @@ PARAMETER_ENGINES = {
         'f5tts', 'cosyvoice'
     },
     'top_p': {
-        'higgs_audio', 'vibevoice', 'index_tts', 'qwen3_tts'
+        'higgs_audio', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts'
     },
     'top_k': {
-        'higgs_audio', 'index_tts', 'qwen3_tts'
+        'higgs_audio', 'index_tts', 'qwen3_tts', 'moss_tts'
+    },
+    'audio_temperature': {
+        'moss_tts'
+    },
+    'audio_top_p': {
+        'moss_tts'
+    },
+    'audio_top_k': {
+        'moss_tts'
+    },
+    'repetition_penalty': {
+        'moss_tts'
+    },
+    'audio_repetition_penalty': {
+        'moss_tts'
+    },
+    'duration_tokens': {
+        'moss_tts'
+    },
+    'max_new_tokens': {
+        'moss_tts'
+    },
+    'n_vq_for_inference': {
+        'moss_tts'
     },
     'inference_steps': {
         'vibevoice'
@@ -141,6 +178,14 @@ PARAMETER_VALIDATION = {
     'speed': (float, 0.5, 2.0, "Speech speed multiplier (F5-TTS only)"),
     'top_p': (float, 0.0, 1.0, "Nucleus sampling probability"),
     'top_k': (int, 1, 100, "Top-k sampling"),
+    'audio_temperature': (float, 0.1, 2.5, "MOSS-TTS audio sampling temperature"),
+    'audio_top_p': (float, 0.0, 1.0, "MOSS-TTS audio nucleus sampling probability"),
+    'audio_top_k': (int, 1, 200, "MOSS-TTS audio top-k sampling"),
+    'repetition_penalty': (float, 0.5, 3.0, "Audio repetition penalty"),
+    'audio_repetition_penalty': (float, 0.5, 3.0, "MOSS-TTS audio repetition penalty"),
+    'duration_tokens': (int, 0, 8192, "MOSS-TTS duration hint in audio tokens"),
+    'max_new_tokens': (int, 64, 16384, "Maximum generated tokens"),
+    'n_vq_for_inference': (int, 0, 32, "MOSS-TTS Local Transformer RVQ layers for inference"),
     'inference_steps': (int, 1, 100, "Number of inference steps"),
     'emotion_alpha': (float, 0.0, 1.0, "Emotion strength (IndexTTS-2 only)")
 }
@@ -167,6 +212,14 @@ PARAMETER_NODE_KEYS = {
     'speed': 'speed',
     'top_p': 'top_p',
     'top_k': 'top_k',
+    'audio_temperature': 'audio_temperature',
+    'audio_top_p': 'audio_top_p',
+    'audio_top_k': 'audio_top_k',
+    'repetition_penalty': 'repetition_penalty',
+    'audio_repetition_penalty': 'audio_repetition_penalty',
+    'duration_tokens': 'duration_tokens',
+    'max_new_tokens': 'max_new_tokens',
+    'n_vq_for_inference': 'n_vq_for_inference',
     'inference_steps': 'inference_steps',
     'emotion_alpha': 'emotion_alpha'
 }
