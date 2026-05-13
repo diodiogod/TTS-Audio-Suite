@@ -2,7 +2,7 @@
 
 Before coding, decide exactly what the integration should include.
 
-This prevents half-integrations where basic TTS works but SRT, cache, tags, VRAM, or docs are missing.
+This prevents half-integrations where basic TTS works but the required SRT path, cache, tags, VRAM, or docs are missing.
 
 ## What The User Should Ask
 
@@ -15,7 +15,8 @@ Do not write code yet.
 
 Produce a short scope document with:
 
-1. Which node types should be supported?
+1. Which node family should be supported?
+   - If this is TTS, include both Unified TTS Text and Unified SRT TTS.
 2. Which native features will be implemented now?
 3. Which native features will be intentionally skipped, and why?
 4. Which non-native suite-added features are proposed, if any?
@@ -28,8 +29,7 @@ Produce a short scope document with:
 
 Decide whether the engine needs:
 
-- Unified TTS Text.
-- Unified SRT TTS.
+- TTS integration: Unified TTS Text plus Unified SRT TTS. These are a mandatory pair for TTS engines.
 - Voice Changer / voice conversion.
 - ASR Transcribe.
 - A special feature node.
@@ -61,8 +61,8 @@ A good scope looks like this:
 
 ```text
 Engine scope:
-- Supports Unified TTS Text: yes
-- Supports Unified SRT TTS: yes, by generating each subtitle independently and using AudioAssemblyEngine
+- Supports TTS: yes, with both Unified TTS Text and Unified SRT TTS
+- SRT approach: generate each subtitle independently and assemble timing with AudioAssemblyEngine
 - Supports Voice Changer: no, official model has no voice conversion mode
 - Supports ASR: no
 - Needs special node: yes, official model has native voice design from text description

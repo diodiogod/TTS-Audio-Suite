@@ -70,7 +70,7 @@ Follow this order:
 5. Register the unified model factory.
 6. Build the adapter.
 7. Build the main processor.
-8. Build SRT, VC, ASR, or special processors if scoped.
+8. For TTS engines, build the SRT processor too. Build VC, ASR, or special processors only if scoped.
 9. Add the engine configuration node UI.
 10. Wire node and adapter registration.
 11. Add segment parameter support if the engine has native parameters.
@@ -93,6 +93,8 @@ Do not put hundreds of lines of engine-specific orchestration into:
 - `nodes/unified/asr_transcribe_node.py`
 
 Engine-specific orchestration belongs in processors and adapters.
+
+For TTS engines, SRT support is mandatory. It is the suite's subtitle-driven TTS flow, not a native capability the model has to expose.
 
 ## Registration Areas To Check
 

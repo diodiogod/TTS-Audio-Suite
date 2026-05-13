@@ -72,7 +72,7 @@
 - `README.md` - Start-here friendly workflow for users guiding LLMs through new engine integrations
 - `01_FIRST_ASK_THE_LLM_TO_RESEARCH_THE_OFFICIAL_MODEL.md` - Required official model capability audit before coding
 - `02_CHECK_EXISTING_COMFYUI_IMPLEMENTATIONS.md` - How to use existing ComfyUI implementations as references, not source of truth
-- `03_DECIDE_ENGINE_SCOPE.md` - Decide whether the engine needs TTS, SRT, Voice Changer, ASR, or special nodes
+- `03_DECIDE_ENGINE_SCOPE.md` - Decide whether the engine needs TTS, Voice Changer, ASR, or special nodes; TTS implies SRT support
 - `04_IMPLEMENTATION_ORDER_FOR_LLM.md` - Step-by-step implementation order with Qwen3-TTS and Step Audio EditX reference rules
 - `05_REQUIRED_PARITY_CHECKLIST.md` - Must-pass architecture, lifecycle, cache, tag, SRT, docs, and UX checklist
 - `06_USER_PROMPTS_TO_COPY_PASTE.md` - Ready prompts for users instructing an LLM

@@ -46,7 +46,8 @@ Text features:
 - Did you remove misleading controls like language selection if unsupported?
 
 SRT features:
-- If SRT is supported, did you add interrupt checks in long loops?
+- If this is a TTS engine, did you implement the SRT path?
+- Did you add interrupt checks in long SRT loops?
 - Does SRT use the shared timing/assembly systems correctly?
 - Did you avoid unnecessary timing-mode restrictions?
 - Does character switching work in SRT if text character tags are supported?
@@ -64,7 +65,7 @@ Docs and metadata:
 
 Manual tests:
 - Did TTS Text work?
-- Did SRT TTS work if scoped?
+- Did SRT TTS work for every TTS engine?
 - Did Voice Changer work if scoped?
 - Did ASR work if scoped?
 - Did character tags work?

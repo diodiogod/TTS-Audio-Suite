@@ -26,8 +26,8 @@ Check:
 
 - Unified nodes are thin.
 - Engine-specific orchestration lives in processors/adapters.
-- TTS Text processor exists when TTS Text is supported.
-- SRT processor exists when SRT is supported.
+- TTS Text processor exists for every TTS engine.
+- SRT processor exists for every TTS engine. Missing SRT support requires an explicit maintainer-approved exception.
 - VC or ASR processors follow existing suite patterns when scoped.
 - Similar existing engines were used as references, not blindly copied.
 
@@ -77,7 +77,7 @@ Check:
 
 ## SRT Review
 
-If SRT is supported, check:
+For every TTS engine, check the SRT path:
 
 - Interrupt/cancel works in long loops.
 - Timing modes use the shared timing/assembly systems correctly.
@@ -125,8 +125,8 @@ At minimum, test scoped features:
 - TTS Text with character tags.
 - TTS Text with pause tags.
 - TTS Text with parameter switching.
-- SRT generation if supported.
-- SRT interrupt/cancel if supported.
+- For TTS engines, SRT generation.
+- For TTS engines, SRT interrupt/cancel.
 - Voice Changer if supported.
 - ASR if supported.
 - Clear VRAM / unload models, then generate again.

@@ -6,7 +6,9 @@ The goal is simple: do not let the LLM jump straight into coding. A new engine i
 
 ## Start Here
 
-If you want support for a new TTS, SRT TTS, Voice Changer, ASR, or special audio model, follow these guides in order:
+If you want support for a new TTS engine, Voice Changer, ASR, or special audio model, follow these guides in order.
+
+For this suite, TTS support means both **Unified TTS Text** and **Unified SRT TTS**. SRT is our own text-to-subtitle generation flow around a TTS engine, not an optional native model feature.
 
 1. [First Ask The LLM To Research The Official Model](01_FIRST_ASK_THE_LLM_TO_RESEARCH_THE_OFFICIAL_MODEL.md)
 2. [Check Existing ComfyUI Implementations](02_CHECK_EXISTING_COMFYUI_IMPLEMENTATIONS.md)
@@ -68,7 +70,7 @@ A new engine is not done until the answer to these questions is yes:
 - Does it support generated audio cache where applicable?
 - Does it handle ComfyUI audio shape and sample rate correctly?
 - Does it wire character tags, pause tags, and parameter switching where applicable?
-- Does SRT support interrupt handling and correct timing modes where applicable?
+- If it is a TTS engine, does its SRT path support interrupt handling and correct timing modes?
 - Does the UI avoid fake unsupported controls?
 - Are docs and engine metadata updated?
 - Did someone test it manually in ComfyUI?

@@ -20,8 +20,7 @@ Produce a capability report for TTS Audio Suite. Read the official repo, model c
 The report must answer:
 
 1. What task does this model actually support?
-   - TTS Text
-   - SRT TTS
+   - TTS (in this suite, TTS means both Unified TTS Text and Unified SRT TTS)
    - Voice Changer / voice conversion
    - ASR
    - Audio editing
@@ -52,12 +51,13 @@ Do not start implementation until this report is complete.
 
 The report must decide the actual scope:
 
-- Basic TTS Text only.
-- TTS Text plus SRT TTS.
+- TTS integration, which includes both Unified TTS Text and Unified SRT TTS.
 - Voice Changer / voice conversion.
 - ASR / transcription.
 - Special node for a native unique feature.
 - No integration, if the model is not suitable.
+
+Do not ask whether SRT is natively supported by the model. For TTS engines, SRT support is implemented by TTS Audio Suite by generating subtitle text segments and assembling timing with the suite timing systems.
 
 If the model has a native feature that does not fit existing unified nodes, say so. Do not hide it inside a generic node if it needs a special UI.
 
@@ -78,7 +78,7 @@ Bad unsupported examples unless discussed first:
 - Fake speed control by time-stretching output.
 - Fake emotion by post-processing audio.
 - Fake language dropdown when the model is English-only.
-- Fake SRT timing mode that ignores actual timing support.
+- Fake SRT timing controls that bypass the suite timing engine or imply unsupported model behavior.
 
 Extra suite-added features can be useful, but they need maintainer discussion first.
 

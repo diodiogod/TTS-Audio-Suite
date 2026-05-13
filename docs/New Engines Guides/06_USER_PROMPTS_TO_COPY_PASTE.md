@@ -17,7 +17,7 @@ Read the official repo, model card, docs, examples, license, dependency files, m
 
 Produce a capability report for TTS Audio Suite. It must explain:
 
-- What task the model supports: TTS Text, SRT TTS, Voice Changer, ASR, audio editing, or special feature.
+- What task the model supports: TTS, Voice Changer, ASR, audio editing, or special feature. If it supports TTS, TTS Audio Suite requires both Unified TTS Text and Unified SRT TTS.
 - Native official parameters.
 - Native official features.
 - Unsupported features that should not be exposed as UI controls.
@@ -62,8 +62,7 @@ Do not write code yet.
 
 Create a scope summary with:
 
-- Whether to support Unified TTS Text.
-- Whether to support Unified SRT TTS.
+- Whether this is a TTS integration. If yes, include both Unified TTS Text and Unified SRT TTS.
 - Whether to support Voice Changer.
 - Whether to support ASR.
 - Whether a special node is needed.
@@ -91,7 +90,7 @@ Use Step Audio EditX as a secondary reference for wrapper/model lifecycle and sp
 
 Do not copy references blindly. The official implementation decides capabilities.
 
-The plan must include files/modules to change, model download approach, model lifecycle approach, processor/adapter design, tag support, cache support, SRT/VC/ASR support if scoped, docs updates, and manual tests.
+The plan must include files/modules to change, model download approach, model lifecycle approach, processor/adapter design, tag support, cache support, SRT support for TTS engines, VC/ASR support if scoped, docs updates, and manual tests.
 ```
 
 ## Prompt 5 - Implement First Phase
