@@ -88,3 +88,7 @@ Manual tests:
 ```
 
 If the scope is vague, do not code yet.
+
+---
+
+Navigation: [Guide Hub](README.md) | Previous: [02 - Check Existing ComfyUI Implementations](02_CHECK_EXISTING_COMFYUI_IMPLEMENTATIONS.md) | Next: [04 - Implementation Order For LLM](04_IMPLEMENTATION_ORDER_FOR_LLM.md)

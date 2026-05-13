@@ -75,3 +75,7 @@ Examples:
 - Any special workflow that changes model behavior beyond official inference.
 
 The default implementation should expose native model capabilities first.
+
+---
+
+Navigation: [Guide Hub](README.md) | Previous: [01 - Research The Official Model](01_FIRST_ASK_THE_LLM_TO_RESEARCH_THE_OFFICIAL_MODEL.md) | Next: [03 - Decide Engine Scope](03_DECIDE_ENGINE_SCOPE.md)

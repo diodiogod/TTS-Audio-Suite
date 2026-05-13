@@ -157,3 +157,7 @@ Include:
 - Manual ComfyUI test results.
 - Known limitations.
 ```
+
+---
+
+Navigation: [Guide Hub](README.md) | Previous: [05 - Required Parity Checklist](05_REQUIRED_PARITY_CHECKLIST.md) | Next: [07 - PR Review Checklist](07_PR_REVIEW_CHECKLIST.md)

@@ -91,3 +91,7 @@ Common failures:
 - Unified node gets filled with engine-specific code.
 
 If any item fails, fix it before PR review.
+
+---
+
+Navigation: [Guide Hub](README.md) | Previous: [04 - Implementation Order For LLM](04_IMPLEMENTATION_ORDER_FOR_LLM.md) | Next: [06 - User Prompts To Copy Paste](06_USER_PROMPTS_TO_COPY_PASTE.md)

@@ -46,6 +46,12 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_END -->
 
+## 🧩 Adding New Engines
+
+Want to add support for a new TTS, SRT TTS, Voice Changer, ASR, or special audio model?
+
+Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**. It is written for users guiding an LLM through the process: first research the official model, then check existing ComfyUI implementations, decide scope, implement in the suite architecture, and run the parity checklist before PR review.
+
 ## 🚀 Project Evolution Timeline
 
 ```
@@ -110,6 +116,7 @@ Model Training
 <summary><h2>📋 Table of Contents</h2></summary>
 
 - [🎥 Demo Videos](#-demo-videos)
+- [🧩 Adding New Engines](#-adding-new-engines)
 - [Features](#features)
 - [🆕 What's New in my Project?](#-whats-new-in-my-project)
   - [SRT Timing and TTS Node](#srt-timing-and-tts-node)

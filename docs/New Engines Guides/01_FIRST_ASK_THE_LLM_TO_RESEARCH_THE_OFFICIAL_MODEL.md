@@ -98,3 +98,7 @@ The LLM should inspect:
 - Open issues if the model has known broken behavior.
 
 If any of these cannot be found, the report must say that clearly instead of guessing.
+
+---
+
+Navigation: [Guide Hub](README.md) | Next: [02 - Check Existing ComfyUI Implementations](02_CHECK_EXISTING_COMFYUI_IMPLEMENTATIONS.md)

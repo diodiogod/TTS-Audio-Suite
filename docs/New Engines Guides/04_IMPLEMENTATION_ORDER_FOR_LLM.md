@@ -107,3 +107,7 @@ The LLM should inspect and update the relevant registration files for the chosen
 - `docs/Dev reports/tts_audio_suite_aux_models.yaml` if helper models are added
 
 Only update files that are actually needed for the scoped integration.
+
+---
+
+Navigation: [Guide Hub](README.md) | Previous: [03 - Decide Engine Scope](03_DECIDE_ENGINE_SCOPE.md) | Next: [05 - Required Parity Checklist](05_REQUIRED_PARITY_CHECKLIST.md)

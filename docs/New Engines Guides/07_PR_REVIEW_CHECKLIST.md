@@ -136,3 +136,7 @@ At minimum, test scoped features:
 ## Final Merge Rule
 
 Do not merge until the implementation passes the required parity checklist or the remaining gaps are explicitly accepted by the maintainer.
+
+---
+
+Navigation: [Guide Hub](README.md) | Previous: [06 - User Prompts To Copy Paste](06_USER_PROMPTS_TO_COPY_PASTE.md)
