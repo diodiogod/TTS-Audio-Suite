@@ -34,15 +34,21 @@ The report must answer:
 
 5. What model files are required, and where do they come from?
 
-6. What sample rate, channel layout, and audio tensor/file format does it expect?
+6. What voice/reference input mode does it require?
+   - Reference audio only
+   - Reference audio plus exact transcript/reference text
+   - Either reference-audio-only or reference-audio-plus-text modes
+   - No reference audio
 
-7. What dependencies and versions does it require?
+7. What sample rate, channel layout, and audio tensor/file format does it expect?
 
-8. Does it conflict with common packages already used by TTS Audio Suite?
+8. What dependencies and versions does it require?
 
-9. What license applies to the code and weights?
+9. Does it conflict with common packages already used by TTS Audio Suite?
 
-10. Does it need only unified nodes, or does it need a special node?
+10. What license applies to the code and weights?
+
+11. Does it need only unified nodes, or does it need a special node?
 
 Do not start implementation until this report is complete.
 ```
