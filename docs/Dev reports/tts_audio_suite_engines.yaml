@@ -954,8 +954,8 @@ engines:
 
   - id: moss-tts
     name: MOSS-TTS
-    models: "Local 1.7B, Delay 8B"
-    size: "~8.5GB tokenizer + ~6.1GB/17GB model"
+    models: "Local 1.7B, Delay 8B, TTSD 8B"
+    size: "~8.5GB tokenizer + ~6.1GB/17GB/18GB model"
     license: "Apache-2.0"
     commercial: true
 
@@ -969,8 +969,9 @@ engines:
     special_features:
       - "Zero-shot voice cloning"
       - "20-language generation"
+      - "Native 1-5 speaker TTSD dialogue"
       - "Duration token hint"
-      - "Local/Delay variants"
+      - "Local/Delay/TTSD variants"
 
     model_sources:
       - component: "MOSS-TTS-Local-Transformer"
@@ -985,6 +986,12 @@ engines:
         size: "~17GB"
         auto_download: true
         notes: "Official 8B delay model"
+      - component: "MOSS-TTSD-v1.0"
+        source_name: "OpenMOSS-Team/MOSS-TTSD-v1.0"
+        source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-TTSD-v1.0"
+        size: "~18GB"
+        auto_download: true
+        notes: "Official 8B native multi-speaker dialogue model"
       - component: "MOSS-Audio-Tokenizer"
         source_name: "OpenMOSS-Team/MOSS-Audio-Tokenizer"
         source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer"
@@ -1023,7 +1030,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
-      native_multi_speaker: { supported: false, notes: "" }
+      native_multi_speaker: { supported: true, notes: "(TTSD v1.0; 1-5 speakers)" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
@@ -1221,7 +1228,7 @@ readme_model_download_table:
   - engine: "MOSS-TTS"
     primary_model_path: "ComfyUI/models/TTS/moss_tts/"
     auto_download: "✅"
-    notes: "Local/Delay model plus shared MOSS-Audio-Tokenizer codec"
+    notes: "Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec"
   - engine: "Granite ASR"
     primary_model_path: "ComfyUI/models/TTS/granite_asr/"
     auto_download: "✅"
@@ -1478,14 +1485,16 @@ model_layouts_markdown: |
   ComfyUI/models/TTS/moss_tts/
   ├── MOSS-TTS-Local-Transformer/
   ├── MOSS-TTS/
+  ├── MOSS-TTSD-v1.0/
   └── MOSS-Audio-Tokenizer/
   ```
 
   Notes:
 
-  - `MOSS-Audio-Tokenizer` is required by both official TTS variants.
+  - `MOSS-Audio-Tokenizer` is required by the official TTS and TTSD variants.
   - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
   - `MOSS-TTS` is the official 8B delay model and is much larger.
+  - `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
 
   ## Granite ASR
 

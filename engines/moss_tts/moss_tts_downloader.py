@@ -20,6 +20,10 @@ class MossTTSDownloader:
             "repo_id": "OpenMOSS-Team/MOSS-TTS",
             "description": "MOSS-TTS Delay 8B - flagship long-form model",
         },
+        "MOSS-TTSD-v1.0": {
+            "repo_id": "OpenMOSS-Team/MOSS-TTSD-v1.0",
+            "description": "MOSS-TTSD v1.0 Delay 8B - native multi-speaker dialogue model",
+        },
         "MOSS-TTS-Local-Transformer": {
             "repo_id": "OpenMOSS-Team/MOSS-TTS-Local-Transformer",
             "description": "MOSS-TTS Local 1.7B - smaller/faster model",
@@ -40,9 +44,17 @@ class MossTTSDownloader:
             "model-00002-of-00004.safetensors",
             "model-00003-of-00004.safetensors",
             "model-00004-of-00004.safetensors",
-            "modeling_moss_tts.py",
-            "processing_moss_tts.py",
-            "configuration_moss_tts.py",
+        ],
+        "MOSS-TTSD-v1.0": [
+            "config.json",
+            "generation_config.json",
+            "processor_config.json",
+            "tokenizer.json",
+            "model.safetensors.index.json",
+            "model-00001-of-00004.safetensors",
+            "model-00002-of-00004.safetensors",
+            "model-00003-of-00004.safetensors",
+            "model-00004-of-00004.safetensors",
         ],
         "MOSS-TTS-Local-Transformer": [
             "config.json",
@@ -52,17 +64,12 @@ class MossTTSDownloader:
             "model.safetensors.index.json",
             "model-00001-of-00002.safetensors",
             "model-00002-of-00002.safetensors",
-            "modeling_moss_tts.py",
-            "processing_moss_tts.py",
-            "configuration_moss_tts.py",
         ],
         "MOSS-Audio-Tokenizer": [
             "config.json",
             "model.safetensors.index.json",
             "model-00001-of-00002.safetensors",
             "model-00002-of-00002.safetensors",
-            "modeling_moss_audio_tokenizer.py",
-            "configuration_moss_audio_tokenizer.py",
         ],
     }
 

@@ -38,7 +38,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
-| **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB model | Zero-shot voice cloning, 20-language generation |
+| **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | Zero-shot voice cloning, 20-language generation |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
@@ -1337,7 +1337,7 @@ For offline/manual setup:
 | Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
-| MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay model plus shared MOSS-Audio-Tokenizer codec |
+| MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec |
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Main Granite model; optional Qwen forced aligner reused lazily for timestamps/SRT |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 

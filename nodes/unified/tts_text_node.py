@@ -201,6 +201,7 @@ Back to the main narrator voice for the conclusion.""",
             # For MOSS-TTS, include model identity and load-time options.
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
+                stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Custom Character Switching')
                 stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
                 stable_params['codec_model'] = config.get('codec_model', 'MOSS-Audio-Tokenizer')
@@ -806,6 +807,8 @@ Back to the main narrator voice for the conclusion.""",
             if language.startswith("local:"):
                 # For local models, show "local" as the language code
                 lang_code = "local"
+            elif language.lower() == "auto":
+                lang_code = "auto"
             else:
                 # Standard language codes - take first 2 chars
                 lang_code = language.lower()[:2]  # en, fr, de, etc.

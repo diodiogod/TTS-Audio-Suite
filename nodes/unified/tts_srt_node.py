@@ -204,6 +204,7 @@ Hello! This is unified SRT TTS with character switching.
 
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
+                stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Custom Character Switching')
                 stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
                 stable_params['codec_model'] = config.get('codec_model', 'MOSS-Audio-Tokenizer')

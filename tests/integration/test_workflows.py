@@ -66,6 +66,11 @@ class TestNodeRegistration:
         assert api_client.node_exists("CharacterVoicesNode"), \
             "CharacterVoicesNode not registered"
 
+    def test_moss_tts_engine_registered(self, api_client):
+        """Verify MOSS-TTS Engine node is available"""
+        assert api_client.node_exists("MossTTSEngineNode"), \
+            "MossTTSEngineNode not registered"
+
 
 @pytest.mark.integration
 class TestWorkflowFixtures:
@@ -114,6 +119,17 @@ class TestWorkflowFixtures:
         
         assert "1" in workflow
         assert workflow["1"]["class_type"] == "IndexTTSEngineNode"
+
+    def test_load_moss_tts_workflow(self, workflow_fixtures_path):
+        """Test loading MOSS-TTS workflow fixture"""
+        workflow_file = workflow_fixtures_path / "test_moss_tts_engine.json"
+        assert workflow_file.exists(), "MOSS-TTS workflow fixture not found"
+
+        with open(workflow_file) as f:
+            workflow = json.load(f)
+
+        assert "1" in workflow
+        assert workflow["1"]["class_type"] == "MossTTSEngineNode"
 
 
 @pytest.mark.integration
@@ -217,6 +233,32 @@ class TestIndexTTSEngine:
             timeout=10
         )
         
+        if response.status_code == 400:
+            error_data = response.json().get("error", {})
+            assert error_data.get("type") == "prompt_no_outputs", \
+                f"Unexpected error: {error_data}"
+        else:
+            assert response.status_code == 200
+
+
+@pytest.mark.integration
+class TestMossTTSEngine:
+    """Integration tests for MOSS-TTS engine configuration"""
+
+    def test_engine_config_validation(self, api_client, workflow_fixtures_path):
+        """Test MOSS-TTS engine configuration is valid"""
+        import requests
+
+        workflow_file = workflow_fixtures_path / "test_moss_tts_engine.json"
+        with open(workflow_file) as f:
+            workflow = json.load(f)
+
+        response = requests.post(
+            f"{api_client.base_url}/prompt",
+            json={"prompt": workflow},
+            timeout=10
+        )
+
         if response.status_code == 400:
             error_data = response.json().get("error", {})
             assert error_data.get("type") == "prompt_no_outputs", \

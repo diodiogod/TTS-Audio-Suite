@@ -244,14 +244,16 @@ Notes:
 ComfyUI/models/TTS/moss_tts/
 ├── MOSS-TTS-Local-Transformer/
 ├── MOSS-TTS/
+├── MOSS-TTSD-v1.0/
 └── MOSS-Audio-Tokenizer/
 ```
 
 Notes:
 
-- `MOSS-Audio-Tokenizer` is required by both official TTS variants.
+- `MOSS-Audio-Tokenizer` is required by the official TTS and TTSD variants.
 - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
 - `MOSS-TTS` is the official 8B delay model and is much larger.
+- `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
 
 ## Granite ASR
 

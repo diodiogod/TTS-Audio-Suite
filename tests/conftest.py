@@ -46,8 +46,10 @@ collect_ignore = ["__init__.py", "nodes.py"]
 
 # Path configuration
 CUSTOM_NODE_ROOT = Path(__file__).parent.parent  # tests/ -> TTS-Audio-Suite/
-COMFY_ROOT = CUSTOM_NODE_ROOT.parent.parent  # Navigate to Comfy-new
-VENV_PYTHON = COMFY_ROOT / "venv" / "Scripts" / "python.exe"  # Windows
+DEFAULT_COMFY_ROOT = CUSTOM_NODE_ROOT.parent.parent  # Navigate to Comfy-new
+COMFY_ROOT = Path(os.environ.get("TTS_SUITE_TEST_COMFY_ROOT", str(DEFAULT_COMFY_ROOT)))
+DEFAULT_VENV_PYTHON = COMFY_ROOT / "venv" / "Scripts" / "python.exe"  # Windows
+VENV_PYTHON = Path(os.environ.get("TTS_SUITE_TEST_VENV_PYTHON", str(DEFAULT_VENV_PYTHON)))
 
 
 class ComfyUIAPIClient:
@@ -144,7 +146,9 @@ def comfyui_server():
     print("\n🚀 Starting ComfyUI server for integration tests...")
     
     # Check if server is already running
-    server_url = "http://127.0.0.1:8188"
+    comfy_host = os.environ.get("TTS_SUITE_TEST_HOST", "127.0.0.1")
+    comfy_port = int(os.environ.get("TTS_SUITE_TEST_PORT", "8188"))
+    server_url = f"http://{comfy_host}:{comfy_port}"
     try:
         response = requests.get(f"{server_url}/system_stats", timeout=2)
         if response.status_code == 200:
@@ -159,8 +163,8 @@ def comfyui_server():
         [
             str(VENV_PYTHON),
             "main.py",
-            "--listen", "127.0.0.1",
-            "--port", "8188",
+            "--listen", comfy_host,
+            "--port", str(comfy_port),
             "--disable-auto-launch",
             "--cpu"  # Use CPU for faster startup in tests
         ],

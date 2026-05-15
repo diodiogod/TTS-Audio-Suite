@@ -27,6 +27,14 @@ from engines.moss_tts.moss_tts import MossTTSEngine
 from utils.models.extra_paths import get_all_tts_model_paths
 
 
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+any_typ = AnyType("*")
+
+
 class MossTTSEngineNode(BaseTTSNode):
     """MOSS-TTS engine configuration node."""
 
@@ -55,7 +63,15 @@ class MossTTSEngineNode(BaseTTSNode):
                     "tooltip": (
                         "Official MOSS-TTS model variant.\n"
                         "MOSS-TTS-Local-Transformer: 1.7B local-transformer model, smaller and practical for testing.\n"
-                        "MOSS-TTS: 8B delay model, official production-quality model with much higher VRAM/disk use."
+                        "MOSS-TTS: 8B delay model, official production-quality model with much higher VRAM/disk use.\n"
+                        "MOSS-TTSD-v1.0: 8B native multi-speaker dialogue model used by Native Multi-Speaker Dialogue mode."
+                    )
+                }),
+                "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker Dialogue"], {
+                    "default": "Custom Character Switching",
+                    "tooltip": (
+                        "Custom Character Switching uses normal MOSS-TTS per character block.\n"
+                        "Native Multi-Speaker Dialogue uses MOSS-TTSD-v1.0 with [S1]...[S5] speaker mapping in one dialogue context."
                     )
                 }),
                 "device": (["auto", "cuda", "cpu"], {
@@ -117,6 +133,18 @@ class MossTTSEngineNode(BaseTTSNode):
                     "default": "MOSS-Audio-Tokenizer",
                     "tooltip": "Official shared MOSS audio tokenizer required by MOSS-TTS."
                 }),
+                "speaker2_voice": (any_typ, {
+                    "tooltip": "Voice for S2 in Native Multi-Speaker Dialogue. Connect Character Voices opt_narrator output."
+                }),
+                "speaker3_voice": (any_typ, {
+                    "tooltip": "Voice for S3 in Native Multi-Speaker Dialogue. Connect Character Voices opt_narrator output."
+                }),
+                "speaker4_voice": (any_typ, {
+                    "tooltip": "Voice for S4 in Native Multi-Speaker Dialogue. Connect Character Voices opt_narrator output."
+                }),
+                "speaker5_voice": (any_typ, {
+                    "tooltip": "Voice for S5 in Native Multi-Speaker Dialogue. Connect Character Voices opt_narrator output."
+                }),
             }
         }
 
@@ -146,6 +174,7 @@ class MossTTSEngineNode(BaseTTSNode):
     def create_engine_adapter(
         self,
         model_variant: str,
+        multi_speaker_mode: str,
         device: str,
         language: str,
         sampler_preset: str,
@@ -159,7 +188,15 @@ class MossTTSEngineNode(BaseTTSNode):
         dtype: str = "auto",
         attn_implementation: str = "auto",
         codec_model: str = "MOSS-Audio-Tokenizer",
+        speaker2_voice=None,
+        speaker3_voice=None,
+        speaker4_voice=None,
+        speaker5_voice=None,
     ):
+        if multi_speaker_mode == "Native Multi-Speaker Dialogue" and model_variant != "MOSS-TTSD-v1.0":
+            print("🔄 MOSS-TTS: Native Multi-Speaker Dialogue selected, using MOSS-TTSD-v1.0")
+            model_variant = "MOSS-TTSD-v1.0"
+
         resolved_variant = model_variant.replace("local:", "") if model_variant.startswith("local:") else model_variant
         defaults = self.MODEL_DEFAULTS.get(resolved_variant, self.MODEL_DEFAULTS["MOSS-TTS-Local-Transformer"])
 
@@ -168,11 +205,11 @@ class MossTTSEngineNode(BaseTTSNode):
             top_p = defaults["top_p"]
             top_k = int(defaults["top_k"])
             repetition_penalty = defaults["repetition_penalty"]
-            max_new_tokens = int(defaults["max_new_tokens"])
 
         config = {
             "engine_type": "moss_tts",
             "model_variant": model_variant,
+            "multi_speaker_mode": multi_speaker_mode,
             "device": device,
             "language": language,
             "sampler_preset": sampler_preset,
@@ -186,16 +223,22 @@ class MossTTSEngineNode(BaseTTSNode):
             "dtype": dtype,
             "attn_implementation": attn_implementation,
             "codec_model": codec_model,
+            "speaker2_voice": speaker2_voice,
+            "speaker3_voice": speaker3_voice,
+            "speaker4_voice": speaker4_voice,
+            "speaker5_voice": speaker5_voice,
         }
 
         print(f"⚙️ MOSS-TTS: Configured {model_variant} on {device}")
+        print(f"   Mode: {multi_speaker_mode}")
         print(
-            "   Language={language}, temp={temperature}, top_p={top_p}, top_k={top_k}, rep_penalty={rep}".format(
+            "   Language={language}, temp={temperature}, top_p={top_p}, top_k={top_k}, rep_penalty={rep}, max_new_tokens={max_new_tokens}".format(
                 language=language,
                 temperature=config["temperature"],
                 top_p=config["top_p"],
                 top_k=config["top_k"],
                 rep=config["repetition_penalty"],
+                max_new_tokens=config["max_new_tokens"],
             )
         )
         if config["duration_tokens"]:
