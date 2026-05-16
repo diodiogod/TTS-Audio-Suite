@@ -95,7 +95,12 @@ class MossTTSEngineNode(BaseTTSNode):
                     "Danish", "Swedish", "Greek", "Turkish"
                 ], {
                     "default": "Auto",
-                    "tooltip": "Optional official language hint. Auto leaves language unset for MOSS-TTS."
+                    "tooltip": (
+                        "Optional language hint for MOSS-TTS.\n"
+                        "Auto does not run a separate language detector.\n"
+                        "It simply sends no language hint, so MOSS must infer the language from the text itself.\n"
+                        "Use an explicit language when the text is short, ambiguous, mixed-language, or when Auto guesses wrong."
+                    )
                 }),
                 "sampler_preset": (["Model default", "Custom"], {
                     "default": "Model default",

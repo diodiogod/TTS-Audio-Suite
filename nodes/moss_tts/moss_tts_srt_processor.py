@@ -18,6 +18,7 @@ if project_root not in sys.path:
 
 from utils.text.character_parser import CharacterParser
 from utils.voice.discovery import get_available_characters, voice_discovery
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 
 import importlib.util
 
@@ -143,6 +144,7 @@ class MossTTSSRTProcessor:
     def _process_all_subtitles(self, subtitles: List[Any], voice_mapping: Dict[str, Any], seed: int):
         audio_segments = []
         adjustments = []
+        all_segments_for_editing = []
 
         for idx, sub in enumerate(subtitles):
             self._check_interrupt()
@@ -182,10 +184,33 @@ class MossTTSSRTProcessor:
                 seed=seed + idx,
                 enable_chunking=False,
                 max_chars_per_chunk=400,
+                apply_edit_postprocessing=False,
             )
+
+            subtitle_has_edit_tags = any(seg.get("edit_tags") for seg in segment_dicts)
 
             if not segment_dicts:
                 audio = torch.zeros(1, int(target_duration * self.SAMPLE_RATE))
+                audio_segments.append(audio)
+                adjustments.append(self._make_adjustment(idx, sub, target_duration, target_duration))
+                continue
+            elif subtitle_has_edit_tags:
+                for seg_idx, seg in enumerate(segment_dicts):
+                    w = seg["waveform"]
+                    if w.dim() == 1:
+                        w = w.unsqueeze(0)
+                    elif w.dim() == 3:
+                        w = w.squeeze(0)
+                    all_segments_for_editing.append({
+                        **seg,
+                        "waveform": w.cpu(),
+                        "subtitle_index": idx,
+                        "segment_index": seg_idx,
+                    })
+                audio_segments.append(None)
+                adjustments.append(self._make_adjustment(idx, sub, 0.0, target_duration))
+                print(f"✅ MOSS-TTS SRT subtitle {idx + 1}: queued for batch edit processing")
+                continue
             elif len(segment_dicts) > 1:
                 audio = self.processor.combine_audio_segments(
                     segments=segment_dicts,
@@ -206,6 +231,50 @@ class MossTTSSRTProcessor:
             natural_duration = audio.shape[-1] / self.SAMPLE_RATE
             adjustments.append(self._make_adjustment(idx, sub, natural_duration, target_duration))
             print(f"✅ MOSS-TTS SRT subtitle {idx + 1}: {natural_duration:.2f}s (target {target_duration:.2f}s)")
+
+        if all_segments_for_editing:
+            print(
+                f"\n🎨 MOSS-TTS SRT: Applying edit post-processing to "
+                f"{len(all_segments_for_editing)} segment(s) from all subtitles..."
+            )
+            processed = apply_edit_post_processing(all_segments_for_editing, self.processor.config)
+
+            by_subtitle: Dict[int, List[Any]] = {}
+            for seg in processed:
+                sub_idx = seg["subtitle_index"]
+                by_subtitle.setdefault(sub_idx, []).append(seg)
+
+            for sub_idx, segs in by_subtitle.items():
+                segs_sorted = sorted(segs, key=lambda s: s["segment_index"])
+                for seg in segs_sorted:
+                    w = seg["waveform"]
+                    if w.dim() == 3:
+                        w = w.squeeze(0)
+                    elif w.dim() == 1:
+                        w = w.unsqueeze(0)
+                    seg["waveform"] = w
+
+                if len(segs_sorted) > 1:
+                    audio = self.processor.combine_audio_segments(
+                        segments=segs_sorted,
+                        method="auto",
+                        silence_ms=100,
+                        text_length=len(subtitles[sub_idx].text),
+                        return_info=False,
+                    )
+                else:
+                    audio = segs_sorted[0]["waveform"]
+
+                if audio.dim() == 1:
+                    audio = audio.unsqueeze(0)
+                elif audio.dim() == 3:
+                    audio = audio.squeeze(0)
+                audio_segments[sub_idx] = audio
+
+                natural_duration = audio.shape[-1] / self.SAMPLE_RATE
+                target_duration = adjustments[sub_idx]["target_duration"]
+                adjustments[sub_idx] = self._make_adjustment(sub_idx, subtitles[sub_idx], natural_duration, target_duration)
+                print(f"✅ MOSS-TTS SRT subtitle {sub_idx + 1}: {natural_duration:.2f}s after edit processing")
 
         return audio_segments, adjustments
 

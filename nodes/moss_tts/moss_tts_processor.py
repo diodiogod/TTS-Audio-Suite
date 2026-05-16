@@ -20,11 +20,13 @@ if project_root not in sys.path:
 
 from engines.adapters.moss_tts_adapter import MossTTSEngineAdapter
 from utils.audio.processing import AudioProcessingUtils
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from utils.models.language_mapper import resolve_language_alias
 from utils.text.character_parser import character_parser
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.voice.discovery import (
     get_available_characters,
     get_character_mapping,
@@ -222,6 +224,7 @@ class MossTTSProcessor:
         seed: int,
         enable_chunking: bool = True,
         max_chars_per_chunk: int = 400,
+        apply_edit_postprocessing: bool = True,
     ) -> List[Dict[str, Any]]:
         params = self.config.copy()
         params["seed"] = seed
@@ -237,13 +240,17 @@ class MossTTSProcessor:
                 enable_chunking,
                 max_chars_per_chunk,
             )
-        return self._process_character_switching(
+        audio_segments = self._process_character_switching(
             segment_objects,
             voice_mapping,
             params,
             enable_chunking,
             max_chars_per_chunk,
         )
+        if apply_edit_postprocessing and any(seg.get("edit_tags") for seg in audio_segments):
+            print("🎨 Applying Step Audio EditX inline edit tags post-processing...")
+            audio_segments = apply_edit_post_processing(audio_segments, self.config)
+        return audio_segments
 
     def _process_native_multispeaker_or_fallback(
         self,
@@ -264,6 +271,9 @@ class MossTTSProcessor:
             fallback_reasons.append("more than 5 speakers")
         if PauseTagProcessor.has_pause_tags(full_text):
             fallback_reasons.append("pause tags")
+        _, inline_edit_tags = get_edit_tags_for_segment(full_text)
+        if inline_edit_tags:
+            fallback_reasons.append("inline edit tags")
         if any(getattr(segment, "parameters", None) for segment in segment_objects):
             fallback_reasons.append("per-segment parameter changes")
 
@@ -486,11 +496,15 @@ class MossTTSProcessor:
                 "Set duration_tokens or lower max_new_tokens for short clips."
             )
 
-        if enable_chunking and len(combined_text) > max_chars:
-            chunks = self.chunker.split_into_chunks(combined_text, max_chars)
+        clean_text, edit_tags = get_edit_tags_for_segment(combined_text)
+        if not clean_text:
+            return
+
+        if enable_chunking and len(clean_text) > max_chars:
+            chunks = self.chunker.split_into_chunks(clean_text, max_chars)
             print(f"📝 MOSS-TTS: Chunking '{character}' into {len(chunks)} chunk(s) (language={language})")
         else:
-            chunks = [combined_text]
+            chunks = [clean_text]
 
         for chunk_idx, chunk in enumerate(chunks, start=1):
             if model_management.interrupt_processing:
@@ -520,6 +534,8 @@ class MossTTSProcessor:
                 "sample_rate": self.SAMPLE_RATE,
                 "character": character,
                 "text": chunk,
+                "original_text": combined_text,
+                "edit_tags": edit_tags,
             })
 
     def combine_audio_segments(
