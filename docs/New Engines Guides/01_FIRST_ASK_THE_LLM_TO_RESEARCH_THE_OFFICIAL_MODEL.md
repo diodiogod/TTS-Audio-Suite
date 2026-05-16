@@ -50,6 +50,11 @@ The report must answer:
 
 11. Does it need only unified nodes, or does it need a special node?
 
+12. Is this a short-form or long-form generation model?
+   - If long-form, what is the native segmentation strategy?
+   - Should chunking be text-length based, duration/minute based, or model-internal?
+   - Which controls should be ignored or overridden (for example, max chars per chunk) to match native behavior?
+
 Do not start implementation until this report is complete.
 ```
 
@@ -66,6 +71,11 @@ The report must decide the actual scope:
 Do not ask whether SRT is natively supported by the model. For TTS engines, SRT support is implemented by TTS Audio Suite by generating subtitle text segments and assembling timing with the suite timing systems.
 
 If the model has a native feature that does not fit existing unified nodes, say so. Do not hide it inside a generic node if it needs a special UI.
+
+Also decide the reference archetype early:
+
+- Use Qwen3-TTS as default reference for standard TTS/SRT architecture.
+- Use VibeVoice as reference when the target engine is long-form and needs duration-aware/minute-aware segmentation behavior.
 
 ## Native Features Come First
 
