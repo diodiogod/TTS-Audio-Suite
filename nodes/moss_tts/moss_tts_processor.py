@@ -131,6 +131,9 @@ class MossTTSProcessor:
             return self.LANGUAGE_NAME_TO_CODE[lowered]
 
         resolved = resolve_language_alias(value).lower()
+        # MOSS currently expects generic Portuguese code `pt`.
+        if resolved in {"pt-br", "pt-pt"}:
+            resolved = "pt"
         return self.LANGUAGE_NAME_TO_CODE.get(resolved, resolved)
 
     def _prepare_character_parser(self, text: str, language_code: str) -> None:
@@ -241,6 +244,16 @@ class MossTTSProcessor:
         params["language"] = self._language_name_to_code(params.get("language", "Auto"))
         native_character_map = (voice_mapping or {}).get(self.NATIVE_MAPPING_META_KEY)
 
+        chunk_minutes = int(self.config.get("chunk_minutes", 0) or 0)
+        chunk_chars = int(self.config.get("chunk_chars", 0) or 0)
+        if chunk_minutes > 0 and chunk_chars > 0:
+            enable_chunking = True
+            max_chars_per_chunk = chunk_chars
+        elif chunk_minutes == 0:
+            # VibeVoice-style override behavior: explicit 0 disables chunking here.
+            enable_chunking = False
+            max_chars_per_chunk = 999999
+
         if params.get("multi_speaker_mode") == "Custom Character Switching":
             if self._contains_manual_speaker_format(text):
                 print("🔄 MOSS-TTS: Auto-switching to Native Multi-Speaker Dialogue (detected manual 'Speaker N:' format)")
@@ -323,7 +336,14 @@ class MossTTSProcessor:
             params["model_variant"] = target_variant
             self._load_model_from_config(self.config)
 
-        return self._process_native_multispeaker(segment_objects, voice_mapping, params, native_character_map=native_character_map)
+        return self._process_native_multispeaker(
+            segment_objects,
+            voice_mapping,
+            params,
+            enable_chunking=enable_chunking,
+            max_chars=max_chars,
+            native_character_map=native_character_map,
+        )
 
     @staticmethod
     def _manual_speaker_number(character: str) -> Optional[int]:
@@ -375,27 +395,50 @@ class MossTTSProcessor:
     def build_native_character_map_from_texts(cls, texts: List[str]) -> Dict[str, int]:
         mapping: Dict[str, int] = {}
         used_slots = set()
+        has_narrator = False
+        discovered_keys: List[str] = []
+
+        # Build discovery order from line-based parsing so implicit narrator lines are included.
         for text in texts:
             normalized = cls._normalize_native_dialogue_input(text)
-            for tag in re.findall(r"\[([^\]]+)\]", normalized):
-                character = tag.split("|")[0].strip()
-                if not character or character.lower().startswith("pause:"):
+            for raw_line in normalized.splitlines():
+                line = raw_line.strip()
+                if not line:
                     continue
-                key = cls._native_character_key(character)
-                if key in mapping:
-                    continue
-                speaker_num = cls._manual_speaker_number(character)
-                if speaker_num is not None:
-                    mapping[key] = speaker_num
-                    used_slots.add(speaker_num)
-                    continue
-                for candidate in range(1, 6):
-                    if candidate not in used_slots:
-                        mapping[key] = candidate
-                        used_slots.add(candidate)
-                        break
-                if key not in mapping:
-                    mapping[key] = 5
+                tag_match = re.match(r"^\[([^\]]+)\]\s*(.*)$", line)
+                if tag_match:
+                    character = tag_match.group(1).split("|")[0].strip()
+                    if not character or character.lower().startswith("pause:"):
+                        continue
+                    key = cls._native_character_key(character)
+                    if key not in discovered_keys:
+                        discovered_keys.append(key)
+                else:
+                    has_narrator = True
+
+        # Prefer narrator on S1 for native dialogue consistency when implicit narrator exists.
+        if has_narrator:
+            mapping["narrator"] = 1
+            used_slots.add(1)
+
+        for key in discovered_keys:
+            if key in mapping:
+                continue
+            manual_speaker = cls._manual_speaker_number(key)
+            if manual_speaker is not None:
+                mapping[key] = manual_speaker
+                used_slots.add(manual_speaker)
+                continue
+            candidates = range(2, 6) if has_narrator else range(1, 6)
+            for candidate in candidates:
+                if candidate not in used_slots:
+                    mapping[key] = candidate
+                    used_slots.add(candidate)
+                    break
+            if key not in mapping:
+                mapping[key] = 5
+                used_slots.add(5)
+
         return mapping
 
     def _process_native_multispeaker(
@@ -403,6 +446,8 @@ class MossTTSProcessor:
         segment_objects,
         voice_mapping: Dict[str, Any],
         params: Dict[str, Any],
+        enable_chunking: bool = True,
+        max_chars: int = 400,
         native_character_map: Optional[Dict[str, int]] = None,
     ) -> List[Dict[str, Any]]:
         main_narrator_voice = voice_mapping.get("narrator") if voice_mapping else None
@@ -420,6 +465,7 @@ class MossTTSProcessor:
         speaker_voices = [speaker_inputs.get(idx) for idx in range(1, 6)]
         character_map: Dict[str, int] = {}
         used_slots = set()
+        logged_priority_overrides = set()
         formatted_lines = []
 
         print(f"🎭 MOSS-TTSD native dialogue: Processing {len(segment_objects)} segment(s)")
@@ -432,6 +478,7 @@ class MossTTSProcessor:
                     character_map[key] = int(speaker_num) - 1
                     used_slots.add(int(speaker_num))
 
+        normalized_segments = []
         for segment in segment_objects:
             character = segment.character
             text = segment.text.strip()
@@ -463,13 +510,17 @@ class MossTTSProcessor:
                 character_voice = None
 
             if connected_voice is not None and character_voice is not None:
-                print(f"⚠️ MOSS-TTSD priority: S{speaker_num} input overrides ['{character}'] alias")
+                override_key = (speaker_num, self._native_character_key(character))
+                if override_key not in logged_priority_overrides:
+                    print(f"⚠️ MOSS-TTSD priority: S{speaker_num} input overrides ['{character}'] alias")
+                    logged_priority_overrides.add(override_key)
                 speaker_voices[speaker_idx] = connected_voice
             elif connected_voice is not None:
                 speaker_voices[speaker_idx] = connected_voice
             elif character_voice is not None:
                 speaker_voices[speaker_idx] = character_voice
 
+            normalized_segments.append((speaker_num, text))
             formatted_lines.append(f"[S{speaker_num}] {text}")
 
         if not formatted_lines:
@@ -478,7 +529,6 @@ class MossTTSProcessor:
         max_speaker_idx = max(character_map.values()) if character_map else 0
         speaker_count = min(max_speaker_idx + 1, 5)
         speaker_voices = speaker_voices[:speaker_count]
-        dialogue_text = "\n".join(formatted_lines)
 
         mapping_display = ", ".join(
             f"{character}->S{speaker_idx + 1}"
@@ -489,17 +539,57 @@ class MossTTSProcessor:
             field_value = params.get(field_name)
             if field_value:
                 print(f"  🔹 {field_name}: {self._format_prompt_field_log(field_name, field_value, params)}")
-        print("🎭 MOSS-TTSD formatted dialogue:")
-        print("=" * 60)
-        print(dialogue_text)
-        print("=" * 60)
+        if enable_chunking and len("\n".join(formatted_lines)) > max_chars:
+            segment_groups = self._split_native_segments_by_chars(normalized_segments, max_chars)
+            print(f"✂️ MOSS-TTSD: Split native dialogue into {len(segment_groups)} chunk(s) (max {max_chars} chars)")
+        else:
+            segment_groups = [normalized_segments]
 
-        audio = self.adapter.generate_native_dialogue(
-            dialogue_text=dialogue_text,
-            speaker_voices=speaker_voices,
-            params=params,
-        )
-        return [audio]
+        outputs = []
+        for chunk_idx, chunk_group in enumerate(segment_groups, start=1):
+            dialogue_text = "\n".join(f"[S{speaker_num}] {text}" for speaker_num, text in chunk_group)
+            if len(segment_groups) > 1:
+                print(f"🎭 MOSS-TTSD formatted dialogue chunk {chunk_idx}/{len(segment_groups)}:")
+            else:
+                print("🎭 MOSS-TTSD formatted dialogue:")
+            print("=" * 60)
+            print(dialogue_text)
+            print("=" * 60)
+
+            audio = self.adapter.generate_native_dialogue(
+                dialogue_text=dialogue_text,
+                speaker_voices=speaker_voices,
+                params=params,
+            )
+            outputs.append(audio)
+        return outputs
+
+    @staticmethod
+    def _split_native_segments_by_chars(
+        segments: List[tuple[int, str]],
+        max_chars: int,
+    ) -> List[List[tuple[int, str]]]:
+        if not segments:
+            return []
+        if max_chars <= 0:
+            return [segments]
+
+        groups: List[List[tuple[int, str]]] = []
+        current_group: List[tuple[int, str]] = []
+        current_chars = 0
+
+        for speaker_num, text in segments:
+            line_len = len(text) + 8  # account for [Sx] + separators
+            if current_group and current_chars + line_len > max_chars:
+                groups.append(current_group)
+                current_group = []
+                current_chars = 0
+            current_group.append((speaker_num, text))
+            current_chars += line_len
+
+        if current_group:
+            groups.append(current_group)
+        return groups
 
     def _process_character_switching(
         self,
@@ -510,13 +600,17 @@ class MossTTSProcessor:
         max_chars: int,
     ) -> List[Dict[str, Any]]:
         audio_segments: List[Dict[str, Any]] = []
-        print(f"🔄 MOSS-TTS: Processing {len(segment_objects)} character segment(s)")
+        grouped_segments = self._group_consecutive_character_segments(segment_objects)
+        print(
+            f"🔄 MOSS-TTS: Processing {len(grouped_segments)} character segment(s)"
+            + (f" (grouped from {len(segment_objects)})" if len(grouped_segments) != len(segment_objects) else "")
+        )
 
-        for seg_idx, segment in enumerate(segment_objects):
+        for seg_idx, segment in enumerate(grouped_segments):
             if model_management.interrupt_processing:
-                raise InterruptedError(f"MOSS-TTS segment {seg_idx + 1}/{len(segment_objects)} interrupted by user")
+                raise InterruptedError(f"MOSS-TTS segment {seg_idx + 1}/{len(grouped_segments)} interrupted by user")
 
-            print(f"\n🎤 Segment {seg_idx + 1}/{len(segment_objects)}: Character '{segment.character}'")
+            print(f"\n🎤 Segment {seg_idx + 1}/{len(grouped_segments)}: Character '{segment.character}'")
 
             segment_params = params.copy()
             if getattr(segment, "language", None):
@@ -540,6 +634,42 @@ class MossTTSProcessor:
             )
 
         return audio_segments
+
+    @staticmethod
+    def _group_consecutive_character_segments(segment_objects):
+        if not segment_objects:
+            return []
+
+        grouped = []
+        current = None
+
+        def can_merge(prev, nxt) -> bool:
+            if prev.character != nxt.character:
+                return False
+            if getattr(prev, "language", None) != getattr(nxt, "language", None):
+                return False
+            if getattr(prev, "parameters", None) != getattr(nxt, "parameters", None):
+                return False
+            # Keep pause/edit-tag text boundaries as hard split points.
+            if PauseTagProcessor.has_pause_tags(prev.text) or PauseTagProcessor.has_pause_tags(nxt.text):
+                return False
+            if get_edit_tags_for_segment(prev.text)[1] or get_edit_tags_for_segment(nxt.text)[1]:
+                return False
+            return True
+
+        for segment in segment_objects:
+            if current is None:
+                current = segment
+                continue
+            if can_merge(current, segment):
+                current.text = f"{current.text}\n{segment.text}"
+                continue
+            grouped.append(current)
+            current = segment
+
+        if current is not None:
+            grouped.append(current)
+        return grouped
 
     @staticmethod
     def _is_soundeffect_model(params: Dict[str, Any]) -> bool:

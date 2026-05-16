@@ -19,6 +19,8 @@ from typing import List, Optional, Tuple, Union
 from tqdm import tqdm
 
 import torch
+# TTS Audio Suite patch: allow mid-generation interrupt checks in bundled MOSS loop.
+import comfy.model_management as model_management
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
@@ -443,6 +445,9 @@ class MossTTSDelayModel(MossTTSDelayPreTrainedModel):
         pre_exclude_mask1[[self.config.audio_assistant_gen_slot_token_id, self.config.audio_assistant_delay_slot_token_id]] = False
         
         for time_step in tqdm(range(max_new_tokens), desc=f"Generating bs{batch_size} ..."):
+            # TTS Audio Suite patch: support ComfyUI interrupt during long native generation.
+            if model_management.interrupt_processing:
+                raise InterruptedError("MOSS-TTS generation interrupted by user")
             outputs = self(
                 input_ids=current_input_ids,
                 attention_mask=current_attention_mask,

@@ -72,10 +72,13 @@ class MossTTSEngineNode(BaseTTSNode):
                     "default": cls._get_ui_standard_model_options()[0],
                     "tooltip": (
                         "MOSS-TTS model selection.\n"
+                        "\n"
                         "If a local model folder is detected, this dropdown will show local:ModelName like other engines.\n"
                         "Otherwise it shows the friendly built-in choices.\n"
+                        "\n"
                         "Small 1.7B (Local): smaller official local-transformer model.\n"
                         "8B (Delay): larger official delay model.\n"
+                        "\n"
                         "Native Multi-Speaker Dialogue mode ignores this selector and uses MOSS-TTSD-v1.0 automatically."
                     )
                 }),
@@ -83,6 +86,7 @@ class MossTTSEngineNode(BaseTTSNode):
                     "default": "Custom Character Switching",
                     "tooltip": (
                         "Custom Character Switching uses normal MOSS-TTS per character block.\n"
+                        "\n"
                         "Native Multi-Speaker Dialogue uses MOSS-TTSD-v1.0 with [S1]...[S5] speaker mapping in one dialogue context."
                     )
                 }),
@@ -102,6 +106,27 @@ class MossTTSEngineNode(BaseTTSNode):
                         "Auto does not run a separate language detector.\n"
                         "It simply sends no language hint, so MOSS must infer the language from the text itself.\n"
                         "Use an explicit language when the text is short, ambiguous, mixed-language, or when Auto guesses wrong."
+                    )
+                }),
+                "duration_tokens": ("INT", {
+                    "default": 0, "min": 0, "max": 8192, "step": 1,
+                    "tooltip": (
+                        "Target output length hint. This is audio tokens, not text tokens.\n"
+                        "This is one of the most useful MOSS controls for pacing.\n"
+                        "It can indirectly affect pacing:\n"
+                        "• Lower values usually make speech shorter and tighter\n"
+                        "• Higher values usually make speech longer and slower-feeling\n"
+                        "This is not a true speed control.\n"
+                        "Very low values can behave oddly, so avoid extreme settings.\n"
+                        "\n"
+                        "Rough guide:\n"
+                        "• 12-13 = about 1 second\n"
+                        "• 25 = about 2 seconds\n"
+                        "• 50 = about 4 seconds\n"
+                        "• 125 = about 10 seconds\n"
+                        "Use lower values for shorter delivery, higher values for longer delivery.\n"
+                        "Set 0 to disable.\n"
+                        "If audio is getting cut off, raise max_new_tokens too."
                     )
                 }),
                 "sampler_preset": (["Model default", "Custom"], {
@@ -127,6 +152,15 @@ class MossTTSEngineNode(BaseTTSNode):
                 "max_new_tokens": ("INT", {
                     "default": 4096, "min": 64, "max": 16384, "step": 64,
                     "tooltip": "Maximum generated tokens. Higher values allow longer outputs and use more VRAM/time."
+                }),
+                "chunk_minutes": ("INT", {
+                    "default": 0, "min": 0, "max": 90, "step": 1,
+                    "tooltip": (
+                        "Time-based chunking override for MOSS (like VibeVoice).\n"
+                        "0: disable chunking entirely and ignore Unified chunk controls.\n"
+                        ">0: force chunking using approx 750 chars/min and ignore Unified chunk controls.\n"
+                        "Applies to both Custom Character Switching and Native Multi-Speaker Dialogue."
+                    )
                 }),
             },
             "optional": {
@@ -197,27 +231,6 @@ class MossTTSEngineNode(BaseTTSNode):
                         "Important: ambience can make MOSS keep generating until it reaches the requested duration budget.\n"
                         "If it runs too long, lower max_new_tokens or set duration_tokens.\n"
                         "Do not use <ambient_sound:...> for MOSS. <> should stay reserved for real inline post-processing tags."
-                    )
-                }),
-                "duration_tokens": ("INT", {
-                    "default": 0, "min": 0, "max": 8192, "step": 1,
-                    "tooltip": (
-                        "Target output length hint. This is audio tokens, not text tokens.\n"
-                        "This is one of the most useful MOSS controls for pacing.\n"
-                        "It can indirectly affect pacing:\n"
-                        "• Lower values usually make speech shorter and tighter\n"
-                        "• Higher values usually make speech longer and slower-feeling\n"
-                        "This is not a true speed control.\n"
-                        "Very low values can behave oddly, so avoid extreme settings.\n"
-                        "\n"
-                        "Rough guide:\n"
-                        "• 12-13 = about 1 second\n"
-                        "• 25 = about 2 seconds\n"
-                        "• 50 = about 4 seconds\n"
-                        "• 125 = about 10 seconds\n"
-                        "Use lower values for shorter delivery, higher values for longer delivery.\n"
-                        "Set 0 to disable.\n"
-                        "If audio is getting cut off, raise max_new_tokens too."
                     )
                 }),
                 "n_vq_for_inference": ("INT", {
@@ -330,6 +343,7 @@ class MossTTSEngineNode(BaseTTSNode):
         top_k: int,
         repetition_penalty: float,
         max_new_tokens: int,
+        chunk_minutes: int,
         instruction: str = "",
         quality: str = "",
         sound_event: str = "",
@@ -361,6 +375,9 @@ class MossTTSEngineNode(BaseTTSNode):
             top_k = int(defaults["top_k"])
             repetition_penalty = defaults["repetition_penalty"]
 
+        chunk_minutes_value = int(chunk_minutes) if chunk_minutes else 0
+        chunk_chars = chunk_minutes_value * 750 if chunk_minutes_value > 0 else 0
+
         config = {
             "engine_type": "moss_tts",
             "model_variant": resolved_model_variant,
@@ -373,6 +390,8 @@ class MossTTSEngineNode(BaseTTSNode):
             "top_k": int(top_k),
             "repetition_penalty": float(repetition_penalty),
             "max_new_tokens": int(max_new_tokens),
+            "chunk_minutes": chunk_minutes_value,
+            "chunk_chars": int(chunk_chars),
             "instruction": str(instruction or "").strip() or None,
             "quality": str(quality or "").strip() or None,
             "sound_event": str(sound_event or "").strip() or None,
@@ -402,6 +421,10 @@ class MossTTSEngineNode(BaseTTSNode):
         )
         if config["duration_tokens"]:
             print(f"   Duration hint: {config['duration_tokens']} audio tokens")
+        if chunk_minutes_value > 0:
+            print(f"   Chunking override: every {chunk_minutes_value} min (~{chunk_chars} chars)")
+        else:
+            print("   Chunking override: disabled (ignores Unified chunk settings)")
         prompt_fields = [
             f"{field_name}={config[field_name]}"
             for field_name in ("instruction", "quality", "sound_event", "ambient_sound")
