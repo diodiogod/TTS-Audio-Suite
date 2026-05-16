@@ -57,6 +57,10 @@ PARAMETER_ALIASES = {
     'max_new_tokens': 'max_new_tokens',
     'n_vq': 'n_vq_for_inference',
     'n_vq_for_inference': 'n_vq_for_inference',
+    'instruction': 'instruction',
+    'quality': 'quality',
+    'sound_event': 'sound_event',
+    'ambient_sound': 'ambient_sound',
     'inference_steps': 'inference_steps',
     'steps': 'inference_steps',
     'emotion_alpha': 'emotion_alpha',
@@ -149,6 +153,18 @@ PARAMETER_ENGINES = {
     'n_vq_for_inference': {
         'moss_tts'
     },
+    'instruction': {
+        'moss_tts'
+    },
+    'quality': {
+        'moss_tts'
+    },
+    'sound_event': {
+        'moss_tts'
+    },
+    'ambient_sound': {
+        'moss_tts'
+    },
     'inference_steps': {
         'vibevoice'
     },
@@ -186,6 +202,10 @@ PARAMETER_VALIDATION = {
     'duration_tokens': (int, 0, 8192, "MOSS-TTS duration hint in audio tokens"),
     'max_new_tokens': (int, 64, 16384, "Maximum generated tokens"),
     'n_vq_for_inference': (int, 0, 32, "MOSS-TTS Local Transformer RVQ layers for inference"),
+    'instruction': (str, None, None, "MOSS-TTS whole-segment instruction"),
+    'quality': (str, None, None, "MOSS-TTS whole-segment quality hint"),
+    'sound_event': (str, None, None, "MOSS-TTS whole-segment sound event hint"),
+    'ambient_sound': (str, None, None, "MOSS-TTS whole-segment ambient sound hint"),
     'inference_steps': (int, 1, 100, "Number of inference steps"),
     'emotion_alpha': (float, 0.0, 1.0, "Emotion strength (IndexTTS-2 only)")
 }
@@ -220,6 +240,10 @@ PARAMETER_NODE_KEYS = {
     'duration_tokens': 'duration_tokens',
     'max_new_tokens': 'max_new_tokens',
     'n_vq_for_inference': 'n_vq_for_inference',
+    'instruction': 'instruction',
+    'quality': 'quality',
+    'sound_event': 'sound_event',
+    'ambient_sound': 'ambient_sound',
     'inference_steps': 'inference_steps',
     'emotion_alpha': 'emotion_alpha'
 }
@@ -281,11 +305,15 @@ class ParameterValidator:
                 converted = int(float(value))  # Handle "42.0" -> 42
             elif expected_type == float:
                 converted = float(value)
+            elif expected_type == str:
+                converted = str(value).strip()
+                if not converted:
+                    return False, f"{param_name} must be a non-empty string", value
             else:
                 converted = value
 
             # Check bounds
-            if converted < min_val or converted > max_val:
+            if min_val is not None and max_val is not None and (converted < min_val or converted > max_val):
                 return False, f"{param_name} must be between {min_val} and {max_val}, got {converted}", value
 
             return True, None, converted

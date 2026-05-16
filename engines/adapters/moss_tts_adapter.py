@@ -6,7 +6,6 @@ without exposing non-native controls.
 """
 
 import os
-import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -28,8 +27,6 @@ class MossTTSEngineAdapter:
     """Adapter for the official MOSS-TTS model API."""
 
     SAMPLE_RATE = 24000
-    MOSS_TOKENS_PER_SECOND = 12.5
-
     def __init__(self, node_instance=None):
         self.node = node_instance
         self.audio_cache = get_audio_cache()
@@ -110,8 +107,14 @@ class MossTTSEngineAdapter:
         reference_audio, reference_sample_rate, audio_component = self._extract_voice_reference(voice_ref)
         model_variant = params.get("model_variant", "MOSS-TTS-Local-Transformer")
         language = params.get("language", "auto")
-        duration_tokens, resolved_max_new_tokens = self._resolve_generation_lengths(text, params)
+        explicit_duration = params.get("duration_tokens")
+        duration_tokens = max(1, int(explicit_duration)) if explicit_duration else None
+        resolved_max_new_tokens = int(params.get("max_new_tokens", 4096))
         n_vq_for_inference = params.get("n_vq_for_inference")
+        instruction = params.get("instruction")
+        quality = params.get("quality")
+        sound_event = params.get("sound_event")
+        ambient_sound = params.get("ambient_sound")
 
         cache_key = self.audio_cache.generate_cache_key(
             "moss_tts",
@@ -119,6 +122,10 @@ class MossTTSEngineAdapter:
             model_variant=model_variant,
             audio_component=audio_component,
             language=language,
+            instruction=instruction,
+            quality=quality,
+            sound_event=sound_event,
+            ambient_sound=ambient_sound,
             duration_tokens=duration_tokens,
             audio_temperature=params.get("audio_temperature", params.get("temperature", 1.0)),
             audio_top_p=params.get("audio_top_p", params.get("top_p", 0.95)),
@@ -144,6 +151,10 @@ class MossTTSEngineAdapter:
             reference_sample_rate=reference_sample_rate,
             language=language,
             duration_tokens=duration_tokens,
+            instruction=instruction,
+            quality=quality,
+            sound_event=sound_event,
+            ambient_sound=ambient_sound,
             seed=int(params.get("seed", 0) or 0),
             audio_temperature=float(params.get("audio_temperature", params.get("temperature", 1.0))),
             audio_top_p=float(params.get("audio_top_p", params.get("top_p", 0.95))),
@@ -161,43 +172,6 @@ class MossTTSEngineAdapter:
         duration = self.audio_cache._calculate_duration(audio_tensor, "moss_tts")
         self.audio_cache.cache_audio(cache_key, audio_tensor, duration)
         return audio_tensor
-
-    def _resolve_generation_lengths(self, text: str, params: Dict[str, Any]) -> Tuple[Optional[int], int]:
-        explicit_duration = params.get("duration_tokens")
-        requested_max = int(params.get("max_new_tokens", 4096))
-
-        if explicit_duration:
-            duration_tokens = max(1, int(explicit_duration))
-            resolved_max = max(requested_max, duration_tokens + 8)
-            return duration_tokens, resolved_max
-
-        estimated_duration = self._estimate_duration_tokens(text)
-        resolved_max = min(requested_max, max(estimated_duration + 12, 24))
-
-        if requested_max != resolved_max:
-            print(
-                f"⏱️ MOSS-TTS: Auto duration hint {estimated_duration} tokens, "
-                f"resolved max_new_tokens={resolved_max} from requested {requested_max}"
-            )
-        else:
-            print(f"⏱️ MOSS-TTS: Auto duration hint {estimated_duration} tokens")
-
-        return estimated_duration, resolved_max
-
-    def _estimate_duration_tokens(self, text: str) -> int:
-        clean_text = re.sub(r"\s+", " ", str(text or "").strip())
-        if not clean_text:
-            return 24
-
-        words = re.findall(r"\b[\w']+\b", clean_text)
-        non_space_chars = len(re.sub(r"\s+", "", clean_text))
-
-        seconds_from_words = len(words) / 2.6 if words else 0.0
-        seconds_from_chars = non_space_chars / 13.5
-        estimated_seconds = max(seconds_from_words, seconds_from_chars, 1.5)
-
-        estimated_tokens = int(round(estimated_seconds * self.MOSS_TOKENS_PER_SECOND))
-        return max(24, min(estimated_tokens, 2048))
 
     def _generate_with_pauses(
         self,
@@ -334,6 +308,11 @@ class MossTTSEngineAdapter:
             model_variant=model_variant,
             audio_component="ttsd_" + "_".join(audio_components),
             language=params.get("language", "auto"),
+            instruction=params.get("instruction"),
+            quality=params.get("quality"),
+            sound_event=params.get("sound_event"),
+            ambient_sound=params.get("ambient_sound"),
+            duration_tokens=params.get("duration_tokens"),
             audio_temperature=params.get("audio_temperature", params.get("temperature", 1.1)),
             audio_top_p=params.get("audio_top_p", params.get("top_p", 0.9)),
             audio_top_k=params.get("audio_top_k", params.get("top_k", 50)),
@@ -355,6 +334,11 @@ class MossTTSEngineAdapter:
                 dialogue_text=dialogue_text,
                 speaker_references=normalized_refs,
                 language=params.get("language", "auto"),
+                duration_tokens=params.get("duration_tokens"),
+                instruction=params.get("instruction"),
+                quality=params.get("quality"),
+                sound_event=params.get("sound_event"),
+                ambient_sound=params.get("ambient_sound"),
                 seed=int(params.get("seed", 0) or 0),
                 audio_temperature=float(params.get("audio_temperature", params.get("temperature", 1.1))),
                 audio_top_p=float(params.get("audio_top_p", params.get("top_p", 0.9))),

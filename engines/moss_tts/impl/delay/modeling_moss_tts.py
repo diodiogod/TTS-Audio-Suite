@@ -32,7 +32,10 @@ from transformers.utils import (
 )
 from transformers.cache_utils import Cache
 from transformers.models.qwen3 import Qwen3Model
-from transformers import initialization as init
+try:
+    from transformers import initialization as init
+except ImportError:
+    from torch.nn import init
 
 from .configuration_moss_tts import MossTTSDelayConfig
 from .inference_utils import sample_token, find_last_equal_C
@@ -165,7 +168,7 @@ class MossTTSDelayModel(MossTTSDelayPreTrainedModel):
         super().__init__(config)
         self.config = config
 
-        config.language_config.torch_dtype = config.torch_dtype
+        config.language_config.dtype = config.dtype
         
         self.language_model = Qwen3Model(config.language_config)
 

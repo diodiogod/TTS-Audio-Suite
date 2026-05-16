@@ -38,6 +38,17 @@ any_typ = AnyType("*")
 class MossTTSEngineNode(BaseTTSNode):
     """MOSS-TTS engine configuration node."""
 
+    STANDARD_MODEL_OPTIONS = [
+        "Small 1.7B (Local)",
+        "8B (Delay)",
+    ]
+    NATIVE_MODEL_OPTION = "Native 8B Dialogue (MOSS-TTSD-v1.0)"
+    UI_MODEL_VARIANT_MAP = {
+        "Small 1.7B (Local)": "MOSS-TTS-Local-Transformer",
+        "8B (Delay)": "MOSS-TTS",
+        "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
+    }
+
     MODEL_DEFAULTS: Dict[str, Dict[str, float]] = {
         name: {
             "temperature": values["audio_temperature"],
@@ -55,16 +66,15 @@ class MossTTSEngineNode(BaseTTSNode):
 
     @classmethod
     def INPUT_TYPES(cls):
-        model_variants = cls._get_model_variants()
         return {
             "required": {
-                "model_variant": (model_variants, {
-                    "default": "MOSS-TTS-Local-Transformer",
+                "model_variant": (cls.STANDARD_MODEL_OPTIONS, {
+                    "default": "Small 1.7B (Local)",
                     "tooltip": (
-                        "Official MOSS-TTS model variant.\n"
-                        "MOSS-TTS-Local-Transformer: 1.7B local-transformer model, smaller and practical for testing.\n"
-                        "MOSS-TTS: 8B delay model, official production-quality model with much higher VRAM/disk use.\n"
-                        "MOSS-TTSD-v1.0: 8B native multi-speaker dialogue model used by Native Multi-Speaker Dialogue mode."
+                        "Standard MOSS-TTS model for normal/custom character switching.\n"
+                        "Small 1.7B (Local): smaller official local-transformer model.\n"
+                        "8B (Delay): larger official delay model.\n"
+                        "Native Multi-Speaker Dialogue mode ignores this selector and uses MOSS-TTSD-v1.0 automatically."
                     )
                 }),
                 "multi_speaker_mode": (["Custom Character Switching", "Native Multi-Speaker Dialogue"], {
@@ -113,9 +123,84 @@ class MossTTSEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
+                "instruction": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "tooltip": (
+                        "How the whole segment should be spoken.\n"
+                        "Best used as an engine default, or per segment with [instruction:...].\n"
+                        "Use short natural instructions.\n"
+                        "Examples:\n"
+                        "• Speak softly and calmly\n"
+                        "• Read like a documentary narrator\n"
+                        "• Sound excited and energetic\n"
+                        "This affects the full segment, not one exact word.\n"
+                        "Do not use <instruction:...> for MOSS. <> should stay reserved for real inline post-processing tags."
+                    )
+                }),
+                "quality": ("STRING", {
+                    "default": "",
+                    "tooltip": (
+                        "Overall recording or presentation quality for the whole segment.\n"
+                        "Best used as an engine default, or per segment with [quality:...].\n"
+                        "Use short descriptive phrases.\n"
+                        "Examples:\n"
+                        "• Studio recording\n"
+                        "• Clean close-mic voice\n"
+                        "• Telephone call quality\n"
+                        "• Distant PA system\n"
+                        "This applies to the full segment.\n"
+                        "Do not use <quality:...> for MOSS. <> should stay reserved for real inline post-processing tags."
+                    )
+                }),
+                "sound_event": ("STRING", {
+                    "default": "",
+                    "tooltip": (
+                        "Main sound effect or vocal event for the whole segment.\n"
+                        "Best used as an engine default, or per segment with [sound_event:...].\n"
+                        "Use short event names.\n"
+                        "Examples:\n"
+                        "• Laughter\n"
+                        "• Sigh\n"
+                        "• Breathing\n"
+                        "• Crying\n"
+                        "Important: this is not exact placement.\n"
+                        "Use this only for whole-segment conditioning. Do not use <> for MOSS sound events."
+                    )
+                }),
+                "ambient_sound": ("STRING", {
+                    "default": "",
+                    "tooltip": (
+                        "Background ambience for the whole segment.\n"
+                        "Best used as an engine default, or per segment with [ambient_sound:...].\n"
+                        "Use short environment descriptions.\n"
+                        "Examples:\n"
+                        "• Rain\n"
+                        "• Crowd\n"
+                        "• Forest ambience\n"
+                        "• Office room tone\n"
+                        "This affects the full segment, not an exact point in the sentence.\n"
+                        "Do not use <ambient_sound:...> for MOSS. <> should stay reserved for real inline post-processing tags."
+                    )
+                }),
                 "duration_tokens": ("INT", {
                     "default": 0, "min": 0, "max": 8192, "step": 1,
-                    "tooltip": "Official duration hint in audio tokens. 0 disables it. OpenMOSS notes about 12.5 tokens per second."
+                    "tooltip": (
+                        "Target output length hint. This is audio tokens, not text tokens.\n"
+                        "It can indirectly affect pacing:\n"
+                        "• Lower values usually make speech shorter and tighter\n"
+                        "• Higher values usually make speech longer and slower-feeling\n"
+                        "This is not a true speed control.\n"
+                        "\n"
+                        "Rough guide:\n"
+                        "• 12-13 = about 1 second\n"
+                        "• 25 = about 2 seconds\n"
+                        "• 50 = about 4 seconds\n"
+                        "• 125 = about 10 seconds\n"
+                        "Use lower values for shorter delivery, higher values for longer delivery.\n"
+                        "Set 0 to disable.\n"
+                        "If audio is getting cut off, raise max_new_tokens too."
+                    )
                 }),
                 "n_vq_for_inference": ("INT", {
                     "default": 0, "min": 0, "max": 32, "step": 1,
@@ -171,6 +256,19 @@ class MossTTSEngineNode(BaseTTSNode):
             pass
         return variants
 
+    @classmethod
+    def _resolve_model_variant(cls, model_variant: str, multi_speaker_mode: str) -> str:
+        if multi_speaker_mode == "Native Multi-Speaker Dialogue":
+            return "MOSS-TTSD-v1.0"
+
+        if model_variant in cls.UI_MODEL_VARIANT_MAP:
+            return cls.UI_MODEL_VARIANT_MAP[model_variant]
+
+        if model_variant == "MOSS-TTSD-v1.0":
+            return "MOSS-TTS-Local-Transformer"
+
+        return model_variant
+
     def create_engine_adapter(
         self,
         model_variant: str,
@@ -183,6 +281,10 @@ class MossTTSEngineNode(BaseTTSNode):
         top_k: int,
         repetition_penalty: float,
         max_new_tokens: int,
+        instruction: str = "",
+        quality: str = "",
+        sound_event: str = "",
+        ambient_sound: str = "",
         duration_tokens: int = 0,
         n_vq_for_inference: int = 0,
         dtype: str = "auto",
@@ -193,11 +295,15 @@ class MossTTSEngineNode(BaseTTSNode):
         speaker4_voice=None,
         speaker5_voice=None,
     ):
-        if multi_speaker_mode == "Native Multi-Speaker Dialogue" and model_variant != "MOSS-TTSD-v1.0":
-            print("🔄 MOSS-TTS: Native Multi-Speaker Dialogue selected, using MOSS-TTSD-v1.0")
-            model_variant = "MOSS-TTSD-v1.0"
+        resolved_model_variant = self._resolve_model_variant(model_variant, multi_speaker_mode)
+        if resolved_model_variant != model_variant:
+            print(f"🔄 MOSS-TTS: Resolved model selection '{model_variant}' -> '{resolved_model_variant}'")
 
-        resolved_variant = model_variant.replace("local:", "") if model_variant.startswith("local:") else model_variant
+        resolved_variant = (
+            resolved_model_variant.replace("local:", "")
+            if resolved_model_variant.startswith("local:")
+            else resolved_model_variant
+        )
         defaults = self.MODEL_DEFAULTS.get(resolved_variant, self.MODEL_DEFAULTS["MOSS-TTS-Local-Transformer"])
 
         if sampler_preset == "Model default":
@@ -208,7 +314,7 @@ class MossTTSEngineNode(BaseTTSNode):
 
         config = {
             "engine_type": "moss_tts",
-            "model_variant": model_variant,
+            "model_variant": resolved_model_variant,
             "multi_speaker_mode": multi_speaker_mode,
             "device": device,
             "language": language,
@@ -218,6 +324,10 @@ class MossTTSEngineNode(BaseTTSNode):
             "top_k": int(top_k),
             "repetition_penalty": float(repetition_penalty),
             "max_new_tokens": int(max_new_tokens),
+            "instruction": str(instruction or "").strip() or None,
+            "quality": str(quality or "").strip() or None,
+            "sound_event": str(sound_event or "").strip() or None,
+            "ambient_sound": str(ambient_sound or "").strip() or None,
             "duration_tokens": int(duration_tokens) if duration_tokens else None,
             "n_vq_for_inference": int(n_vq_for_inference) if n_vq_for_inference else None,
             "dtype": dtype,
@@ -229,7 +339,7 @@ class MossTTSEngineNode(BaseTTSNode):
             "speaker5_voice": speaker5_voice,
         }
 
-        print(f"⚙️ MOSS-TTS: Configured {model_variant} on {device}")
+        print(f"⚙️ MOSS-TTS: Configured {resolved_model_variant} on {device}")
         print(f"   Mode: {multi_speaker_mode}")
         print(
             "   Language={language}, temp={temperature}, top_p={top_p}, top_k={top_k}, rep_penalty={rep}, max_new_tokens={max_new_tokens}".format(
@@ -243,6 +353,13 @@ class MossTTSEngineNode(BaseTTSNode):
         )
         if config["duration_tokens"]:
             print(f"   Duration hint: {config['duration_tokens']} audio tokens")
+        prompt_fields = [
+            f"{field_name}={config[field_name]}"
+            for field_name in ("instruction", "quality", "sound_event", "ambient_sound")
+            if config.get(field_name)
+        ]
+        if prompt_fields:
+            print(f"   Official prompt fields: {', '.join(prompt_fields)}")
 
         return ({
             "engine_type": "moss_tts",

@@ -36,6 +36,7 @@ class MossTTSProcessor:
     """Processor for MOSS-TTS text generation through unified nodes."""
 
     SAMPLE_RATE = 24000
+    OFFICIAL_INLINE_FIELDS = ("instruction", "quality", "sound_event", "ambient_sound")
 
     LANGUAGE_NAME_TO_CODE = {
         "auto": "auto",
@@ -367,6 +368,10 @@ class MossTTSProcessor:
             for character, speaker_idx in sorted(character_map.items(), key=lambda item: item[1])
         )
         print(f"🎭 MOSS-TTSD character mapping: {mapping_display}")
+        for field_name in self.OFFICIAL_INLINE_FIELDS:
+            field_value = params.get(field_name)
+            if field_value:
+                print(f"  🔹 Official {field_name}: {field_value}")
         print("🎭 MOSS-TTSD formatted dialogue:")
         print("=" * 60)
         print(dialogue_text)
@@ -394,9 +399,13 @@ class MossTTSProcessor:
             if model_management.interrupt_processing:
                 raise InterruptedError(f"MOSS-TTS segment {seg_idx + 1}/{len(segment_objects)} interrupted by user")
 
+            print(f"\n🎤 Segment {seg_idx + 1}/{len(segment_objects)}: Character '{segment.character}'")
+
             segment_params = params.copy()
             if getattr(segment, "language", None):
                 segment_params["language"] = self._language_name_to_code(segment.language)
+                if segment.language != params.get("language", "auto"):
+                    print(f"  🌍 Language switched to: {segment_params['language']}")
 
             if segment.parameters:
                 updates = apply_segment_parameters(segment_params, segment.parameters, "moss_tts")
@@ -452,19 +461,29 @@ class MossTTSProcessor:
 
         voice_ref = voice_mapping.get(character)
         language = params.get("language", "auto")
+        generation_params = params.copy()
 
         if enable_chunking and len(combined_text) > max_chars:
             chunks = self.chunker.split_into_chunks(combined_text, max_chars)
             print(f"📝 MOSS-TTS: Chunking '{character}' into {len(chunks)} chunk(s) (language={language})")
         else:
             chunks = [combined_text]
-            print(f"🎭 MOSS-TTS: Generating for '{character}' (language={language})")
 
-        for chunk in chunks:
+        for chunk_idx, chunk in enumerate(chunks, start=1):
             if model_management.interrupt_processing:
                 raise InterruptedError("MOSS-TTS generation interrupted by user")
 
-            audio_tensor = self.adapter.generate_with_pause_tags(chunk, voice_ref, params, True, character)
+            chunk_note = f" chunk {chunk_idx}/{len(chunks)}" if len(chunks) > 1 else ""
+            print(f"🎭 MOSS-TTS - Generating for '{character}' (language={language}){chunk_note}:")
+            for field_name in self.OFFICIAL_INLINE_FIELDS:
+                field_value = generation_params.get(field_name)
+                if field_value:
+                    print(f"  🔹 Official {field_name}: {field_value}")
+            print("=" * 60)
+            print(chunk)
+            print("=" * 60)
+
+            audio_tensor = self.adapter.generate_with_pause_tags(chunk, voice_ref, generation_params, True, character)
             if audio_tensor.dim() == 1:
                 audio_tensor = audio_tensor.unsqueeze(0)
             elif audio_tensor.dim() == 3:

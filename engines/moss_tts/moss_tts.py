@@ -96,6 +96,7 @@ class MossTTSEngine:
         self.attn_implementation = self._resolve_attn_implementation(attn_implementation)
         self._model = None
         self._processor = None
+        self._audio_tokenizer_device = "cpu"
 
         try:
             torch.backends.cuda.enable_cudnn_sdp(False)
@@ -221,14 +222,17 @@ class MossTTSEngine:
             else:
                 model_cfg.num_hidden_layers = 1
         if hasattr(processor, "audio_tokenizer") and processor.audio_tokenizer is not None:
-            processor.audio_tokenizer = processor.audio_tokenizer.to(self.device)
+            # TTS Audio Suite Patch: keep the shared MOSS audio tokenizer on CPU by default.
+            # The tokenizer itself is very large, and eager GPU placement makes the 8B
+            # models fail to load on 24GB cards before generation even begins.
+            processor.audio_tokenizer = processor.audio_tokenizer.to(self._audio_tokenizer_device)
             if hasattr(processor.audio_tokenizer, "eval"):
                 processor.audio_tokenizer.eval()
 
         model = MossModel.from_pretrained(
             self.model_path,
             attn_implementation=self.attn_implementation,
-            torch_dtype=self.dtype,
+            dtype=self.dtype,
         ).to(self.device)
         model_cfg_runtime = getattr(model, "config", None)
         resolved_pad_token_id = tokenizer_pad_id
@@ -273,7 +277,7 @@ class MossTTSEngine:
             self._model = self._model.to(device)
         audio_tokenizer = getattr(self._processor, "audio_tokenizer", None)
         if audio_tokenizer is not None and hasattr(audio_tokenizer, "to"):
-            self._processor.audio_tokenizer = audio_tokenizer.to(device)
+            self._processor.audio_tokenizer = audio_tokenizer.to(self._audio_tokenizer_device)
         return self
 
     def _ensure_runtime_device(self):
@@ -438,6 +442,10 @@ class MossTTSEngine:
         reference_sample_rate: Optional[int] = None,
         language: Optional[str] = None,
         duration_tokens: Optional[int] = None,
+        instruction: Optional[str] = None,
+        quality: Optional[str] = None,
+        sound_event: Optional[str] = None,
+        ambient_sound: Optional[str] = None,
         seed: int = 0,
         audio_temperature: float = 1.0,
         audio_top_p: float = 0.95,
@@ -464,6 +472,10 @@ class MossTTSEngine:
             text=str(text),
             reference=references,
             tokens=int(duration_tokens) if duration_tokens else None,
+            instruction=str(instruction) if instruction else None,
+            quality=str(quality) if quality else None,
+            sound_event=str(sound_event) if sound_event else None,
+            ambient_sound=str(ambient_sound) if ambient_sound else None,
             language=language_value,
         )
         batch = self._processor([[user_message]], mode="generation")
@@ -502,6 +514,11 @@ class MossTTSEngine:
         dialogue_text: str,
         speaker_references: List[Optional[Dict[str, Any]]],
         language: Optional[str] = None,
+        duration_tokens: Optional[int] = None,
+        instruction: Optional[str] = None,
+        quality: Optional[str] = None,
+        sound_event: Optional[str] = None,
+        ambient_sound: Optional[str] = None,
         seed: int = 0,
         audio_temperature: float = 1.1,
         audio_top_p: float = 0.9,
@@ -563,6 +580,11 @@ class MossTTSEngine:
         if not cloned_speakers:
             user_message = self._processor.build_user_message(
                 text=str(dialogue_text),
+                tokens=int(duration_tokens) if duration_tokens else None,
+                instruction=str(instruction) if instruction else None,
+                quality=str(quality) if quality else None,
+                sound_event=str(sound_event) if sound_event else None,
+                ambient_sound=str(ambient_sound) if ambient_sound else None,
                 language=language_value,
             )
             conversations = [[user_message]]
@@ -588,6 +610,11 @@ class MossTTSEngine:
             user_message = self._processor.build_user_message(
                 text=conversation_text,
                 reference=reference_audio_codes,
+                tokens=int(duration_tokens) if duration_tokens else None,
+                instruction=str(instruction) if instruction else None,
+                quality=str(quality) if quality else None,
+                sound_event=str(sound_event) if sound_event else None,
+                ambient_sound=str(ambient_sound) if ambient_sound else None,
                 language=language_value,
             )
             assistant_message = self._processor.build_assistant_message(

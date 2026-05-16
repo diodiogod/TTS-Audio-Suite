@@ -2,7 +2,7 @@
 
 ## Overview
 
-The TTS Audio Suite supports **per-segment parameter control** through inline tags. This allows you to override TTS generation parameters (seed, temperature, cfg, speed, etc.) on a per-segment basis, providing fine-grained control over individual audio segments without modifying node-level defaults.
+The TTS Audio Suite supports **per-segment parameter control** through bracket tags like `[Alice|seed:42|temp:0.5]`. This allows you to override TTS generation parameters (seed, temperature, cfg, speed, etc.) on a per-segment basis, providing fine-grained control over individual audio segments without modifying node-level defaults.
 
 Parameters are applied **only to the current segment** and automatically revert to node defaults for subsequent segments.
 
@@ -77,6 +77,24 @@ Parameters are applied **only to the current segment** and automatically revert 
 
 ### Engine-Specific Parameters
 
+#### MOSS-TTS
+| Parameter | Alias | Type | Range | Description |
+|-----------|-------|------|-------|-------------|
+| `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
+| `top_k` | `topk` | int | 1-100 | Top-k sampling |
+| `audio_temperature` | `audio_temp` | float | 0.1-2.5 | MOSS audio sampling temperature |
+| `audio_top_p` | — | float | 0.0-1.0 | MOSS audio nucleus sampling |
+| `audio_top_k` | — | int | 1-200 | MOSS audio top-k sampling |
+| `repetition_penalty` | `rep_penalty` | float | 0.5-3.0 | MOSS repetition penalty |
+| `audio_repetition_penalty` | `audio_rep_penalty` | float | 0.5-3.0 | MOSS audio repetition penalty |
+| `duration_tokens` | `tokens` | int | 0-8192 | MOSS target output length hint in audio tokens |
+| `max_new_tokens` | — | int | 64-16384 | Hard generation token limit |
+| `n_vq_for_inference` | `n_vq` | int | 0-32 | Local 1.7B only: RVQ layers/codebooks for inference |
+| `instruction` | — | string | text | Whole-segment speaking instruction |
+| `quality` | — | string | text | Whole-segment recording/presentation quality hint |
+| `sound_event` | — | string | text | Whole-segment sound event hint |
+| `ambient_sound` | — | string | text | Whole-segment ambient sound hint |
+
 #### ChatterBox & ChatterBox Official 23-Lang
 | Parameter | Alias | Type | Range | Description |
 |-----------|-------|------|-------|-------------|
@@ -124,6 +142,22 @@ Parameters work seamlessly with character and language tags:
 [fr:Bob|temperature:0.7] French Bob with higher temperature.
 [seed:123|de:Alice] Order-independent syntax.
 ```
+
+### MOSS Whole-Segment Prompt Fields
+
+MOSS official prompt fields are better treated as per-segment parameters, not inline `<>` tags:
+
+```
+[Alice|instruction:Speak softly and calmly] Hello there.
+[Bob|quality:Telephone call quality|ambient_sound:Office room tone] Can you hear me?
+[Alice|sound_event:Laughter] That's actually funny.
+```
+
+Important:
+
+- These are whole-segment controls
+- They are not positional inline effects
+- Keep `<>` free for true inline post-processing tags like Step Audio EditX
 
 ### Per-Segment Fine-Tuning in SRT
 

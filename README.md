@@ -202,10 +202,11 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, **MOSS-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
 - 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
+- 🎚️ **Official MOSS Prompt Fields** - `instruction`, `quality`, `sound_event`, `ambient_sound`, `language`, and `duration_tokens` exposed on the MOSS engine, with `[]` per-segment overrides for whole-segment conditioning → **[📖 MOSS Prompt Fields Guide](docs/MOSS_TTS_PROMPT_FIELDS_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎓 **Integrated Model Training** - Unified `🎓 Model Training` pipeline with `📦 RVC Dataset Prep`, `🎛️ RVC Training Config`, resumable checkpoints, interrupt-save safety, and a live dashboard for RVC voice model training
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
