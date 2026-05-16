@@ -59,6 +59,17 @@ Use Step Audio EditX for:
 - Engine-specific extra node patterns.
 - Model loading edge cases.
 
+Long-form reference:
+
+- `engines/vibevoice_engine/`
+- `engines/adapters/vibevoice_adapter.py`
+- `nodes/vibevoice/vibevoice_processor.py`
+
+Use VibeVoice when the target engine is long-form and needs duration-aware segmentation behavior:
+
+- Prefer model-appropriate duration/minute-based segmentation when required.
+- Do not force short-form `max_chars_per_chunk` behavior if it conflicts with native long-form generation strategy.
+
 ## Implementation Order
 
 Follow this order:
