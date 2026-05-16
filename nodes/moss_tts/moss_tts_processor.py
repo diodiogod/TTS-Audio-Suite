@@ -37,6 +37,7 @@ class MossTTSProcessor:
 
     SAMPLE_RATE = 24000
     OFFICIAL_INLINE_FIELDS = ("instruction", "quality", "sound_event", "ambient_sound")
+    EXPERIMENTAL_TTS_FIELDS = {"quality", "sound_event", "ambient_sound"}
 
     LANGUAGE_NAME_TO_CODE = {
         "auto": "auto",
@@ -371,7 +372,7 @@ class MossTTSProcessor:
         for field_name in self.OFFICIAL_INLINE_FIELDS:
             field_value = params.get(field_name)
             if field_value:
-                print(f"  🔹 Official {field_name}: {field_value}")
+                print(f"  🔹 Official {field_name}: {self._format_prompt_field_log(field_name, field_value, params)}")
         print("🎭 MOSS-TTSD formatted dialogue:")
         print("=" * 60)
         print(dialogue_text)
@@ -424,6 +425,18 @@ class MossTTSProcessor:
 
         return audio_segments
 
+    @staticmethod
+    def _is_soundeffect_model(params: Dict[str, Any]) -> bool:
+        model_variant = str(params.get("model_variant", "") or "")
+        return "soundeffect" in model_variant.lower()
+
+    @classmethod
+    def _format_prompt_field_log(cls, field_name: str, field_value: Any, params: Dict[str, Any]) -> str:
+        value = str(field_value)
+        if field_name in cls.EXPERIMENTAL_TTS_FIELDS and not cls._is_soundeffect_model(params):
+            return f"{value}  ⚠️ On base MOSS-TTS this may have little or no audible effect"
+        return value
+
     def _process_character_block(
         self,
         character: str,
@@ -462,6 +475,16 @@ class MossTTSProcessor:
         voice_ref = voice_mapping.get(character)
         language = params.get("language", "auto")
         generation_params = params.copy()
+        ambient_sound = generation_params.get("ambient_sound")
+        duration_tokens = generation_params.get("duration_tokens")
+        max_new_tokens = generation_params.get("max_new_tokens", 4096)
+
+        if ambient_sound and not duration_tokens and int(max_new_tokens) >= 1024:
+            print(
+                "⚠️ MOSS-TTS: ambient_sound is set without duration_tokens, and max_new_tokens is high. "
+                "MOSS may keep generating ambience until it reaches the token cap. "
+                "Set duration_tokens or lower max_new_tokens for short clips."
+            )
 
         if enable_chunking and len(combined_text) > max_chars:
             chunks = self.chunker.split_into_chunks(combined_text, max_chars)
@@ -478,7 +501,10 @@ class MossTTSProcessor:
             for field_name in self.OFFICIAL_INLINE_FIELDS:
                 field_value = generation_params.get(field_name)
                 if field_value:
-                    print(f"  🔹 Official {field_name}: {field_value}")
+                    print(
+                        f"  🔹 Official {field_name}: "
+                        f"{self._format_prompt_field_log(field_name, field_value, generation_params)}"
+                    )
             print("=" * 60)
             print(chunk)
             print("=" * 60)

@@ -15,6 +15,21 @@ Supported official fields:
 - `language`
 - `duration_tokens`
 
+## Stability Note
+
+`ambient_sound` should currently be treated as experimental on base `MOSS-TTS` inside this suite.
+
+Reason:
+
+- the official prompt schema exposes `ambient_sound`
+- but the clearest public OpenMOSS example we found is in the `MOSS-SoundEffect` documentation path, not as a validated short-utterance base-TTS control
+
+So on `MOSS-TTS` you may get:
+
+- weak or missing ambience
+- longer-than-expected generation
+- unstable tails if the model is pushed to the token cap
+
 ## Important Limitation
 
 MOSS does **not** treat these like exact inline insertions inside the sentence.
@@ -115,3 +130,5 @@ If you need exact placement of laughter/breathing/cough inside the sentence, use
 - an engine with true native positional tag support, such as CosyVoice3
 
 Use MOSS prompt fields when you want official MOSS conditioning, not precise insertion control.
+
+If you specifically want generated environmental audio like rain, traffic, or scene beds, `MOSS-SoundEffect` is the more correct OpenMOSS model family target than base `MOSS-TTS`.

@@ -149,6 +149,8 @@ class MossTTSEngineNode(BaseTTSNode):
                         "• Clean close-mic voice\n"
                         "• Telephone call quality\n"
                         "• Distant PA system\n"
+                        "Status: experimental on base MOSS-TTS in this suite.\n"
+                        "It is a real official field, but audible effect may be weak or inconsistent.\n"
                         "This applies to the full segment.\n"
                         "Do not use <quality:...> for MOSS. <> should stay reserved for real inline post-processing tags."
                     )
@@ -164,6 +166,8 @@ class MossTTSEngineNode(BaseTTSNode):
                         "• Sigh\n"
                         "• Breathing\n"
                         "• Crying\n"
+                        "Status: experimental on base MOSS-TTS in this suite.\n"
+                        "It is a real official field, but audible effect may be weak or inconsistent.\n"
                         "Important: this is not exact placement.\n"
                         "Use this only for whole-segment conditioning. Do not use <> for MOSS sound events."
                     )
@@ -179,7 +183,12 @@ class MossTTSEngineNode(BaseTTSNode):
                         "• Crowd\n"
                         "• Forest ambience\n"
                         "• Office room tone\n"
+                        "Status: experimental on base MOSS-TTS in this suite.\n"
+                        "OpenMOSS publicly documents ambient-sound prompting mainly for MOSS-SoundEffect, not as a proven short-utterance TTS control.\n"
+                        "So results may be weak, absent, or unstable.\n"
                         "This affects the full segment, not an exact point in the sentence.\n"
+                        "Important: ambience can make MOSS keep generating until it reaches the requested duration budget.\n"
+                        "If it runs too long, lower max_new_tokens or set duration_tokens.\n"
                         "Do not use <ambient_sound:...> for MOSS. <> should stay reserved for real inline post-processing tags."
                     )
                 }),
@@ -187,10 +196,12 @@ class MossTTSEngineNode(BaseTTSNode):
                     "default": 0, "min": 0, "max": 8192, "step": 1,
                     "tooltip": (
                         "Target output length hint. This is audio tokens, not text tokens.\n"
+                        "This is one of the most useful MOSS controls for pacing.\n"
                         "It can indirectly affect pacing:\n"
                         "• Lower values usually make speech shorter and tighter\n"
                         "• Higher values usually make speech longer and slower-feeling\n"
                         "This is not a true speed control.\n"
+                        "Very low values can behave oddly, so avoid extreme settings.\n"
                         "\n"
                         "Rough guide:\n"
                         "• 12-13 = about 1 second\n"
