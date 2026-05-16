@@ -1,10 +1,8 @@
 import { app } from "../../scripts/app.js";
 
-const STANDARD_MODEL_OPTIONS = ["Small 1.7B (Local)", "8B (Delay)"];
 const MODEL_LABEL = "standard model";
 const MODE_LABEL = "speaker mode";
 const NATIVE_MODEL_LABEL = "native model (locked)";
-const NATIVE_MODEL_VALUE = "Native 8B Dialogue (MOSS-TTSD-v1.0)";
 const LOCAL_N_VQ_WIDGET = "n_vq_for_inference";
 
 function findWidgetByName(node, name) {
@@ -58,24 +56,53 @@ function setWidgetEnabled(widget, enabled) {
 
 function resizeNode(node) {
     if (typeof node?.computeSize === "function" && typeof node?.setSize === "function") {
-        node.setSize(node.computeSize());
+        const computed = node.computeSize();
+        const current = Array.isArray(node.size) ? node.size : computed;
+        const nextSize = [
+            Math.max(current[0] || 0, computed[0] || 0),
+            Math.max(current[1] || 0, computed[1] || 0),
+        ];
+        if (nextSize[0] !== current[0] || nextSize[1] !== current[1]) {
+            node.setSize(nextSize);
+        }
+    }
+    if (node?.graph?.setDirtyCanvas) {
+        node.graph.setDirtyCanvas(true, true);
+    } else if (app.graph?.setDirtyCanvas) {
+        app.graph.setDirtyCanvas(true, true);
     }
 }
 
-function toStandardModelValue(modelValue) {
-    if (STANDARD_MODEL_OPTIONS.includes(modelValue)) {
+function isNativeModelOption(value) {
+    return typeof value === "string" && value.includes("TTSD");
+}
+
+function getStoredStandardOptions(node, modelWidget) {
+    if (!node.__ttsMossStandardModelOptions) {
+        const values = Array.isArray(modelWidget?.options?.values) ? [...modelWidget.options.values] : [];
+        node.__ttsMossStandardModelOptions = values.filter((value) => !isNativeModelOption(value));
+    }
+    return node.__ttsMossStandardModelOptions || [];
+}
+
+function getStoredNativeOption(node, modelWidget) {
+    if (!node.__ttsMossNativeModelOption) {
+        const values = Array.isArray(modelWidget?.options?.values) ? [...modelWidget.options.values] : [];
+        node.__ttsMossNativeModelOption = values.find((value) => isNativeModelOption(value)) || "MOSS-TTSD-v1.0";
+    }
+    return node.__ttsMossNativeModelOption;
+}
+
+function toStandardModelValue(node, modelWidget, modelValue) {
+    const standardOptions = getStoredStandardOptions(node, modelWidget);
+    if (standardOptions.includes(modelValue)) {
         return modelValue;
     }
-    if (typeof modelValue !== "string") {
-        return STANDARD_MODEL_OPTIONS[0];
-    }
-    if (modelValue === "MOSS-TTS" || modelValue === "8B (Delay)") {
-        return "8B (Delay)";
-    }
-    if (modelValue === NATIVE_MODEL_VALUE || modelValue === "MOSS-TTSD-v1.0") {
-        return STANDARD_MODEL_OPTIONS[0];
-    }
-    return "Small 1.7B (Local)";
+    return standardOptions[0];
+}
+
+function isLocalSmallModel(value) {
+    return typeof value === "string" && value.includes("Local-Transformer");
 }
 
 function refreshMossWidgets(node) {
@@ -96,6 +123,12 @@ function refreshMossWidgets(node) {
             return;
         }
 
+        const standardOptions = getStoredStandardOptions(node, modelWidget);
+        const nativeOption = getStoredNativeOption(node, modelWidget);
+        if (!standardOptions.length) {
+            return;
+        }
+
         modelWidget.label = MODEL_LABEL;
         modeWidget.label = MODE_LABEL;
 
@@ -103,12 +136,12 @@ function refreshMossWidgets(node) {
         const isNativeDialogue = modeValue === "Native Multi-Speaker Dialogue";
 
         if (isNativeDialogue) {
-            const currentStandard = toStandardModelValue(modelWidget.value);
+            const currentStandard = toStandardModelValue(node, modelWidget, modelWidget.value);
             node.__ttsMossLastStandardModel = currentStandard;
             modelWidget.options = modelWidget.options || {};
-            modelWidget.options.values = [NATIVE_MODEL_VALUE];
-            if (modelWidget.value !== NATIVE_MODEL_VALUE) {
-                modelWidget.value = NATIVE_MODEL_VALUE;
+            modelWidget.options.values = [nativeOption];
+            if (modelWidget.value !== nativeOption) {
+                modelWidget.value = nativeOption;
             }
             modelWidget.label = NATIVE_MODEL_LABEL;
             showWidget(modelWidget);
@@ -122,20 +155,20 @@ function refreshMossWidgets(node) {
         setWidgetEnabled(modelWidget, true);
         modelWidget.label = MODEL_LABEL;
         modelWidget.options = modelWidget.options || {};
-        modelWidget.options.values = [...STANDARD_MODEL_OPTIONS];
+        modelWidget.options.values = [...standardOptions];
 
         const restoredStandard =
             node.__ttsMossLastStandardModel
-            || toStandardModelValue(modelWidget.value);
+            || toStandardModelValue(node, modelWidget, modelWidget.value);
 
-        if (!STANDARD_MODEL_OPTIONS.includes(modelWidget.value)) {
+        if (!standardOptions.includes(modelWidget.value)) {
             modelWidget.value = restoredStandard;
         }
 
-        const selectedStandard = toStandardModelValue(modelWidget.value);
+        const selectedStandard = toStandardModelValue(node, modelWidget, modelWidget.value);
         node.__ttsMossLastStandardModel = selectedStandard;
 
-        if (selectedStandard === "Small 1.7B (Local)") {
+        if (isLocalSmallModel(selectedStandard) || selectedStandard === "Small 1.7B (Local)") {
             showWidget(nVqWidget);
         } else {
             hideWidget(nVqWidget);

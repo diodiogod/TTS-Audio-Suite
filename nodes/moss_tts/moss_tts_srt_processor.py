@@ -145,6 +145,14 @@ class MossTTSSRTProcessor:
         audio_segments = []
         adjustments = []
         all_segments_for_editing = []
+        global_native_character_map = None
+
+        if self.engine_config.get("multi_speaker_mode") == "Native Multi-Speaker Dialogue":
+            global_native_character_map = self.processor.build_native_character_map_from_texts(
+                [subtitle.text for subtitle in subtitles if getattr(subtitle, "text", "").strip()]
+            )
+            if global_native_character_map:
+                print(f"🎭 MOSS-TTSD global SRT character mapping: {global_native_character_map}")
 
         for idx, sub in enumerate(subtitles):
             self._check_interrupt()
@@ -177,6 +185,9 @@ class MossTTSSRTProcessor:
                 )
             else:
                 subtitle_voice_mapping.update(self.processor.build_voice_mapping(text))
+
+            if global_native_character_map:
+                subtitle_voice_mapping[self.processor.NATIVE_MAPPING_META_KEY] = global_native_character_map
 
             segment_dicts = self.processor.process_text(
                 text=text,

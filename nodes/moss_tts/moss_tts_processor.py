@@ -40,6 +40,7 @@ class MossTTSProcessor:
     SAMPLE_RATE = 24000
     OFFICIAL_INLINE_FIELDS = ("instruction", "quality", "sound_event", "ambient_sound")
     EXPERIMENTAL_TTS_FIELDS = {"quality", "sound_event", "ambient_sound"}
+    NATIVE_MAPPING_META_KEY = "__moss_native_character_map__"
 
     LANGUAGE_NAME_TO_CODE = {
         "auto": "auto",
@@ -167,6 +168,8 @@ class MossTTSProcessor:
         narrator_audio_path: Optional[str] = None,
     ) -> Dict[str, Optional[Dict[str, Any]]]:
         """Build character-to-reference mapping from text tags and voice folders."""
+        if self.config.get("multi_speaker_mode") == "Native Multi-Speaker Dialogue":
+            text = self._normalize_native_dialogue_input(text)
         language_code = self._language_name_to_code(self.config.get("language", "Auto"))
         self._prepare_character_parser(text, language_code)
         segments = character_parser.parse_text_segments(text)
@@ -187,14 +190,21 @@ class MossTTSProcessor:
                     "audio_path": audio_path,
                     "reference_text": char_text or "",
                 }
-                print(f"🎭 MOSS-TTS: Using character voice for '{character}'")
+                if self.config.get("multi_speaker_mode") != "Native Multi-Speaker Dialogue" or self._manual_speaker_number(character) is None:
+                    print(f"🎭 MOSS-TTS: Using character voice for '{character}'")
             elif narrator_ref:
                 voice_mapping[character] = narrator_ref
-                if character != "narrator":
+                if character != "narrator" and not (
+                    self.config.get("multi_speaker_mode") == "Native Multi-Speaker Dialogue"
+                    and self._manual_speaker_number(character) is not None
+                ):
                     print(f"🔄 MOSS-TTS: Using narrator voice fallback for '{character}'")
             else:
                 voice_mapping[character] = None
-                if character != "narrator":
+                if character != "narrator" and not (
+                    self.config.get("multi_speaker_mode") == "Native Multi-Speaker Dialogue"
+                    and self._manual_speaker_number(character) is not None
+                ):
                     print(f"ℹ️ MOSS-TTS: No reference for '{character}', using direct TTS")
 
         return voice_mapping
@@ -229,6 +239,21 @@ class MossTTSProcessor:
         params = self.config.copy()
         params["seed"] = seed
         params["language"] = self._language_name_to_code(params.get("language", "Auto"))
+        native_character_map = (voice_mapping or {}).get(self.NATIVE_MAPPING_META_KEY)
+
+        if params.get("multi_speaker_mode") == "Custom Character Switching":
+            if self._contains_manual_speaker_format(text):
+                print("🔄 MOSS-TTS: Auto-switching to Native Multi-Speaker Dialogue (detected manual 'Speaker N:' format)")
+                params["multi_speaker_mode"] = "Native Multi-Speaker Dialogue"
+            elif re.search(r"\[(?:s\s*\d+|speaker\s*\d+|\d+)\]", str(text or ""), re.IGNORECASE):
+                print("⚠️ MOSS-TTS: Numeric/native speaker tags detected in Custom Character Switching mode")
+                print("⚠️ These tags are intended for native dialogue mapping. Switch to Native Multi-Speaker Dialogue for [1]/[S1]/Speaker 1 usage.")
+
+        if params.get("multi_speaker_mode") == "Native Multi-Speaker Dialogue":
+            normalized_text = self._normalize_native_dialogue_input(text)
+            if normalized_text != text:
+                print("🔄 MOSS-TTSD: Normalized native dialogue input to canonical [Sx]/[Character] form")
+            text = normalized_text
 
         self._prepare_character_parser(text, params["language"])
         segment_objects = character_parser.parse_text_segments(text)
@@ -239,6 +264,7 @@ class MossTTSProcessor:
                 params,
                 enable_chunking,
                 max_chars_per_chunk,
+                native_character_map=native_character_map,
             )
         audio_segments = self._process_character_switching(
             segment_objects,
@@ -259,12 +285,14 @@ class MossTTSProcessor:
         params: Dict[str, Any],
         enable_chunking: bool,
         max_chars: int,
+        native_character_map: Optional[Dict[str, int]] = None,
     ) -> List[Dict[str, Any]]:
         full_text = " ".join(seg.text for seg in segment_objects)
         unique_characters = []
         for segment in segment_objects:
-            if segment.character not in unique_characters:
-                unique_characters.append(segment.character)
+            character_key = self._native_character_key(segment.character)
+            if character_key not in unique_characters:
+                unique_characters.append(character_key)
 
         fallback_reasons = []
         if len(unique_characters) > 5:
@@ -287,13 +315,15 @@ class MossTTSProcessor:
                 max_chars,
             )
 
-        if self.config.get("model_variant") != "MOSS-TTSD-v1.0":
-            print("🔄 MOSS-TTS: Loading MOSS-TTSD-v1.0 for Native Multi-Speaker Dialogue")
-            self.config["model_variant"] = "MOSS-TTSD-v1.0"
-            params["model_variant"] = "MOSS-TTSD-v1.0"
+        target_variant = str(params.get("model_variant") or "MOSS-TTSD-v1.0")
+        current_variant = str(self.config.get("model_variant") or "")
+        if current_variant != target_variant:
+            print(f"🔄 MOSS-TTS: Loading {target_variant} for Native Multi-Speaker Dialogue")
+            self.config["model_variant"] = target_variant
+            params["model_variant"] = target_variant
             self._load_model_from_config(self.config)
 
-        return self._process_native_multispeaker(segment_objects, voice_mapping, params)
+        return self._process_native_multispeaker(segment_objects, voice_mapping, params, native_character_map=native_character_map)
 
     @staticmethod
     def _manual_speaker_number(character: str) -> Optional[int]:
@@ -307,15 +337,77 @@ class MossTTSProcessor:
             return number if 1 <= number <= 5 else None
         return None
 
+    @classmethod
+    def _contains_manual_speaker_format(cls, text: str) -> bool:
+        return bool(re.search(r"(?im)^\s*speaker\s*(\d+)\s*:\s*", str(text or "")))
+
+    @classmethod
+    def _normalize_native_dialogue_input(cls, text: str) -> str:
+        lines = []
+        for raw_line in str(text or "").splitlines():
+            match = re.match(r"^\s*speaker\s*(\d+)\s*:\s*(.*)$", raw_line, re.IGNORECASE)
+            if match:
+                number = int(match.group(1))
+                if 1 <= number <= 5:
+                    lines.append(f"[S{number}] {match.group(2).strip()}")
+                    continue
+            lines.append(raw_line)
+        return "\n".join(lines)
+
+    @classmethod
+    def _native_character_key(cls, character: str) -> str:
+        speaker_num = cls._manual_speaker_number(character)
+        if speaker_num is not None:
+            return f"s{speaker_num}"
+        return str(character or "").strip()
+
+    @staticmethod
+    def _is_voice_reference(value: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, (str, torch.Tensor)):
+            return True
+        if isinstance(value, dict):
+            return any(key in value for key in ("audio", "audio_path", "waveform"))
+        return False
+
+    @classmethod
+    def build_native_character_map_from_texts(cls, texts: List[str]) -> Dict[str, int]:
+        mapping: Dict[str, int] = {}
+        used_slots = set()
+        for text in texts:
+            normalized = cls._normalize_native_dialogue_input(text)
+            for tag in re.findall(r"\[([^\]]+)\]", normalized):
+                character = tag.split("|")[0].strip()
+                if not character or character.lower().startswith("pause:"):
+                    continue
+                key = cls._native_character_key(character)
+                if key in mapping:
+                    continue
+                speaker_num = cls._manual_speaker_number(character)
+                if speaker_num is not None:
+                    mapping[key] = speaker_num
+                    used_slots.add(speaker_num)
+                    continue
+                for candidate in range(1, 6):
+                    if candidate not in used_slots:
+                        mapping[key] = candidate
+                        used_slots.add(candidate)
+                        break
+                if key not in mapping:
+                    mapping[key] = 5
+        return mapping
+
     def _process_native_multispeaker(
         self,
         segment_objects,
         voice_mapping: Dict[str, Any],
         params: Dict[str, Any],
+        native_character_map: Optional[Dict[str, int]] = None,
     ) -> List[Dict[str, Any]]:
         main_narrator_voice = voice_mapping.get("narrator") if voice_mapping else None
         if main_narrator_voice is None:
-            available_voices = [voice for voice in (voice_mapping or {}).values() if voice is not None]
+            available_voices = [voice for voice in (voice_mapping or {}).values() if self._is_voice_reference(voice)]
             main_narrator_voice = available_voices[0] if available_voices else None
 
         speaker_inputs = {
@@ -327,11 +419,18 @@ class MossTTSProcessor:
         }
         speaker_voices = [speaker_inputs.get(idx) for idx in range(1, 6)]
         character_map: Dict[str, int] = {}
+        used_slots = set()
         formatted_lines = []
 
         print(f"🎭 MOSS-TTSD native dialogue: Processing {len(segment_objects)} segment(s)")
         connected = [f"S{idx}" for idx, voice in speaker_inputs.items() if voice is not None]
         print(f"🎤 MOSS-TTSD speaker inputs connected: {connected or ['none']}")
+
+        if native_character_map:
+            for key, speaker_num in native_character_map.items():
+                if 1 <= int(speaker_num) <= 5:
+                    character_map[key] = int(speaker_num) - 1
+                    used_slots.add(int(speaker_num))
 
         for segment in segment_objects:
             character = segment.character
@@ -339,22 +438,29 @@ class MossTTSProcessor:
             if not text:
                 continue
 
+            character_key = self._native_character_key(character)
             manual_speaker = self._manual_speaker_number(character)
             if manual_speaker is not None:
                 speaker_idx = manual_speaker - 1
-                character_map.setdefault(character, speaker_idx)
-            elif character not in character_map:
-                speaker_idx = len(character_map)
-                if speaker_idx >= 5:
+                character_map.setdefault(character_key, speaker_idx)
+                used_slots.add(manual_speaker)
+            elif character_key not in character_map:
+                next_free = next((candidate for candidate in range(1, 6) if candidate not in used_slots), None)
+                if next_free is None:
                     print(f"⚠️ MOSS-TTSD: More than 5 speakers found; '{character}' will use S5")
                     speaker_idx = 4
-                character_map[character] = speaker_idx
+                else:
+                    speaker_idx = next_free - 1
+                    used_slots.add(next_free)
+                character_map[character_key] = speaker_idx
             else:
-                speaker_idx = character_map[character]
+                speaker_idx = character_map[character_key]
 
             speaker_num = speaker_idx + 1
             connected_voice = speaker_inputs.get(speaker_num)
             character_voice = (voice_mapping or {}).get(character)
+            if not self._is_voice_reference(character_voice):
+                character_voice = None
 
             if connected_voice is not None and character_voice is not None:
                 print(f"⚠️ MOSS-TTSD priority: S{speaker_num} input overrides ['{character}'] alias")
@@ -382,7 +488,7 @@ class MossTTSProcessor:
         for field_name in self.OFFICIAL_INLINE_FIELDS:
             field_value = params.get(field_name)
             if field_value:
-                print(f"  🔹 Official {field_name}: {self._format_prompt_field_log(field_name, field_value, params)}")
+                print(f"  🔹 {field_name}: {self._format_prompt_field_log(field_name, field_value, params)}")
         print("🎭 MOSS-TTSD formatted dialogue:")
         print("=" * 60)
         print(dialogue_text)
@@ -516,7 +622,7 @@ class MossTTSProcessor:
                 field_value = generation_params.get(field_name)
                 if field_value:
                     print(
-                        f"  🔹 Official {field_name}: "
+                        f"  🔹 {field_name}: "
                         f"{self._format_prompt_field_log(field_name, field_value, generation_params)}"
                     )
             print("=" * 60)
