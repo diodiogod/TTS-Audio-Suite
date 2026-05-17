@@ -382,6 +382,43 @@ class MossTTSProcessor:
         return str(character or "").strip()
 
     @staticmethod
+    def _resolve_native_map_key_with_aliases(
+        character_key: str,
+        native_character_map: Optional[Dict[str, int]],
+    ) -> str:
+        """
+        When character parser resolves [Alice] -> alias target (e.g. female_01),
+        map it back to the canonical key used in native_character_map if possible.
+        """
+        if not native_character_map:
+            return character_key
+        if character_key in native_character_map:
+            return character_key
+
+        # Case-insensitive direct map key match first.
+        lower_to_canonical = {str(k).strip().lower(): k for k in native_character_map.keys()}
+        lowered_key = str(character_key).strip().lower()
+        if lowered_key in lower_to_canonical:
+            return lower_to_canonical[lowered_key]
+
+        try:
+            alias_map = voice_discovery.get_character_aliases() or {}
+        except Exception:
+            alias_map = {}
+
+        candidates = []
+        for source, target in alias_map.items():
+            if str(target).strip().lower() == lowered_key:
+                candidates.append(str(source).strip())
+
+        for source_key in sorted(candidates, key=lambda s: (s.lower() != "narrator", s.lower())):
+            source_lower = source_key.lower()
+            if source_lower in lower_to_canonical:
+                return lower_to_canonical[source_lower]
+
+        return character_key
+
+    @staticmethod
     def _is_voice_reference(value: Any) -> bool:
         if value is None:
             return False
@@ -486,6 +523,7 @@ class MossTTSProcessor:
                 continue
 
             character_key = self._native_character_key(character)
+            character_key = self._resolve_native_map_key_with_aliases(character_key, native_character_map)
             manual_speaker = self._manual_speaker_number(character)
             if manual_speaker is not None:
                 speaker_idx = manual_speaker - 1

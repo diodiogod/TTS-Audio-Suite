@@ -969,6 +969,7 @@ engines:
     special_features:
       - "Zero-shot voice cloning"
       - "20-language generation"
+      - "Long-form TTSD"
       - "Native 1-5 speaker TTSD dialogue"
       - "Duration token hint"
       - "Local/Delay/TTSD variants"

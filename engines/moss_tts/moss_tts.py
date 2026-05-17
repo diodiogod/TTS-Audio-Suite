@@ -287,7 +287,14 @@ class MossTTSEngine:
             first_param = next(self._model.parameters())
         except StopIteration:
             return
-        if str(first_param.device) != str(target_device):
+        current_device = first_param.device
+        normalized_target = torch.device(target_device) if not isinstance(target_device, torch.device) else target_device
+        same_device = current_device.type == normalized_target.type
+        if same_device and current_device.type == "cuda":
+            current_index = 0 if current_device.index is None else current_device.index
+            target_index = torch.cuda.current_device() if normalized_target.index is None else normalized_target.index
+            same_device = current_index == target_index
+        if not same_device:
             print(f"🔄 MOSS-TTS: moving model from {first_param.device} to {target_device}")
             self.to(target_device)
 
