@@ -291,15 +291,7 @@ class MossTTSProcessor:
             audio_segments = apply_edit_post_processing(audio_segments, self.config)
         return audio_segments
 
-    def _process_native_multispeaker_or_fallback(
-        self,
-        segment_objects,
-        voice_mapping: Dict[str, Any],
-        params: Dict[str, Any],
-        enable_chunking: bool,
-        max_chars: int,
-        native_character_map: Optional[Dict[str, int]] = None,
-    ) -> List[Dict[str, Any]]:
+    def _get_native_fallback_reasons(self, segment_objects) -> List[str]:
         full_text = " ".join(seg.text for seg in segment_objects)
         unique_characters = []
         for segment in segment_objects:
@@ -317,15 +309,44 @@ class MossTTSProcessor:
             fallback_reasons.append("inline edit tags")
         if any(getattr(segment, "parameters", None) for segment in segment_objects):
             fallback_reasons.append("per-segment parameter changes")
+        return fallback_reasons
+
+    def get_native_srt_fallback_reasons(self, texts: List[str]) -> List[str]:
+        fallback_reasons = []
+        nonempty_texts = [str(text or "").strip() for text in texts if str(text or "").strip()]
+        if not nonempty_texts:
+            return fallback_reasons
+
+        native_character_map = self.build_native_character_map_from_texts(nonempty_texts)
+        if len(native_character_map) > 5:
+            fallback_reasons.append("more than 5 speakers")
+
+        language = self._language_name_to_code(self.config.get("language", "Auto"))
+        for text in nonempty_texts:
+            normalized = self._normalize_native_dialogue_input(text)
+            self._prepare_character_parser(normalized, language)
+            segment_objects = character_parser.parse_text_segments(normalized)
+            for reason in self._get_native_fallback_reasons(segment_objects):
+                if reason not in fallback_reasons:
+                    fallback_reasons.append(reason)
+        return fallback_reasons
+
+    def _process_native_multispeaker_or_fallback(
+        self,
+        segment_objects,
+        voice_mapping: Dict[str, Any],
+        params: Dict[str, Any],
+        enable_chunking: bool,
+        max_chars: int,
+        native_character_map: Optional[Dict[str, int]] = None,
+    ) -> List[Dict[str, Any]]:
+        fallback_reasons = self._get_native_fallback_reasons(segment_objects)
 
         if fallback_reasons:
-            print(f"⚡ MOSS-TTS fallback: Native Multi-Speaker Dialogue → Custom Character Switching ({', '.join(fallback_reasons)})")
-            return self._process_character_switching(
-                segment_objects,
-                voice_mapping,
-                params,
-                enable_chunking,
-                max_chars,
+            reason_text = ", ".join(fallback_reasons)
+            raise RuntimeError(
+                "MOSS-TTSD Native Multi-Speaker Dialogue does not support this input "
+                f"({reason_text}). Switch to 'Custom Character Switching' and choose a standard MOSS model."
             )
 
         target_variant = str(params.get("model_variant") or "MOSS-TTSD-v1.0")

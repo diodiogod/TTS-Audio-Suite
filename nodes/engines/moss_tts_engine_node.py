@@ -261,7 +261,7 @@ class MossTTSEngineNode(BaseTTSNode):
                 "speaker5_voice": (any_typ, {
                     "tooltip": "Voice for S5 in Native Multi-Speaker Dialogue. Connect Character Voices opt_narrator output."
                 }),
-            }
+            },
         }
 
     RETURN_TYPES = ("TTS_ENGINE",)

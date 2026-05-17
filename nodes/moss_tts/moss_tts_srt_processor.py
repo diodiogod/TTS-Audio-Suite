@@ -148,11 +148,17 @@ class MossTTSSRTProcessor:
         global_native_character_map = None
 
         if self.engine_config.get("multi_speaker_mode") == "Native Multi-Speaker Dialogue":
-            global_native_character_map = self.processor.build_native_character_map_from_texts(
-                [subtitle.text for subtitle in subtitles if getattr(subtitle, "text", "").strip()]
-            )
-            if global_native_character_map:
-                print(f"🎭 MOSS-TTSD global SRT character mapping: {global_native_character_map}")
+            subtitle_texts = [subtitle.text for subtitle in subtitles if getattr(subtitle, "text", "").strip()]
+            fallback_reasons = self.processor.get_native_srt_fallback_reasons(subtitle_texts)
+            if fallback_reasons:
+                raise RuntimeError(
+                    "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input "
+                    f"({', '.join(fallback_reasons)}). Switch to 'Custom Character Switching' and choose a standard MOSS model."
+                )
+            else:
+                global_native_character_map = self.processor.build_native_character_map_from_texts(subtitle_texts)
+                if global_native_character_map:
+                    print(f"🎭 MOSS-TTSD global SRT character mapping: {global_native_character_map}")
 
         for idx, sub in enumerate(subtitles):
             self._check_interrupt()

@@ -1260,8 +1260,12 @@ Hello! This is unified SRT TTS with character switching.
             return (audio_output, unified_info, timing_report, adjusted_srt)
                 
         except Exception as e:
-            # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
-            if "Pause tags are not compatible with force_speaker_kv" in str(e):
+            # Bubble up hard incompatibilities so ComfyUI shows a modal error.
+            msg = str(e)
+            if (
+                "Pause tags are not compatible with force_speaker_kv" in msg
+                or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
+            ):
                 raise
             error_msg = f"❌ TTS SRT generation failed: {e}"
             print(error_msg)
