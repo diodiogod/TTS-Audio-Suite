@@ -87,7 +87,14 @@ class MossTTSEngineNode(BaseTTSNode):
                     "tooltip": (
                         "Custom Character Switching uses normal MOSS-TTS per character block.\n"
                         "\n"
-                        "Native Multi-Speaker Dialogue uses MOSS-TTSD-v1.0 with [S1]...[S5] speaker mapping in one dialogue context."
+                        "Native Multi-Speaker Dialogue uses MOSS-TTSD-v1.0 with [S1]...[S5] speaker mapping in one dialogue context.\n"
+                        "\n"
+                        "Native mode hard-fails (no auto-fallback) if incompatible controls are detected:\n"
+                        "• pause tags\n"
+                        "• inline edit tags\n"
+                        "• per-segment parameter changes\n"
+                        "• more than 5 speakers\n"
+                        "Switch to Custom Character Switching and choose a standard MOSS model for those cases."
                     )
                 }),
                 "device": (["auto", "cuda", "cpu"], {

@@ -122,6 +122,24 @@ Result:
 
 So these official fields still apply to the whole TTSD request, not to one precise speaker turn inside that request.
 
+## Native TTSD Compatibility Rules
+
+Native TTSD mode is strict in this suite.
+
+If any of these are detected, generation **fails with an explicit error** instead of auto-switching models:
+
+- `pause tags`
+- inline Step Audio EditX tags
+- per-segment `[]` parameter changes
+- more than 5 speakers
+
+This applies to both normal TTS Text and SRT workflows.
+
+Required action when that happens:
+
+- switch to `Custom Character Switching`
+- choose a standard MOSS model (`MOSS-TTS-Local-Transformer` or `MOSS-TTS`)
+
 ## When To Use Something Else
 
 If you need exact placement of laughter/breathing/cough inside the sentence, use:
