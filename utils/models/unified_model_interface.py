@@ -131,13 +131,14 @@ class UnifiedModelInterface:
         # CRITICAL: For engines that support multiple model variants (like Qwen3-TTS),
         # check if a DIFFERENT variant is already loaded and unload it to prevent device conflicts
         # Only applies to engines where model variants are mutually exclusive
-        if config.engine_name == "qwen3_tts":
-            # Check for any cached qwen3_tts model
-            cached_keys = [k for k in tts_model_manager._model_cache.keys() if k.startswith("qwen3_tts_tts_")]
+        if config.engine_name in ("qwen3_tts", "moss_tts"):
+            # Check for any cached mutually-exclusive model variant for this engine
+            cached_prefix = f"{config.engine_name}_tts_"
+            cached_keys = [k for k in tts_model_manager._model_cache.keys() if k.startswith(cached_prefix)]
             for existing_key in cached_keys:
                 if existing_key != cache_key:
                     # Different model variant is loaded - unload it first
-                    print(f"🗑️ Unloading old qwen3_tts model variant to prevent VRAM accumulation")
+                    print(f"🗑️ Unloading old {config.engine_name} model variant to prevent VRAM accumulation")
                     tts_model_manager.remove_model(existing_key)
 
                     # CRITICAL: Invalidate processor caches so they reload engines
@@ -1273,6 +1274,48 @@ def register_cosyvoice_factory():
     unified_model_interface.register_model_factory("cosyvoice", "tts", cosyvoice_factory)
 
 
+def register_moss_tts_factory():
+    """Register MOSS-TTS model factory."""
+    def moss_tts_factory(config: ModelLoadConfig):
+        """Factory for official MOSS-TTS models with ComfyUI integration."""
+        import os
+
+        model_name = config.model_name or "MOSS-TTS-Local-Transformer"
+        model_path = config.model_path or model_name
+        device = config.device or "auto"
+        additional_params = config.additional_params or {}
+        dtype = additional_params.get("dtype", "auto")
+        attn_implementation = additional_params.get("attn_implementation", "auto")
+        codec_model = additional_params.get("codec_model", "MOSS-Audio-Tokenizer")
+
+        from engines.moss_tts.moss_tts import MossTTSEngine
+        from engines.moss_tts.moss_tts_downloader import MossTTSDownloader
+
+        downloader = MossTTSDownloader()
+        resolved_model_path = downloader.resolve_model_path(model_path)
+        resolved_codec_path = downloader.resolve_model_path(codec_model)
+
+        if not resolved_model_path or not os.path.exists(resolved_model_path):
+            raise RuntimeError(f"MOSS-TTS model not found at {resolved_model_path}")
+        if not resolved_codec_path or not os.path.exists(resolved_codec_path):
+            raise RuntimeError(f"MOSS-TTS audio tokenizer not found at {resolved_codec_path}")
+
+        print(f"🔄 Loading MOSS-TTS model via unified interface: {model_name}")
+        engine = MossTTSEngine(
+            model_path=resolved_model_path,
+            codec_path=resolved_codec_path,
+            model_variant=model_name.replace("local:", ""),
+            device=device,
+            dtype=dtype,
+            attn_implementation=attn_implementation,
+        )
+        engine._ensure_model_loaded()
+        print(f"✅ MOSS-TTS model '{model_name}' loaded successfully")
+        return engine
+
+    unified_model_interface.register_model_factory("moss_tts", "tts", moss_tts_factory)
+
+
 def register_qwen3_tts_factory():
     """Register Qwen3-TTS model factory"""
     def qwen3_tts_factory(config: ModelLoadConfig):
@@ -1636,6 +1679,7 @@ def initialize_all_factories():
     register_vibevoice_factory()
     register_index_tts_factory()
     register_cosyvoice_factory()
+    register_moss_tts_factory()
     register_qwen3_tts_factory()
     register_qwen3_asr_factory()
     register_qwen3_aligner_factory()

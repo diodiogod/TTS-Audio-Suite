@@ -347,6 +347,52 @@ class Qwen3TTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class MossTTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for MOSS-TTS engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        audio_temperature = params.get('audio_temperature', params.get('temperature', 1.0))
+        audio_top_p = params.get('audio_top_p', params.get('top_p', 0.95))
+        audio_repetition_penalty = params.get(
+            'audio_repetition_penalty',
+            params.get('repetition_penalty', 1.1)
+        )
+
+        if isinstance(audio_temperature, (int, float)):
+            audio_temperature = round(float(audio_temperature), 3)
+        if isinstance(audio_top_p, (int, float)):
+            audio_top_p = round(float(audio_top_p), 3)
+        if isinstance(audio_repetition_penalty, (int, float)):
+            audio_repetition_penalty = round(float(audio_repetition_penalty), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'model_variant': params.get('model_variant', 'MOSS-TTS-Local-Transformer'),
+            'language': params.get('language', 'auto'),
+            'instruction': params.get('instruction'),
+            'quality': params.get('quality'),
+            'sound_event': params.get('sound_event'),
+            'ambient_sound': params.get('ambient_sound'),
+            'duration_tokens': params.get('duration_tokens'),
+            'audio_temperature': audio_temperature,
+            'audio_top_p': audio_top_p,
+            'audio_top_k': params.get('audio_top_k', params.get('top_k', 50)),
+            'audio_repetition_penalty': audio_repetition_penalty,
+            'max_new_tokens': params.get('max_new_tokens', 4096),
+            'n_vq_for_inference': params.get('n_vq_for_inference'),
+            'seed': params.get('seed', 0),
+            'device': params.get('device', 'auto'),
+            'dtype': params.get('dtype', 'auto'),
+            'attn_implementation': params.get('attn_implementation', 'auto'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'moss_tts',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class EchoTTSCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for Echo-TTS engine."""
 
@@ -422,6 +468,7 @@ class AudioCache:
             'index_tts': IndexTTSCacheKeyGenerator(),
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
+            'moss_tts': MossTTSCacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()
         }
     
@@ -493,7 +540,7 @@ class AudioCache:
             num_samples = audio_tensor.numel()
 
         # Use engine-specific sample rates
-        if engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts'):
+        if engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts'):
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050

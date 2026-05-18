@@ -130,6 +130,14 @@ except Exception as e:
     QWEN3_TTS_ENGINE_AVAILABLE = False
 
 try:
+    moss_tts_engine_module = load_node_module("moss_tts_engine_node", "engines/moss_tts_engine_node.py")
+    MossTTSEngineNode = moss_tts_engine_module.MossTTSEngineNode
+    MOSS_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS-TTS Engine failed: {e}")
+    MOSS_TTS_ENGINE_AVAILABLE = False
+
+try:
     granite_asr_engine_module = load_node_module("granite_asr_engine_node", "engines/granite_asr_engine_node.py")
     GraniteASREngineNode = granite_asr_engine_module.GraniteASREngineNode
     GRANITE_ASR_ENGINE_AVAILABLE = True
@@ -532,6 +540,10 @@ if VIBEVOICE_ENGINE_AVAILABLE:
 if QWEN3_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSEngineNode"] = Qwen3TTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSEngineNode"] = "⚙️ Qwen3-TTS Engine"
+
+if MOSS_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossTTSEngineNode"] = MossTTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossTTSEngineNode"] = "⚙️ MOSS-TTS Engine"
 
 if GRANITE_ASR_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["GraniteASREngineNode"] = GraniteASREngineNode

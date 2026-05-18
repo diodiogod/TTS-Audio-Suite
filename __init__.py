@@ -282,24 +282,33 @@ if 'utils' in sys.modules:
         for key in to_delete:
             del sys.modules[key]
 
-# Get the path to the nodes.py file
-nodes_py_path = os.path.join(os.path.dirname(__file__), "nodes.py")
+# In pytest harness mode, avoid bootstrapping full ComfyUI node graph.
+if os.environ.get("COMFYUI_TESTING") == "1":
+    IS_DEV = False
+    VERSION = "test"
+    SEPARATOR = "=" * 70
+    VERSION_DISPLAY = "test"
+    NODE_CLASS_MAPPINGS = {}
+    NODE_DISPLAY_NAME_MAPPINGS = {}
+else:
+    # Get the path to the nodes.py file
+    nodes_py_path = os.path.join(os.path.dirname(__file__), "nodes.py")
 
-# Load nodes.py as a module
-spec = importlib.util.spec_from_file_location("nodes_main", nodes_py_path)
-nodes_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(nodes_module)
+    # Load nodes.py as a module
+    spec = importlib.util.spec_from_file_location("nodes_main", nodes_py_path)
+    nodes_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(nodes_module)
 
-# Import constants and utilities
-IS_DEV = nodes_module.IS_DEV
-VERSION = nodes_module.VERSION
-SEPARATOR = nodes_module.SEPARATOR
-VERSION_DISPLAY = nodes_module.VERSION_DISPLAY
+    # Import constants and utilities
+    IS_DEV = nodes_module.IS_DEV
+    VERSION = nodes_module.VERSION
+    SEPARATOR = nodes_module.SEPARATOR
+    VERSION_DISPLAY = nodes_module.VERSION_DISPLAY
 
-# The new unified architecture handles all node registration in nodes.py
-# Just import the mappings that nodes.py creates
-NODE_CLASS_MAPPINGS = nodes_module.NODE_CLASS_MAPPINGS
-NODE_DISPLAY_NAME_MAPPINGS = nodes_module.NODE_DISPLAY_NAME_MAPPINGS
+    # The new unified architecture handles all node registration in nodes.py
+    # Just import the mappings that nodes.py creates
+    NODE_CLASS_MAPPINGS = nodes_module.NODE_CLASS_MAPPINGS
+    NODE_DISPLAY_NAME_MAPPINGS = nodes_module.NODE_DISPLAY_NAME_MAPPINGS
 
 # Extension info
 __version__ = VERSION_DISPLAY

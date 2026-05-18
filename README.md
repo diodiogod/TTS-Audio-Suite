@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 12 Engines
+## Quick Engine Comparison — 13 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -38,6 +38,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
+| **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | Zero-shot voice cloning, 20-language generation |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
@@ -106,9 +107,16 @@ RVC
 Model Training 
 ```
 
+## 🧩 Adding New Engines
+
+Want to add support for a new TTS engine, Voice Changer, ASR, or special audio model?
+
+Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**. It is written for users guiding an LLM through the process: first research the official model, then check existing ComfyUI implementations, decide scope, implement in the suite architecture, and run the parity checklist before PR review. For TTS engines, Unified TTS Text and Unified SRT TTS are a required pair.
+
 <details>
 <summary><h2>📋 Table of Contents</h2></summary>
 
+- [🧩 Adding New Engines](#-adding-new-engines)
 - [🎥 Demo Videos](#-demo-videos)
 - [Features](#features)
 - [🆕 What's New in my Project?](#-whats-new-in-my-project)
@@ -194,10 +202,11 @@ Model Training
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, **MOSS-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
 - 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
+- 🎚️ **Official MOSS Prompt Fields** - `instruction`, `quality`, `sound_event`, `ambient_sound`, `language`, and `duration_tokens` exposed on the MOSS engine, with `[]` per-segment overrides for whole-segment conditioning → **[📖 MOSS Prompt Fields Guide](docs/MOSS_TTS_PROMPT_FIELDS_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎓 **Integrated Model Training** - Unified `🎓 Model Training` pipeline with `📦 RVC Dataset Prep`, `🎛️ RVC Training Config`, resumable checkpoints, interrupt-save safety, and a live dashboard for RVC voice model training
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -1329,6 +1338,7 @@ For offline/manual setup:
 | Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
+| MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec |
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Main Granite model; optional Qwen forced aligner reused lazily for timestamps/SRT |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 

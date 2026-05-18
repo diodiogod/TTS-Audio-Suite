@@ -4,7 +4,7 @@
 try:
     from .chatterbox_adapter import ChatterBoxEngineAdapter
     CHATTERBOX_ADAPTER_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     CHATTERBOX_ADAPTER_AVAILABLE = False
     # Create dummy class for compatibility
     class ChatterBoxEngineAdapter:
@@ -14,7 +14,7 @@ except ImportError as e:
 try:
     from .f5tts_adapter import F5TTSEngineAdapter
     F5TTS_ADAPTER_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     F5TTS_ADAPTER_AVAILABLE = False
     # Create dummy class for compatibility
     class F5TTSEngineAdapter:
@@ -24,7 +24,7 @@ except ImportError as e:
 try:
     from .cosyvoice_adapter import CosyVoiceAdapter
     COSYVOICE_ADAPTER_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     COSYVOICE_ADAPTER_AVAILABLE = False
     # Create dummy class for compatibility
     class CosyVoiceAdapter:
@@ -34,14 +34,24 @@ except ImportError as e:
 try:
     from .echo_tts_adapter import EchoTTSEngineAdapter
     ECHO_TTS_ADAPTER_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     ECHO_TTS_ADAPTER_AVAILABLE = False
     class EchoTTSEngineAdapter:
         def __init__(self, *args, **kwargs):
             raise ImportError(f"Echo-TTS adapter not available: {e}")
 
+try:
+    from .moss_tts_adapter import MossTTSEngineAdapter
+    MOSS_TTS_ADAPTER_AVAILABLE = True
+except Exception as e:
+    MOSS_TTS_ADAPTER_AVAILABLE = False
+    class MossTTSEngineAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"MOSS-TTS adapter not available: {e}")
+
 __all__ = [
     'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter', 'EchoTTSEngineAdapter',
+    'MossTTSEngineAdapter',
     'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE',
-    'ECHO_TTS_ADAPTER_AVAILABLE'
+    'ECHO_TTS_ADAPTER_AVAILABLE', 'MOSS_TTS_ADAPTER_AVAILABLE'
 ]

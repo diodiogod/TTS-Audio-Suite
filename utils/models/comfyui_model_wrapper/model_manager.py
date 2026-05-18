@@ -18,6 +18,47 @@ class ComfyUITTSModelManager:
     
     def __init__(self):
         self._model_cache: Dict[str, ComfyUIModelWrapper] = {}
+
+    def _offload_conflicting_tts_models(self, engine: str, target_device: str, keep_model_key: Optional[str] = None) -> int:
+        """
+        Move conflicting GPU-resident TTS models to CPU before loading/moving another one.
+
+        This keeps fresh load_model() behavior aligned with ensure_device(): if a new
+        TTS model wants CUDA, other cached TTS engines should not stay in VRAM.
+        """
+        if not str(target_device).startswith('cuda'):
+            return 0
+
+        models_to_offload = []
+        for cache_key, wrapper in list(self._model_cache.items()):
+            should_offload = (
+                wrapper.model_info.model_type == "tts" and
+                wrapper._is_loaded_on_gpu and
+                (wrapper.model_info.engine != engine or
+                 (keep_model_key is not None and cache_key != keep_model_key))
+            )
+            if should_offload:
+                models_to_offload.append((cache_key, wrapper))
+
+        if not models_to_offload:
+            return 0
+
+        print(f"🗑️ Moving {len(models_to_offload)} TTS model(s) to CPU to make room for {engine}")
+        for cache_key, wrapper in models_to_offload:
+            try:
+                wrapper.partially_unload('cpu', wrapper._memory_size)
+            except Exception as e:
+                print(f"⚠️ Failed to move {wrapper.model_info.engine} to CPU, removing instead: {e}")
+                self.remove_model(cache_key)
+
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+            import time
+            time.sleep(0.1)
+
+        return len(models_to_offload)
         
     def load_model(self, 
                    model_factory_func, 
@@ -211,48 +252,12 @@ class ComfyUITTSModelManager:
                         if memory_freed and memory_freed > 0:
                             print(f"🧹 Freed {memory_freed // 1024 // 1024}MB VRAM for new {model_type} model")
 
-                # Also try manual cleanup of our own TTS model cache
-                # Only if ComfyUI actually had to free memory (VRAM was tight)
-                if model_type == "tts" and engine != "" and memory_freed > 0:
-                    # Get current cache stats
-                    cached_models = list(self._model_cache.keys())
-                    models_to_offload = []
-
-                    for cache_key in cached_models:
-                        wrapper = self._model_cache[cache_key]
-
-                        # Move models to CPU to free VRAM if:
-                        # 1. Different engine, OR
-                        # 2. Same engine but different model variant (different cache key)
-                        # (Don't delete - keep in cache for fast reload)
-                        should_offload = (
-                            wrapper.model_info.model_type == "tts" and
-                            wrapper._is_loaded_on_gpu and
-                            (wrapper.model_info.engine != engine or cache_key != model_key)
-                        )
-                        if should_offload:
-                            models_to_offload.append((cache_key, wrapper))
-
-                    if models_to_offload:
-                        print(f"🗑️ Moving {len(models_to_offload)} TTS models to CPU to free VRAM")
-                        for key, wrapper in models_to_offload:
-                            try:
-                                wrapper.partially_unload('cpu', wrapper._memory_size)
-                            except Exception as e:
-                                print(f"⚠️ Failed to move {wrapper.model_info.engine} to CPU: {e}")
-                                # Keep in cache anyway - might recover later
-
-                        # Force CUDA to synchronize and free memory before loading next model
-                        import torch
-                        if torch.cuda.is_available():
-                            torch.cuda.synchronize()
-                            torch.cuda.empty_cache()
-                            import time
-                            time.sleep(0.1)
-                            
             except Exception as e:
                 # Silently ignore memory management errors to avoid spam
                 pass
+
+        if model_type == "tts" and engine != "" and str(device).startswith('cuda'):
+            self._offload_conflicting_tts_models(engine, device, keep_model_key=model_key)
         
         # Create the model
         # print(f"🔧 Creating new {model_type} model ({engine}) on {device} - fresh instance after cache invalidation")
@@ -430,41 +435,12 @@ class ComfyUITTSModelManager:
         # Before moving to GPU, ALWAYS move other TTS models to CPU to free VRAM
         # (Don't delete them - keep in cache for fast reload)
         if target_device.startswith('cuda'):
-            cached_models = list(self._model_cache.keys())
-            models_to_offload = []
-
-            for cache_key in cached_models:
-                cached_wrapper = self._model_cache.get(cache_key)
-                # Clear models from different engines OR same engine but different cache key
-                # (e.g., vibevoice-7B on GPU should be cleared when loading vibevoice-1.5B)
-                should_offload = (
-                    cached_wrapper and
-                    cached_wrapper._is_loaded_on_gpu and
-                    (cached_wrapper.model_info.engine != engine_name or
-                     (model_cache_key is not None and cache_key != model_cache_key))
-                )
-                if should_offload:
-                    models_to_offload.append((cache_key, cached_wrapper))
-
-            if models_to_offload:
-                print(f"🗑️ BEFORE CLEARING: Moving {len(models_to_offload)} TTS models to CPU to make room for {engine_name}")
-                for key, wrapper in models_to_offload:
-                    # Move to CPU instead of deleting - keeps model in cache for fast reload
-                    try:
-                        wrapper.partially_unload('cpu', wrapper._memory_size)
-                    except Exception as e:
-                        print(f"⚠️ Failed to move {wrapper.model_info.engine} to CPU, removing instead: {e}")
-                        self.remove_model(key)
-
-                # CRITICAL: Force CUDA to synchronize and actually free the memory before loading next model
-                # Without this, the next model's .to(cuda) may fail with OOM because CUDA hasn't freed yet
-                print(f"⏳ AFTER CLEARING: Synchronizing CUDA to ensure memory is freed...")
-                import torch
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                    torch.cuda.empty_cache()
-                    import time
-                    time.sleep(0.1)  # Brief pause to ensure GPU memory is actually freed
+            cleared = self._offload_conflicting_tts_models(
+                engine_name,
+                target_device,
+                keep_model_key=model_cache_key,
+            )
+            if cleared:
                 print(f"✅ CLEARING COMPLETE: VRAM freed and ready for {engine_name}")
 
         # Find the model for this engine

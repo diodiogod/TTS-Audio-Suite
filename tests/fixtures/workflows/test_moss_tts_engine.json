@@ -1,0 +1,22 @@
+{
+    "1": {
+        "class_type": "MossTTSEngineNode",
+        "inputs": {
+            "model_variant": "MOSS-TTS-Local-Transformer",
+            "multi_speaker_mode": "Custom Character Switching",
+            "device": "auto",
+            "language": "Auto",
+            "sampler_preset": "Model default",
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "top_k": 50,
+            "repetition_penalty": 1.1,
+            "max_new_tokens": 4096,
+            "duration_tokens": 0,
+            "n_vq_for_inference": 0,
+            "dtype": "auto",
+            "attn_implementation": "auto",
+            "codec_model": "MOSS-Audio-Tokenizer"
+        }
+    }
+}

@@ -22,7 +22,7 @@
 
 ## Engines
 
-12 engines follow the pattern above:
+13 engines follow the pattern above:
 
 | Engine | Adapter | Processor | SRT Processor | Engine Node |
 |--------|---------|-----------|---------------|-------------|
@@ -35,12 +35,13 @@
 | Step Audio EditX | `step_audio_editx_adapter.py` | `nodes/step_audio_editx/step_audio_editx_processor.py` | `step_audio_editx_srt_processor.py` | `step_audio_editx_engine_node.py` |
 | CosyVoice3 | `cosyvoice_adapter.py` | `engines/processors/cosyvoice_processor.py` | `nodes/cosyvoice/cosyvoice_srt_processor.py` | `cosyvoice_engine_node.py` |
 | Qwen3-TTS | `qwen3_tts_adapter.py` | `nodes/qwen3_tts/qwen3_tts_processor.py` | same folder | `qwen3_tts_engine_node.py` |
+| MOSS-TTS | `moss_tts_adapter.py` | `nodes/moss_tts/moss_tts_processor.py` | `moss_tts_srt_processor.py` | `moss_tts_engine_node.py` |
 | Granite ASR | `asr_granite_adapter.py` | — | — | `granite_asr_engine_node.py` |
 | Echo-TTS | `echo_tts_adapter.py` | `nodes/echo_tts/echo_tts_processor.py` | `echo_tts_srt_processor.py` | `echo_tts_engine_node.py` |
 | RVC | — | `engines/rvc/` | — | `rvc_engine_node.py` |
 
 **Engine implementations live in:**
-- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/granite_asr/`, `engines/rvc/`
+- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/granite_asr/`, `engines/rvc/`
 
 ## Documentation Files
 
@@ -52,6 +53,7 @@
 - `CHARACTER_SWITCHING_GUIDE.md` - [CharacterName] tag system
 - `PARAMETER_SWITCHING_GUIDE.md` - Per-segment parameter override syntax
 - `INLINE_EDIT_TAGS_USER_GUIDE.md` - Step Audio EditX inline tags
+- `MOSS_TTS_PROMPT_FIELDS_GUIDE.md` - Official MOSS whole-segment prompt fields and inline `<>` translation limits
 - `COSYVOICE3_TAGS_GUIDE.md` - CosyVoice3 native paralinguistic tags
 - `CHATTERBOX_V2_SPECIAL_TOKENS.md` - ChatterBox v2 emotion tokens
 - `IndexTTS2_Emotion_Control_Guide.md` - IndexTTS-2 emotion vectors
@@ -67,6 +69,16 @@
 - `tts_audio_suite_aux_models.yaml` - **Source of truth** for helper/post-process model metadata
 - `BUMP_SCRIPT_INSTRUCTIONS.md` - Version bump process
 - `SRT_IMPLEMENTATION.md` - SRT timing technical details
+
+### New Engine Guides (`docs/New Engines Guides/`)
+- `README.md` - Start-here friendly workflow for users guiding LLMs through new engine integrations
+- `01_FIRST_ASK_THE_LLM_TO_RESEARCH_THE_OFFICIAL_MODEL.md` - Required official model capability audit before coding
+- `02_CHECK_EXISTING_COMFYUI_IMPLEMENTATIONS.md` - How to use existing ComfyUI implementations as references, not source of truth
+- `03_DECIDE_ENGINE_SCOPE.md` - Decide whether the engine needs TTS, Voice Changer, ASR, or special nodes; TTS implies SRT support
+- `04_IMPLEMENTATION_ORDER_FOR_LLM.md` - Step-by-step implementation order with Qwen3-TTS and Step Audio EditX reference rules
+- `05_REQUIRED_PARITY_CHECKLIST.md` - Must-pass architecture, lifecycle, cache, tag, SRT, docs, and UX checklist
+- `06_USER_PROMPTS_TO_COPY_PASTE.md` - Ready prompts for users instructing an LLM
+- `07_PR_REVIEW_CHECKLIST.md` - Maintainer/contributor checklist before merge
 
 ## Core Files
 

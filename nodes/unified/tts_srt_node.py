@@ -202,6 +202,13 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['use_cuda_graphs'] = config.get('use_cuda_graphs', False)
                 stable_params['compile_mode'] = config.get('compile_mode', 'default')
 
+            if engine_type == "moss_tts":
+                stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
+                stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Custom Character Switching')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
+                stable_params['codec_model'] = config.get('codec_model', 'MOSS-Audio-Tokenizer')
+
             # For CosyVoice, include actual model identity and load options in cache key.
             # RL and base variants share one folder but use different llm files, so
             # model_path selection must invalidate the cached engine instance.
@@ -677,6 +684,51 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
 
+            elif engine_type == "moss_tts":
+                moss_tts_srt_processor_path = os.path.join(nodes_dir, "moss_tts", "moss_tts_srt_processor.py")
+                moss_tts_srt_spec = importlib.util.spec_from_file_location("moss_tts_srt_processor_module", moss_tts_srt_processor_path)
+                moss_tts_srt_module = importlib.util.module_from_spec(moss_tts_srt_spec)
+                sys.modules["moss_tts_srt_processor_module"] = moss_tts_srt_module
+                moss_tts_srt_spec.loader.exec_module(moss_tts_srt_module)
+
+                MossTTSSRTProcessor = moss_tts_srt_module.MossTTSSRTProcessor
+
+                class MossTTSSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = MossTTSSRTProcessor(self, config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def process_with_error_handling(self, func):
+                        try:
+                            return func()
+                        except Exception as e:
+                            raise e
+
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+                        elif audio_tensor.dim() == 2:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        return {"waveform": audio_tensor, "sample_rate": sample_rate}
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("MOSS-TTS SRT processing interrupted by user")
+
+                engine_instance = MossTTSSRTWrapper(config)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -1145,6 +1197,35 @@ Hello! This is unified SRT TTS with character switching.
                     timing_params=timing_params
                 )
 
+            elif engine_type == "moss_tts":
+                voice_mapping = {}
+                if audio_tensor:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text if reference_text else "",
+                    }
+                elif audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio_path': audio_path,
+                        'reference_text': reference_text if reference_text else "",
+                    }
+
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params
+                )
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
             
@@ -1179,8 +1260,12 @@ Hello! This is unified SRT TTS with character switching.
             return (audio_output, unified_info, timing_report, adjusted_srt)
                 
         except Exception as e:
-            # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
-            if "Pause tags are not compatible with force_speaker_kv" in str(e):
+            # Bubble up hard incompatibilities so ComfyUI shows a modal error.
+            msg = str(e)
+            if (
+                "Pause tags are not compatible with force_speaker_kv" in msg
+                or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
+            ):
                 raise
             error_msg = f"❌ TTS SRT generation failed: {e}"
             print(error_msg)
