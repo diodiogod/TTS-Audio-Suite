@@ -206,7 +206,8 @@ def safe_mel_filters(sr, n_fft, n_mels=80, fmin=0.0, fmax=None, **kwargs):
             norm=torchaudio_norm,
             mel_scale=mel_scale,
         )
-        return mel_transform.fb.numpy().astype(dtype, copy=False)
+        # torchaudio stores filter banks as [n_stft, n_mels]; librosa returns [n_mels, n_stft].
+        return mel_transform.fb.T.numpy().astype(dtype, copy=False)
 
 
 def safe_stft(audio, n_fft=2048, hop_length=512, win_length=None, window='hann', center=True, pad_mode='reflect'):
