@@ -206,7 +206,6 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
 - 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
-- 🎚️ **Official MOSS Prompt Fields** - `instruction`, `quality`, `sound_event`, `ambient_sound`, `language`, and `duration_tokens` exposed on the MOSS engine, with `[]` per-segment overrides for whole-segment conditioning → **[📖 MOSS Prompt Fields Guide](docs/MOSS_TTS_PROMPT_FIELDS_GUIDE.md)**
 - 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
 - 🎓 **Integrated Model Training** - Unified `🎓 Model Training` pipeline with `📦 RVC Dataset Prep`, `🎛️ RVC Training Config`, resumable checkpoints, interrupt-save safety, and a live dashboard for RVC voice model training
 - 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
@@ -857,6 +856,55 @@ Description: "A deep, authoritative male voice with clear articulation"
 - **Creative voice design from text descriptions** (VoiceDesign) - **unique to Qwen3-TTS**
 - High-quality voice cloning with reference audio (Base)
 - Content requiring specific vocal characteristics defined by text
+
+</details>
+
+<details>
+<summary><h3>🎙️ MOSS-TTS - Local/Delay/TTSD Engine Family</h3></summary>
+
+**NEW in v4.26**: OpenMOSS engine family integration with unified support for single-speaker TTS and native multi-speaker dialogue.
+
+**Model Variants:**
+
+* **Small 1.7B (Local Transformer)**: `MOSS-TTS-Local-Transformer`
+* **8B (Delay)**: `MOSS-TTS`
+* **Native 8B Dialogue**: `MOSS-TTSD-v1.0`
+* **Shared Codec**: `MOSS-Audio-Tokenizer`
+
+**Supported Native Input Forms (TTSD):**
+
+* `[Character]` tags
+* `[1]` / `[S1]` numeric speaker tags
+* Manual `Speaker 1: ...` format
+
+All native forms are normalized internally to canonical `[S1]...[S5]` dialogue.
+
+**Speaker Modes:**
+
+* **Custom Character Switching**: Standard per-character generation, pause tags, segment parameters, and full unified controls.
+* **Native Multi-Speaker Dialogue**: Single native TTSD dialogue request with S1-S5 mapping.
+
+**Important Native Compatibility Rule:**
+
+Native TTSD mode now **hard-fails** (explicit error popup) instead of silently switching models when these are detected:
+
+* pause tags
+* inline edit tags
+* per-segment `[]` parameter changes
+* more than 5 speakers
+
+If you need those controls, switch to **Custom Character Switching** and use `MOSS-TTS-Local-Transformer` or `MOSS-TTS`.
+
+**Official Prompt Fields Exposed:**
+
+`instruction`, `quality`, `sound_event`, `ambient_sound`, `language`, `duration_tokens`
+
+Per-segment overrides are supported with `[]` parameter syntax for whole-segment conditioning.
+
+**Documentation:**
+
+* [📖 MOSS Prompt Fields Guide](docs/MOSS_TTS_PROMPT_FIELDS_GUIDE.md)
+* [📖 Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)
 
 </details>
 
