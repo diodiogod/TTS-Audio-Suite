@@ -100,10 +100,10 @@ Builder               English TTS           TTS + ASR
 |                                           VoiceDesign
 |─── 🎓 Training Support Era
 ▼              
-v4.25 ──────────────────────────► 
-Apr 26                
-│ 
-RVC    
+v4.25 ──────────────► v4.26 ────────────►
+Apr 26                May 26
+│                     │
+RVC                   MOSS-TTS
 Model Training 
 ```
 
