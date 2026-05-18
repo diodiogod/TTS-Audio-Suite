@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.26.0] - 2026-05-18
+
+### Added
+
+- Add MOSS-TTS engine family with native multi-speaker dialogue
+- Add MOSS Local 1.7B, Delay 8B, and TTSD 8B model support in unified TTS workflows
+- Add native dialogue mapping support for [Character], [S1]/[1], and Speaker N formats
+- Native TTSD now shows explicit errors for unsupported controls (pause tags, inline edit tags, per-segment parameter changes, or more than 5 speakers) instead of silently switching models
+
+### Changed
+
+- Improve SRT native behavior with stable speaker mapping and clear incompatibility feedback
 ## [4.25.21] - 2026-05-09
 
 ### Added
