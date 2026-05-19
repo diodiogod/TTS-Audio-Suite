@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.26.3] - 2026-05-19
+
+### Added
+
+- Keep local model labels visible in the dropdown when models are already downloaded
+
+### Fixed
+
+- Fix MOSS model selection instability after switching variants
+- Prevent value mismatch issues when switching between 1.7B and 8B variants
+- Improve compatibility with older workflows using local:* model values
+- Keep native dialogue mode execution mapped to the correct TTSD model
 ## [4.26.2] - 2026-05-18
 
 ### Added

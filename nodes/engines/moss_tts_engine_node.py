@@ -42,7 +42,17 @@ class MossTTSEngineNode(BaseTTSNode):
         "Small 1.7B (Local)",
         "8B (Delay)",
     ]
-    NATIVE_MODEL_OPTION = "MOSS-TTSD-v1.0"
+    NATIVE_MODEL_OPTION = "Native 8B Dialogue (MOSS-TTSD-v1.0)"
+    LEGACY_LOCAL_MODEL_OPTIONS = [
+        "local:MOSS-TTS-Local-Transformer",
+        "local:MOSS-TTS",
+        "local:MOSS-TTSD-v1.0",
+    ]
+    FRIENDLY_MODEL_ALIASES = [
+        "Small 1.7B (Local)",
+        "8B (Delay)",
+        "Native 8B Dialogue (MOSS-TTSD-v1.0)",
+    ]
     UI_MODEL_VARIANT_MAP = {
         "Small 1.7B (Local)": "MOSS-TTS-Local-Transformer",
         "8B (Delay)": "MOSS-TTS",
@@ -73,8 +83,8 @@ class MossTTSEngineNode(BaseTTSNode):
                     "tooltip": (
                         "MOSS-TTS model selection.\n"
                         "\n"
-                        "If a local model folder is detected, this dropdown will show local:ModelName like other engines.\n"
-                        "Otherwise it shows the friendly built-in choices.\n"
+                        "If a local model folder is detected, the dropdown shows local:ModelName.\n"
+                        "Otherwise it shows friendly built-in choices.\n"
                         "\n"
                         "Small 1.7B (Local): smaller official local-transformer model.\n"
                         "8B (Delay): larger official delay model.\n"
@@ -316,16 +326,21 @@ class MossTTSEngineNode(BaseTTSNode):
 
     @classmethod
     def _get_ui_native_model_option(cls) -> str:
-        return cls._find_local_variant("MOSS-TTSD-v1.0")
+        native = cls._find_local_variant("MOSS-TTSD-v1.0")
+        return native if native.startswith("local:") else cls.NATIVE_MODEL_OPTION
 
     @classmethod
     def _get_ui_model_options(cls) -> List[str]:
-        return cls._get_ui_standard_model_options() + [cls._get_ui_native_model_option()]
+        values = cls._get_ui_standard_model_options() + [cls._get_ui_native_model_option()]
+        for option in cls.FRIENDLY_MODEL_ALIASES + cls.LEGACY_LOCAL_MODEL_OPTIONS:
+            if option not in values:
+                values.append(option)
+        return values
 
     @classmethod
     def _resolve_model_variant(cls, model_variant: str, multi_speaker_mode: str) -> str:
         if multi_speaker_mode == "Native Multi-Speaker Dialogue":
-            return cls._get_ui_native_model_option()
+            return cls._find_local_variant("MOSS-TTSD-v1.0")
 
         if model_variant.startswith("local:") or model_variant in MossTTSEngine.MODEL_VARIANTS:
             return model_variant
