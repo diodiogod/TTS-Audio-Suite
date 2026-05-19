@@ -1322,6 +1322,7 @@ def register_qwen3_tts_factory():
         """Factory for Qwen3-TTS models with ComfyUI integration"""
         import os
         import sys
+        import importlib.metadata
         import torch
 
         # Extract parameters
@@ -1384,9 +1385,13 @@ def register_qwen3_tts_factory():
                 except ImportError:
                     try:
                         import flash_attn
+                        # flash_attn can import but still be broken (missing metadata on some Windows installs)
+                        importlib.metadata.version("flash_attn")
                         resolved_attn = "flash_attention_2"
                         print(f"[Qwen3-TTS] Auto-selected attention: flash_attention_2")
-                    except ImportError:
+                    except Exception as flash_err:
+                        if "flash_attn" in str(flash_err):
+                            print(f"[Qwen3-TTS] flash_attn unavailable/incomplete, falling back to sdpa: {flash_err}")
                         resolved_attn = "sdpa"  # PyTorch scaled dot product attention
                         print(f"[Qwen3-TTS] Auto-selected attention: sdpa")
             elif attn_implementation == "sage_attn":
@@ -1454,12 +1459,25 @@ def register_qwen3_tts_factory():
                     )
             else:
                 # Load with standard attention implementation
-                qwen3_model = Qwen3TTSModel.from_pretrained(
-                    pretrained_model_name_or_path=resolved_model_path,
-                    device_map=device,
-                    dtype=torch_dtype,
-                    attn_implementation=resolved_attn
-                )
+                try:
+                    qwen3_model = Qwen3TTSModel.from_pretrained(
+                        pretrained_model_name_or_path=resolved_model_path,
+                        device_map=device,
+                        dtype=torch_dtype,
+                        attn_implementation=resolved_attn
+                    )
+                except Exception as e:
+                    # Auto mode may still hit runtime flash-attn issues in some environments.
+                    if attn_implementation == "auto" and resolved_attn == "flash_attention_2" and "flash_attn" in str(e):
+                        print(f"⚠️ [Qwen3-TTS] Failed to load with flash_attention_2, retrying with sdpa: {e}")
+                        qwen3_model = Qwen3TTSModel.from_pretrained(
+                            pretrained_model_name_or_path=resolved_model_path,
+                            device_map=device,
+                            dtype=torch_dtype,
+                            attn_implementation="sdpa"
+                        )
+                    else:
+                        raise
 
             print(f"✅ Qwen3-TTS model '{model_name}' loaded successfully")
 
