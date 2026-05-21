@@ -113,6 +113,15 @@ def _stack(arrays, axis=0):
     return np.stack(arrays, axis=axis)
 
 
+def _deprecated(*args, **kwargs):
+    def decorator(func):
+        return func
+
+    if args and callable(args[0]) and len(args) == 1 and not kwargs:
+        return args[0]
+    return decorator
+
+
 _LIBROSA_UTIL_FALLBACKS = {
     "normalize": _normalize,
     "pad_center": _pad_center,
@@ -125,9 +134,17 @@ _LIBROSA_UTIL_FALLBACKS = {
 }
 
 
+def _build_librosa_decorators_fallback_module():
+    decorators_module = types.ModuleType("librosa.util.decorators")
+    decorators_module.deprecated = _deprecated
+    return decorators_module
+
+
 def _build_librosa_util_fallback_module():
     util_module = types.ModuleType("librosa.util")
+    util_module.__path__ = []
     util_module.__dict__.update(_LIBROSA_UTIL_FALLBACKS)
+    util_module.decorators = _build_librosa_decorators_fallback_module()
     return util_module
 
 
@@ -152,6 +169,7 @@ def apply_librosa_compatibility_patches():
         return True
     except Exception as e:
         util_module = _build_librosa_util_fallback_module()
+        sys.modules["librosa.util.decorators"] = util_module.decorators
         sys.modules["librosa.util"] = util_module
         librosa.util = util_module
         print(f"🔧 RVC: Using bundled librosa.util fallback ({e})")
