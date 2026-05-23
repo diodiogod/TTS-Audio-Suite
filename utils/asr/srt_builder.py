@@ -20,6 +20,11 @@ DEFAULT_CONNECTOR_ALLOWLIST = ENGLISH_DANGLING_TAIL_ALLOWLIST
 DEFAULT_INCOMPLETE_KEYWORDS = ENGLISH_INCOMPLETE_KEYWORDS
 ALIGNMENT_TOKEN_RE = re.compile(r"[^\W_]+(?:[-'][^\W_]+)*|[^\w\s]", flags=re.UNICODE)
 PHRASE_TOKEN_RE = re.compile(r"[^\W_]+(?:[-'][^\W_]+)*", flags=re.UNICODE)
+CJK_CHAR_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]")
+CJK_CLOSE_PUNCT = "，。！？、；：」』”’）】》〉〕］｝"
+CJK_OPEN_PUNCT = "「『“‘（【《〈〔［｛"
+NO_SPACE_BEFORE = set(".,!?;:%)]}\"'") | set(CJK_CLOSE_PUNCT)
+NO_SPACE_AFTER = set("([{\"'") | set(CJK_OPEN_PUNCT)
 
 
 def _format_timestamp(seconds: float) -> str:
@@ -48,7 +53,7 @@ def _wrap_text(text: str, max_chars_per_line: int, max_lines: int) -> str:
         return text
 
     line_groups = _group_items_into_lines(words, max_chars_per_line)
-    return "\n".join(" ".join(str(word) for word in line).strip() for line in line_groups)
+    return "\n".join(_join_display_items(line).strip() for line in line_groups)
 
 
 def _trim_trailing_soft_punctuation(text: str) -> str:
@@ -66,8 +71,50 @@ def _text_of_item(item) -> str:
     return item.text if hasattr(item, "text") else str(item)
 
 
+def _contains_cjk(text: str) -> bool:
+    return bool(CJK_CHAR_RE.search(text or ""))
+
+
+def _is_cjk_char(text: str) -> bool:
+    return bool(text) and len(text) == 1 and bool(CJK_CHAR_RE.match(text))
+
+
+def _needs_separator(left: str, right: str) -> bool:
+    if not left or not right:
+        return False
+    left_last = left[-1]
+    right_first = right[0]
+    if right_first in NO_SPACE_BEFORE or left_last in NO_SPACE_AFTER:
+        return False
+    if _contains_cjk(left_last) and (_contains_cjk(right_first) or right_first in CJK_CLOSE_PUNCT):
+        return False
+    if left_last in CJK_CLOSE_PUNCT and _contains_cjk(right_first):
+        return False
+    return True
+
+
+def _join_display_texts(texts) -> str:
+    parts: List[str] = []
+    for raw_text in texts:
+        text = str(raw_text or "")
+        if not text:
+            continue
+        if parts and _needs_separator(parts[-1], text):
+            parts.append(" ")
+        parts.append(text)
+    return "".join(parts).strip()
+
+
+def _join_display_items(items) -> str:
+    return _join_display_texts(_text_of_item(item) for item in items)
+
+
 def _normalize_token(text: str) -> str:
     return re.sub(r"[^\w]+", "", text, flags=re.UNICODE).lower()
+
+
+def _is_punctuation_only(text: str) -> bool:
+    return bool(text) and not re.search(r"\w", text, flags=re.UNICODE)
 
 
 def _tokenize_phrase_text(text: str) -> List[str]:
@@ -144,7 +191,7 @@ def _group_items_into_lines(items, max_chars_per_line: int):
     current_line = []
     for item in items:
         candidate_items = current_line + [item]
-        candidate_text = " ".join(_text_of_item(x) for x in candidate_items).strip()
+        candidate_text = _join_display_items(candidate_items)
         if current_line and len(candidate_text) > max_chars_per_line:
             lines.append(current_line)
             current_line = [item]
@@ -162,7 +209,7 @@ def _render_control_block(controls) -> str:
 def _append_render_token(parts: List[str], token: str):
     if not token:
         return
-    if parts and not parts[-1].endswith((" ", "\n")):
+    if parts and not parts[-1].endswith((" ", "\n")) and _needs_separator(parts[-1], token):
         parts.append(" ")
     parts.append(token)
 
@@ -188,7 +235,7 @@ def _render_tagged_segment(seg: ASRSegment,
     for line_words in line_groups:
         first_word_idx = word_index_map.get(id(line_words[0]))
         if first_word_idx is None:
-            rendered_lines.append(" ".join(word.text for word in line_words).strip())
+            rendered_lines.append(_join_display_items(line_words))
             continue
 
         parts: List[str] = []
@@ -226,7 +273,7 @@ def _render_tagged_segment(seg: ASRSegment,
 
 
 def _items_text(items) -> str:
-    return " ".join(_text_of_item(item) for item in items).strip()
+    return _join_display_items(items)
 
 
 def _items_duration(items, total_duration: float = 0.0, total_items: int = 0) -> float:
@@ -498,7 +545,7 @@ def _split_segment_for_display(seg: ASRSegment,
     split_segments: List[ASRSegment] = []
     consumed_items = 0
     for group_index, cue_items in enumerate(cue_item_groups):
-        cue_text = " ".join(_text_of_item(item) for item in cue_items).strip()
+        cue_text = _join_display_items(cue_items)
         if not cue_text:
             consumed_items += len(cue_items)
             continue
@@ -685,7 +732,7 @@ def _segments_from_words(words: List[ASRWord],
         too_short_for_reading = duration < min_duration and not _ends_sentence(seg.text)
         if (word_count < min_words_per_segment or duration <= min_segment_seconds or too_short_for_reading) and i + 1 < len(segments):
             nxt = segments[i + 1]
-            merged_text = f"{seg.text} {nxt.text}".strip()
+            merged_text = _join_display_texts([seg.text, nxt.text])
             merged_seg = ASRSegment(start=seg.start, end=nxt.end, text=merged_text, words=(seg.words + nxt.words))
             merged.append(merged_seg)
             i += 2
@@ -711,7 +758,7 @@ def _segments_from_words(words: List[ASRWord],
                 if prev.text and prev.text[-1:] in [".", "!", "?", "…"]:
                     if len(seg.text.split()) <= max(1, merge_leading_short_max_words):
                         if can_merge_by_duration(prev.start, seg.end):
-                            merged_text = f"{prev.text} {seg.text}".strip()
+                            merged_text = _join_display_texts([prev.text, seg.text])
                             stitched[-1] = ASRSegment(
                                 start=prev.start,
                                 end=seg.end,
@@ -731,7 +778,7 @@ def _segments_from_words(words: List[ASRWord],
                 if prev.text and prev.text[-1:] not in [".", "!", "?", "…"]:
                     if len(seg.text.split()) <= max(1, merge_leading_short_no_punct_max_words):
                         if can_merge_by_duration(prev.start, seg.end):
-                            merged_text = f"{prev.text} {seg.text}".strip()
+                            merged_text = _join_display_texts([prev.text, seg.text])
                             stitched[-1] = ASRSegment(
                                 start=prev.start,
                                 end=seg.end,
@@ -766,9 +813,9 @@ def _segments_from_words(words: List[ASRWord],
                         if split_idx >= 0:
                             head_words = seg.words[:split_idx + 1]
                             tail_words = seg.words[split_idx + 1:]
-                            head_text = " ".join([w.text for w in head_words]).strip()
-                            tail_text = " ".join([w.text for w in tail_words]).strip()
-                            combined = f"{prev.text} {head_text}".strip()
+                            head_text = _join_display_items(head_words)
+                            tail_text = _join_display_items(tail_words)
+                            combined = _join_display_texts([prev.text, head_text])
                             if (tts_ready_mode or len(combined) <= (max_chars + punctuation_grace_chars)) and can_merge_by_duration(prev.start, head_words[-1].end):
                                 stitched[-1] = ASRSegment(
                                     start=prev.start,
@@ -785,7 +832,7 @@ def _segments_from_words(words: List[ASRWord],
                                     ))
                                 continue
                         if can_merge_by_duration(prev.start, seg.end):
-                            merged_text = f"{prev.text} {seg.text}".strip()
+                            merged_text = _join_display_texts([prev.text, seg.text])
                             stitched[-1] = ASRSegment(
                                 start=prev.start,
                                 end=seg.end,
@@ -804,7 +851,7 @@ def _segments_from_words(words: List[ASRWord],
             if gap <= merge_incomplete_max_gap:
                 if prev.text and prev.text[-1:] not in [".", "!", "?", "…"]:
                     if _looks_incomplete_tail(prev.text, incomplete_phrases):
-                        combined = f"{prev.text} {seg.text}".strip()
+                        combined = _join_display_texts([prev.text, seg.text])
                         if (tts_ready_mode or len(combined) <= (max_chars + punctuation_grace_chars)) and can_merge_by_duration(prev.start, seg.end):
                             stitched[-1] = ASRSegment(
                                 start=prev.start,
@@ -833,9 +880,9 @@ def _segments_from_words(words: List[ASRWord],
                         if split_idx >= 0:
                             head_words = seg.words[:split_idx + 1]
                             tail_words = seg.words[split_idx + 1:]
-                            head_text = " ".join([w.text for w in head_words]).strip()
-                            tail_text = " ".join([w.text for w in tail_words]).strip()
-                            combined = f"{prev.text} {head_text}".strip()
+                            head_text = _join_display_items(head_words)
+                            tail_text = _join_display_items(tail_words)
+                            combined = _join_display_texts([prev.text, head_text])
                             if (tts_ready_mode or len(combined) <= (max_chars + punctuation_grace_chars)) and can_merge_by_duration(prev.start, head_words[-1].end):
                                 stitched[-1] = ASRSegment(
                                     start=prev.start,
@@ -865,6 +912,10 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
     if not words or not full_text:
         return words, 0, 0, []
 
+    words = [word for word in words if not _is_punctuation_only(word.text)]
+    if not words:
+        return words, 0, 0, []
+
     # Tokenize text into words and punctuation
     # Keep apostrophes and hyphens inside compounds so they do not get
     # mis-attached as free punctuation during alignment.
@@ -888,6 +939,24 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
         if "-" in token:
             return [part for part in token.split("-") if part]
         return [token]
+
+    def expand_cjk(token: str) -> List[str]:
+        if not _contains_cjk(token):
+            return [token]
+
+        parts: List[str] = []
+        latin_buffer: List[str] = []
+        for char in token:
+            if _is_cjk_char(char):
+                if latin_buffer:
+                    parts.append("".join(latin_buffer))
+                    latin_buffer = []
+                parts.append(char)
+            else:
+                latin_buffer.append(char)
+        if latin_buffer:
+            parts.append("".join(latin_buffer))
+        return [part for part in parts if part]
 
     total_word_tokens = 0
     matched_word_tokens = 0
@@ -948,6 +1017,22 @@ def _apply_punctuation(words: List[ASRWord], full_text: str):
     for tok in tokens:
         # Word token
         if re.match(r"[^\W_]", tok, flags=re.UNICODE):
+            cjk_parts = expand_cjk(tok)
+            if len(cjk_parts) > 1:
+                total_word_tokens += len(cjk_parts)
+                if try_match(normalize(tok), tok, len(cjk_parts)):
+                    continue
+
+                matched_all_parts = True
+                for sub in cjk_parts:
+                    if not try_match(normalize(sub), sub, 1):
+                        matched_all_parts = False
+                        if len(missed_tokens) < 3:
+                            missed_tokens.append(sub)
+                if matched_all_parts:
+                    continue
+                continue
+
             compound_parts = expand_compound(tok)
             apostrophe_parts = expand_contraction(tok)
             total_word_tokens += len(compound_parts if "-" in tok else apostrophe_parts)
@@ -1261,7 +1346,7 @@ def build_srt(segments: List[ASRSegment],
                 global_last_word_idx=len(tagged_word_index_map) - 1,
             )
         else:
-            text = " ".join(seg.text.split()) if tts_ready_mode else _wrap_text(seg.text, max_chars_per_line, max_lines)
+            text = _join_display_texts(seg.text.split()) if tts_ready_mode else _wrap_text(seg.text, max_chars_per_line, max_lines)
         if not text:
             continue
         lines.append(str(idx))

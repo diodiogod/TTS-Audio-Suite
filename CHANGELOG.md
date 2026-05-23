@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.26.5] - 2026-05-23
+
+### Added
+
+- Add regression coverage for Chinese subtitle formatting and English spacing
+
+### Fixed
+
+- Fix Text to SRT Builder Chinese punctuation and spacing
+- Fix Chinese/Japanese/Korean subtitles being spaced incorrectly
+- Fix Chinese punctuation appearing as standalone text in generated SRT output
+- Fix Chinese quote spacing such as ：“吃饭了吗？”
 ## [4.26.4] - 2026-05-23
 
 ### Added

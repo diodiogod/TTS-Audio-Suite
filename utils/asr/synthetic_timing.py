@@ -16,8 +16,9 @@ from utils.asr.types import ASRResult, ASRSegment, ASRWord
 
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?…])\s+", flags=re.UNICODE)
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[,;:])\s+", flags=re.UNICODE)
-SENTENCE_END_CHARS = {".", "!", "?", "…"}
-SOFT_BREAK_CHARS = {",", ";", ":"}
+SENTENCE_END_CHARS = {".", "!", "?", "…", "。", "！", "？"}
+SOFT_BREAK_CHARS = {",", ";", ":", "，", "、", "；", "："}
+CJK_CHAR_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]")
 
 
 def _normalize_whitespace(text: str) -> str:
@@ -223,6 +224,32 @@ def _word_weight(word: str) -> float:
     return float(max(1, len(alnum)))
 
 
+def _tokenize_timing_text(text: str) -> List[str]:
+    tokens: List[str] = []
+    buffer: List[str] = []
+
+    def flush_buffer():
+        if buffer:
+            tokens.append("".join(buffer))
+            buffer.clear()
+
+    for char in text:
+        if char.isspace():
+            flush_buffer()
+            continue
+        if CJK_CHAR_RE.match(char):
+            flush_buffer()
+            tokens.append(char)
+            continue
+        if re.match(r"\w", char, flags=re.UNICODE):
+            buffer.append(char)
+            continue
+        flush_buffer()
+
+    flush_buffer()
+    return tokens
+
+
 def _estimate_gap(cue_text: str, min_gap: float, paragraph_break: bool) -> float:
     if paragraph_break:
         return max(min_gap * 1.5, 0.9)
@@ -236,7 +263,7 @@ def _estimate_gap(cue_text: str, min_gap: float, paragraph_break: bool) -> float
 
 
 def _estimate_word_timings(cue_text: str, start_time: float, end_time: float) -> List[ASRWord]:
-    word_tokens = cue_text.split()
+    word_tokens = _tokenize_timing_text(cue_text)
     if not word_tokens:
         return []
 
