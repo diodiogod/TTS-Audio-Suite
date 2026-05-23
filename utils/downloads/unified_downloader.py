@@ -8,6 +8,7 @@ import requests
 import subprocess
 from typing import Optional, Dict, Any, List
 from pathlib import Path
+import fnmatch
 import folder_paths
 
 # Import extra paths support
@@ -280,6 +281,89 @@ class UnifiedDownloader:
             success = False
         
         return model_dir if success else None
+
+    def download_huggingface_snapshot(
+        self,
+        repo_id: str,
+        target_dir: str,
+        revision: Optional[str] = None,
+        allow_patterns: Optional[List[str]] = None,
+        required_files: Optional[List[str]] = None,
+        force_download: bool = False,
+        description: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Download an entire HuggingFace repo snapshot directly into target_dir without
+        treating HuggingFace cache as the final storage location.
+
+        This is intended for folder-shaped artifacts such as PEFT/LoRA adapters.
+        """
+        try:
+            from huggingface_hub import HfApi
+        except Exception as e:
+            raise RuntimeError(
+                "huggingface_hub is required for snapshot-style downloads."
+            ) from e
+
+        os.makedirs(target_dir, exist_ok=True)
+        label = description or repo_id
+        print(f"📥 Downloading snapshot for {label} directly into {target_dir}")
+
+        api = HfApi()
+        try:
+            repo_files = api.list_repo_files(repo_id=repo_id, revision=revision)
+        except Exception as e:
+            raise RuntimeError(f"Failed to list files for Hugging Face repo {repo_id}: {e}") from e
+
+        if allow_patterns:
+            matched_files = []
+            for file_path in repo_files:
+                if any(fnmatch.fnmatch(file_path, pattern) for pattern in allow_patterns):
+                    matched_files.append(file_path)
+            repo_files = matched_files
+
+        if not repo_files:
+            raise RuntimeError(f"No files matched for Hugging Face repo {repo_id}")
+
+        if force_download:
+            for rel_path in repo_files:
+                target_path = os.path.join(target_dir, rel_path)
+                if os.path.exists(target_path):
+                    try:
+                        os.remove(target_path)
+                    except OSError:
+                        pass
+
+        failed_files = []
+        url_revision = revision or "main"
+        for rel_path in repo_files:
+            target_path = os.path.join(target_dir, rel_path)
+            url = f"https://huggingface.co/{repo_id}/resolve/{url_revision}/{rel_path}"
+            ok = self.download_file(
+                url,
+                target_path,
+                f"{label}/{rel_path}",
+                force_download=force_download,
+            )
+            if not ok:
+                failed_files.append(rel_path)
+
+        if failed_files:
+            raise RuntimeError(
+                f"Failed to download {len(failed_files)} file(s) from {repo_id}: {failed_files[:10]}"
+            )
+
+        missing_required = []
+        for rel_path in required_files or []:
+            if not os.path.exists(os.path.join(target_dir, rel_path)):
+                missing_required.append(rel_path)
+        if missing_required:
+            raise RuntimeError(
+                f"Downloaded snapshot for {repo_id} is incomplete. Missing required files: {missing_required}"
+            )
+
+        print(f"✅ Snapshot ready: {target_dir}")
+        return target_dir
     
     def download_chatterbox_model(self, repo_id: str, model_name: str, subdirectory: str = None, 
                                 files: List[str] = None) -> Optional[str]:

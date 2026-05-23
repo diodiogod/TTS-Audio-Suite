@@ -52,8 +52,8 @@ class TTSAudioInstaller:
             self.log("requirements.txt not found - skipping", "WARNING")
             return
 
-        # Parse requirements.txt to get all package specs (without importing modules)
-        missing_packages = []
+        # Parse requirements.txt to get all package specs and detect both missing and incompatible versions.
+        packages_to_install = []
         package_specs = {}
         try:
             try:
@@ -102,19 +102,36 @@ class TTSAudioInstaller:
                         package_specs[normalized_name] = clean_line
 
                         try:
-                            version(package_name)
+                            installed_version = version(package_name)
+                            if req and req.specifier and installed_version not in req.specifier:
+                                packages_to_install.append(package_name)
                         except PackageNotFoundError:
-                            missing_packages.append(package_name)
+                            packages_to_install.append(package_name)
         except Exception as e:
             self.log(f"Error reading requirements.txt: {e}", "WARNING")
             return
 
-        if missing_packages:
-            self.log(f"Missing {len(missing_packages)} requirements.txt packages: {', '.join(missing_packages[:5])}{'...' if len(missing_packages) > 5 else ''}", "WARNING")
-            self.log("Installing missing requirements individually (preserves ComfyUI Manager safeguards)", "INFO")
+        # Preserve order but avoid duplicate installs if multiple requirement lines resolve to the same package.
+        deduped_packages_to_install = []
+        seen = set()
+        for package in packages_to_install:
+            normalized_name = canonicalize_name(package) if canonicalize_name else package
+            if normalized_name in seen:
+                continue
+            seen.add(normalized_name)
+            deduped_packages_to_install.append(package)
 
-            # Install each missing package individually using our safe method
-            for package in missing_packages:
+        if deduped_packages_to_install:
+            self.log(
+                f"Found {len(deduped_packages_to_install)} missing/outdated requirements.txt packages: "
+                f"{', '.join(deduped_packages_to_install[:5])}"
+                f"{'...' if len(deduped_packages_to_install) > 5 else ''}",
+                "WARNING"
+            )
+            self.log("Installing/upgrading requirements individually (preserves ComfyUI Manager safeguards)", "INFO")
+
+            # Install each missing/incompatible package individually using our safe method
+            for package in deduped_packages_to_install:
                 normalized_name = canonicalize_name(package) if canonicalize_name else package
                 package_spec = package_specs.get(normalized_name, package)
 

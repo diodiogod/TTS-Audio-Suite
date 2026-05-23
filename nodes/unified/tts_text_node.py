@@ -640,6 +640,8 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
         except Exception as e:
+            if "MOSS LoRA/base model mismatch" in str(e):
+                raise
             print(f"❌ Failed to create engine node instance: {e}")
             return None
 
@@ -1274,9 +1276,15 @@ Back to the main narrator voice for the conclusion.""",
                 clean_text = re.sub(r'\[.*?\]', '', text)
                 text_length = len(clean_text)
                 model_variant = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
+                lora_adapter = config.get('lora_adapter')
+                lora_info = ""
+                if lora_adapter:
+                    import os
+                    lora_name = os.path.basename(str(lora_adapter).rstrip("/\\"))
+                    lora_info = f", LoRA: {lora_name}"
                 base_info = (
                     f"Generated {total_duration:.1f}s audio from {text_length} characters "
-                    f"(MOSS-TTS {model_variant}, narrator: {char_display})"
+                    f"(MOSS-TTS {model_variant}{lora_info}, narrator: {char_display})"
                 )
                 base_info += "\n🎭 Character switching, pause tags, and official duration-token hint supported"
                 generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
@@ -1561,6 +1569,8 @@ Back to the main narrator voice for the conclusion.""",
         except Exception as e:
             # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
             if "Pause tags are not compatible with force_speaker_kv" in str(e):
+                raise
+            if "MOSS LoRA/base model mismatch" in str(e):
                 raise
             if engine_type == "index_tts":
                 raise

@@ -39,6 +39,7 @@ class MossTTSEngineAdapter:
         dtype: str = "auto",
         attn_implementation: str = "auto",
         codec_model: str = "MOSS-Audio-Tokenizer",
+        lora_adapter: Optional[str] = None,
     ):
         from utils.models.unified_model_interface import unified_model_interface
 
@@ -52,6 +53,7 @@ class MossTTSEngineAdapter:
                 "dtype": dtype,
                 "attn_implementation": attn_implementation,
                 "codec_model": codec_model,
+                "lora_adapter": lora_adapter,
             },
         )
         self._last_config = config
@@ -64,8 +66,9 @@ class MossTTSEngineAdapter:
         dtype: str = "auto",
         attn_implementation: str = "auto",
         codec_model: str = "MOSS-Audio-Tokenizer",
+        lora_adapter: Optional[str] = None,
     ):
-        self.load_model(model_variant, device, dtype, attn_implementation, codec_model)
+        self.load_model(model_variant, device, dtype, attn_implementation, codec_model, lora_adapter)
 
     def _get_engine(self):
         if self._last_config is None:
@@ -111,6 +114,7 @@ class MossTTSEngineAdapter:
         duration_tokens = max(1, int(explicit_duration)) if explicit_duration else None
         resolved_max_new_tokens = int(params.get("max_new_tokens", 4096))
         n_vq_for_inference = params.get("n_vq_for_inference")
+        lora_adapter = params.get("lora_adapter")
         instruction = params.get("instruction")
         quality = params.get("quality")
         sound_event = params.get("sound_event")
@@ -137,6 +141,7 @@ class MossTTSEngineAdapter:
             device=params.get("device", "auto"),
             dtype=params.get("dtype", "auto"),
             attn_implementation=params.get("attn_implementation", "auto"),
+            lora_adapter=lora_adapter,
             character=character_name or "narrator",
         )
 

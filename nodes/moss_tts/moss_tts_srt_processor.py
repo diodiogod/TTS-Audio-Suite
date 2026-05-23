@@ -128,7 +128,15 @@ class MossTTSSRTProcessor:
         mode_info = current_timing_mode
         if mode_switched:
             mode_info = f"{current_timing_mode} (switched from {timing_mode} due to overlaps)"
-        info = f"Generated {total_duration:.1f}s MOSS-TTS SRT-timed audio from {len(subtitles)} subtitles using {mode_info} mode"
+        lora_adapter = self.engine_config.get("lora_adapter")
+        lora_info = ""
+        if lora_adapter:
+            lora_name = os.path.basename(str(lora_adapter).rstrip("/\\"))
+            lora_info = f" with LoRA {lora_name}"
+        info = (
+            f"Generated {total_duration:.1f}s MOSS-TTS SRT-timed audio from "
+            f"{len(subtitles)} subtitles using {mode_info} mode{lora_info}"
+        )
 
         if final_audio.dim() == 1:
             final_audio = final_audio.unsqueeze(0).unsqueeze(0)

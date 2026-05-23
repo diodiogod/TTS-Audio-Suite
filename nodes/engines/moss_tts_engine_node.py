@@ -8,6 +8,7 @@ import os
 import sys
 import importlib.util
 from typing import Dict, List
+import re
 
 current_dir = os.path.dirname(__file__)
 nodes_dir = os.path.dirname(current_dir)
@@ -25,6 +26,7 @@ BaseTTSNode = base_module.BaseTTSNode
 
 from engines.moss_tts.moss_tts import MossTTSEngine
 from utils.models.extra_paths import get_all_tts_model_paths
+from utils.downloads.unified_downloader import UnifiedDownloader
 
 
 class AnyType(str):
@@ -58,6 +60,7 @@ class MossTTSEngineNode(BaseTTSNode):
         "8B (Delay)": "MOSS-TTS",
         "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
     }
+    NO_LORA_OPTION = "None"
 
     MODEL_DEFAULTS: Dict[str, Dict[str, float]] = {
         name: {
@@ -278,6 +281,27 @@ class MossTTSEngineNode(BaseTTSNode):
                 "speaker5_voice": (any_typ, {
                     "tooltip": "Voice for S5 in Native Multi-Speaker Dialogue. Connect Character Voices opt_narrator output."
                 }),
+                "local_lora_adapter": (cls._get_ui_lora_options(), {
+                    "default": cls.NO_LORA_OPTION,
+                    "tooltip": (
+                        "Optional local MOSS LoRA adapter discovered under models/TTS/moss_tts/loras.\n"
+                        "\n"
+                        "This expects a PEFT adapter folder, not just a raw weight file.\n"
+                        "Training should save a full adapter directory with adapter_config.json."
+                    )
+                }),
+                "lora_adapter_override": ("STRING", {
+                    "default": "",
+                    "tooltip": (
+                        "Advanced override for MOSS LoRA adapter inference.\n"
+                        "\n"
+                        "Accepts a local adapter folder path or Hugging Face repo id.\n"
+                        "Example: ToSee-Norway/MOSS-TTS-Norwegian-LoRA\n"
+                        "\n"
+                        "If you enter a Hugging Face repo id, it will be installed into models/TTS/moss_tts/loras and then loaded locally.\n"
+                        "If this field is filled, it overrides the local LoRA dropdown."
+                    )
+                }),
             },
         }
 
@@ -338,6 +362,119 @@ class MossTTSEngineNode(BaseTTSNode):
         return values
 
     @classmethod
+    def _discover_local_lora_adapters(cls) -> List[str]:
+        discovered: List[str] = []
+        seen = set()
+        try:
+            for base_path in get_all_tts_model_paths("TTS"):
+                lora_root = os.path.join(base_path, "moss_tts", "loras")
+                if not os.path.isdir(lora_root):
+                    continue
+                for name in sorted(os.listdir(lora_root)):
+                    candidate = os.path.join(lora_root, name)
+                    if not os.path.isdir(candidate):
+                        continue
+                    if not os.path.exists(os.path.join(candidate, "adapter_config.json")):
+                        continue
+                    label = f"local:{name}"
+                    if label not in seen:
+                        seen.add(label)
+                        discovered.append(label)
+        except Exception:
+            pass
+        return discovered
+
+    @classmethod
+    def _get_ui_lora_options(cls) -> List[str]:
+        return [cls.NO_LORA_OPTION] + cls._discover_local_lora_adapters()
+
+    @classmethod
+    def _get_moss_lora_root(cls) -> str:
+        from utils.models.extra_paths import get_preferred_download_path
+
+        moss_root = get_preferred_download_path("TTS", "moss_tts")
+        lora_root = os.path.join(moss_root, "loras")
+        os.makedirs(lora_root, exist_ok=True)
+        return lora_root
+
+    @classmethod
+    def _repo_id_to_local_lora_name(cls, repo_id: str) -> str:
+        safe = str(repo_id or "").strip().replace("\\", "/").strip("/")
+        safe = safe.replace("/", "__")
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", safe)
+        return safe or "moss_lora"
+
+    @classmethod
+    def _looks_like_hf_repo_id(cls, value: str) -> bool:
+        text = str(value or "").strip()
+        if not text or os.path.isabs(text) or os.path.exists(text):
+            return False
+        if "://" in text or text.startswith(".") or text.startswith("~"):
+            return False
+        parts = text.split("/")
+        return len(parts) == 2 and all(parts)
+
+    @classmethod
+    def _install_hf_lora_adapter(cls, repo_id: str) -> str:
+        local_name = cls._repo_id_to_local_lora_name(repo_id)
+        target_dir = os.path.join(cls._get_moss_lora_root(), local_name)
+        config_path = os.path.join(target_dir, "adapter_config.json")
+        has_weights = False
+        if os.path.isdir(target_dir):
+            for filename in os.listdir(target_dir):
+                if filename.endswith(".safetensors") or filename.endswith(".bin"):
+                    has_weights = True
+                    break
+        if os.path.exists(config_path) and has_weights:
+            return target_dir
+
+        downloader = UnifiedDownloader()
+        downloader.download_huggingface_snapshot(
+            repo_id=repo_id,
+            target_dir=target_dir,
+            allow_patterns=[
+                "adapter_config.json",
+                "*.safetensors",
+                "*.bin",
+                "*.json",
+                "*.txt",
+                "*.model",
+            ],
+            required_files=["adapter_config.json"],
+            description=f"MOSS LoRA {repo_id}",
+        )
+        return target_dir
+
+    @classmethod
+    def _resolve_lora_adapter(
+        cls,
+        local_lora_adapter: str,
+        lora_adapter_override: str,
+        legacy_lora_adapter: str,
+    ) -> str:
+        manual = str(lora_adapter_override or legacy_lora_adapter or "").strip()
+        if manual:
+            if cls._looks_like_hf_repo_id(manual):
+                return cls._install_hf_lora_adapter(manual)
+            return manual
+
+        local_value = str(local_lora_adapter or "").strip()
+        if not local_value or local_value == cls.NO_LORA_OPTION:
+            return ""
+
+        if local_value.startswith("local:"):
+            adapter_name = local_value.split(":", 1)[1]
+            for base_path in get_all_tts_model_paths("TTS"):
+                candidate = os.path.join(base_path, "moss_tts", "loras", adapter_name)
+                if os.path.isdir(candidate) and os.path.exists(os.path.join(candidate, "adapter_config.json")):
+                    return candidate
+
+        if cls._looks_like_hf_repo_id(local_value):
+            return cls._install_hf_lora_adapter(local_value)
+
+        return local_value
+
+    @classmethod
     def _resolve_model_variant(cls, model_variant: str, multi_speaker_mode: str) -> str:
         if multi_speaker_mode == "Native Multi-Speaker Dialogue":
             return cls._find_local_variant("MOSS-TTSD-v1.0")
@@ -379,10 +516,13 @@ class MossTTSEngineNode(BaseTTSNode):
         speaker3_voice=None,
         speaker4_voice=None,
         speaker5_voice=None,
+        local_lora_adapter: str = "None",
+        lora_adapter_override: str = "",
     ):
         resolved_model_variant = self._resolve_model_variant(model_variant, multi_speaker_mode)
         if resolved_model_variant != model_variant:
             print(f"🔄 MOSS-TTS: Resolved model selection '{model_variant}' -> '{resolved_model_variant}'")
+        resolved_lora_adapter = self._resolve_lora_adapter(local_lora_adapter, lora_adapter_override, "")
 
         resolved_variant = (
             resolved_model_variant.replace("local:", "")
@@ -427,6 +567,7 @@ class MossTTSEngineNode(BaseTTSNode):
             "speaker3_voice": speaker3_voice,
             "speaker4_voice": speaker4_voice,
             "speaker5_voice": speaker5_voice,
+            "lora_adapter": resolved_lora_adapter or None,
         }
 
         print(f"⚙️ MOSS-TTS: Configured {resolved_model_variant} on {device}")
@@ -454,6 +595,8 @@ class MossTTSEngineNode(BaseTTSNode):
         ]
         if prompt_fields:
             print(f"   Official prompt fields: {', '.join(prompt_fields)}")
+        if config.get("lora_adapter"):
+            print(f"   LoRA adapter: {config['lora_adapter']}")
 
         return ({
             "engine_type": "moss_tts",

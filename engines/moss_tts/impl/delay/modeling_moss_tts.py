@@ -26,6 +26,7 @@ from torch.nn import CrossEntropyLoss
 
 from transformers.modeling_utils import PreTrainedModel
 from transformers.modeling_outputs import ModelOutput
+from transformers.generation import GenerationMixin
 from transformers.utils import (
     add_start_docstrings,
     add_start_docstrings_to_model_forward,
@@ -93,7 +94,7 @@ class MossTTSDelayOutputWithPast(ModelOutput):
 
 
 
-class MossTTSDelayPreTrainedModel(PreTrainedModel):
+class MossTTSDelayPreTrainedModel(PreTrainedModel, GenerationMixin):
     config_class = MossTTSDelayConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
@@ -161,7 +162,7 @@ MOSSTTS_START_DOCSTRING = r"""
     "The MossTTSDelay Model architecture tailored for Text-to-Speech generation with multi-head VQ prediction.",
     MOSSTTS_START_DOCSTRING,
 )
-class MossTTSDelayModel(MossTTSDelayPreTrainedModel):
+class MossTTSDelayModel(MossTTSDelayPreTrainedModel, GenerationMixin):
     UserMessage = UserMessage
     AssistantMessage = AssistantMessage
     Processor = MossTTSDelayProcessor
@@ -393,6 +394,49 @@ class MossTTSDelayModel(MossTTSDelayPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past_key_values=None,
+        attention_mask=None,
+        inputs_embeds=None,
+        cache_position=None,
+        position_ids=None,
+        use_cache=True,
+        **kwargs,
+    ):
+        # TTS Audio Suite patch: provide the standard HF generation hook expected by PEFT.
+        # The Delay model still uses its own custom generate loop; this method exists for adapter wrapping.
+        if past_key_values is not None:
+            input_ids = input_ids[:, -1:, :]
+            if cache_position is not None:
+                cache_position = cache_position[-1:]
+            if position_ids is not None:
+                position_ids = position_ids[:, -1:]
+
+        model_inputs = {
+            "input_ids": input_ids,
+            "past_key_values": past_key_values,
+            "use_cache": use_cache,
+        }
+
+        if attention_mask is not None:
+            model_inputs["attention_mask"] = attention_mask
+        if cache_position is not None:
+            model_inputs["cache_position"] = cache_position
+        if position_ids is not None:
+            model_inputs["position_ids"] = position_ids
+        elif attention_mask is not None:
+            auto_position_ids = attention_mask.long().cumsum(-1) - 1
+            auto_position_ids.masked_fill_(attention_mask == 0, 0)
+            if past_key_values is not None:
+                auto_position_ids = auto_position_ids[:, -1:]
+            model_inputs["position_ids"] = auto_position_ids
+
+        # inputs_embeds is intentionally ignored because this bundled model requires
+        # structured multi-channel input_ids with shape (B, T, 1 + n_vq).
+        return model_inputs
 
     @torch.inference_mode()
     def generate(

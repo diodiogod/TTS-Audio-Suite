@@ -369,6 +369,7 @@ class MossTTSCacheKeyGenerator(CacheKeyGenerator):
             'text': params.get('text', ''),
             'audio_component': params.get('audio_component', ''),
             'model_variant': params.get('model_variant', 'MOSS-TTS-Local-Transformer'),
+            'lora_adapter': params.get('lora_adapter'),
             'language': params.get('language', 'auto'),
             'instruction': params.get('instruction'),
             'quality': params.get('quality'),

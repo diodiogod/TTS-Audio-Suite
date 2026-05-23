@@ -40,6 +40,7 @@ bitsandbytes>=0.47.0     # 4-bit quantization support for VibeVoice memory effic
 safetensors>=0.6.2       # MOSS-TTS / HF safetensors checkpoints
 orjson>=3.11.0           # MOSS-TTS remote-code dependency
 tiktoken>=0.12.0         # MOSS-TTS tokenizer dependency
+peft>=0.18.1            # MOSS-TTS LoRA adapter inference/training support (aLoRA/Arrow-era adapter configs)
 
 # Bundled engine dependencies (safe)
 conformer>=0.3.2      # ChatterBox engine

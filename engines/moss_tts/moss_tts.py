@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.metadata
 import importlib.util
 import importlib
+import json
 import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
@@ -87,6 +88,7 @@ class MossTTSEngine:
         device: str = "auto",
         dtype: str = "auto",
         attn_implementation: str = "auto",
+        lora_adapter: Optional[str] = None,
     ):
         self.model_path = model_path
         self.codec_path = codec_path
@@ -94,6 +96,7 @@ class MossTTSEngine:
         self.device = self._resolve_device(device)
         self.dtype = self._resolve_dtype(dtype)
         self.attn_implementation = self._resolve_attn_implementation(attn_implementation)
+        self.lora_adapter = str(lora_adapter or "").strip() or None
         self._model = None
         self._processor = None
         self._audio_tokenizer_device = "cpu"
@@ -160,11 +163,66 @@ class MossTTSEngine:
                 "you have validated Qwen3-TTS compatibility in this suite."
             )
 
+    @staticmethod
+    def _normalize_model_identity(value: Optional[str]) -> str:
+        text = str(value or "").strip().replace("\\", "/").rstrip("/")
+        if not text:
+            return ""
+        if "://" in text:
+            text = text.split("://", 1)[1]
+        return text.lower()
+
+    def _validate_lora_compatibility(self) -> None:
+        if not self.lora_adapter:
+            return
+
+        adapter_path = str(self.lora_adapter).strip()
+        config_path = os.path.join(adapter_path, "adapter_config.json")
+        if not os.path.isfile(config_path):
+            raise RuntimeError(
+                f"Invalid MOSS LoRA adapter: missing adapter_config.json in '{adapter_path}'. "
+                "Expected a PEFT adapter folder, not a bare weights file."
+            )
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                adapter_config = json.load(f)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to read MOSS LoRA adapter config '{config_path}': {e}"
+            ) from e
+
+        expected_repo_id = str(
+            self.MODEL_VARIANTS.get(self.model_variant, {}).get("repo_id", "")
+        ).strip()
+        configured_base = str(adapter_config.get("base_model_name_or_path", "")).strip()
+
+        if not configured_base or not expected_repo_id:
+            return
+
+        normalized_expected = self._normalize_model_identity(expected_repo_id)
+        normalized_configured = self._normalize_model_identity(configured_base)
+        configured_name = os.path.basename(normalized_configured)
+        expected_name = os.path.basename(normalized_expected)
+
+        if normalized_configured == normalized_expected:
+            return
+        if configured_name and configured_name == expected_name:
+            return
+
+        raise RuntimeError(
+            "MOSS LoRA/base model mismatch. "
+            f"Selected model '{self.model_variant}' expects base '{expected_repo_id}', "
+            f"but adapter '{os.path.basename(adapter_path)}' was saved for '{configured_base}'. "
+            "Use the matching MOSS variant or a LoRA trained for this model."
+        )
+
     def _ensure_model_loaded(self) -> None:
         if self._model is not None and self._processor is not None:
             return
 
         self._check_transformers_version()
+        self._validate_lora_compatibility()
         from transformers import AutoTokenizer
         from engines.moss_tts.impl.audio_tokenizer.modeling_moss_audio_tokenizer import (
             MossAudioTokenizerModel,
@@ -174,6 +232,8 @@ class MossTTSEngine:
         print(f"   Model: {self.model_path}")
         print(f"   Codec: {self.codec_path}")
         print(f"   Device: {self.device} | Dtype: {self.dtype} | Attention: {self.attn_implementation}")
+        if self.lora_adapter:
+            print(f"   LoRA: {self.lora_adapter}")
 
         architecture = self.MODEL_VARIANTS.get(self.model_variant, {}).get("architecture", "local")
         if architecture == "local":
@@ -233,7 +293,17 @@ class MossTTSEngine:
             self.model_path,
             attn_implementation=self.attn_implementation,
             dtype=self.dtype,
-        ).to(self.device)
+        )
+        if self.lora_adapter:
+            try:
+                from peft import PeftModel
+            except ImportError as e:
+                raise ImportError(
+                    "MOSS LoRA adapter loading requires the 'peft' package. Install it and restart ComfyUI."
+                ) from e
+            # TTS Audio Suite Patch: allow loading MOSS PEFT/LoRA adapters for inference.
+            model = PeftModel.from_pretrained(model, self.lora_adapter)
+        model = model.to(self.device)
         model_cfg_runtime = getattr(model, "config", None)
         resolved_pad_token_id = tokenizer_pad_id
         if resolved_pad_token_id is None:

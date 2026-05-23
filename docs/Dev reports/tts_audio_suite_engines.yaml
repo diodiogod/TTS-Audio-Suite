@@ -967,9 +967,8 @@ engines:
       training: false
 
     special_features:
-      - "Zero-shot voice cloning"
       - "20-language generation"
-      - "Long-form TTSD"
+      - "Long-form generation (TTSD/Delay)"
       - "Native 1-5 speaker TTSD dialogue"
       - "Duration token hint"
       - "Local/Delay/TTSD variants"
@@ -1035,8 +1034,8 @@ engines:
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
-      native_long_form: { supported: "partial", notes: "(Delay model stability; suite chunks long text)" }
-      community_finetunes: { supported: true, notes: "(official LoRA examples)" }
+      native_long_form: { supported: true, notes: "(TTSD/Delay long-form; use chunk orchestration for very long inputs)" }
+      community_finetunes: { supported: true, notes: "(LoRA adapter inference supported; training UI not added yet)" }
       vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
       speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
 
@@ -1170,7 +1169,7 @@ feature_metadata:
   voice_conversion: { name: "Voice Conversion", display: "**Voice Conversion**" }
   asr_transcribe: { name: "ASR (Transcribe)", display: "**ASR (Transcribe)**" }
   emotion_control: { name: "Emotion Control", display: "**Emotion Control**" }
-  native_long_form: { name: "Native Long-form (90min)", display: "**Native Long-form (90min)**" }
+  native_long_form: { name: "Native Long-form", display: "**Native Long-form**" }
   community_finetunes: { name: "Community Finetunes", display: "**Community Finetunes**" }
   vram_efficient: { name: "VRAM Efficient", display: "**VRAM Efficient**" }
   speed_performance: { name: "Speed/Performance", display: "**Speed/Performance**" }

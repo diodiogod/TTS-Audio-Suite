@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.26.4] - 2026-05-23
+
+### Added
+
+- Add MOSS LoRA loading support for MOSS-TTS
+- Add local MOSS LoRA selection from the managed TTS moss_tts/loras folder
+- Install MOSS LoRA adapters from Hugging Face directly into the local TTS model folder instead of hidden cache storage
+- Show active MOSS LoRA adapters in generation info output
+- Show real ComfyUI popup errors for MOSS LoRA/base model mismatches
+- Add documentation for the MOSS LoRA folder layout and usage
+
+### Fixed
+
+- Fail fast when a MOSS LoRA was trained for the wrong base model
+- Improve MOSS compatibility with newer LoRA adapter packages and installer upgrades
 ## [4.26.3] - 2026-05-19
 
 ### Added

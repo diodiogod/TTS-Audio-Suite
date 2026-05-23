@@ -1287,6 +1287,7 @@ def register_moss_tts_factory():
         dtype = additional_params.get("dtype", "auto")
         attn_implementation = additional_params.get("attn_implementation", "auto")
         codec_model = additional_params.get("codec_model", "MOSS-Audio-Tokenizer")
+        lora_adapter = additional_params.get("lora_adapter")
 
         from engines.moss_tts.moss_tts import MossTTSEngine
         from engines.moss_tts.moss_tts_downloader import MossTTSDownloader
@@ -1308,6 +1309,7 @@ def register_moss_tts_factory():
             device=device,
             dtype=dtype,
             attn_implementation=attn_implementation,
+            lora_adapter=lora_adapter,
         )
         engine._ensure_model_loaded()
         print(f"✅ MOSS-TTS model '{model_name}' loaded successfully")
