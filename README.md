@@ -905,6 +905,7 @@ Per-segment overrides are supported with `[]` parameter syntax for whole-segment
 
 * [📖 MOSS Prompt Fields Guide](docs/MOSS_TTS_PROMPT_FIELDS_GUIDE.md)
 * [📖 MOSS LoRA Guide](docs/MOSS_LORA_GUIDE.md)
+* [📖 MOSS Training Guide](docs/MOSS_TRAINING_GUIDE.md)
 * [📖 Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)
 
 </details>

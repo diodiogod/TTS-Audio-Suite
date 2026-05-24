@@ -396,6 +396,46 @@ except Exception as e:
     RVC_TRAINING_CONFIG_AVAILABLE = False
 
 try:
+    moss_dataset_prep_module = load_node_module("moss_dataset_prep_node", "training/moss_dataset_prep_node.py")
+    MossDatasetPrepNode = moss_dataset_prep_module.MossDatasetPrepNode
+    MOSS_DATASET_PREP_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS Dataset Prep failed: {e}")
+    MOSS_DATASET_PREP_AVAILABLE = False
+
+try:
+    moss_training_config_module = load_node_module("moss_training_config_node", "training/moss_training_config_node.py")
+    MossTrainingConfigNode = moss_training_config_module.MossTrainingConfigNode
+    MOSS_TRAINING_CONFIG_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS Training Config failed: {e}")
+    MOSS_TRAINING_CONFIG_AVAILABLE = False
+
+try:
+    moss_manifest_builder_module = load_node_module("moss_manifest_builder_node", "training/moss_manifest_builder_node.py")
+    MossManifestBuilderNode = moss_manifest_builder_module.MossManifestBuilderNode
+    MOSS_MANIFEST_BUILDER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS Manifest Builder failed: {e}")
+    MOSS_MANIFEST_BUILDER_AVAILABLE = False
+
+try:
+    moss_clip_staging_module = load_node_module("moss_clip_staging_node", "training/moss_clip_staging_node.py")
+    MossClipStagingNode = moss_clip_staging_module.MossClipStagingNode
+    MOSS_CLIP_STAGING_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS Clip Staging failed: {e}")
+    MOSS_CLIP_STAGING_AVAILABLE = False
+
+try:
+    moss_dataset_rows_module = load_node_module("moss_dataset_rows_node", "training/moss_dataset_rows_node.py")
+    MossDatasetRowsNode = moss_dataset_rows_module.MossDatasetRowsNode
+    MOSS_DATASET_ROWS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS Dataset Rows failed: {e}")
+    MOSS_DATASET_ROWS_AVAILABLE = False
+
+try:
     phoneme_text_normalizer_module = load_node_module("phoneme_text_normalizer_node", "text/phoneme_text_normalizer_node.py")
     PhonemeTextNormalizer = phoneme_text_normalizer_module.PhonemeTextNormalizer
     PHONEME_TEXT_NORMALIZER_AVAILABLE = True
@@ -687,6 +727,26 @@ if RVC_DATASET_PREP_AVAILABLE:
 if RVC_TRAINING_CONFIG_AVAILABLE:
     NODE_CLASS_MAPPINGS["RVCTrainingConfigNode"] = RVCTrainingConfigNode
     NODE_DISPLAY_NAME_MAPPINGS["RVCTrainingConfigNode"] = "🎛️ RVC Training Config"
+
+if MOSS_DATASET_PREP_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossDatasetPrepNode"] = MossDatasetPrepNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossDatasetPrepNode"] = "📦 MOSS Dataset Prep"
+
+if MOSS_TRAINING_CONFIG_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossTrainingConfigNode"] = MossTrainingConfigNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossTrainingConfigNode"] = "🎛️ MOSS Training Config"
+
+if MOSS_MANIFEST_BUILDER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossManifestBuilderNode"] = MossManifestBuilderNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossManifestBuilderNode"] = "📝 MOSS Manifest Builder"
+
+if MOSS_CLIP_STAGING_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossClipStagingNode"] = MossClipStagingNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossClipStagingNode"] = "🎞️ MOSS Clip Staging"
+
+if MOSS_DATASET_ROWS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossDatasetRowsNode"] = MossDatasetRowsNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossDatasetRowsNode"] = "🧾 MOSS Dataset Rows"
 
 # Register text processing nodes
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:
