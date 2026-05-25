@@ -227,7 +227,14 @@ app.registerExtension({
             const originalOnDrawBackground = nodeType.prototype.onDrawBackground;
             nodeType.prototype.onDrawBackground = function(ctx) {
                 const result = originalOnDrawBackground ? originalOnDrawBackground.apply(this, arguments) : undefined;
-                
+
+                if (this.audioAnalyzerInterface) {
+                    const canvasChanged = this.audioAnalyzerInterface.resizeCanvas(false);
+                    if (canvasChanged) {
+                        requestAnimationFrame(() => this.audioAnalyzerInterface?.visualization?.redraw());
+                    }
+                }
+
                 // Check if we just executed and have new output data
                 if (this.lastExecutionTime && Date.now() - this.lastExecutionTime < 1000) {
                     // Recently executed, try to get fresh output data

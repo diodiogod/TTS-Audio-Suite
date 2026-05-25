@@ -5,140 +5,120 @@
 export class AudioAnalyzerLayout {
     constructor(core) {
         this.core = core;
+        this.buttonRowHeight = 44;
         this.interfaceHeight = 420;
-        this.interfaceWidth = 800;
+        this.nodeBottomPadding = 48;
+        this.minInterfaceWidth = 760;
     }
-    
+
+    getTargetNodeHeight() {
+        let requiredHeight = this.interfaceHeight + this.buttonRowHeight + 120;
+        if (typeof this.core.node?.computeSize === 'function') {
+            requiredHeight = Math.max(requiredHeight, Number(this.core.node.computeSize()?.[1]) || 0);
+        } else {
+            const widgets = this.core.node?.widgets || [];
+            requiredHeight = this.core.widgets.calculateWidgetHeights(widgets) + 80;
+        }
+        return Math.ceil(requiredHeight + this.nodeBottomPadding);
+    }
+
     resizeNodeForInterface() {
         // Ensure the ComfyUI node is properly sized to contain our interface
         if (!this.core.node) return;
-        
+
         try {
-            const interfaceHeight = this.interfaceHeight;
-            const interfaceWidth = this.interfaceWidth;
-            
-            // Calculate widget heights more accurately
-            const widgets = this.core.node.widgets || [];
-            const otherWidgetsHeight = this.core.widgets.calculateWidgetHeights(widgets);
-            
-            const nodeExtraHeight = 100; // Space for node title, margins, etc. (increased for multiline widgets)
-            
-            const requiredWidth = Math.max(interfaceWidth, 850);
-            const requiredHeight = interfaceHeight + otherWidgetsHeight + nodeExtraHeight;
-            
-            if (this.core.node.size) {
-                this.core.node.size[0] = Math.max(this.core.node.size[0], requiredWidth);
-                this.core.node.size[1] = Math.max(this.core.node.size[1], requiredHeight);
-            } else {
-                this.core.node.size = [requiredWidth, requiredHeight];
-            }
-            
-            // Force node to update its layout
-            if (this.core.node.onResize) {
-                this.core.node.onResize(this.core.node.size);
-            }
-            
-            // console.log(`🌊 Audio Wave Analyzer: Resized node to ${this.core.node.size[0]}x${this.core.node.size[1]} for ${widgets.length} widgets (${otherWidgetsHeight}px for other widgets)`);  // Debug: node resize
-            
+            const requiredWidth = this.minInterfaceWidth;
+            const requiredHeight = this.getTargetNodeHeight();
+            this.setNodeSize(
+                Math.max(this.core.node.size?.[0] || 0, requiredWidth),
+                requiredHeight
+            );
+
         } catch (error) {
             console.error('Failed to resize node for interface:', error);
         }
     }
-    
+
+    setNodeSize(width, height) {
+        if (!this.core.node) return;
+
+        const nextSize = [
+            Math.max(Number(width) || 0, this.minInterfaceWidth),
+            Math.ceil(Number(height) || 0),
+        ];
+
+        if (typeof this.core.node.setSize === 'function') {
+            this.core.node.setSize(nextSize);
+        } else {
+            this.core.node.size = nextSize;
+            if (typeof this.core.node.onResize === 'function') {
+                this.core.node.onResize(nextSize);
+            }
+        }
+
+        if (this.core.node.graph?.setDirtyCanvas) {
+            this.core.node.graph.setDirtyCanvas(true, true);
+        }
+    }
+
     updateNodeLayout() {
         // Force ComfyUI to update the node layout after adding our interface
         if (!this.core.node) return;
-        
+
         try {
             // Trigger a layout update
             if (this.core.node.graph && this.core.node.graph.setDirtyCanvas) {
                 this.core.node.graph.setDirtyCanvas(true, true);
             }
-            
+
             // Schedule a delayed resize to ensure everything is rendered
             setTimeout(() => {
                 if (this.core.node.setDirtyCanvas) {
                     this.core.node.setDirtyCanvas(true);
                 }
             }, 100);
-            
+
         } catch (error) {
             console.error('Failed to update node layout:', error);
         }
     }
-    
+
     setupNodeResizeHandling() {
-        // Setup horizontal-only resize handling
+        // Setup resize handling
         if (!this.core.node) return;
-        
-        // Calculate fixed height based on interface + widgets
-        const interfaceHeight = this.interfaceHeight;
-        const widgets = this.core.node.widgets || [];
-        const otherWidgetsHeight = this.core.widgets.calculateWidgetHeights(widgets);
-        
-        const nodeExtraHeight = 100; // Space for node title, margins, etc.
-        const fixedHeight = 950; // Fixed test height
-        
-        // Set node properties to control resizing
-        this.core.node.resizable = true; // Allow resizing
-        this.core.node.horizontal_resize_only = true; // Custom property to indicate horizontal-only resize
-        
+
+        this.core.node.resizable = true;
+
         // Store original resize method
         const originalOnResize = this.core.node.onResize;
-        
-        // Custom resize handler that constrains vertical resizing
+
+        // Custom resize handler that keeps the widget edge-to-edge and rerenders
+        // the canvas at the current graph zoom/DPR.
         this.core.node.onResize = (size) => {
             // Prevent infinite resize loops
             if (this.resizing) return;
             this.resizing = true;
-            
-            // Only constrain width, don't force height changes
+
             const constrainedSize = [
-                Math.max(size[0], 850), // Minimum width
-                size[1] // Allow ComfyUI to control height
+                Math.max(size[0], this.minInterfaceWidth),
+                Math.max(size[1], this.getTargetNodeHeight())
             ];
-            
-            // Only update if width changed significantly
-            if (Math.abs(this.core.node.size[0] - constrainedSize[0]) > 10) {
-                this.core.node.size = constrainedSize;
-                
-                // Call original resize if it exists
-                if (originalOnResize) {
-                    originalOnResize.call(this.core.node, constrainedSize);
-                }
-                
-                console.log(`🌊 Audio Wave Analyzer: Node width constrained to ${constrainedSize[0]}px`);
+
+            if (originalOnResize) {
+                originalOnResize.call(this.core.node, constrainedSize);
             }
-            
+
             // Ensure our canvas resizes with the interface
             if (this.core.canvas) {
                 this.core.resizeCanvas();
-
             }
-            
+
             setTimeout(() => { this.resizing = false; }, 10);
         };
-        
-        // Override mouse handling for resize to prevent vertical resize
-        const originalOnMouseMove = this.core.node.onMouseMove;
-        this.core.node.onMouseMove = function(e, pos, node_graph_pos) {
-            // Check if we're in a resize operation
-            if (this.flags && this.flags.resizing) {
-                // Only allow horizontal resizing
-                if (this.size) {
-                    this.size[1] = fixedHeight; // Keep height fixed
-                }
-            }
-            
-            // Call original mouse move handler
-            if (originalOnMouseMove) {
-                return originalOnMouseMove.call(this, e, pos, node_graph_pos);
-            }
-        };
-        
+
         // Store reference to interface for access in node methods
         this.core.node.audioAnalyzerInterface = this.core;
-        
+
         // Hook into node removal for cleanup
         const originalOnRemoved = this.core.node.onRemoved;
         this.core.node.onRemoved = () => {
@@ -147,32 +127,25 @@ export class AudioAnalyzerLayout {
             }
             this.destroy();
         };
-        
-        // Set initial size to fixed height
-        if (this.core.node.size) {
-            this.core.node.size[1] = fixedHeight;
-        }
-        
-        // console.log(`🌊 Audio Wave Analyzer: Setup horizontal-only resize handling (fixed height: ${fixedHeight}px)`);  // Debug: resize setup
-        
+
         // Watch for changes in multiline widgets to recalculate height
         this.core.widgets.setupMultilineWidgetWatchers();
     }
-    
+
     destroy() {
         // Cleanup when the interface is destroyed
         if (this.positionUpdateInterval) {
             clearInterval(this.positionUpdateInterval);
             this.positionUpdateInterval = null;
         }
-        
+
         if (this.core.widget && this.core.widget.element && this.core.widget.element.parentElement) {
             this.core.widget.element.parentElement.removeChild(this.core.widget.element);
         }
-        
+
         console.log('🌊 Audio Wave Analyzer Layout destroyed and cleaned up');
     }
-    
+
     createMainContainer() {
         // Create main container
         const container = document.createElement('div');
@@ -180,19 +153,21 @@ export class AudioAnalyzerLayout {
         container.style.cssText = `
             width: 100%;
             height: ${this.interfaceHeight}px;
+            min-height: ${this.interfaceHeight}px;
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 4px;
+            box-sizing: border-box;
             overflow: hidden;
             position: relative;
             font-family: Arial, sans-serif;
             font-size: 12px;
             color: #ffffff;
         `;
-        
+
         return container;
     }
-    
+
     createCanvas() {
         // Create canvas
         const canvas = document.createElement('canvas');
@@ -203,11 +178,12 @@ export class AudioAnalyzerLayout {
             background: #1a1a1a;
             display: block;
             cursor: crosshair;
+            image-rendering: auto;
         `;
-        
+
         return canvas;
     }
-    
+
     createControlsContainer() {
         // Create controls container
         const controls = document.createElement('div');
@@ -217,90 +193,91 @@ export class AudioAnalyzerLayout {
             background: #2a2a2a;
             border-top: 1px solid #333;
             padding: 8px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             gap: 4px;
         `;
-        
+
         return controls;
     }
-    
+
+    createAnalyzeButtonRow() {
+        const row = document.createElement('div');
+        row.className = 'audio-analyzer-button-row';
+        row.style.cssText = `
+            width: 100%;
+            height: ${this.buttonRowHeight}px;
+            min-height: ${this.buttonRowHeight}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            pointer-events: auto;
+        `;
+
+        if (this.core.analyzeButton) {
+            row.appendChild(this.core.analyzeButton);
+        }
+
+        return row;
+    }
+
     addContainerToNode(container) {
-        // Use ComfyUI's widget system but position over spacer
+        // Use ComfyUI's DOM widget as the actual layout element. The old
+        // spacer/absolute-position approach drifted with widget heights and zoom.
         try {
             // Ensure the node is properly sized to contain our interface
             this.resizeNodeForInterface();
-            
+
             if (typeof this.core.node.addDOMWidget === 'function') {
-                // Create a zero-height widget that ComfyUI positions normally
+                const buttonRow = this.createAnalyzeButtonRow();
+                const buttonWidget = this.core.node.addDOMWidget('audio_analyzer_button_row', 'div', buttonRow, {
+                    serialize: false,
+                    hideOnZoom: false,
+                    height: this.buttonRowHeight
+                });
+
+                this.core.buttonWidget = buttonWidget;
+                this.core.widgets.setupWidgetHeight(buttonWidget, this.buttonRowHeight);
+
                 const widget = this.core.node.addDOMWidget('audio_analyzer_interface', 'div', container, {
                     serialize: false,
                     hideOnZoom: false,
-                    height: 0 // Zero height so it doesn't take space
+                    height: this.interfaceHeight
                 });
-                
-                // Make the container position absolutely within the node
-                container.style.position = 'absolute';
-                container.style.height = `${this.interfaceHeight}px`;
-                container.style.width = '100%';
-                container.style.zIndex = '10';
-                container.style.pointerEvents = 'auto';
-                
+
                 this.core.widget = widget;
-                
-                // console.log('🌊 Audio Wave Analyzer: Interface widget added with absolute positioning');  // Debug: widget positioning
-                
-                // Position the interface over the spacer after a short delay to ensure spacer exists
-                setTimeout(() => {
-                    this.positionInterfaceOverSpacer();
-                }, 100);
-                
+                this.core.widgets.setupWidgetHeight(widget);
+                this.core.spacerWidget = this.core.widgets.insertSpacerWidget();
             } else {
                 console.log('🌊 Audio Wave Analyzer: addDOMWidget not available, using fallback');
                 return false;
             }
-            
+
+            this.resizeNodeForInterface();
+
             // Ensure node layout is updated
             this.updateNodeLayout();
-            
+
             // Setup simplified node resize handling
             this.setupNodeResizeHandling();
-            
+
+            const finalizeLayout = () => {
+                this.resizeNodeForInterface();
+                this.core.widgets.recalculateNodeHeight();
+                this.core.resizeCanvas();
+            };
+            requestAnimationFrame(finalizeLayout);
+            setTimeout(finalizeLayout, 100);
+
             return true;
-            
+
         } catch (error) {
             console.error('Failed to add container as widget:', error);
             return false;
         }
     }
-    
-    positionInterfaceOverSpacer() {
-        // Calculate where the spacer is within the node and position interface there
-        if (!this.core.node.widgets || !this.core.widget) return;
-        
-        const spacerIndex = this.core.node.widgets.findIndex(w => w.name === 'audio_analyzer_spacer');
-        if (spacerIndex === -1) return;
-        
-        // Calculate the Y position more accurately
-        let yPosition = 40; // Start with just node title space
-        
-        for (let i = 0; i < spacerIndex; i++) {
-            const widget = this.core.node.widgets[i];
-            if (widget.name !== 'audio_analyzer_interface') {
-                // Use smaller, more accurate widget heights
-                if (widget.type === 'string' && widget.options && widget.options.multiline) {
-                    const lines = Math.max(1, (widget.value || '').split('\n').length);
-                    yPosition += Math.max(40, lines * 18 + 10); // Reduced height
-                } else {
-                    yPosition += 25; // Reduced standard widget height
-                }
-            }
-        }
-        
-        // Position the interface container - move it WAY up
-        const adjustedPosition = yPosition - 178; // Move up offset px. was 250
-        this.core.widget.element.style.top = `${adjustedPosition}px`;
-        
-        // console.log(`🌊 Audio Wave Analyzer: Positioned interface at node Y=${yPosition}px over spacer`);  // Debug: interface positioning
-    }
+
+    positionInterfaceOverSpacer() {}
 }

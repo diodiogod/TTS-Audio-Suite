@@ -9,6 +9,7 @@ import os
 import tempfile
 import json
 import time
+import hashlib
 from typing import Dict, Any, List, Tuple, Optional, Union
 
 # Add project root directory to path for imports
@@ -29,14 +30,14 @@ class AudioAnalyzerNode:
     Audio Analyzer Node for interactive waveform visualization and timing extraction.
     Provides precise timing data for F5-TTS speech editing through web interface.
     """
-    
+
     # Enable web interface integration
     WEB_DIRECTORY = "web"
-    
+
     @classmethod
     def NAME(cls):
         return "🌊 Audio Wave Analyzer"
-    
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -89,16 +90,16 @@ class AudioAnalyzerNode:
                 "node_id": ("STRING", {"default": "0"}),
             }
         }
-    
+
     RETURN_TYPES = ("AUDIO", "STRING", "STRING", "AUDIO")
     RETURN_NAMES = ("processed_audio", "timing_data", "analysis_info", "segmented_audio")
     FUNCTION = "analyze_audio"
     CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
-    
+
     def __init__(self):
         self.analyzer = AudioAnalyzer()
         self.temp_files = []
-    
+
     def cleanup_temp_files(self):
         """Clean up temporary files."""
         for temp_file in self.temp_files:
@@ -108,10 +109,115 @@ class AudioAnalyzerNode:
             except:
                 pass
         self.temp_files.clear()
-    
+
     def __del__(self):
         self.cleanup_temp_files()
-    
+
+    @staticmethod
+    def _hash_audio_tensor(audio_input: Union[Dict, torch.Tensor, None]) -> str:
+        """Create a deterministic content hash for connected AUDIO inputs."""
+        if audio_input is None:
+            return "no_audio"
+
+        try:
+            if isinstance(audio_input, dict):
+                waveform = audio_input.get("waveform")
+                sample_rate = audio_input.get("sample_rate", 24000)
+            else:
+                waveform = audio_input
+                sample_rate = 24000
+
+            if not isinstance(waveform, torch.Tensor):
+                return f"invalid_audio_{type(waveform).__name__}"
+
+            tensor = waveform.detach().cpu().contiguous()
+            digest = hashlib.blake2b(tensor.numpy().tobytes(), digest_size=16)
+            digest.update(str(tuple(tensor.shape)).encode("utf-8"))
+            digest.update(str(tensor.dtype).encode("utf-8"))
+            digest.update(str(sample_rate).encode("utf-8"))
+            return digest.hexdigest()
+        except Exception as e:
+            return f"audio_hash_error_{type(e).__name__}"
+
+    @staticmethod
+    def _resolve_audio_file_path(audio_file: str) -> str:
+        """Resolve ComfyUI input-relative paths without forcing execution."""
+        file_path = (audio_file or "").strip()
+        if not file_path:
+            return ""
+
+        if os.path.isabs(file_path):
+            return file_path
+
+        try:
+            import folder_paths
+            input_dir = folder_paths.get_input_directory()
+            full_path = os.path.join(input_dir, file_path)
+            if os.path.exists(full_path):
+                return full_path
+        except Exception:
+            pass
+
+        return file_path
+
+    @classmethod
+    def _hash_audio_file(cls, audio_file: str) -> str:
+        """Hash file identity plus stat data so unchanged files stay cached."""
+        file_path = cls._resolve_audio_file_path(audio_file)
+        if not file_path:
+            return "no_file"
+
+        try:
+            stat = os.stat(file_path)
+            digest = hashlib.blake2b(digest_size=16)
+            digest.update(os.path.abspath(file_path).encode("utf-8", errors="ignore"))
+            digest.update(str(stat.st_size).encode("utf-8"))
+            digest.update(str(stat.st_mtime_ns).encode("utf-8"))
+            return digest.hexdigest()
+        except OSError:
+            return f"missing_file_{file_path}"
+
+    @staticmethod
+    def _options_signature(options: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        if not isinstance(options, dict):
+            return {}
+
+        option_keys = [
+            "silence_threshold",
+            "silence_min_duration",
+            "invert_silence_regions",
+            "energy_sensitivity",
+            "peak_threshold",
+            "peak_min_distance",
+            "peak_region_size",
+            "group_regions_threshold",
+        ]
+        return {key: options.get(key) for key in option_keys if key in options}
+
+    @classmethod
+    def IS_CHANGED(cls, audio_file, analysis_method="silence", precision_level="milliseconds",
+                   visualization_points=2000, audio=None, options=None, manual_regions="",
+                   region_labels="", export_format="f5tts", node_id=""):
+        """
+        Return a stable execution signature for ComfyUI caching.
+
+        Hidden node_id is intentionally excluded: it only names temp UI files and
+        must not make identical analysis inputs re-run.
+        """
+        signature = {
+            "audio": cls._hash_audio_tensor(audio) if audio is not None else cls._hash_audio_file(audio_file),
+            "source": "connected" if audio is not None else "file",
+            "analysis_method": analysis_method,
+            "precision_level": precision_level,
+            "visualization_points": int(visualization_points),
+            "options": cls._options_signature(options),
+            "manual_regions": manual_regions or "",
+            "region_labels": region_labels or "",
+            "export_format": export_format,
+        }
+        encoded = json.dumps(signature, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.blake2b(encoded.encode("utf-8"), digest_size=16).hexdigest()
+
     def _extract_audio_tensor(self, audio_input: Union[Dict, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, int]:
         """
         Extract audio tensor and sample rate from input.
@@ -150,16 +256,16 @@ class AudioAnalyzerNode:
             raise ValueError(f"Unsupported tensor shape: {audio_tensor.shape}. Expected 1D to 4D tensor.")
 
         return original_audio, mono_audio, sample_rate
-    
+
     def _parse_manual_regions(self, manual_regions: str, labels: str = "") -> List[TimingRegion]:
         """Parse manual timing regions from multiline string input."""
         if not manual_regions.strip():
             return []
-        
+
         regions = []
         region_lines = [line.strip() for line in manual_regions.strip().split('\n') if line.strip()]
         label_lines = [line.strip() for line in labels.strip().split('\n') if line.strip()] if labels.strip() else []
-        
+
         for i, line in enumerate(region_lines):
             # Handle both comma-separated format (start,end) and semicolon-separated multiple regions
             if ';' in line:
@@ -170,7 +276,7 @@ class AudioAnalyzerNode:
                         try:
                             start, end = map(float, sub_region.split(','))
                             label = label_lines[i] if i < len(label_lines) else f"region_{len(regions)+1}"
-                            
+
                             regions.append(TimingRegion(
                                 start_time=start,
                                 end_time=end,
@@ -185,7 +291,7 @@ class AudioAnalyzerNode:
                 try:
                     start, end = map(float, line.split(','))
                     label = label_lines[i] if i < len(label_lines) else f"region_{i+1}"
-                    
+
                     regions.append(TimingRegion(
                         start_time=start,
                         end_time=end,
@@ -195,9 +301,9 @@ class AudioAnalyzerNode:
                     ))
                 except ValueError:
                     print(f"Warning: Invalid manual region format: '{line}'. Expected 'start,end' format.")
-        
+
         return regions
-    
+
     def _format_timing_precision(self, value: float, precision_level: str) -> str:
         """Format timing value according to precision level."""
         if precision_level == "seconds":
@@ -209,7 +315,7 @@ class AudioAnalyzerNode:
             return str(sample_value)
         else:
             return f"{value:.3f}"
-    
+
     def _get_precision_unit(self, precision_level: str) -> str:
         """Get the unit string for the precision level."""
         if precision_level == "seconds":
@@ -220,7 +326,7 @@ class AudioAnalyzerNode:
             return " smp"
         else:
             return "s"
-    
+
     def _apply_precision_to_timing_data(self, timing_data: Any, precision_level: str) -> Any:
         """Apply precision formatting to timing data recursively."""
         if isinstance(timing_data, dict):
@@ -239,36 +345,36 @@ class AudioAnalyzerNode:
             return [self._apply_precision_to_timing_data(item, precision_level) for item in timing_data]
         else:
             return timing_data
-    
+
     def _format_f5tts_with_precision(self, regions: List[TimingRegion], precision_level: str) -> str:
         """Format timing regions for F5-TTS with precision formatting."""
         if not regions:
             return ""
-        
+
         # Format regions with precision
         formatted_regions = []
         for region in regions:
             start_formatted = self._format_timing_precision(region.start_time, precision_level)
             end_formatted = self._format_timing_precision(region.end_time, precision_level)
             formatted_regions.append(f"{start_formatted},{end_formatted}")
-        
+
         return "\n".join(formatted_regions)
-    
-    def _create_analysis_info(self, audio_tensor: torch.Tensor, sample_rate: int, 
+
+    def _create_analysis_info(self, audio_tensor: torch.Tensor, sample_rate: int,
                              regions: List[TimingRegion], method: str, precision_level: str = "milliseconds",
                              group_threshold: float = 0.0, invert_silence: bool = False, viz_data: Dict = None) -> str:
         """Create analysis information string with precision formatting."""
         duration = AudioProcessingUtils.get_audio_duration(audio_tensor, sample_rate)
-        
+
         # Count grouped vs original regions
         grouped_regions = [r for r in regions if r.metadata and r.metadata.get("type") == "grouped"]
         original_regions = [r for r in regions if not (r.metadata and r.metadata.get("type") == "grouped")]
-        
+
         # Add silence inversion info to method description
         method_description = method
         if method == "silence" and invert_silence:
             method_description = f"{method} (inverted to speech regions)"
-        
+
         info_lines = [
             f"Audio Analysis Results",
             f"Duration: {self._format_timing_precision(duration, precision_level)} {self._get_precision_unit(precision_level)}",
@@ -276,7 +382,7 @@ class AudioAnalyzerNode:
             f"Analysis Method: {method_description}",
             f"Regions Found: {len(regions)}",
         ]
-        
+
         # Add grouping information if applicable
         if group_threshold > 0.0:
             total_original = sum(r.metadata.get("source_regions", 1) for r in grouped_regions) + len(original_regions)
@@ -288,31 +394,31 @@ class AudioAnalyzerNode:
                 f"  Final Regions: {len(regions)} ({len(grouped_regions)} grouped, {len(original_regions)} individual)",
                 f"  Regions Merged: {total_original - len(regions)}"
             ])
-        
+
         info_lines.extend([
             f"",
             "Timing Regions:"
         ])
-        
+
         for i, region in enumerate(regions):
             region_duration = region.end_time - region.start_time
             start_formatted = self._format_timing_precision(region.start_time, precision_level)
             end_formatted = self._format_timing_precision(region.end_time, precision_level)
             duration_formatted = self._format_timing_precision(region_duration, precision_level)
             unit = self._get_precision_unit(precision_level)
-            
+
             # Add grouping details for grouped regions
             grouping_info = ""
             if region.metadata and region.metadata.get("type") == "grouped":
                 source_count = region.metadata.get("source_regions", 0)
                 original_labels = region.metadata.get("original_labels", [])
                 grouping_info = f" [grouped from {source_count} regions: {', '.join(original_labels)}]"
-            
+
             info_lines.append(
                 f"  {i+1}. {region.label}: {start_formatted}{unit} - {end_formatted}{unit} "
                 f"(duration: {duration_formatted}{unit}, confidence: {region.confidence:.2f}){grouping_info}"
             )
-        
+
         # Add visualization summary if available
         if viz_data:
             info_lines.extend([
@@ -322,16 +428,16 @@ class AudioAnalyzerNode:
                 f"  Duration: {viz_data.get('duration', 0):.3f}s",
                 f"  Sample Rate: {viz_data.get('sample_rate', 0)} Hz"
             ])
-            
+
             if viz_data.get('rms'):
                 rms_data = viz_data['rms']
                 if isinstance(rms_data, dict) and 'values' in rms_data:
                     info_lines.append(f"  RMS Data Points: {len(rms_data['values'])}")
                 elif isinstance(rms_data, list):
                     info_lines.append(f"  RMS Data Points: {len(rms_data)}")
-        
+
         return "\n".join(info_lines)
-    
+
     def _create_segmented_audio(self, audio_tensor: torch.Tensor, sample_rate: int, regions: List[TimingRegion]) -> torch.Tensor:
         """
         Create audio containing only the detected regions, concatenated together.
@@ -395,13 +501,13 @@ class AudioAnalyzerNode:
 
         # Format for ComfyUI
         return AudioProcessingUtils.format_for_comfyui(segmented_audio, sample_rate)
-    
+
     def analyze_audio(self, audio_file, analysis_method="silence", precision_level="milliseconds",
-                     visualization_points=2000, audio=None, options=None, manual_regions="", region_labels="", 
+                     visualization_points=2000, audio=None, options=None, manual_regions="", region_labels="",
                      export_format="f5tts", node_id=""):
         """
         Analyze audio for timing extraction and visualization.
-        
+
         Args:
             audio: Input audio data
             analysis_method: Method for timing detection
@@ -413,11 +519,11 @@ class AudioAnalyzerNode:
             manual_regions: Manual timing regions string
             region_labels: Labels for regions
             export_format: Export format for timing data
-            
+
         Returns:
             Tuple of (processed_audio, timing_data, analysis_info, segmented_audio)
         """
-        
+
         try:
             # Set up default values for technical parameters
             # These are sensible defaults that work well for most use cases
@@ -429,7 +535,7 @@ class AudioAnalyzerNode:
             peak_min_distance = 0.05
             peak_region_size = 0.1
             group_regions_threshold = 0.000
-            
+
             # Handle options input - if provided, use options values over defaults
             if options is not None and isinstance(options, dict):
                 # Extract technical parameters from options
@@ -441,26 +547,17 @@ class AudioAnalyzerNode:
                 peak_min_distance = options.get("peak_min_distance", peak_min_distance)
                 peak_region_size = options.get("peak_region_size", peak_region_size)
                 group_regions_threshold = options.get("group_regions_threshold", group_regions_threshold)
-            
+
+            source_audio_file_path = ""
+
             # Handle audio input - either from file or from input
             if audio is not None:
                 # Audio input from another node
                 original_audio, mono_audio, sample_rate = self._extract_audio_tensor(audio)
             elif audio_file and audio_file.strip():
                 # Load audio from file path
-                file_path = audio_file.strip()
-
-                # If path is not absolute, try to resolve it relative to ComfyUI input directory
-                if not os.path.isabs(file_path):
-                    try:
-                        import folder_paths
-                        input_dir = folder_paths.get_input_directory()
-                        full_path = os.path.join(input_dir, file_path)
-                        if os.path.exists(full_path):
-                            file_path = full_path
-                            # print(f"🎵 Resolved relative path to: {file_path}")  # Debug: path resolution
-                    except ImportError:
-                        print("⚠️ Could not import folder_paths, using path as-is")
+                file_path = self._resolve_audio_file_path(audio_file)
+                source_audio_file_path = file_path
 
                 if not os.path.exists(file_path):
                     print(f"❌ Audio file not found: {file_path}")
@@ -479,12 +576,33 @@ class AudioAnalyzerNode:
 
             # Set analyzer sample rate
             self.analyzer.sample_rate = sample_rate
-            
-            # Generate cache key for analysis
-            # Use mono tensor for cache key (consistent across stereo/mono)
-            tensor_hash = hash((tuple(mono_audio.shape), float(mono_audio.mean()), float(mono_audio.std())))
-            manual_hash = hash((manual_regions, region_labels))  # Include manual regions in cache
-            cache_key = f"{tensor_hash}_{analysis_method}_{silence_threshold}_{silence_min_duration}_{invert_silence_regions}_{energy_sensitivity}_{peak_threshold}_{peak_min_distance}_{peak_region_size}_{group_regions_threshold}_{manual_hash}"
+
+            # Generate deterministic cache key for analysis.
+            # Use mono tensor for cache key (consistent across stereo/mono).
+            mono_hash = hashlib.blake2b(
+                mono_audio.detach().cpu().contiguous().numpy().tobytes(),
+                digest_size=16
+            ).hexdigest()
+            cache_payload = {
+                "audio": mono_hash,
+                "shape": tuple(mono_audio.shape),
+                "sample_rate": sample_rate,
+                "analysis_method": analysis_method,
+                "silence_threshold": silence_threshold,
+                "silence_min_duration": silence_min_duration,
+                "invert_silence_regions": invert_silence_regions,
+                "energy_sensitivity": energy_sensitivity,
+                "peak_threshold": peak_threshold,
+                "peak_min_distance": peak_min_distance,
+                "peak_region_size": peak_region_size,
+                "group_regions_threshold": group_regions_threshold,
+                "manual_regions": manual_regions or "",
+                "region_labels": region_labels or "",
+            }
+            cache_key = hashlib.blake2b(
+                json.dumps(cache_payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8"),
+                digest_size=16
+            ).hexdigest()
 
             # Check cache first
             cached_result = analysis_cache.get(cache_key)
@@ -513,7 +631,7 @@ class AudioAnalyzerNode:
                     )
                 else:
                     raise ValueError(f"Unknown analysis method: {analysis_method}")
-                
+
                 # Add manual regions to auto-detected regions (if any manual regions exist)
                 manual_regions_list = self._parse_manual_regions(manual_regions, region_labels)
                 if manual_regions_list and analysis_method != "manual":
@@ -521,14 +639,14 @@ class AudioAnalyzerNode:
                     regions.extend(manual_regions_list)
                     # Sort all regions by start time
                     regions.sort(key=lambda r: r.start_time)
-                
+
                 # Apply region grouping if threshold > 0
                 if group_regions_threshold > 0.000:
                     regions = self.analyzer.group_regions(regions, group_regions_threshold)
-                
+
                 # Cache results
                 analysis_cache.put(cache_key, regions)
-            
+
             # Generate visualization data from MONO version
             viz_data = self.analyzer.generate_visualization_data(mono_audio, visualization_points)
 
@@ -559,24 +677,24 @@ class AudioAnalyzerNode:
 
             # Return ORIGINAL audio in ComfyUI format (passthrough - preserves stereo if input was stereo)
             processed_audio = AudioProcessingUtils.format_for_comfyui(original_audio, sample_rate)
-            
+
             # Generate segmented audio from ORIGINAL (preserves stereo if input was stereo)
             segmented_audio = self._create_segmented_audio(original_audio, sample_rate, regions)
-            
-            
+
+
             # Save visualization data to ComfyUI temp directory and save audio for web access
             try:
                 import folder_paths
                 import shutil
                 import soundfile as sf
-                
+
                 # Save visualization data
                 temp_dir = folder_paths.get_temp_directory()
                 temp_file = os.path.join(temp_dir, f"audio_data_{node_id}.json")
-                
+
                 # Add audio file path to visualization data for JavaScript
                 web_audio_filename = None
-                
+
                 # Handle audio file copying or saving - respect priority: connected audio first
                 if audio is not None:
                     # Connected audio: save ORIGINAL tensor to temporary file for web access (preserves stereo)
@@ -584,8 +702,7 @@ class AudioAnalyzerNode:
                         input_dir = folder_paths.get_input_directory()
                         # Use unique filename per analysis so JavaScript detects file change
                         # Include tensor hash to invalidate cache when audio input changes
-                        import hashlib
-                        audio_hash = hashlib.md5(str(tensor_hash).encode()).hexdigest()[:8]
+                        audio_hash = mono_hash[:8]
                         temp_audio_filename = f"connected_audio_{node_id}_{audio_hash}.wav"
                         temp_audio_path = os.path.join(input_dir, temp_audio_filename)
 
@@ -610,29 +727,29 @@ class AudioAnalyzerNode:
                                 sf.write(temp_audio_path, audio_numpy[0], sample_rate)
                             else:
                                 sf.write(temp_audio_path, audio_numpy.T, sample_rate)
-                        
+
                         web_audio_filename = temp_audio_filename
                         # print(f"🎵 Connected audio saved for web access: {temp_audio_path}")  # Debug: audio save
-                        
+
                     except Exception as audio_save_error:
                         print(f"⚠️ Failed to save connected audio: {audio_save_error}")  # Keep: important error
                         # Continue without audio playback for connected audio
-                
-                elif audio_file and audio_file.strip() and os.path.exists(audio_file.strip()):
+
+                elif source_audio_file_path and os.path.exists(source_audio_file_path):
                     # File-based audio: copy to ComfyUI input directory for web access
                     input_dir = folder_paths.get_input_directory()
-                    audio_filename = os.path.basename(audio_file.strip())
+                    audio_filename = os.path.basename(source_audio_file_path)
                     web_audio_path = os.path.join(input_dir, audio_filename)
-                    
+
                     # Copy if not already there or if source is newer
-                    if not os.path.exists(web_audio_path) or os.path.getmtime(audio_file.strip()) > os.path.getmtime(web_audio_path):
-                        shutil.copy2(audio_file.strip(), web_audio_path)
+                    if not os.path.exists(web_audio_path) or os.path.getmtime(source_audio_file_path) > os.path.getmtime(web_audio_path):
+                        shutil.copy2(source_audio_file_path, web_audio_path)
                         # print(f"🎵 Audio file copied for web access: {web_audio_path}")  # Debug: file copy
-                    
+
                     # For file-based audio, provide just the filename for web access
                     # JavaScript will use this with ComfyUI's input URL format
                     file_path_for_js = audio_filename
-                
+
                 # Add audio information to visualization data for JavaScript
                 if web_audio_filename:
                     # Connected audio - provide web_audio_filename
@@ -640,55 +757,55 @@ class AudioAnalyzerNode:
                 elif 'file_path_for_js' in locals():
                     # File-based audio - provide file_path
                     viz_data["file_path"] = file_path_for_js
-                
+
                 with open(temp_file, 'w') as f:
                     json.dump(viz_data, f, indent=2)
-                
+
                 # print(f"🎵 Audio data saved to temp: {temp_file}")  # Debug: temp file save
-                
+
             except Exception as save_error:
                 print(f"⚠️ Audio Analyzer data save failed: {save_error}")  # Keep: important error
                 # Continue without failing the entire analysis
-            
+
             return (processed_audio, timing_data, analysis_info, segmented_audio)
-            
+
         except Exception as e:
             import traceback
             error_msg = f"Audio analysis failed: {str(e)}"
             print(f"❌ {error_msg}")
             print(f"Full traceback: {traceback.format_exc()}")
-            
+
             # Return error data
             empty_audio = torch.zeros(1, 1000)  # 1 second of silence
             processed_audio = AudioProcessingUtils.format_for_comfyui(empty_audio, 24000)
             segmented_audio = processed_audio  # Same as processed for errors
-            
+
             return (
                 processed_audio,
                 f"Error: {error_msg}",
                 f"Analysis failed: {error_msg}",
                 segmented_audio
             )
-    
+
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
         """Validate node inputs."""
         validated = {}
-        
+
         # Validate required inputs - audio can be from file or input
         if "audio" not in inputs and "audio_file" not in inputs:
             raise ValueError("Either audio input or audio_file is required")
-        
+
         validated["audio"] = inputs["audio"]
         validated["options"] = inputs.get("options", None)
         validated["analysis_method"] = inputs.get("analysis_method", "silence")
         validated["precision_level"] = inputs.get("precision_level", "milliseconds")
         validated["visualization_points"] = max(500, min(10000, inputs.get("visualization_points", 2000)))
-        
+
         # Validate optional inputs (only main parameters, technical parameters come from options node)
         validated["manual_regions"] = inputs.get("manual_regions", "")
         validated["region_labels"] = inputs.get("region_labels", "")
         validated["export_format"] = inputs.get("export_format", "f5tts")
-        
+
         return validated
 
 
