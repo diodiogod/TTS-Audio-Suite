@@ -83,6 +83,11 @@ app.registerExtension({
                     if (nodeData.class_type === "ChatterBoxAudioAnalyzer") {
                         // Inject the node_id into the inputs object
                         nodeData.inputs.node_id = nodeId;
+                        const graphNode = app.graph?.getNodeById?.(Number(nodeId)) || app.graph?._nodes_by_id?.[nodeId];
+                        if (graphNode?.audioAnalyzerForceRun) {
+                            nodeData.inputs.force_run_id = String(graphNode.audioAnalyzerForceRun);
+                            graphNode.audioAnalyzerForceRun = "";
+                        }
                     }
                 }
             }
@@ -346,8 +351,8 @@ app.registerExtension({
                 let urlIndex = 0;
                 const tryNextTempUrl = () => {
                     if (urlIndex >= possibleTempUrls.length) {
-                        console.log('⚠️ All temp file URLs failed, falling back to test data');
-                        this.generateTestData();
+                        console.log('⚠️ All temp file URLs failed, checking persistent cache');
+                        this.tryFetchTempData();
                         return;
                     }
                     
@@ -405,8 +410,12 @@ app.registerExtension({
                 let urlIndex = 0;
                 const tryNextUrl = () => {
                     if (urlIndex >= possibleCacheUrls.length) {
-                        console.log('💾 All cache URLs failed, generating test data');
-                        this.generateTestData();
+                        console.warn('💾 All cache URLs failed; no real analyzer data is available yet');
+                        if (this.audioAnalyzerInterface) {
+                            this.audioAnalyzerInterface.ui.updateStatus('No cached analysis data');
+                            this.audioAnalyzerInterface.showMessage('No cached analysis data found. Queue the workflow once to regenerate analyzer data.');
+                            this.audioAnalyzerInterface.visualization.redraw();
+                        }
                         return;
                     }
                     
@@ -424,8 +433,8 @@ app.registerExtension({
                             console.log('🎉 Cache file loaded successfully!');
                             console.log('🎉 Cache data keys:', Object.keys(data));
                             
-                            if (data.visualization_data) {
-                                const vizData = data.visualization_data;
+                            const vizData = data.visualization_data || data;
+                            if (vizData?.waveform?.samples?.length) {
                                 console.log('🎉 REAL DATA FOUND! Duration:', vizData.duration);
                                 
                                 if (this.audioAnalyzerInterface) {
@@ -448,42 +457,6 @@ app.registerExtension({
                 };
                 
                 tryNextUrl();
-            };
-            
-            // Generate test data
-            nodeType.prototype.generateTestData = function() {
-                console.log('⚠️ GENERATING FAKE TEST DATA - Real data fetch failed');
-                const testData = {
-                    waveform: { samples: [], time: [] },
-                    rms: { values: [], time: [] },
-                    peaks: [1.0, 3.5, 6.2, 8.8],
-                    duration: 10.79,
-                    sample_rate: 22050,
-                    regions: [
-                        { start: 0.2, end: 2.1, label: "Speech 1", confidence: 0.92 },
-                        { start: 2.5, end: 4.8, label: "Speech 2", confidence: 0.88 },
-                        { start: 5.2, end: 8.1, label: "Speech 3", confidence: 0.85 },
-                        { start: 8.6, end: 10.5, label: "Speech 4", confidence: 0.90 }
-                    ]
-                };
-                
-                // Generate sine wave
-                for (let i = 0; i < 2000; i++) {
-                    const time = (i / 2000) * 10.79;
-                    const sample = Math.sin(2 * Math.PI * 440 * time) * 0.5;
-                    testData.waveform.samples.push(sample);
-                    testData.waveform.time.push(time);
-                }
-                
-                // Generate RMS
-                for (let i = 0; i < 200; i++) {
-                    const time = (i / 200) * 10.79;
-                    const rms = Math.abs(Math.sin(2 * Math.PI * 2 * time)) * 0.3;
-                    testData.rms.values.push(rms);
-                    testData.rms.time.push(time);
-                }
-                
-                handleNodeExecution.call(this, [null, JSON.stringify(testData)]);
             };
             
             // Setup audio playback

@@ -88,6 +88,7 @@ class AudioAnalyzerNode:
             },
             "hidden": {
                 "node_id": ("STRING", {"default": "0"}),
+                "force_run_id": ("STRING", {"default": ""}),
             }
         }
 
@@ -197,12 +198,14 @@ class AudioAnalyzerNode:
     @classmethod
     def IS_CHANGED(cls, audio_file, analysis_method="silence", precision_level="milliseconds",
                    visualization_points=2000, audio=None, options=None, manual_regions="",
-                   region_labels="", export_format="f5tts", node_id=""):
+                   region_labels="", export_format="f5tts", node_id="", force_run_id=""):
         """
         Return a stable execution signature for ComfyUI caching.
 
         Hidden node_id is intentionally excluded: it only names temp UI files and
         must not make identical analysis inputs re-run.
+        force_run_id is only set by the UI when the persistent visualization cache
+        is missing, so old workflows can regenerate their sidecar JSON once.
         """
         signature = {
             "audio": cls._hash_audio_tensor(audio) if audio is not None else cls._hash_audio_file(audio_file),
@@ -214,6 +217,7 @@ class AudioAnalyzerNode:
             "manual_regions": manual_regions or "",
             "region_labels": region_labels or "",
             "export_format": export_format,
+            "force_run_id": force_run_id or "",
         }
         encoded = json.dumps(signature, sort_keys=True, separators=(",", ":"), default=str)
         return hashlib.blake2b(encoded.encode("utf-8"), digest_size=16).hexdigest()
@@ -504,7 +508,7 @@ class AudioAnalyzerNode:
 
     def analyze_audio(self, audio_file, analysis_method="silence", precision_level="milliseconds",
                      visualization_points=2000, audio=None, options=None, manual_regions="", region_labels="",
-                     export_format="f5tts", node_id=""):
+                     export_format="f5tts", node_id="", force_run_id=""):
         """
         Analyze audio for timing extraction and visualization.
 
@@ -691,6 +695,8 @@ class AudioAnalyzerNode:
                 # Save visualization data
                 temp_dir = folder_paths.get_temp_directory()
                 temp_file = os.path.join(temp_dir, f"audio_data_{node_id}.json")
+                output_dir = folder_paths.get_output_directory()
+                output_cache_file = os.path.join(output_dir, f"audio_analyzer_cache_{node_id}.json")
 
                 # Add audio file path to visualization data for JavaScript
                 web_audio_filename = None
@@ -760,6 +766,16 @@ class AudioAnalyzerNode:
 
                 with open(temp_file, 'w') as f:
                     json.dump(viz_data, f, indent=2)
+
+                cache_payload = {
+                    "visualization_data": viz_data,
+                    "file_path": viz_data.get("file_path") or viz_data.get("web_audio_filename"),
+                    "cache_key": cache_key,
+                    "node_id": str(node_id),
+                    "created_at": time.time(),
+                }
+                with open(output_cache_file, 'w') as f:
+                    json.dump(cache_payload, f, indent=2)
 
                 # print(f"🎵 Audio data saved to temp: {temp_file}")  # Debug: temp file save
 

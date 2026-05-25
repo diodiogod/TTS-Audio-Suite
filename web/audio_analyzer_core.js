@@ -141,7 +141,7 @@ export class AudioAnalyzerInterface {
                 throw new Error(`Cache file not found or server error: ${response.status}`);
             }
             const data = await response.json();
-            this.nodeIntegration.updateVisualization(data);
+            this.nodeIntegration.updateVisualization(data.visualization_data || data);
             console.log(`🌊 Audio Wave Analyzer: Successfully loaded cached data for node ${this.node.id}`);
         } catch (error) {
             // console.log(`🌊 Audio Wave Analyzer: No cache found for node ${this.node.id}. Showing initial message. Details: ${error.message}`);  // Debug: cache miss

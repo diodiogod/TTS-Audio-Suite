@@ -110,7 +110,7 @@ export class AudioAnalyzerNodeIntegration {
     }
     
     // Handle parameter changes (now works like manual refresh)
-    onParametersChanged() {
+    async onParametersChanged() {
         // console.log('Analysis requested');  // Debug: analysis trigger
         
         if (!this.hasAudioSource()) {
@@ -140,6 +140,10 @@ export class AudioAnalyzerNodeIntegration {
         // Update UI
         this.core.ui.updateStatus('Analyzing audio...');
         this.core.visualization.redraw();
+
+        if (!(await this.hasPersistentVisualizationCache())) {
+            this.core.node.audioAnalyzerForceRun = Date.now();
+        }
         
         // Trigger node execution (same as manual refresh)
         this.core.node.lastExecutionTime = Date.now();
@@ -152,6 +156,19 @@ export class AudioAnalyzerNodeIntegration {
         setTimeout(() => this.core.node.checkForResults(), 6000);
         
         this.core.showMessage('Analyzing audio...');
+    }
+
+    async hasPersistentVisualizationCache() {
+        if (!this.core.node?.id || this.core.node.id < 0) return false;
+
+        try {
+            const response = await fetch(`/output/audio_analyzer_cache_${this.core.node.id}.json?t=${Date.now()}`, {
+                cache: 'no-store'
+            });
+            return response.ok;
+        } catch {
+            return false;
+        }
     }
     
     // Handle audio connection
