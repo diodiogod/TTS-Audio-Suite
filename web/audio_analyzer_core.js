@@ -793,8 +793,8 @@ export class AudioAnalyzerInterface {
     }
 
     // Show message
-    showMessage(message) {
-        this.ui.showMessage(message);
+    showMessage(message, level = 'info') {
+        this.ui.showMessage(message, level);
     }
 
     // Update visualization with new data

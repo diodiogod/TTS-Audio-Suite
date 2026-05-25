@@ -379,14 +379,13 @@ export class AudioAnalyzerControls {
                         const uploadResult = await this.uploadFileToComfyUI(file);
 
                         if (uploadResult.success) {
+                            const fullPath = uploadResult.subfolder ?
+                                `${uploadResult.subfolder}/${uploadResult.filename}` :
+                                uploadResult.filename;
+
                             // Update the audio_file widget with the full path to the uploaded file
                             const audioFileWidget = this.core.node.widgets.find(w => w.name === 'audio_file');
                             if (audioFileWidget) {
-                                // Construct the full path to the uploaded file in ComfyUI's input directory
-                                const fullPath = uploadResult.subfolder ?
-                                    `${uploadResult.subfolder}/${uploadResult.filename}` :
-                                    uploadResult.filename;
-
                                 audioFileWidget.value = fullPath;
 
                                 // Trigger widget callback to update the display
@@ -395,8 +394,9 @@ export class AudioAnalyzerControls {
                                 }
                             }
 
-                            this.showMessage(`File uploaded: ${uploadResult.filename}. Click Analyze to process.`);
-                            this.updateStatus('File uploaded - ready to analyze');
+                            this.showMessage(`File uploaded: ${uploadResult.filename}. Analyzing preview...`);
+                            this.updateStatus('File uploaded - analyzing preview');
+                            this.core.onAudioFileSelected(fullPath);
                         } else {
                             this.showMessage(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
                             this.updateStatus('Upload failed');
@@ -433,14 +433,13 @@ export class AudioAnalyzerControls {
                 const uploadResult = await this.uploadFileToComfyUI(file);
 
                 if (uploadResult.success) {
+                    const fullPath = uploadResult.subfolder ?
+                        `${uploadResult.subfolder}/${uploadResult.filename}` :
+                        uploadResult.filename;
+
                     // Update the audio_file widget with the full path to the uploaded file
                     const audioFileWidget = this.core.node.widgets.find(w => w.name === 'audio_file');
                     if (audioFileWidget) {
-                        // Construct the full path to the uploaded file in ComfyUI's input directory
-                        const fullPath = uploadResult.subfolder ?
-                            `${uploadResult.subfolder}/${uploadResult.filename}` :
-                            uploadResult.filename;
-
                         audioFileWidget.value = fullPath;
 
                         // Trigger widget callback to update the display
@@ -449,8 +448,9 @@ export class AudioAnalyzerControls {
                         }
                     }
 
-                    this.showMessage(`File uploaded: ${uploadResult.filename}. Click Analyze to process.`);
-                    this.updateStatus('File uploaded - ready to analyze');
+                    this.showMessage(`File uploaded: ${uploadResult.filename}. Analyzing preview...`);
+                    this.updateStatus('File uploaded - analyzing preview');
+                    this.core.onAudioFileSelected(fullPath);
                 } else {
                     this.showMessage(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
                     this.updateStatus('Upload failed');
@@ -524,17 +524,22 @@ export class AudioAnalyzerControls {
     }
 
     // Show message
-    showMessage(message) {
+    showMessage(message, level = 'info') {
         if (this.core.ui.messageDisplay) {
             this.core.ui.messageDisplay.textContent = message;
-            this.core.ui.messageDisplay.style.color = '#4a9eff';
+            this.core.ui.messageDisplay.style.color = level === 'error' ? '#ff5a5a' : '#4a9eff';
+            this.core.ui.messageDisplay.style.fontWeight = level === 'error' ? 'bold' : 'normal';
+            this.core.ui.messageDisplay.style.fontSize = level === 'error' ? '13px' : '11px';
 
             // Clear message after 3 seconds
             setTimeout(() => {
                 if (this.core.ui.messageDisplay) {
                     this.core.ui.messageDisplay.textContent = '';
+                    this.core.ui.messageDisplay.style.color = '#4a9eff';
+                    this.core.ui.messageDisplay.style.fontWeight = 'normal';
+                    this.core.ui.messageDisplay.style.fontSize = '11px';
                 }
-            }, 3000);
+            }, level === 'error' ? 7000 : 3000);
         }
     }
 

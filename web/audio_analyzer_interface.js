@@ -1,8 +1,10 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 import { AudioAnalyzerInterface } from "./audio_analyzer_core.js";
 
 // Simple execution tracking
 let audioAnalyzerNodes = new Map();
+let analyzerRefreshTimers = [];
 
 // Hook into ComfyUI's global execution completion
 if (window.app && window.app.ui && window.app.ui.queue) {
@@ -29,6 +31,26 @@ if (window.app && window.app.ui && window.app.ui.queue) {
         return originalProcessComplete.call(this, prompt_id, results);
     };
 }
+
+function refreshAnalyzerSidecars() {
+    for (const node of audioAnalyzerNodes.values()) {
+        if (!node.audioAnalyzerInterface || typeof node.tryWebFileData !== 'function') continue;
+        node.tryWebFileData();
+    }
+}
+
+function scheduleAnalyzerSidecarRefresh() {
+    analyzerRefreshTimers.forEach(timer => clearTimeout(timer));
+    analyzerRefreshTimers = [250, 1000, 2000].map(delay => setTimeout(refreshAnalyzerSidecars, delay));
+}
+
+api.addEventListener("executed", () => {
+    scheduleAnalyzerSidecarRefresh();
+});
+
+api.addEventListener("execution_success", () => {
+    scheduleAnalyzerSidecarRefresh();
+});
 
 // Basic execution handler
 function handleNodeExecution(message) {
@@ -224,6 +246,8 @@ app.registerExtension({
                 const result = onExecuted ? onExecuted.apply(this, arguments) : undefined;
                 if (this.audioAnalyzerInterface) {
                     handleNodeExecution.call(this, message);
+                    setTimeout(() => this.tryWebFileData?.(), 250);
+                    setTimeout(() => this.tryWebFileData?.(), 1000);
                 }
                 return result;
             };

@@ -494,6 +494,53 @@ print(json.dumps({"devices": devices}))
                 print(f"⚠️ Error serving voice preview audio: {e}")
                 return web.json_response({"error": str(e)}, status=500)
 
+        @PromptServer.instance.routes.post("/api/tts-audio-suite/audio-analyzer-preview")
+        async def audio_analyzer_preview_endpoint(request):
+            """
+            Analyze file-based Audio Wave Analyzer inputs without queueing the ComfyUI graph.
+
+            Connected AUDIO inputs still require graph execution because the browser/backend
+            route cannot access an upstream tensor that has not been computed.
+            """
+            try:
+                data = await request.json()
+                audio_file = (data.get("audio_file") or "").strip()
+                if not audio_file:
+                    return web.json_response({"error": "audio_file is required for preview analysis"}, status=400)
+
+                node_id = str(data.get("node_id") or "preview")
+
+                analyzer_node_path = os.path.join(os.path.dirname(__file__), "nodes", "audio", "analyzer_node.py")
+                spec = importlib.util.spec_from_file_location("tts_audio_suite_audio_analyzer_node", analyzer_node_path)
+                analyzer_node_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(analyzer_node_module)
+
+                analyzer_node = analyzer_node_module.AudioAnalyzerNode()
+                analyzer_node.analyze_audio(
+                    audio_file=audio_file,
+                    analysis_method=data.get("analysis_method", "silence"),
+                    precision_level=data.get("precision_level", "milliseconds"),
+                    visualization_points=int(data.get("visualization_points", 2000)),
+                    audio=None,
+                    options=data.get("options"),
+                    manual_regions=data.get("manual_regions", ""),
+                    region_labels=data.get("region_labels", ""),
+                    export_format=data.get("export_format", "f5tts"),
+                    node_id=node_id,
+                )
+
+                import folder_paths
+                cache_file = os.path.join(folder_paths.get_output_directory(), f"audio_analyzer_cache_{node_id}.json")
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+
+                response = web.json_response(payload)
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+                return response
+            except Exception as e:
+                print(f"⚠️ Audio analyzer preview failed: {e}")
+                return web.json_response({"error": str(e)}, status=500)
+
         @PromptServer.instance.routes.get("/api/tts-audio-suite/training-progress")
         async def get_training_progress_endpoint(request):
             """Return live training progress snapshots for one or all tracked training nodes."""

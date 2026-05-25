@@ -8,6 +8,11 @@ export class AudioAnalyzerDrawing {
     }
     
     showInitialMessage(ctx, width, height) {
+        if (this.core.canvasWarningMessage) {
+            this.showCanvasWarning(ctx, width, height, this.core.canvasWarningMessage);
+            return;
+        }
+
         ctx.fillStyle = this.core.colors.text;
         ctx.font = '14px Arial';
         ctx.textAlign = 'center';
@@ -16,6 +21,26 @@ export class AudioAnalyzerDrawing {
         ctx.font = '12px Arial';
         ctx.fillStyle = '#888';
         ctx.fillText('Supported formats: WAV, MP3, OGG, FLAC', width / 2, height / 2 + 20);
+    }
+
+    showCanvasWarning(ctx, width, height, message) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(120, 18, 18, 0.92)';
+        ctx.fillRect(24, height / 2 - 54, width - 48, 108);
+        ctx.strokeStyle = '#ff6b6b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(24, height / 2 - 54, width - 48, 108);
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Connected audio input is active', width / 2, height / 2 - 16);
+
+        ctx.font = '13px Arial';
+        ctx.fillText(message, width / 2, height / 2 + 12);
+        ctx.fillStyle = '#ffd0d0';
+        ctx.fillText('Run the workflow, or disconnect the AUDIO input to preview dropped files.', width / 2, height / 2 + 34);
+        ctx.restore();
     }
     
     showFakeDataWarning(ctx, width, height) {

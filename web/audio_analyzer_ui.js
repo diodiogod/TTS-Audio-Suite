@@ -351,8 +351,8 @@ export class AudioAnalyzerUI {
         this.controlsModule.updateSelectionDisplay();
     }
 
-    showMessage(message) {
-        this.controlsModule.showMessage(message);
+    showMessage(message, level = 'info') {
+        this.controlsModule.showMessage(message, level);
     }
 
     updateStatus(status) {
