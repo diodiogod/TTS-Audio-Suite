@@ -26,6 +26,29 @@ from .lib.utils import gc_collect
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
 
 class VC(FeatureExtractor):
+    def _segment_trim_tgt(self) -> int:
+        """
+        TTS Audio Suite patch: preserve one target-frame of context on each side.
+
+        The bundled RVC pipeline crops every converted segment by `t_pad_tgt` on both
+        ends, but the inference path already quantizes length on the 160-sample HuBERT
+        frame grid. In practice this makes each top-level conversion call come back a
+        little short, and long chunked runs accumulate audible timeline drift.
+
+        We keep one converted frame from the padded context on each side instead of
+        trimming the full pad. This matches the pipeline's own frame grid rather than
+        post-stretching audio after conversion.
+        """
+        if self.t_pad <= 0:
+            return self.t_pad_tgt
+        target_frame = int(round(self.window * (self.t_pad_tgt / float(self.t_pad))))
+        return max(0, self.t_pad_tgt - target_frame)
+
+    def _extract_segment_core(self, segment_audio: np.ndarray) -> np.ndarray:
+        trim_tgt = self._segment_trim_tgt()
+        if trim_tgt <= 0 or segment_audio.shape[0] <= trim_tgt * 2:
+            return segment_audio
+        return segment_audio[trim_tgt:-trim_tgt]
 
     def vc(
         self,
@@ -207,13 +230,47 @@ class VC(FeatureExtractor):
             audio_slice = audio_pad[start:end]
             pitch_slice = pitch[:, start // self.window:end // self.window] if if_f0 else None
             pitchf_slice = pitchf[:, start // self.window:end // self.window] if if_f0 else None
-            audio_opt.append(self.vc(model, net_g, sid, audio_slice, pitch_slice, pitchf_slice, times, index, big_npy, index_rate, version, protect)[self.t_pad_tgt : -self.t_pad_tgt])
+            audio_opt.append(
+                self._extract_segment_core(
+                    self.vc(
+                        model,
+                        net_g,
+                        sid,
+                        audio_slice,
+                        pitch_slice,
+                        pitchf_slice,
+                        times,
+                        index,
+                        big_npy,
+                        index_rate,
+                        version,
+                        protect,
+                    )
+                )
+            )
             s = t
 
         audio_slice = audio_pad[t:]
         pitch_slice = pitch[:, t // self.window:] if if_f0 and t is not None else pitch
         pitchf_slice = pitchf[:, t // self.window:] if if_f0 and t is not None else pitchf
-        audio_opt.append(self.vc(model, net_g, sid, audio_slice, pitch_slice, pitchf_slice, times, index, big_npy, index_rate, version, protect)[self.t_pad_tgt : -self.t_pad_tgt])
+        audio_opt.append(
+            self._extract_segment_core(
+                self.vc(
+                    model,
+                    net_g,
+                    sid,
+                    audio_slice,
+                    pitch_slice,
+                    pitchf_slice,
+                    times,
+                    index,
+                    big_npy,
+                    index_rate,
+                    version,
+                    protect,
+                )
+            )
+        )
         
         audio_opt = np.concatenate(audio_opt)
         if rms_mix_rate < 1:

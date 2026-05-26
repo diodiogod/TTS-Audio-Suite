@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.27.2] - 2026-05-26
+
+### Added
+
+- Preserve duration more accurately for long audio and training workflows
+
+### Fixed
+
+- Fix RVC long-audio chunk timing drift
+- Fix RVC voice conversion outputs getting shorter over long chunked runs
+- Keep the fix inside the bundled RVC pipeline instead of stretching audio afterward
 ## [4.27.1] - 2026-05-26
 
 ### Added
