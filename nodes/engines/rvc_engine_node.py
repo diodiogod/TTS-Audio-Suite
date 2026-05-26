@@ -156,6 +156,11 @@ Models will auto-download if not present. Choose language-specific models for be
                     "default": 0,
                     "tooltip": "Output sample rate (0=use input rate). 44100/48000 recommended for high quality"
                 }),
+
+                "enable_custom_chunking": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable the Voice Changer's outer chunking on top of native RVC segmentation. Leave off unless you specifically need shorter-than-native chunks for extra VRAM safety. Native RVC long-audio segmentation usually starts around 64s on the common half-precision path, and lower on some fp32/low-VRAM paths."
+                }),
                 
                 "device": (["auto", "cuda", "xpu", "cpu", "mps"], {
                     "default": "auto",
@@ -197,6 +202,7 @@ Models will auto-download if not present. Choose language-specific models for be
         hubert_model="auto: Automatically select best available model",
         rvc_pitch_options=None,
         output_sample_rate=0,
+        enable_custom_chunking=False,
         device="auto"
     ):
         """
@@ -233,6 +239,7 @@ Models will auto-download if not present. Choose language-specific models for be
                 'protect': consonant_protection,
                 'rms_mix_rate': volume_envelope,
                 'resample_sr': output_sample_rate,
+                'enable_custom_chunking': bool(enable_custom_chunking),
                 'hubert_model': hubert_key,
                 'hubert_path': hubert_path
             }
@@ -261,7 +268,12 @@ Models will auto-download if not present. Choose language-specific models for be
                 **final_pitch_params
             }
             
-            print(f"⚙️ RVC Engine created - HuBERT: {hubert_key}, Pitch method: {final_pitch_params['f0_method']}, Device: {device}")
+            print(
+                f"⚙️ RVC Engine created - HuBERT: {hubert_key}, "
+                f"Pitch method: {final_pitch_params['f0_method']}, "
+                f"Custom outer chunking: {final_pitch_params['enable_custom_chunking']}, "
+                f"Device: {device}"
+            )
             if rvc_pitch_options:
                 print("🔧 Advanced pitch options applied")
             

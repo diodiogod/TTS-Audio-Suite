@@ -252,6 +252,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         try:
             # Extract audio data from flexible inputs
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
+            config = getattr(rvc_engine, 'config', {})
+            enable_custom_chunking = bool(config.get('enable_custom_chunking', False))
 
             # Get sample rate and waveform for chunking analysis
             source_sample_rate = processed_source_audio.get("sample_rate", 22050)
@@ -259,13 +261,21 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             if source_waveform is None:
                 raise ValueError("Source audio missing waveform data")
 
-            # Check if chunking is needed
-            source_chunks = self._split_audio_into_chunks(
-                source_waveform,
-                source_sample_rate,
-                max_chunk_duration,
-                chunk_method
-            )
+            if enable_custom_chunking:
+                # Optional extra VRAM guard on top of native RVC segmentation.
+                source_chunks = self._split_audio_into_chunks(
+                    source_waveform,
+                    source_sample_rate,
+                    max_chunk_duration,
+                    chunk_method
+                )
+            else:
+                duration = source_waveform.shape[-1] / source_sample_rate
+                print(
+                    f"📊 RVC outer chunking disabled - using native RVC segmentation only "
+                    f"({duration:.1f}s input)"
+                )
+                source_chunks = [source_waveform]
 
             # If chunking is active, process chunks separately
             if len(source_chunks) > 1:
@@ -288,9 +298,6 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 print("⚠️  Warning: narrator_target should be RVC Character Model for RVC conversion")
                 print("🔄 Attempting conversion without specific model...")
 
-            # Get RVC configuration from engine
-            config = getattr(rvc_engine, 'config', {})
-            
             # Generate cache key for this conversion
             cache_key = self._generate_rvc_cache_key(processed_source_audio, rvc_model, config)
             
@@ -351,6 +358,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     f"Pitch: {config.get('pitch_shift', 0)} | "
                     f"Method: {config.get('f0_method', 'rmvpe')} | "
                     f"Index Rate: {config.get('index_rate', 0.75)} | "
+                    f"Chunking: {'native RVC only' if not enable_custom_chunking else 'custom outer chunking'} | "
                     f"Device: {config.get('device', 'auto')} | "
                     f"Pass: {iteration_num}/{refinement_passes}"
                 )
@@ -367,6 +375,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 f"Pitch: {config.get('pitch_shift', 0)} | "
                 f"Method: {config.get('f0_method', 'rmvpe')} | "
                 f"Index Rate: {config.get('index_rate', 0.75)} | "
+                f"Chunking: {'native RVC only' if not enable_custom_chunking else f'custom outer chunking ({chunk_method}, {max_chunk_duration}s max)'} | "
                 f"Device: {config.get('device', 'auto')} | "
                 f"Refinement passes: {refinement_passes} {cache_info}"
             )

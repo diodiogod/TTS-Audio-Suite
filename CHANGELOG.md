@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.27.3] - 2026-05-26
+
+### Added
+
+- Default RVC voice conversion to native long-audio segmentation
+- Add an RVC option for extra outer chunking when lower-VRAM chunk sizes are needed
+- Clarify which chunking mode is active in RVC conversion info
+
+### Changed
+
+- Change RVC custom chunking to opt-in
 ## [4.27.2] - 2026-05-26
 
 ### Added
