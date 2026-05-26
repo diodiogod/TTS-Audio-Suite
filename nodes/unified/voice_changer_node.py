@@ -78,11 +78,11 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 }),
                 "max_chunk_duration": ("INT", {
                     "default": 30, "min": 0, "max": 300, "step": 5,
-                    "tooltip": "Maximum duration (in seconds) for each audio chunk. Prevents OOM on long audio. Set to 0 to disable chunking entirely (process full audio at once). Default 30s is safe for ChatterBox. RVC users can disable (0) or use higher values (60-120s). Increase if you have high VRAM (>16GB)."
+                    "tooltip": "Maximum duration (in seconds) for each audio chunk. Prevents OOM on long audio. Set to 0 to disable chunking entirely. Chunks are rejoined with timing-preserving concatenation, so smart splitting is recommended for cleaner joins."
                 }),
                 "chunk_method": (["smart", "fixed"], {
                     "default": "smart",
-                    "tooltip": "Chunking method: 'smart' splits at silences for natural boundaries, 'fixed' splits at exact time intervals. Smart mode produces better quality by avoiding mid-word cuts."
+                    "tooltip": "Chunk split method: 'smart' cuts near silence and is recommended for cleaner boundaries, while 'fixed' cuts at exact intervals and may make joins more audible."
                 }),
             }
         }
@@ -204,12 +204,12 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             converted_audio_dict = self._convert_audio_from_rvc(converted_audio_np, output_sample_rate)
             converted_chunks.append(converted_audio_dict["waveform"])
 
-        # Combine chunks with crossfade
-        print(f"🔗 Combining {total_chunks} converted chunks with crossfade...")
+        # Keep exact duration across chunk boundaries for downstream sync-sensitive workflows
+        # (e.g., RVC training datasets). Crossfade removes overlap and shortens total runtime.
+        print(f"🔗 Combining {total_chunks} converted chunks with timing-safe concatenation...")
         combined_waveform = ChunkCombiner.combine_chunks(
             converted_chunks,
-            method="crossfade",
-            crossfade_duration=0.05,
+            method="concatenate",
             sample_rate=output_sample_rate
         )
 
@@ -225,7 +225,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             f"RVC Conversion: {model_name} model | "
             f"Pitch: {config.get('pitch_shift', 0)} | "
             f"Method: {config.get('f0_method', 'rmvpe')} | "
-            f"Chunking: {total_chunks} chunks ({chunk_method} mode, {max_chunk_duration}s max) | "
+            f"Chunking: {total_chunks} chunks ({chunk_method} mode, {max_chunk_duration}s max, concat join) | "
             f"Refinement passes: {refinement_passes} | "
             f"Device: {config.get('device', 'auto')}"
         )
@@ -828,12 +828,11 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         else:
             print(f"🔊 Output sample rate: {output_sample_rate}Hz")
 
-        # Combine chunks using crossfade for smooth transitions
-        print(f"🔗 Combining {total_chunks} converted chunks with crossfade...")
+        # Preserve exact duration across chunk boundaries for consistent sync behavior.
+        print(f"🔗 Combining {total_chunks} converted chunks with timing-safe concatenation...")
         combined_audio = ChunkCombiner.combine_chunks(
             converted_chunks,
-            method="crossfade",
-            crossfade_duration=0.05,  # 50ms crossfade for smooth transitions
+            method="concatenate",
             sample_rate=output_sample_rate
         )
 
@@ -967,7 +966,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 
                 chunking_info = ""
                 if len(source_chunks) > 1:
-                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max)\n"
+                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max, concat join)\n"
 
                 conversion_info = (
                     f"🔄 Voice Changer (Unified) - CHATTERBOX Engine:\n"
@@ -1034,7 +1033,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 
                 chunking_info = ""
                 if len(source_chunks) > 1:
-                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max)\n"
+                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max, concat join)\n"
 
                 conversion_info = (
                     f"🔄 Voice Changer (Unified) - CHATTERBOX OFFICIAL 23-LANG Engine:\n"
@@ -1069,7 +1068,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                         "sample_rate": output_sample_rate
                     }
 
-                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max)\n"
+                    chunking_info = f"Chunking: {len(source_chunks)} chunks ({chunk_method} mode, {max_chunk_duration}s max, concat join)\n"
                     conversion_info = (
                         f"🔄 Voice Changer (Unified) - COSYVOICE3 Engine:\n"
                         f"Model: {config.get('model_path', 'Unknown')}\n"
