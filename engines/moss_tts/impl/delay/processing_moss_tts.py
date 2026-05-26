@@ -264,7 +264,8 @@ class MossTTSDelayProcessor(ProcessorMixin):
         mode only works when a Message is converted to a dict.
         """
 
-        if mode not in {"generation", "continuation"}:
+        # TTS Audio Suite patch: keep bundled processor aligned with upstream training path.
+        if mode not in {"generation", "continuation", "computing_loss"}:
             raise RuntimeError
 
         if isinstance(conversations, (Message, Dict)):

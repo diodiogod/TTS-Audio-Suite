@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from contextlib import contextmanager
 from typing import Any, Dict, Iterable, List, Optional
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
+from transformers.utils import logging as transformers_logging
 
 from engines.moss_tts.impl.audio_tokenizer.modeling_moss_audio_tokenizer import MossAudioTokenizerModel
 from engines.moss_tts.impl.delay.configuration_moss_tts import MossTTSDelayConfig
@@ -30,6 +32,15 @@ from engines.moss_tts.training.common import (
 
 
 USER_MESSAGE_KEYS = ("text", "instruction", "tokens", "quality", "sound_event", "ambient_sound", "language")
+
+
+@contextmanager
+def _quiet_transformers_progress():
+    transformers_logging.disable_progress_bar()
+    try:
+        yield
+    finally:
+        transformers_logging.enable_progress_bar()
 
 
 def _normalize_audio_path_list(value: Any, field_name: str, allow_none: bool = False) -> Optional[List[Optional[str]]]:
@@ -82,8 +93,9 @@ def _normalize_audio_code_list(
 
 
 def build_delay_training_processor(model_path: str):
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model_config = MossTTSDelayConfig.from_pretrained(model_path)
+    with _quiet_transformers_progress():
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model_config = MossTTSDelayConfig.from_pretrained(model_path)
     return MossTTSDelayProcessor(
         tokenizer=tokenizer,
         audio_tokenizer=None,
@@ -92,9 +104,10 @@ def build_delay_training_processor(model_path: str):
 
 
 def _build_encoding_processor(model_path: str, codec_path: str):
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model_config = MossTTSDelayConfig.from_pretrained(model_path)
-    audio_tokenizer = MossAudioTokenizerModel.from_pretrained(codec_path)
+    with _quiet_transformers_progress():
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model_config = MossTTSDelayConfig.from_pretrained(model_path)
+        audio_tokenizer = MossAudioTokenizerModel.from_pretrained(codec_path)
     return MossTTSDelayProcessor(
         tokenizer=tokenizer,
         audio_tokenizer=audio_tokenizer,
@@ -198,10 +211,14 @@ def prepare_moss_training_dataset(
     validation_split: float = 0.05,
     split_seed: int = 42,
     batch_size: int = 8,
+    prep_batch_size: int = 0,
     n_vq: int = 0,
     encode_reference_audio: bool = True,
     reuse_existing: bool = True,
 ) -> Dict[str, Any]:
+    # Node UI uses prep_batch_size; keep batch_size for compatibility with older callers.
+    effective_batch_size = int(prep_batch_size) if int(prep_batch_size or 0) > 0 else int(batch_size)
+
     variant = resolve_variant_name(shared_settings.get("model_variant", "MOSS-TTS"))
     if variant != "MOSS-TTS":
         raise RuntimeError(
@@ -264,7 +281,7 @@ def prepare_moss_training_dataset(
             raw_train_records,
             model_path=model_path,
             codec_path=codec_path,
-            batch_size=batch_size,
+            batch_size=effective_batch_size,
             n_vq=(int(n_vq) if int(n_vq or 0) > 0 else None),
             encode_reference_audio=encode_reference_audio,
             device=device,
@@ -273,7 +290,7 @@ def prepare_moss_training_dataset(
             raw_val_records,
             model_path=model_path,
             codec_path=codec_path,
-            batch_size=batch_size,
+            batch_size=effective_batch_size,
             n_vq=(int(n_vq) if int(n_vq or 0) > 0 else None),
             encode_reference_audio=encode_reference_audio,
             device=device,
@@ -405,4 +422,3 @@ class MossTTSSFTDataset(Dataset):
             "attention_mask": full_attention_mask[:, :-1].contiguous(),
             "labels": labels.contiguous(),
         }
-

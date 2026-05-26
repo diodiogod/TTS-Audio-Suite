@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v4.26.5
+# TTS Audio Suite v4.27.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -908,6 +908,12 @@ Per-segment overrides are supported with `[]` parameter syntax for whole-segment
 * [📖 MOSS Training Guide](docs/MOSS_TRAINING_GUIDE.md)
 * [📖 Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)
 
+**Training status:**
+
+* **Initial MOSS LoRA training support is now integrated** through the unified `🎓 Model Training` flow.
+* Current scope is **MOSS-TTS 8B (Delay) LoRA training** with local adapter export into `models/TTS/moss_tts/loras/`.
+* Dataset-building UX is still early and will need refinement, but the end-to-end workflow is functional.
+
 </details>
 
 <details>
@@ -1549,6 +1555,7 @@ Your support helps maintain and improve this project for the entire community!
 | Workflow                                       | Description                                                | Status               | Files                                                                                                               |
 | ---------------------------------------------- | ---------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | **🤐 Voice Cleaning**                          | Audio restoration & cleanup with dual tool pipeline        | ✅ **New in v4.13**   | [📁 JSON](example_workflows/Voice%20Cleaning%20-%20🤐%20Noise%20or%20Vocal%20Removal%20+%20🤐%20Voice%20Fixer.json) |
+| **MOSS LoRA 🎓 Model Training**               | Initial MOSS LoRA training workflow from clipped speech dataset | ✅ **New in v4.27** | [📁 JSON](example_workflows/MOSS%20LoRA%20🎓%20Model%20Training.json)                                               |
 | **RVC 🎓 Model Training**                     | RVC voice model training workflow                          | ✅ **New in v4.25**   | [📁 JSON](example_workflows/RVC%20🎓%20Model%20Training.json)                                                       |
 | **🎨 Step Audio EditX - Audio Editor**         | Step Audio EditX audio editing with inline edit tags       | ✅ **New in v4.14**   | [📁 JSON](example_workflows/🎨%20Step%20Audio%20EditX%20-%20Audio%20Editor%20+%20Inline%20Edit%20Tags.json)        |
 | **⚙️ Step Audio EditX Integration**            | Step Audio EditX TTS engine with zero-shot voice cloning   | ✅ **New in v4.14**   | [📁 JSON](example_workflows/Step%20Audio%20EditX%20Integration.json)                                                |

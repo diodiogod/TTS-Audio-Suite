@@ -83,7 +83,7 @@ Back to the main narrator voice for the conclusion.""",
                 }),
                 "narrator_voice": (reference_files, {
                     "default": "none",
-                    "tooltip": "Fallback narrator voice from voice folders. Used when opt_narrator is not connected. Select 'none' if you only use opt_narrator input."
+                    "tooltip": "Fallback narrator voice from voice folders. Used when opt_narrator is not connected. Select 'none' for engines that support direct TTS without voice cloning, such as MOSS."
                 }),
                 "seed": ("INT", {
                     "default": 1, "min": 0, "max": 2**32 - 1,

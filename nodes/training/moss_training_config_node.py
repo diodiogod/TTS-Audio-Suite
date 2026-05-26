@@ -106,6 +106,18 @@ class MossTrainingConfigNode(BaseTTSNode):
                     "default": True,
                     "tooltip": "Keep this on for 8B training unless you deliberately want higher VRAM usage."
                 }),
+                "base_quantization": (["none", "4bit_nf4"], {
+                    "default": "none",
+                    "tooltip": "Base-model VRAM strategy. 4bit_nf4 enables QLoRA-style loading of the frozen 8B base model with bitsandbytes. This is the main knob if 24 GB VRAM is still not enough."
+                }),
+                "bnb_4bit_compute_dtype": (["auto", "bf16", "fp16", "fp32"], {
+                    "default": "auto",
+                    "tooltip": "Compute dtype used by 4-bit quantized layers. auto follows the mixed-precision choice. fp32 is safer but costs more VRAM."
+                }),
+                "bnb_4bit_use_double_quant": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Enable nested quantization for 4-bit base loading. Usually worth keeping on."
+                }),
                 "save_steps": ("INT", {
                     "default": 500,
                     "min": 0,
@@ -169,7 +181,8 @@ class MossTrainingConfigNode(BaseTTSNode):
         }
         info = (
             f"MOSS training config: LoRA Delay 8B | steps {config['max_train_steps'] or 'epoch-based'} | "
-            f"batch {config['batch_size']} | lr {config['learning_rate']}"
+            f"batch {config['batch_size']} | lr {config['learning_rate']} | "
+            f"base {config.get('base_quantization', 'none')}"
         )
         return config, info
 

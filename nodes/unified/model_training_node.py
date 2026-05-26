@@ -5,6 +5,7 @@ Unified model training router node.
 import os
 import sys
 import importlib.util
+import torch
 
 from engines.training.base_handler import unpack_tts_engine
 from engines.training.registry import get_training_handler
@@ -119,16 +120,20 @@ class UnifiedModelTrainingNode(BaseTTSNode):
                 f"training_config engine_type '{config_engine}' does not match '{engine_type}'"
             )
 
-        artifacts = handler.train(
-            TTS_engine,
-            training_dataset=training_dataset,
-            training_config=training_config,
-            output_name=output_name,
-            resume=resume,
-            overwrite=overwrite,
-            continue_from=continue_from,
-            node_id=node_id or unique_id,
-        )
+        # ComfyUI executes prompts under torch.inference_mode(), which detaches
+        # training graphs unless we explicitly opt back into gradients here.
+        with torch.inference_mode(mode=False):
+            with torch.enable_grad():
+                artifacts = handler.train(
+                    TTS_engine,
+                    training_dataset=training_dataset,
+                    training_config=training_config,
+                    output_name=output_name,
+                    resume=resume,
+                    overwrite=overwrite,
+                    continue_from=continue_from,
+                    node_id=node_id or unique_id,
+                )
         info = artifacts.get("summary") or f"{engine_type} training complete"
         return artifacts, info
 

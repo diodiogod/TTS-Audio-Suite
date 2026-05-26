@@ -199,13 +199,18 @@ class MossTTSDelayModel(MossTTSDelayPreTrainedModel, GenerationMixin):
         # Initialize weights and apply final processing
         self.post_init()
 
-    def get_input_embeddings(self, input_ids: torch.LongTensor) -> torch.Tensor:
+    def get_input_embeddings(self, input_ids: Optional[torch.LongTensor] = None) -> torch.Tensor:
         """
         Computes the combined embeddings from text and multiple audio VQ channels.
         
         Args:
             input_ids: Shape (Batch, Seq_Len, 1 + n_vq)
         """
+        # TTS Audio Suite patch: support the standard HF no-arg embedding contract used by
+        # tie_weights/PEFT setup while preserving the original combined-embedding behavior.
+        if input_ids is None:
+            return self.language_model.get_input_embeddings()
+
         # Base Text/Content Embedding
         # input_ids[..., 0] is standard text or semantic tokens
         inputs_embeds = self.language_model.get_input_embeddings()(input_ids[..., 0])

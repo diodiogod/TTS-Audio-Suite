@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.27.0] - 2026-05-26
+
+### Added
+
+- Add initial MOSS-TTS LoRA training support
+- Add initial MOSS-TTS 8B Delay LoRA training through the unified Model Training node
+- Add MOSS dataset staging, manifest building, preparation, and an example training workflow
+- Add 4-bit MOSS LoRA training option for lower-VRAM training on smaller GPUs
+
+### Fixed
+
+- Fix MOSS direct TTS inference so narrator fallback is not forced when no reference is provided
 ## [4.26.5] - 2026-05-23
 
 ### Added

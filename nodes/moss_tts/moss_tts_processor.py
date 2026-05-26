@@ -185,7 +185,10 @@ class MossTTSProcessor:
 
         voice_mapping: Dict[str, Optional[Dict[str, Any]]] = {}
         for character in characters:
-            if character == "narrator" and narrator_ref:
+            if character == "narrator":
+                # MOSS supports direct TTS with no reference audio. Do not silently pull a
+                # discovered "narrator" character voice from folders when the user did not
+                # explicitly provide one, or LoRA/non-cloning usage gets overridden.
                 voice_mapping[character] = narrator_ref
                 continue
 

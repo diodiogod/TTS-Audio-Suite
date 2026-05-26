@@ -243,6 +243,7 @@ class MossDatasetRowsNode(BaseTTSNode):
 
         clip_lookup = {str(clip["clip_id"]): str(clip["audio"]) for clip in clips}
         records = []
+        skipped_rows = 0
         for index, clip in enumerate(clips):
             record = {
                 "audio": str(clip["audio"]),
@@ -277,11 +278,16 @@ class MossDatasetRowsNode(BaseTTSNode):
                 record["tokens"] = int(default_duration_tokens)
 
             if not any(record.get(key) not in (None, "", []) for key in ("text", "instruction", "ambient_sound")):
-                raise ValueError(
-                    f"MOSS row {index+1} must include at least one prompt field such as text, instruction, or ambient_sound."
-                )
+                skipped_rows += 1
+                continue
 
             records.append(record)
+
+        if not records:
+            raise RuntimeError(
+                "MOSS Dataset Rows produced no valid manifest rows. All rows were empty after filtering. "
+                "Add transcripts or other prompt fields for the clips you want to keep."
+            )
 
         filename = str(manifest_name or "").strip() or "moss_train.jsonl"
         if not filename.endswith(".jsonl"):
@@ -301,6 +307,8 @@ class MossDatasetRowsNode(BaseTTSNode):
                 handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
         info = f"MOSS manifest rows ready: {os.path.basename(manifest_path)} | {len(records)} records"
+        if skipped_rows:
+            info += f" | skipped {skipped_rows} empty row(s)"
         print(f"🧾 {info}")
         return manifest_path, info
 
