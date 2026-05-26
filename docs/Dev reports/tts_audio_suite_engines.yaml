@@ -964,7 +964,7 @@ engines:
       srt: true
       vc: false
       asr: false
-      training: false
+      training: true
 
     special_features:
       - "20-language generation"
@@ -972,6 +972,7 @@ engines:
       - "Native 1-5 speaker TTSD dialogue"
       - "Duration token hint"
       - "Local/Delay/TTSD variants"
+      - "Initial integrated LoRA training workflow (Delay 8B)"
 
     model_sources:
       - component: "MOSS-TTS-Local-Transformer"
@@ -1035,7 +1036,7 @@ engines:
       asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: false, notes: "" }
       native_long_form: { supported: true, notes: "(TTSD/Delay long-form; use chunk orchestration for very long inputs)" }
-      community_finetunes: { supported: true, notes: "(LoRA adapter inference supported; training UI not added yet)" }
+      community_finetunes: { supported: true, notes: "(LoRA adapter inference supported; initial integrated LoRA training support added for MOSS-TTS Delay 8B)" }
       vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
       speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
 
@@ -1486,7 +1487,11 @@ model_layouts_markdown: |
   ├── MOSS-TTS-Local-Transformer/
   ├── MOSS-TTS/
   ├── MOSS-TTSD-v1.0/
-  └── MOSS-Audio-Tokenizer/
+  ├── MOSS-Audio-Tokenizer/
+  └── loras/
+      └── <adapter_name>/
+          ├── adapter_config.json
+          └── adapter_model.safetensors
   ```
 
   Notes:
@@ -1495,6 +1500,8 @@ model_layouts_markdown: |
   - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
   - `MOSS-TTS` is the official 8B delay model and is much larger.
   - `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
+  - Integrated training currently exports LoRA adapters into `moss_tts/loras/<adapter_name>/`.
+  - Training jobs, temporary manifests, and checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/moss_tts/`.
 
   ## Granite ASR
 

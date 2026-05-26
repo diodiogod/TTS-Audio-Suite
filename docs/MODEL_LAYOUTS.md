@@ -245,7 +245,11 @@ ComfyUI/models/TTS/moss_tts/
 ├── MOSS-TTS-Local-Transformer/
 ├── MOSS-TTS/
 ├── MOSS-TTSD-v1.0/
-└── MOSS-Audio-Tokenizer/
+├── MOSS-Audio-Tokenizer/
+└── loras/
+    └── <adapter_name>/
+        ├── adapter_config.json
+        └── adapter_model.safetensors
 ```
 
 Notes:
@@ -254,6 +258,8 @@ Notes:
 - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
 - `MOSS-TTS` is the official 8B delay model and is much larger.
 - `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
+- Integrated training currently exports LoRA adapters into `moss_tts/loras/<adapter_name>/`.
+- Training jobs, temporary manifests, and checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/moss_tts/`.
 
 ## Granite ASR
 
