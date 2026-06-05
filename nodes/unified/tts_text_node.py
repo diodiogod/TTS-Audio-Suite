@@ -1279,7 +1279,6 @@ Back to the main narrator voice for the conclusion.""",
                 lora_adapter = config.get('lora_adapter')
                 lora_info = ""
                 if lora_adapter:
-                    import os
                     lora_name = os.path.basename(str(lora_adapter).rstrip("/\\"))
                     lora_info = f", LoRA: {lora_name}"
                 base_info = (

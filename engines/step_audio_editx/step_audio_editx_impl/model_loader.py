@@ -5,6 +5,8 @@ import os
 import sys
 import logging
 import threading
+import inspect
+import functools
 from typing import Optional, Dict, Any, Tuple
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
@@ -40,6 +42,58 @@ class UnifiedModelLoader:
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+
+    def _get_requested_dtype(self, kwargs: Dict[str, Any]) -> Optional[torch.dtype]:
+        """Prefer the Transformers 5 `dtype` kwarg, but keep legacy fallback."""
+        return kwargs.get("dtype", kwargs.get("torch_dtype"))
+
+    def _apply_transformers_dtype_arg(self, load_kwargs: Dict[str, Any], requested_dtype: Optional[torch.dtype]) -> None:
+        """Set the correct dtype kwarg for the installed Transformers major version."""
+        if requested_dtype is None:
+            return
+
+        import transformers as trans
+
+        try:
+            major_version = int(trans.__version__.split(".", 1)[0])
+        except Exception:
+            major_version = 4
+
+        # TTS Audio Suite patch: Transformers 5 renamed `torch_dtype` to `dtype`.
+        load_kwargs["dtype" if major_version >= 5 else "torch_dtype"] = requested_dtype
+
+    def _patch_remote_code_cache_position_signature(self, model) -> None:
+        """
+        TTS Audio Suite patch: hide optional `cache_position` from Step Audio remote-code models.
+
+        Transformers 5 warns when remote-code models expose `cache_position` in `forward`.
+        The Step Audio model uses it as an optional argument with a default, so generation
+        works without passing it explicitly. We wrap `forward` with the same call behavior but
+        an adjusted signature to avoid the warning.
+        """
+        try:
+            original_forward = model.forward
+            signature = inspect.signature(original_forward)
+        except Exception:
+            return
+
+        if "cache_position" not in signature.parameters:
+            return
+
+        filtered_parameters = [
+            parameter
+            for name, parameter in signature.parameters.items()
+            if name != "cache_position"
+        ]
+        patched_signature = signature.replace(parameters=filtered_parameters)
+
+        @functools.wraps(original_forward)
+        def patched_forward(*args, **kwargs):
+            kwargs.pop("cache_position", None)
+            return original_forward(*args, **kwargs)
+
+        patched_forward.__signature__ = patched_signature
+        model.forward = patched_forward
 
     def _cached_snapshot_download(self, model_path: str, source: str, **kwargs) -> str:
         """
@@ -187,7 +241,8 @@ class UnifiedModelLoader:
             self.logger.debug(f"{quantization_config.upper()} quantization enabled")
 
         # Prepare quantization configuration
-        quantization_kwargs, should_set_torch_dtype = self._prepare_quantization_config(quantization_config, kwargs.get("torch_dtype"))
+        requested_dtype = self._get_requested_dtype(kwargs)
+        quantization_kwargs, should_set_torch_dtype = self._prepare_quantization_config(quantization_config, requested_dtype)
 
         try:
             # CRITICAL: Clear transformers module cache for Step-Audio-EditX to avoid stale imports
@@ -219,8 +274,8 @@ class UnifiedModelLoader:
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
-                if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["torch_dtype"] = kwargs.get("torch_dtype")
+                if should_set_torch_dtype:
+                    self._apply_transformers_dtype_arg(load_kwargs, requested_dtype)
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -250,8 +305,8 @@ class UnifiedModelLoader:
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
-                if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["torch_dtype"] = kwargs.get("torch_dtype")
+                if should_set_torch_dtype:
+                    self._apply_transformers_dtype_arg(load_kwargs, requested_dtype)
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -278,8 +333,8 @@ class UnifiedModelLoader:
                 load_kwargs.update(quantization_kwargs)
 
                 # Add dtype based on quantization requirements
-                if should_set_torch_dtype and kwargs.get("torch_dtype") is not None:
-                    load_kwargs["torch_dtype"] = kwargs.get("torch_dtype")
+                if should_set_torch_dtype:
+                    self._apply_transformers_dtype_arg(load_kwargs, requested_dtype)
 
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -297,6 +352,7 @@ class UnifiedModelLoader:
             # CRITICAL: Put model in evaluation mode (disables dropout, batch norm training mode)
             # Without this, the model generates garbage due to training-time randomness
             model.eval()
+            self._patch_remote_code_cache_position_signature(model)
 
             # ========================================================================
             # CRITICAL FIX for transformers 4.54+ weight tying bug
