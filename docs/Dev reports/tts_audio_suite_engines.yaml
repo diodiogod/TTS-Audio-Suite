@@ -1,6 +1,22 @@
 # TTS Audio Suite Engines - Complete Reference Data
 # This is the single source of truth for all engine documentation tables
 
+runtime_isolation_modes:
+  field_label: "⚠️ Runtime Isolation"
+  modes:
+    main_environment:
+      label: "Main Environment"
+      short_label: "Main"
+      description: "Use the main ComfyUI Python environment."
+    shared_runtime:
+      label: "Shared Runtime"
+      short_label: "Shared"
+      description: "Use a secondary shared runtime for engines with dependency conflicts. This runtime reuses heavy base packages like PyTorch from the main environment when configured."
+    dedicated_runtime:
+      label: "Dedicated Runtime"
+      short_label: "Dedicated"
+      description: "Use a dedicated secondary runtime only for one engine when the shared runtime is not enough."
+
 engines:
   - id: f5-tts
     name: F5-TTS
@@ -350,6 +366,17 @@ engines:
       - "Native 4-speaker (Base models)"
       - "Multilingual (KugelAudio variants)"
       - "4-bit quantization"
+
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+        - "dedicated_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      dedicated_profile: "vibevoice_transformers4_dedicated"
+      notes: "Recommended on modern ComfyUI stacks because VibeVoice/Kugel currently needs a secondary dependency layer. The shared runtime reuses heavy base packages like PyTorch from the main environment to avoid full duplication."
 
     model_sources:
       - component: "vibevoice-1.5B"

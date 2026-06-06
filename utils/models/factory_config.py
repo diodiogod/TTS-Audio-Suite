@@ -11,6 +11,31 @@ from typing import Optional, Dict, Any
 from utils.device import resolve_torch_device
 
 
+RUNTIME_MODE_MAIN = "main_environment"
+RUNTIME_MODE_SHARED = "shared_runtime"
+RUNTIME_MODE_DEDICATED = "dedicated_runtime"
+
+_LEGACY_RUNTIME_MODE_MAP = {
+    "embedded": RUNTIME_MODE_MAIN,
+    "isolated": RUNTIME_MODE_SHARED,
+    "Main Environment": RUNTIME_MODE_MAIN,
+    "⚠️ Shared Runtime": RUNTIME_MODE_SHARED,
+    "⚠️ Dedicated Runtime": RUNTIME_MODE_DEDICATED,
+    "Shared Runtime": RUNTIME_MODE_SHARED,
+    "Dedicated Runtime": RUNTIME_MODE_DEDICATED,
+}
+
+
+def normalize_runtime_mode(runtime_mode: Optional[str]) -> str:
+    if not runtime_mode:
+        return RUNTIME_MODE_MAIN
+    return _LEGACY_RUNTIME_MODE_MAP.get(runtime_mode, runtime_mode)
+
+
+def runtime_uses_isolation(runtime_mode: Optional[str]) -> bool:
+    return normalize_runtime_mode(runtime_mode) in (RUNTIME_MODE_SHARED, RUNTIME_MODE_DEDICATED)
+
+
 @dataclass
 class ModelLoadConfig:
     """
@@ -47,6 +72,10 @@ class ModelLoadConfig:
     # Engine-specific parameters
     additional_params: Dict[str, Any] = field(default_factory=dict)
 
+    # Runtime-routing parameters
+    runtime_mode: str = RUNTIME_MODE_MAIN
+    runtime_profile: Optional[str] = None
+
     def __post_init__(self):
         """
         Post-initialization validation and normalization.
@@ -65,6 +94,8 @@ class ModelLoadConfig:
         if self.additional_params is None:
             self.additional_params = {}
 
+        self.runtime_mode = normalize_runtime_mode(self.runtime_mode)
+
     def get_cache_key_parts(self) -> Dict[str, Any]:
         """
         Get dictionary of parameters suitable for cache key generation.
@@ -78,6 +109,8 @@ class ModelLoadConfig:
             "language": self.language,
             "model_path": self.model_path,
             "repo_id": self.repo_id,
+            "runtime_mode": self.runtime_mode,
+            "runtime_profile": self.runtime_profile,
             **self.additional_params
         }
 
@@ -93,7 +126,9 @@ class ModelLoadConfig:
             language=self.language,
             model_path=self.model_path,
             repo_id=self.repo_id,
-            additional_params=dict(self.additional_params)
+            additional_params=dict(self.additional_params),
+            runtime_mode=self.runtime_mode,
+            runtime_profile=self.runtime_profile,
         )
 
     def __repr__(self) -> str:
@@ -110,5 +145,9 @@ class ModelLoadConfig:
             parts.append(f"repo={self.repo_id}")
         if self.additional_params:
             parts.append(f"extra={self.additional_params}")
+        if runtime_uses_isolation(self.runtime_mode):
+            parts.append(f"runtime_mode={self.runtime_mode}")
+        if self.runtime_profile:
+            parts.append(f"runtime_profile={self.runtime_profile}")
 
         return f"ModelLoadConfig({', '.join(parts)})"

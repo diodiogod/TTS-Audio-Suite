@@ -30,6 +30,8 @@ class EngineCapabilities:
     fallback_languages: Languages to try if primary loading fails
     supports_training: Engine has a training backend in the suite
     training_modes: Supported training mode identifiers
+    supports_runtime_isolation: Engine can be routed to a dedicated worker runtime
+    default_runtime_profile: Preferred isolated runtime profile name
     """
 
     supports_voice_conversion: bool = False
@@ -40,6 +42,8 @@ class EngineCapabilities:
     fallback_languages: list = None
     supports_training: bool = False
     training_modes: list = field(default_factory=list)
+    supports_runtime_isolation: bool = False
+    default_runtime_profile: Optional[str] = None
 
     def __post_init__(self):
         if self.fallback_languages is None:
@@ -75,6 +79,8 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         can_corrupt_on_reload=True,  # Higgs has CUDA graph corruption issues
         recovery_handler=None,  # Would be set to reset function
         requires_special_init=True,
+        supports_runtime_isolation=True,
+        default_runtime_profile="higgs_audio_embedded",
     ),
 
     "rvc": EngineCapabilities(
@@ -91,6 +97,8 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         multilingual_model_switching=False,  # One model handles multiple languages
         can_corrupt_on_reload=False,
         fallback_languages=["English"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="vibevoice_transformers4_shared",
     ),
 
     "index_tts": EngineCapabilities(
@@ -114,6 +122,26 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         fallback_languages=["English"],
         supports_training=True,
         training_modes=["lora_adapter"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="moss_tts_transformers5",
+    ),
+
+    "qwen3_tts": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="qwen3_tts_transformers5",
+    ),
+
+    "step_audio_editx": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="step_audio_editx_transformers5",
     ),
 }
 
@@ -151,6 +179,7 @@ def engine_supports_feature(engine_name: str, feature: str) -> bool:
         "multilingual": caps.multilingual_model_switching,
         "corruption_recovery": caps.can_corrupt_on_reload,
         "training": caps.supports_training,
+        "runtime_isolation": caps.supports_runtime_isolation,
     }
 
     return feature_map.get(feature, False)
@@ -194,3 +223,8 @@ def engine_supports_training(engine_name: str) -> bool:
 def get_training_modes(engine_name: str) -> list:
     caps = get_engine_capabilities(engine_name)
     return caps.training_modes if caps else []
+
+
+def get_default_runtime_profile(engine_name: str) -> Optional[str]:
+    caps = get_engine_capabilities(engine_name)
+    return caps.default_runtime_profile if caps else None

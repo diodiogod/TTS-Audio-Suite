@@ -48,6 +48,45 @@ def get_speed_emoji(speed_note):
         return "🐌"
 
 
+def get_runtime_mode_meta(data, mode_key):
+    """Resolve runtime isolation mode metadata."""
+    return data.get("runtime_isolation_modes", {}).get("modes", {}).get(mode_key, {})
+
+
+def get_engine_runtime_mode(engine):
+    """Return engine default runtime mode key."""
+    runtime_meta = engine.get("runtime_isolation")
+    if not runtime_meta:
+        return "main_environment"
+    return runtime_meta.get("default_mode", "main_environment")
+
+
+def format_runtime_label(data, mode_key, short=False):
+    """Format runtime mode label."""
+    meta = get_runtime_mode_meta(data, mode_key)
+    if short:
+        return meta.get("short_label") or meta.get("label") or mode_key
+    return meta.get("label", mode_key)
+
+
+def get_isolation_engines(data):
+    """Return engines that currently document runtime isolation support."""
+    return [engine for engine in data["engines"] if engine.get("runtime_isolation")]
+
+
+def build_isolation_note(data):
+    """Build a short isolation footnote for generated tables."""
+    isolation_engines = get_isolation_engines(data)
+    if not isolation_engines:
+        return ""
+
+    engine_names = ", ".join(engine["name"] for engine in isolation_engines)
+    return (
+        f"*Isolation column: `Shared` / `Dedicated` only appear on engines that currently "
+        f"need a secondary environment. Right now that means {engine_names}.*"
+    )
+
+
 def generate_engine_comparison(data):
     """Generate main engine comparison table"""
     engines = data["engines"]
@@ -57,8 +96,8 @@ def generate_engine_comparison(data):
     output.append("")
     output.append("## Engine Comparison")
     output.append("")
-    output.append("| Engine             | Models                                    | Size         | TTS | SRT | VC  | ASR | Training | License                  | Special Features                                                                         | Languages                                                                                |")
-    output.append("| ------------------ | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
+    output.append("| Engine             | Isolation | Models                                    | Size         | TTS | SRT | VC  | ASR | Training | License                  | Special Features                                                                         | Languages                                                                                |")
+    output.append("| ------------------ | --------- | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
 
     for e in engines:
         # Extract flags from languages
@@ -78,6 +117,7 @@ def generate_engine_comparison(data):
 
         row = [
             f"**{e['name']}**".ljust(18),
+            format_runtime_label(data, get_engine_runtime_mode(e), short=True).ljust(9),
             e["models"].ljust(41),
             e["size"].ljust(12),
             format_support(e["capabilities"]["tts"]),
@@ -92,6 +132,11 @@ def generate_engine_comparison(data):
 
         output.append("| " + " | ".join(row) + " |")
 
+    isolation_note = build_isolation_note(data)
+    if isolation_note:
+        output.append("")
+        output.append(isolation_note)
+
     return "\n".join(output)
 
 
@@ -104,8 +149,8 @@ def generate_readme_condensed_table(data):
     output = []
     output.append(f"## Quick Engine Comparison — {engine_count} Engines")
     output.append("")
-    output.append("| Engine | Languages | Size | Key Features |")
-    output.append("|--------|-----------|------|--------------|")
+    output.append("| Engine | Isolation | Languages | Size | Key Features |")
+    output.append("|--------|-----------|-----------|------|--------------|")
 
     # Show ALL engines
     for e in engines:
@@ -143,6 +188,7 @@ def generate_readme_condensed_table(data):
 
         row = [
             f"**{e['name']}**",
+            format_runtime_label(data, get_engine_runtime_mode(e), short=True),
             lang_display,
             e["size"],
             key_features
@@ -158,9 +204,15 @@ def generate_readme_condensed_table(data):
                   "**[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | "
                   "**[Model folder layouts →](docs/MODEL_LAYOUTS.md)**")
     output.append("")
+    isolation_note = build_isolation_note(data)
+    if isolation_note:
+        output.append(isolation_note)
+        output.append("")
     output.append("*Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*")
 
     return "\n".join(output)
+
+
 
 
 def generate_model_download_sources(data):
@@ -566,7 +618,6 @@ def main():
             "<!-- README_MODEL_DOWNLOAD_TABLE_START -->",
             "<!-- README_MODEL_DOWNLOAD_TABLE_END -->",
         )
-
         if condensed_result is None or model_table_result is None:
             print("❌ README.md injection failed (markers not found)")
         elif condensed_result is True or model_table_result is True:

@@ -25,23 +25,25 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 ## Quick Engine Comparison — 13 Engines
 
-| Engine | Languages | Size | Key Features |
-|--------|-----------|------|--------------|
-| **F5-TTS** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇮🇹​🇯🇵 +4 | ~1.2GB each | Targeted Word/Speech Editing, Speed control |
-| **ChatterBox** | 🇺🇸​🇩🇪​🇫🇷​🇮🇹​🇯🇵​🇰🇷 +4 | ~4.3GB | Expressiveness slider |
-| **ChatterBox 23L** | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
-| **VibeVoice** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +21 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker (Base models) |
-| **Higgs Audio 2** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
-| **IndexTTS-2** | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
-| **CosyVoice3** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
-| **Qwen3-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
-| **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
-| **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
-| **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
-| **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
-| **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
+| Engine | Isolation | Languages | Size | Key Features |
+|--------|-----------|-----------|------|--------------|
+| **F5-TTS** | Main | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇮🇹​🇯🇵 +4 | ~1.2GB each | Targeted Word/Speech Editing, Speed control |
+| **ChatterBox** | Main | 🇺🇸​🇩🇪​🇫🇷​🇮🇹​🇯🇵​🇰🇷 +4 | ~4.3GB | Expressiveness slider |
+| **ChatterBox 23L** | Main | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
+| **VibeVoice** | Shared | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +21 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker (Base models) |
+| **Higgs Audio 2** | Main | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
+| **IndexTTS-2** | Main | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
+| **CosyVoice3** | Main | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
+| **Qwen3-TTS** | Main | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
+| **Granite ASR** | Main | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
+| **Step Audio EditX** | Main | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
+| **Echo-TTS** | Main | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
+| **MOSS-TTS** | Main | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
+| **RVC** | Main | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
+
+*Isolation column: `Shared` / `Dedicated` only appear on engines that currently need a secondary environment. Right now that means VibeVoice.*
 
 *Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*
 
@@ -352,6 +354,8 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 2. Connect to `TTS Text` or `TTS SRT` node for generation
 3. Choose between Custom Character Switching (recommended) or Native Multi-Speaker mode
 4. Generate long-form content with automatic voice cloning from your voices folder
+
+**Isolation note:** On current ComfyUI stacks, **Kugel/VibeVoice is usually meant to run with `⚠️ Runtime Isolation = Shared Runtime`**. If you force `Main Environment`, you are opting back into the dependency-conflict path.
 
 **Perfect for:**
 
@@ -1275,6 +1279,8 @@ Then run this install script again.
 #### Python Environment Issues
 
 A common problem is installing dependencies in the wrong Python environment. Always ensure you are installing dependencies within your ComfyUI's Python environment.
+
+If the engine comparison table shows **`Shared`** or **`Dedicated`** in the **Isolation** column, that engine has its own secondary-environment path for dependency conflicts. Configure that on the engine node with `⚠️ Runtime Isolation` instead of trying to downgrade your main ComfyUI environment.
 
 * **Verify your Python environment:** After activating your venv or navigating to your portable ComfyUI installation, check the Python executable being used:
   
