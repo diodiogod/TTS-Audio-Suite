@@ -205,7 +205,13 @@ class DiffLlama(LlamaModel):
         hidden_size=1024,
         num_heads=16,
         num_layers=16,
-        config=LlamaConfig(0, 256, 1024, 1, 1),
+        config=LlamaConfig(
+            vocab_size=256,
+            hidden_size=1024,
+            intermediate_size=4096,
+            num_hidden_layers=1,
+            num_attention_heads=1,
+        ),
     ):
         super().__init__(config)
 
@@ -430,7 +436,13 @@ class DiffLlamaPrefix(LlamaModel):
         hidden_size=1024,
         num_heads=16,
         num_layers=16,
-        config=LlamaConfig(0, 256, 1024, 1, 1),
+        config=LlamaConfig(
+            vocab_size=256,
+            hidden_size=1024,
+            intermediate_size=4096,
+            num_hidden_layers=1,
+            num_attention_heads=1,
+        ),
     ):
         super().__init__(config)
 

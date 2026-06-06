@@ -11,8 +11,11 @@ from indextts.gpt.transformers_generation_utils import GenerationMixin
 
 # from transformers import GPT2Config, GPT2PreTrainedModel, LogitsProcessorList
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
-from transformers.utils.model_parallel_utils import (assert_device_map,
-                                                     get_device_map)
+try:
+    from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed model_parallel_utils.
+    from indextts.gpt.transformers_gpt2 import assert_device_map, get_device_map
 
 from indextts.gpt.conformer_encoder import ConformerEncoder
 from indextts.gpt.perceiver import PerceiverResampler
@@ -268,6 +271,9 @@ def build_hf_gpt_transformer(layers, model_dim, heads, max_mel_seq_len, max_text
                             n_layer=layers,
                             n_head=heads,
                             gradient_checkpointing=checkpointing,
+                            bos_token_id=0,
+                            eos_token_id=1,
+                            pad_token_id=1,
                             use_cache=not checkpointing)
     gpt = GPT2Model(gpt_config)
     # Override the built in positional embeddings
@@ -423,6 +429,9 @@ class UnifiedVoice(nn.Module):
             n_layer=self.layers,
             n_head=self.heads,
             gradient_checkpointing=False,
+            bos_token_id=self.start_mel_token,
+            eos_token_id=self.stop_mel_token,
+            pad_token_id=self.stop_mel_token,
             use_cache=True,
         )
 

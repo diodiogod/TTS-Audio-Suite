@@ -25,29 +25,39 @@ import torch.distributed as dist
 from torch import nn
 from torch.nn import functional as F
 
+# TTS Audio Suite patch: transformers 5 compatibility shims for vendored IndexTTS code.
 # Handle transformers version compatibility for cache imports
-try:
-    from transformers.cache_utils import (
-        Cache,
-        DynamicCache,
-        EncoderDecoderCache,
-        OffloadedCache,
-        QuantizedCacheConfig,
-        StaticCache,
-    )
-except ImportError:
-    # QuantizedCacheConfig doesn't exist in newer transformers versions
-    from transformers.cache_utils import (
-        Cache,
-        DynamicCache,
-        EncoderDecoderCache,
-        OffloadedCache,
-        StaticCache,
-    )
-    
-    # Create a compatible QuantizedCacheConfig class
+from transformers import cache_utils as _cache_utils
+
+Cache = _cache_utils.Cache
+DynamicCache = _cache_utils.DynamicCache
+EncoderDecoderCache = _cache_utils.EncoderDecoderCache
+StaticCache = _cache_utils.StaticCache
+
+# TTS Audio Suite patch:
+# Transformers 5 removed several older cache classes. IndexTTS does not rely on
+# them by default, so keep compatibility by aliasing to the nearest supported
+# cache class instead of failing at import time.
+OffloadedCache = getattr(_cache_utils, "OffloadedCache", DynamicCache)
+QuantizedCache = getattr(_cache_utils, "QuantizedCache", DynamicCache)
+OffloadedStaticCache = getattr(_cache_utils, "OffloadedStaticCache", StaticCache)
+SlidingWindowCache = getattr(_cache_utils, "SlidingWindowCache", StaticCache)
+HybridCache = getattr(_cache_utils, "HybridCache", StaticCache)
+QuantoQuantizedCache = getattr(_cache_utils, "QuantoQuantizedCache", QuantizedCache)
+HQQQuantizedCache = getattr(_cache_utils, "HQQQuantizedCache", QuantizedCache)
+QuantizedCacheConfig = getattr(_cache_utils, "QuantizedCacheConfig", None)
+
+if QuantizedCacheConfig is None:
     class QuantizedCacheConfig:
-        def __init__(self, backend="quanto", nbits=4, axis_key=0, axis_value=0, q_group_size=64, residual_length=128):
+        def __init__(
+            self,
+            backend="quanto",
+            nbits=4,
+            axis_key=0,
+            axis_value=0,
+            q_group_size=64,
+            residual_length=128,
+        ):
             self.backend = backend
             self.nbits = nbits
             self.axis_key = axis_key
@@ -55,11 +65,37 @@ except ImportError:
             self.q_group_size = q_group_size
             self.residual_length = residual_length
 from transformers.configuration_utils import PretrainedConfig
+
+# TTS Audio Suite patch: transformers 5 renamed
+# `_get_non_default_generation_parameters` to `_get_generation_parameters`.
+if (
+    not hasattr(PretrainedConfig, "_get_non_default_generation_parameters")
+    and hasattr(PretrainedConfig, "_get_generation_parameters")
+):
+    def _get_non_default_generation_parameters(self):
+        return self._get_generation_parameters()
+
+    PretrainedConfig._get_non_default_generation_parameters = _get_non_default_generation_parameters
+
 from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
 from transformers.integrations.fsdp import is_fsdp_managed_module
 from transformers.modeling_outputs import CausalLMOutputWithPast, Seq2SeqLMOutput
-from transformers.pytorch_utils import isin_mps_friendly
-from transformers.tokenization_utils import ExtensionsTrie
+try:
+    from transformers.pytorch_utils import isin_mps_friendly
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed this helper.
+    def isin_mps_friendly(elements, test_elements):
+        return torch.isin(elements, test_elements)
+try:
+    from transformers.tokenization_utils import ExtensionsTrie
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed ExtensionsTrie.
+    class ExtensionsTrie:
+        def __init__(self, vocab):
+            self._tokens = tuple(vocab.keys())
+
+        def extensions(self, prefix):
+            return [token for token in self._tokens if token.startswith(prefix)]
 from transformers.utils import (
     ModelOutput,
     is_accelerate_available,
@@ -69,8 +105,82 @@ from transformers.utils import (
     is_torchdynamo_compiling,
     logging,
 )
-from transformers.generation.beam_constraints import DisjunctiveConstraint, PhrasalConstraint
-from transformers.generation.beam_search import BeamScorer, BeamSearchScorer, ConstrainedBeamSearchScorer
+try:
+    from transformers.generation.beam_constraints import DisjunctiveConstraint, PhrasalConstraint
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed beam_constraints.
+    class PhrasalConstraint:
+        def __init__(self, token_ids):
+            self.token_ids = tuple(token_ids)
+            self.position = 0
+
+        def copy(self):
+            cloned = PhrasalConstraint(self.token_ids)
+            cloned.position = self.position
+            return cloned
+
+        def reset(self):
+            self.position = 0
+
+        def advance(self):
+            if self.completed:
+                return []
+            return [self.token_ids[self.position]]
+
+        def add(self, token_id):
+            if self.completed:
+                return
+            expected = self.token_ids[self.position]
+            if token_id == expected:
+                self.position += 1
+            elif token_id == self.token_ids[0]:
+                self.position = 1
+            else:
+                self.position = 0
+
+        @property
+        def completed(self):
+            return self.position >= len(self.token_ids)
+
+        def remaining(self):
+            return max(0, len(self.token_ids) - self.position)
+
+
+    class DisjunctiveConstraint:
+        def __init__(self, nested_token_ids):
+            self._alternatives = [PhrasalConstraint(token_ids) for token_ids in nested_token_ids]
+
+        def copy(self):
+            cloned = DisjunctiveConstraint([])
+            cloned._alternatives = [alternative.copy() for alternative in self._alternatives]
+            return cloned
+
+        def reset(self):
+            for alternative in self._alternatives:
+                alternative.reset()
+
+        def advance(self):
+            tokens = []
+            for alternative in self._alternatives:
+                if not alternative.completed:
+                    tokens.extend(alternative.advance())
+            return list(dict.fromkeys(tokens))
+
+        def add(self, token_id):
+            for alternative in self._alternatives:
+                if not alternative.completed:
+                    alternative.add(token_id)
+
+        @property
+        def completed(self):
+            return any(alternative.completed for alternative in self._alternatives)
+
+        def remaining(self):
+            if not self._alternatives:
+                return 0
+            return min(alternative.remaining() for alternative in self._alternatives)
+
+from indextts.gpt.transformers_beam_search import BeamScorer, BeamSearchScorer, ConstrainedBeamSearchScorer
 # Handle transformers version compatibility
 try:
     from transformers.generation.candidate_generator import (
@@ -136,18 +246,6 @@ except ImportError:
         GenerationConfig,
         GenerationMode,
     )
-    from transformers.cache_utils import (
-        DynamicCache,
-        StaticCache,
-        QuantizedCache,
-        OffloadedCache,
-        OffloadedStaticCache,
-        SlidingWindowCache,
-        HybridCache,
-        EncoderDecoderCache,
-        QuantoQuantizedCache,
-        HQQQuantizedCache,
-    )
 
     NEED_SETUP_CACHE_CLASSES_MAPPING = {
         "static": StaticCache,
@@ -170,9 +268,9 @@ from transformers.generation.logits_process import (
     ExponentialDecayLengthPenalty,
     ForcedBOSTokenLogitsProcessor,
     ForcedEOSTokenLogitsProcessor,
-    HammingDiversityLogitsProcessor,
     InfNanRemoveLogitsProcessor,
     LogitNormalization,
+    LogitsProcessor,
     LogitsProcessorList,
     MinLengthLogitsProcessor,
     MinNewTokensLengthLogitsProcessor,
@@ -190,6 +288,17 @@ from transformers.generation.logits_process import (
     TypicalLogitsWarper,
     UnbatchedClassifierFreeGuidanceLogitsProcessor,
 )
+
+try:
+    from transformers.generation.logits_process import HammingDiversityLogitsProcessor
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed this diverse beam helper.
+    class HammingDiversityLogitsProcessor(LogitsProcessor):
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __call__(self, input_ids, scores):
+            return scores
 from transformers.generation.stopping_criteria import (
     ConfidenceCriteria,
     EosTokenCriteria,
@@ -2451,16 +2560,21 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
+        # TTS Audio Suite patch: transformers 5 removed `return_legacy_cache`
+        # from GenerationConfig. Treat the missing attribute like the old
+        # default (`None`) instead of crashing.
+        return_legacy_cache = getattr(generation_config, "return_legacy_cache", None)
+
         # Convert to legacy cache format if requested
         if (
-            generation_config.return_legacy_cache is not False  # Should check for `True` after v4.47
+            return_legacy_cache is not False  # Should check for `True` after v4.47
             and not is_torchdynamo_compiling()
             and hasattr(result, "past_key_values")
             and hasattr(result.past_key_values, "to_legacy_cache")
             and result.past_key_values.to_legacy_cache is not None
         ):
             # handle BC (convert by default if he user hasn't passed a cache AND the cache is of the default type)
-            should_convert_cache = generation_config.return_legacy_cache
+            should_convert_cache = return_legacy_cache
             is_user_defined_cache = user_defined_cache is not None
             is_default_cache_type = (
                 type(result.past_key_values) == DynamicCache  # noqa E721

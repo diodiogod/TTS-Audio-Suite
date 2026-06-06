@@ -31,16 +31,29 @@ from dataclasses import dataclass
 from functools import partial, wraps
 from threading import Thread
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from urllib.parse import urlparse
 from zipfile import is_zipfile
 
 import torch
-from huggingface_hub import split_torch_state_dict_into_shards
+from huggingface_hub import hf_hub_download, split_torch_state_dict_into_shards
 from packaging import version
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss, Identity
 from torch.utils.checkpoint import checkpoint
 from transformers.activations import get_activation
 from transformers.configuration_utils import PretrainedConfig
+
+# TTS Audio Suite patch: transformers 5 renamed
+# `_get_non_default_generation_parameters` to `_get_generation_parameters`.
+if (
+    not hasattr(PretrainedConfig, "_get_non_default_generation_parameters")
+    and hasattr(PretrainedConfig, "_get_generation_parameters")
+):
+    def _get_non_default_generation_parameters(self):
+        return self._get_generation_parameters()
+
+    PretrainedConfig._get_non_default_generation_parameters = _get_non_default_generation_parameters
+
 from transformers.dynamic_module_utils import custom_object_save
 from transformers.generation import GenerationConfig
 import transformers
@@ -53,13 +66,43 @@ from transformers.loss.loss_utils import LOSS_MAPPING
 from transformers.pytorch_utils import (  # noqa: F401
     Conv1D,
     apply_chunking_to_forward,
-    find_pruneable_heads_and_indices,
     id_tensor_storage,
     is_torch_greater_or_equal_than_1_13,
-    prune_conv1d_layer,
-    prune_layer,
     prune_linear_layer,
 )
+
+try:
+    from transformers.pytorch_utils import find_pruneable_heads_and_indices, prune_conv1d_layer
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed old GPT head-pruning helpers.
+    def find_pruneable_heads_and_indices(heads, n_heads, head_size, already_pruned_heads):
+        mask = torch.ones(n_heads, head_size)
+        heads = set(heads) - already_pruned_heads
+        for head in heads:
+            head = head - sum(1 if pruned_head < head else 0 for pruned_head in already_pruned_heads)
+            mask[head] = 0
+        mask = mask.view(-1).contiguous().eq(1)
+        index = torch.arange(len(mask), dtype=torch.long)[mask]
+        return heads, index
+
+
+    def prune_conv1d_layer(layer, index, dim=1):
+        index = index.to(layer.weight.device)
+        W = layer.weight.index_select(dim, index).detach().clone()
+        if dim == 0:
+            b = layer.bias.detach().clone()
+        else:
+            b = layer.bias[index].detach().clone()
+        new_size = list(layer.weight.size())
+        new_size[dim] = len(index)
+        new_layer = Conv1D(new_size[1], new_size[0]).to(layer.weight.device)
+        new_layer.weight.requires_grad = False
+        new_layer.weight.copy_(W.contiguous())
+        new_layer.weight.requires_grad = True
+        new_layer.bias.requires_grad = False
+        new_layer.bias.copy_(b.contiguous())
+        new_layer.bias.requires_grad = True
+        return new_layer
 from transformers.quantizers import AutoHfQuantizer, HfQuantizer
 from transformers.quantizers.quantizers_utils import get_module_from_name
 from transformers.safetensors_conversion import auto_conversion
@@ -69,11 +112,8 @@ from transformers.utils import (
     ADAPTER_WEIGHTS_NAME,
     CONFIG_NAME,
     DUMMY_INPUTS,
-    FLAX_WEIGHTS_NAME,
     SAFE_WEIGHTS_INDEX_NAME,
     SAFE_WEIGHTS_NAME,
-    TF2_WEIGHTS_NAME,
-    TF_WEIGHTS_NAME,
     WEIGHTS_INDEX_NAME,
     WEIGHTS_NAME,
     ContextManagers,
@@ -81,23 +121,58 @@ from transformers.utils import (
     PushToHubMixin,
     cached_file,
     copy_func,
-    download_url,
     extract_commit_hash,
     has_file,
     is_accelerate_available,
     is_bitsandbytes_available,
     is_flash_attn_2_available,
-    is_offline_mode,
     is_optimum_available,
     is_peft_available,
-    is_remote_url,
-    is_safetensors_available,
-    is_torch_sdpa_available,
     is_torch_xla_available,
     logging,
     replace_return_docstrings,
     strtobool,
 )
+
+# TTS Audio Suite patch: transformers 5 removed legacy TF/Flax filename constants
+# from transformers.utils, but this vendored modeling shim still references them.
+FLAX_WEIGHTS_NAME = "flax_model.msgpack"
+TF2_WEIGHTS_NAME = "tf_model.h5"
+TF_WEIGHTS_NAME = "model.ckpt"
+
+# TTS Audio Suite patch: transformers 5 removed/moved several legacy utils
+# used by this vendored modeling shim.
+try:
+    from transformers.utils import is_safetensors_available
+except ImportError:
+    def is_safetensors_available():
+        try:
+            import safetensors  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+
+try:
+    from transformers.utils import is_torch_sdpa_available
+except ImportError:
+    def is_torch_sdpa_available():
+        return hasattr(torch.nn.functional, "scaled_dot_product_attention")
+
+
+try:
+    from transformers.utils import is_offline_mode
+except ImportError:
+    from transformers.utils.hub import is_offline_mode
+
+
+def is_remote_url(url_or_filename):
+    parsed = urlparse(url_or_filename)
+    return parsed.scheme in ("http", "https")
+
+
+def download_url(url):
+    return hf_hub_download(repo_id=url, filename="")
 from transformers.utils.hub import convert_file_size_to_int, create_and_tag_model_card, get_checkpoint_shard_files
 from transformers.utils.import_utils import (
     ENV_VARS_TRUE_VALUES,
