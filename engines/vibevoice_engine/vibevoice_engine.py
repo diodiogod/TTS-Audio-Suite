@@ -10,6 +10,8 @@ import os
 import sys
 import gc
 import logging
+import glob
+from contextlib import contextmanager
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 from packaging import version
@@ -94,6 +96,8 @@ class VibeVoiceEngine:
         self.model_path = None
         self.device = None
         self.attention_mode = None  # Track current attention mode for re-patching
+        self._kugel_voice_encoder_bundle = None
+        self._kugel_voice_encoder_model_path = None
 
         # Use global shared cache
         self.cache = get_audio_cache()
@@ -141,6 +145,199 @@ class VibeVoiceEngine:
 
         if moved_buffers:
             print(f"   🔧 Aligned VibeVoice buffers to {main_device}: {', '.join(moved_buffers)}")
+
+    def _normalize_dispatched_execution_devices(self) -> None:
+        """
+        TTS Audio Suite patch: normalize Accelerate hook devices after Transformers 5 auto-dispatch.
+
+        Some dispatched submodules can carry integer CUDA ids or other raw values in hook
+        execution-device fields. Converting them to explicit torch.device/string values makes
+        runtime tensor moves more predictable on Windows/CUDA.
+        """
+        if self.model is None or not getattr(self.model, "hf_device_map", None):
+            return
+
+        normalized = 0
+
+        for module in self.model.modules():
+            hook = getattr(module, "_hf_hook", None)
+            if hook is None or not hasattr(hook, "execution_device"):
+                continue
+
+            execution_device = hook.execution_device
+            if isinstance(execution_device, int):
+                hook.execution_device = torch.device(f"cuda:{execution_device}")
+                normalized += 1
+            elif isinstance(execution_device, str) and execution_device.isdigit():
+                hook.execution_device = torch.device(f"cuda:{execution_device}")
+                normalized += 1
+
+        hf_device_map = getattr(self.model, "hf_device_map", None)
+        if isinstance(hf_device_map, dict):
+            for key, value in list(hf_device_map.items()):
+                if isinstance(value, int):
+                    hf_device_map[key] = f"cuda:{value}"
+                elif isinstance(value, str) and value.isdigit():
+                    hf_device_map[key] = f"cuda:{value}"
+
+        if normalized:
+            print(f"   🔧 Normalized {normalized} Accelerate execution device hook(s)")
+
+    def _materialize_kugelaudio_runtime_scalars(self) -> None:
+        """
+        TTS Audio Suite patch: replace meta runtime scalars with real tensors after load.
+
+        Kugel's speech normalization scalars are runtime state, not checkpoint weights.
+        Under Transformers 5 meta-init they can remain as meta tensors, which later breaks
+        `torch.isnan(...).item()` checks during generation.
+        """
+        if self.model is None:
+            return
+
+        inner_model = getattr(self.model, "model", None)
+        if inner_model is None:
+            return
+
+        materialized = []
+        for attr_name in ("speech_scaling_factor", "speech_bias_factor"):
+            value = getattr(inner_model, attr_name, None)
+            if isinstance(value, torch.Tensor) and getattr(value, "is_meta", False):
+                setattr(inner_model, attr_name, torch.tensor(float("nan"), dtype=torch.float32))
+                materialized.append(attr_name)
+
+        if materialized:
+            print(f"   🔧 Materialized Kugel runtime scalars: {', '.join(materialized)}")
+
+    def _cleanup_cuda_load_attempt(self) -> None:
+        """TTS Audio Suite patch: aggressively clear VRAM after a failed HF load attempt."""
+        self.model = None
+        gc.collect()
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
+            try:
+                torch.cuda.ipc_collect()
+            except Exception:
+                pass
+
+    @contextmanager
+    def _temporary_hf_serial_load(self):
+        """
+        TTS Audio Suite patch: force serial HF shard loading for large local models.
+
+        Transformers 5 can parallelize shard materialization, which increases peak
+        VRAM usage during load. For Kugel on a 24GB GPU, serial loading is worth
+        trying before falling back to Accelerate device dispatch.
+        """
+        old_parallel = os.environ.get("HF_ENABLE_PARALLEL_LOADING")
+        old_workers = os.environ.get("HF_PARALLEL_LOADING_WORKERS")
+        os.environ["HF_ENABLE_PARALLEL_LOADING"] = "false"
+        os.environ["HF_PARALLEL_LOADING_WORKERS"] = "1"
+        try:
+            yield
+        finally:
+            if old_parallel is None:
+                os.environ.pop("HF_ENABLE_PARALLEL_LOADING", None)
+            else:
+                os.environ["HF_ENABLE_PARALLEL_LOADING"] = old_parallel
+            if old_workers is None:
+                os.environ.pop("HF_PARALLEL_LOADING_WORKERS", None)
+            else:
+                os.environ["HF_PARALLEL_LOADING_WORKERS"] = old_workers
+
+    def _get_kugelaudio_voice_encoder_bundle(self):
+        """
+        Build standalone tokenizer encoders for Kugel raw voice cloning.
+
+        TTS Audio Suite patch: Transformers 5 auto-dispatch breaks the custom raw-audio
+        voice-cloning path inside the bundled Kugel model. We keep the main model on the
+        dispatched path, but run the reference-audio encoding step through standalone
+        tokenizer models loaded from the same checkpoint weights.
+        """
+        if (
+            self._kugel_voice_encoder_bundle is not None
+            and self._kugel_voice_encoder_model_path == self.model_path
+        ):
+            return self._kugel_voice_encoder_bundle
+
+        from safetensors import safe_open
+        from .kugelaudio_impl import (
+            KugelAudioAcousticTokenizerModel,
+            KugelAudioSemanticTokenizerModel,
+        )
+
+        target_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        target_dtype = torch.bfloat16 if target_device.type == "cuda" and torch.cuda.is_bf16_supported() else torch.float16
+
+        acoustic_model = KugelAudioAcousticTokenizerModel(self.model.config.acoustic_tokenizer_config)
+        semantic_model = KugelAudioSemanticTokenizerModel(self.model.config.semantic_tokenizer_config)
+
+        acoustic_state = {}
+        semantic_state = {}
+        acoustic_prefix = "model.acoustic_tokenizer."
+        semantic_prefix = "model.semantic_tokenizer."
+
+        shard_paths = sorted(glob.glob(os.path.join(self.model_path, "model*.safetensors")))
+        if not shard_paths:
+            raise RuntimeError(f"No KugelAudio safetensor shards found in {self.model_path}")
+
+        for shard_path in shard_paths:
+            with safe_open(shard_path, framework="pt", device="cpu") as handle:
+                for key in handle.keys():
+                    if key.startswith(acoustic_prefix):
+                        acoustic_state[key[len(acoustic_prefix):]] = handle.get_tensor(key)
+                    elif key.startswith(semantic_prefix):
+                        semantic_state[key[len(semantic_prefix):]] = handle.get_tensor(key)
+
+        acoustic_missing, acoustic_unexpected = acoustic_model.load_state_dict(acoustic_state, strict=False)
+        semantic_missing, semantic_unexpected = semantic_model.load_state_dict(semantic_state, strict=False)
+
+        if acoustic_missing or semantic_missing:
+            raise RuntimeError(
+                "KugelAudio standalone voice encoders are missing checkpoint weights: "
+                f"acoustic={acoustic_missing}, semantic={semantic_missing}"
+            )
+
+        acoustic_model = acoustic_model.to(device=target_device, dtype=target_dtype).eval()
+        semantic_model = semantic_model.to(device=target_device, dtype=target_dtype).eval()
+
+        self._kugel_voice_encoder_bundle = {
+            "acoustic": acoustic_model,
+            "semantic": semantic_model,
+            "dtype": target_dtype,
+            "device": target_device,
+        }
+        self._kugel_voice_encoder_model_path = self.model_path
+        print("   🔧 Built standalone Kugel voice encoders for raw reference cloning")
+        return self._kugel_voice_encoder_bundle
+
+    def _encode_kugelaudio_voice_prompt(self, voice_prompt_audio):
+        """Encode raw reference audio into Kugel `voice_cache` using standalone encoders."""
+        bundle = self._get_kugelaudio_voice_encoder_bundle()
+        device = bundle["device"]
+        dtype = bundle["dtype"]
+
+        voice_audio = torch.as_tensor(voice_prompt_audio, dtype=torch.float32)
+        if voice_audio.dim() == 1:
+            voice_audio = voice_audio.unsqueeze(0).unsqueeze(0)
+        elif voice_audio.dim() == 2:
+            voice_audio = voice_audio.unsqueeze(1)
+
+        voice_audio = voice_audio.to(device=device, dtype=dtype)
+
+        with torch.no_grad():
+            acoustic_output = bundle["acoustic"].encode(voice_audio)
+            semantic_output = bundle["semantic"].encode(voice_audio)
+
+        return {
+            "acoustic_mean": acoustic_output.mean.cpu(),
+            "acoustic_std": getattr(acoustic_output, "std", bundle["acoustic"].fix_std),
+            "semantic_mean": semantic_output.mean.cpu(),
+            "audio_length": voice_audio.shape[-1],
+            "sample_rate": 24000,
+        }
 
     def to(self, device):
         """
@@ -1116,6 +1313,7 @@ class VibeVoiceEngine:
         """Handle generation specifically for KugelAudio"""
         try:
             device = next(self.model.parameters()).device
+            is_dispatched = bool(getattr(self.model, "hf_device_map", None))
 
             # Keep KugelAudio aligned with the VibeVoice UI instead of silently
             # using the model config default (20 diffusion steps).
@@ -1124,18 +1322,56 @@ class VibeVoiceEngine:
             
             # Prepare voice_prompt from voice samples (raw audio)
             voice_prompt_audio = None
+            voice_cache = None
             if voice_samples and voice_samples[0] is not None:
                 voice_prompt_audio = voice_samples[0]
                 logger.info(f"KugelAudio voice cloning: {len(voice_prompt_audio)/24000:.1f}s reference audio")
+                if is_dispatched:
+                    voice_cache = self._encode_kugelaudio_voice_prompt(voice_prompt_audio)
             
-            batch = self.processor(
-                text=text,
-                voice_prompt=voice_prompt_audio,
-                return_tensors="pt"
-            )
+            processor_kwargs = {
+                "text": text,
+                "return_tensors": "pt",
+            }
+            if voice_cache is not None:
+                processor_kwargs["voice_cache"] = voice_cache
+            else:
+                processor_kwargs["voice_prompt"] = voice_prompt_audio
+
+            batch = self.processor(**processor_kwargs)
+
+            if is_dispatched:
+                try:
+                    batch_devices = {}
+                    for key, value in batch.items():
+                        if isinstance(value, torch.Tensor):
+                            batch_devices[key] = f"{value.device}/{value.dtype}/{tuple(value.shape)}"
+                        elif isinstance(value, dict):
+                            batch_devices[key] = {
+                                sub_key: (
+                                    f"{sub_value.device}/{sub_value.dtype}/{tuple(sub_value.shape)}"
+                                    if isinstance(sub_value, torch.Tensor)
+                                    else type(sub_value).__name__
+                                )
+                                for sub_key, sub_value in value.items()
+                            }
+                        else:
+                            batch_devices[key] = type(value).__name__
+                    print(f"🧪 Kugel batch devices: {batch_devices}")
+                except Exception as batch_debug_error:
+                    print(f"⚠️ Kugel batch device debug failed: {batch_debug_error}")
             
-            # Move inputs to device
-            batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+            # TTS Audio Suite patch: when Accelerate dispatches KugelAudio with
+            # `device_map="auto"`, leave processor outputs on CPU and let the
+            # module hooks place tensors lazily. Pre-moving a mixed batch to one
+            # CUDA device can trigger invalid cross-device transfers later in
+            # the dispatched Qwen2 stack.
+            if is_dispatched:
+                batch = {
+                    k: v for k, v in batch.items()
+                }
+            else:
+                batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
             
             # Generate
             with torch.no_grad():
@@ -1203,8 +1439,19 @@ class VibeVoiceEngine:
         """Initialize KugelAudio model specifically"""
         try:
             from .kugelaudio_impl import KugelAudioForConditionalGenerationInference, KugelAudioProcessor
+            from .kugelaudio_impl.models.kugelaudio_model import KugelAudioModel
              
             print(f"🔄 Loading KugelAudio model '{model_name}' on {device}...")
+            requested_device = device
+            print("🧪 TTS Audio Suite Kugel patch fingerprint: no_split_v1")
+
+            # TTS Audio Suite patch: Accelerate auto-sharding must not split
+            # residual blocks across devices. Apply this via class attributes
+            # because this custom from_pretrained path does not accept the
+            # standard no_split_module_classes kwarg cleanly.
+            no_split_modules = ["Qwen2DecoderLayer", "Block1D"]
+            KugelAudioForConditionalGenerationInference._no_split_modules = no_split_modules
+            KugelAudioModel._no_split_modules = no_split_modules
 
             # Resolve device before building HF loading kwargs so quantization lands
             # on the intended target instead of relying on a stale string value.
@@ -1215,10 +1462,27 @@ class VibeVoiceEngine:
             dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
 
             model_kwargs = {
-                "torch_dtype": dtype,
                 "low_cpu_mem_usage": True,
-                "device_map": device if device != "auto" else "auto",
+                "device_map": "auto" if requested_device == "auto" else device,
             }
+
+            if requested_device == "auto" and torch.cuda.is_available() and torch.cuda.device_count() > 1:
+                primary_total = torch.cuda.get_device_properties(0).total_memory
+                primary_budget = max(primary_total - (1536 * 1024 * 1024), 0)
+                max_memory = {
+                    0: primary_budget,
+                    "cpu": "128GiB",
+                }
+                for gpu_idx in range(1, torch.cuda.device_count()):
+                    max_memory[gpu_idx] = "32MiB"
+                model_kwargs["max_memory"] = max_memory
+                print(f"   🔧 Kugel auto-dispatch constrained to cuda:0 + CPU offload (secondary GPUs capped)")
+
+            # TTS Audio Suite patch: Transformers 5 renamed `torch_dtype` to `dtype`.
+            if _DTYPE_ARG_SUPPORTED:
+                model_kwargs["dtype"] = dtype
+            else:
+                model_kwargs["torch_dtype"] = dtype
 
             final_attention_mode = attention_mode
             if attention_mode == "auto":
@@ -1262,17 +1526,50 @@ class VibeVoiceEngine:
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_compute_dtype=bnb_compute_dtype,
                 )
-                model_kwargs["device_map"] = {"": 0} if str(device) == "cuda" else device
+                if requested_device == "auto" or str(device) == "cuda":
+                    model_kwargs["device_map"] = {"": 0}
+                else:
+                    model_kwargs["device_map"] = device
                 print("   🗜️ 4-bit LLM quantization enabled for KugelAudio")
             
-            # Load model
-            self.model = KugelAudioForConditionalGenerationInference.from_pretrained(
-                model_path,
-                **model_kwargs,
+            full_gpu_preferred = (
+                not quantize_llm_4bit
+                and torch.cuda.is_available()
+                and str(device) == "cuda"
+                and requested_device == "cuda"
             )
+
+            self.model = None
+            if full_gpu_preferred:
+                full_gpu_kwargs = dict(model_kwargs)
+                full_gpu_kwargs["device_map"] = {"": 0}
+                try:
+                    with self._temporary_hf_serial_load():
+                        self.model = KugelAudioForConditionalGenerationInference.from_pretrained(
+                            model_path,
+                            **full_gpu_kwargs,
+                        )
+                    print("   🔧 Loaded KugelAudio fully on GPU using serial HF shard loading")
+                except Exception as full_gpu_error:
+                    self._cleanup_cuda_load_attempt()
+                    print(f"   ⚠️ Full-GPU Kugel load failed, falling back to auto dispatch: {full_gpu_error}")
+
+            if self.model is None:
+                with self._temporary_hf_serial_load():
+                    self.model = KugelAudioForConditionalGenerationInference.from_pretrained(
+                        model_path,
+                        **model_kwargs,
+                    )
+                if getattr(self.model, "hf_device_map", None):
+                    if hasattr(self.model, "model"):
+                        self.model.model.hf_device_map = self.model.hf_device_map
+                    unique_map_devices = sorted({str(v) for v in self.model.hf_device_map.values()})
+                    print(f"🧪 Kugel hf_device_map devices: {unique_map_devices}")
             
             # Load processor
             self.processor = KugelAudioProcessor.from_pretrained(model_path)
+            self._normalize_dispatched_execution_devices()
+            self._materialize_kugelaudio_runtime_scalars()
             
             if final_attention_mode == "sage":
                 if SAGE_ATTENTION_AVAILABLE and set_sage_attention:

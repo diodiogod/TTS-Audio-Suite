@@ -25,6 +25,25 @@ from .diffusion_head import KugelAudioDiffusionHead
 from .tokenizer import KugelAudioAcousticTokenizerModel
 
 logger = logging.get_logger(__name__)
+_tts_suite_kugel_device_debug_printed = False
+
+
+def _safe_register_auto_model(config_class, model_class):
+    """TTS Audio Suite patch: avoid duplicate AutoModel registration on Transformers 5."""
+    try:
+        AutoModel.register(config_class, model_class)
+    except ValueError as exc:
+        if "already used by a Transformers model" not in str(exc):
+            raise
+
+
+def _safe_register_auto_causallm(config_class, model_class):
+    """TTS Audio Suite patch: avoid duplicate AutoModelForCausalLM registration on Transformers 5."""
+    try:
+        AutoModelForCausalLM.register(config_class, model_class)
+    except ValueError as exc:
+        if "already used by a Transformers model" not in str(exc):
+            raise
 
 if not hasattr(modeling_utils, "ALL_PARALLEL_STYLES") or modeling_utils.ALL_PARALLEL_STYLES is None:
     modeling_utils.ALL_PARALLEL_STYLES = ["tp", "none", "colwise", "rowwise"]
@@ -76,7 +95,13 @@ class KugelAudioPreTrainedModel(PreTrainedModel):
     config_class = KugelAudioConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
-    _skip_keys_device_placement = "past_key_values"
+    # TTS Audio Suite patch: Accelerate device-map validation on Transformers 5
+    # does not infer placement for these scalar buffers on the wrapped inner model.
+    _skip_keys_device_placement = [
+        "past_key_values",
+        "model.speech_scaling_factor",
+        "model.speech_bias_factor",
+    ]
     _supports_cache_class = True
     _supports_flash_attn_2 = True
     _supports_sdpa = True
@@ -144,9 +169,11 @@ class KugelAudioModel(KugelAudioPreTrainedModel):
             config.semantic_vae_dim, lm_config.hidden_size
         ).to(dtype)
 
-        # Register scaling factors as buffers - use 1D tensors for FSDP compatibility
-        self.register_buffer("speech_scaling_factor", torch.tensor(float("nan")))
-        self.register_buffer("speech_bias_factor", torch.tensor(float("nan")))
+        # TTS Audio Suite patch: keep runtime normalization scalars out of the
+        # registered buffer set so Transformers 5 / Accelerate device-map
+        # validation does not treat them like shardable checkpoint tensors.
+        self.speech_scaling_factor = torch.tensor(float("nan"), dtype=torch.float32)
+        self.speech_bias_factor = torch.tensor(float("nan"), dtype=torch.float32)
 
         # Initialize prediction head for speech generation
         self.prediction_head = AutoModel.from_config(config.diffusion_head_config).to(dtype)
@@ -280,6 +307,24 @@ class KugelAudioModel(KugelAudioPreTrainedModel):
     ) -> Union[Tuple, BaseModelOutputWithPast]:
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        global _tts_suite_kugel_device_debug_printed
+        if not _tts_suite_kugel_device_debug_printed and getattr(self, "hf_device_map", None):
+            try:
+                lm_map = {
+                    k: v for k, v in self.hf_device_map.items() if k.startswith("model.language_model")
+                }
+                sample_map = list(sorted(lm_map.items()))[:20]
+                embed_device = None if inputs_embeds is None else str(inputs_embeds.device)
+                mask_device = None if attention_mask is None else str(attention_mask.device)
+                pos_device = None if position_ids is None else str(position_ids.device)
+                cache_type = None if past_key_values is None else type(past_key_values).__name__
+                print("🧪 Kugel LM call devices:")
+                print(f"   inputs_embeds={embed_device} attention_mask={mask_device} position_ids={pos_device} cache={cache_type}")
+                print(f"   lm_map_sample={sample_map}")
+            except Exception as device_debug_error:
+                print(f"⚠️ Kugel LM device debug failed: {device_debug_error}")
+            _tts_suite_kugel_device_debug_printed = True
 
         # Forward through language model
         outputs = self.language_model(
@@ -470,9 +515,9 @@ class KugelAudioForConditionalGeneration(KugelAudioPreTrainedModel):
                             flush=True,
                         )
 
-                audio_features = (
-                    audio_tokens + self.model.speech_bias_factor
-                ) * self.model.speech_scaling_factor
+                speech_bias_factor = self.model.speech_bias_factor.to(audio_tokens.device)
+                speech_scaling_factor = self.model.speech_scaling_factor.to(audio_tokens.device)
+                audio_features = (audio_tokens + speech_bias_factor) * speech_scaling_factor
 
             connect_features = self.model.acoustic_connector(audio_features)
             if return_unmask:
@@ -655,8 +700,8 @@ class KugelAudioForConditionalGeneration(KugelAudioPreTrainedModel):
         )
 
 
-AutoModel.register(KugelAudioConfig, KugelAudioModel)
-AutoModelForCausalLM.register(KugelAudioConfig, KugelAudioForConditionalGeneration)
+_safe_register_auto_model(KugelAudioConfig, KugelAudioModel)
+_safe_register_auto_causallm(KugelAudioConfig, KugelAudioForConditionalGeneration)
 
 __all__ = [
     "KugelAudioModel",

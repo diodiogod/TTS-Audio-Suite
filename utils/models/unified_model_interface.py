@@ -153,6 +153,10 @@ class UnifiedModelInterface:
                 print(f"⚠️ Cached model wrapper is dead (model was deleted), forcing reload...")
                 tts_model_manager.remove_model(cache_key)
                 wrapper = None  # Fall through to reload
+            elif not getattr(wrapper, '_is_valid_for_reuse', True):
+                print(f"⚠️ Cached model wrapper is invalid for reuse, forcing reload...")
+                tts_model_manager.remove_model(cache_key)
+                wrapper = None
             else:
                 # Ensure model is on correct device
                 from utils.device import resolve_torch_device
@@ -674,7 +678,8 @@ def register_vibevoice_factory():
 
         # Extract parameters
         model_name = config.model_name or "vibevoice-1.5B"
-        device = config.device or "auto"
+        requested_device = config.additional_params.get("requested_device", config.device) if config.additional_params else config.device
+        device = requested_device or "auto"
         attention_mode = config.additional_params.get("attention_mode", "auto") if config.additional_params else "auto"
         quantize_llm_4bit = config.additional_params.get("quantize_llm_4bit", False) if config.additional_params else False
 

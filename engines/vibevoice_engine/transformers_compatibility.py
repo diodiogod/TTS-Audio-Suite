@@ -12,9 +12,96 @@ Credits:
 
 import inspect
 import logging
+import sys
+import types
 from typing import Any
 
 logger = logging.getLogger("VibeVoice.Compatibility")
+
+
+def patch_auto_model_duplicate_registration():
+    """
+    TTS Audio Suite patch: make VibeVoice AutoModel registration idempotent on Transformers 5.
+
+    VibeVoice's modular package registers several config/model pairs at import time.
+    Under newer Transformers versions, repeated registration raises ValueError instead of
+    silently reusing the existing mapping. We only suppress that error for VibeVoice-owned
+    config classes so unrelated duplicate registrations still fail normally.
+    """
+    try:
+        from transformers.models.auto import AutoModel, AutoModelForCausalLM
+
+        if not hasattr(AutoModel, "_tts_suite_original_register"):
+            AutoModel._tts_suite_original_register = AutoModel.register.__func__
+
+            def patched_auto_model_register(cls, config_class, model_class, exist_ok=False):
+                try:
+                    return cls._tts_suite_original_register(cls, config_class, model_class, exist_ok=exist_ok)
+                except ValueError as exc:
+                    config_module = getattr(config_class, "__module__", "")
+                    if config_module.startswith("vibevoice.") and "already used by a Transformers model" in str(exc):
+                        logger.debug("Ignored duplicate AutoModel registration for %s", config_class)
+                        return None
+                    raise
+
+            AutoModel.register = classmethod(patched_auto_model_register)
+
+        if not hasattr(AutoModelForCausalLM, "_tts_suite_original_register"):
+            AutoModelForCausalLM._tts_suite_original_register = AutoModelForCausalLM.register.__func__
+
+            def patched_auto_causallm_register(cls, config_class, model_class, exist_ok=False):
+                try:
+                    return cls._tts_suite_original_register(cls, config_class, model_class, exist_ok=exist_ok)
+                except ValueError as exc:
+                    config_module = getattr(config_class, "__module__", "")
+                    if config_module.startswith("vibevoice.") and "already used by a Transformers model" in str(exc):
+                        logger.debug("Ignored duplicate AutoModelForCausalLM registration for %s", config_class)
+                        return None
+                    raise
+
+            AutoModelForCausalLM.register = classmethod(patched_auto_causallm_register)
+
+        return True
+
+    except ImportError:
+        logger.warning("transformers AutoModel classes not available - duplicate registration patch skipped")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to apply duplicate AutoModel registration patch: {e}")
+        return False
+
+
+def patch_qwen2_fast_tokenizer_import():
+    """
+    TTS Audio Suite patch: restore the removed Qwen2 fast-tokenizer module path.
+
+    Some VibeVoice/Kugel code still imports
+    `transformers.models.qwen2.tokenization_qwen2_fast`. On newer Transformers
+    versions, the fast tokenizer lives under a different module path. We expose a
+    small alias module in `sys.modules` so old imports keep working.
+    """
+    module_name = "transformers.models.qwen2.tokenization_qwen2_fast"
+
+    if module_name in sys.modules:
+        return True
+
+    try:
+        try:
+            from transformers.models.qwen2.tokenization_qwen2 import Qwen2TokenizerFast
+        except ImportError:
+            from transformers.models.qwen2 import Qwen2TokenizerFast
+
+        shim_module = types.ModuleType(module_name)
+        shim_module.Qwen2TokenizerFast = Qwen2TokenizerFast
+        sys.modules[module_name] = shim_module
+        return True
+
+    except ImportError:
+        logger.warning("Qwen2TokenizerFast compatibility shim skipped - tokenizer class unavailable")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to apply Qwen2TokenizerFast compatibility shim: {e}")
+        return False
 
 
 def patch_prepare_cache_for_generation():
@@ -238,6 +325,13 @@ def patch_vibevoice_config_num_hidden_layers():
 def apply_all_compatibility_patches():
     """Apply all VibeVoice compatibility patches"""
     patches_applied = []
+
+    # Apply AutoModel registration patch before importing any vibevoice.modular modules.
+    if patch_auto_model_duplicate_registration():
+        patches_applied.append("auto_model_duplicate_registration")
+
+    if patch_qwen2_fast_tokenizer_import():
+        patches_applied.append("qwen2_fast_tokenizer_import")
 
     # Apply VibeVoiceConfig num_hidden_layers patch (MUST be first - fixes the root cause)
     if patch_vibevoice_config_num_hidden_layers():

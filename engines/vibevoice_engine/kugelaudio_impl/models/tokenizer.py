@@ -22,6 +22,26 @@ from ..configs import KugelAudioAcousticTokenizerConfig, KugelAudioSemanticToken
 
 logger = logging.get_logger(__name__)
 
+
+def _safe_register_auto_model(config_class, model_class):
+    """TTS Audio Suite patch: avoid duplicate AutoModel registration on Transformers 5."""
+    try:
+        AutoModel.register(config_class, model_class)
+    except ValueError as exc:
+        if "already used by a Transformers model" not in str(exc):
+            raise
+
+
+def _run_inline_block_with_accelerate_hook(block, block_forward, x):
+    """Materialize offloaded block params before inline cache-aware execution."""
+    hook = getattr(block, "_hf_hook", None)
+    if hook is None:
+        return block_forward(x)
+
+    hook_args, hook_kwargs = hook.pre_forward(block, x)
+    output = block_forward(*hook_args, **hook_kwargs)
+    return hook.post_forward(block, output)
+
 # APEX is not used in the open-source version
 APEX_AVAILABLE = False
 
@@ -787,23 +807,30 @@ class TokenizerEncoder(nn.Module):
             # Apply stage (Block1D contains Convlayer which contains SConv1d)
             for block in self.stages[i]:
                 if hasattr(block, 'mixer') and hasattr(block.mixer, 'conv') and isinstance(block.mixer.conv, SConv1d):
-                    # Block1D forward with cache support
-                    residual = x
-                    x = block.norm(x)
-                    x = block.mixer.conv(x, cache=cache, sample_indices=sample_indices, use_cache=use_cache, debug=debug)
-                    if block.gamma is not None:
-                        x = x * block.gamma.unsqueeze(-1)
-                    x = residual + x
-                    
-                    # FFN part
-                    residual = x
-                    x = block.ffn_norm(x)
-                    x = x.permute(0, 2, 1)
-                    x = block.ffn(x)
-                    x = x.permute(0, 2, 1)
-                    if block.ffn_gamma is not None:
-                        x = x * block.ffn_gamma.unsqueeze(-1)
-                    x = residual + x
+                    def _block_forward(block_x):
+                        residual = block_x
+                        block_x = block.norm(block_x)
+                        block_x = block.mixer.conv(
+                            block_x,
+                            cache=cache,
+                            sample_indices=sample_indices,
+                            use_cache=use_cache,
+                            debug=debug,
+                        )
+                        if block.gamma is not None:
+                            block_x = block_x * block.gamma.unsqueeze(-1)
+                        block_x = residual + block_x
+
+                        residual = block_x
+                        block_x = block.ffn_norm(block_x)
+                        block_x = block_x.permute(0, 2, 1)
+                        block_x = block.ffn(block_x)
+                        block_x = block_x.permute(0, 2, 1)
+                        if block.ffn_gamma is not None:
+                            block_x = block_x * block.ffn_gamma.unsqueeze(-1)
+                        return residual + block_x
+
+                    x = _run_inline_block_with_accelerate_hook(block, _block_forward, x)
                 else:
                     x = block(x)
 
@@ -925,23 +952,30 @@ class TokenizerDecoder(nn.Module):
             # Apply stage (Block1D contains Convlayer which contains SConv1d)
             for block in self.stages[i]:
                 if hasattr(block, 'mixer') and hasattr(block.mixer, 'conv') and isinstance(block.mixer.conv, SConv1d):
-                    # Block1D forward with cache support
-                    residual = x
-                    x = block.norm(x)
-                    x = block.mixer.conv(x, cache=cache, sample_indices=sample_indices, use_cache=use_cache, debug=debug)
-                    if block.gamma is not None:
-                        x = x * block.gamma.unsqueeze(-1)
-                    x = residual + x
-                    
-                    # FFN part
-                    residual = x
-                    x = block.ffn_norm(x)
-                    x = x.permute(0, 2, 1)
-                    x = block.ffn(x)
-                    x = x.permute(0, 2, 1)
-                    if block.ffn_gamma is not None:
-                        x = x * block.ffn_gamma.unsqueeze(-1)
-                    x = residual + x
+                    def _block_forward(block_x):
+                        residual = block_x
+                        block_x = block.norm(block_x)
+                        block_x = block.mixer.conv(
+                            block_x,
+                            cache=cache,
+                            sample_indices=sample_indices,
+                            use_cache=use_cache,
+                            debug=debug,
+                        )
+                        if block.gamma is not None:
+                            block_x = block_x * block.gamma.unsqueeze(-1)
+                        block_x = residual + block_x
+
+                        residual = block_x
+                        block_x = block.ffn_norm(block_x)
+                        block_x = block_x.permute(0, 2, 1)
+                        block_x = block.ffn(block_x)
+                        block_x = block_x.permute(0, 2, 1)
+                        if block.ffn_gamma is not None:
+                            block_x = block_x * block.ffn_gamma.unsqueeze(-1)
+                        return residual + block_x
+
+                    x = _run_inline_block_with_accelerate_hook(block, _block_forward, x)
                 else:
                     x = block(x)
 
@@ -1187,8 +1221,8 @@ class KugelAudioSemanticTokenizerModel(PreTrainedModel):
         sampled_latents, _ = self.sampling(encoder_output, dist_type='none')
         return None, sampled_latents
 
-AutoModel.register(KugelAudioAcousticTokenizerConfig, KugelAudioAcousticTokenizerModel)
-AutoModel.register(KugelAudioSemanticTokenizerConfig, KugelAudioSemanticTokenizerModel)
+_safe_register_auto_model(KugelAudioAcousticTokenizerConfig, KugelAudioAcousticTokenizerModel)
+_safe_register_auto_model(KugelAudioSemanticTokenizerConfig, KugelAudioSemanticTokenizerModel)
 
 __all__ = [
     "KugelAudioTokenizerStreamingCache",

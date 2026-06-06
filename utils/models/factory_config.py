@@ -54,6 +54,14 @@ class ModelLoadConfig:
         - Resolve device to actual device ("auto" → "cuda"/"mps"/"cpu")
         - Validate required parameters
         """
+        original_device = self.device
+
+        # Preserve the raw user/device request for loaders that need to
+        # distinguish HF `device_map="auto"` from resolved runtime placement.
+        if self.additional_params is None:
+            self.additional_params = {}
+        self.additional_params.setdefault("requested_device", original_device)
+
         # Resolve device immediately for consistency
         self.device = resolve_torch_device(self.device)
 

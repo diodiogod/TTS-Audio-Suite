@@ -35,6 +35,24 @@ from .tokenizer import (
 
 logger = logging.get_logger(__name__)
 
+
+def _safe_register_auto_model(config_class, model_class):
+    """TTS Audio Suite patch: avoid duplicate AutoModel registration on Transformers 5."""
+    try:
+        AutoModel.register(config_class, model_class)
+    except ValueError as exc:
+        if "already used by a Transformers model" not in str(exc):
+            raise
+
+
+def _safe_register_auto_causallm(config_class, model_class):
+    """TTS Audio Suite patch: avoid duplicate AutoModelForCausalLM registration on Transformers 5."""
+    try:
+        AutoModelForCausalLM.register(config_class, model_class)
+    except ValueError as exc:
+        if "already used by a Transformers model" not in str(exc):
+            raise
+
 if not hasattr(modeling_utils, "ALL_PARALLEL_STYLES") or modeling_utils.ALL_PARALLEL_STYLES is None:
     modeling_utils.ALL_PARALLEL_STYLES = ["tp", "none", "colwise", "rowwise"]
 
@@ -60,16 +78,60 @@ class KugelAudioGenerationOutput(ModelOutput):
 
 
 class KugelAudioTokenConstraintProcessor(LogitsProcessor):
-    """Constrains token generation to only valid tokens during speech generation."""
+    """Constrain Kugel control-token generation to valid state transitions."""
 
-    def __init__(self, valid_token_ids: List[int], device: torch.device = None):
-        self.valid_token_ids = torch.tensor(valid_token_ids, dtype=torch.long, device=device)
+    def __init__(
+        self,
+        speech_start_id: int,
+        speech_end_id: int,
+        speech_diffusion_id: int,
+        eos_token_id: int,
+        device: torch.device = None,
+    ):
+        self.speech_start_id = speech_start_id
+        self.speech_end_id = speech_end_id
+        self.speech_diffusion_id = speech_diffusion_id
+        self.eos_token_id = eos_token_id
+        self._all_ids = torch.tensor(
+            [speech_start_id, speech_end_id, speech_diffusion_id, eos_token_id],
+            dtype=torch.long,
+            device=device,
+        )
+        self._after_start = torch.tensor(
+            [speech_diffusion_id],
+            dtype=torch.long,
+            device=device,
+        )
+        self._after_diffusion = torch.tensor(
+            [speech_diffusion_id, speech_end_id],
+            dtype=torch.long,
+            device=device,
+        )
+        self._after_end = torch.tensor(
+            [speech_start_id, eos_token_id],
+            dtype=torch.long,
+            device=device,
+        )
+        self._eos_only = torch.tensor([eos_token_id], dtype=torch.long, device=device)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
         mask = torch.full_like(scores, float("-inf"))
-        mask[:, self.valid_token_ids] = 0
-        scores = scores + mask
-        return scores
+        last_tokens = input_ids[:, -1]
+
+        for row_idx, last_token in enumerate(last_tokens.tolist()):
+            if last_token == self.speech_start_id:
+                allowed = self._after_start
+            elif last_token == self.speech_diffusion_id:
+                allowed = self._after_diffusion
+            elif last_token == self.speech_end_id:
+                allowed = self._after_end
+            elif last_token == self.eos_token_id:
+                allowed = self._eos_only
+            else:
+                allowed = self._all_ids
+            mask[row_idx, allowed] = 0
+
+        return scores + mask
 
 
 class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, GenerationMixin):
@@ -97,13 +159,48 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
     def prediction_head(self):
         return self.model.prediction_head
 
+    def _resolve_runtime_device(self, module=None, fallback_device=None):
+        """TTS Audio Suite patch: resolve a real execution device under Accelerate dispatch."""
+        candidates = []
+        if module is not None:
+            candidates.append(module)
+        candidates.extend([self.acoustic_connector, self.prediction_head, self.model])
+
+        for candidate in candidates:
+            if candidate is None:
+                continue
+
+            hook = getattr(candidate, "_hf_hook", None)
+            execution_device = getattr(hook, "execution_device", None)
+            if isinstance(execution_device, int):
+                return torch.device(f"cuda:{execution_device}")
+            if isinstance(execution_device, str) and execution_device.isdigit():
+                return torch.device(f"cuda:{execution_device}")
+            if isinstance(execution_device, str) and execution_device != "meta":
+                return torch.device(execution_device)
+            if isinstance(execution_device, torch.device) and execution_device.type != "meta":
+                return execution_device
+
+            try:
+                param_device = next(candidate.parameters()).device
+            except StopIteration:
+                param_device = None
+            if param_device is not None and param_device.type != "meta":
+                return param_device
+
+        if fallback_device is not None:
+            return fallback_device
+        return torch.device("cpu")
+
     @property
     def speech_scaling_factor(self):
-        return self.model.speech_scaling_factor
+        target_device = self._resolve_runtime_device(self.acoustic_connector)
+        return self.model.speech_scaling_factor.to(target_device)
 
     @property
     def speech_bias_factor(self):
-        return self.model.speech_bias_factor
+        target_device = self._resolve_runtime_device(self.acoustic_connector)
+        return self.model.speech_bias_factor.to(target_device)
 
     @property
     def acoustic_tokenizer(self):
@@ -306,10 +403,17 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
     ) -> torch.Tensor:
         """Sample speech latents using diffusion with classifier-free guidance."""
         self.model.noise_scheduler.set_timesteps(self.ddpm_inference_steps)
+        prediction_head_device = self._resolve_runtime_device(
+            self.prediction_head,
+            fallback_device=condition.device,
+        )
 
         if cfg_scale == 1.0:
             # No CFG - single forward pass
-            speech = torch.randn(condition.shape[0], self.config.acoustic_vae_dim).to(condition)
+            condition = condition.to(prediction_head_device)
+            speech = torch.randn(
+                condition.shape[0], self.config.acoustic_vae_dim, device=prediction_head_device, dtype=condition.dtype
+            )
             for t in self.model.noise_scheduler.timesteps:
                 eps = self.model.prediction_head(
                     speech, t.repeat(speech.shape[0]).to(speech), condition=condition
@@ -319,10 +423,14 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
 
         # With CFG - batched forward pass
         combined_condition = torch.cat([condition, neg_condition], dim=0).to(
-            self.model.prediction_head.device
+            device=prediction_head_device,
+            dtype=condition.dtype,
         )
-        speech = torch.randn(combined_condition.shape[0], self.config.acoustic_vae_dim).to(
-            combined_condition
+        speech = torch.randn(
+            combined_condition.shape[0],
+            self.config.acoustic_vae_dim,
+            device=prediction_head_device,
+            dtype=combined_condition.dtype,
         )
 
         for t in self.model.noise_scheduler.timesteps:
@@ -385,6 +493,7 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
         """
         device = next(self.parameters()).device
         dtype = next(self.parameters()).dtype
+        is_dispatched = bool(getattr(self, "hf_device_map", None))
 
         # Handle input_ids vs text_ids
         if text_ids is None and input_ids is not None:
@@ -401,7 +510,10 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
             if speech_masks is None:
                 audio_len = voice_prompt.shape[-1]
                 num_frames = (audio_len + 3199) // 3200
-                speech_masks = torch.ones(batch_size, num_frames, dtype=torch.bool, device=device)
+                if is_dispatched:
+                    speech_masks = torch.ones(batch_size, num_frames, dtype=torch.bool)
+                else:
+                    speech_masks = torch.ones(batch_size, num_frames, dtype=torch.bool, device=device)
 
         # Get special token IDs
         speech_start_id = getattr(self.config, "speech_start_id", None) or 151652
@@ -438,9 +550,12 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
                     voice_cache=voice_cache,
                 )
             else:
-                speech_tensors = speech_tensors.to(device=device, dtype=dtype)
+                if is_dispatched:
+                    speech_tensors = speech_tensors.to(dtype=dtype)
+                else:
+                    speech_tensors = speech_tensors.to(device=device, dtype=dtype)
                 if speech_masks is not None:
-                    speech_masks = speech_masks.to(device)
+                    speech_masks = speech_masks if is_dispatched else speech_masks.to(device)
                 _, speech_embeds = self._process_speech_inputs(
                     speech_tensors=speech_tensors,
                     speech_masks=speech_masks,
@@ -456,7 +571,19 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
 
         # Setup logits processor to constrain to valid tokens
         valid_tokens = [speech_start_id, speech_end_id, speech_diffusion_id, eos_token_id]
-        token_constraint = KugelAudioTokenConstraintProcessor(valid_tokens, device=device)
+        token_constraint = KugelAudioTokenConstraintProcessor(
+            speech_start_id=speech_start_id,
+            speech_end_id=speech_end_id,
+            speech_diffusion_id=speech_diffusion_id,
+            eos_token_id=eos_token_id,
+            device=device,
+        )
+        debug_token_names = {
+            speech_start_id: "speech_start",
+            speech_end_id: "speech_end",
+            speech_diffusion_id: "speech_diffusion",
+            eos_token_id: "eos",
+        }
 
         # Initialize KV caches
         past_key_values = None
@@ -513,6 +640,31 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
                 next_tokens = torch.multinomial(probs, num_samples=1).squeeze(-1)
             else:
                 next_tokens = torch.argmax(logits, dim=-1)
+
+            if step < 8:
+                try:
+                    debug_rows = []
+                    for batch_idx in range(next_tokens.shape[0]):
+                        token_id = int(next_tokens[batch_idx].item())
+                        token_scores = {
+                            debug_token_names[token]: round(float(logits[batch_idx, token].item()), 4)
+                            for token in valid_tokens
+                        }
+                        debug_rows.append(
+                            {
+                                "batch": batch_idx,
+                                "picked": debug_token_names.get(token_id, str(token_id)),
+                                "token_id": token_id,
+                                "scores": token_scores,
+                            }
+                        )
+                    debug_line = f"🧪 Kugel token step {step}: {debug_rows}"
+                    if show_progress:
+                        tqdm.write(debug_line)
+                    else:
+                        print(debug_line)
+                except Exception as token_debug_error:
+                    print(f"⚠️ Kugel token debug failed at step {step}: {token_debug_error}")
 
             # Force finished samples to output EOS
             next_tokens = torch.where(
@@ -843,8 +995,8 @@ class KugelAudioForConditionalGenerationInference(KugelAudioPreTrainedModel, Gen
 
 
 # Register with AutoModel
-AutoModel.register(KugelAudioConfig, KugelAudioModel)
-AutoModelForCausalLM.register(KugelAudioConfig, KugelAudioForConditionalGenerationInference)
+_safe_register_auto_model(KugelAudioConfig, KugelAudioModel)
+_safe_register_auto_causallm(KugelAudioConfig, KugelAudioForConditionalGenerationInference)
 
 
 __all__ = [

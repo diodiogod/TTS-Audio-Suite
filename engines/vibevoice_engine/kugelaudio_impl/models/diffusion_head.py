@@ -17,6 +17,15 @@ from ..configs import KugelAudioDiffusionHeadConfig
 logger = logging.get_logger(__name__)
 
 
+def _safe_register_auto_model(config_class, model_class):
+    """TTS Audio Suite patch: avoid duplicate AutoModel registration on Transformers 5."""
+    try:
+        AutoModel.register(config_class, model_class)
+    except ValueError as exc:
+        if "already used by a Transformers model" not in str(exc):
+            raise
+
+
 class RMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6, elementwise_affine=True, memory_efficient=False):
         super().__init__()
@@ -281,7 +290,7 @@ class KugelAudioDiffusionHead(PreTrainedModel):
         return x
 
 
-AutoModel.register(KugelAudioDiffusionHeadConfig, KugelAudioDiffusionHead)
+_safe_register_auto_model(KugelAudioDiffusionHeadConfig, KugelAudioDiffusionHead)
 
 __all__ = [
     "KugelAudioDiffusionHead",

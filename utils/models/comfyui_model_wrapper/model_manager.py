@@ -109,30 +109,10 @@ class ComfyUITTSModelManager:
                     except Exception as e:
                         print(f"⚠️ In-place reinit failed: {e}, falling back to full recreation")
                 
-                # For VibeVoice, try to reinitialize corrupted model state
-                # Unlike Higgs Audio, VibeVoice doesn't use CUDA graphs so should be recoverable
+                # For VibeVoice/Kugel dispatched models, in-place recovery is unsafe
+                # because Accelerate device maps are corrupted by CPU offloading.
                 elif engine == "vibevoice":
-                    print(f"🔄 VibeVoice: Attempting to recover from CPU offloading corruption")
-                    try:
-                        # Clear any cached internal state that might be corrupted
-                        if hasattr(wrapper.model, '_past_key_values'):
-                            wrapper.model._past_key_values = None
-                        if hasattr(wrapper.model, '_cache'):
-                            wrapper.model._cache = None
-
-                        # Reset model to evaluation mode and clear gradients
-                        wrapper.model.eval()
-                        if hasattr(wrapper.model, 'zero_grad'):
-                            wrapper.model.zero_grad()
-
-                        # Move back to GPU with proper state reset
-                        wrapper.model_load(device)
-                        # Mark as valid again
-                        wrapper._is_valid_for_reuse = True
-                        print(f"✅ Successfully recovered VibeVoice model from corruption")
-                        return wrapper
-                    except Exception as e:
-                        print(f"⚠️ VibeVoice recovery failed: {e}, falling back to full recreation")
+                    print(f"🗑️ VibeVoice: invalid after offload, forcing full recreation")
 
                 # For IndexTTS-2, try to recover from device mismatch after CPU offloading
                 elif engine == "index_tts":

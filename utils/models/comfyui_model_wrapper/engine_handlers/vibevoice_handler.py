@@ -7,6 +7,7 @@ import gc
 from typing import Optional, TYPE_CHECKING
 
 from .generic_handler import GenericHandler
+from ..cache_utils import invalidate_all_caches
 
 if TYPE_CHECKING:
     from ..base_wrapper import ComfyUIModelWrapper
@@ -29,6 +30,31 @@ class VibeVoiceHandler(GenericHandler):
         """
         if not wrapper._is_loaded_on_gpu:
             return 0
+
+        model = wrapper._model_ref() if wrapper._model_ref else None
+        dispatched_model = getattr(model, 'model', None) if model is not None else None
+
+        if device == 'cpu' and getattr(dispatched_model, 'hf_device_map', None):
+            print("🔄 VibeVoice/Kugel dispatched model cannot be CPU-migrated safely; invalidating for recreation")
+
+            if model is not None:
+                model.model = None
+                model.processor = None
+
+            wrapper.current_device = 'cpu'
+            wrapper._is_loaded_on_gpu = False
+            wrapper._is_valid_for_reuse = False
+
+            invalidate_all_caches()
+            if torch.cuda.is_available():
+                try:
+                    torch.cuda.synchronize()
+                except Exception:
+                    pass
+                torch.cuda.empty_cache()
+            gc.collect()
+
+            return wrapper._memory_size
         
         # VibeVoice special handling: Smart CPU migration with RAM cleanup
         if device == 'cpu':
@@ -61,7 +87,6 @@ class VibeVoiceHandler(GenericHandler):
                 if models_cleared > 0:
                     print(f"🧹 RAM cleanup: removed {models_cleared} old VibeVoice models from system memory")
                     try:
-                        import gc
                         gc.collect()
                     except Exception as gc_error:
                         print(f"⚠️ Garbage collection failed (safe to ignore): {gc_error}")

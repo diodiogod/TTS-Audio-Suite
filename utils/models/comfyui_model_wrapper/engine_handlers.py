@@ -8,6 +8,8 @@ This module provides specialized handlers for each engine type.
 import torch
 import gc
 
+from .cache_utils import invalidate_all_caches
+
 
 class BaseEngineHandler:
     """Base handler with default implementation for most engines"""
@@ -149,6 +151,42 @@ class HiggsAudioHandler(BaseEngineHandler):
         return result
 
 
+class VibeVoiceHandler(BaseEngineHandler):
+    """Specialized handler for VibeVoice / Kugel dispatched models."""
+
+    def partially_unload(self, wrapper, device: str, memory_to_free: int) -> int:
+        if not wrapper._is_loaded_on_gpu:
+            print(f"⚠️ Skipping unload: model already marked as not on GPU")
+            return 0
+
+        model = wrapper._model_ref() if wrapper._model_ref else None
+        if model is None:
+            print(f"⚠️ Model reference is None, cannot unload")
+            return 0
+
+        dispatched_model = getattr(model, "model", None)
+        if getattr(dispatched_model, "hf_device_map", None):
+            print("🔄 Unloading dispatched VibeVoice/Kugel model by invalidation instead of .to(device)")
+
+            # Accelerate-dispatched models cannot be safely migrated with recursive
+            # `.to()` calls. Drop live references and force a clean recreation later.
+            model.model = None
+            model.processor = None
+
+            wrapper.current_device = device
+            wrapper._is_loaded_on_gpu = False
+            wrapper._is_valid_for_reuse = False
+
+            invalidate_all_caches()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+
+            return wrapper._memory_size
+
+        return super().partially_unload(wrapper, device, memory_to_free)
+
+
 # Engine registry
 _ENGINE_HANDLERS = {
     'chatterbox': BaseEngineHandler(),
@@ -157,7 +195,7 @@ _ENGINE_HANDLERS = {
     'echo_tts': BaseEngineHandler(),
     'higgs_audio': HiggsAudioHandler(),
     'step_audio_editx': StepAudioEditXHandler(),
-    'vibevoice': BaseEngineHandler(),
+    'vibevoice': VibeVoiceHandler(),
     'rvc': BaseEngineHandler(),
 }
 

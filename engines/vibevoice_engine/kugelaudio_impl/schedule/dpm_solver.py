@@ -80,7 +80,9 @@ def betas_for_alpha_bar(
         t1 = i / num_diffusion_timesteps
         t2 = (i + 1) / num_diffusion_timesteps
         betas.append(min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), max_beta))
-    return torch.tensor(betas, dtype=torch.float32)
+    # TTS Audio Suite patch: materialize scheduler tensors from NumPy so
+    # Transformers meta-device init cannot turn them into meta tensors.
+    return torch.from_numpy(np.asarray(betas, dtype=np.float32))
 
 
 # Copied from diffusers.schedulers.scheduling_ddim.rescale_zero_terminal_snr
@@ -229,13 +231,21 @@ class DPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
             deprecation_message = f"algorithm_type {algorithm_type} is deprecated and will be removed in a future version. Choose from `dpmsolver++` or `sde-dpmsolver++` instead"
             deprecate("algorithm_types dpmsolver and sde-dpmsolver", "1.0.0", deprecation_message)
 
+        # TTS Audio Suite patch: force scheduler state onto real CPU tensors so
+        # Transformers meta-device init does not create meta diffusion buffers.
+        cpu_device = torch.device("cpu")
+
         if trained_betas is not None:
-            self.betas = torch.tensor(trained_betas, dtype=torch.float32)
+            self.betas = torch.from_numpy(np.asarray(trained_betas, dtype=np.float32))
         elif beta_schedule == "linear":
-            self.betas = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32)
+            self.betas = torch.from_numpy(
+                np.linspace(beta_start, beta_end, num_train_timesteps, dtype=np.float32)
+            )
         elif beta_schedule == "scaled_linear":
             # this schedule is very specific to the latent diffusion model.
-            self.betas = torch.linspace(beta_start**0.5, beta_end**0.5, num_train_timesteps, dtype=torch.float32) ** 2
+            self.betas = torch.from_numpy(
+                np.linspace(beta_start**0.5, beta_end**0.5, num_train_timesteps, dtype=np.float32)
+            ) ** 2
         elif beta_schedule == "squaredcos_cap_v2" or beta_schedule == "cosine":
             # Glide cosine schedule
             self.betas = betas_for_alpha_bar(num_train_timesteps, alpha_transform_type="cosine")
@@ -292,7 +302,7 @@ class DPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
         self.lower_order_nums = 0
         self._step_index = None
         self._begin_index = None
-        self.sigmas = self.sigmas.to("cpu")  # to avoid too much CPU/GPU communication
+        self.sigmas = self.sigmas.cpu()  # to avoid too much CPU/GPU communication
 
     @property
     def step_index(self):
