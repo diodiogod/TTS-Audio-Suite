@@ -30,6 +30,17 @@ BaseTTSNode = base_module.BaseTTSNode
 import folder_paths
 from engines.qwen3_asr.prompting import DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
 from utils.models.extra_paths import get_all_tts_model_paths
+from utils.models.factory_config import (
+    RUNTIME_MODE_DEDICATED,
+    RUNTIME_MODE_MAIN,
+    RUNTIME_MODE_SHARED,
+    normalize_runtime_mode,
+)
+
+
+RUNTIME_MODE_MAIN_LABEL = "Main Environment"
+RUNTIME_MODE_SHARED_LABEL = "⚠️ Shared Runtime"
+RUNTIME_MODE_DEDICATED_LABEL = "⚠️ Dedicated Runtime"
 
 
 class Qwen3TTSEngineNode(BaseTTSNode):
@@ -138,6 +149,10 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "default": 2048, "min": 64, "max": 8192, "step": 64,
                     "tooltip": "Maximum tokens to generate:\n• 64-512: Very short\n• 2048: Standard (default)\n• 4096-8192: Long generation\nHigher = more VRAM + longer generation"
                 }),
+                "runtime_mode": ([RUNTIME_MODE_MAIN_LABEL, RUNTIME_MODE_SHARED_LABEL, RUNTIME_MODE_DEDICATED_LABEL], {
+                    "default": RUNTIME_MODE_SHARED_LABEL,
+                    "tooltip": "IMPORTANT: Qwen3-TTS is fragile on Transformers 5 in the main environment.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the shared secondary legacy runtime already used by compatible engines\n• Dedicated Runtime: Create a separate secondary runtime just for Qwen3-TTS\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• Qwen3-TTS is more stable on the legacy Transformers 4 stack\n• Runtime isolation keeps Qwen3-TTS working without downgrading the whole app\n\n⚠️ Shared/Dedicated runtimes currently reuse heavy base packages from the main env (like PyTorch) and install pinned Qwen3-TTS-specific packages on top.\n⚠️ First run may create the secondary runtime and take a while."
+                }),
             },
             "optional": {
                 # Advanced Parameters
@@ -198,6 +213,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         temperature: float,
         repetition_penalty: float,
         max_new_tokens: int,
+        runtime_mode: str,
         dtype: str = "auto",
         attn_implementation: str = "auto",
         x_vector_only_mode: bool = False,
@@ -214,6 +230,14 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         Returns:
             Tuple containing engine config dict
         """
+        runtime_mode = normalize_runtime_mode(runtime_mode)
+        if runtime_mode == RUNTIME_MODE_SHARED:
+            runtime_profile = "vibevoice_transformers4_shared"
+        elif runtime_mode == RUNTIME_MODE_DEDICATED:
+            runtime_profile = "qwen3_tts_transformers4_dedicated"
+        else:
+            runtime_profile = None
+
         # Create engine config dict
         # NOTE: model_path is NOT included - adapter determines correct model variant automatically
         # based on voice_preset and model_size (CustomVoice/VoiceDesign/Base)
@@ -231,6 +255,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
             "temperature": temperature,
             "repetition_penalty": repetition_penalty,
             "max_new_tokens": max_new_tokens,
+            "runtime_mode": runtime_mode,
+            "runtime_profile": runtime_profile,
             "x_vector_only_mode": x_vector_only_mode,
             "use_torch_compile": use_torch_compile,
             "use_cuda_graphs": use_cuda_graphs,
@@ -243,6 +269,12 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         # Print configuration summary (matching other engines)
         print(f"⚙️ Qwen3-TTS: Configured on {device}")
         print(f"   Model: {model_size} | Language: {language}")
+        runtime_label = {
+            RUNTIME_MODE_MAIN: "Main Environment",
+            RUNTIME_MODE_SHARED: "Shared Runtime",
+            RUNTIME_MODE_DEDICATED: "Dedicated Runtime",
+        }.get(runtime_mode, runtime_mode)
+        print(f"   Runtime: {runtime_label}")
         print(f"   Settings: voice_preset={voice_preset}, temperature={temperature}, top_k={top_k}, top_p={top_p}")
         print(f"   Advanced: repetition_penalty={repetition_penalty}, max_tokens={max_new_tokens}, x_vector_only={x_vector_only_mode}")
         custom_asr_translate_instruction = (
@@ -257,6 +289,8 @@ class Qwen3TTSEngineNode(BaseTTSNode):
             print(f"   Optimizations: torch.compile={use_torch_compile}, cuda_graphs={use_cuda_graphs}, mode={compile_mode}")
         if instruct:
             print(f"   Instruction: {instruct[:50]}..." if len(instruct) > 50 else f"   Instruction: {instruct}")
+        if runtime_mode != RUNTIME_MODE_MAIN:
+            print("   ⚠️ Runtime isolation requested: first run may create a secondary Qwen3-TTS runtime.")
 
         # Return in the same structure as other engines (nested config)
         engine_data = {

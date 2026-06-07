@@ -53,6 +53,16 @@ _VIBEVOICE_T4_PACKAGES = [
     "x-transformers",
 ]
 
+_QWEN3_T4_PACKAGES = [
+    "numpy>=1.26.4,<2.3.0",
+    "soundfile>=0.12.0",
+    "librosa",
+    "transformers>=4.51.3,<=4.57.3",
+    "accelerate",
+    "huggingface-hub<1.0",
+    "safetensors>=0.6.2",
+]
+
 
 RUNTIME_PROFILES: Dict[str, RuntimeProfile] = {
     "vibevoice_transformers4_shared": RuntimeProfile(
@@ -77,11 +87,13 @@ RUNTIME_PROFILES: Dict[str, RuntimeProfile] = {
             "git+https://github.com/FushionHub/VibeVoice.git",
         ],
     ),
-    "qwen3_tts_transformers5": RuntimeProfile(
-        name="qwen3_tts_transformers5",
-        engine_names=["qwen3_tts", "qwen3_asr"],
-        python_path_hint="runtimes/qwen3_tts_t5/Scripts/python.exe",
-        description="Dedicated Qwen3 runtime isolated from other HF engines.",
+    "qwen3_tts_transformers4_dedicated": RuntimeProfile(
+        name="qwen3_tts_transformers4_dedicated",
+        engine_names=["qwen3_tts"],
+        python_path_hint="runtimes/qwen3_tts_t4_dedicated/Scripts/python.exe",
+        description="Dedicated legacy Transformers 4 runtime reserved for Qwen3-TTS.",
+        inherit_base_site_packages=True,
+        pip_packages=list(_QWEN3_T4_PACKAGES),
     ),
     "step_audio_editx_transformers5": RuntimeProfile(
         name="step_audio_editx_transformers5",

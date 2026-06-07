@@ -146,7 +146,7 @@ ENV/
 env.bak/
 venv.bak/
 comfyui_env/
-runtimes/
+/runtimes/
 
 # Spyder project settings
 .spyderproject

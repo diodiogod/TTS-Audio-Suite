@@ -13,7 +13,7 @@ from pathlib import Path
 from utils.models.comfyui_model_wrapper import tts_model_manager, ModelInfo
 from utils.models.factory_config import ModelLoadConfig, runtime_uses_isolation
 from utils.models.engine_registry import get_default_runtime_profile
-from utils.runtimes import build_vibevoice_isolated_proxy
+from utils.runtimes import build_qwen3_tts_isolated_proxy, build_vibevoice_isolated_proxy
 from utils.models.comfyui_model_wrapper.cache_utils import invalidate_all_caches
 
 
@@ -217,6 +217,11 @@ class UnifiedModelInterface:
 
         if config.engine_name == "vibevoice" and config.model_type == "tts":
             proxy = build_vibevoice_isolated_proxy(config)
+            self._isolated_model_cache[cache_key] = proxy
+            return proxy
+
+        if config.engine_name == "qwen3_tts" and config.model_type == "tts":
+            proxy = build_qwen3_tts_isolated_proxy(config)
             self._isolated_model_cache[cache_key] = proxy
             return proxy
 

@@ -132,7 +132,7 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         can_corrupt_on_reload=False,
         fallback_languages=["English"],
         supports_runtime_isolation=True,
-        default_runtime_profile="qwen3_tts_transformers5",
+        default_runtime_profile="vibevoice_transformers4_shared",
     ),
 
     "step_audio_editx": EngineCapabilities(
