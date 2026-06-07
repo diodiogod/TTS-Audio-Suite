@@ -532,8 +532,11 @@ class Qwen3ASRModel:
             # PATCH (TTS Audio Suite): silence pad_token_id warning for open-end generation
             try:
                 gen_cfg = getattr(self.model, "generation_config", None)
-                if gen_cfg is not None and gen_cfg.pad_token_id is None:
-                    gen_cfg.pad_token_id = gen_cfg.eos_token_id
+                if gen_cfg is not None:
+                    if hasattr(gen_cfg, "temperature"):
+                        gen_cfg.temperature = None
+                    if gen_cfg.pad_token_id is None:
+                        gen_cfg.pad_token_id = gen_cfg.eos_token_id
             except Exception:
                 pass
 

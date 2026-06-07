@@ -42,6 +42,7 @@ class Qwen3TTSIsolatedProxy:
         self._estimated_memory_size = 10 * 1024 * 1024 * 1024
         self._comfy_loaded_model = None
         self._comfy_model_management = None
+        self._initialized = False
 
         launcher = IsolatedRuntimeLauncher(runtime_root=str(PROJECT_ROOT))
         python_path = ensure_runtime(profile)
@@ -122,7 +123,13 @@ class Qwen3TTSIsolatedProxy:
                 details = f"{details}\n" + "\n".join(response.logs)
             raise RuntimeError(details)
 
+        self._initialized = True
         print(f"✅ Qwen3-TTS isolated runtime ready ({self.profile.name})")
+
+    def _ensure_remote_engine(self) -> None:
+        process = getattr(self._session, "_process", None)
+        if not self._initialized or process is None or process.poll() is not None:
+            self._initialize_remote_engine()
 
     def _serialize_ref_audio(self, ref_audio: Any, bundle_dir: Path) -> Optional[Dict[str, Any]]:
         if ref_audio is None:
@@ -164,6 +171,7 @@ class Qwen3TTSIsolatedProxy:
         raise TypeError(f"Unsupported Qwen3-TTS isolated ref_audio type: {type(ref_audio)}")
 
     def _run_generation(self, action: str, payload: Dict[str, Any]) -> tuple[list[np.ndarray], int]:
+        self._ensure_remote_engine()
         with tempfile.TemporaryDirectory(prefix="tts_qwen3_iso_") as temp_dir:
             bundle_dir = Path(temp_dir)
             output_path = bundle_dir / "result.pt"
@@ -258,6 +266,7 @@ class Qwen3TTSIsolatedProxy:
         )
 
     def enable_streaming_optimizations(self, use_compile=True, use_cuda_graphs=True, compile_mode="reduce-overhead", decode_window_frames=80):
+        self._ensure_remote_engine()
         response = self._session.request(
             RuntimeJobRequest(
                 engine_name="qwen3_tts",
@@ -279,7 +288,7 @@ class Qwen3TTSIsolatedProxy:
             if response.logs:
                 details = f"{details}\n" + "\n".join(response.logs)
             raise RuntimeError(details)
-        return self
+        return response.result or {"enabled": True}
 
     def to(self, device):
         self.device = str(device)
@@ -359,6 +368,7 @@ class Qwen3TTSIsolatedProxy:
     def cleanup(self, unregister: bool = True):
         if unregister:
             self._unregister_from_comfy_model_management()
+        self._initialized = False
         self._session.close()
 
     def close(self):

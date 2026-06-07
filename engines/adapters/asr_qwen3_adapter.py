@@ -76,6 +76,8 @@ class Qwen3ASREngineAdapter:
             model_name=model_name,
             model_path=model_id,
             device=device,
+            runtime_mode=self.config.get("runtime_mode", "main_environment"),
+            runtime_profile=self.config.get("runtime_profile"),
             additional_params=additional_params,
         )
 

@@ -9,6 +9,7 @@ from .bootstrap import ensure_runtime, resolve_runtime_dir, resolve_runtime_pyth
 from .launcher import IsolatedRuntimeLauncher
 from .profiles import RuntimeProfile, get_runtime_profile, list_runtime_profiles
 from .protocol import RuntimeJobRequest, RuntimeJobResponse
+from .qwen3_asr_proxy import Qwen3ASRIsolatedProxy, build_qwen3_asr_isolated_proxy
 from .qwen3_tts_proxy import Qwen3TTSIsolatedProxy, build_qwen3_tts_isolated_proxy
 from .vibevoice_proxy import VibeVoiceIsolatedProxy, build_vibevoice_isolated_proxy
 
@@ -20,6 +21,8 @@ __all__ = [
     "RuntimeProfile",
     "RuntimeJobRequest",
     "RuntimeJobResponse",
+    "Qwen3ASRIsolatedProxy",
+    "build_qwen3_asr_isolated_proxy",
     "Qwen3TTSIsolatedProxy",
     "build_qwen3_tts_isolated_proxy",
     "VibeVoiceIsolatedProxy",

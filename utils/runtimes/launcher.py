@@ -9,9 +9,11 @@ engine-specific worker entrypoint is added.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -59,8 +61,140 @@ class IsolatedRuntimeLauncher:
         if deduped_paths:
             env["PYTHONPATH"] = os.pathsep.join(deduped_paths)
         env["PYTHONUNBUFFERED"] = "1"
+        env = self._augment_windows_toolchain_env(env)
         env.update(profile.env_vars)
         return env
+
+    @classmethod
+    def _augment_windows_toolchain_env(cls, env: Dict[str, str]) -> Dict[str, str]:
+        if os.name != "nt":
+            return env
+
+        current_path = env.get("PATH", "")
+        if shutil.which("cl", path=current_path) and env.get("INCLUDE") and env.get("LIB"):
+            return env
+
+        msvc_env = cls._get_windows_msvc_env()
+        if not msvc_env:
+            return env
+
+        merged = dict(env)
+        merged.update(msvc_env)
+        cl_path = shutil.which("cl", path=merged.get("PATH", ""))
+        if cl_path:
+            merged.setdefault("CC", cl_path)
+            merged.setdefault("CXX", cl_path)
+        return merged
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def _get_windows_msvc_env(cls) -> Optional[Dict[str, str]]:
+        if os.name != "nt":
+            return None
+
+        vcvars_path = cls._find_vcvars64()
+        if vcvars_path is None:
+            return None
+
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".cmd", delete=False, encoding="utf-8") as temp_cmd:
+                temp_cmd.write("@echo off\n")
+                temp_cmd.write(f"call \"{vcvars_path}\" >nul\n")
+                temp_cmd.write("set\n")
+                temp_cmd_path = temp_cmd.name
+            try:
+                completed = subprocess.run(
+                    ["cmd.exe", "/d", "/c", temp_cmd_path],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    env=dict(os.environ),
+                )
+            finally:
+                try:
+                    os.unlink(temp_cmd_path)
+                except OSError:
+                    pass
+        except Exception:
+            return None
+
+        if completed.returncode != 0:
+            return None
+
+        resolved_env: Dict[str, str] = {}
+        for line in completed.stdout.splitlines():
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            if not key:
+                continue
+            resolved_env[key] = value
+
+        if not resolved_env.get("PATH"):
+            return None
+
+        if not shutil.which("cl", path=resolved_env["PATH"]):
+            return None
+
+        return resolved_env
+
+    @classmethod
+    def _find_vcvars64(cls) -> Optional[str]:
+        if os.name != "nt":
+            return None
+
+        vswhere_path = cls._find_vswhere()
+        if vswhere_path:
+            try:
+                completed = subprocess.run(
+                    [
+                        vswhere_path,
+                        "-latest",
+                        "-products",
+                        "*",
+                        "-requires",
+                        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                        "-property",
+                        "installationPath",
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                installation_path = completed.stdout.strip()
+                if installation_path:
+                    candidate = Path(installation_path) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+                    if candidate.exists():
+                        return str(candidate)
+            except Exception:
+                pass
+
+        candidate_roots = [
+            Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Microsoft Visual Studio",
+            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Microsoft Visual Studio",
+        ]
+        discovered = []
+        for root in candidate_roots:
+            if not root.exists():
+                continue
+            discovered.extend(root.glob("*/*/VC/Auxiliary/Build/vcvars64.bat"))
+
+        if not discovered:
+            return None
+
+        discovered.sort(key=lambda path: str(path), reverse=True)
+        return str(discovered[0])
+
+    @staticmethod
+    def _find_vswhere() -> Optional[str]:
+        if os.name != "nt":
+            return None
+
+        installer_root = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Microsoft Visual Studio" / "Installer"
+        candidate = installer_root / "vswhere.exe"
+        if candidate.exists():
+            return str(candidate)
+        return None
 
     @staticmethod
     def _should_inherit_pythonpath_entry(path: str) -> bool:

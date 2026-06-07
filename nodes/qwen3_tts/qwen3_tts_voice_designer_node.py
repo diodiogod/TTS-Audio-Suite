@@ -227,6 +227,8 @@ class Qwen3TTSVoiceDesignerNode:
                 model_name=f"Qwen3-TTS-12Hz-{model_size}-VoiceDesign",
                 model_path=model_path,
                 device=resolve_torch_device(device),
+                runtime_mode=config.get('runtime_mode', 'main_environment'),
+                runtime_profile=config.get('runtime_profile'),
                 additional_params={
                     "dtype": dtype,
                     "attn_implementation": attn_implementation,
@@ -248,12 +250,19 @@ class Qwen3TTSVoiceDesignerNode:
                 print(f"🚀 Applying torch.compile optimizations (mode={compile_mode})...")
                 try:
                     if hasattr(engine, 'enable_streaming_optimizations'):
-                        engine.enable_streaming_optimizations(
+                        optimization_result = engine.enable_streaming_optimizations(
                             use_compile=use_torch_compile,
                             use_cuda_graphs=use_cuda_graphs,
                             compile_mode=compile_mode
                         )
-                        print(f"✅ torch.compile optimizations applied")
+                        actual_use_compile = use_torch_compile
+                        if isinstance(optimization_result, dict):
+                            actual_use_compile = optimization_result.get("use_compile", actual_use_compile)
+
+                        if use_torch_compile and not actual_use_compile:
+                            print("⚠️ torch.compile was requested but is not active in this runtime")
+                        else:
+                            print("✅ torch.compile optimizations applied")
                     else:
                         print(f"⚠️ Model doesn't support enable_streaming_optimizations, skipping")
                 except Exception as e:

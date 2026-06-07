@@ -135,6 +135,15 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         default_runtime_profile="vibevoice_transformers4_shared",
     ),
 
+    "qwen3_asr": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="vibevoice_transformers4_shared",
+    ),
+
     "step_audio_editx": EngineCapabilities(
         supports_voice_conversion=False,
         multilingual_model_switching=False,

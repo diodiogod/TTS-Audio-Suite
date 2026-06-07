@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 """
-VibeVoice isolated runtime proxy.
+Qwen3-ASR isolated runtime proxy.
 """
 
 import tempfile
 import uuid
 import weakref
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import torch
 
 from utils.models.factory_config import ModelLoadConfig
@@ -20,33 +22,59 @@ from .protocol import RuntimeJobRequest
 from .session import JsonLineWorkerSession
 
 
-class VibeVoiceIsolatedProxy:
+@dataclass(frozen=True)
+class ForcedAlignItem:
+    text: str
+    start_time: float
+    end_time: float
+
+
+@dataclass(frozen=True)
+class ForcedAlignResult:
+    items: List[ForcedAlignItem]
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, idx: int) -> ForcedAlignItem:
+        return self.items[idx]
+
+
+@dataclass
+class ASRTranscriptionResult:
+    language: str
+    text: str
+    time_stamps: Optional[ForcedAlignResult] = None
+
+
+class Qwen3ASRIsolatedProxy:
     def __init__(self, config: ModelLoadConfig, profile: RuntimeProfile):
         self.config = config
         self.profile = profile
         self.current_model_name = config.model_name
+        self.current_model_path = config.model_path
         self.device = config.device
         self.current_device = config.device
         self.load_device = self.current_loaded_device()
         self.offload_device = "cpu"
-        self.attention_mode = config.additional_params.get("attention_mode", "auto")
-        self.quantize_llm_4bit = config.additional_params.get("quantize_llm_4bit", False)
+        self.dtype = self._resolve_dtype(config.additional_params.get("precision", "auto"))
         self.model = self
         self.processor = self
         self.parent = None
-        self.is_kugelaudio = False
-        self.dtype = torch.float16
         self.currently_used = True
         self.model_options = {}
         self.model_keys = set()
-        self._estimated_memory_size = 6 * 1024 * 1024 * 1024
+        self._estimated_memory_size = 8 * 1024 * 1024 * 1024
         self._comfy_loaded_model = None
         self._comfy_model_management = None
         self._initialized = False
 
         launcher = IsolatedRuntimeLauncher(runtime_root=str(PROJECT_ROOT))
         python_path = ensure_runtime(profile)
-        worker_script = str(PROJECT_ROOT / "utils" / "runtimes" / "workers" / "vibevoice_worker.py")
+        worker_script = str(PROJECT_ROOT / "utils" / "runtimes" / "workers" / "qwen3_asr_worker.py")
 
         self._session = JsonLineWorkerSession(
             python_path=str(python_path),
@@ -55,6 +83,14 @@ class VibeVoiceIsolatedProxy:
         )
         self._register_with_comfy_model_management()
         self._initialize_remote_engine()
+
+    def _resolve_dtype(self, dtype_name: str):
+        dtype_name = (dtype_name or "auto").lower()
+        if dtype_name in ("bf16", "bfloat16"):
+            return torch.bfloat16
+        if dtype_name in ("fp32", "float32"):
+            return torch.float32
+        return torch.float16
 
     def _register_with_comfy_model_management(self) -> None:
         try:
@@ -77,7 +113,7 @@ class VibeVoiceIsolatedProxy:
             self._comfy_loaded_model = loaded_model
             self._comfy_model_management = model_management
         except Exception as e:
-            print(f"⚠️ Failed to register isolated VibeVoice runtime with ComfyUI model management: {e}")
+            print(f"⚠️ Failed to register isolated Qwen3-ASR runtime with ComfyUI model management: {e}")
 
     def _unregister_from_comfy_model_management(self) -> None:
         model_management = self._comfy_model_management
@@ -89,7 +125,7 @@ class VibeVoiceIsolatedProxy:
             if hasattr(model_management, "current_loaded_models") and loaded_model in model_management.current_loaded_models:
                 model_management.current_loaded_models.remove(loaded_model)
         except Exception as e:
-            print(f"⚠️ Failed to remove isolated VibeVoice runtime from ComfyUI tracking: {e}")
+            print(f"⚠️ Failed to remove isolated Qwen3-ASR runtime from ComfyUI tracking: {e}")
         finally:
             self._comfy_loaded_model = None
             self._comfy_model_management = None
@@ -97,188 +133,124 @@ class VibeVoiceIsolatedProxy:
     def _initialize_remote_engine(self) -> None:
         response = self._session.request(
             RuntimeJobRequest(
-                engine_name="vibevoice",
+                engine_name="qwen3_asr",
                 action="initialize",
                 model_name=self.current_model_name,
                 device=str(self.device),
                 runtime_profile=self.profile.name,
                 payload={
-                    "attention_mode": self.attention_mode,
-                    "quantize_llm_4bit": self.quantize_llm_4bit,
+                    "precision": self.config.additional_params.get("precision", "auto"),
+                    "attn_implementation": self.config.additional_params.get("attn_implementation", "sdpa"),
+                    "max_new_tokens": self.config.additional_params.get("max_new_tokens", 256),
+                    "forced_aligner": self.config.additional_params.get("forced_aligner"),
+                    "forced_aligner_kwargs": self.config.additional_params.get("forced_aligner_kwargs"),
+                    "model_path": self.current_model_path,
                 },
                 request_id=str(uuid.uuid4()),
             )
         )
         if not response.ok:
-            details = response.error or "Failed to initialize isolated VibeVoice runtime"
+            details = response.error or "Failed to initialize isolated Qwen3-ASR runtime"
             if response.logs:
                 details = f"{details}\n" + "\n".join(response.logs)
             raise RuntimeError(details)
 
         self._initialized = True
-        self.is_kugelaudio = bool(response.result.get("is_kugelaudio", False))
-        print(
-            f"✅ VibeVoice isolated runtime ready "
-            f"({self.profile.name}, kugel={self.is_kugelaudio})"
-        )
+        print(f"✅ Qwen3-ASR isolated runtime ready ({self.profile.name})")
 
     def _ensure_remote_engine(self) -> None:
         process = getattr(self._session, "_process", None)
         if not self._initialized or process is None or process.poll() is not None:
             self._initialize_remote_engine()
 
-    def _prepare_voice_samples(self, voice_refs: List[Optional[Dict]]) -> List[Optional[Dict]]:
-        # Raw refs cross the process boundary and are prepared in the worker.
-        return voice_refs
+    def _serialize_audio_payload(self, audio: Any, bundle_dir: Path) -> Dict[str, Any]:
+        items = audio if isinstance(audio, list) else [audio]
+        serialized_items = []
+        for index, item in enumerate(items):
+            if isinstance(item, str):
+                serialized_items.append({"kind": "audio_path", "audio_path": item})
+                continue
 
-    def _serialize_voice_ref(self, voice_ref: Optional[Dict[str, Any]], bundle_dir: Path, index: int) -> Optional[Dict[str, Any]]:
-        if voice_ref is None:
-            return None
-
-        if not isinstance(voice_ref, dict):
-            raise TypeError(f"Unsupported VibeVoice isolated voice reference type: {type(voice_ref)}")
-
-        reference_text = voice_ref.get("reference_text") or voice_ref.get("text") or ""
-        character_name = voice_ref.get("character_name") or "narrator"
-
-        audio_path = voice_ref.get("audio_path")
-        if audio_path:
-            return {
-                "kind": "audio_path",
-                "audio_path": audio_path,
-                "reference_text": reference_text,
-                "character_name": character_name,
-            }
-
-        nested_audio = voice_ref.get("audio")
-        if isinstance(nested_audio, dict):
-            nested_audio_path = nested_audio.get("audio_path")
-            if nested_audio_path:
-                return {
-                    "kind": "audio_path",
-                    "audio_path": nested_audio_path,
-                    "reference_text": reference_text,
-                    "character_name": character_name,
-                }
-            if "waveform" in nested_audio:
-                tensor_path = bundle_dir / f"voice_{index}.pt"
+            if isinstance(item, tuple) and len(item) == 2:
+                waveform, sample_rate = item
+                tensor_path = bundle_dir / f"audio_{index}.pt"
+                if isinstance(waveform, np.ndarray):
+                    waveform = torch.from_numpy(waveform)
+                elif not isinstance(waveform, torch.Tensor):
+                    waveform = torch.tensor(waveform)
                 torch.save(
                     {
-                        "waveform": nested_audio["waveform"].detach().cpu()
-                        if isinstance(nested_audio["waveform"], torch.Tensor)
-                        else nested_audio["waveform"],
-                        "sample_rate": nested_audio.get("sample_rate", 24000),
+                        "waveform": waveform.detach().cpu().float(),
+                        "sample_rate": int(sample_rate),
                     },
                     tensor_path,
                 )
-                return {
-                    "kind": "tensor_path",
-                    "tensor_path": str(tensor_path),
-                    "reference_text": reference_text,
-                    "character_name": character_name,
-                }
-        elif nested_audio is not None:
-            tensor_path = bundle_dir / f"voice_{index}.pt"
-            torch.save(
-                {
-                    "waveform": nested_audio.detach().cpu()
-                    if isinstance(nested_audio, torch.Tensor)
-                    else nested_audio,
-                    "sample_rate": voice_ref.get("sample_rate", 24000),
-                },
-                tensor_path,
+                serialized_items.append({"kind": "tensor_path", "tensor_path": str(tensor_path)})
+                continue
+
+            raise TypeError(f"Unsupported Qwen3-ASR isolated audio item type: {type(item)}")
+
+        return {"items": serialized_items}
+
+    def _deserialize_results(self, payload: List[Dict[str, Any]]) -> List[ASRTranscriptionResult]:
+        results = []
+        for item in payload:
+            time_stamps = None
+            raw_time_stamps = item.get("time_stamps")
+            if raw_time_stamps:
+                time_stamps = ForcedAlignResult(
+                    items=[
+                        ForcedAlignItem(
+                            text=str(ts.get("text", "")),
+                            start_time=float(ts.get("start_time", 0.0)),
+                            end_time=float(ts.get("end_time", 0.0)),
+                        )
+                        for ts in raw_time_stamps
+                    ]
+                )
+            results.append(
+                ASRTranscriptionResult(
+                    language=str(item.get("language", "")),
+                    text=str(item.get("text", "")),
+                    time_stamps=time_stamps,
+                )
             )
-            return {
-                "kind": "tensor_path",
-                "tensor_path": str(tensor_path),
-                "reference_text": reference_text,
-                "character_name": character_name,
-            }
+        return results
 
-        if "waveform" in voice_ref:
-            tensor_path = bundle_dir / f"voice_{index}.pt"
-            waveform = voice_ref["waveform"]
-            torch.save(
-                {
-                    "waveform": waveform.detach().cpu() if isinstance(waveform, torch.Tensor) else waveform,
-                    "sample_rate": voice_ref.get("sample_rate", 24000),
-                },
-                tensor_path,
-            )
-            return {
-                "kind": "tensor_path",
-                "tensor_path": str(tensor_path),
-                "reference_text": reference_text,
-                "character_name": character_name,
-            }
-
-        raise ValueError("Unsupported VibeVoice isolated voice reference format")
-
-    def generate_speech(
+    def transcribe(
         self,
-        text: str,
-        voice_samples: List[Optional[Dict]],
-        cfg_scale: float = 1.3,
-        seed: int = 42,
-        use_sampling: bool = False,
-        temperature: float = 0.95,
-        top_p: float = 0.95,
-        inference_steps: int = 20,
-        max_new_tokens: Optional[int] = None,
-        enable_cache: bool = True,
-        character: str = "narrator",
-        stable_audio_component: str = "",
-        multi_speaker_mode: str = "Custom Character Switching",
-    ) -> Dict[str, Any]:
+        audio,
+        context="",
+        language=None,
+        return_time_stamps: bool = False,
+    ) -> List[ASRTranscriptionResult]:
         self._ensure_remote_engine()
-        with tempfile.TemporaryDirectory(prefix="tts_vibevoice_iso_") as temp_dir:
+        with tempfile.TemporaryDirectory(prefix="tts_qwen3_asr_iso_") as temp_dir:
             bundle_dir = Path(temp_dir)
-            output_path = bundle_dir / "result.pt"
-            serialized_refs = [
-                self._serialize_voice_ref(ref, bundle_dir, index)
-                for index, ref in enumerate(voice_samples)
-            ]
-
             response = self._session.request(
                 RuntimeJobRequest(
-                    engine_name="vibevoice",
-                    action="generate_from_refs",
+                    engine_name="qwen3_asr",
+                    action="transcribe",
                     model_name=self.current_model_name,
                     device=str(self.device),
                     runtime_profile=self.profile.name,
                     request_id=str(uuid.uuid4()),
                     payload={
-                        "text": text,
-                        "voice_refs": serialized_refs,
-                        "cfg_scale": cfg_scale,
-                        "seed": seed,
-                        "use_sampling": use_sampling,
-                        "temperature": temperature,
-                        "top_p": top_p,
-                        "inference_steps": inference_steps,
-                        "max_new_tokens": max_new_tokens,
-                        "enable_cache": enable_cache,
-                        "character": character,
-                        "stable_audio_component": stable_audio_component,
-                        "multi_speaker_mode": multi_speaker_mode,
-                        "output_path": str(output_path),
+                        "audio": self._serialize_audio_payload(audio, bundle_dir),
+                        "context": context,
+                        "language": language,
+                        "return_time_stamps": return_time_stamps,
                     },
                 )
             )
 
             if not response.ok:
-                details = response.error or "Isolated VibeVoice generation failed"
+                details = response.error or "Isolated Qwen3-ASR transcribe failed"
                 if response.logs:
                     details = f"{details}\n" + "\n".join(response.logs)
                 raise RuntimeError(details)
-            if not output_path.exists():
-                raise RuntimeError("Isolated VibeVoice worker returned no output payload")
 
-            result = torch.load(output_path, map_location="cpu")
-            waveform = result.get("waveform")
-            if isinstance(waveform, torch.Tensor):
-                result["waveform"] = waveform.cpu()
-            return result
+            return self._deserialize_results(response.result.get("results", []))
 
     def to(self, device):
         self.device = str(device)
@@ -371,9 +343,9 @@ class VibeVoiceIsolatedProxy:
             pass
 
 
-def build_vibevoice_isolated_proxy(config: ModelLoadConfig) -> VibeVoiceIsolatedProxy:
+def build_qwen3_asr_isolated_proxy(config: ModelLoadConfig) -> Qwen3ASRIsolatedProxy:
     profile_name = config.runtime_profile or "vibevoice_transformers4_shared"
     profile = get_runtime_profile(profile_name)
     if profile is None:
-        raise RuntimeError(f"Unknown isolated runtime profile '{profile_name}' for VibeVoice")
-    return VibeVoiceIsolatedProxy(config=config, profile=profile)
+        raise RuntimeError(f"Unknown isolated runtime profile '{profile_name}' for Qwen3-ASR")
+    return Qwen3ASRIsolatedProxy(config=config, profile=profile)

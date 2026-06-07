@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import sys
 import traceback
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -52,9 +55,70 @@ def _save_generation_result(output_path: str, wavs, sample_rate: int) -> None:
     torch.save({"wavs": payload_wavs, "sample_rate": int(sample_rate)}, output_path)
 
 
+def _build_streamer(text: str, max_new_tokens: int):
+    from engines.qwen3_tts.progress_callback import Qwen3TTSProgressStreamer
+
+    return Qwen3TTSProgressStreamer(max_new_tokens=max_new_tokens, progress_bar=None, text_input=text)
+
+
+def _ensure_windows_compiler_env() -> None:
+    if os.name != "nt":
+        return
+
+    if os.environ.get("CC") and os.environ.get("CXX"):
+        return
+
+    try:
+        from utils.runtimes.launcher import IsolatedRuntimeLauncher
+
+        msvc_env = IsolatedRuntimeLauncher._get_windows_msvc_env()
+    except Exception:
+        msvc_env = None
+
+    if msvc_env:
+        for key in ("PATH", "INCLUDE", "LIB", "LIBPATH", "VCINSTALLDIR", "VSINSTALLDIR"):
+            value = msvc_env.get(key)
+            if value:
+                os.environ[key] = value
+
+    cl_path = shutil.which("cl", path=os.environ.get("PATH", ""))
+    if cl_path:
+        os.environ.setdefault("CC", cl_path)
+        os.environ.setdefault("CXX", cl_path)
+
+
+@lru_cache(maxsize=8)
+def _can_use_torch_compile(mode: str = "default") -> bool:
+    if not hasattr(torch, "compile"):
+        return False
+
+    if not torch.cuda.is_available():
+        return True
+
+    # Use a real cached compile smoke test instead of guessing from PATH/CC.
+    # The Windows environment may compile successfully even when naïve `cl`
+    # detection fails, and the opposite can also happen with stale PATH entries.
+    try:
+        def _compile_probe(x):
+            return (x + 1).relu()
+
+        compiled = torch.compile(_compile_probe, mode=mode)
+        x = torch.randn(16, 16, device="cuda")
+        y = compiled(x)
+        torch.cuda.synchronize()
+        del compiled
+        del x
+        del y
+        return True
+    except Exception as exc:
+        print(f"⚠️ Qwen3-TTS isolated runtime: torch.compile smoke test failed for mode={mode}: {exc}")
+        return False
+
+
 def main() -> int:
     protocol_out = sys.stdout
     sys.stdout = sys.stderr
+    _ensure_windows_compiler_env()
 
     from engines.qwen3_tts.qwen3_tts import Qwen3TTSEngine
 
@@ -102,16 +166,29 @@ def main() -> int:
                 raise RuntimeError("Qwen3-TTS worker received action before initialization")
 
             if action == "enable_streaming_optimizations":
+                use_compile = payload.get("use_compile", True)
+                compile_mode = payload.get("compile_mode", "reduce-overhead")
+                if use_compile and not _can_use_torch_compile(compile_mode):
+                    print(f"⚠️ Qwen3-TTS isolated runtime: torch.compile disabled because the runtime smoke test failed for mode={compile_mode}")
+                    use_compile = False
                 engine.enable_streaming_optimizations(
-                    use_compile=payload.get("use_compile", True),
+                    use_compile=use_compile,
                     use_cuda_graphs=payload.get("use_cuda_graphs", True),
-                    compile_mode=payload.get("compile_mode", "reduce-overhead"),
+                    compile_mode=compile_mode,
                     decode_window_frames=payload.get("decode_window_frames", 80),
                 )
-                _emit(protocol_out, RuntimeJobResponse(ok=True, result={"enabled": True}, request_id=request_id))
+                _emit(
+                    protocol_out,
+                    RuntimeJobResponse(
+                        ok=True,
+                        result={"enabled": True, "use_compile": use_compile},
+                        request_id=request_id,
+                    ),
+                )
                 continue
 
             if action == "generate_custom_voice":
+                max_new_tokens = payload.get("max_new_tokens", 2048)
                 wavs, sr = engine.generate_custom_voice(
                     text=payload["text"],
                     language=payload.get("language", "Auto"),
@@ -121,13 +198,15 @@ def main() -> int:
                     top_p=payload.get("top_p", 1.0),
                     temperature=payload.get("temperature", 0.9),
                     repetition_penalty=payload.get("repetition_penalty", 1.05),
-                    max_new_tokens=payload.get("max_new_tokens", 2048),
+                    max_new_tokens=max_new_tokens,
+                    streamer=_build_streamer(payload["text"], max_new_tokens),
                 )
                 _save_generation_result(payload["output_path"], wavs, sr)
                 _emit(protocol_out, RuntimeJobResponse(ok=True, result={"output_path": payload["output_path"]}, request_id=request_id))
                 continue
 
             if action == "generate_voice_design":
+                max_new_tokens = payload.get("max_new_tokens", 2048)
                 wavs, sr = engine.generate_voice_design(
                     text=payload["text"],
                     language=payload.get("language", "Auto"),
@@ -136,7 +215,8 @@ def main() -> int:
                     top_p=payload.get("top_p", 1.0),
                     temperature=payload.get("temperature", 0.9),
                     repetition_penalty=payload.get("repetition_penalty", 1.05),
-                    max_new_tokens=payload.get("max_new_tokens", 2048),
+                    max_new_tokens=max_new_tokens,
+                    streamer=_build_streamer(payload["text"], max_new_tokens),
                 )
                 _save_generation_result(payload["output_path"], wavs, sr)
                 _emit(protocol_out, RuntimeJobResponse(ok=True, result={"output_path": payload["output_path"]}, request_id=request_id))
@@ -144,6 +224,7 @@ def main() -> int:
 
             if action == "generate_voice_clone":
                 ref_audio = _load_ref_audio(payload.get("ref_audio"))
+                max_new_tokens = payload.get("max_new_tokens", 2048)
                 wavs, sr = engine.generate_voice_clone(
                     text=payload["text"],
                     language=payload.get("language", "Auto"),
@@ -154,7 +235,8 @@ def main() -> int:
                     top_p=payload.get("top_p", 1.0),
                     temperature=payload.get("temperature", 0.9),
                     repetition_penalty=payload.get("repetition_penalty", 1.05),
-                    max_new_tokens=payload.get("max_new_tokens", 2048),
+                    max_new_tokens=max_new_tokens,
+                    streamer=_build_streamer(payload["text"], max_new_tokens),
                 )
                 _save_generation_result(payload["output_path"], wavs, sr)
                 _emit(protocol_out, RuntimeJobResponse(ok=True, result={"output_path": payload["output_path"]}, request_id=request_id))
