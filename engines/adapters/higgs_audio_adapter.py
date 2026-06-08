@@ -138,7 +138,7 @@ class HiggsAudioEngineAdapter:
         top_p = params.get("top_p", 0.95)
         top_k = params.get("top_k", 50)
         max_new_tokens = params.get("max_new_tokens", 2048)
-        force_audio_gen = params.get("force_audio_gen", False)
+        force_audio_gen = params.get("force_audio_gen", True)
         ras_win_len = params.get("ras_win_len", 7)  # Default from boson_multimodal
         ras_max_num_repeat = params.get("ras_max_num_repeat", 2)  # Default from boson_multimodal
         enable_cuda_graphs = params.get("enable_cuda_graphs", True)  # CUDA Graph toggle
@@ -394,7 +394,7 @@ class HiggsAudioEngineAdapter:
         validated["max_new_tokens"] = max(1, min(4096, int(max_tokens)))
         
         # Force audio gen validation
-        force_audio_gen = params.get("force_audio_gen", False)
+        force_audio_gen = params.get("force_audio_gen", True)
         validated["force_audio_gen"] = bool(force_audio_gen)
         
         # RAS parameters validation

@@ -67,7 +67,7 @@ class HiggsAudioTTSProcessor:
                 "top_p": self.engine_wrapper.config.get("top_p", 0.6),
                 "top_k": self.engine_wrapper.config.get("top_k", 80),
                 "max_new_tokens": self.engine_wrapper.config.get("max_new_tokens", 2048),
-                "force_audio_gen": self.engine_wrapper.config.get("force_audio_gen", False),
+                "force_audio_gen": self.engine_wrapper.config.get("force_audio_gen", True),
                 "ras_win_len": self.engine_wrapper.config.get("ras_win_len", 7),
                 "ras_max_num_repeat": self.engine_wrapper.config.get("ras_max_num_repeat", 2),
                 "system_prompt": self.engine_wrapper.config.get("system_prompt", "Generate audio following instruction.")

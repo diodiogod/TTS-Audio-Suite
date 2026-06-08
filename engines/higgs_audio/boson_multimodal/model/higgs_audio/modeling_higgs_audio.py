@@ -107,6 +107,43 @@ def get_cache_max_length(cache):
         # Debug fallback - return a reasonable default instead of 0
         print(f"⚠️ Cache type {type(cache)} has unknown max length attributes: {[attr for attr in dir(cache) if 'max' in attr.lower() or 'len' in attr.lower()]}")
         return 2048  # Reasonable default instead of 0
+
+
+def get_cache_layer_pair(cache, layer_idx: int):
+    """TTS Audio Suite patch: access cache tensors across old tuple and new Cache APIs."""
+    if cache is None:
+        return None, None
+
+    key_layers = getattr(cache, "key_cache", None)
+    value_layers = getattr(cache, "value_cache", None)
+    if key_layers is not None and value_layers is not None:
+        if layer_idx < len(key_layers) and layer_idx < len(value_layers):
+            return key_layers[layer_idx], value_layers[layer_idx]
+        return None, None
+
+    if hasattr(cache, "__len__") and layer_idx < len(cache):
+        cache_tuple = cache[layer_idx]
+        if cache_tuple is not None and len(cache_tuple) >= 2:
+            return cache_tuple[0], cache_tuple[1]
+
+    return None, None
+
+
+def get_cache_device(cache):
+    """TTS Audio Suite patch: resolve cache device across old tuple and new StaticCache APIs."""
+    if cache is None:
+        return None
+
+    key_layers = getattr(cache, "key_cache", None)
+    if key_layers:
+        first_key = key_layers[0]
+        return getattr(first_key, "device", None)
+
+    key_cache, _ = get_cache_layer_pair(cache, 0)
+    if key_cache is not None:
+        return getattr(key_cache, "device", None)
+
+    return None
 from transformers.utils import logging, ModelOutput
 
 from .common import HiggsAudioPreTrainedModel
@@ -711,7 +748,7 @@ class HiggsAudioDualFFNDecoderLayer(nn.Module):
                 hidden_states=hidden_states,
                 attention_mask=audio_attention_mask,
                 position_ids=position_ids,
-                past_key_value=past_key_value,
+                past_key_values=past_key_value,  # TTS Audio Suite patch: transformers 5 LlamaAttention renamed this arg
                 output_attentions=output_attentions,
                 use_cache=use_cache,
                 cache_position=cache_position,
@@ -738,7 +775,7 @@ class HiggsAudioDualFFNDecoderLayer(nn.Module):
             hidden_states=hidden_states,
             attention_mask=attention_mask,
             position_ids=position_ids,
-            past_key_value=past_key_value,
+            past_key_values=past_key_value,  # TTS Audio Suite patch: transformers 5 LlamaAttention renamed this arg
             output_attentions=output_attentions,
             use_cache=use_cache,
             cache_position=cache_position,
@@ -1203,7 +1240,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
                     position_ids=position_ids,
                     audio_out_mask=audio_discrete_codes_mask,
                     is_decoding_audio_token=is_decoding_audio_token,
-                    past_key_value=past_key_values,
+                    past_key_value=past_key_values,  # TTS Audio Suite patch: bundled dual layer still uses singular arg name
                     output_attentions=output_attentions,
                     use_cache=use_cache,
                     cache_position=cache_position,
@@ -1215,7 +1252,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
                     hidden_states,
                     attention_mask=causal_mask,
                     position_ids=position_ids,
-                    past_key_value=past_key_values,
+                    past_key_values=past_key_values,  # TTS Audio Suite patch: transformers 5 LlamaDecoderLayer renamed this arg
                     output_attentions=output_attentions,
                     use_cache=use_cache,
                     cache_position=cache_position,
@@ -1436,13 +1473,15 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
 
         # Use the captured cuda graph runner for decoding
         # if it exists, otherwise use the normal forward pass
-        if (
-            past_key_values is not None
-            and get_cache_max_length(past_key_values) in self.decode_graph_runners
-            and (input_ids.shape[-1] == 1)
-        ):
-            _forward_core = self.decode_graph_runners[get_cache_max_length(past_key_values)][is_decoding_audio_token]
-            is_using_cuda_graph = True
+        if past_key_values is not None and (input_ids.shape[-1] == 1):
+            graph_runners = self.decode_graph_runners.get(get_cache_max_length(past_key_values), {})
+            if is_decoding_audio_token in graph_runners:
+                _forward_core = graph_runners[is_decoding_audio_token]
+                is_using_cuda_graph = True
+            else:
+                # TTS Audio Suite patch: fall back cleanly when a decode graph for this mode is unavailable.
+                _forward_core = self._forward_core
+                is_using_cuda_graph = False
         else:
             _forward_core = self._forward_core
             is_using_cuda_graph = False
@@ -1570,7 +1609,7 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
             to_cache.crop(0)  # Clear existing cache
             for layer_idx in range(num_layers):
                 if hasattr(from_cache, '__len__') and layer_idx < len(from_cache):
-                    key_cache, value_cache = from_cache[layer_idx]
+                    key_cache, value_cache = get_cache_layer_pair(from_cache, layer_idx)
                     if key_cache is not None and value_cache is not None:
                         to_cache.update(key_cache, value_cache, layer_idx)
             return
@@ -1587,16 +1626,12 @@ class HiggsAudioModel(HiggsAudioPreTrainedModel, GenerationMixin):
                 f"The target cache size {get_cache_max_length(to_cache)} is smaller than the source cache size {from_cache_size}."
             )
             # Use new cache API - access by layer index with safety checks
-            from_cache_tuple = from_cache[layer_idx] if hasattr(from_cache, '__len__') and layer_idx < len(from_cache) else (None, None)
-            to_cache_tuple = to_cache[layer_idx] if hasattr(to_cache, '__len__') and layer_idx < len(to_cache) else (None, None)
-            
-            if from_cache_tuple is not None and to_cache_tuple is not None:
-                from_key, from_value = from_cache_tuple
-                to_key, to_value = to_cache_tuple
-                
-                if from_key is not None and to_key is not None and from_value is not None and to_value is not None:
-                    to_key[:, :, :from_cache_size, :] = from_key
-                    to_value[:, :, :from_cache_size, :] = from_value
+            from_key, from_value = get_cache_layer_pair(from_cache, layer_idx)
+            to_key, to_value = get_cache_layer_pair(to_cache, layer_idx)
+
+            if from_key is not None and to_key is not None and from_value is not None and to_value is not None:
+                to_key[:, :, :from_cache_size, :] = from_key
+                to_value[:, :, :from_cache_size, :] = from_value
 
     def _prepare_kv_cache(
         self,

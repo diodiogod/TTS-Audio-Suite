@@ -114,14 +114,16 @@ class CUDAGraphRunner(nn.Module):
         fast_forward_attention_mask: torch.Tensor,
         **kwargs,
     ) -> torch.Tensor:
-        # Copy input tensors to buffers
-        self.input_buffers["hidden_states"].copy_(hidden_states, non_blocking=True)
-        self.input_buffers["causal_mask"].copy_(causal_mask, non_blocking=True)
-        self.input_buffers["position_ids"].copy_(position_ids, non_blocking=True)
-        self.input_buffers["audio_discrete_codes_mask"].copy_(audio_discrete_codes_mask, non_blocking=True)
-        self.input_buffers["cache_position"].copy_(cache_position, non_blocking=True)
-        self.input_buffers["audio_attention_mask"].copy_(audio_attention_mask, non_blocking=True)
-        self.input_buffers["fast_forward_attention_mask"].copy_(fast_forward_attention_mask, non_blocking=True)
+        # TTS Audio Suite patch: PyTorch 2.10 rejects inplace updates to inference tensors
+        # unless the updates also happen under inference_mode.
+        with torch.inference_mode():
+            self.input_buffers["hidden_states"].copy_(hidden_states, non_blocking=True)
+            self.input_buffers["causal_mask"].copy_(causal_mask, non_blocking=True)
+            self.input_buffers["position_ids"].copy_(position_ids, non_blocking=True)
+            self.input_buffers["audio_discrete_codes_mask"].copy_(audio_discrete_codes_mask, non_blocking=True)
+            self.input_buffers["cache_position"].copy_(cache_position, non_blocking=True)
+            self.input_buffers["audio_attention_mask"].copy_(audio_attention_mask, non_blocking=True)
+            self.input_buffers["fast_forward_attention_mask"].copy_(fast_forward_attention_mask, non_blocking=True)
 
         # Run the captured graph
         self.graph.replay()

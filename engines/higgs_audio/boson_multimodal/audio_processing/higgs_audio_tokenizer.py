@@ -4,6 +4,7 @@
 
 import math
 import os
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -89,6 +90,8 @@ class HiggsAudioTokenizer(nn.Module):
             self.encoder_semantic_dim = 768
 
         elif semantic_techer == "hubert_base_general":
+            print("🔄 Higgs Audio tokenizer: Loading HuBERT semantic model...")
+            stage_start = time.perf_counter()
             # Use unified downloader to follow TTS folder > cache > download policy
             from utils.downloads.unified_downloader import unified_downloader
 
@@ -116,6 +119,7 @@ class HiggsAudioTokenizer(nn.Module):
                 trust_remote_code=True,
                 local_files_only=True
             )
+            print(f"✅ Higgs Audio tokenizer: HuBERT semantic model ready ({time.perf_counter() - stage_start:.2f}s)")
             
             self.semantic_sample_rate = 16000
             self.semantic_dim = 768
@@ -345,6 +349,8 @@ class HiggsAudioTokenizer(nn.Module):
 
 
 def load_higgs_audio_tokenizer(tokenizer_name_or_path, device="cuda"):
+    print("🔄 Higgs Audio tokenizer: Resolving local assets...")
+    overall_start = time.perf_counter()
     is_local = os.path.exists(tokenizer_name_or_path)
     if not is_local:
         tokenizer_path = snapshot_download(tokenizer_name_or_path)
@@ -353,12 +359,18 @@ def load_higgs_audio_tokenizer(tokenizer_name_or_path, device="cuda"):
     config_path = os.path.join(tokenizer_path, "config.json")
     model_path = os.path.join(tokenizer_path, "model.pth")
     config = json.load(open(config_path))
+    print("🔄 Higgs Audio tokenizer: Building tokenizer modules...")
+    stage_start = time.perf_counter()
     model = HiggsAudioTokenizer(
         **config,
         device=device,
     )
+    print(f"⏱️ Higgs Audio tokenizer: Module construction took {time.perf_counter() - stage_start:.2f}s")
+    print("🔄 Higgs Audio tokenizer: Loading tokenizer weights...")
+    stage_start = time.perf_counter()
     parameter_dict = torch.load(model_path, map_location=device)
     model.load_state_dict(parameter_dict, strict=False)
     model.to(device)
     model.eval()
+    print(f"✅ Higgs Audio tokenizer: Ready ({time.perf_counter() - stage_start:.2f}s for weights, {time.perf_counter() - overall_start:.2f}s total)")
     return model

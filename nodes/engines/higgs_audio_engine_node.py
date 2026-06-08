@@ -173,8 +173,8 @@ class HiggsAudioEngineNode(BaseTTSNode):
                     "tooltip": "🔤 Maximum token limit - safety cap on generation length:\n\n⚠️ This is a LIMIT, not a target. Model stops when audio is complete OR limit is reached.\n\n• <10 tokens: ⚠️ May cause errors or cut off mid-word\n• 200-500: Safe for short sentences, faster processing\n• 1000-2048: 🎯 RECOMMENDED - Handles most content safely\n• 3000-4096: For very long paragraphs only\n\nFor normal text like 'Hello Bob', 200 vs 2048 makes no difference - same quality and length. Only matters for very short limits (causes truncation) or very long text (needs higher limits)."
                 }),
                 "force_audio_gen": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "🎵 Force Audio Generation:\n\n• False: 🎯 RECOMMENDED - Model naturally chooses to generate audio tokens\n• True: Force model to generate audio tokens rather than text tokens\n\n⚠️ Only enable if model is generating text instead of audio. Usually not needed as the model should naturally generate audio for TTS requests."
+                    "default": True,
+                    "tooltip": "🎵 Force Audio Generation:\n\n• True: 🎯 RECOMMENDED for TTS - keeps Higgs in audio generation mode instead of free-running in text mode\n• False: Allow mixed/text generation behavior\n\nIf disabled, Higgs may burn the full token budget instead of terminating cleanly in TTS workflows."
                 }),
                 "ras_win_len": ("INT", {
                     "default": 7,

@@ -2,13 +2,14 @@ import asyncio
 import base64
 import json
 import os
+import time
 import torch
 import numpy as np
 from io import BytesIO
 from dataclasses import dataclass
 from typing import List, Optional, Union
 from copy import deepcopy
-from transformers import AutoTokenizer, AutoProcessor, PreTrainedTokenizerFast
+from transformers import AutoTokenizer, AutoProcessor, PreTrainedTokenizerFast, __version__ as transformers_version
 from transformers.cache_utils import StaticCache, DynamicCache
 from transformers.generation.streamers import BaseStreamer
 from transformers.generation.stopping_criteria import StoppingCriteria
@@ -22,6 +23,8 @@ from tqdm import tqdm
 
 from ..dataset.chatml_dataset import ChatMLSample, ChatMLDatasetSample, prepare_chatml_sample
 from ..model.higgs_audio import HiggsAudioModel
+from ..model.higgs_audio.modeling_higgs_audio import get_cache_device  # TTS Audio Suite patch
+from ..model.higgs_audio.common import skip_hf_missing_key_initialization_if_checkpoint_complete  # TTS Audio Suite patch
 from ..model.higgs_audio.utils import revert_delay_pattern
 from ..data_collator.higgs_audio_collator import HiggsAudioSampleCollator
 from ..audio_processing.higgs_audio_tokenizer import load_higgs_audio_tokenizer
@@ -331,18 +334,28 @@ class HiggsAudioServeEngine:
         
         # Store CUDA Graph setting IMMEDIATELY for cache creation
         self._cuda_graphs_enabled = enable_cuda_graphs
+        self._cuda_graph_replay_enabled = enable_cuda_graphs
         self._cache_type = "StaticCache" if enable_cuda_graphs else "DynamicCache"
         
         print(f"🔧 HiggsAudioServeEngine: CUDA Graphs {'ENABLED' if enable_cuda_graphs else 'DISABLED'}")
         print(f"🔧 Cache Type: {self._cache_type}")
+        if enable_cuda_graphs and int(transformers_version.split(".", 1)[0]) >= 5:
+            # TTS Audio Suite patch: current Higgs CUDA-graph replay corrupts decode on transformers 5.
+            # Keep StaticCache, but skip graph replay until the replay path itself is fixed.
+            self._cuda_graph_replay_enabled = False
+            print("⚠️ Higgs Audio: CUDA graph replay disabled on Transformers 5; using StaticCache decode path")
+        self._preferred_attn_implementation = "sdpa" if device == "cuda" else "eager"
 
         # Initialize model and tokenizer
-        # Load with attention implementation fix for newer transformers
-        self.model = HiggsAudioModel.from_pretrained(
-            model_name_or_path,
-            dtype=torch_dtype,  # Changed from torch_dtype (deprecated in transformers 4.57.1+)
-            attn_implementation="eager"  # Force eager attention for compatibility
-        ).to(device)
+        # TTS Audio Suite patch: prefer SDPA on CUDA to preserve Higgs static-cache/CUDA-graph behavior.
+        stage_start = time.perf_counter()
+        with skip_hf_missing_key_initialization_if_checkpoint_complete(model_name_or_path):
+            self.model = HiggsAudioModel.from_pretrained(
+                model_name_or_path,
+                dtype=torch_dtype,  # Changed from torch_dtype (deprecated in transformers 4.57.1+)
+                attn_implementation=self._preferred_attn_implementation,
+            ).to(device)
+        print(f"⏱️ Higgs Audio: Core model load took {time.perf_counter() - stage_start:.2f}s")
         
         # Fix attention implementation for transformers compatibility
         self._fix_attention_implementation()
@@ -352,6 +365,8 @@ class HiggsAudioServeEngine:
         if tokenizer_name_or_path is None:
             tokenizer_name_or_path = model_name_or_path
         # logger.info(f"Loading tokenizer from {tokenizer_name_or_path}")
+        print("🔄 Higgs Audio: Loading text tokenizer...")
+        stage_start = time.perf_counter()
         try:
             # First try auto-detection
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path)
@@ -368,9 +383,12 @@ class HiggsAudioServeEngine:
                 f"falling back to local PreTrainedTokenizerFast"
             )
             self.tokenizer = _load_higgs_tokenizer_fast_fallback(tokenizer_name_or_path)
+        print(f"✅ Higgs Audio: Text tokenizer ready ({time.perf_counter() - stage_start:.2f}s)")
 
-        # logger.info(f"Initializing Higgs Audio Tokenizer")
+        print("🔄 Higgs Audio: Loading audio tokenizer and semantic model...")
+        stage_start = time.perf_counter()
         self.audio_tokenizer = load_higgs_audio_tokenizer(audio_tokenizer_name_or_path, device=device)
+        print(f"✅ Higgs Audio: Audio tokenizer ready ({time.perf_counter() - stage_start:.2f}s)")
 
         self.audio_num_codebooks = self.model.config.audio_num_codebooks
         self.audio_codebook_size = self.model.config.audio_codebook_size
@@ -431,11 +449,13 @@ class HiggsAudioServeEngine:
 
         if self.model.config.encode_whisper_embed:
             logger.info(f"Loading whisper processor")
+            stage_start = time.perf_counter()
             whisper_processor = AutoProcessor.from_pretrained(
                 "openai/whisper-large-v3-turbo",
                 trust_remote=True,
                 device=self.device,
             )
+            print(f"⏱️ Higgs Audio: Whisper processor load took {time.perf_counter() - stage_start:.2f}s")
         else:
             whisper_processor = None
 
@@ -469,6 +489,9 @@ class HiggsAudioServeEngine:
     def _ensure_cuda_graphs(self):
         """Initialize CUDA graphs on first use if needed"""
         if self.device == "cuda" and self.enable_cuda_graphs and not self.cuda_graphs_initialized:
+            if not self._cuda_graph_replay_enabled:
+                self.cuda_graphs_initialized = True
+                return
             try:
                 # logger.info(f"🚀 Initializing CUDA graphs on first inference")
                 self.model.capture_model(self.kv_caches.values())
@@ -478,16 +501,23 @@ class HiggsAudioServeEngine:
                 logger.warning(f"⚠️ CUDA graph capture failed: {e}")
                 logger.info("Continuing without CUDA graphs (performance may be slower)")
                 self.enable_cuda_graphs = False
+                self._cuda_graph_replay_enabled = False
+                # TTS Audio Suite patch: graph capture failure must also stop StaticCache reuse.
+                self._cuda_graphs_enabled = False
+                self._cache_type = "DynamicCache"
+                self._force_cache_recreation = True
+                self.current_past_key_values_bucket = None
 
     def _fix_attention_implementation(self):
         """Fix attention implementation for all LLaMA layers to avoid None errors"""
         # logger.info("Fixing attention implementation for transformers compatibility")
+        preferred_attn = getattr(self, "_preferred_attn_implementation", "eager")
         
         # Fix the main config
         if hasattr(self.model.config, 'text_config'):
             if hasattr(self.model.config.text_config, '_attn_implementation'):
                 if self.model.config.text_config._attn_implementation is None:
-                    self.model.config.text_config._attn_implementation = "eager"
+                    self.model.config.text_config._attn_implementation = preferred_attn
         
         # Fix all attention layers directly
         if hasattr(self.model, 'language_model') and hasattr(self.model.language_model, 'model'):
@@ -497,7 +527,7 @@ class HiggsAudioServeEngine:
                     if hasattr(layer, 'self_attn') and hasattr(layer.self_attn, 'config'):
                         if hasattr(layer.self_attn.config, '_attn_implementation'):
                             if layer.self_attn.config._attn_implementation is None:
-                                layer.self_attn.config._attn_implementation = "eager"
+                                layer.self_attn.config._attn_implementation = preferred_attn
 
     def disable_cuda_graphs_permanently(self):
         """
@@ -510,6 +540,7 @@ class HiggsAudioServeEngine:
             # Disable CUDA graph functionality completely
             self.enable_cuda_graphs = False
             self.cuda_graphs_initialized = False
+            self._cuda_graph_replay_enabled = False
             
             # Clear any existing CUDA graphs that might be corrupted
             if hasattr(self.model, 'decode_graph_runners'):
@@ -559,6 +590,7 @@ class HiggsAudioServeEngine:
         logger.info("🚫 Disabling CUDA graphs for memory management cycle")
         self.enable_cuda_graphs = False
         self.cuda_graphs_initialized = False
+        self._cuda_graph_replay_enabled = False
 
     def _prepare_inputs(self, chat_ml_sample: ChatMLSample, force_audio_gen: bool = False):
         input_tokens, _, audio_contents, _ = prepare_chatml_sample(
@@ -664,20 +696,14 @@ class HiggsAudioServeEngine:
         if self.kv_caches and not force_cache_recreation:
             # Check if any cache is on wrong device
             for kv_cache in self.kv_caches.values():
-                if hasattr(kv_cache, '__len__') and len(kv_cache) > 0:
-                    try:
-                        cache_tuple = kv_cache[0]  # Get first layer's cache
-                        if cache_tuple is not None and len(cache_tuple) >= 2:
-                            key_cache, _ = cache_tuple
-                            cache_device = key_cache.device if key_cache is not None else model_device
-                        else:
-                            cache_device = model_device
-                        if cache_device != model_device:
-                            cache_device_mismatch = True
-                            break
-                    except (AttributeError, IndexError):
+                try:
+                    cache_device = get_cache_device(kv_cache) or model_device
+                    if cache_device != model_device:
                         cache_device_mismatch = True
                         break
+                except (AttributeError, IndexError, TypeError):
+                    cache_device_mismatch = True
+                    break
         
         # Recreate caches if device mismatch detected or forced recreation requested
         if cache_device_mismatch or force_cache_recreation:
@@ -847,6 +873,9 @@ class HiggsAudioServeEngine:
             # Clean up progress bar
             progress_streamer.end()
 
+            generated_text_tokens = outputs[0][0].cpu().numpy()[len(prompt_token_ids) :]
+            generated_text = self.tokenizer.decode(generated_text_tokens)
+
             if len(outputs[1]) > 0:
                 wv_list = []
                 for output_audio in outputs[1]:
@@ -854,13 +883,13 @@ class HiggsAudioServeEngine:
                     wv_numpy = self.audio_tokenizer.decode(vq_code.unsqueeze(0))[0, 0]
                     wv_list.append(wv_numpy)
                 wv_numpy = np.concatenate(wv_list)
+                generated_audio_tokens = outputs[1][0].cpu().numpy()
             else:
-                wv_numpy = None
+                # TTS Audio Suite patch: surface missing audio generation instead of crashing on outputs[1][0].
+                raise RuntimeError(
+                    f"Higgs generated no audio tokens. Generated text tail: {generated_text[-200:]!r}"
+                )
 
-            # We only support one request at a time now
-            generated_text_tokens = outputs[0][0].cpu().numpy()[len(prompt_token_ids) :]
-            generated_text = self.tokenizer.decode(generated_text_tokens)
-            generated_audio_tokens = outputs[1][0].cpu().numpy()
             return HiggsAudioResponse(
                 audio=wv_numpy,
                 generated_audio_tokens=generated_audio_tokens,
