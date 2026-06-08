@@ -94,6 +94,22 @@ def _serialize_results(results) -> List[Dict[str, Any]]:
     return payload
 
 
+def _serialize_alignment_results(results) -> List[List[Dict[str, Any]]]:
+    payload = []
+    for result in results:
+        payload.append(
+            [
+                {
+                    "text": getattr(item, "text", ""),
+                    "start_time": float(getattr(item, "start_time", 0.0)),
+                    "end_time": float(getattr(item, "end_time", 0.0)),
+                }
+                for item in result
+            ]
+        )
+    return payload
+
+
 def _build_streamer_factory():
     from utils.asr.progress_callback import ASRProgressStreamer
 
@@ -106,6 +122,7 @@ def main() -> int:
 
     from engines.qwen3_tts.qwen3_asr_downloader import Qwen3ASRDownloader
     from engines.qwen3_asr.impl.qwen_asr.inference.qwen3_asr import Qwen3ASRModel
+    from engines.qwen3_asr.impl.qwen_asr.inference.qwen3_forced_aligner import Qwen3ForcedAligner
 
     engine = None
 
@@ -138,29 +155,38 @@ def main() -> int:
                 max_new_tokens = int(payload.get("max_new_tokens", 256))
                 forced_aligner = payload.get("forced_aligner")
                 forced_aligner_kwargs = payload.get("forced_aligner_kwargs")
+                model_type = payload.get("model_type", "asr")
 
                 torch_dtype = _resolve_torch_dtype(precision)
                 torch_dtype, resolved_attn = _sanitize_loader_settings(device, torch_dtype, attn_implementation)
 
-                loader_kwargs = {
-                    "pretrained_model_name_or_path": resolved_model_path,
-                    "dtype": torch_dtype,
-                    "device_map": device,
-                    "max_new_tokens": max_new_tokens,
-                    "attn_implementation": resolved_attn,
-                }
-
-                if forced_aligner:
-                    loader_kwargs["forced_aligner"] = downloader.resolve_model_path(forced_aligner)
-                    loader_kwargs["forced_aligner_kwargs"] = forced_aligner_kwargs or {
+                if model_type == "aligner":
+                    engine = Qwen3ForcedAligner.from_pretrained(
+                        resolved_model_path,
+                        dtype=torch_dtype,
+                        device_map=device,
+                        attn_implementation=resolved_attn,
+                    )
+                else:
+                    loader_kwargs = {
+                        "pretrained_model_name_or_path": resolved_model_path,
                         "dtype": torch_dtype,
                         "device_map": device,
+                        "max_new_tokens": max_new_tokens,
                         "attn_implementation": resolved_attn,
                     }
 
-                engine = Qwen3ASRModel.from_pretrained(**loader_kwargs)
-                engine._streamer_factory = _build_streamer_factory()
-                engine._progress_bar = None
+                    if forced_aligner:
+                        loader_kwargs["forced_aligner"] = downloader.resolve_model_path(forced_aligner)
+                        loader_kwargs["forced_aligner_kwargs"] = forced_aligner_kwargs or {
+                            "dtype": torch_dtype,
+                            "device_map": device,
+                            "attn_implementation": resolved_attn,
+                        }
+
+                    engine = Qwen3ASRModel.from_pretrained(**loader_kwargs)
+                    engine._streamer_factory = _build_streamer_factory()
+                    engine._progress_bar = None
                 _emit(protocol_out, RuntimeJobResponse(ok=True, result={"model_name": request.get("model_name")}, request_id=request_id))
                 continue
 
@@ -179,6 +205,22 @@ def main() -> int:
                     RuntimeJobResponse(
                         ok=True,
                         result={"results": _serialize_results(results)},
+                        request_id=request_id,
+                    ),
+                )
+                continue
+
+            if action == "align":
+                results = engine.align(
+                    audio=_load_audio_payload(payload.get("audio") or {}),
+                    text=payload.get("text"),
+                    language=payload.get("language"),
+                )
+                _emit(
+                    protocol_out,
+                    RuntimeJobResponse(
+                        ok=True,
+                        result={"results": _serialize_alignment_results(results)},
                         request_id=request_id,
                     ),
                 )

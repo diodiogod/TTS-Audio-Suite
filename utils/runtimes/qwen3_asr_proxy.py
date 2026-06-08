@@ -54,6 +54,7 @@ class Qwen3ASRIsolatedProxy:
     def __init__(self, config: ModelLoadConfig, profile: RuntimeProfile):
         self.config = config
         self.profile = profile
+        self.model_type = config.model_type or "asr"
         self.current_model_name = config.model_name
         self.current_model_path = config.model_path
         self.device = config.device
@@ -145,6 +146,7 @@ class Qwen3ASRIsolatedProxy:
                     "forced_aligner": self.config.additional_params.get("forced_aligner"),
                     "forced_aligner_kwargs": self.config.additional_params.get("forced_aligner_kwargs"),
                     "model_path": self.current_model_path,
+                    "model_type": self.model_type,
                 },
                 request_id=str(uuid.uuid4()),
             )
@@ -251,6 +253,46 @@ class Qwen3ASRIsolatedProxy:
                 raise RuntimeError(details)
 
             return self._deserialize_results(response.result.get("results", []))
+
+    def align(self, audio, text, language) -> List[ForcedAlignResult]:
+        self._ensure_remote_engine()
+        with tempfile.TemporaryDirectory(prefix="tts_qwen3_align_iso_") as temp_dir:
+            bundle_dir = Path(temp_dir)
+            response = self._session.request(
+                RuntimeJobRequest(
+                    engine_name="qwen3_asr",
+                    action="align",
+                    model_name=self.current_model_name,
+                    device=str(self.device),
+                    runtime_profile=self.profile.name,
+                    request_id=str(uuid.uuid4()),
+                    payload={
+                        "audio": self._serialize_audio_payload(audio, bundle_dir),
+                        "text": text,
+                        "language": language,
+                    },
+                )
+            )
+
+            if not response.ok:
+                details = response.error or "Isolated Qwen3 forced aligner failed"
+                if response.logs:
+                    details = f"{details}\n" + "\n".join(response.logs)
+                raise RuntimeError(details)
+
+            return [
+                ForcedAlignResult(
+                    items=[
+                        ForcedAlignItem(
+                            text=str(ts.get("text", "")),
+                            start_time=float(ts.get("start_time", 0.0)),
+                            end_time=float(ts.get("end_time", 0.0)),
+                        )
+                        for ts in item
+                    ]
+                )
+                for item in (response.result.get("results") or [])
+            ]
 
     def to(self, device):
         self.device = str(device)

@@ -229,7 +229,7 @@ class UnifiedModelInterface:
             self._isolated_model_cache[cache_key] = proxy
             return proxy
 
-        if config.engine_name == "qwen3_asr" and config.model_type == "asr":
+        if config.engine_name == "qwen3_asr" and config.model_type in ("asr", "aligner"):
             proxy = build_qwen3_asr_isolated_proxy(config)
             self._isolated_model_cache[cache_key] = proxy
             return proxy

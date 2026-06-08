@@ -75,6 +75,7 @@ class GraniteASREngineAdapter:
 
     def _get_forced_aligner(self):
         from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
+        from utils.models.factory_config import RUNTIME_MODE_SHARED
         from utils.device import resolve_torch_device
 
         device = self.config.get("device", "auto")
@@ -89,6 +90,8 @@ class GraniteASREngineAdapter:
             model_name="Qwen3-ForcedAligner-0.6B",
             model_path="Qwen3-ForcedAligner-0.6B",
             device=device,
+            runtime_mode=self.config.get("forced_aligner_runtime_mode", RUNTIME_MODE_SHARED),
+            runtime_profile=self.config.get("forced_aligner_runtime_profile"),
             additional_params={
                 "precision": self.config.get("dtype", "auto"),
                 "attn_implementation": self.config.get("attn_implementation", "auto"),
