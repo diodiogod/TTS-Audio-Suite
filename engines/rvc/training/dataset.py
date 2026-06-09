@@ -249,6 +249,49 @@ def _flatten_audio_inputs(audio_inputs: List[Dict[str, object]], destination_dir
     return file_count
 
 
+def _stage_mute_assets(dataset_dir: str, sample_rate: str, use_f0: bool) -> Dict[str, str]:
+    """
+    Stage mute assets into the prepared dataset directory so the Windows-side
+    training subprocess never has to dereference WSL-local repo paths.
+    """
+    staged_root = os.path.join(dataset_dir, "_mute_assets")
+    os.makedirs(staged_root, exist_ok=True)
+
+    staged_paths = {
+        "wav": os.path.join(staged_root, f"mute{sample_rate}.wav"),
+        "feature": os.path.join(staged_root, "mute.npy"),
+    }
+    shutil.copy2(MUTE_DATASET_DIR / "0_gt_wavs" / f"mute{sample_rate}.wav", staged_paths["wav"])
+    shutil.copy2(MUTE_DATASET_DIR / "3_feature768" / "mute.npy", staged_paths["feature"])
+
+    if use_f0:
+        staged_paths["f0"] = os.path.join(staged_root, "mute.wav.npy")
+        staged_paths["f0nsf"] = os.path.join(staged_root, "mute_nsf.wav.npy")
+        shutil.copy2(MUTE_DATASET_DIR / "2a_f0" / "mute.wav.npy", staged_paths["f0"])
+        shutil.copy2(MUTE_DATASET_DIR / "2b-f0nsf" / "mute.wav.npy", staged_paths["f0nsf"])
+
+    return staged_paths
+
+
+def _filelist_needs_refresh(filelist_path: str) -> bool:
+    if not os.path.isfile(filelist_path):
+        return True
+
+    try:
+        with open(filelist_path, "r", encoding="utf-8") as handle:
+            contents = handle.read()
+    except Exception:
+        return True
+
+    if "\\\\wsl.localhost\\" in contents:
+        return True
+
+    if str(MUTE_DATASET_DIR).replace("/", "\\") in contents or str(MUTE_DATASET_DIR) in contents:
+        return True
+
+    return False
+
+
 def _build_feature_config(device: str) -> SimpleNamespace:
     resolved_device = str(device or "cpu")
     is_half = resolved_device.startswith("cuda")
@@ -566,23 +609,23 @@ def build_training_filelist(dataset_dir: str, sample_rate: str, f0_method: str, 
     # Keep at least two mute samples to match both the Comfy-RVC reference node
     # and the upstream RVC WebUI training filelist behavior.
     mute_count = max(2, int(len(entries) * mute_ratio))
-    mute_feature_dim = 768
+    mute_assets = _stage_mute_assets(dataset_dir, sample_rate, use_f0)
     for _ in range(mute_count):
         if use_f0:
             entry = "|".join(
                 [
-                    str(MUTE_DATASET_DIR / "0_gt_wavs" / f"mute{sample_rate}.wav"),
-                    str(MUTE_DATASET_DIR / f"3_feature{mute_feature_dim}" / "mute.npy"),
-                    str(MUTE_DATASET_DIR / "2a_f0" / "mute.wav.npy"),
-                    str(MUTE_DATASET_DIR / "2b-f0nsf" / "mute.wav.npy"),
+                    mute_assets["wav"],
+                    mute_assets["feature"],
+                    mute_assets["f0"],
+                    mute_assets["f0nsf"],
                     "0",
                 ]
             )
         else:
             entry = "|".join(
                 [
-                    str(MUTE_DATASET_DIR / "0_gt_wavs" / f"mute{sample_rate}.wav"),
-                    str(MUTE_DATASET_DIR / f"3_feature{mute_feature_dim}" / "mute.npy"),
+                    mute_assets["wav"],
+                    mute_assets["feature"],
                     "0",
                 ]
             )
@@ -651,45 +694,53 @@ def prepare_rvc_training_dataset(
     raw_input_dir = os.path.join(output_root, "source_audio")
     filelist_path = os.path.join(output_root, "filelist.txt")
 
-    if not os.path.isfile(filelist_path) or not reuse_existing:
+    needs_refresh = _filelist_needs_refresh(filelist_path)
+
+    if needs_refresh and reuse_existing and os.path.isdir(output_root):
+        print("RVC dataset cache: regenerating stale filelist with staged mute assets")
+
+    if not os.path.isfile(filelist_path) or not reuse_existing or needs_refresh:
         if not reuse_existing and os.path.isdir(output_root):
             shutil.rmtree(output_root)
         os.makedirs(output_root, exist_ok=True)
         file_count = 0
-        if source_path is not None:
-            file_count += _flatten_audio_source(source_path, raw_input_dir)
-        if audio_inputs:
-            file_count += _flatten_audio_inputs(audio_inputs, raw_input_dir, start_index=file_count)
-        preprocess_trainset(
-            raw_input_dir,
-            SR_MAP[sample_rate],
-            cpu_workers,
-            output_root,
-            period=chunk_seconds,
-            overlap=overlap_seconds,
-            max_volume=max_volume,
-        )
-
-        if f0_method:
-            _ensure_training_f0_dependencies(f0_method)
-
-        hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
-        try:
-            extract_features_trainset(
-                hubert_model,
-                output_root,
+        if not (reuse_existing and needs_refresh):
+            if source_path is not None:
+                file_count += _flatten_audio_source(source_path, raw_input_dir)
+            if audio_inputs:
+                file_count += _flatten_audio_inputs(audio_inputs, raw_input_dir, start_index=file_count)
+            preprocess_trainset(
+                raw_input_dir,
+                SR_MAP[sample_rate],
                 cpu_workers,
-                f0_method=f0_method,
-                device=device,
-                version="v2",
-                if_f0=bool(f0_method),
-                crepe_hop_length=crepe_hop_length,
+                output_root,
+                period=chunk_seconds,
+                overlap=overlap_seconds,
+                max_volume=max_volume,
             )
-        finally:
-            del hubert_model
-            gc_collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+
+            if f0_method:
+                _ensure_training_f0_dependencies(f0_method)
+
+            hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
+            try:
+                extract_features_trainset(
+                    hubert_model,
+                    output_root,
+                    cpu_workers,
+                    f0_method=f0_method,
+                    device=device,
+                    version="v2",
+                    if_f0=bool(f0_method),
+                    crepe_hop_length=crepe_hop_length,
+                )
+            finally:
+                del hubert_model
+                gc_collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+        else:
+            file_count = len(list(_iter_audio_files(raw_input_dir))) if os.path.isdir(raw_input_dir) else 0
 
         filelist_path = build_training_filelist(output_root, sample_rate, f0_method, mute_ratio)
     else:
