@@ -14,6 +14,8 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from utils.models.language_mapper import get_model_for_language
+from utils.models.engine_registry import get_default_runtime_profile
+from utils.models.factory_config import normalize_runtime_mode, runtime_uses_isolation
 from engines.higgs_audio.higgs_audio import HiggsAudioEngine
 from engines.higgs_audio.higgs_audio_downloader import HIGGS_AUDIO_MODELS
 
@@ -31,6 +33,9 @@ class HiggsAudioEngineAdapter:
         self.node = node_instance
         self.engine_type = "higgs_audio"
         self.higgs_engine = HiggsAudioEngine()
+        node_config = getattr(node_instance, "config", {}) or {}
+        self._runtime_mode = normalize_runtime_mode(node_config.get("runtime_mode"))
+        self._runtime_profile = node_config.get("runtime_profile")
     
     def get_model_for_language(self, lang_code: str, default_model: str) -> str:
         """
@@ -85,6 +90,23 @@ class HiggsAudioEngineAdapter:
             # Default fallback
             generation_model = "bosonai/higgs-audio-v2-generation-3B-base"
             tokenizer_model = "bosonai/higgs-audio-v2-tokenizer"
+
+        if runtime_uses_isolation(self._runtime_mode):
+            from utils.models.unified_model_interface import load_tts_model
+
+            self.higgs_engine = load_tts_model(
+                engine_name="higgs_audio",
+                model_name=model_name,
+                device=device,
+                model_path=generation_model,
+                tokenizer_path=tokenizer_model,
+                enable_cuda_graphs=enable_cuda_graphs,
+                runtime_mode=self._runtime_mode,
+                runtime_profile=self._runtime_profile or get_default_runtime_profile("higgs_audio"),
+            )
+            self.node.current_model_name = model_name
+            print(f"✅ Higgs Audio adapter: Loaded model '{model_name}' on {device} via shared runtime")
+            return
         
         # Initialize the Higgs Audio engine with CUDA Graph setting
         self.higgs_engine.initialize_engine(
@@ -138,7 +160,7 @@ class HiggsAudioEngineAdapter:
         top_p = params.get("top_p", 0.95)
         top_k = params.get("top_k", 50)
         max_new_tokens = params.get("max_new_tokens", 2048)
-        force_audio_gen = params.get("force_audio_gen", False)
+        force_audio_gen = params.get("force_audio_gen", True)
         ras_win_len = params.get("ras_win_len", 7)  # Default from boson_multimodal
         ras_max_num_repeat = params.get("ras_max_num_repeat", 2)  # Default from boson_multimodal
         enable_cuda_graphs = params.get("enable_cuda_graphs", True)  # CUDA Graph toggle
@@ -161,7 +183,7 @@ class HiggsAudioEngineAdapter:
         max_tokens_per_chunk = int(max_chars_per_chunk / 3.5)
         
         # Initialize engine if not already done
-        if not self.higgs_engine.engine:
+        if not getattr(self.higgs_engine, "engine", None):
             print(f"🚀 Initializing Higgs Audio engine with model: {model_name}")
             self.load_base_model(model_name, device)
         
@@ -394,7 +416,7 @@ class HiggsAudioEngineAdapter:
         validated["max_new_tokens"] = max(1, min(4096, int(max_tokens)))
         
         # Force audio gen validation
-        force_audio_gen = params.get("force_audio_gen", False)
+        force_audio_gen = params.get("force_audio_gen", True)
         validated["force_audio_gen"] = bool(force_audio_gen)
         
         # RAS parameters validation

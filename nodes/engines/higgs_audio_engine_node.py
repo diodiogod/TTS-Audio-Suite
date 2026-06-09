@@ -31,6 +31,10 @@ base_spec.loader.exec_module(base_module)
 
 # Import the base class
 BaseTTSNode = base_module.BaseTTSNode
+from utils.models.factory_config import (
+    RUNTIME_MODE_SHARED,
+    normalize_runtime_mode,
+)
 
 
 class HiggsAudioEngineNode(BaseTTSNode):
@@ -123,7 +127,8 @@ class HiggsAudioEngineNode(BaseTTSNode):
     @classmethod
     def INPUT_TYPES(cls):
         available_models = cls._get_available_higgs_models()
-        
+        runtime_mode_main_label = "Main Environment"
+        runtime_mode_shared_label = "⚠️ Shared Runtime"
         
         return {
             "required": {
@@ -198,7 +203,11 @@ class HiggsAudioEngineNode(BaseTTSNode):
                 "enable_cuda_graphs": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "⚡ CUDA Graph Optimization:\n\n• True (High Performance): 55+ tokens/sec generation speed with safe VRAM unloading. CUDA graphs auto-recreate on next generation. Recommended for best performance.\n\n• False (Memory Safe): ~12 tokens/sec generation speed (78% slower), but uses no CUDA graphs. Use if you encounter any issues or need to minimize memory fragmentation.\n\n✅ Both modes now support safe 'Unload Models' - CUDA graphs are automatically managed."
-                })
+                }),
+                "runtime_mode": ([runtime_mode_main_label, runtime_mode_shared_label], {
+                    "default": runtime_mode_shared_label,
+                    "tooltip": "IMPORTANT: Higgs Audio 2 is not stable enough on the main Transformers 5 environment right now.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the existing shared legacy Transformers 4 runtime already used by VibeVoice/Qwen\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• Higgs Audio 2 previously worked on the old T4 stack\n• Shared runtime reuses that older stack without downgrading the whole app\n\n⚠️ First run may create or refresh the shared secondary runtime and take a while."
+                }),
             }
         }
     
@@ -211,8 +220,10 @@ class HiggsAudioEngineNode(BaseTTSNode):
     def create_engine_config(self, model, device, multi_speaker_mode, system_prompt,
                            temperature, top_p, top_k, max_new_tokens, force_audio_gen, 
                            ras_win_len, ras_max_num_repeat, opt_second_narrator=None, 
-                           enable_cuda_graphs=True):
+                           enable_cuda_graphs=True, runtime_mode="⚠️ Shared Runtime"):
         """Create Higgs Audio engine configuration"""
+        runtime_mode = normalize_runtime_mode(runtime_mode)
+        runtime_profile = "vibevoice_transformers4_shared" if runtime_mode == RUNTIME_MODE_SHARED else None
         
         # Validate parameters
         config = {
@@ -230,6 +241,8 @@ class HiggsAudioEngineNode(BaseTTSNode):
             "ras_max_num_repeat": max(1, min(5, ras_max_num_repeat)),
             "opt_second_narrator": opt_second_narrator,
             "enable_cuda_graphs": bool(enable_cuda_graphs),
+            "runtime_mode": runtime_mode,
+            "runtime_profile": runtime_profile,
             "adapter_class": "HiggsAudioEngineAdapter"
         }
         

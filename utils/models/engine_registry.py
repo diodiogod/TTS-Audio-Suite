@@ -80,7 +80,7 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         recovery_handler=None,  # Would be set to reset function
         requires_special_init=True,
         supports_runtime_isolation=True,
-        default_runtime_profile="higgs_audio_embedded",
+        default_runtime_profile="vibevoice_transformers4_shared",
     ),
 
     "rvc": EngineCapabilities(
