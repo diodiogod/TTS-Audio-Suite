@@ -252,12 +252,13 @@ class MossTTSEngine:
         MossProcessor = getattr(processing_module, "MossTTSDelayProcessor")
         MossModel = getattr(modeling_module, "MossTTSDelayModel")
 
-        tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        model_config = MossConfig.from_pretrained(self.model_path)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_path, config=model_config)
         audio_tokenizer = MossAudioTokenizerModel.from_pretrained(self.codec_path)
         processor = MossProcessor(
             tokenizer=tokenizer,
             audio_tokenizer=audio_tokenizer,
-            model_config=MossConfig.from_pretrained(self.model_path),
+            model_config=model_config,
         )
         # TTS Audio Suite Patch: guard against partial configs where pad_token_id is unset.
         model_cfg = getattr(processor, "model_config", None)
