@@ -34,7 +34,13 @@ BaseTTSNode = base_module.BaseTTSNode
 
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
-from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
+from utils.voice.discovery import (
+    get_available_voices,
+    load_voice_reference,
+    get_available_characters,
+    get_character_mapping,
+    voice_discovery,
+)
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.voice.multilingual_engine import MultilingualEngine
 from utils.config_sanitizer import ConfigSanitizer
@@ -205,6 +211,11 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
                 stable_params['codec_model'] = config.get('codec_model', 'MOSS-Audio-Tokenizer')
+
+            if engine_type == "higgs_audio_v3":
+                stable_params['model'] = config.get('model', 'higgs-audio-v3-tts-4b')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['attention'] = config.get('attention', 'auto')
 
             # For IndexTTS-2, include low_vram in cache key since it requires model reload
             if engine_type == "index_tts":
@@ -532,6 +543,37 @@ Back to the main narrator voice for the conclusion.""",
 
                 MossTTSProcessor = moss_processor_module.MossTTSProcessor
                 engine_instance = MossTTSProcessor(self, config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
+            elif engine_type == "higgs_audio_v3":
+                higgs_v3_processor_path = os.path.join(nodes_dir, "higgs_audio_v3", "higgs_audio_v3_processor.py")
+                higgs_v3_processor_spec = importlib.util.spec_from_file_location("higgs_audio_v3_processor_module", higgs_v3_processor_path)
+                higgs_v3_processor_module = importlib.util.module_from_spec(higgs_v3_processor_spec)
+                higgs_v3_processor_spec.loader.exec_module(higgs_v3_processor_module)
+
+                HiggsAudioV3Processor = higgs_v3_processor_module.HiggsAudioV3Processor
+
+                class HiggsAudioV3Wrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.processor = HiggsAudioV3Processor(self, cfg)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("Higgs Audio v3 processing interrupted by user")
+
+                engine_instance = HiggsAudioV3Wrapper(config)
 
                 import time
                 self._cached_engine_instances[cache_key] = {
@@ -974,8 +1016,6 @@ Back to the main narrator voice for the conclusion.""",
                 tts_processor = StepAudioEditXProcessor(wrapper_instance, config)
 
                 # Prepare voice mapping - discover all characters in text
-                from utils.text.character_parser import character_parser
-                from utils.voice.discovery import get_character_mapping
                 import tempfile
 
                 # Parse characters from text - first extract character names from tags
@@ -995,8 +1035,6 @@ Back to the main narrator voice for the conclusion.""",
 
                 # Set available characters so parser doesn't change them to "narrator"
                 # Also get character aliases and language defaults like IndexTTS does
-                from utils.voice.discovery import get_available_characters, voice_discovery
-
                 # Get available characters and aliases
                 available_chars = get_available_characters()
                 character_aliases = voice_discovery.get_character_aliases()
@@ -1290,6 +1328,84 @@ Back to the main narrator voice for the conclusion.""",
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 24000)
                 result = (formatted_audio, generation_info)
 
+            elif engine_type == "higgs_audio_v3":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                from utils.text.character_parser import character_parser
+
+                character_tags = re.findall(r'\[([^\]]+)\]', text)
+                tagged_characters = []
+                for tag in character_tags:
+                    if not tag.startswith('pause:'):
+                        tagged_characters.append(tag.split('|')[0].strip().lower())
+
+                available_chars = get_available_characters()
+                character_aliases = voice_discovery.get_character_aliases()
+                all_available = {"narrator"}
+                if available_chars:
+                    all_available.update(available_chars)
+                for alias, target in character_aliases.items():
+                    all_available.add(alias.lower())
+                    all_available.add(target.lower())
+                all_available.update(tagged_characters)
+
+                character_parser.set_available_characters(list(all_available))
+                character_parser.reset_session_cache()
+                segment_objects = character_parser.parse_text_segments(text)
+                characters = list(set([seg.character for seg in segment_objects]))
+                character_mapping = get_character_mapping(characters, engine_type="higgs_audio_v3")
+
+                voice_mapping = {}
+                for character in characters:
+                    if character == "narrator" and audio_tensor is not None:
+                        voice_mapping[character] = {
+                            "audio": audio_tensor,
+                            "audio_path": audio_path,
+                            "reference_text": reference_text or "",
+                        }
+                        continue
+
+                    char_audio_path, char_ref_text = character_mapping.get(character, (None, None))
+                    if char_audio_path:
+                        voice_mapping[character] = {
+                            "audio_path": char_audio_path,
+                            "reference_text": char_ref_text or "",
+                        }
+                    elif audio_tensor is not None:
+                        voice_mapping[character] = {
+                            "audio": audio_tensor,
+                            "audio_path": audio_path,
+                            "reference_text": reference_text or "",
+                        }
+
+                audio_segments = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=config.get("words_per_chunk", max_chars_per_chunk),
+                )
+
+                audio_result, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=audio_segments,
+                    method=chunk_combination_method,
+                    silence_ms=int(config.get("pause_between_chunks", 0.15) * 1000),
+                    text_length=len(text),
+                    return_info=True,
+                )
+
+                total_duration = audio_result.shape[-1] / 24000.0 if audio_result.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+                base_info = (
+                    f"Generated {total_duration:.1f}s audio from {text_length} characters "
+                    f"(Higgs Audio v3, narrator: {char_display})"
+                )
+                base_info += "\n🎭 Character switching, pause tags, and native <|...|> inline controls supported"
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(audio_result, 24000)
+                result = (formatted_audio, generation_info)
+
             elif engine_type == "qwen3_tts":
                 # Qwen3-TTS uses processor pattern - call through processor
                 # Extract characters from text first
@@ -1303,7 +1419,6 @@ Back to the main narrator voice for the conclusion.""",
 
                 # Parse segments to get actual characters used
                 from utils.text.character_parser import character_parser
-                from utils.voice.discovery import voice_discovery, get_available_characters
 
                 # Get available characters
                 available_chars = get_available_characters()
@@ -1338,7 +1453,6 @@ Back to the main narrator voice for the conclusion.""",
                 characters = list(set([seg.character for seg in segment_objects]))
 
                 # Get character voice mapping
-                from utils.voice.discovery import get_character_mapping
                 character_mapping = get_character_mapping(characters, engine_type="qwen3_tts")
 
                 # Build voice mapping for character switching

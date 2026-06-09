@@ -145,7 +145,7 @@ class UnifiedModelInterface:
         # CRITICAL: For engines that support multiple model variants (like Qwen3-TTS),
         # check if a DIFFERENT variant is already loaded and unload it to prevent device conflicts
         # Only applies to engines where model variants are mutually exclusive
-        if config.engine_name in ("qwen3_tts", "moss_tts"):
+        if config.engine_name in ("qwen3_tts", "moss_tts", "higgs_audio_v3"):
             # Check for any cached mutually-exclusive model variant for this engine
             cached_prefix = f"{config.engine_name}_tts_"
             cached_keys = [k for k in tts_model_manager._model_cache.keys() if k.startswith(cached_prefix)]
@@ -757,6 +757,39 @@ def register_higgs_audio_factory():
         return stateless_wrapper
 
     unified_model_interface.register_model_factory("higgs_audio", "tts", higgs_audio_factory)
+
+
+def register_higgs_audio_v3_factory():
+    """Register native Higgs Audio v3 model factory."""
+
+    def higgs_audio_v3_factory(config: ModelLoadConfig):
+        from engines.higgs_audio_v3.higgs_audio_v3 import HiggsAudioV3Engine
+        from engines.higgs_audio_v3.higgs_audio_v3_downloader import HiggsAudioV3Downloader
+
+        model_name = config.model_name or "higgs-audio-v3-tts-4b"
+        model_path = config.model_path or model_name
+        device = config.device or "auto"
+
+        additional = config.additional_params or {}
+        dtype = additional.get("dtype", "auto")
+        attention = additional.get("attention", "auto")
+
+        downloader = HiggsAudioV3Downloader()
+        resolved_model_path = downloader.resolve_model_path(model_path)
+
+        print("🔄 Loading Higgs Audio v3 via unified interface")
+        print(f"   Model: {model_name}")
+        print(f"   Path: {resolved_model_path}")
+        print(f"   Device: {device} | Dtype: {dtype} | Attention: {attention}")
+
+        return HiggsAudioV3Engine(
+            model_path=resolved_model_path,
+            device=device,
+            dtype=dtype,
+            attention=attention,
+        )
+
+    unified_model_interface.register_model_factory("higgs_audio_v3", "tts", higgs_audio_v3_factory)
 
 
 def register_rvc_factory():
@@ -1843,6 +1876,7 @@ def initialize_all_factories():
     register_step_audio_editx_factory()
     register_echo_tts_factory()
     register_higgs_audio_factory()
+    register_higgs_audio_v3_factory()
     register_rvc_factory()
     register_vibevoice_factory()
     register_index_tts_factory()

@@ -106,6 +106,14 @@ except Exception as e:
     HIGGS_AUDIO_ENGINE_AVAILABLE = False
 
 try:
+    higgs_audio_v3_engine_module = load_node_module("higgs_audio_v3_engine_node", "engines/higgs_audio_v3_engine_node.py")
+    HiggsAudioV3EngineNode = higgs_audio_v3_engine_module.HiggsAudioV3EngineNode
+    HIGGS_AUDIO_V3_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Higgs Audio v3 Engine failed: {e}")
+    HIGGS_AUDIO_V3_ENGINE_AVAILABLE = False
+
+try:
     step_audio_editx_engine_module = load_node_module("step_audio_editx_engine_node", "engines/step_audio_editx_engine_node.py")
     StepAudioEditXEngineNode = step_audio_editx_engine_module.StepAudioEditXEngineNode
     STEP_AUDIO_EDITX_ENGINE_AVAILABLE = True
@@ -568,6 +576,10 @@ if F5TTS_ENGINE_AVAILABLE:
 if HIGGS_AUDIO_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["HiggsAudioEngineNode"] = HiggsAudioEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["HiggsAudioEngineNode"] = "⚙️ Higgs Audio 2 Engine"
+
+if HIGGS_AUDIO_V3_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["HiggsAudioV3EngineNode"] = HiggsAudioV3EngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["HiggsAudioV3EngineNode"] = "⚙️ Higgs Audio v3 Engine"
 
 if STEP_AUDIO_EDITX_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["StepAudioEditXEngineNode"] = StepAudioEditXEngineNode

@@ -83,6 +83,13 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         default_runtime_profile="vibevoice_transformers4_shared",
     ),
 
+    "higgs_audio_v3": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+    ),
+
     "rvc": EngineCapabilities(
         supports_voice_conversion=True,
         multilingual_model_switching=False,  # Single model

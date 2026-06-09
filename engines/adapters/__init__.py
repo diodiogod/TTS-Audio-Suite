@@ -49,9 +49,18 @@ except Exception as e:
         def __init__(self, *args, **kwargs):
             raise ImportError(f"MOSS-TTS adapter not available: {e}")
 
+try:
+    from .higgs_audio_v3_adapter import HiggsAudioV3EngineAdapter
+    HIGGS_AUDIO_V3_ADAPTER_AVAILABLE = True
+except Exception as e:
+    HIGGS_AUDIO_V3_ADAPTER_AVAILABLE = False
+    class HiggsAudioV3EngineAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Higgs Audio v3 adapter not available: {e}")
+
 __all__ = [
     'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter', 'EchoTTSEngineAdapter',
-    'MossTTSEngineAdapter',
+    'MossTTSEngineAdapter', 'HiggsAudioV3EngineAdapter',
     'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE',
-    'ECHO_TTS_ADAPTER_AVAILABLE', 'MOSS_TTS_ADAPTER_AVAILABLE'
+    'ECHO_TTS_ADAPTER_AVAILABLE', 'MOSS_TTS_ADAPTER_AVAILABLE', 'HIGGS_AUDIO_V3_ADAPTER_AVAILABLE'
 ]
