@@ -462,6 +462,15 @@ engines:
       - "3 multi-speaker"
       - "CUDA graphs (55+ tokens/sec)"
 
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      notes: "Recommended on modern ComfyUI stacks. Native Transformers 5 path proved unreliable for correct Higgs generation, so the shared legacy T4 runtime is now the supported compatibility path."
+
     model_sources:
       - component: "higgs-audio-v2-3B"
         source_name: "bosonai/higgs-audio-v2-generation-3B-base"
@@ -677,6 +686,17 @@ engines:
       - "Voice design"
       - "ASR (Automatic Speech Recognition)"
 
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+        - "dedicated_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      dedicated_profile: "qwen3_tts_transformers4_dedicated"
+      notes: "Recommended on modern ComfyUI stacks because Qwen3-TTS, Qwen3-ASR, and the reused Qwen forced aligner currently rely on the shared legacy T4 runtime for stable operation."
+
     model_sources:
       - component: "CustomVoice 0.6B"
         source_name: "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
@@ -779,6 +799,7 @@ engines:
       - "ASR (Automatic Speech Recognition)"
       - "Custom timestamps/SRT via reused Qwen forced aligner"
       - "Speech translation (experimental)"
+      - "Optional forced aligner auto-routed through shared legacy T4 runtime"
 
     model_sources:
       - component: "granite-4.0-1b-speech"

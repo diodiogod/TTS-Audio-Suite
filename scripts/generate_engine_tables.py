@@ -80,10 +80,10 @@ def build_isolation_note(data):
     if not isolation_engines:
         return ""
 
-    engine_names = ", ".join(engine["name"] for engine in isolation_engines)
     return (
-        f"*Isolation column: `Shared` / `Dedicated` only appear on engines that currently "
-        f"need a secondary environment. Right now that means {engine_names}.*"
+        "*Isolation column: `Main` runs in the main ComfyUI environment. "
+        "`Shared` uses a shared secondary runtime reused by multiple engines. "
+        "`Dedicated` uses an engine-specific secondary runtime.*"
     )
 
 

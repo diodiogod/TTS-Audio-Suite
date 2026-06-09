@@ -12,9 +12,12 @@
 4. **SRT Processor** (`nodes/<engine>/<engine>_srt_processor.py`) - SRT-specific orchestration
 5. **Adapter** (`engines/adapters/<engine>_adapter.py`) - bridges processor to engine implementation
 6. **Engine Implementation** (`engines/<engine>/`) - actual model inference
+7. **Optional Isolated Runtime** (`utils/runtimes/`) - worker subprocess layer for fragile engine stacks
 
 **Key architectural rules:**
 - Chunking happens in the **processor**, not the adapter (`generate_single()` on adapter = raw single call)
+- Runtime routing happens through `ModelLoadConfig.runtime_mode` + `runtime_profile`, not ad-hoc subprocess calls
+- Shared runtime workers are currently used for fragile engine families such as VibeVoice, Qwen3-TTS / ASR, Granite forced alignment, and Higgs Audio 2
 - YAML (`docs/Dev reports/tts_audio_suite_engines.yaml`) is source of truth for engine doc tables → run `python3 scripts/generate_engine_tables.py --readme` to regenerate
 - Auxiliary YAML (`docs/Dev reports/tts_audio_suite_aux_models.yaml`) is source of truth for helper/post-process model docs → run `python3 scripts/generate_aux_model_docs.py`
 - All models download to `ComfyUI/models/TTS/<model-name>/`
@@ -69,6 +72,9 @@
 - `tts_audio_suite_aux_models.yaml` - **Source of truth** for helper/post-process model metadata
 - `BUMP_SCRIPT_INSTRUCTIONS.md` - Version bump process
 - `SRT_IMPLEMENTATION.md` - SRT timing technical details
+- `ISOLATED_RUNTIMES_PLAN.md` - original runtime isolation plan and scope
+- `TRANSFORMERS_5_QWEN3_TTS_REPORT.md` - why Qwen3-TTS moved to shared legacy T4 runtime
+- `TRANSFORMERS_5_HIGGS_AUDIO_REPORT.md` - why Higgs Audio 2 moved to shared legacy T4 runtime
 
 ### New Engine Guides (`docs/New Engines Guides/`)
 - `README.md` - Start-here friendly workflow for users guiding LLMs through new engine integrations
@@ -118,9 +124,23 @@
 ### Model Management (`utils/models/`)
 - `unified_model_interface.py` - Universal factory pattern for all engines
 - `engine_registry.py` - Engine capability definitions
+- `factory_config.py` - standardized model load config, runtime mode/profile normalization
 - `manager.py` - Model discovery and caching
 - `comfyui_model_wrapper/` - ComfyUI native model management integration
 - `extra_paths.py` - extra_model_paths.yaml support
+
+### Isolated Runtimes (`utils/runtimes/`)
+- `profiles.py` - named runtime profiles (`vibevoice_transformers4_shared`, dedicated variants, etc.)
+- `launcher.py` - runtime bootstrap, venv creation, Windows toolchain env setup
+- `session.py`, `protocol.py` - JSONL worker transport and message protocol
+- `bootstrap.py` - shared runtime bootstrap helpers
+- `vibevoice_proxy.py`, `qwen3_tts_proxy.py`, `qwen3_asr_proxy.py`, `higgs_audio_proxy.py` - parent-process proxies
+- `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio
+- Current shared legacy T4 runtime profile is reused by:
+  - VibeVoice / Kugel
+  - Qwen3-TTS
+  - Qwen3-ASR and Granite's optional Qwen forced aligner
+  - Higgs Audio 2
 
 ### Audio (`utils/audio/`)
 - `processing.py` - Tensor manipulation, normalization, format conversion
